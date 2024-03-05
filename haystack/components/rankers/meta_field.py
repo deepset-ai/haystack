@@ -67,10 +67,10 @@ class MetaFieldRanker:
             For example, if we specified `meta_value_type="date"` then for the meta value `"date": "2015-02-01"`
             we would parse the string into a datetime object and then sort the documents by date.
             The available options are:
-            -'float' will parse the meta values into floats.
-            -'int' will parse the meta values into integers.
-            -'date' will parse the meta values into datetime objects.
-            -'None' (default) will do no parsing.
+            - 'float' will parse the meta values into floats.
+            - 'int' will parse the meta values into integers.
+            - 'date' will parse the meta values into datetime objects.
+            - 'None' (default) will do no parsing.
         """
 
         self.meta_field = meta_field

@@ -21,19 +21,28 @@ logger = logging.getLogger(__name__)
 @component
 class ExtractiveReader:
     """
-    A component that locates and extract answers to a given query from Documents. It's used for performing extractive
-    QA. The Reader assigns a score to every possible answer span independently of other answer spans.
+    Locates and extracts answers to a given query from Documents.
+
+    The ExtractiveReader component performs extractive question answering.
+    It assigns a score to every possible answer span independently of other answer spans.
     This fixes a common issue of other implementations which make comparisons across documents harder by normalizing
     each document's answers independently.
 
     Example usage:
     ```python
-    p = Pipeline()
-    p.add_component(instance=InMemoryBM25Retriever(document_store=InMemoryDocumentStore()), name="retriever")
-    p.add_component(instance=ExtractiveReader(), name="reader")
-    p.connect("retriever", "reader")
+    from haystack import Document
+    from haystack.components.readers import ExtractiveReader
+
+    docs = [
+        Document(content="Python is a popular programming language"),
+        Document(content="python ist eine beliebte Programmiersprache"),
+    ]
+
+    reader = ExtractiveReader()
+    reader.warm_up()
+
     question = "Who lives in Berlin?"
-    p.run({"retriever": {"query": question}, "reader": {"query": question}})
+    reader.run(query=question, documents=docs)
     ```
     """
 
@@ -54,37 +63,43 @@ class ExtractiveReader:
         model_kwargs: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
-        Creates an ExtractiveReader
-        :param model: A Hugging Face transformers question answering model.
+        Creates an instance of ExtractiveReader.
+
+        :param model:
+            A Hugging Face transformers question answering model.
             Can either be a path to a folder containing the model files or an identifier for the Hugging Face hub.
-            Default: `'deepset/roberta-base-squad2-distilled'`
-        :param device: The device on which the model is loaded. If `None`, the default device is automatically
-            selected.
-        :param token: The API token used to download private models from Hugging Face.
-            If this parameter is set to `True`, then the token generated when running
-            `transformers-cli login` (stored in ~/.huggingface) is used.
-        :param top_k: Number of answers to return per query.
-            It is required even if score_threshold is set. Defaults to 20.
+        :param device:
+            The device on which the model is loaded. If `None`, the default device is automatically selected.
+        :param token:
+            The API token used to download private models from Hugging Face.
+        :param top_k:
+            Number of answers to return per query. It is required even if score_threshold is set.
             An additional answer with no text is returned if no_answer is set to True (default).
-        :param score_threshold: Returns only answers with the probability score above this threshold.
-        :param max_seq_length: Maximum number of tokens.
-            If a sequence exceeds it, the sequence is split.
-            Default: 384
-        :param stride: Number of tokens that overlap when sequence is split because it exceeds max_seq_length.
-            Default: 128
-        :param max_batch_size: Maximum number of samples that are fed through the model at the same time.
-        :param answers_per_seq: Number of answer candidates to consider per sequence.
+        :param score_threshold:
+            Returns only answers with the probability score above this threshold.
+        :param max_seq_length:
+            Maximum number of tokens. If a sequence exceeds it, the sequence is split.
+        :param stride:
+            Number of tokens that overlap when sequence is split because it exceeds max_seq_length.
+        :param max_batch_size:
+            Maximum number of samples that are fed through the model at the same time.
+        :param answers_per_seq:
+            Number of answer candidates to consider per sequence.
             This is relevant when a Document was split into multiple sequences because of max_seq_length.
-        :param no_answer: Whether to return an additional `no answer` with an empty text and a score representing the
+        :param no_answer:
+            Whether to return an additional `no answer` with an empty text and a score representing the
             probability that the other top_k answers are incorrect.
-        :param calibration_factor: Factor used for calibrating probabilities.
-        :param overlap_threshold: If set this will remove duplicate answers if they have an overlap larger than the
+        :param calibration_factor:
+            Factor used for calibrating probabilities.
+        :param overlap_threshold:
+            If set this will remove duplicate answers if they have an overlap larger than the
             supplied threshold. For example, for the answers "in the river in Maine" and "the river" we would remove
             one of these answers since the second answer has a 100% (1.0) overlap with the first answer.
             However, for the answers "the river in" and "in Maine" there is only a max overlap percentage of 25% so
             both of these answers could be kept if this variable is set to 0.24 or lower.
             If None is provided then all answers are kept.
-        :param model_kwargs: Additional keyword arguments passed to `AutoModelForQuestionAnswering.from_pretrained`
+        :param model_kwargs:
+            Additional keyword arguments passed to `AutoModelForQuestionAnswering.from_pretrained`
             when loading the model specified in `model`. For details on what kwargs you can pass,
             see the model's documentation.
         """
@@ -115,7 +130,10 @@ class ExtractiveReader:
 
     def to_dict(self) -> Dict[str, Any]:
         """
-        Serialize this component to a dictionary.
+        Serializes the component to a dictionary.
+
+        :returns:
+            Dictionary with serialized data.
         """
         serialization_dict = default_to_dict(
             self,
@@ -139,7 +157,12 @@ class ExtractiveReader:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ExtractiveReader":
         """
-        Deserialize this component from a dictionary.
+        Deserializes the component from a dictionary.
+
+        :param data:
+            Dictionary to deserialize from.
+        :returns:
+            Deserialized component.
         """
         init_params = data["init_parameters"]
         if init_params["device"] is not None:
@@ -150,7 +173,7 @@ class ExtractiveReader:
 
     def warm_up(self):
         """
-        Loads model and tokenizer
+        Initializes the component.
         """
         # Take the first device used by `accelerate`. Needed to pass inputs from the tokenizer to the correct device.
         if self.model is None:
@@ -422,16 +445,20 @@ class ExtractiveReader:
         self, answers: List[ExtractedAnswer], overlap_threshold: Optional[float]
     ) -> List[ExtractedAnswer]:
         """
-        This de-duplicates overlapping Extractive Answers from the same document based on how much the spans of the
+        De-duplicates overlapping Extractive Answers from the same document based on how much the spans of the
         answers overlap.
 
-        :param answers: List of answers to be deduplicated.
-        :param overlap_threshold: If set this will remove duplicate answers if they have an overlap larger than the
+        :param answers:
+            List of answers to be deduplicated.
+        :param overlap_threshold:
+            If set this will remove duplicate answers if they have an overlap larger than the
             supplied threshold. For example, for the answers "in the river in Maine" and "the river" we would remove
             one of these answers since the second answer has a 100% (1.0) overlap with the first answer.
             However, for the answers "the river in" and "in Maine" there is only a max overlap percentage of 25% so
             both of these answers could be kept if this variable is set to 0.24 or lower.
             If None is provided then all answers are kept.
+        :returns:
+            List of deduplicated answers.
         """
         if overlap_threshold is None:
             return answers

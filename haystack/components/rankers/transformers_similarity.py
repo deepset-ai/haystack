@@ -33,6 +33,7 @@ class TransformersSimilarityRanker:
     ranker.warm_up()
     result = ranker.run(query=query, documents=docs)
     docs = result["documents"]
+    print(docs[0].content)
     ```
     """
 
