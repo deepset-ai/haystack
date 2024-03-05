@@ -41,9 +41,9 @@ class ExtractiveReader:
     reader = ExtractiveReader()
     reader.warm_up()
 
-    question = "Who lives in Berlin?"
+    question = "What is a popular programming language?"
     result = reader.run(query=question, documents=docs)
-    result["answers"]
+    assert "Python" in result["answers"][0].data
     ```
     """
 
