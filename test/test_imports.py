@@ -7,10 +7,19 @@ import isort
 import toml
 from pyproject_parser import PyProject
 
+# Some libraries have different names in the import and in the dependency
+# If below test fails due to that, add the library name to the dictionary
+LIBRARY_NAMES_TO_MODULE_NAMES = {"python-dateutil": "dateutil"}
+
+# Some standard libraries are not detected by isort. If below test fails due to that, add the library name to the set.
+ADDITIONAL_STD_LIBS = {"yaml"}
+
 
 def test_for_missing_dependencies() -> None:
-    # All tools out there are too powerful because they find all the imports in the haystack package
-    # We need to find only the top level imports
+    # We implement this manual check because
+    # - All tools out there are too powerful because they find all the imports in the haystack package
+    # - if we import all modules to check the imports we don't find issues with direct dependencies which are also
+    #   sub-dependencies of other dependencies
 
     #### Collect imports
     top_level_imports = set()
@@ -28,11 +37,10 @@ def test_for_missing_dependencies() -> None:
 
             top_level_imports.add(module.split(".")[0])
 
-    custom_std_libs = {"yaml"}
     third_party_modules = {
         module
         for module in top_level_imports
-        if isort.place_module(module) == "THIRDPARTY" and module not in custom_std_libs
+        if isort.place_module(module) == "THIRDPARTY" and module not in ADDITIONAL_STD_LIBS
     }
 
     #### Load specified dependencies
@@ -44,12 +52,10 @@ def test_for_missing_dependencies() -> None:
         "dependencies"
     ]
 
-    library_module_mapper = {"python-dateutil": "dateutil"}
-
     project_dependency_modules = set()
     for dep in project_dependencies:
-        if dep.name in library_module_mapper:
-            project_dependency_modules.add(library_module_mapper[dep.name])
+        if dep.name in LIBRARY_NAMES_TO_MODULE_NAMES:
+            project_dependency_modules.add(LIBRARY_NAMES_TO_MODULE_NAMES[dep.name])
 
         project_dependency_modules.add(dep.name.replace("-", "_"))
 
