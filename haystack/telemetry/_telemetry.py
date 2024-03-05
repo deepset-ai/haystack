@@ -150,7 +150,7 @@ def pipeline_running(pipeline: "Pipeline") -> Optional[Tuple[str, Dict[str, Any]
         component_qualified_class_name = generate_qualified_class_name(type(instance))
         if hasattr(instance, "_get_telemetry_data"):
             telemetry_data = getattr(instance, "_get_telemetry_data")()
-            if type(telemetry_data) is not dict:
+            if not isinstance(telemetry_data, dict):
                 raise TypeError(
                     f"Telemetry data for component {component_name} must be a dictionary but is {type(telemetry_data)}."
                 )
