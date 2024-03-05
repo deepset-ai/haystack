@@ -4,12 +4,15 @@ from datetime import datetime
 from typing import List
 
 import pandas as pd
-import pytest
 
 from haystack.dataclasses import Document
 from haystack.document_stores.errors import DuplicateDocumentError
 from haystack.document_stores.types import DocumentStore, DuplicatePolicy
 from haystack.errors import FilterError
+from haystack.lazy_imports import LazyImport
+
+with LazyImport("Run 'pip install pytest'") as pytest_import:
+    import pytest
 
 
 def _random_embeddings(n):
