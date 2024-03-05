@@ -1,7 +1,7 @@
 loaders:
   - type: haystack_pydoc_tools.loaders.CustomPythonLoader
     search_path: [../../../haystack/components/rankers]
-    modules: ["meta_field", "transformers_similarity"]
+    modules: ["lost_in_the_middle", "meta_field", "transformers_similarity"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
