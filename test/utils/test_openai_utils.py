@@ -18,7 +18,7 @@ from haystack.utils.openai_utils import (
     "model_name,tok_name,max_tok_limit",
     [
         # Default
-        ("not-recognized-name", "gpt2", 4096),
+        ("not-recognized-name", "cl100k_base", 4096),
         # GPT-3.5
         ("gpt-3.5-turbo-instruct", "cl100k_base", 4096),
         ("gpt-3.5-turbo-0613", "cl100k_base", 4096),
