@@ -1,4 +1,3 @@
-import os
 import tempfile
 
 import pytest
@@ -44,12 +43,9 @@ class TestPipelineTemplate:
         tpl = PipelineTemplate.from_predefined(PredefinedPipeline.INDEXING)
         assert len(tpl.template_content)
 
-    @pytest.mark.skipif(
-        not os.environ.get("OPENAI_API_KEY", None),
-        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-    )
     #  Building a pipeline directly using all default components specified in a predefined or custom template.
-    def test_build_pipeline_with_default_components(self):
+    def test_build_pipeline_with_default_components(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake_key")
         rendered = PipelineTemplate.from_predefined(PredefinedPipeline.INDEXING).render()
         pipeline = Pipeline.loads(rendered)
 
