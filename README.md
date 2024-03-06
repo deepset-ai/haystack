@@ -9,9 +9,6 @@
 | Meta    | [![Discord](https://img.shields.io/discord/993534733298450452?logo=discord)](https://discord.gg/haystack) [![Twitter Follow](https://img.shields.io/twitter/follow/haystack_ai)](https://twitter.com/haystack_ai)                                                                                                                                                                                                                                                                                                                                                                                        |
 </div>
 
-> [!WARNING]
-> **You are currently looking at the readme of Haystack 2.0-Beta**, an unstable version of what will eventually become Haystack 2.0. We are still maintaining Haystack 1.x which is the version of Haystack you should use in production. [Switch to Haystack 1.x here](https://github.com/deepset-ai/haystack/tree/v1.x).
-
 [Haystack](https://haystack.deepset.ai/) is an end-to-end LLM framework that allows you to build applications powered by
 LLMs, Transformer models, vector search and more. Whether you want to perform retrieval-augmented generation (RAG),
 documentation search, question answering or answer generation, Haystack can orchestrate state-of-the-art embedding models
@@ -48,6 +45,9 @@ At any given point, you can browse the [documentation](https://docs.haystack.dee
 -   **Customizable**: Fine-tune models to your domain or implement your custom Nodes.
 -   **Continuous Learning**: Collect new training data from user feedback in production & improve your models continuously.
 
+> [!WARNING]
+> **You are currently looking at the readme of Haystack 2.0**. We are still maintaining Haystack 1.x to give everyone
+> enough time to migrate to 2.0. [Switch to Haystack 1.x here](https://github.com/deepset-ai/haystack/tree/v1.x).
 
 ## What to Build with Haystack
 
