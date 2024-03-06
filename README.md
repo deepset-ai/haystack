@@ -37,7 +37,7 @@ At any given point, hit the [documentation](https://docs.haystack.deepset.ai/v2.
 
 ## Features
 
-> [!WARNING]
+> [!IMPORTANT]
 > **You are currently looking at the readme of Haystack 2.0**. We are still maintaining Haystack 1.x to give everyone
 > enough time to migrate to 2.0. [Switch to Haystack 1.x here](https://github.com/deepset-ai/haystack/tree/v1.x).
 
