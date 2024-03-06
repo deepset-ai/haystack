@@ -3,6 +3,7 @@ from typing import Any, Dict, List
 
 from haystack.dataclasses import ChatMessage, ChatRole
 
+# pylint: disable=pointless-string-statement
 """
 ## Custom Filters for OutputAdapter
 
