@@ -14,9 +14,9 @@ processors:
   - type: crossref
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
-  excerpt: Utils API
+  excerpt: Utility functions and classes used across the library.
   category_slug: haystack-api
-  title: Utils API
+  title: Utils
   slug: utils-api
   order: 153
   markdown:
