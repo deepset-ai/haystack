@@ -10,6 +10,7 @@ import posthog
 import yaml
 
 from haystack import logging as haystack_logging
+from haystack.core.serialization import generate_qualified_class_name
 from haystack.telemetry._environment import collect_system_specs
 
 if TYPE_CHECKING:
@@ -144,18 +145,18 @@ def pipeline_running(pipeline: "Pipeline") -> Optional[Tuple[str, Dict[str, Any]
     pipeline._last_telemetry_sent = datetime.datetime.now()
 
     # Collect info about components
-    pipeline_description = pipeline.to_dict()
     components: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
-    for component_name, component in pipeline_description["components"].items():
-        instance = pipeline.get_component(component_name)
+    for component_name, instance in pipeline.walk():
+        component_qualified_class_name = generate_qualified_class_name(type(instance))
         if hasattr(instance, "_get_telemetry_data"):
             telemetry_data = getattr(instance, "_get_telemetry_data")()
-            try:
-                components[component["type"]].append({"name": component_name, **telemetry_data})
-            except TypeError:
-                components[component["type"]].append({"name": component_name})
+            if not isinstance(telemetry_data, dict):
+                raise TypeError(
+                    f"Telemetry data for component {component_name} must be a dictionary but is {type(telemetry_data)}."
+                )
+            components[component_qualified_class_name].append({"name": component_name, **telemetry_data})
         else:
-            components[component["type"]].append({"name": component_name})
+            components[component_qualified_class_name].append({"name": component_name})
 
     # Data sent to Posthog
     return "Pipeline run (2.x)", {

@@ -47,6 +47,18 @@ def component_to_dict(obj: Any) -> Dict[str, Any]:
     return default_to_dict(obj, **init_parameters)
 
 
+def generate_qualified_class_name(cls: Type[object]) -> str:
+    """
+    Generates a qualified class name for a class.
+
+    :param cls:
+        The class whose qualified name is to be generated.
+    :returns:
+        The qualified name of the class.
+    """
+    return f"{cls.__module__}.{cls.__name__}"
+
+
 def component_from_dict(cls: Type[object], data: Dict[str, Any]) -> Any:
     """
     Creates a component instance from a dictionary. If a `from_dict` method is present in the
@@ -103,7 +115,7 @@ def default_to_dict(obj: Any, **init_parameters) -> Dict[str, Any]:
     :returns:
         A dictionary representation of the instance.
     """
-    return {"type": f"{obj.__class__.__module__}.{obj.__class__.__name__}", "init_parameters": init_parameters}
+    return {"type": generate_qualified_class_name(type(obj)), "init_parameters": init_parameters}
 
 
 def default_from_dict(cls: Type[object], data: Dict[str, Any]) -> Any:
@@ -130,6 +142,6 @@ def default_from_dict(cls: Type[object], data: Dict[str, Any]) -> Any:
     init_params = data.get("init_parameters", {})
     if "type" not in data:
         raise DeserializationError("Missing 'type' in serialization data")
-    if data["type"] != f"{cls.__module__}.{cls.__name__}":
+    if data["type"] != generate_qualified_class_name(cls):
         raise DeserializationError(f"Class '{data['type']}' can't be deserialized as '{cls.__name__}'")
     return cls(**init_params)

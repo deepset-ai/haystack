@@ -7,7 +7,7 @@ from collections import defaultdict
 from copy import copy, deepcopy
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional, Set, TextIO, Tuple, Type, TypeVar, Union
+from typing import Any, Dict, Iterator, List, Mapping, Optional, Set, TextIO, Tuple, Type, TypeVar, Union
 
 import networkx  # type:ignore
 
@@ -557,6 +557,17 @@ class Pipeline:
         # used for running the pipeline we copy it.
         image_data = _to_mermaid_image(self.graph)
         Path(path).write_bytes(image_data)
+
+    def walk(self) -> Iterator[Tuple[str, Component]]:
+        """
+        Visits each component in the pipeline exactly once and yields its name and instance.
+        No guarantees are provided on the visiting order.
+
+        :returns:
+            An iterator of tuples of component name and component instance.
+        """
+        for component_name, instance in self.graph.nodes(data="instance"):
+            yield component_name, instance
 
     def warm_up(self):
         """
