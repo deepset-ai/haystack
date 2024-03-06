@@ -11,7 +11,7 @@
 
 [Haystack](https://haystack.deepset.ai/) is an end-to-end LLM framework that allows you to build applications powered by
 LLMs, Transformer models, vector search and more. Whether you want to perform retrieval-augmented generation (RAG),
-documentation search, question answering or answer generation, Haystack can orchestrate state-of-the-art embedding models
+document search, question answering or answer generation, Haystack can orchestrate state-of-the-art embedding models
 and LLMs into pipelines to build end-to-end NLP applications and solve your use case.
 
 ## Installation
