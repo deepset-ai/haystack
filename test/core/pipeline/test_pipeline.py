@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import logging
+import os
 from typing import List, Optional
 from unittest.mock import patch
 
@@ -700,6 +701,10 @@ def test_describe_no_outputs():
     assert p.outputs() == {}
 
 
+@pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY", None),
+    reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+)
 def test_from_template():
     pipe = Pipeline.from_template(PredefinedPipeline.INDEXING)
     assert pipe.get_component("cleaner")
