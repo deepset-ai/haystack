@@ -11,18 +11,9 @@ def request_with_retry(
     attempts: int = 3, status_codes_to_retry: Optional[List[int]] = None, **kwargs
 ) -> requests.Response:
     """
-    request_with_retry is a simple wrapper function that executes an HTTP request
-    with a configurable exponential backoff retry on failures.
+    Executes an HTTP request with a configurable exponential backoff retry on failures.
 
-    All kwargs will be passed to ``requests.request``, so it accepts the same arguments.
-
-    :param attempts: Maximum number of attempts to retry the request.
-    :param status_codes_to_retry: List of HTTP status codes that will trigger a retry. When param is `None`,  HTTP 408, 418, 429 and 503 will be retried.
-    :param **kwargs: Optional arguments that ``request`` takes.
-    :return: :class:`Response <Response>` object
-
-
-    Usage examples:
+    Usage example:
     ```python
     from haystack.utils import request_with_retry
 
@@ -62,6 +53,16 @@ def request_with_retry(
     # Retry all 5xx status codes
     res = request_with_retry(method="GET", url="https://example.com", status_codes_to_retry=list(range(500, 600)))
     ```
+
+    :param attempts:
+        Maximum number of attempts to retry the request.
+    :param status_codes_to_retry:
+        List of HTTP status codes that will trigger a retry.
+        When param is `None`, HTTP 408, 418, 429 and 503 will be retried.
+    :param kwargs:
+        Optional arguments that `request` accepts.
+    :returns:
+        The `Response` object.
     """
 
     if status_codes_to_retry is None:
