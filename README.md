@@ -27,8 +27,8 @@ to the [documentation](https://docs.haystack.deepset.ai/v2.0/docs/installation).
 
 ## Documentation
 
-If you're new to the project, check out [What is Haystack?](https://haystack.deepset.ai/overview/intro) then go
-through the [Get Started Guide](https://haystack.deepset.ai/overview/quick-start) and build your first LLM application
+If you're new to the project, check out "What is Haystack?" then go
+through the "Get Started Guide" and build your first LLM application
 in a matter of minutes. Keep learning with the [tutorials](https://haystack.deepset.ai/tutorials?v=2.0). For more advanced
 use cases, or just to get some inspiration, you can browse our Haystack recipes in the
 [Cookbook](https://github.com/deepset-ai/haystack-cookbook).
