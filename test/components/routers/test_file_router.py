@@ -139,3 +139,42 @@ class TestFileTypeRouter:
         """
         with pytest.raises(ValueError, match="Unknown mime type:"):
             FileTypeRouter(mime_types=[r"type_invalid"])
+
+    def test_regex_mime_type_matching(self, test_files_path):
+        """
+        Test if the component correctly matches mime types using regex.
+        """
+        router = FileTypeRouter(mime_types=[r"text\/.*", r"audio\/.*", r"image\/.*"])
+        file_paths = [
+            test_files_path / "txt" / "doc_1.txt",
+            test_files_path / "audio" / "the context for this answer is here.wav",
+            test_files_path / "images" / "apple.jpg",
+        ]
+        output = router.run(sources=file_paths)
+        assert len(output[r"text\/.*"]) == 1, "Failed to match text file with regex"
+        assert len(output[r"audio\/.*"]) == 1, "Failed to match audio file with regex"
+        assert len(output[r"image\/.*"]) == 1, "Failed to match image file with regex"
+
+    def test_invalid_regex_pattern(self):
+        """
+        Test if the component correctly handles invalid regex patterns.
+        """
+        with pytest.raises(ValueError, match="Invalid regex pattern"):
+            FileTypeRouter(mime_types=[r"*\invalid"])
+
+    def test_exact_mime_type_matching(test_files_path):
+        """
+        Test if the component correctly matches mime types exactly, without regex patterns.
+        """
+        router = FileTypeRouter(mime_types=["text/plain", "image/jpeg"])
+        file_paths = [
+            test_files_path / "txt" / "doc_1.txt",
+            test_files_path / "images" / "apple.jpg",
+            test_files_path / "audio" / "sound.mp3",
+        ]
+        output = router.run(sources=file_paths)
+        assert len(output["text/plain"]) == 1, "Failed to match 'text/plain' MIME type exactly"
+        assert len(output["image/jpeg"]) == 1, "Failed to match 'image/jpeg' MIME type exactly"
+        assert len(output.get("unclassified")) == 1, "Incorrect handling of unclassified files"
+        assert file_paths[0] in output["text/plain"], "'doc_1.txt' not correctly classified as 'text/plain'"
+        assert file_paths[1] in output["image/jpeg"], "'apple.jpg' not correctly classified as 'image/jpeg'"
