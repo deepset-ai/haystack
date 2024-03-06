@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixes `HuggingFaceTEITextEmbedder` returning an embedding of incorrect shape when used with a
+    Text-Embedding-Inference endpoint deployed using Docker.

@@ -135,8 +135,9 @@ class HuggingFaceTEITextEmbedder:
 
         text_to_embed = self.prefix + text + self.suffix
 
-        embedding = self.client.feature_extraction(text=text_to_embed)
+        embedding = self.client.feature_extraction(text=[text_to_embed])
         # The client returns a numpy array
         embedding = embedding.tolist()
+        embedding = embedding[0]
 
         return {"embedding": embedding}

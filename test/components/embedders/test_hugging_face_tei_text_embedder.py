@@ -17,7 +17,7 @@ def mock_check_valid_model():
 
 
 def mock_embedding_generation(text, **kwargs):
-    response = np.random.rand(384)
+    response = np.array([np.random.rand(384) for i in range(len(text))])
     return response
 
 
@@ -107,7 +107,7 @@ class TestHuggingFaceTEITextEmbedder:
 
             result = embedder.run(text="The food was delicious")
 
-            mock_embedding_patch.assert_called_once_with(text="prefix The food was delicious suffix")
+            mock_embedding_patch.assert_called_once_with(text=["prefix The food was delicious suffix"])
 
         assert len(result["embedding"]) == 384
         assert all(isinstance(x, float) for x in result["embedding"])
