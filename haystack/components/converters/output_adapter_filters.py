@@ -1,5 +1,5 @@
 import json
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 from haystack.dataclasses import ChatMessage, ChatRole
 
@@ -70,11 +70,24 @@ sources, to mitigate security risks.
 
 
 def change_role(messages: List[ChatMessage], role: ChatRole) -> List[ChatMessage]:
+    """
+    Change the role of the last message in a list of chat messages.
+
+    :param messages: List of chat messages
+    :param role: New role for the last message
+    :return: List of chat messages with the last message's role changed to the specified role
+    """
     messages[-1].role = role
     return messages
 
 
 def prepare_fc_params(openai_functions_schema: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Prepare function call parameters for OpenAI functions given the OpenAI functions schema.
+
+    :param openai_functions_schema: OpenAI functions schema
+    :return: Prepared function call parameters
+    """
     if openai_functions_schema:
         return {
             "tools": [{"type": "function", "function": openai_functions_schema}],
@@ -85,6 +98,12 @@ def prepare_fc_params(openai_functions_schema: Dict[str, Any]) -> Dict[str, Any]
 
 
 def tojson(string_like_json: Any) -> Dict[str, Any]:
+    """
+    Convert a string in JSON format to a Python dictionary.
+
+    :param string_like_json: String in JSON format
+    :return: Python dictionary representation of the JSON string
+    """
     return json.loads(str(string_like_json))
 
 
