@@ -41,12 +41,12 @@ def test_custom_api_base(mock_open_ai_request, load_openai_tokenizer):
 @pytest.mark.unit
 def test_openai_token_limit_warning(mock_openai_tokenizer, caplog):
     invocation_layer = OpenAIInvocationLayer(
-        model_name_or_path="text-ada-001", api_key="fake_api_key", api_base="https://fake_api_base.com", max_length=2045
+        model_name_or_path="babbage-002", api_key="fake_api_key", api_base="https://fake_api_base.com", max_length=16385
     )
     with caplog.at_level(logging.WARNING):
         _ = invocation_layer._ensure_token_limit(prompt="This is a test for a mock openai tokenizer.")
         assert "The prompt has been truncated from" in caplog.text
-        assert "and answer length (2045 tokens) fit within the max token limit (2049 tokens)." in caplog.text
+        assert "and answer length (16385 tokens) fit within the max token limit (16384 tokens)." in caplog.text
 
 
 @pytest.mark.unit
@@ -54,8 +54,8 @@ def test_openai_token_limit_warning(mock_openai_tokenizer, caplog):
     "model_name,max_tokens_limit",
     [
         ("gpt-3.5-turbo-instruct", 4096),
-        ("gpt-3.5-turbo", 4096),
-        ("gpt-3.5-turbo-16k", 16384),
+        ("gpt-3.5-turbo", 16385),
+        ("gpt-3.5-turbo-16k", 16385),
         ("gpt-4-32k", 32768),
         ("gpt-4", 8192),
     ],
@@ -77,8 +77,8 @@ def test_openai_token_limit_warning_not_triggered(caplog, mock_openai_tokenizer,
     "model_name,max_tokens_limit",
     [
         ("gpt-3.5-turbo-instruct", 4096),
-        ("gpt-3.5-turbo", 4096),
-        ("gpt-3.5-turbo-16k", 16384),
+        ("gpt-3.5-turbo", 16385),
+        ("gpt-3.5-turbo-16k", 16385),
         ("gpt-4-32k", 32768),
         ("gpt-4", 8192),
     ],
