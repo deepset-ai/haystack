@@ -29,11 +29,11 @@ to the [documentation](https://docs.haystack.deepset.ai/v2.0/docs/installation).
 
 If you're new to the project, check out [What is Haystack?](https://haystack.deepset.ai/overview/intro) then go
 through the [Get Started Guide](https://haystack.deepset.ai/overview/quick-start) and build your first LLM application
-in a matter of minutes. Keep learning with the [tutorials](https://haystack.deepset.ai/tutorials?v=2.0).
+in a matter of minutes. Keep learning with the [tutorials](https://haystack.deepset.ai/tutorials?v=2.0). For more advanced
+use cases, or just to get some inspiration, you can browse our Haystack recipes in the
+[Cookbook](https://github.com/deepset-ai/haystack-cookbook).
 
-For more advanced use cases, or just to get some inspiration, you can browse our Haystack recipes in the [Cookbook](https://github.com/deepset-ai/haystack-cookbook).
-
-At any given point, you can browse the [documentation](https://docs.haystack.deepset.ai/v2.0/docs/intro) to learn more about Haystack, what can it do for you and the technology behind.
+At any given point, hit the [documentation](https://docs.haystack.deepset.ai/v2.0/docs/intro) to learn more about Haystack, what can it do for you and the technology behind.
 
 ## Features
 
