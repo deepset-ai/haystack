@@ -17,11 +17,11 @@ from haystack.utils.openai_utils import (
 def test_openai_text_completion_tokenization_details_gpt_default():
     tokenizer_name, max_tokens_limit = _openai_text_completion_tokenization_details(model_name="not-recognized-name")
     assert tokenizer_name == "gpt2"
-    assert max_tokens_limit == 2049
+    assert max_tokens_limit == 4096
 
 
 @pytest.mark.unit
-def test_openai_text_completion_tokenization_details_gpt_davinci():
+def test_openai_text_completion_tokenization_details_gpt_3_5_turbo_instruct():
     tokenizer_name, max_tokens_limit = _openai_text_completion_tokenization_details(model_name="gpt-3.5-turbo-instruct")
     assert tokenizer_name == "cl100k_base"
     assert max_tokens_limit == 4096
@@ -31,14 +31,14 @@ def test_openai_text_completion_tokenization_details_gpt_davinci():
 def test_openai_text_completion_tokenization_details_gpt3_5_azure():
     tokenizer_name, max_tokens_limit = _openai_text_completion_tokenization_details(model_name="gpt-35-turbo")
     assert tokenizer_name == "cl100k_base"
-    assert max_tokens_limit == 4096
+    assert max_tokens_limit == 16384
 
 
 @pytest.mark.unit
 def test_openai_text_completion_tokenization_details_gpt3_5():
     tokenizer_name, max_tokens_limit = _openai_text_completion_tokenization_details(model_name="gpt-3.5-turbo")
     assert tokenizer_name == "cl100k_base"
-    assert max_tokens_limit == 4096
+    assert max_tokens_limit == 16384
 
 
 @pytest.mark.unit
@@ -60,6 +60,27 @@ def test_openai_text_completion_tokenization_details_gpt_4_32k():
     tokenizer_name, max_tokens_limit = _openai_text_completion_tokenization_details(model_name="gpt-4-32k")
     assert tokenizer_name == "cl100k_base"
     assert max_tokens_limit == 32768
+
+
+@pytest.mark.unit
+def test_openai_text_completion_tokenization_details_gpt_4_1106():
+    tokenizer_name, max_tokens_limit = _openai_text_completion_tokenization_details(model_name="gpt-4-1106")
+    assert tokenizer_name == "cl100k_base"
+    assert max_tokens_limit == 128000
+
+
+@pytest.mark.unit
+def test_openai_text_completion_tokenization_details_gpt_4_turbo_preview():
+    tokenizer_name, max_tokens_limit = _openai_text_completion_tokenization_details(model_name="gpt-4-turbo-preview")
+    assert tokenizer_name == "cl100k_base"
+    assert max_tokens_limit == 128000
+
+
+@pytest.mark.unit
+def test_openai_text_completion_tokenization_details_gpt_4_0125_preview():
+    tokenizer_name, max_tokens_limit = _openai_text_completion_tokenization_details(model_name="gpt-4-0125-preview")
+    assert tokenizer_name == "cl100k_base"
+    assert max_tokens_limit == 128000
 
 
 @pytest.mark.unit
