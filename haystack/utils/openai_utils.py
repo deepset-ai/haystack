@@ -65,34 +65,38 @@ def _openai_text_completion_tokenization_details(model_name: str):
     :param model_name: Name of the OpenAI model.
     """
     tokenizer_name = "gpt2"
-    max_tokens_limit = 2049  # Based on this ref: https://platform.openai.com/docs/models/gpt-3
+    max_tokens_limit = 4096  # It is the minimum max_tokens_limit value based on this ref: https://platform.openai.com/docs/models/overview
     try:
         model_tokenizer = tiktoken.encoding_name_for_model(model_name)
     except KeyError:
         model_tokenizer = None
 
     if model_tokenizer:
-        # Based on OpenAI models page, 'davinci' considers have 2049 tokens,
-        ## therefore, it is better to add `text-davinci` instead to the condition.
-        ## Ref: https://platform.openai.com/docs/models/gpt-3-5
-        ##      https://platform.openai.com/docs/models/gpt-3
-        if "text-davinci" in model_name:
-            max_tokens_limit = 4097
-            tokenizer_name = model_tokenizer
-        elif model_name.startswith("gpt-3.5-turbo-16k") or model_name.startswith("gpt-35-turbo-16k"):
+        # Based on OpenAI models page, the following are the max_tokens_limit values for the corresponding models
+        ## Ref: https://platform.openai.com/docs/models/overview
+        if "davinci" in model_name:
             max_tokens_limit = 16384
             tokenizer_name = model_tokenizer
-        elif model_name.startswith("gpt-3.5-turbo-1106") or model_name.startswith("gpt-35-turbo-1106"):
-            max_tokens_limit = 16384
-            tokenizer_name = model_tokenizer
-        elif model_name.startswith("gpt-3"):
+        elif (
+            model_name.startswith("gpt-3.5-turbo-instruct")
+            or model_name.startswith("gpt-35-turbo-instruct")
+            or model_name.startswith("gpt-3.5-turbo-0613")
+            or model_name.startswith("gpt-35-turbo-0613")
+        ):
             max_tokens_limit = 4096
+            tokenizer_name = model_tokenizer
+        elif model_name.startswith("gpt-3.5-turbo") or model_name.startswith("gpt-35-turbo"):
+            max_tokens_limit = 16384
             tokenizer_name = model_tokenizer
         # Ref: https://platform.openai.com/docs/models/gpt-4
         elif model_name.startswith("gpt-4-32k"):
             max_tokens_limit = 32768  # tokens
             tokenizer_name = model_tokenizer
-        elif model_name.startswith("gpt-4-1106-preview"):
+        elif (
+            model_name.startswith("gpt-4-1106")
+            or model_name.startswith("gpt-4-turbo-preview")
+            or model_name.startswith("gpt-4-0125-preview")
+        ):
             max_tokens_limit = 128000  # tokens
             tokenizer_name = model_tokenizer
         elif model_name.startswith("gpt-4"):

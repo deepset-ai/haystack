@@ -48,12 +48,12 @@ def test_chatgpt_token_limit_warning_single_prompt(mock_openai_tokenizer, caplog
         model_name_or_path="gpt-3.5-turbo",
         api_key="fake_api_key",
         api_base="https://fake_api_base.com",
-        max_length=4090,
+        max_length=16379,
     )
     with caplog.at_level(logging.WARNING):
         _ = invocation_layer._ensure_token_limit(prompt="This is a test for a mock openai tokenizer.")
         assert "The prompt has been truncated from" in caplog.text
-        assert "and answer length (4090 tokens) fit within the max token limit (4096 tokens)." in caplog.text
+        assert "and answer length (16379 tokens) fit within the max token limit (16384 tokens)." in caplog.text
 
 
 @pytest.mark.unit
@@ -70,7 +70,7 @@ def test_chatgpt_token_limit_warning_with_messages(mock_openai_tokenizer, caplog
             model_name_or_path="gpt-3.5-turbo",
             api_key="fake_api_key",
             api_base="https://fake_api_base.com",
-            max_length=4060,
+            max_length=16379,
         )
         with pytest.raises(ValueError):
             _ = invocation_layer._ensure_token_limit(prompt=messages)
