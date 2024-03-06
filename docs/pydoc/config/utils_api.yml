@@ -1,26 +1,27 @@
 loaders:
   - type: haystack_pydoc_tools.loaders.CustomPythonLoader
-    search_path: [../../../haystack/components/rankers]
-    modules: ["lost_in_the_middle", "meta_field", "transformers_similarity"]
-    ignore_when_discovered: ["__init__"]
+    search_path: [../../../haystack/utils]
+    ignore_when_discovered: ["__init__", "hf"]
 processors:
   - type: filter
     expression:
     documented_only: true
     do_not_filter_modules: false
     skip_empty_modules: true
+  - type: filter
+    expression: "name not in ['TokenSecret', 'EnvVarSecret','_get_default_device', '_split_device_string', 'convert']"
   - type: smart
   - type: crossref
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
-  excerpt: Reorders a set of Documents based on their relevance to the query.
+  excerpt: Utility functions and classes used across the library.
   category_slug: haystack-api
-  title: Rankers
-  slug: rankers-api
-  order: 110
+  title: Utils
+  slug: utils-api
+  order: 153
   markdown:
     descriptive_class_title: false
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false
-    filename: rankers_api.md
+    filename: utils_api.md

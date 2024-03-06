@@ -59,6 +59,9 @@ dependencies = [
   "networkx", # Pipeline graphs
   "typing_extensions>=4.7", # typing support for Python 3.8
   "boilerpy3", # Fulltext extraction from HTML pages
+  "requests",
+  "numpy",
+  "python-dateutil",
 ]
 
 [tool.hatch.envs.default]
@@ -71,7 +74,7 @@ dependencies = [
   "pytest-cov",
   "pytest-custom_exit_code",  # used in the CI
   "pytest-asyncio",
-  "flaky",
+  "pytest-rerunfailures",
   "responses",
   "tox",
   "coverage",
@@ -127,6 +130,10 @@ extra-dependencies = [
 
   # Structured logging
   "structlog",
+
+  # Looking for missing imports
+  "isort",
+  "pyproject-parser",
 ]
 
 [tool.hatch.envs.test.scripts]
