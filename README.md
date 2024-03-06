@@ -63,21 +63,20 @@ At any given point, hit the [documentation](https://docs.haystack.deepset.ai/v2.
 >
 > Are you looking for a managed solution that benefits from Haystack? [deepset Cloud](https://www.deepset.ai/deepset-cloud?utm_campaign=developer-relations&utm_source=haystack&utm_medium=readme) is our fully managed, end-to-end platform to integrate LLMs with your data, which uses Haystack for the LLM pipelines architecture.
 
-### 🖖 Community
+## 🖖 Community
 
 If you have a feature request or a bug report, feel free to open an [issue in Github](https://github.com/deepset-ai/haystack/issues). We regularly check these and you can expect a quick response. If you'd like to discuss a topic, or get more general advice on how to make Haystack work for your project, you can start a thread in [Github Discussions](https://github.com/deepset-ai/haystack/discussions) or our [Discord channel](https://discord.gg/haystack). We also check [𝕏 (Twitter)](https://twitter.com/haystack_ai) and [Stack Overflow](https://stackoverflow.com/questions/tagged/haystack).
 
-> [!NOTE]
-> #### 💙 Contributing to Haystack
->
-> There are several ways you can contribute to Haystack:
-> - Contribute to the main Haystack project
-> - Contribute an integration on [haystack-core-integrations](https://github.com/deepset-ai/haystack-core-integrations)
->
->👉 **[Check out the full list of issues that are open to contributions](https://github.com/orgs/deepset-ai/projects/14)**
->
-> We are very open to the community's contributions - be it a quick fix of a typo, or a completely new feature! You don't need to be a Haystack expert to provide meaningful improvements. To learn how to get started, check out our [Contributor Guidelines](https://github.com/deepset-ai/haystack/blob/main/CONTRIBUTING.md) first.
+## 💙 Contributing to Haystack
 
+We are very open to the community's contributions - be it a quick fix of a typo, or a completely new feature! You don't need to be a Haystack expert to provide meaningful improvements. To learn how to get started, check out our [Contributor Guidelines](https://github.com/deepset-ai/haystack/blob/main/CONTRIBUTING.md) first.
+
+There are several ways you can contribute to Haystack:
+- Contribute to the main Haystack project
+- Contribute an integration on [haystack-core-integrations](https://github.com/deepset-ai/haystack-core-integrations)
+
+> [!TIP]
+>👉 **[Check out the full list of issues that are open to contributions](https://github.com/orgs/deepset-ai/projects/14)**
 
 ## 📏 Telemetry
 
