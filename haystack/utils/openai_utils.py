@@ -73,8 +73,8 @@ def _openai_text_completion_tokenization_details(model_name: str):
 
     if model_tokenizer:
         tokenizer_name = model_tokenizer
-        if "davinci" in model_name:
-            max_tokens_limit = 4097
+        if model_name == "davinci-002" or model_name == "babbage-002":
+            max_tokens_limit = 16384
 
         # GPT-3.5 models that have a different token limit than 4096
         # Handles default case for GPT-3.5 models

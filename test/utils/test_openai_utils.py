@@ -30,11 +30,14 @@ from haystack.utils.openai_utils import (
         ("gpt-4-turbo-preview", "cl100k_base", 128000),
         ("gpt-4-0125-preview", "cl100k_base", 128000),
         ("gpt-4", "cl100k_base", 8192),
-        # GP-35 Azure
+        # GPT-35 Azure
         ("gpt-35-turbo-instruct", "cl100k_base", 4096),
         ("gpt-35-turbo-0613", "cl100k_base", 4096),
         ("gpt-35-turbo", "cl100k_base", 16385),
         ("gpt-35-turbo-1106", "cl100k_base", 16385),
+        # davinci and babbage
+        ("davinci-002", "cl100k_base", 16384),
+        ("babbage-002", "cl100k_base", 16384),
     ],
 )
 def test_openai_text_completion_tokenization(model_name, tok_name, max_tok_limit):
