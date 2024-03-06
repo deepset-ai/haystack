@@ -41,8 +41,8 @@ class FileTypeRouter:
     print(router_with_regex.run(sources=sources))
 
     # Expected output:
-    # defaultdict(<class 'list'>, {'text/plain': [PosixPath('file.txt')], 'application/pdf': [PosixPath('document.pdf')], 'unclassified': [PosixPath('song.mp3')]})
-    # defaultdict(<class 'list'>, {'audio/.*': [PosixPath('song.mp3')], 'text/plain': [PosixPath('file.txt')], 'unclassified': [PosixPath('document.pdf')]})
+    # {'text/plain': [PosixPath('file.txt')], 'application/pdf': [PosixPath('document.pdf')], 'unclassified': [PosixPath('song.mp3')]}
+    # {'audio/.*': [PosixPath('song.mp3')], 'text/plain': [PosixPath('file.txt')], 'unclassified': [PosixPath('document.pdf')]}
     ```
 
     :param mime_types: A list of MIME types or regex patterns to classify the incoming files or data streams.
