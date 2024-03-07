@@ -700,7 +700,8 @@ def test_describe_no_outputs():
     assert p.outputs() == {}
 
 
-def test_from_template():
+def test_from_template(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "fake_key")
     pipe = Pipeline.from_template(PredefinedPipeline.INDEXING)
     assert pipe.get_component("cleaner")
 
