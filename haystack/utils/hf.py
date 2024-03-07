@@ -1,11 +1,11 @@
 import copy
 import inspect
-import logging
 from enum import Enum
-from typing import Any, Dict, Optional, List, Union, Callable
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import requests
 
+from haystack import logging
 from haystack.dataclasses import StreamingChunk
 from haystack.lazy_imports import LazyImport
 from haystack.utils.auth import Secret
@@ -15,8 +15,8 @@ with LazyImport(message="Run 'pip install transformers[torch]'") as torch_import
     import torch
 
 with LazyImport(message="Run 'pip install transformers'") as transformers_import:
+    from huggingface_hub import HfApi, InferenceClient
     from huggingface_hub.utils import RepositoryNotFoundError
-    from huggingface_hub import InferenceClient, HfApi
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +30,8 @@ def serialize_hf_model_kwargs(kwargs: Dict[str, Any]):
     """
     Recursively serialize HuggingFace specific model keyword arguments
     in-place to make them JSON serializable.
+
+    :param kwargs: The keyword arguments to serialize
     """
     torch_import.check()
 
@@ -46,6 +48,8 @@ def deserialize_hf_model_kwargs(kwargs: Dict[str, Any]):
     """
     Recursively deserialize HuggingFace specific model keyword arguments
     in-place to make them JSON serializable.
+
+    :param kwargs: The keyword arguments to deserialize
     """
     torch_import.check()
 
@@ -99,7 +103,6 @@ def list_inference_deployed_models(headers: Optional[Dict] = None) -> List[str]:
     List all currently deployed models on HF TGI free tier
 
     :param headers: Optional dictionary of headers to include in the request
-    :type headers: Optional[Dict]
     :return: list of all currently deployed models
     :raises Exception: If the request to the TGI API fails
 
@@ -110,8 +113,8 @@ def list_inference_deployed_models(headers: Optional[Dict] = None) -> List[str]:
 
     payload = resp.json()
     if resp.status_code != 200:
-        message = payload["error"] if "error" in payload else "Unknown TGI error"
-        error_type = payload["error_type"] if "error_type" in payload else "Unknown TGI error type"
+        message = payload.get("error", "Unknown TGI error")
+        error_type = payload.get("error_type", "Unknown TGI error type")
         raise Exception(f"Failed to fetch TGI deployed models: {message}. Error type: {error_type}")
     return [model["model_id"] for model in payload]
 
@@ -173,14 +176,14 @@ def check_generation_params(kwargs: Optional[Dict[str, Any]], additional_accepte
 
 
 with LazyImport(message="Run 'pip install transformers[torch]'") as torch_and_transformers_import:
-    from transformers import StoppingCriteria, PreTrainedTokenizer, PreTrainedTokenizerFast, TextStreamer
+    from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast, StoppingCriteria, TextStreamer
 
     transformers_import.check()
     torch_import.check()
 
     class StopWordsCriteria(StoppingCriteria):
         """
-        Stops text generation if any one of the stop words is generated.
+        Stops text generation in HuggingFace generators if any one of the stop words is generated.
 
         Note: When a stop word is encountered, the generation of new text is stopped.
         However, if the stop word is in the prompt itself, it can stop generating new text
@@ -226,6 +229,15 @@ with LazyImport(message="Run 'pip install transformers[torch]'") as torch_and_tr
             return result
 
     class HFTokenStreamingHandler(TextStreamer):
+        """
+        Streaming handler for HuggingFaceLocalGenerator and HuggingFaceLocalChatGenerator.
+
+        Note: This is a helper class for HuggingFaceLocalGenerator & HuggingFaceLocalChatGenerator enabling streaming
+        of generated text via Haystack Callable[StreamingChunk, None] callbacks.
+
+        Do not use this class directly.
+        """
+
         def __init__(
             self,
             tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],

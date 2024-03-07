@@ -1,11 +1,10 @@
 import io
-import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 from openai import OpenAI
 
-from haystack import Document, component, default_from_dict, default_to_dict
+from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import ByteStream
 from haystack.utils import Secret, deserialize_secrets_inplace
 
@@ -15,12 +14,20 @@ logger = logging.getLogger(__name__)
 @component
 class RemoteWhisperTranscriber:
     """
-    Transcribes audio files using OpenAI's Whisper using OpenAI API. Requires an API key. See the
-    [OpenAI blog post](https://beta.openai.com/docs/api-reference/whisper) for more details.
-    You can get one by signing up for an [OpenAI account](https://beta.openai.com/).
+    Transcribes audio files using the Whisper API from OpenAI.
 
+    The component requires an API key, see the relative
+    [OpenAI documentation](https://platform.openai.com/docs/api-reference/authentication) for more details.
     For the supported audio formats, languages, and other parameters, see the
     [Whisper API documentation](https://platform.openai.com/docs/guides/speech-to-text)
+
+    Usage example:
+    ```python
+    from haystack.components.audio import RemoteWhisperTranscriber
+
+    whisper = RemoteWhisperTranscriber(api_key=Secret.from_token("<your-api-key>"), model="tiny")
+    transcription = whisper.run(sources=["path/to/audio/file"])
+    ```
     """
 
     def __init__(
@@ -32,14 +39,19 @@ class RemoteWhisperTranscriber:
         **kwargs,
     ):
         """
-        Transcribes a list of audio files into a list of Documents.
+        Creates an instance of the RemoteWhisperTranscriber component.
 
-        :param api_key: OpenAI API key.
-        :param model: Name of the model to use. It now accepts only `whisper-1`.
-        :param organization: The Organization ID, defaults to `None`. See
+        :param api_key:
+            OpenAI API key.
+        :param model:
+            Name of the model to use. It now accepts only `whisper-1`.
+        :param organization:
+            The Organization ID. See
         [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization).
-        :param api_base: An optional URL to use as the API base. Defaults to `None`. See OpenAI [docs](https://platform.openai.com/docs/api-reference/audio).
-        :param kwargs: Other parameters to use for the model. These parameters are all sent directly to the OpenAI
+        :param api_base:
+            An optional URL to use as the API base. See OpenAI [docs](https://platform.openai.com/docs/api-reference/audio).
+        :param kwargs:
+            Other parameters to use for the model. These parameters are all sent directly to the OpenAI
             endpoint. See OpenAI [documentation](https://platform.openai.com/docs/api-reference/audio) for more details.
             Some of the supported parameters:
             - `language`: The language of the input audio.
@@ -77,9 +89,10 @@ class RemoteWhisperTranscriber:
 
     def to_dict(self) -> Dict[str, Any]:
         """
-        Serialize this component to a dictionary.
-        This method overrides the default serializer in order to
-        avoid leaking the `api_key` value passed to the constructor.
+        Serializes the component to a dictionary.
+
+        :returns:
+            Dictionary with serialized data.
         """
         return default_to_dict(
             self,
@@ -93,7 +106,12 @@ class RemoteWhisperTranscriber:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "RemoteWhisperTranscriber":
         """
-        Deserialize this component from a dictionary.
+        Deserializes the component from a dictionary.
+
+        :param data:
+            The dictionary to deserialize from.
+        :returns:
+            The deserialized component.
         """
         deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         return default_from_dict(cls, data)
@@ -101,10 +119,13 @@ class RemoteWhisperTranscriber:
     @component.output_types(documents=List[Document])
     def run(self, sources: List[Union[str, Path, ByteStream]]):
         """
-        Transcribe the audio files into a list of Documents, one for each input file.
+        Transcribes the audio files into a list of Documents, one for each input file.
 
-        :param sources: A list of file paths or ByteStreams containing the audio files to transcribe.
-        :returns: A list of Documents, one for each file. The content of the document is the transcription text.
+        :param sources:
+            A list of file paths or ByteStreams containing the audio files to transcribe.
+
+        :returns: A dictionary with the following keys:
+            - `documents`: A list of Documents, one for each file. The content of the document is the transcribed text.
         """
         documents = []
 

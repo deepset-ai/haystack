@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Added a new `Logger` implementation which eases and enforces logging via key-word arguments.
+    This is an internal change only. The behavior of instances created via `logging.getLogger` is not affected.

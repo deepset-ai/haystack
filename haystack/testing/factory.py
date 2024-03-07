@@ -1,9 +1,9 @@
-from typing import Any, Dict, Optional, Tuple, Type, List, Union
+from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
+from haystack.core.component import Component, component
+from haystack.core.serialization import default_from_dict, default_to_dict
 from haystack.dataclasses import Document
 from haystack.document_stores.types import DocumentStore, DuplicatePolicy
-from haystack.core.component import component, Component
-from haystack.core.serialization import default_to_dict, default_from_dict
 
 
 def document_store_class(
@@ -35,7 +35,7 @@ def document_store_class(
 
     Create a DocumentStore class that returns a single document:
     ```python
-    doc = Document(id="fake_id", text="Fake content")
+    doc = Document(id="fake_id", content="Fake content")
     MyFakeStore = document_store_class("MyFakeComponent", documents=[doc])
     document_store = MyFakeStore()
     assert document_store.documents_count() == 1
@@ -52,7 +52,7 @@ def document_store_class(
 
     Create a DocumentStore class that returns a document and a custom count:
     ```python
-    doc = Document(id="fake_id", text="Fake content")
+    doc = Document(id="fake_id", content="Fake content")
     MyFakeStore = document_store_class("MyFakeComponent", documents=[doc], documents_count=100)
     document_store = MyFakeStore()
     assert document_store.documents_count() == 100

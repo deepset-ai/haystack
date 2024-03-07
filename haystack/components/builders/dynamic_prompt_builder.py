@@ -1,9 +1,8 @@
-import logging
-from typing import Dict, Any, Optional, List, Set
+from typing import Any, Dict, List, Optional, Set
 
 from jinja2 import Template, meta
 
-from haystack import component
+from haystack import component, logging
 
 logger = logging.getLogger(__name__)
 
@@ -14,8 +13,7 @@ class DynamicPromptBuilder:
     DynamicPromptBuilder is designed to construct dynamic prompts for the pipeline. Users can change the prompt
     template at runtime by providing a new template for each pipeline run invocation if needed.
 
-    The following example demonstrates how to use the DynamicPromptBuilder:
-
+    Usage example:
     ```python
     from typing import List
     from haystack.components.builders import DynamicPromptBuilder
@@ -63,7 +61,7 @@ class DynamicPromptBuilder:
     >> 'total_tokens': 34}}]}}
 
     Note how in the example above, we can dynamically change the prompt template by providing a new template to the
-    run method of the pipeline. This dynamic prompt generation is in stark contrast to the static prompt generation
+    run method of the pipeline. This dynamic prompt generation is in contrast to the static prompt generation
     using `PromptBuilder`, where the prompt template is fixed for the pipeline's lifetime and cannot be changed
     for each pipeline run invocation.
 
@@ -71,14 +69,14 @@ class DynamicPromptBuilder:
 
     def __init__(self, runtime_variables: Optional[List[str]] = None):
         """
-        Initializes DynamicPromptBuilder with the provided variable names. These variable names are used to resolve
-        variables and their values during pipeline runtime execution. For example, if `runtime_variables` contains
-        `documents` your instance of DynamicPromptBuilder will expect an input called `documents`.
-        The values associated with variables from the pipeline runtime are then injected into template placeholders
-        of a string template that is provided to the `run` method.
+        Constructs a DynamicPromptBuilder component.
 
-        :param runtime_variables: A list of template variable names you can use in chat prompt construction.
-        :type runtime_variables: Optional[List[str]]
+        :param runtime_variables:
+            A list of template variable names you can use in prompt construction. For example,
+            if `runtime_variables` contains the string `documents`, the component will create an input called
+            `documents` of type `Any`. These variable names are used to resolve variables and their values during
+            pipeline execution. The values associated with variables from the pipeline runtime are then injected into
+            template placeholders of a prompt text template that is provided to the `run` method.
         """
         runtime_variables = runtime_variables or []
 
@@ -101,20 +99,17 @@ class DynamicPromptBuilder:
         render the final prompt. You can provide additional template variables directly to this method, that are then
         merged with the variables resolved from the pipeline runtime.
 
-        :param prompt_source: A string template.
-        :type prompt_source: str
+        :param prompt_source:
+            A string template.
+        :param template_variables:
+            An optional dictionary of template variables. Template variables provided at initialization are required
+            to resolve pipeline variables, and these are additional variables users can provide directly to this method.
+        :param kwargs:
+            Additional keyword arguments, typically resolved from a pipeline, which are merged with the provided
+            template variables.
 
-        :param template_variables: An optional dictionary of template variables. Template variables provided at
-        initialization are required to resolve pipeline variables, and these are additional variables users can
-        provide directly to this method.
-        :type template_variables: Optional[Dict[str, Any]]
-
-        :param kwargs: Additional keyword arguments, typically resolved from a pipeline, which are merged with the
-        provided template variables.
-
-        :return: A dictionary containing the key "prompt", which holds either the updated list of `ChatMessage`
-        instances or the rendered string template, forming the complete dynamic prompt.
-        :rtype: Dict[str, Union[List[ChatMessage], str]]
+        :returns: A dictionary with the following keys:
+            - `prompt`: The updated prompt text after rendering the string template.
         """
         kwargs = kwargs or {}
         template_variables = template_variables or {}
@@ -135,11 +130,14 @@ class DynamicPromptBuilder:
         If all the required template variables are provided, returns a Jinja2 template object.
         Otherwise, raises a ValueError.
 
-        :param template_text: A Jinja2 template as a string.
-        :param provided_variables: A set of provided template variables.
-        :type provided_variables: Set[str]
-        :return: A Jinja2 template object if all the required template variables are provided.
-        :raises ValueError: If all the required template variables are not provided.
+        :param template_text:
+            A Jinja2 template as a string.
+        :param provided_variables:
+            A set of provided template variables.
+        :returns:
+            A Jinja2 template object if all the required template variables are provided.
+        :raises ValueError:
+            If all the required template variables are not provided.
         """
         template = Template(template_text)
         ast = template.environment.parse(template_text)

@@ -11,6 +11,7 @@ on:
 
 env:
   CORE_DATADOG_API_KEY: ${{ secrets.CORE_DATADOG_API_KEY }}
+  PYTHON_VERSION: "3.10"
 
 jobs:
   license_check_direct:
@@ -25,7 +26,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Get direct dependencies
         run: |

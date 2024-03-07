@@ -1,0 +1,17 @@
+---
+enhancements:
+  - |
+    If using JSON logging in conjunction with tracing, Haystack will automatically add correlation IDs to the logs.
+    This is done by getting the necessary information from the current span and adding it to the log record.
+    You can customize this by overriding the `get_correlation_data_for_logs` of your tracer's span:
+
+    ```python
+    from haystack.tracing import Span
+
+    class OpenTelemetrySpan(Span):
+      ...
+
+      def get_correlation_data_for_logs(self) -> Dict[str, Any]:
+          span_context = ...
+          return {"trace_id": span_context.trace_id, "span_id": span_context.span_id}
+    ```

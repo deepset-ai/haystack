@@ -1,7 +1,6 @@
-import logging
 from typing import List, Optional
 
-from haystack import ComponentError, Document, component
+from haystack import ComponentError, Document, component, logging
 from haystack.lazy_imports import LazyImport
 
 logger = logging.getLogger(__name__)
@@ -16,8 +15,8 @@ class TopPSampler:
     """
     Implements top-p (nucleus) sampling for document filtering based on cumulative probability scores.
 
-    This class provides functionality to filter a list of documents by selecting those whose scores fall
-    within the top 'p' percent of the cumulative distribution. The method is useful for focusing on high-probability
+    This component provides functionality to filter a list of documents by selecting those whose scores fall
+    within the top 'p' percent of the cumulative distribution. It is useful for focusing on high-probability
     documents while filtering out less relevant ones based on their assigned scores.
 
     Usage example:
@@ -28,9 +27,9 @@ class TopPSampler:
 
     sampler = TopPSampler(top_p=0.95, score_field="similarity_score")
     docs = [
-        Document(text="Berlin", meta={"similarity_score": -10.6}),
-        Document(text="Belgrade", meta={"similarity_score": -8.9}),
-        Document(text="Sarajevo", meta={"similarity_score": -4.6}),
+        Document(content="Berlin", meta={"similarity_score": -10.6}),
+        Document(content="Belgrade", meta={"similarity_score": -8.9}),
+        Document(content="Sarajevo", meta={"similarity_score": -4.6}),
     ]
     output = sampler.run(documents=docs)
     docs = output["documents"]
@@ -44,9 +43,9 @@ class TopPSampler:
         Creates an instance of TopPSampler.
 
         :param top_p: Float between 0 and 1 representing the cumulative probability threshold for document selection.
-        Defaults to 1.0, indicating no filtering (all documents are retained).
+            A value of 1.0 indicates no filtering (all documents are retained).
         :param score_field: Name of the field in each document's metadata that contains the score. If None, the default
-        document score field is used.
+            document score field is used.
         """
         torch_import.check()
 
@@ -57,17 +56,14 @@ class TopPSampler:
     def run(self, documents: List[Document], top_p: Optional[float] = None):
         """
         Filters documents using top-p sampling based on their scores.
+        If the specified top_p results in no documents being selected (especially in cases of a low top_p value), the
+        method returns the document with the highest similarity score.
 
         :param documents: List of Document objects to be filtered.
         :param top_p: Optional. A float to override the cumulative probability threshold set during initialization.
-                 If None, the class's top_p value is used.
-        :return: A dictionary with a key 'documents' containing the list of filtered Document objects.
 
-        This method applies top-p sampling to filter out documents. It selects those documents whose similarity scores
-        are within the top 'p' percent of the cumulative distribution, based on the specified or default top_p value.
-
-        If the specified top_p results in no documents being selected (especially in cases of a low top_p value), the
-        method defaults to returning the document with the highest similarity score.
+        :returns: A dictionary with the following key:
+            - `documents`: List of Document objects that have been selected based on the top-p sampling.
 
         :raises ValueError: If the top_p value is not within the range [0, 1].
         """
@@ -105,9 +101,9 @@ class TopPSampler:
         # return at least one document
         if not selected_docs:
             logger.warning(
-                "Top-p sampling with p=%s resulted in no documents being selected. "
+                "Top-p sampling with p={top_p} resulted in no documents being selected. "
                 "Returning the document with the highest similarity score.",
-                top_p,
+                top_p=top_p,
             )
             highest_prob_indices = torch.argsort(probs, descending=True)
             selected_docs = [documents[int(highest_prob_indices[0].item())]]

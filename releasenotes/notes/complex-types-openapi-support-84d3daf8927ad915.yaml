@@ -1,0 +1,4 @@
+---
+features:
+ - |
+   Enhanced OpenAPI integration by handling complex types of requests and responses in OpenAPIServiceConnector and OpenAPIServiceToFunctions.

@@ -1,10 +1,9 @@
-import logging
 from collections import defaultdict
-from typing import List, Dict, Any, Optional, Literal, Callable
+from typing import Any, Callable, Dict, List, Literal, Optional
+
 from dateutil.parser import parse as date_parse
 
-
-from haystack import Document, component, default_to_dict
+from haystack import Document, component, logging
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +12,7 @@ logger = logging.getLogger(__name__)
 class MetaFieldRanker:
     """
     Ranks Documents based on the value of their specific meta field.
+
     The ranking can be performed in descending order or ascending order.
 
     Usage example:
@@ -22,14 +22,14 @@ class MetaFieldRanker:
 
     ranker = MetaFieldRanker(meta_field="rating")
     docs = [
-        Document(text="Paris", meta={"rating": 1.3}),
-        Document(text="Berlin", meta={"rating": 0.7}),
-        Document(text="Barcelona", meta={"rating": 2.1}),
+        Document(content="Paris", meta={"rating": 1.3}),
+        Document(content="Berlin", meta={"rating": 0.7}),
+        Document(content="Barcelona", meta={"rating": 2.1}),
     ]
 
     output = ranker.run(documents=docs)
     docs = output["documents"]
-    assert docs[0].text == "Barcelona"
+    assert docs[0].content == "Barcelona"
     """
 
     def __init__(
@@ -44,27 +44,33 @@ class MetaFieldRanker:
         """
         Creates an instance of MetaFieldRanker.
 
-        :param meta_field: The name of the meta field to rank by.
-        :param weight: In range [0,1].
-                0 disables ranking by a meta field.
-                0.5 content and meta fields have the same impact for the ranking.
-                1 means ranking by a meta field only. The highest value comes first.
-        :param top_k: The maximum number of Documents you want the Ranker to return per query. If not provided, the
-                Ranker returns all documents it receives in the new ranking order.
-        :param ranking_mode: The mode used to combine the Retriever's and Ranker's scores.
-                Possible values are 'reciprocal_rank_fusion' (default) and 'linear_score'.
-                Use the 'score' mode only with Retrievers or Rankers that return a score in range [0,1].
-        :param sort_order: Whether to sort the meta field by ascending or descending order.
-                Possible values are `descending` (default) and `ascending`.
-        :param meta_value_type: Parse the meta value into the data type specified before sorting.
-                This will only work if all meta values stored under `meta_field` in the provided documents are strings.
-                For example, if we specified `meta_value_type="date"` then for the meta value `"date": "2015-02-01"`
-                we would parse the string into a datetime object and then sort the documents by date.
-                The available options are:
-                -'float' will parse the meta values into floats.
-                -'int' will parse the meta values into integers.
-                -'date' will parse the meta values into datetime objects.
-                -'None' (default) will do no parsing.
+        :param meta_field:
+            The name of the meta field to rank by.
+        :param weight:
+            In range [0,1].
+            0 disables ranking by a meta field.
+            0.5 ranking from previous component and based on meta field have the same weight.
+            1 ranking by a meta field only.
+        :param top_k:
+            The maximum number of Documents to return per query.
+            If not provided, the Ranker returns all documents it receives in the new ranking order.
+        :param ranking_mode:
+            The mode used to combine the Retriever's and Ranker's scores.
+            Possible values are 'reciprocal_rank_fusion' (default) and 'linear_score'.
+            Use the 'linear_score' mode only with Retrievers or Rankers that return a score in range [0,1].
+        :param sort_order:
+            Whether to sort the meta field by ascending or descending order.
+            Possible values are `descending` (default) and `ascending`.
+        :param meta_value_type:
+            Parse the meta value into the data type specified before sorting.
+            This will only work if all meta values stored under `meta_field` in the provided documents are strings.
+            For example, if we specified `meta_value_type="date"` then for the meta value `"date": "2015-02-01"`
+            we would parse the string into a datetime object and then sort the documents by date.
+            The available options are:
+            - 'float' will parse the meta values into floats.
+            - 'int' will parse the meta values into integers.
+            - 'date' will parse the meta values into datetime objects.
+            - 'None' (default) will do no parsing.
         """
 
         self.meta_field = meta_field
@@ -97,7 +103,7 @@ class MetaFieldRanker:
                 "Parameter <weight> must be in range [0,1] but is currently set to '%s'.\n'0' disables sorting by a "
                 "meta field, '0.5' assigns equal weight to the previous relevance scores and the meta field, and "
                 "'1' ranks by the meta field only.\nChange the <weight> parameter to a value in range 0 to 1 when "
-                "initializing the MetaFieldRanker." % self.weight
+                "initializing the MetaFieldRanker." % weight
             )
 
         if ranking_mode not in ["reciprocal_rank_fusion", "linear_score"]:
@@ -109,7 +115,8 @@ class MetaFieldRanker:
 
         if sort_order not in ["ascending", "descending"]:
             raise ValueError(
-                "The value of parameter <sort_order> must be 'ascending' or 'descending', but is currently set to '%s'.\n"
+                "The value of parameter <sort_order> must be 'ascending' or 'descending', "
+                "but is currently set to '%s'.\n"
                 "Change the <sort_order> value to 'ascending' or 'descending' when initializing the "
                 "MetaFieldRanker." % sort_order
             )
@@ -122,20 +129,6 @@ class MetaFieldRanker:
                 "MetaFieldRanker." % meta_value_type
             )
 
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Serialize object to a dictionary.
-        """
-        return default_to_dict(
-            self,
-            meta_field=self.meta_field,
-            weight=self.weight,
-            top_k=self.top_k,
-            ranking_mode=self.ranking_mode,
-            sort_order=self.sort_order,
-            meta_value_type=self.meta_value_type,
-        )
-
     @component.output_types(documents=List[Document])
     def run(
         self,
@@ -147,35 +140,52 @@ class MetaFieldRanker:
         meta_value_type: Optional[Literal["float", "int", "date"]] = None,
     ):
         """
-        Use this method to rank a list of Documents based on the selected meta field by:
+        Ranks a list of Documents based on the selected meta field by:
         1. Sorting the Documents by the meta field in descending or ascending order.
-        2. Merging the scores from the meta field with the scores from the previous component according to the strategy and weight provided.
+        2. Merging the rankings from the previous component and based on the meta field according to ranking mode and
+        weight.
         3. Returning the top-k documents.
 
-        :param documents: Documents to be ranked.
-        :param top_k: (optional) The number of Documents you want the Ranker to return.
-                If not provided, the top_k provided at initialization time is used.
-        :param weight: (optional) In range [0,1].
-                0 disables ranking by a meta field.
-                0.5 content and meta fields have the same impact for the ranking.
-                1 means ranking by a meta field only. The highest value comes first.
-                If not provided, the weight provided at initialization time is used.
-        :param ranking_mode: (optional) The mode used to combine the Retriever's and Ranker's scores.
-                Possible values are 'reciprocal_rank_fusion' (default) and 'linear_score'.
-                Use the 'score' mode only with Retrievers or Rankers that return a score in range [0,1].
-                If not provided, the ranking_mode provided at initialization time is used.
-        :param sort_order: Whether to sort the meta field by ascending or descending order.
-                Possible values are `descending` (default) and `ascending`.
-                If not provided, the sort_order provided at initialization time is used.
-        :param meta_value_type: Parse the meta value into the data type specified before sorting.
-                This will only work if all meta values stored under `meta_field` in the provided documents are strings.
-                For example, if we specified `meta_value_type="date"` then for the meta value `"date": "2015-02-01"`
-                we would parse the string into a datetime object and then sort the documents by date.
-                The available options are:
-                -'float' will parse the meta values into floats.
-                -'int' will parse the meta values into integers.
-                -'date' will parse the meta values into datetime objects.
-                -'None' (default) will do no parsing.
+        :param documents:
+            Documents to be ranked.
+        :param top_k:
+            The maximum number of Documents to return per query.
+            If not provided, the top_k provided at initialization time is used.
+        :param weight:
+            In range [0,1].
+            0 disables ranking by a meta field.
+            0.5 ranking from previous component and based on meta field have the same weight.
+            1 ranking by a meta field only.
+            If not provided, the weight provided at initialization time is used.
+        :param ranking_mode:
+            (optional) The mode used to combine the Retriever's and Ranker's scores.
+            Possible values are 'reciprocal_rank_fusion' (default) and 'linear_score'.
+            Use the 'score' mode only with Retrievers or Rankers that return a score in range [0,1].
+            If not provided, the ranking_mode provided at initialization time is used.
+        :param sort_order:
+            Whether to sort the meta field by ascending or descending order.
+            Possible values are `descending` (default) and `ascending`.
+            If not provided, the sort_order provided at initialization time is used.
+        :param meta_value_type:
+            Parse the meta value into the data type specified before sorting.
+            This will only work if all meta values stored under `meta_field` in the provided documents are strings.
+            For example, if we specified `meta_value_type="date"` then for the meta value `"date": "2015-02-01"`
+            we would parse the string into a datetime object and then sort the documents by date.
+            The available options are:
+            -'float' will parse the meta values into floats.
+            -'int' will parse the meta values into integers.
+            -'date' will parse the meta values into datetime objects.
+            -'None' (default) will do no parsing.
+        :returns:
+            A dictionary with the following keys:
+            - `documents`: List of Documents sorted by the specified meta field.
+
+        :raises ValueError:
+            If `top_k` is not > 0.
+            If `weight` is not in range [0,1].
+            If `ranking_mode` is not 'reciprocal_rank_fusion' or 'linear_score'.
+            If `sort_order` is not 'ascending' or 'descending'.
+            If `meta_value_type` is not 'float', 'int', 'date' or `None`.
         """
         if not documents:
             return {"documents": []}
@@ -203,20 +213,20 @@ class MetaFieldRanker:
         # If all docs are missing self.meta_field return original documents
         if len(docs_with_meta_field) == 0:
             logger.warning(
-                "The parameter <meta_field> is currently set to '%s', but none of the provided Documents with IDs %s have this meta key.\n"
+                "The parameter <meta_field> is currently set to '{meta_field}', but none of the provided Documents with IDs {document_ids} have this meta key.\n"
                 "Set <meta_field> to the name of a field that is present within the provided Documents.\n"
                 "Returning the <top_k> of the original Documents since there are no values to rank.",
-                self.meta_field,
-                ",".join([doc.id for doc in documents]),
+                meta_field=self.meta_field,
+                document_ids=",".join([doc.id for doc in documents]),
             )
             return {"documents": documents[:top_k]}
 
         if len(docs_missing_meta_field) > 0:
             logger.warning(
-                "The parameter <meta_field> is currently set to '%s' but the Documents with IDs %s don't have this meta key.\n"
+                "The parameter <meta_field> is currently set to '{meta_field}' but the Documents with IDs {document_ids} don't have this meta key.\n"
                 "These Documents will be placed at the end of the sorting order.",
-                self.meta_field,
-                ",".join([doc.id for doc in docs_missing_meta_field]),
+                meta_field=self.meta_field,
+                document_ids=",".join([doc.id for doc in docs_missing_meta_field]),
             )
 
         # If meta_value_type is provided try to parse the meta values
@@ -230,17 +240,17 @@ class MetaFieldRanker:
         except TypeError as error:
             # Return original documents if mixed types that are not comparable are returned (e.g. int and list)
             logger.warning(
-                "Tried to sort Documents with IDs %s, but got TypeError with the message: %s\n"
+                "Tried to sort Documents with IDs {document_ids}, but got TypeError with the message: {error}\n"
                 "Returning the <top_k> of the original Documents since meta field ranking is not possible.",
-                ",".join([doc.id for doc in docs_with_meta_field]),
-                error,
+                document_ids=",".join([doc.id for doc in docs_with_meta_field]),
+                error=error,
             )
             return {"documents": documents[:top_k]}
 
         # Add the docs missing the meta_field back on the end
         sorted_by_meta = [doc for meta, doc in tuple_sorted_by_meta]
         sorted_documents = sorted_by_meta + docs_missing_meta_field
-        sorted_documents = self._merge_rankings(documents, sorted_documents)
+        sorted_documents = self._merge_rankings(documents, sorted_documents, weight)
         return {"documents": sorted_documents[:top_k]}
 
     def _parse_meta(
@@ -255,12 +265,12 @@ class MetaFieldRanker:
         unique_meta_values = {doc.meta[self.meta_field] for doc in docs_with_meta_field}
         if not all(isinstance(meta_value, str) for meta_value in unique_meta_values):
             logger.warning(
-                "The parameter <meta_value_type> is currently set to '%s', but not all of meta values in the "
-                "provided Documents with IDs %s are strings.\n"
+                "The parameter <meta_value_type> is currently set to '{meta_field}', but not all of meta values in the "
+                "provided Documents with IDs {document_ids} are strings.\n"
                 "Skipping parsing of the meta values.\n"
                 "Set all meta values found under the <meta_field> parameter to strings to use <meta_value_type>.",
-                meta_value_type,
-                ",".join([doc.id for doc in docs_with_meta_field]),
+                meta_field=meta_value_type,
+                document_ids=",".join([doc.id for doc in docs_with_meta_field]),
             )
             return [d.meta[self.meta_field] for d in docs_with_meta_field]
 
@@ -276,16 +286,18 @@ class MetaFieldRanker:
             meta_values = [parse_fn(d.meta[self.meta_field]) for d in docs_with_meta_field]
         except ValueError as error:
             logger.warning(
-                "Tried to parse the meta values of Documents with IDs %s, but got ValueError with the message: %s\n"
+                "Tried to parse the meta values of Documents with IDs {document_ids}, but got ValueError with the message: {error}\n"
                 "Skipping parsing of the meta values.",
-                ",".join([doc.id for doc in docs_with_meta_field]),
-                error,
+                document_ids=",".join([doc.id for doc in docs_with_meta_field]),
+                error=error,
             )
             meta_values = [d.meta[self.meta_field] for d in docs_with_meta_field]
 
         return meta_values
 
-    def _merge_rankings(self, documents: List[Document], sorted_documents: List[Document]) -> List[Document]:
+    def _merge_rankings(
+        self, documents: List[Document], sorted_documents: List[Document], weight: float
+    ) -> List[Document]:
         """
         Merge the two different rankings for Documents sorted both by their content and by their meta field.
         """
@@ -293,8 +305,8 @@ class MetaFieldRanker:
 
         if self.ranking_mode == "reciprocal_rank_fusion":
             for i, (document, sorted_doc) in enumerate(zip(documents, sorted_documents)):
-                scores_map[document.id] += self._calculate_rrf(rank=i) * (1 - self.weight)
-                scores_map[sorted_doc.id] += self._calculate_rrf(rank=i) * self.weight
+                scores_map[document.id] += self._calculate_rrf(rank=i) * (1 - weight)
+                scores_map[sorted_doc.id] += self._calculate_rrf(rank=i) * weight
         elif self.ranking_mode == "linear_score":
             for i, (document, sorted_doc) in enumerate(zip(documents, sorted_documents)):
                 score = float(0)
@@ -302,15 +314,15 @@ class MetaFieldRanker:
                     logger.warning("The score wasn't provided; defaulting to 0.")
                 elif document.score < 0 or document.score > 1:
                     logger.warning(
-                        "The score %s for Document %s is outside the [0,1] range; defaulting to 0",
-                        document.score,
-                        document.id,
+                        "The score {score} for Document {document_id} is outside the [0,1] range; defaulting to 0",
+                        score=document.score,
+                        document_id=document.id,
                     )
                 else:
                     score = document.score
 
-                scores_map[document.id] += score * (1 - self.weight)
-                scores_map[sorted_doc.id] += self._calc_linear_score(rank=i, amount=len(sorted_documents)) * self.weight
+                scores_map[document.id] += score * (1 - weight)
+                scores_map[sorted_doc.id] += self._calc_linear_score(rank=i, amount=len(sorted_documents)) * weight
 
         for document in documents:
             document.score = scores_map[document.id]
@@ -331,8 +343,8 @@ class MetaFieldRanker:
         """
         Calculate the meta field score as a linear score between the greatest and the lowest score in the list.
         This linear scaling is useful for:
-          - Reducing the effect of outliers
-          - Creating scores that are meaningfully distributed in the range [0,1],
-             similar to scores coming from a Retriever or Ranker.
+        - Reducing the effect of outliers
+        - Creating scores that are meaningfully distributed in the range [0,1],
+        similar to scores coming from a Retriever or Ranker.
         """
         return (amount - rank) / amount

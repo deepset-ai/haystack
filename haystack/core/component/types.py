@@ -22,6 +22,21 @@ class _empty:
 
 @dataclass
 class InputSocket:
+    """
+    Represents an input of a `Component`.
+
+    :param name:
+        The name of the input.
+    :param type:
+        The type of the input.
+    :param default_value:
+        The default value of the input. If not set, the input is mandatory.
+    :param is_variadic:
+        Whether the input is variadic or not.
+    :param senders:
+        The list of components that send data to this input.
+    """
+
     name: str
     type: Type
     default_value: Any = _empty
@@ -58,6 +73,17 @@ class InputSocket:
 
 @dataclass
 class OutputSocket:
+    """
+    Represents an output of a `Component`.
+
+    :param name:
+        The name of the output.
+    :param type:
+        The type of the output.
+    :param receivers:
+        The list of components that receive the output of this component.
+    """
+
     name: str
     type: type
     receivers: List[str] = field(default_factory=list)

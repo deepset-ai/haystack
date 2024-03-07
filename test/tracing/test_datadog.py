@@ -17,8 +17,6 @@ def datadog_tracer(monkeypatch: MonkeyPatch) -> ddtrace.Tracer:
 
     tracer = ddtrace.Tracer()
 
-    # monkeypatch.setattr(ddtrace, "tracer", tracer)
-
     return tracer
 
 
@@ -85,3 +83,15 @@ class TestDatadogTracer:
         spans = get_traces_from_console(capfd)
         assert len(spans) == 1
         assert spans[0]["meta"]["key"] == '{"a": 1, "b": [2, 3, 4]}'
+
+    def test_get_log_correlation_info(self, datadog_tracer: ddtrace.Tracer) -> None:
+        tracer = DatadogTracer(datadog_tracer)
+        with tracer.trace("test") as span:
+            span.set_tag("key", "value")
+            assert span.get_correlation_data_for_logs() == {
+                "dd.trace_id": str((1 << 64) - 1 & span.raw_span().trace_id),
+                "dd.span_id": span.raw_span().span_id,
+                "dd.service": "",
+                "dd.env": "",
+                "dd.version": "",
+            }

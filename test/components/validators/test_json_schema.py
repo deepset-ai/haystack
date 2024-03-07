@@ -92,7 +92,7 @@ class TestJsonSchemaValidator:
 
         # but ensure_json_objects converts the string to a json object
         validator = JsonSchemaValidator()
-        result = validator.recursive_json_to_object({"key": genuine_fc_message})
+        result = validator._recursive_json_to_object({"key": genuine_fc_message})
 
         # we need this recursive json conversion to validate the message
         assert result["key"][0]["function"]["arguments"]["basehead"] == "main...amzn_chat"
@@ -154,7 +154,7 @@ class TestJsonSchemaValidator:
             "{json_schema}\n"
         )
 
-        recovery_message = validator.construct_error_recovery_message(
+        recovery_message = validator._construct_error_recovery_message(
             new_error_template, "Error message", "Error path", "Error schema path", {"type": "object"}
         )
 

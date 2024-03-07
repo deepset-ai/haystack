@@ -1,11 +1,8 @@
 import importlib
-import logging
+from typing import Any, Dict, List, Optional
 
-from typing import Dict, List, Any, Optional
-
-from haystack import component, Document, default_to_dict, default_from_dict, DeserializationError
+from haystack import DeserializationError, Document, component, default_from_dict, default_to_dict, logging
 from haystack.document_stores.types import DocumentStore
-
 
 logger = logging.getLogger(__name__)
 
@@ -33,9 +30,7 @@ class FilterRetriever:
     # if passed in the run method, filters will override those provided at initialization
     result = retriever.run(filters={"field": "lang", "operator": "==", "value": "de"})
 
-    assert "documents" in result
-    assert len(result["documents"]) == 1
-    assert result["documents"][0].content == "python ist eine beliebte Programmiersprache"
+    print(result["documents"])
     ```
     """
 
@@ -43,8 +38,10 @@ class FilterRetriever:
         """
         Create the FilterRetriever component.
 
-        :param document_store: An instance of a DocumentStore.
-        :param filters: A dictionary with filters to narrow down the search space. Defaults to `None`.
+        :param document_store:
+            An instance of a DocumentStore.
+        :param filters:
+            A dictionary with filters to narrow down the search space.
         """
         self.document_store = document_store
         self.filters = filters
@@ -57,7 +54,10 @@ class FilterRetriever:
 
     def to_dict(self) -> Dict[str, Any]:
         """
-        Serialize this component to a dictionary.
+        Serializes the component to a dictionary.
+
+        :returns:
+            Dictionary with serialized data.
         """
         docstore = self.document_store.to_dict()
         return default_to_dict(self, document_store=docstore, filters=self.filters)
@@ -65,7 +65,12 @@ class FilterRetriever:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "FilterRetriever":
         """
-        Deserialize this component from a dictionary.
+        Deserializes the component from a dictionary.
+
+        :param data:
+            The dictionary to deserialize from.
+        :returns:
+            The deserialized component.
         """
         init_params = data.get("init_parameters", {})
         if "document_store" not in init_params:
@@ -74,7 +79,7 @@ class FilterRetriever:
             raise DeserializationError("Missing 'type' in document store's serialization data")
         try:
             module_name, type_ = init_params["document_store"]["type"].rsplit(".", 1)
-            logger.debug("Trying to import %s", module_name)
+            logger.debug("Trying to import module '{module}'", module=module_name)
             module = importlib.import_module(module_name)
         except (ImportError, DeserializationError) as e:
             raise DeserializationError(
@@ -90,8 +95,10 @@ class FilterRetriever:
         """
         Run the FilterRetriever on the given input data.
 
-        :param filters: A dictionary with filters to narrow down the search space.
+        :param filters:
+            A dictionary with filters to narrow down the search space.
             If not specified, the FilterRetriever uses the value provided at initialization.
-        :return: The retrieved documents.
+        :returns:
+            The retrieved documents.
         """
         return {"documents": self.document_store.filter_documents(filters=filters or self.filters)}

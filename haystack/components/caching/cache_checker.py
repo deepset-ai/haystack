@@ -1,12 +1,8 @@
-from typing import List, Dict, Any
-
 import importlib
+from typing import Any, Dict, List
 
-import logging
-
-from haystack import component, Document, default_from_dict, default_to_dict, DeserializationError
+from haystack import DeserializationError, Document, component, default_from_dict, default_to_dict, logging
 from haystack.document_stores.types import DocumentStore
-
 
 logger = logging.getLogger(__name__)
 
@@ -14,27 +10,63 @@ logger = logging.getLogger(__name__)
 @component
 class CacheChecker:
     """
-    CacheChecker is a component that checks for the presence of documents in a Document Store based on a specified
-    cache field.
+    Checks for the presence of documents in a Document Store based on a specified
+    field in each document's metadata.
+
+    If matching documents are found, they are returned as hits. If not, the items
+    are returned as misses, indicating they are not in the cache.
+
+    Usage example:
+    ```python
+    from haystack import Document
+    from haystack.document_stores.in_memory import InMemoryDocumentStore
+    from haystack.components.caching.cache_checker import CacheChecker
+
+    docstore = InMemoryDocumentStore()
+    documents = [
+        Document(content="doc1", meta={"url": "https://example.com/1"}),
+        Document(content="doc2", meta={"url": "https://example.com/2"}),
+        Document(content="doc3", meta={"url": "https://example.com/1"}),
+        Document(content="doc4", meta={"url": "https://example.com/2"}),
+    ]
+    docstore.write_documents(documents)
+    checker = CacheChecker(docstore, cache_field="url")
+    results = checker.run(items=["https://example.com/1", "https://example.com/5"])
+    assert results == {"hits": [documents[0], documents[2]], "misses": ["https://example.com/5"]}
+    ```
     """
 
     def __init__(self, document_store: DocumentStore, cache_field: str):
         """
-        Create a UrlCacheChecker component.
+        Create a CacheChecker component.
+
+        :param document_store:
+            Document store to check.
+        :param cache_field:
+            Name of the Document metadata field
+            to check for cache hits.
         """
         self.document_store = document_store
         self.cache_field = cache_field
 
     def to_dict(self) -> Dict[str, Any]:
         """
-        Serialize this component to a dictionary.
+        Serializes the component to a dictionary.
+
+        :returns:
+            Dictionary with serialized data.
         """
         return default_to_dict(self, document_store=self.document_store.to_dict(), cache_field=self.cache_field)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "CacheChecker":
         """
-        Deserialize this component from a dictionary.
+        Deserializes the component from a dictionary.
+
+        :param data:
+            Dictionary to deserialize from.
+        :returns:
+            Deserialized component.
         """
         init_params = data.get("init_parameters", {})
         if "document_store" not in init_params:
@@ -44,7 +76,7 @@ class CacheChecker:
 
         try:
             module_name, type_ = init_params["document_store"]["type"].rsplit(".", 1)
-            logger.debug("Trying to import %s", module_name)
+            logger.debug("Trying to import module '{module}'", module=module_name)
             module = importlib.import_module(module_name)
         except (ImportError, DeserializationError) as e:
             raise DeserializationError(
@@ -60,12 +92,15 @@ class CacheChecker:
     @component.output_types(hits=List[Document], misses=List)
     def run(self, items: List[Any]):
         """
-        Checks if any document associated with the specified field is already present in the store. If matching documents
-        are found, they are returned as hits. If not, the items are returned as misses, indicating they are not in the cache.
+        Checks if any document associated with the specified cache field
+        is already present in the store.
 
-        :param items: A list of values associated with the cache_field to be checked against the cache.
-        :return: A dictionary with two keys: "hits" and "misses". The values are lists of documents that were found in
-        the cache and items that were not, respectively.
+        :param items:
+            Values to be checked against the cache field.
+        :return:
+            A dictionary with two keys:
+            - `hits` - Documents that matched with any of the items.
+            - `misses` - Items that were not present in any documents.
         """
         found_documents = []
         misses = []

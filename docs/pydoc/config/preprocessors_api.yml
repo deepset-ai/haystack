@@ -1,7 +1,7 @@
 loaders:
   - type: haystack_pydoc_tools.loaders.CustomPythonLoader
     search_path: [../../../haystack/components/preprocessors]
-    modules: ["document_cleaner", "document_splitter"]
+    modules: ["document_cleaner", "document_splitter", "text_cleaner"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
@@ -13,7 +13,7 @@ processors:
   - type: crossref
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
-  excerpt: Normalizes white spaces, gets rid of headers and footers, cleans empty lines in your Documents, or splits them into smaller pieces.
+  excerpt: Preprocess your Documents and texts. Clean, split, and more.
   category_slug: haystack-api
   title: PreProcessors
   slug: preprocessors-api

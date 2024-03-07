@@ -1,4 +1,3 @@
-import logging
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, Dict, List, Optional, Tuple
@@ -8,7 +7,7 @@ from requests import Response
 from requests.exceptions import HTTPError
 from tenacity import RetryCallState, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
-from haystack import component
+from haystack import component, logging
 from haystack.dataclasses import ByteStream
 from haystack.version import __version__
 
@@ -25,7 +24,7 @@ REQUEST_HEADERS = {
 }
 
 
-def text_content_handler(response: Response) -> ByteStream:
+def _text_content_handler(response: Response) -> ByteStream:
     """
     :param response: Response object from the request.
     :return: The extracted text.
@@ -33,7 +32,7 @@ def text_content_handler(response: Response) -> ByteStream:
     return ByteStream.from_string(response.text)
 
 
-def binary_content_handler(response: Response) -> ByteStream:
+def _binary_content_handler(response: Response) -> ByteStream:
     """
     :param response: Response object from the request.
     :return: The extracted binary file-like object.
@@ -44,8 +43,22 @@ def binary_content_handler(response: Response) -> ByteStream:
 @component
 class LinkContentFetcher:
     """
-    LinkContentFetcher is a component for fetching and extracting content from URLs. It supports handling various
-    content types, retries on failures, and automatic user-agent rotation for failed web requests.
+    LinkContentFetcher is a component for fetching and extracting content from URLs.
+
+    It supports handling various content types, retries on failures, and automatic user-agent rotation for failed web
+    requests.
+
+    Usage example:
+    ```python
+    from haystack.components.fetchers.link_content import LinkContentFetcher
+
+    fetcher = LinkContentFetcher()
+    streams = fetcher.run(urls=["https://www.google.com"])["streams"]
+
+    assert len(streams) == 1
+    assert streams[0].meta == {'content_type': 'text/html', 'url': 'https://www.google.com'}
+    assert streams[0].data
+    ```
     """
 
     def __init__(
@@ -56,13 +69,14 @@ class LinkContentFetcher:
         timeout: int = 3,
     ):
         """
-        Initializes a LinkContentFetcher instance.
+        Initializes the component.
 
-        :param raise_on_failure: If True, raises an exception if it fails to fetch a single URL.
-            For multiple URLs, it logs errors and returns the content it successfully fetched. Default is True.
-        :param user_agents: A list of user agents for fetching content. If None, a default user agent is used.
-        :param retry_attempts: Specifies how many times you want it to retry to fetch the URL's content. Default is 2.
-        :param timeout: Timeout in seconds for the request. Default is 3.
+        :param raise_on_failure: If `True`, raises an exception if it fails to fetch a single URL.
+            For multiple URLs, it logs errors and returns the content it successfully fetched.
+        :param user_agents: [User agents](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/User-Agent)
+            for fetching content. If `None`, a default user agent is used.
+        :param retry_attempts: Specifies how many times you want it to retry to fetch the URL's content.
+        :param timeout: Timeout in seconds for the request.
         """
         self.raise_on_failure = raise_on_failure
         self.user_agents = user_agents or [DEFAULT_USER_AGENT]
@@ -71,11 +85,11 @@ class LinkContentFetcher:
         self.timeout = timeout
 
         # register default content handlers that extract data from the response
-        self.handlers: Dict[str, Callable[[Response], ByteStream]] = defaultdict(lambda: text_content_handler)
-        self.handlers["text/html"] = text_content_handler
-        self.handlers["text/plain"] = text_content_handler
-        self.handlers["application/pdf"] = binary_content_handler
-        self.handlers["application/octet-stream"] = binary_content_handler
+        self.handlers: Dict[str, Callable[[Response], ByteStream]] = defaultdict(lambda: _text_content_handler)
+        self.handlers["text/html"] = _text_content_handler
+        self.handlers["text/plain"] = _text_content_handler
+        self.handlers["application/pdf"] = _binary_content_handler
+        self.handlers["application/octet-stream"] = _binary_content_handler
 
         @retry(
             reraise=True,
@@ -99,17 +113,19 @@ class LinkContentFetcher:
     def run(self, urls: List[str]):
         """
         Fetches content from a list of URLs and returns a list of extracted content streams.
-        Each content stream is a ByteStream object containing the extracted content as binary data.
+
+        Each content stream is a `ByteStream` object containing the extracted content as binary data.
         Each ByteStream object in the returned list corresponds to the contents of a single URL.
         The content type of each stream is stored in the metadata of the ByteStream object under
         the key "content_type". The URL of the fetched content is stored under the key "url".
 
         :param urls: A list of URLs to fetch content from.
-        :return: A lists of ByteStream objects representing the extracted content.
+        :return: `ByteStream` objects representing the extracted content.
 
-        :raises: If the provided list of URLs contains only a single URL, and `raise_on_failure` is set to True,
-        an exception will be raised in case of an error during content retrieval. In all other scenarios, any
-        retrieval errors are logged, and a list of successfully retrieved ByteStream objects is returned.
+        :raises Exception: If the provided list of URLs contains only a single URL, and `raise_on_failure` is set to
+            `True`, an exception will be raised in case of an error during content retrieval.
+            In all other scenarios, any retrieval errors are logged, and a list of successfully retrieved `ByteStream`
+             objects is returned.
         """
         streams: List[ByteStream] = []
         if not urls:
@@ -117,7 +133,7 @@ class LinkContentFetcher:
 
         # don't use multithreading if there's only one URL
         if len(urls) == 1:
-            stream_metadata, stream = self.fetch(urls[0])
+            stream_metadata, stream = self._fetch(urls[0])
             stream.meta.update(stream_metadata)
             streams.append(stream)
         else:
@@ -131,7 +147,7 @@ class LinkContentFetcher:
 
         return {"streams": streams}
 
-    def fetch(self, url: str) -> Tuple[Dict[str, str], ByteStream]:
+    def _fetch(self, url: str) -> Tuple[Dict[str, str], ByteStream]:
         """
         Fetches content from a URL and returns it as a ByteStream.
 
@@ -156,7 +172,7 @@ class LinkContentFetcher:
             if self.raise_on_failure:
                 raise e
             # less verbose log as this is expected to happen often (requests failing, blocked, etc.)
-            logger.debug("Couldn't retrieve content from %s because %s", url, str(e))
+            logger.debug("Couldn't retrieve content from {url} because {error}", url=url, error=str(e))
 
         finally:
             self.current_user_agent_idx = 0
@@ -175,12 +191,12 @@ class LinkContentFetcher:
         """
         if self.raise_on_failure:
             try:
-                return self.fetch(url)
+                return self._fetch(url)
             except Exception as e:
-                logger.warning("Error fetching %s: %s", url, str(e))
+                logger.warning("Error fetching {url}: {error}", url=url, error=str(e))
                 return {"content_type": "Unknown", "url": url}, None
         else:
-            return self.fetch(url)
+            return self._fetch(url)
 
     def _get_content_type(self, response: Response):
         """
@@ -200,4 +216,4 @@ class LinkContentFetcher:
         :param retry_state: The retry state (unused, required by tenacity).
         """
         self.current_user_agent_idx = (self.current_user_agent_idx + 1) % len(self.user_agents)
-        logger.debug("Switched user agent to %s", self.user_agents[self.current_user_agent_idx])
+        logger.debug("Switched user agent to {user_agent}", user_agent=self.user_agents[self.current_user_agent_idx])

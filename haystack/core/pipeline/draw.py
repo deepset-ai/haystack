@@ -2,11 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import base64
-import logging
 
 import networkx  # type:ignore
 import requests
 
+from haystack import logging
 from haystack.core.errors import PipelineDrawingError
 from haystack.core.pipeline.descriptions import find_pipeline_inputs, find_pipeline_outputs
 from haystack.core.type_utils import _type_name
@@ -72,18 +72,23 @@ def _to_mermaid_image(graph: networkx.MultiDiGraph):
     base64_string = base64_bytes.decode("ascii")
     url = f"https://mermaid.ink/img/{base64_string}?type=png"
 
-    logging.debug("Rendeding graph at %s", url)
+    logger.debug("Rendering graph at {url}", url=url)
     try:
         resp = requests.get(url, timeout=10)
         if resp.status_code >= 400:
-            logger.warning("Failed to draw the pipeline: https://mermaid.ink/img/ returned status %s", resp.status_code)
-            logger.info("Exact URL requested: %s", url)
+            logger.warning(
+                "Failed to draw the pipeline: https://mermaid.ink/img/ returned status {status_code}",
+                status_code=resp.status_code,
+            )
+            logger.info("Exact URL requested: {url}", url=url)
             logger.warning("No pipeline diagram will be saved.")
             resp.raise_for_status()
 
     except Exception as exc:  # pylint: disable=broad-except
-        logger.warning("Failed to draw the pipeline: could not connect to https://mermaid.ink/img/ (%s)", exc)
-        logger.info("Exact URL requested: %s", url)
+        logger.warning(
+            "Failed to draw the pipeline: could not connect to https://mermaid.ink/img/ ({error})", error=exc
+        )
+        logger.info("Exact URL requested: {url}", url=url)
         logger.warning("No pipeline diagram will be saved.")
         raise PipelineDrawingError(
             "There was an issue with https://mermaid.ink/, see the stacktrace for details."
@@ -140,6 +145,6 @@ def _to_mermaid_text(graph: networkx.MultiDiGraph) -> str:
     connections = "\n".join(connections_list + input_connections + output_connections)
 
     graph_styled = MERMAID_STYLED_TEMPLATE.format(connections=connections)
-    logger.debug("Mermaid diagram:\n%s", graph_styled)
+    logger.debug("Mermaid diagram:\n{diagram}", diagram=graph_styled)
 
     return graph_styled

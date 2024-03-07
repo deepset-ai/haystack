@@ -12,6 +12,7 @@ on:
 
 env:
   PYTHON_VERSION: "3.8"
+  HATCH_VERSION: "1.9.3"
 
 jobs:
   mypy:
@@ -35,19 +36,16 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: "${{ env.PYTHON_VERSION }}"
 
-      - name: Install Haystack
-        run: pip install .[dev]
-
-      - name: Install the dependencies needed for tests
-        run: pip install -r test/test_requirements.txt
+      - name: Install Hatch
+        run: pip install hatch==${{ env.HATCH_VERSION }}
 
       - name: Mypy
         if: steps.files.outputs.any_changed == 'true'
         run: |
           mkdir .mypy_cache
-          mypy --install-types --non-interactive --cache-dir=.mypy_cache/ ${{ steps.files.outputs.all_changed_files }}
+          hatch run test:types ${{ steps.files.outputs.all_changed_files }}
 
   pylint:
     runs-on: ubuntu-latest
@@ -68,12 +66,12 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: "${{ env.PYTHON_VERSION }}"
 
-      - name: Install Haystack and the dependencies needed for tests
-        run: pip install -r test/test_requirements.txt
+      - name: Install Hatch
+        run: pip install hatch==${{ env.HATCH_VERSION }}
 
       - name: Pylint
         if: steps.files.outputs.any_changed == 'true'
         run: |
-          pylint -ry -j 0 ${{ steps.files.outputs.all_changed_files }}
+          hatch run test:lint ${{ steps.files.outputs.all_changed_files }}

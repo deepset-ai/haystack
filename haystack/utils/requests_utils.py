@@ -1,9 +1,8 @@
-from typing import Optional, List
-
 import logging
+from typing import List, Optional
 
-from tenacity import retry, wait_exponential, retry_if_exception_type, stop_after_attempt, before_log, after_log
 import requests
+from tenacity import after_log, before_log, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 logger = logging.getLogger(__file__)
 
@@ -12,13 +11,11 @@ def request_with_retry(
     attempts: int = 3, status_codes_to_retry: Optional[List[int]] = None, **kwargs
 ) -> requests.Response:
     """
-    request_with_retry is a simple wrapper function that executes an HTTP request
-    with a configurable exponential backoff retry on failures.
+    Executes an HTTP request with a configurable exponential backoff retry on failures.
 
-    All kwargs will be passed to ``requests.request``, so it accepts the same arguments.
-
-    Example Usage:
-    --------------
+    Usage example:
+    ```python
+    from haystack.utils import request_with_retry
 
     # Sending an HTTP request with default retry configs
     res = request_with_retry(method="GET", url="https://example.com")
@@ -55,15 +52,17 @@ def request_with_retry(
 
     # Retry all 5xx status codes
     res = request_with_retry(method="GET", url="https://example.com", status_codes_to_retry=list(range(500, 600)))
+    ```
 
-    :param attempts: Maximum number of attempts to retry the request, defaults to 3
-    :param status_codes_to_retry: List of HTTP status codes that will trigger a retry, defaults to [408, 418, 429, 503]:
-        - `408: Request Timeout`
-        - `418`
-        - `429: Too Many Requests`
-        - `503: Service Unavailable`
-    :param **kwargs: Optional arguments that ``request`` takes.
-    :return: :class:`Response <Response>` object
+    :param attempts:
+        Maximum number of attempts to retry the request.
+    :param status_codes_to_retry:
+        List of HTTP status codes that will trigger a retry.
+        When param is `None`, HTTP 408, 418, 429 and 503 will be retried.
+    :param kwargs:
+        Optional arguments that `request` accepts.
+    :returns:
+        The `Response` object.
     """
 
     if status_codes_to_retry is None:

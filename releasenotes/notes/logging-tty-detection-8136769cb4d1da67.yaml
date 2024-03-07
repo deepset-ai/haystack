@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    The `logging` module now detects if the standard output is a TTY. If it is not and `structlog` is installed, it
+    will automatically disable the console renderer and log in JSON format. This behavior can be overridden by setting
+    the environment variable `HAYSTACK_LOGGING_USE_JSON` to `false`.

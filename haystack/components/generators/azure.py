@@ -1,14 +1,13 @@
-import logging
 import os
-from typing import Optional, Callable, Dict, Any
+from typing import Any, Callable, Dict, Optional
 
 # pylint: disable=import-error
 from openai.lib.azure import AzureOpenAI
 
-from haystack import default_to_dict, default_from_dict
+from haystack import default_from_dict, default_to_dict, logging
 from haystack.components.generators import OpenAIGenerator
 from haystack.dataclasses import StreamingChunk
-from haystack.utils import Secret, deserialize_secrets_inplace, serialize_callable, deserialize_callable
+from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 
 logger = logging.getLogger(__name__)
 
@@ -25,30 +24,25 @@ class AzureOpenAIGenerator(OpenAIGenerator):
     For more details on OpenAI models deployed on Azure, refer to the Microsoft
     [documentation](https://learn.microsoft.com/en-us/azure/ai-services/openai/).
 
-
+    Usage example:
     ```python
     from haystack.components.generators import AzureOpenAIGenerator
     from haystack.utils import Secret
-    client = AzureOpenAIGenerator(azure_endpoint="<Your Azure endpoint e.g. `https://your-company.azure.openai.com/>",
-                                api_key=Secret.from_token("<your-api-key>"),
-                            azure_deployment="<this a model name, e.g. gpt-35-turbo>")
+    client = AzureOpenAIGenerator(
+        azure_endpoint="<Your Azure endpoint e.g. `https://your-company.azure.openai.com/>",
+        api_key=Secret.from_token("<your-api-key>"),
+        azure_deployment="<this a model name, e.g. gpt-35-turbo>")
     response = client.run("What's Natural Language Processing? Be brief.")
     print(response)
+    ```
 
+    ```
     >> {'replies': ['Natural Language Processing (NLP) is a branch of artificial intelligence that focuses on
     >> the interaction between computers and human language. It involves enabling computers to understand, interpret,
     >> and respond to natural human language in a way that is both meaningful and useful.'], 'meta': [{'model':
     >> 'gpt-3.5-turbo-0613', 'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 16,
     >> 'completion_tokens': 49, 'total_tokens': 65}}]}
     ```
-
-     Key Features and Compatibility:
-         - **Primary Compatibility**: Designed to work seamlessly with gpt-4, gpt-3.5-turbo family of models.
-         - **Streaming Support**: Supports streaming responses from the OpenAI API.
-         - **Customizability**: Supports all parameters supported by the OpenAI API.
-
-     Input and Output Format:
-         - **String Format**: This component uses the strings for both input and output.
     """
 
     # pylint: disable=super-init-not-called
@@ -69,7 +63,7 @@ class AzureOpenAIGenerator(OpenAIGenerator):
         :param api_version: The version of the API to use. Defaults to 2023-05-15
         :param azure_deployment: The deployment of the model, usually the model name.
         :param api_key: The API key to use for authentication.
-        :param azure_ad_token: Azure Active Directory token, see https://www.microsoft.com/en-us/security/business/identity-access/microsoft-entra-id
+        :param azure_ad_token: [Azure Active Directory token](https://www.microsoft.com/en-us/security/business/identity-access/microsoft-entra-id)
         :param organization: The Organization ID, defaults to `None`. See
         [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization).
         :param streaming_callback: A callback function that is called when a new token is received from the stream.
@@ -134,7 +128,9 @@ class AzureOpenAIGenerator(OpenAIGenerator):
     def to_dict(self) -> Dict[str, Any]:
         """
         Serialize this component to a dictionary.
-        :return: The serialized component as a dictionary.
+
+        :returns:
+            The serialized component as a dictionary.
         """
         callback_name = serialize_callable(self.streaming_callback) if self.streaming_callback else None
         return default_to_dict(
@@ -154,8 +150,11 @@ class AzureOpenAIGenerator(OpenAIGenerator):
     def from_dict(cls, data: Dict[str, Any]) -> "AzureOpenAIGenerator":
         """
         Deserialize this component from a dictionary.
-        :param data: The dictionary representation of this component.
-        :return: The deserialized component instance.
+
+        :param data:
+            The dictionary representation of this component.
+        :returns:
+            The deserialized component instance.
         """
         deserialize_secrets_inplace(data["init_parameters"], keys=["api_key", "azure_ad_token"])
         init_params = data.get("init_parameters", {})

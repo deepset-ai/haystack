@@ -1,15 +1,12 @@
 import dataclasses
-import logging
-import warnings
-from typing import Optional, List, Callable, Dict, Any, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from openai import OpenAI, Stream
-from openai.types.chat import ChatCompletionChunk, ChatCompletion
+from openai.types.chat import ChatCompletion, ChatCompletionChunk
 
-from haystack import component, default_from_dict, default_to_dict
-from haystack.dataclasses import StreamingChunk, ChatMessage
-from haystack.utils import Secret, deserialize_secrets_inplace
-from haystack.utils import serialize_callable, deserialize_callable
+from haystack import component, default_from_dict, default_to_dict, logging
+from haystack.dataclasses import ChatMessage, StreamingChunk
+from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +24,14 @@ class OpenAIGenerator:
     For more details on the parameters supported by the OpenAI API, refer to the OpenAI
     [documentation](https://platform.openai.com/docs/api-reference/chat).
 
+    Key Features and Compatibility:
+     - Primary Compatibility: Designed to work seamlessly with gpt-4, gpt-3.5-turbo family of models.
+     - Streaming Support: Supports streaming responses from the OpenAI API.
+     - Customizability: Supports all parameters supported by the OpenAI API.
+
+     Input and Output Format:
+      - String Format: This component uses the strings for both input and output.
+
     ```python
     from haystack.components.generators import OpenAIGenerator
     client = OpenAIGenerator()
@@ -39,14 +44,6 @@ class OpenAIGenerator:
     >> 'gpt-3.5-turbo-0613', 'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 16,
     >> 'completion_tokens': 49, 'total_tokens': 65}}]}
     ```
-
-     Key Features and Compatibility:
-         - **Primary Compatibility**: Designed to work seamlessly with gpt-4, gpt-3.5-turbo family of models.
-         - **Streaming Support**: Supports streaming responses from the OpenAI API.
-         - **Customizability**: Supports all parameters supported by the OpenAI API.
-
-     Input and Output Format:
-         - **String Format**: This component uses the strings for both input and output.
     """
 
     def __init__(
@@ -60,8 +57,7 @@ class OpenAIGenerator:
         generation_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
-        Creates an instance of OpenAIGenerator. Unless specified otherwise in the `model`, this is for OpenAI's
-        GPT-3.5 model.
+        Creates an instance of OpenAIGenerator. Unless specified otherwise in the `model`, this is for OpenAI's GPT-3.5 model.
 
         :param api_key: The OpenAI API key.
         :param model: The name of the model to use.
@@ -111,7 +107,9 @@ class OpenAIGenerator:
     def to_dict(self) -> Dict[str, Any]:
         """
         Serialize this component to a dictionary.
-        :return: The serialized component as a dictionary.
+
+        :returns:
+            The serialized component as a dictionary.
         """
         callback_name = serialize_callable(self.streaming_callback) if self.streaming_callback else None
         return default_to_dict(
@@ -128,8 +126,11 @@ class OpenAIGenerator:
     def from_dict(cls, data: Dict[str, Any]) -> "OpenAIGenerator":
         """
         Deserialize this component from a dictionary.
-        :param data: The dictionary representation of this component.
-        :return: The deserialized component instance.
+
+        :param data:
+            The dictionary representation of this component.
+        :returns:
+            The deserialized component instance.
         """
         deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         init_params = data.get("init_parameters", {})
@@ -143,12 +144,14 @@ class OpenAIGenerator:
         """
         Invoke the text generation inference based on the provided messages and generation parameters.
 
-        :param prompt: The string prompt to use for text generation.
-        :param generation_kwargs: Additional keyword arguments for text generation. These parameters will
-        potentially override the parameters passed in the __init__ method.
-        For more details on the parameters supported by the OpenAI API, refer to the
-        OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat/create).
-        :return: A list of strings containing the generated responses and a list of dictionaries containing the metadata
+        :param prompt:
+            The string prompt to use for text generation.
+        :param generation_kwargs:
+            Additional keyword arguments for text generation. These parameters will potentially override the parameters
+            passed in the `__init__` method. For more details on the parameters supported by the OpenAI API, refer to the
+            OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat/create).
+        :returns:
+            A list of strings containing the generated responses and a list of dictionaries containing the metadata
         for each response.
         """
         message = ChatMessage.from_user(prompt)
@@ -200,8 +203,11 @@ class OpenAIGenerator:
     def _convert_to_openai_format(self, messages: List[ChatMessage]) -> List[Dict[str, Any]]:
         """
         Converts the list of ChatMessage to the list of messages in the format expected by the OpenAI API.
-        :param messages: The list of ChatMessage.
-        :return: The list of messages in the format expected by the OpenAI API.
+
+        :param messages:
+            The list of ChatMessage.
+        :returns:
+            The list of messages in the format expected by the OpenAI API.
         """
         openai_chat_message_format = {"role", "content", "name"}
         openai_formatted_messages = []
@@ -229,9 +235,13 @@ class OpenAIGenerator:
     def _build_message(self, completion: Any, choice: Any) -> ChatMessage:
         """
         Converts the response from the OpenAI API to a ChatMessage.
-        :param completion: The completion returned by the OpenAI API.
-        :param choice: The choice returned by the OpenAI API.
-        :return: The ChatMessage.
+
+        :param completion:
+            The completion returned by the OpenAI API.
+        :param choice:
+            The choice returned by the OpenAI API.
+        :returns:
+            The ChatMessage.
         """
         # function or tools calls are not going to happen in non-chat generation
         # as users can not send ChatMessage with function or tools calls
@@ -249,9 +259,11 @@ class OpenAIGenerator:
     def _build_chunk(self, chunk: Any) -> StreamingChunk:
         """
         Converts the response from the OpenAI API to a StreamingChunk.
-        :param chunk: The chunk returned by the OpenAI API.
-        :param choice: The choice returned by the OpenAI API.
-        :return: The StreamingChunk.
+
+        :param chunk:
+            The chunk returned by the OpenAI API.
+        :returns:
+            The StreamingChunk.
         """
         # function or tools calls are not going to happen in non-chat generation
         # as users can not send ChatMessage with function or tools calls
@@ -265,43 +277,20 @@ class OpenAIGenerator:
         """
         Check the `finish_reason` returned with the OpenAI completions.
         If the `finish_reason` is `length`, log a warning to the user.
-        :param message: The message returned by the LLM.
+
+        :param message:
+            The message returned by the LLM.
         """
         if message.meta["finish_reason"] == "length":
             logger.warning(
-                "The completion for index %s has been truncated before reaching a natural stopping point. "
+                "The completion for index {index} has been truncated before reaching a natural stopping point. "
                 "Increase the max_tokens parameter to allow for longer completions.",
-                message.meta["index"],
+                index=message.meta["index"],
+                finish_reason=message.meta["finish_reason"],
             )
         if message.meta["finish_reason"] == "content_filter":
             logger.warning(
-                "The completion for index %s has been truncated due to the content filter.", message.meta["index"]
+                "The completion for index {index} has been truncated due to the content filter.",
+                index=message.meta["index"],
+                finish_reason=message.meta["finish_reason"],
             )
-
-
-class GPTGenerator(OpenAIGenerator):
-    def __init__(
-        self,
-        api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
-        model: str = "gpt-3.5-turbo",
-        streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
-        api_base_url: Optional[str] = None,
-        organization: Optional[str] = None,
-        system_prompt: Optional[str] = None,
-        generation_kwargs: Optional[Dict[str, Any]] = None,
-    ):
-        warnings.warn(
-            "GPTGenerator is deprecated and will be removed in the next beta release. "
-            "Please use OpenAIGenerator instead.",
-            UserWarning,
-            stacklevel=2,
-        )
-        super().__init__(
-            api_key=api_key,
-            model=model,
-            streaming_callback=streaming_callback,
-            api_base_url=api_base_url,
-            organization=organization,
-            system_prompt=system_prompt,
-            generation_kwargs=generation_kwargs,
-        )

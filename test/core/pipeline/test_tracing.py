@@ -1,11 +1,12 @@
+from test.tracing.utils import SpyingSpan, SpyingTracer
 from typing import Optional
+from unittest.mock import ANY
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 
-from haystack import component, Pipeline
-from haystack.tracing.tracer import enable_tracing, tracer
-from test.tracing.utils import SpyingSpan, SpyingTracer
+from haystack import Pipeline, component
+from haystack.tracing.tracer import tracer
 
 
 @component
@@ -42,6 +43,8 @@ class TestTracing:
                     "haystack.pipeline.metadata": {},
                     "haystack.pipeline.max_loops_allowed": 100,
                 },
+                trace_id=ANY,
+                span_id=ANY,
             ),
             SpyingSpan(
                 operation_name="haystack.component.run",
@@ -49,10 +52,12 @@ class TestTracing:
                     "haystack.component.name": "hello",
                     "haystack.component.type": "Hello",
                     "haystack.component.input_types": {"word": "str"},
-                    "haystack.component.input_spec": {"word": {"type": "typing.Union[str, NoneType]", "senders": []}},
+                    "haystack.component.input_spec": {"word": {"type": ANY, "senders": []}},
                     "haystack.component.output_spec": {"output": {"type": "str", "senders": ["hello2"]}},
                     "haystack.component.visits": 1,
                 },
+                trace_id=ANY,
+                span_id=ANY,
             ),
             SpyingSpan(
                 operation_name="haystack.component.run",
@@ -60,13 +65,20 @@ class TestTracing:
                     "haystack.component.name": "hello2",
                     "haystack.component.type": "Hello",
                     "haystack.component.input_types": {"word": "str"},
-                    "haystack.component.input_spec": {
-                        "word": {"type": "typing.Union[str, NoneType]", "senders": ["hello"]}
-                    },
+                    "haystack.component.input_spec": {"word": {"type": ANY, "senders": ["hello"]}},
                     "haystack.component.output_spec": {"output": {"type": "str", "senders": []}},
                     "haystack.component.visits": 1,
                 },
+                trace_id=ANY,
+                span_id=ANY,
             ),
+        ]
+
+        # We need to check the type of the input_spec because it can be rendered differently
+        # depending on the Python version 🫠
+        assert spying_tracer.spans[1].tags["haystack.component.input_spec"]["word"]["type"] in [
+            "typing.Union[str, NoneType]",
+            "typing.Optional[str]",
         ]
 
     def test_with_enabled_content_tracing(
@@ -86,6 +98,8 @@ class TestTracing:
                     "haystack.pipeline.metadata": {},
                     "haystack.pipeline.max_loops_allowed": 100,
                 },
+                trace_id=ANY,
+                span_id=ANY,
             ),
             SpyingSpan(
                 operation_name="haystack.component.run",
@@ -93,12 +107,14 @@ class TestTracing:
                     "haystack.component.name": "hello",
                     "haystack.component.type": "Hello",
                     "haystack.component.input_types": {"word": "str"},
-                    "haystack.component.input_spec": {"word": {"type": "typing.Union[str, NoneType]", "senders": []}},
+                    "haystack.component.input_spec": {"word": {"type": ANY, "senders": []}},
                     "haystack.component.output_spec": {"output": {"type": "str", "senders": ["hello2"]}},
                     "haystack.component.input": {"word": "world"},
                     "haystack.component.visits": 1,
                     "haystack.component.output": {"output": "Hello, world!"},
                 },
+                trace_id=ANY,
+                span_id=ANY,
             ),
             SpyingSpan(
                 operation_name="haystack.component.run",
@@ -106,13 +122,13 @@ class TestTracing:
                     "haystack.component.name": "hello2",
                     "haystack.component.type": "Hello",
                     "haystack.component.input_types": {"word": "str"},
-                    "haystack.component.input_spec": {
-                        "word": {"type": "typing.Union[str, NoneType]", "senders": ["hello"]}
-                    },
+                    "haystack.component.input_spec": {"word": {"type": ANY, "senders": ["hello"]}},
                     "haystack.component.output_spec": {"output": {"type": "str", "senders": []}},
                     "haystack.component.input": {"word": "Hello, world!"},
                     "haystack.component.visits": 1,
                     "haystack.component.output": {"output": "Hello, Hello, world!!"},
                 },
+                trace_id=ANY,
+                span_id=ANY,
             ),
         ]

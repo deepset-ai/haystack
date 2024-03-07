@@ -1,10 +1,9 @@
 import contextlib
-from typing import Optional, Dict, Any, Iterator
+from typing import Any, Dict, Iterator, Optional
 
 from haystack.lazy_imports import LazyImport
-from haystack.tracing import Tracer, Span
+from haystack.tracing import Span, Tracer
 from haystack.tracing import utils as tracing_utils
-
 
 with LazyImport("Run 'pip install opentelemetry-sdk'") as opentelemetry_import:
     import opentelemetry
@@ -21,6 +20,10 @@ class OpenTelemetrySpan(Span):
 
     def raw_span(self) -> Any:
         return self._span
+
+    def get_correlation_data_for_logs(self) -> Dict[str, Any]:
+        span_context = self._span.get_span_context()
+        return {"trace_id": span_context.trace_id, "span_id": span_context.span_id}
 
 
 class OpenTelemetryTracer(Tracer):

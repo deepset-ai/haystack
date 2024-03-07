@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 
 class ChatRole(str, Enum):
@@ -33,7 +33,7 @@ class ChatMessage:
         Check if the message is from a specific role.
 
         :param role: The role to check against.
-        :return: True if the message is from the specified role, False otherwise.
+        :returns: True if the message is from the specified role, False otherwise.
         """
         return self.role == role
 
@@ -44,7 +44,7 @@ class ChatMessage:
 
         :param content: The text content of the message.
         :param meta: Additional metadata associated with the message.
-        :return: A new ChatMessage instance.
+        :returns: A new ChatMessage instance.
         """
         return cls(content, ChatRole.ASSISTANT, None, meta or {})
 
@@ -54,7 +54,7 @@ class ChatMessage:
         Create a message from the user.
 
         :param content: The text content of the message.
-        :return: A new ChatMessage instance.
+        :returns: A new ChatMessage instance.
         """
         return cls(content, ChatRole.USER, None)
 
@@ -64,7 +64,7 @@ class ChatMessage:
         Create a message from the system.
 
         :param content: The text content of the message.
-        :return: A new ChatMessage instance.
+        :returns: A new ChatMessage instance.
         """
         return cls(content, ChatRole.SYSTEM, None)
 
@@ -75,6 +75,6 @@ class ChatMessage:
 
         :param content: The text content of the message.
         :param name: The name of the function being called.
-        :return: A new ChatMessage instance.
+        :returns: A new ChatMessage instance.
         """
         return cls(content, ChatRole.FUNCTION, name)

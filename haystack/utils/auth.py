@@ -1,8 +1,8 @@
-from enum import Enum
 import os
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
-from dataclasses import dataclass
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from enum import Enum
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 
 class SecretType(Enum):
@@ -24,6 +24,14 @@ class SecretType(Enum):
 class Secret(ABC):
     """
     Encapsulates a secret used for authentication.
+
+    Usage example:
+    ```python
+    from haystack.components.generators import OpenAIGenerator
+    from haystack.utils import Secret
+
+    generator = OpenAIGenerator(api_key=Secret.from_token("<here_goes_your_token>"))
+    ```
     """
 
     @staticmethod

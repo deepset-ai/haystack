@@ -1,8 +1,8 @@
 import contextlib
-from typing import Optional, Dict, Any, Iterator
+from typing import Any, Dict, Iterator, Optional
 
 from haystack.lazy_imports import LazyImport
-from haystack.tracing import Tracer, Span
+from haystack.tracing import Span, Tracer
 from haystack.tracing import utils as tracing_utils
 
 with LazyImport("Run 'pip install ddtrace'") as ddtrace_import:
@@ -19,6 +19,22 @@ class DatadogSpan(Span):
 
     def raw_span(self) -> Any:
         return self._span
+
+    def get_correlation_data_for_logs(self) -> Dict[str, Any]:
+        raw_span = self.raw_span()
+        if not raw_span:
+            return {}
+
+        # https://docs.datadoghq.com/tracing/other_telemetry/connect_logs_and_traces/python/#no-standard-library-logging
+        trace_id, span_id = (str((1 << 64) - 1 & raw_span.trace_id), raw_span.span_id)
+
+        return {
+            "dd.trace_id": trace_id,
+            "dd.span_id": span_id,
+            "dd.service": ddtrace.config.service or "",
+            "dd.env": ddtrace.config.env or "",
+            "dd.version": ddtrace.config.version or "",
+        }
 
 
 class DatadogTracer(Tracer):

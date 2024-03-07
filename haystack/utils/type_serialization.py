@@ -14,10 +14,12 @@ def serialize_type(target: Any) -> str:
     It assumes that non-typing objects will have a '__name__' attribute and raises
     an error if a type cannot be serialized.
 
-    :param target: The object to serialize, can be an instance or a type.
-    :type target: Any
-    :return: The string representation of the type.
-    :raises ValueError: If the type cannot be serialized.
+    :param target:
+        The object to serialize, can be an instance or a type.
+    :return:
+        The string representation of the type.
+    :raises ValueError:
+        If the type cannot be serialized.
     """
     # If the target is a string and contains a dot, treat it as an already serialized type
     if isinstance(target, str) and "." in target:
@@ -57,11 +59,14 @@ def deserialize_type(type_str: str) -> Any:
     Deserializes a type given its full import path as a string, including nested generic types.
 
     This function will dynamically import the module if it's not already imported
-    and then retrieve the type object from it. It also handles nested generic types like 'typing.List[typing.Dict[int, str]]'.
+    and then retrieve the type object from it. It also handles nested generic types like `typing.List[typing.Dict[int, str]]`.
 
-    :param type_str: The string representation of the type's full import path.
-    :return: The deserialized type object.
-    :raises DeserializationError: If the type cannot be deserialized due to missing module or type.
+    :param type_str:
+        The string representation of the type's full import path.
+    :returns:
+        The deserialized type object.
+    :raises DeserializationError:
+        If the type cannot be deserialized due to missing module or type.
     """
 
     def parse_generic_args(args_str):

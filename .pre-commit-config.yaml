@@ -22,9 +22,10 @@ repos:
   - id: black-jupyter
 
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.0.290
+  rev: v0.3.0
   hooks:
   - id: ruff
+    args: [--fix, --exit-non-zero-on-fix]
 
 - repo: https://github.com/codespell-project/codespell
   rev: v2.2.5

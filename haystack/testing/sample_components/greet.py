@@ -1,13 +1,13 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from typing import Optional
 import logging
+from typing import Optional
 
+import haystack.logging as haystack_logging
 from haystack.core.component import component
 
-
-logger = logging.getLogger(__name__)
+logger = haystack_logging.getLogger(__name__)
 
 
 @component

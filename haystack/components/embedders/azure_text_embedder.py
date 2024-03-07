@@ -1,16 +1,16 @@
 import os
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
 
 from openai.lib.azure import AzureOpenAI
 
-from haystack import component, Document, default_to_dict, default_from_dict
+from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.utils import Secret, deserialize_secrets_inplace
 
 
 @component
 class AzureOpenAITextEmbedder:
     """
-    A component for embedding strings using OpenAI models.
+    A component for embedding strings using OpenAI models on Azure.
 
     Usage example:
     ```python
@@ -42,15 +42,27 @@ class AzureOpenAITextEmbedder:
         """
         Create an AzureOpenAITextEmbedder component.
 
-        :param azure_endpoint: The endpoint of the deployed model, e.g. `https://example-resource.azure.openai.com/`
-        :param api_version: The version of the API to use. Defaults to 2023-05-15
-        :param azure_deployment: The deployment of the model, usually the model name.
-        :param api_key: The API key to use for authentication.
-        :param azure_ad_token: Azure Active Directory token, see https://www.microsoft.com/en-us/security/business/identity-access/microsoft-entra-id
-        :param organization: The Organization ID, defaults to `None`. See
-        [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization).
-        :param prefix: A string to add to the beginning of each text.
-        :param suffix: A string to add to the end of each text.
+        :param azure_endpoint:
+            The endpoint of the deployed model.
+        :param api_version:
+            The version of the API to use.
+        :param azure_deployment:
+            The deployment of the model, usually matches the model name.
+        :param api_key:
+            The API key used for authentication.
+        :param azure_ad_token:
+            Microsoft Entra ID token, see Microsoft's official
+            [Entra ID](https://www.microsoft.com/en-us/security/business/identity-access/microsoft-entra-id)
+            documentation for more information.
+            Used to be called Azure Active Directory.
+        :param organization:
+            The Organization ID. See OpenAI's
+            [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization)
+            for more information.
+        :param prefix:
+            A string to add at the beginning of each text.
+        :param suffix:
+            A string to add at the end of each text.
         """
         # Why is this here?
         # AzureOpenAI init is forcing us to use an init method that takes either base_url or azure_endpoint as not
@@ -89,8 +101,10 @@ class AzureOpenAITextEmbedder:
 
     def to_dict(self) -> Dict[str, Any]:
         """
-        Serialize this component to a dictionary.
-        :return: The serialized component as a dictionary.
+        Serializes the component to a dictionary.
+
+        :returns:
+            Dictionary with serialized data.
         """
         return default_to_dict(
             self,
@@ -106,12 +120,30 @@ class AzureOpenAITextEmbedder:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "AzureOpenAITextEmbedder":
+        """
+        Deserializes the component from a dictionary.
+
+        :param data:
+            Dictionary to deserialize from.
+        :returns:
+            Deserialized component.
+        """
         deserialize_secrets_inplace(data["init_parameters"], keys=["api_key", "azure_ad_token"])
         return default_from_dict(cls, data)
 
     @component.output_types(embedding=List[float], meta=Dict[str, Any])
     def run(self, text: str):
-        """Embed a string using AzureOpenAITextEmbedder."""
+        """
+        Embed a single string.
+
+        :param text:
+            Text to embed.
+
+        :returns:
+            A dictionary with the following keys:
+            - `embedding`: The embedding of the input text.
+            - `meta`: Information about the usage of the model.
+        """
         if not isinstance(text, str):
             # Check if input is a list and all elements are instances of Document
             if isinstance(text, list) and all(isinstance(elem, Document) for elem in text):

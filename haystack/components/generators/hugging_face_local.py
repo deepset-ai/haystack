@@ -1,12 +1,9 @@
-import logging
 from typing import Any, Dict, List, Literal, Optional
 
-from haystack import component, default_from_dict, default_to_dict
-
+from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.lazy_imports import LazyImport
-from haystack.utils import ComponentDevice
+from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
 from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs
-from haystack.utils import Secret, deserialize_secrets_inplace
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +12,7 @@ SUPPORTED_TASKS = ["text-generation", "text2text-generation"]
 with LazyImport(message="Run 'pip install transformers[torch]'") as transformers_import:
     from huggingface_hub import model_info
     from transformers import StoppingCriteriaList, pipeline
+
     from haystack.utils.hf import StopWordsCriteria  # pylint: disable=ungrouped-imports
 
 
@@ -22,18 +20,19 @@ with LazyImport(message="Run 'pip install transformers[torch]'") as transformers
 class HuggingFaceLocalGenerator:
     """
     Generator based on a Hugging Face model.
+
     This component provides an interface to generate text using a Hugging Face model that runs locally.
 
     Usage example:
     ```python
     from haystack.components.generators import HuggingFaceLocalGenerator
 
-    generator = HuggingFaceLocalGenerator(model="google/flan-t5-large",
-                                          task="text2text-generation",
-                                          generation_kwargs={
-                                            "max_new_tokens": 100,
-                                            "temperature": 0.9,
-                                            })
+    generator = HuggingFaceLocalGenerator(
+        model="google/flan-t5-large",
+        task="text2text-generation",
+        generation_kwargs={"max_new_tokens": 100, "temperature": 0.9})
+
+    generator.warm_up()
 
     print(generator.run("Who is the best American actor?"))
     # {'replies': ['John Cusack']}
@@ -51,9 +50,9 @@ class HuggingFaceLocalGenerator:
         stop_words: Optional[List[str]] = None,
     ):
         """
+        Creates an instance of a HuggingFaceLocalGenerator.
+
         :param model: The name or path of a Hugging Face model for text generation,
-            for example, "google/flan-t5-large".
-            If the model is also specified in the `huggingface_pipeline_kwargs`, this parameter will be ignored.
         :param task: The task for the Hugging Face pipeline.
             Possible values are "text-generation" and "text2text-generation".
             Generally, decoder-only models like GPT support "text-generation",
@@ -68,17 +67,16 @@ class HuggingFaceLocalGenerator:
         :param generation_kwargs: A dictionary containing keyword arguments to customize text generation.
             Some examples: `max_length`, `max_new_tokens`, `temperature`, `top_k`, `top_p`,...
             See Hugging Face's documentation for more information:
-            - https://huggingface.co/docs/transformers/main/en/generation_strategies#customize-text-generation
-            - https://huggingface.co/docs/transformers/main/en/main_classes/text_generation#transformers.GenerationConfig
+            - [customize-text-generation](https://huggingface.co/docs/transformers/main/en/generation_strategies#customize-text-generation)
+            - [transformers.GenerationConfig](https://huggingface.co/docs/transformers/main/en/main_classes/text_generation#transformers.GenerationConfig)
         :param huggingface_pipeline_kwargs: Dictionary containing keyword arguments used to initialize the
             Hugging Face pipeline for text generation.
             These keyword arguments provide fine-grained control over the Hugging Face pipeline.
             In case of duplication, these kwargs override `model`, `task`, `device`, and `token` init parameters.
             See Hugging Face's [documentation](https://huggingface.co/docs/transformers/en/main_classes/pipelines#transformers.pipeline.task)
             for more information on the available kwargs.
-            In this dictionary, you can also include `model_kwargs` to specify the kwargs
-            for model initialization:
-            https://huggingface.co/docs/transformers/en/main_classes/model#transformers.PreTrainedModel.from_pretrained
+            In this dictionary, you can also include `model_kwargs` to specify the kwargs for model initialization:
+            [transformers.PreTrainedModel.from_pretrained](https://huggingface.co/docs/transformers/en/main_classes/model#transformers.PreTrainedModel.from_pretrained)
         :param stop_words: A list of stop words. If any one of the stop words is generated, the generation is stopped.
             If you provide this parameter, you should not specify the `stopping_criteria` in `generation_kwargs`.
             For some chat models, the output includes both the new text and the original prompt.
@@ -141,6 +139,9 @@ class HuggingFaceLocalGenerator:
         return {"model": f"[object of type {type(self.huggingface_pipeline_kwargs['model'])}]"}
 
     def warm_up(self):
+        """
+        Initializes the component.
+        """
         if self.pipeline is None:
             self.pipeline = pipeline(**self.huggingface_pipeline_kwargs)
 
@@ -152,7 +153,10 @@ class HuggingFaceLocalGenerator:
 
     def to_dict(self) -> Dict[str, Any]:
         """
-        Serialize this component to a dictionary.
+        Serializes the component to a dictionary.
+
+        :returns:
+            Dictionary with serialized data.
         """
         serialization_dict = default_to_dict(
             self,
@@ -171,7 +175,12 @@ class HuggingFaceLocalGenerator:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "HuggingFaceLocalGenerator":
         """
-        Deserialize this component from a dictionary.
+        Deserializes the component from a dictionary.
+
+        :param data:
+            The dictionary to deserialize from.
+        :returns:
+            The deserialized component.
         """
         deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
         deserialize_hf_model_kwargs(data["init_parameters"]["huggingface_pipeline_kwargs"])
@@ -182,9 +191,14 @@ class HuggingFaceLocalGenerator:
         """
         Run the text generation model on the given prompt.
 
-        :param prompt: A string representing the prompt.
-        :param generation_kwargs: Additional keyword arguments for text generation.
-        :return: A dictionary containing the generated replies.
+        :param prompt:
+            A string representing the prompt.
+        :param generation_kwargs:
+            Additional keyword arguments for text generation.
+
+        :returns:
+            A dictionary containing the generated replies.
+            - replies: A list of strings representing the generated replies.
         """
         if self.pipeline is None:
             raise RuntimeError("The generation model has not been loaded. Please call warm_up() before running.")

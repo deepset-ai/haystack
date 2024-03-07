@@ -1,11 +1,10 @@
-import logging
 import re
 from copy import deepcopy
 from functools import partial, reduce
 from itertools import chain
 from typing import Generator, List, Optional, Set
 
-from haystack import Document, component
+from haystack import Document, component, logging
 
 logger = logging.getLogger(__name__)
 
@@ -13,21 +12,20 @@ logger = logging.getLogger(__name__)
 @component
 class DocumentCleaner:
     """
-    Makes text documents more readable by removing extra whitespaces, empty lines, specified substrings, regexes, page headers and footers (in this order).
-    This is useful for preparing the documents for further processing by LLMs.
+    Cleans up text documents by removing extra whitespaces, empty lines, specified substrings, regexes,
+    page headers and footers (in this order).
 
-    Example usage in an indexing pipeline:
-
+    Usage example:
     ```python
-    document_store = InMemoryDocumentStore()
-    p = Pipeline()
-    p.add_component(instance=TextFileToDocument(), name="text_file_converter")
-    p.add_component(instance=DocumentCleaner(), name="cleaner")
-    p.add_component(instance=TextDocumentSplitter(split_by="sentence", split_length=1), name="splitter")
-    p.add_component(instance=DocumentWriter(document_store=document_store), name="writer")
-    p.connect("text_file_converter.documents", "cleaner.documents")
-    p.connect("cleaner.documents", "splitter.documents")
-    p.connect("splitter.documents", "writer.documents")
+    from haystack import Document
+    from haystack.components.preprocessors import DocumentCleaner
+
+    doc = Document(content="This   is  a  document  to  clean\\n\\n\\nsubstring to remove")
+
+    cleaner = DocumentCleaner(remove_substrings = ["substring to remove"])
+    result = cleaner.run(documents=[doc])
+
+    assert result["documents"][0].content == "This is a document to clean "
     ```
     """
 
@@ -43,8 +41,8 @@ class DocumentCleaner:
         :param remove_empty_lines: Whether to remove empty lines.
         :param remove_extra_whitespaces: Whether to remove extra whitespaces.
         :param remove_repeated_substrings: Whether to remove repeated substrings (headers/footers) from pages.
-            Pages in the text need to be separated by form feed character "\f",
-            which is supported by TextFileToDocument and AzureOCRDocumentConverter.
+            Pages in the text need to be separated by form feed character "\\f",
+            which is supported by `TextFileToDocument` and `AzureOCRDocumentConverter`.
         :param remove_substrings: List of substrings to remove from the text.
         :param remove_regex: Regex to match and replace substrings by "".
         """
@@ -58,8 +56,14 @@ class DocumentCleaner:
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document]):
         """
-        Run the DocumentCleaner on the given list of documents.
-        The documents' metadata remain unchanged.
+        Cleans up the documents.
+
+        :param documents: List of Documents to clean.
+
+        :returns: A dictionary with the following key:
+            - `documents`: List of cleaned Documents.
+
+        :raises TypeError: if documents is not a list of Documents.
         """
         if not isinstance(documents, list) or documents and not isinstance(documents[0], Document):
             raise TypeError("DocumentCleaner expects a List of Documents as input.")
@@ -68,8 +72,8 @@ class DocumentCleaner:
         for doc in documents:
             if doc.content is None:
                 logger.warning(
-                    "DocumentCleaner only cleans text documents but document.content for document ID %s is None.",
-                    doc.id,
+                    "DocumentCleaner only cleans text documents but document.content for document ID %{document_id} is None.",
+                    document_id=doc.id,
                 )
                 cleaned_docs.append(doc)
                 continue
@@ -94,7 +98,7 @@ class DocumentCleaner:
         """
         Remove empty lines and lines that contain nothing but whitespaces from text.
         :param text: Text to clean.
-        :param return: The text without empty lines.
+        :returns: The text without empty lines.
         """
         lines = text.split("\n")
         non_empty_lines = filter(lambda line: line.strip() != "", lines)
@@ -104,7 +108,7 @@ class DocumentCleaner:
         """
         Remove extra whitespaces from text.
         :param text: Text to clean.
-        :param return: The text without extra whitespaces.
+        :returns: The text without extra whitespaces.
         """
         return re.sub(r"\s\s+", " ", text).strip()
 
@@ -113,7 +117,7 @@ class DocumentCleaner:
         Remove substrings that match the specified regex from the text.
         :param text: Text to clean.
         :param regex: Regex to match and replace substrings by "".
-        :param return: The text without any substrings that match the regex.
+        :returns: The text without the substrings that match the regex.
         """
         return re.sub(regex, "", text).strip()
 
@@ -122,7 +126,7 @@ class DocumentCleaner:
         Remove all specified substrings from the text.
         :param text: Text to clean.
         :param substrings: Substrings to remove.
-        :return: The text without the specified substrings.
+        :returns: The text without the specified substrings.
         """
         for substring in substrings:
             text = text.replace(substring, "")
@@ -133,7 +137,7 @@ class DocumentCleaner:
         Remove any substrings from the text that occur repeatedly on every page. For example headers or footers.
         Pages in the text need to be separated by form feed character "\f".
         :param text: Text to clean.
-        :return: The text without the repeated substrings.
+        :returns: The text without the repeated substrings.
         """
         return self._find_and_remove_header_footer(
             text, n_chars=300, n_first_pages_to_ignore=1, n_last_pages_to_ignore=1
@@ -152,7 +156,7 @@ class DocumentCleaner:
         :param n_chars: The number of first/last characters where the header/footer shall be searched in.
         :param n_first_pages_to_ignore: The number of first pages to ignore (e.g. TOCs often don't contain footer/header).
         :param n_last_pages_to_ignore: The number of last pages to ignore.
-        :return: The text without the found headers and footers.
+        :returns: The text without the found headers and footers.
         """
 
         pages = text.split("\f")
@@ -169,7 +173,9 @@ class DocumentCleaner:
         if found_footer:
             pages = [page.replace(found_footer, "") for page in pages]
 
-        logger.debug("Removed header '%s' and footer '%s' in document", found_header, found_footer)
+        logger.debug(
+            "Removed header '{header}' and footer '{footer}' in document", header=found_header, footer=found_footer
+        )
         text = "\f".join(pages)
         return text
 
@@ -178,7 +184,7 @@ class DocumentCleaner:
         Return all ngrams of length n from a text sequence. Each ngram consists of n words split by whitespace.
         :param seq: The sequence to generate ngrams from.
         :param n: The length of the ngrams to generate.
-        :return: A Generator generating all ngrams of length n from the given sequence.
+        :returns: A Generator generating all ngrams of length n from the given sequence.
         """
 
         # In order to maintain the original whitespace, but still consider \n and \t for n-gram tokenization,
@@ -201,7 +207,7 @@ class DocumentCleaner:
         :param seq: The sequence to generate ngrams from.
         :param min_ngram: The minimum length of ngram to consider.
         :param max_ngram: The maximum length of ngram to consider.
-        :return: A set of all ngrams from the given sequence.
+        :returns: A set of all ngrams from the given sequence.
         """
         lengths = range(min_ngram, max_ngram) if max_ngram else range(min_ngram, len(seq))
         ngrams = map(partial(self._ngram, seq), lengths)
@@ -217,7 +223,7 @@ class DocumentCleaner:
         :param sequences: The list of strings that shall be searched for common n_grams.
         :param max_ngram: The maximum length of ngram to consider.
         :param min_ngram: The minimum length of ngram to consider.
-        :return: The longest ngram that all sequences have in common.
+        :returns: The longest ngram that all sequences have in common.
         """
         sequences = [s for s in sequences if s]  # filter empty sequences
         if not sequences:

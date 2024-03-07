@@ -139,6 +139,8 @@ class TestOpenAPIServiceConnector:
 
         openapi_mock.assert_called_once_with(spec)
         mock_service.authenticate.assert_called_once_with("apikey", "fake_key")
+
+        # verify call went through on the wire with the correct parameters
         mock_service.call_compare_branches.assert_called_once_with(
             parameters={"basehead": "main...some_branch", "owner": "deepset-ai", "repo": "haystack"}
         )
@@ -173,5 +175,156 @@ class TestOpenAPIServiceConnector:
 
         messages = [ChatMessage.from_assistant(mock_message)]
         result = connector.run(messages=messages, service_openapi_spec=spec)
+
+        # verify call went through on the wire
+        mock_service.call_greet.assert_called_once_with(parameters={"name": "John"}, data={"message": "Hello"})
+
         response = json.loads(result["service_response"][0].content)
         assert response == "Hello, John"
+
+    @patch("haystack.components.connectors.openapi_service.OpenAPI")
+    def test_run_with_complex_types(self, openapi_mock, test_files_path):
+        connector = OpenAPIServiceConnector()
+        spec_path = test_files_path / "json" / "complex_types_openapi_service.json"
+        with open(spec_path, "r") as file:
+            spec = json.loads(file.read())
+        mock_message = json.dumps(
+            [
+                {
+                    "id": "call_NJr1NBz2Th7iUWJpRIJZoJIA",
+                    "function": {
+                        "arguments": '{"transaction_amount": 150.75, "description": "Monthly subscription fee", "payment_method_id": "visa_ending_in_1234", "payer": {"name": "Alex Smith", "email": "alex.smith@example.com", "identification": {"type": "Driver\'s License", "number": "D12345678"}}}',
+                        "name": "processPayment",
+                    },
+                    "type": "function",
+                }
+            ]
+        )
+
+        call_processPayment = Mock(return_value=Mock(_raw_data={"result": "accepted"}))
+        call_processPayment.operation.__self__ = Mock()
+        call_processPayment.operation.__self__.raw_element = {
+            "requestBody": {
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "properties": {
+                                "transaction_amount": {"type": "number", "example": 150.75},
+                                "description": {"type": "string", "example": "Monthly subscription fee"},
+                                "payment_method_id": {"type": "string", "example": "visa_ending_in_1234"},
+                                "payer": {
+                                    "type": "object",
+                                    "properties": {
+                                        "name": {"type": "string", "example": "Alex Smith"},
+                                        "email": {"type": "string", "example": "alex.smith@example.com"},
+                                        "identification": {
+                                            "type": "object",
+                                            "properties": {
+                                                "type": {"type": "string", "example": "Driver's License"},
+                                                "number": {"type": "string", "example": "D12345678"},
+                                            },
+                                            "required": ["type", "number"],
+                                        },
+                                    },
+                                    "required": ["name", "email", "identification"],
+                                },
+                            },
+                            "required": ["transaction_amount", "description", "payment_method_id", "payer"],
+                        }
+                    }
+                }
+            }
+        }
+        mock_service = Mock(call_processPayment=call_processPayment)
+        mock_service.raw_element = {}
+        openapi_mock.return_value = mock_service
+
+        messages = [ChatMessage.from_assistant(mock_message)]
+        result = connector.run(messages=messages, service_openapi_spec=spec)
+
+        # verify call went through on the wire
+        mock_service.call_processPayment.assert_called_once_with(
+            data={
+                "transaction_amount": 150.75,
+                "description": "Monthly subscription fee",
+                "payment_method_id": "visa_ending_in_1234",
+                "payer": {
+                    "name": "Alex Smith",
+                    "email": "alex.smith@example.com",
+                    "identification": {"type": "Driver's License", "number": "D12345678"},
+                },
+            }
+        )
+
+        response = json.loads(result["service_response"][0].content)
+        assert response == {"result": "accepted"}
+
+    @patch("haystack.components.connectors.openapi_service.OpenAPI")
+    def test_run_with_request_params_missing_in_invocation_args(self, openapi_mock, test_files_path):
+        connector = OpenAPIServiceConnector()
+        spec_path = test_files_path / "yaml" / "openapi_greeting_service.yml"
+        with open(spec_path, "r") as file:
+            spec = json.loads(file.read())
+        mock_message = json.dumps(
+            [
+                {
+                    "id": "call_NJr1NBz2Th7iUWJpRIJZoJIA",
+                    "function": {"arguments": '{"message": "Hello"}', "name": "greet"},
+                    "type": "function",
+                }
+            ]
+        )
+        call_greet = Mock(return_value=Mock(_raw_data="Hello, John"))
+        call_greet.operation.__self__ = Mock()
+        call_greet.operation.__self__.raw_element = {
+            "parameters": [{"name": "name", "required": True}],
+            "requestBody": {
+                "content": {"application/json": {"schema": {"properties": {"message": {"type": "string"}}}}}
+            },
+        }
+
+        mock_service = Mock(call_greet=call_greet)
+        mock_service.raw_element = {}
+        openapi_mock.return_value = mock_service
+
+        messages = [ChatMessage.from_assistant(mock_message)]
+        with pytest.raises(ValueError, match="Missing parameter: 'name' required for the 'greet' operation."):
+            connector.run(messages=messages, service_openapi_spec=spec)
+
+    @patch("haystack.components.connectors.openapi_service.OpenAPI")
+    def test_run_with_body_properties_missing_in_invocation_args(self, openapi_mock, test_files_path):
+        connector = OpenAPIServiceConnector()
+        spec_path = test_files_path / "yaml" / "openapi_greeting_service.yml"
+        with open(spec_path, "r") as file:
+            spec = json.loads(file.read())
+        mock_message = json.dumps(
+            [
+                {
+                    "id": "call_NJr1NBz2Th7iUWJpRIJZoJIA",
+                    "function": {"arguments": '{"name": "John"}', "name": "greet"},
+                    "type": "function",
+                }
+            ]
+        )
+        call_greet = Mock(return_value=Mock(_raw_data="Hello, John"))
+        call_greet.operation.__self__ = Mock()
+        call_greet.operation.__self__.raw_element = {
+            "parameters": [{"name": "name"}],
+            "requestBody": {
+                "content": {
+                    "application/json": {
+                        "schema": {"properties": {"message": {"type": "string"}}, "required": ["message"]}
+                    }
+                }
+            },
+        }
+
+        mock_service = Mock(call_greet=call_greet)
+        mock_service.raw_element = {}
+        openapi_mock.return_value = mock_service
+
+        messages = [ChatMessage.from_assistant(mock_message)]
+        with pytest.raises(
+            ValueError, match="Missing requestBody parameter: 'message' required for the 'greet' operation."
+        ):
+            connector.run(messages=messages, service_openapi_spec=spec)

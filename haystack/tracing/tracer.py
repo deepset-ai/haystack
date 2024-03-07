@@ -1,8 +1,9 @@
 import abc
 import contextlib
-import logging
 import os
-from typing import Dict, Any, Optional, Iterator
+from typing import Any, Dict, Iterator, Optional
+
+from haystack import logging
 
 HAYSTACK_AUTO_TRACE_ENABLED_ENV_VAR = "HAYSTACK_AUTO_TRACE_ENABLED"
 HAYSTACK_CONTENT_TRACING_ENABLED_ENV_VAR = "HAYSTACK_CONTENT_TRACING_ENABLED"
@@ -59,6 +60,12 @@ class Span(abc.ABC):
         """
         if tracer.is_content_tracing_enabled:
             self.set_tag(key, value)
+
+    def get_correlation_data_for_logs(self) -> Dict[str, Any]:
+        """Return a dictionary with correlation data for logs.
+
+        This is useful if you want to correlate logs with traces."""
+        return {}
 
 
 class Tracer(abc.ABC):
@@ -151,7 +158,9 @@ def auto_enable_tracing() -> None:
     Note that it will only work correctly if tracing was configured _before_ Haystack is imported.
     """
     if os.getenv(HAYSTACK_AUTO_TRACE_ENABLED_ENV_VAR, "true").lower() == "false":
-        logger.info("Tracing disabled via '%s'", HAYSTACK_AUTO_TRACE_ENABLED_ENV_VAR)
+        logger.info(
+            "Tracing disabled via environment variable '{env_key}'", env_key=HAYSTACK_AUTO_TRACE_ENABLED_ENV_VAR
+        )
         return
 
     if is_tracing_enabled():
@@ -160,7 +169,7 @@ def auto_enable_tracing() -> None:
     tracer = _auto_configured_opentelemetry_tracer() or _auto_configured_datadog_tracer()
     if tracer:
         enable_tracing(tracer)
-        logger.info("Tracing enabled via '%s'", tracer.__class__.__name__)
+        logger.info("Auto-enabled tracing for '{tracer}'", tracer=tracer.__class__.__name__)
 
 
 def _auto_configured_opentelemetry_tracer() -> Optional[Tracer]:
@@ -189,6 +198,7 @@ def _auto_configured_datadog_tracer() -> Optional[Tracer]:
     # we implement this here and not in the `datadog` module to avoid import warnings when Datadog is not installed
     try:
         from ddtrace import tracer
+
         from haystack.tracing.datadog import DatadogTracer
 
         if tracer.enabled:
