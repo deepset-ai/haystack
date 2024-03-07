@@ -56,7 +56,7 @@ jobs:
         if: github.event_name == 'push'
         uses: readmeio/rdme@v8
         with:
-          rdme: docs ./docs/pydoc/temp --key=${{ secrets.README_API_KEY }} --version="${{ steps.version-getter.outputs.version }}"
+          rdme: docs ./docs/pydoc/temp --key=${{ secrets.README_API_KEY }} --version=${{ steps.version-getter.outputs.version }}
 
       - name: Delete outdated
         if: github.event_name == 'push'
