@@ -88,7 +88,10 @@ class PyPDFToDocument:
         Create an PyPDFToDocument component.
 
         :param converter_name:
-            Name of the registered converter to use.
+            Name of the registered converter to use (converter_name = "custom" supports custom conversion parameters).
+        :param conversion_params:
+            dictionary of custom conversion parameters (currently supported: start_page, end_page)
+
         """
         pypdf_import.check()
 
