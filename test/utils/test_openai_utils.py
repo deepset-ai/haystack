@@ -14,73 +14,43 @@ from haystack.utils.openai_utils import (
 
 
 @pytest.mark.unit
-def test_openai_text_completion_tokenization_details_gpt_default():
-    tokenizer_name, max_tokens_limit = _openai_text_completion_tokenization_details(model_name="not-recognized-name")
-    assert tokenizer_name == "gpt2"
-    assert max_tokens_limit == 4096
-
-
-@pytest.mark.unit
-def test_openai_text_completion_tokenization_details_gpt_3_5_turbo_instruct():
-    tokenizer_name, max_tokens_limit = _openai_text_completion_tokenization_details(model_name="gpt-3.5-turbo-instruct")
-    assert tokenizer_name == "cl100k_base"
-    assert max_tokens_limit == 4096
-
-
-@pytest.mark.unit
-def test_openai_text_completion_tokenization_details_gpt3_5_azure():
-    tokenizer_name, max_tokens_limit = _openai_text_completion_tokenization_details(model_name="gpt-35-turbo")
-    assert tokenizer_name == "cl100k_base"
-    assert max_tokens_limit == 16384
-
-
-@pytest.mark.unit
-def test_openai_text_completion_tokenization_details_gpt3_5():
-    tokenizer_name, max_tokens_limit = _openai_text_completion_tokenization_details(model_name="gpt-3.5-turbo")
-    assert tokenizer_name == "cl100k_base"
-    assert max_tokens_limit == 16384
-
-
-@pytest.mark.unit
-def test_openai_text_completion_tokenization_details_gpt3_5_1106():
-    tokenizer_name, max_tokens_limit = _openai_text_completion_tokenization_details(model_name="gpt-3.5-turbo-1106")
-    assert tokenizer_name == "cl100k_base"
-    assert max_tokens_limit == 16384
-
-
-@pytest.mark.unit
-def test_openai_text_completion_tokenization_details_gpt_4():
-    tokenizer_name, max_tokens_limit = _openai_text_completion_tokenization_details(model_name="gpt-4")
-    assert tokenizer_name == "cl100k_base"
-    assert max_tokens_limit == 8192
-
-
-@pytest.mark.unit
-def test_openai_text_completion_tokenization_details_gpt_4_32k():
-    tokenizer_name, max_tokens_limit = _openai_text_completion_tokenization_details(model_name="gpt-4-32k")
-    assert tokenizer_name == "cl100k_base"
-    assert max_tokens_limit == 32768
-
-
-@pytest.mark.unit
-def test_openai_text_completion_tokenization_details_gpt_4_1106():
-    tokenizer_name, max_tokens_limit = _openai_text_completion_tokenization_details(model_name="gpt-4-1106")
-    assert tokenizer_name == "cl100k_base"
-    assert max_tokens_limit == 128000
-
-
-@pytest.mark.unit
-def test_openai_text_completion_tokenization_details_gpt_4_turbo_preview():
-    tokenizer_name, max_tokens_limit = _openai_text_completion_tokenization_details(model_name="gpt-4-turbo-preview")
-    assert tokenizer_name == "cl100k_base"
-    assert max_tokens_limit == 128000
-
-
-@pytest.mark.unit
-def test_openai_text_completion_tokenization_details_gpt_4_0125_preview():
-    tokenizer_name, max_tokens_limit = _openai_text_completion_tokenization_details(model_name="gpt-4-0125-preview")
-    assert tokenizer_name == "cl100k_base"
-    assert max_tokens_limit == 128000
+@pytest.mark.parametrize(
+    "model_name,tok_name,max_tok_limit",
+    [
+        # Default
+        ("not-recognized-name", "cl100k_base", 4096),
+        # GPT-3.5
+        ("gpt-3.5-turbo-0125", "cl100k_base", 16385),
+        ("gpt-3.5-turbo-instruct", "cl100k_base", 4096),
+        ("gpt-3.5-turbo-0613", "cl100k_base", 4096),
+        ("gpt-3.5-turbo", "cl100k_base", 16385),
+        ("gpt-3.5-turbo-1106", "cl100k_base", 16385),
+        ("gpt-3.5-turbo-16k", "cl100k_base", 16385),
+        ("gpt-3.5-turbo-16k-0613", "cl100k_base", 16385),
+        # GPT 4
+        ("gpt-4-0125-preview", "cl100k_base", 128000),
+        ("gpt-4-turbo-preview", "cl100k_base", 128000),
+        ("gpt-4-1106-preview", "cl100k_base", 128000),
+        ("gpt-4-vision-preview", "cl100k_base", 128000),
+        ("gpt-4-1106-vision-preview", "cl100k_base", 128000),
+        ("gpt-4", "cl100k_base", 8192),
+        ("gpt-4-0613", "cl100k_base", 8192),
+        ("gpt-4-32k", "cl100k_base", 32768),
+        ("gpt-4-32k-0613", "cl100k_base", 32768),
+        ("gpt-4-1106", "cl100k_base", 128000),
+        # GPT-35 Azure
+        ("gpt-35-turbo-instruct", "cl100k_base", 4096),
+        ("gpt-35-turbo", "cl100k_base", 16385),
+        ("gpt-35-turbo-16k", "cl100k_base", 16385),
+        # davinci and babbage
+        ("davinci-002", "cl100k_base", 16384),
+        ("babbage-002", "cl100k_base", 16384),
+    ],
+)
+def test_openai_text_completion_tokenization(model_name, tok_name, max_tok_limit):
+    tokenizer_name, max_tokens_limit = _openai_text_completion_tokenization_details(model_name=model_name)
+    assert tokenizer_name == tok_name
+    assert max_tokens_limit == max_tok_limit
 
 
 @pytest.mark.unit
