@@ -3,9 +3,9 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 from huggingface_hub.utils import RepositoryNotFoundError
-from haystack.utils.auth import Secret
 
 from haystack.components.embedders.hugging_face_tei_text_embedder import HuggingFaceTEITextEmbedder
+from haystack.utils.auth import Secret
 
 
 @pytest.fixture
@@ -17,7 +17,7 @@ def mock_check_valid_model():
 
 
 def mock_embedding_generation(text, **kwargs):
-    response = np.random.rand(384)
+    response = np.array([np.random.rand(384) for i in range(len(text))])
     return response
 
 
@@ -107,7 +107,16 @@ class TestHuggingFaceTEITextEmbedder:
 
             result = embedder.run(text="The food was delicious")
 
-            mock_embedding_patch.assert_called_once_with(text="prefix The food was delicious suffix")
+            mock_embedding_patch.assert_called_once_with(text=["prefix The food was delicious suffix"])
+
+        assert len(result["embedding"]) == 384
+        assert all(isinstance(x, float) for x in result["embedding"])
+
+    @pytest.mark.flaky(reruns=5, reruns_delay=5)
+    @pytest.mark.integration
+    def test_run_inference_api_endpoint(self):
+        embedder = HuggingFaceTEITextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+        result = embedder.run(text="The food was delicious")
 
         assert len(result["embedding"]) == 384
         assert all(isinstance(x, float) for x in result["embedding"])

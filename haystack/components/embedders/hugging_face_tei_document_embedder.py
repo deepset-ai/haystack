@@ -9,7 +9,7 @@ from haystack.lazy_imports import LazyImport
 from haystack.utils import Secret, deserialize_secrets_inplace
 from haystack.utils.hf import HFModelType, check_valid_model
 
-with LazyImport(message="Run 'pip install transformers'") as transformers_import:
+with LazyImport(message="Run 'pip install huggingface_hub'") as huggingface_hub_import:
     from huggingface_hub import InferenceClient
 
 logger = logging.getLogger(__name__)
@@ -79,7 +79,7 @@ class HuggingFaceTEIDocumentEmbedder:
         :param embedding_separator:
             Separator used to concatenate the meta fields to the Document text.
         """
-        transformers_import.check()
+        huggingface_hub_import.check()
 
         if url:
             r = urlparse(url)
