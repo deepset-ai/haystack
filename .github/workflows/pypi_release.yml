@@ -3,7 +3,9 @@ name: Project release on PyPi
 on:
   push:
     tags:
-      - "v[0-9].[0-9]+.[0-9]+*"
+      - "v[0-9]+.[0-9]+.[0-9]+*"
+      # We must not release versions tagged with -rc0 suffix
+      - "!v[0-9]+.[0-9]+.[0-9]-rc0"
 
 jobs:
   release-on-pypi:
