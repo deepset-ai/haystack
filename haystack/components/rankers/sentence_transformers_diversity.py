@@ -1,20 +1,19 @@
-import logging
 from typing import Any, Dict, List, Literal, Optional
 
-from haystack import ComponentError, Document, component, default_from_dict, default_to_dict
+from haystack import ComponentError, Document, component, default_from_dict, default_to_dict, logging
 from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
 
 logger = logging.getLogger(__name__)
 
 
-with LazyImport(message="Run 'pip install \"sentence-transformers>=2.2.0\"'") as torch_and_transformers_import:
+with LazyImport(message="Run 'pip install \"sentence-transformers>=2.2.0\"'") as torch_and_sentence_transformers_import:
     import torch
     from sentence_transformers import SentenceTransformer
 
 
 @component
-class DiversityRanker:
+class SentenceTransformersDiversityRanker:
     """
     Implements a document ranking algorithm that orders documents in such a way as to maximize the overall diversity
     of the documents.
@@ -26,9 +25,9 @@ class DiversityRanker:
     Usage example:
     ```python
     from haystack import Document
-    from haystack.components.rankers import DiversityRanker
+    from haystack.components.rankers import SentenceTransformersDiversityRanker
 
-    ranker = DiversityRanker(model="sentence-transformers/all-MiniLM-L6-v2", similarity="cosine")
+    ranker = SentenceTransformersDiversityRanker(model="sentence-transformers/all-MiniLM-L6-v2", similarity="cosine")
     ranker.warm_up()
 
     docs = [Document(content="Paris"), Document(content="Berlin")]
@@ -44,16 +43,16 @@ class DiversityRanker:
         top_k: int = 10,
         device: Optional[ComponentDevice] = None,
         token: Optional[Secret] = Secret.from_env_var("HF_API_TOKEN", strict=False),
-        similarity: Literal["dot_product", "cosine"] = "dot_product",
+        similarity: Literal["dot_product", "cosine"] = "cosine",
         query_prefix: str = "",
-        document_prefix: str = "",
         query_suffix: str = "",
+        document_prefix: str = "",
         document_suffix: str = "",
         meta_fields_to_embed: Optional[List[str]] = None,
         embedding_separator: str = "\n",
     ):
         """
-        Initialize a DiversityRanker.
+        Initialize a SentenceTransformersDiversityRanker.
 
         :param model: Local path or name of the model in Hugging Face's model hub,
             such as `'sentence-transformers/all-MiniLM-L6-v2'`.
@@ -64,17 +63,17 @@ class DiversityRanker:
         :param similarity: Similarity metric for comparing embeddings. Can be set to "dot_product" (default) or
             "cosine".
         :param query_prefix: A string to add to the beginning of the query text before ranking.
-            Can be used to prepend the text with an instruction, as required by some re-ranking models,
-            such as E5 and BGE.
-        :param document_prefix: A string to add to the beginning of each Document text before ranking.
             Can be used to prepend the text with an instruction, as required by some embedding models,
             such as E5 and BGE.
         :param query_suffix: A string to add to the end of the query text before ranking.
+        :param document_prefix: A string to add to the beginning of each Document text before ranking.
+            Can be used to prepend the text with an instruction, as required by some embedding models,
+            such as E5 and BGE.
         :param document_suffix: A string to add to the end of each Document text before ranking.
         :param meta_fields_to_embed: List of meta fields that should be embedded along with the Document content.
         :param embedding_separator: Separator used to concatenate the meta fields to the Document content.
         """
-        torch_and_transformers_import.check()
+        torch_and_sentence_transformers_import.check()
 
         self.model_name_or_path = model
         if top_k is None or top_k <= 0:
@@ -127,7 +126,7 @@ class DiversityRanker:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "DiversityRanker":
+    def from_dict(cls, data: Dict[str, Any]) -> "SentenceTransformersDiversityRanker":
         """
         Deserializes the component from a dictionary.
 

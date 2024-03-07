@@ -1,18 +1,18 @@
 import pytest
 
 from haystack import ComponentError, Document
-from haystack.components.rankers import DiversityRanker
+from haystack.components.rankers import SentenceTransformersDiversityRanker
 from haystack.utils import ComponentDevice
 from haystack.utils.auth import Secret
 
 
-class TestDiversityRanker:
+class TestSentenceTransformersDiversityRanker:
     def test_init(self):
-        component = DiversityRanker()
+        component = SentenceTransformersDiversityRanker()
         assert component.model_name_or_path == "sentence-transformers/all-MiniLM-L6-v2"
         assert component.top_k == 10
         assert component.device == ComponentDevice.resolve_device(None)
-        assert component.similarity == "dot_product"
+        assert component.similarity == "cosine"
         assert component.token == Secret.from_env_var("HF_API_TOKEN", strict=False)
         assert component.query_prefix == ""
         assert component.document_prefix == ""
@@ -22,12 +22,12 @@ class TestDiversityRanker:
         assert component.embedding_separator == "\n"
 
     def test_init_with_custom_init_parameters(self):
-        component = DiversityRanker(
+        component = SentenceTransformersDiversityRanker(
             model="sentence-transformers/msmarco-distilbert-base-v4",
             top_k=5,
             device=ComponentDevice.from_str("cuda:0"),
             token=Secret.from_token("fake-api-token"),
-            similarity="cosine",
+            similarity="dot_product",
             query_prefix="query:",
             document_prefix="document:",
             query_suffix="query suffix",
@@ -38,7 +38,7 @@ class TestDiversityRanker:
         assert component.model_name_or_path == "sentence-transformers/msmarco-distilbert-base-v4"
         assert component.top_k == 5
         assert component.device == ComponentDevice.from_str("cuda:0")
-        assert component.similarity == "cosine"
+        assert component.similarity == "dot_product"
         assert component.token == Secret.from_token("fake-api-token")
         assert component.query_prefix == "query:"
         assert component.document_prefix == "document:"
@@ -48,15 +48,15 @@ class TestDiversityRanker:
         assert component.embedding_separator == "--"
 
     def test_to_and_from_dict(self):
-        component = DiversityRanker()
+        component = SentenceTransformersDiversityRanker()
         data = component.to_dict()
         assert data == {
-            "type": "haystack.components.rankers.diversity.DiversityRanker",
+            "type": "haystack.components.rankers.sentence_transformers_diversity.SentenceTransformersDiversityRanker",
             "init_parameters": {
                 "model": "sentence-transformers/all-MiniLM-L6-v2",
                 "top_k": 10,
                 "device": ComponentDevice.resolve_device(None).to_dict(),
-                "similarity": "dot_product",
+                "similarity": "cosine",
                 "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
                 "query_prefix": "",
                 "document_prefix": "",
@@ -67,12 +67,12 @@ class TestDiversityRanker:
             },
         }
 
-        ranker = DiversityRanker.from_dict(data)
+        ranker = SentenceTransformersDiversityRanker.from_dict(data)
 
         assert ranker.model_name_or_path == "sentence-transformers/all-MiniLM-L6-v2"
         assert ranker.top_k == 10
         assert ranker.device == ComponentDevice.resolve_device(None)
-        assert ranker.similarity == "dot_product"
+        assert ranker.similarity == "cosine"
         assert ranker.token == Secret.from_env_var("HF_API_TOKEN", strict=False)
         assert ranker.query_prefix == ""
         assert ranker.document_prefix == ""
@@ -82,12 +82,12 @@ class TestDiversityRanker:
         assert ranker.embedding_separator == "\n"
 
     def test_to_and_from_dict_with_custom_init_parameters(self):
-        component = DiversityRanker(
+        component = SentenceTransformersDiversityRanker(
             model="sentence-transformers/msmarco-distilbert-base-v4",
             top_k=5,
             device=ComponentDevice.from_str("cuda:0"),
             token=Secret.from_env_var("ENV_VAR", strict=False),
-            similarity="cosine",
+            similarity="dot_product",
             query_prefix="query:",
             document_prefix="document:",
             query_suffix="query suffix",
@@ -97,13 +97,13 @@ class TestDiversityRanker:
         )
         data = component.to_dict()
         assert data == {
-            "type": "haystack.components.rankers.diversity.DiversityRanker",
+            "type": "haystack.components.rankers.sentence_transformers_diversity.SentenceTransformersDiversityRanker",
             "init_parameters": {
                 "model": "sentence-transformers/msmarco-distilbert-base-v4",
                 "top_k": 5,
                 "device": ComponentDevice.from_str("cuda:0").to_dict(),
                 "token": {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"},
-                "similarity": "cosine",
+                "similarity": "dot_product",
                 "query_prefix": "query:",
                 "document_prefix": "document:",
                 "query_suffix": "query suffix",
@@ -113,12 +113,12 @@ class TestDiversityRanker:
             },
         }
 
-        ranker = DiversityRanker.from_dict(data)
+        ranker = SentenceTransformersDiversityRanker.from_dict(data)
 
         assert ranker.model_name_or_path == "sentence-transformers/msmarco-distilbert-base-v4"
         assert ranker.top_k == 5
         assert ranker.device == ComponentDevice.from_str("cuda:0")
-        assert ranker.similarity == "cosine"
+        assert ranker.similarity == "dot_product"
         assert ranker.token == Secret.from_env_var("ENV_VAR", strict=False)
         assert ranker.query_prefix == "query:"
         assert ranker.document_prefix == "document:"
@@ -132,14 +132,16 @@ class TestDiversityRanker:
         Tests that run method raises ValueError if similarity is incorrect
         """
         with pytest.raises(ValueError):
-            DiversityRanker(model="sentence-transformers/all-MiniLM-L6-v2", similarity="incorrect")
+            SentenceTransformersDiversityRanker(model="sentence-transformers/all-MiniLM-L6-v2", similarity="incorrect")
 
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
     def test_run_without_warm_up(self, similarity):
         """
         Tests that run method raises ComponentError if model is not warmed up
         """
-        ranker = DiversityRanker(model="sentence-transformers/all-MiniLM-L6-v2", top_k=1, similarity=similarity)
+        ranker = SentenceTransformersDiversityRanker(
+            model="sentence-transformers/all-MiniLM-L6-v2", top_k=1, similarity=similarity
+        )
         documents = [Document(content="doc1"), Document(content="doc2")]
 
         with pytest.raises(ComponentError):
@@ -151,7 +153,9 @@ class TestDiversityRanker:
         """
         Test that ranker can be run with an empty query.
         """
-        ranker = DiversityRanker(model="sentence-transformers/all-MiniLM-L6-v2", top_k=3, similarity=similarity)
+        ranker = SentenceTransformersDiversityRanker(
+            model="sentence-transformers/all-MiniLM-L6-v2", top_k=3, similarity=similarity
+        )
         ranker.warm_up()
         documents = [Document(content="doc1"), Document(content="doc2")]
 
@@ -169,7 +173,9 @@ class TestDiversityRanker:
         Test that run method returns the correct number of documents for different top_k values passed at
         initialization and runtime.
         """
-        ranker = DiversityRanker(model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity, top_k=3)
+        ranker = SentenceTransformersDiversityRanker(
+            model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity, top_k=3
+        )
         ranker.warm_up()
         query = "test query"
         documents = [
@@ -196,11 +202,13 @@ class TestDiversityRanker:
 
     @pytest.mark.integration
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
-    def test_diversity_ranker_negative_top_k(self, similarity):
+    def test_run_negative_top_k(self, similarity):
         """
         Tests that run method raises an error for negative top-k.
         """
-        ranker = DiversityRanker(model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity, top_k=10)
+        ranker = SentenceTransformersDiversityRanker(
+            model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity, top_k=10
+        )
         ranker.warm_up()
         query = "test"
         documents = [Document(content="doc1"), Document(content="doc2"), Document(content="doc3")]
@@ -211,20 +219,26 @@ class TestDiversityRanker:
 
         # Setting top_k at init
         with pytest.raises(ValueError):
-            DiversityRanker(model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity, top_k=-5)
+            SentenceTransformersDiversityRanker(
+                model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity, top_k=-5
+            )
 
     @pytest.mark.integration
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
-    def test_diversity_ranker_top_k_is_none(self, similarity):
+    def test_run_top_k_is_none(self, similarity):
         """
         Tests that run method returns the correct order of documents for top-k set to None.
         """
         # Setting top_k to None at init should raise error
         with pytest.raises(ValueError):
-            DiversityRanker(model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity, top_k=None)
+            SentenceTransformersDiversityRanker(
+                model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity, top_k=None
+            )
 
         # Setting top_k to None is ignored during runtime, it should use top_k set at init.
-        ranker = DiversityRanker(model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity, top_k=2)
+        ranker = SentenceTransformersDiversityRanker(
+            model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity, top_k=2
+        )
         ranker.warm_up()
         query = "test"
         documents = [Document(content="doc1"), Document(content="doc2"), Document(content="doc3")]
@@ -238,7 +252,9 @@ class TestDiversityRanker:
         """
         Tests that run method returns the correct number of documents for top_k values greater than number of documents.
         """
-        ranker = DiversityRanker(model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity, top_k=5)
+        ranker = SentenceTransformersDiversityRanker(
+            model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity, top_k=5
+        )
         ranker.warm_up()
         query = "test"
         documents = [Document(content="doc1"), Document(content="doc2"), Document(content="doc3")]
@@ -252,7 +268,9 @@ class TestDiversityRanker:
         """
         Tests that run method returns the correct number of documents for a single document
         """
-        ranker = DiversityRanker(model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity)
+        ranker = SentenceTransformersDiversityRanker(
+            model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity
+        )
         ranker.warm_up()
         query = "test"
         documents = [Document(content="doc1")]
@@ -266,7 +284,9 @@ class TestDiversityRanker:
         """
         Test that run method returns an empty list if no documents are supplied.
         """
-        ranker = DiversityRanker(model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity)
+        ranker = SentenceTransformersDiversityRanker(
+            model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity
+        )
         ranker.warm_up()
         query = "test query"
         documents = []
@@ -280,7 +300,9 @@ class TestDiversityRanker:
         """
         Tests that run method returns documents in the correct order
         """
-        ranker = DiversityRanker(model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity)
+        ranker = SentenceTransformersDiversityRanker(
+            model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity
+        )
         ranker.warm_up()
         query = "city"
         documents = [
@@ -302,7 +324,9 @@ class TestDiversityRanker:
     @pytest.mark.integration
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
     def test_run_real_world_use_case(self, similarity):
-        ranker = DiversityRanker(model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity)
+        ranker = SentenceTransformersDiversityRanker(
+            model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity
+        )
         ranker.warm_up()
         query = "What are the reasons for long-standing animosities between Russia and Poland?"
 
