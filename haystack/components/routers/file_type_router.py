@@ -84,11 +84,12 @@ class FileTypeRouter:
             elif isinstance(source, ByteStream):
                 mime_type = source.meta.get("content_type", None)
             else:
-                raise ValueError(f"Unsupported data source type: {type(source)}")
+                raise ValueError(f"Unsupported data source type: {type(source).__name__}")
+
             matched = False
-            if mime_type is not None:
+            if mime_type:
                 for pattern in self.mime_type_patterns:
-                    if pattern.match(mime_type):
+                    if pattern.fullmatch(mime_type):
                         mime_types[pattern.pattern].append(source)
                         matched = True
                         break

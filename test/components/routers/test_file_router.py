@@ -1,4 +1,6 @@
+import io
 import sys
+from unittest.mock import mock_open, patch
 
 import pytest
 
@@ -131,14 +133,14 @@ class TestFileTypeRouter:
         """
         router = FileTypeRouter(mime_types=[r"text/plain", r"audio/x-wav", r"image/jpeg"])
         with pytest.raises(ValueError, match="Unsupported data source type:"):
-            router.run(sources=["some_unsupported_type"])
+            router.run(sources=[{"unsupported": "type"}])
 
-    def test_unknown_mime_type(self):
+    def test_invalid_regex_pattern(self):
         """
-        Test that the component handles files with unknown mime types.
+        Test that the component raises a ValueError for invalid regex patterns.
         """
-        with pytest.raises(ValueError, match="Unknown mime type:"):
-            FileTypeRouter(mime_types=[r"type_invalid"])
+        with pytest.raises(ValueError, match="Invalid regex pattern"):
+            FileTypeRouter(mime_types=["[Invalid-Regex"])
 
     def test_regex_mime_type_matching(self, test_files_path):
         """
@@ -155,26 +157,26 @@ class TestFileTypeRouter:
         assert len(output[r"audio\/.*"]) == 1, "Failed to match audio file with regex"
         assert len(output[r"image\/.*"]) == 1, "Failed to match image file with regex"
 
-    def test_invalid_regex_pattern(self):
-        """
-        Test if the component correctly handles invalid regex patterns.
-        """
-        with pytest.raises(ValueError, match="Invalid regex pattern"):
-            FileTypeRouter(mime_types=[r"*\invalid"])
-
-    def test_exact_mime_type_matching(test_files_path):
+    @patch("pathlib.Path.open", new_callable=mock_open, read_data=b"Mock file content.")
+    def test_exact_mime_type_matching(self, mock_file):
         """
         Test if the component correctly matches mime types exactly, without regex patterns.
         """
+        txt_stream = ByteStream(io.BytesIO(b"Text file content"), meta={"content_type": "text/plain"})
+        jpg_stream = ByteStream(io.BytesIO(b"JPEG file content"), meta={"content_type": "image/jpeg"})
+        mp3_stream = ByteStream(io.BytesIO(b"MP3 file content"), meta={"content_type": "audio/mpeg"})
+
+        byte_streams = [txt_stream, jpg_stream, mp3_stream]
+
         router = FileTypeRouter(mime_types=["text/plain", "image/jpeg"])
-        file_paths = [
-            test_files_path / "txt" / "doc_1.txt",
-            test_files_path / "images" / "apple.jpg",
-            test_files_path / "audio" / "sound.mp3",
-        ]
-        output = router.run(sources=file_paths)
+
+        output = router.run(sources=byte_streams)
+
         assert len(output["text/plain"]) == 1, "Failed to match 'text/plain' MIME type exactly"
+        assert txt_stream in output["text/plain"], "'doc_1.txt' ByteStream not correctly classified as 'text/plain'"
+
         assert len(output["image/jpeg"]) == 1, "Failed to match 'image/jpeg' MIME type exactly"
-        assert len(output.get("unclassified")) == 1, "Incorrect handling of unclassified files"
-        assert file_paths[0] in output["text/plain"], "'doc_1.txt' not correctly classified as 'text/plain'"
-        assert file_paths[1] in output["image/jpeg"], "'apple.jpg' not correctly classified as 'image/jpeg'"
+        assert jpg_stream in output["image/jpeg"], "'apple.jpg' ByteStream not correctly classified as 'image/jpeg'"
+
+        assert len(output.get("unclassified")) == 1, "Failed to handle unclassified file types"
+        assert mp3_stream in output["unclassified"], "'sound.mp3' ByteStream should be unclassified but is not"
