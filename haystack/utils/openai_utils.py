@@ -89,6 +89,8 @@ def _openai_text_completion_tokenization_details(model_name: str):
             or model_name == "gpt-35-turbo-0613"
         ):
             max_tokens_limit = 4096
+        if model_name == "gpt-3.5-turbo-16k" or model_name == "gpt-35-turbo-16k":
+            max_tokens_limit = 16384
 
         # GPT-4 models that have a different token limit than 4096
         # Ref: https://platform.openai.com/docs/models/gpt-4
