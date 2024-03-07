@@ -81,23 +81,23 @@ def _openai_text_completion_tokenization_details(model_name: str):
         # Handles default case for GPT-3.5 models
         if model_name.startswith("gpt-3.5-turbo") or model_name.startswith("gpt-35-turbo"):
             max_tokens_limit = 16385
-        # Handles two edge-cases where the value is 4096
-        if (
-            model_name == "gpt-3.5-turbo-instruct"
-            or model_name == "gpt-3.5-turbo-0613"
-            or model_name == "gpt-35-turbo-instruct"
-            or model_name == "gpt-35-turbo-0613"
-        ):
-            max_tokens_limit = 4096
+            # Handles two edge-cases where the value is 4096
+            if (
+                model_name == "gpt-3.5-turbo-instruct"
+                or model_name == "gpt-3.5-turbo-0613"
+                or model_name == "gpt-35-turbo-instruct"
+                or model_name == "gpt-35-turbo-0613"
+            ):
+                max_tokens_limit = 4096
 
         # GPT-4 models that have a different token limit than 4096
         # Ref: https://platform.openai.com/docs/models/gpt-4
-        if model_name.startswith("gpt-4-"):
+        if model_name.startswith("gpt-4"):
             max_tokens_limit = 128000
-        if model_name == "gpt-4" or model_name == "gpt-4-0613":
-            max_tokens_limit = 8192
-        if model_name == "gpt-4-32k" or model_name == "gpt-4-32k-0613":
-            max_tokens_limit = 32768
+            if model_name == "gpt-4" or model_name == "gpt-4-0613":
+                max_tokens_limit = 8192
+            if model_name == "gpt-4-32k" or model_name == "gpt-4-32k-0613":
+                max_tokens_limit = 32768
 
     return tokenizer_name, max_tokens_limit
 
