@@ -20,21 +20,28 @@ from haystack.utils.openai_utils import (
         # Default
         ("not-recognized-name", "cl100k_base", 4096),
         # GPT-3.5
+        ("gpt-3.5-turbo-0125", "cl100k_base", 16385),
         ("gpt-3.5-turbo-instruct", "cl100k_base", 4096),
         ("gpt-3.5-turbo-0613", "cl100k_base", 4096),
         ("gpt-3.5-turbo", "cl100k_base", 16385),
         ("gpt-3.5-turbo-1106", "cl100k_base", 16385),
-        ("gpt-3.5-turbo-16k", "cl100k_base", 16384),
+        ("gpt-3.5-turbo-16k", "cl100k_base", 16385),
+        ("gpt-3.5-turbo-16k-0613", "cl100k_base", 16385),
         # GPT 4
-        ("gpt-4-32k", "cl100k_base", 32768),
-        ("gpt-4-1106", "cl100k_base", 128000),
-        ("gpt-4-turbo-preview", "cl100k_base", 128000),
         ("gpt-4-0125-preview", "cl100k_base", 128000),
+        ("gpt-4-turbo-preview", "cl100k_base", 128000),
+        ("gpt-4-1106-preview", "cl100k_base", 128000),
+        ("gpt-4-vision-preview", "cl100k_base", 128000),
+        ("gpt-4-1106-vision-preview", "cl100k_base", 128000),
         ("gpt-4", "cl100k_base", 8192),
+        ("gpt-4-0613", "cl100k_base", 8192),
+        ("gpt-4-32k", "cl100k_base", 32768),
+        ("gpt-4-32k-0613", "cl100k_base", 32768),
+        ("gpt-4-1106", "cl100k_base", 128000),
         # GPT-35 Azure
         ("gpt-35-turbo-instruct", "cl100k_base", 4096),
         ("gpt-35-turbo", "cl100k_base", 16385),
-        ("gpt-35-turbo-16k", "cl100k_base", 16384),
+        ("gpt-35-turbo-16k", "cl100k_base", 16385),
         # davinci and babbage
         ("davinci-002", "cl100k_base", 16384),
         ("babbage-002", "cl100k_base", 16384),
