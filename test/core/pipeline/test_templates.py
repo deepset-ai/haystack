@@ -44,7 +44,8 @@ class TestPipelineTemplate:
         assert len(tpl.template_content)
 
     #  Building a pipeline directly using all default components specified in a predefined or custom template.
-    def test_build_pipeline_with_default_components(self):
+    def test_build_pipeline_with_default_components(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake_key")
         rendered = PipelineTemplate.from_predefined(PredefinedPipeline.INDEXING).render()
         pipeline = Pipeline.loads(rendered)
 
