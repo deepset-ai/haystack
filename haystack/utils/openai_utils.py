@@ -65,7 +65,8 @@ def _openai_text_completion_tokenization_details(model_name: str):
     :param model_name: Name of the OpenAI model.
     """
     tokenizer_name = "cl100k_base"
-    max_tokens_limit = 4096  # Based on this ref: https://platform.openai.com/docs/models/gpt-3
+    # It is the minimum max_tokens_limit value based on this ref: https://platform.openai.com/docs/models/overview
+    max_tokens_limit = 4096
     try:
         model_tokenizer = tiktoken.encoding_name_for_model(model_name)
     except KeyError:
