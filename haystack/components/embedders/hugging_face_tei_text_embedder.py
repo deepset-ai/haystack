@@ -6,7 +6,7 @@ from haystack.lazy_imports import LazyImport
 from haystack.utils import Secret, deserialize_secrets_inplace
 from haystack.utils.hf import HFModelType, check_valid_model
 
-with LazyImport(message="Run 'pip install transformers'") as transformers_import:
+with LazyImport(message="Run 'pip install huggingface_hub'") as huggingface_hub_import:
     from huggingface_hub import InferenceClient
 
 logger = logging.getLogger(__name__)
@@ -62,7 +62,7 @@ class HuggingFaceTEITextEmbedder:
         :param suffix:
             A string to add at the end of each text.
         """
-        transformers_import.check()
+        huggingface_hub_import.check()
 
         if url:
             r = urlparse(url)
@@ -135,8 +135,8 @@ class HuggingFaceTEITextEmbedder:
 
         text_to_embed = self.prefix + text + self.suffix
 
-        embedding = self.client.feature_extraction(text=text_to_embed)
+        embeddings = self.client.feature_extraction(text=[text_to_embed])
         # The client returns a numpy array
-        embedding = embedding.tolist()
+        embedding = embeddings.tolist()[0]
 
         return {"embedding": embedding}

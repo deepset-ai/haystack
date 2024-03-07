@@ -3,10 +3,10 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 from huggingface_hub.utils import RepositoryNotFoundError
-from haystack.utils.auth import Secret
 
 from haystack.components.embedders.hugging_face_tei_document_embedder import HuggingFaceTEIDocumentEmbedder
 from haystack.dataclasses import Document
+from haystack.utils.auth import Secret
 
 
 @pytest.fixture
@@ -212,6 +212,29 @@ class TestHuggingFaceTEIDocumentEmbedder:
                     "prefix ML | A transformer is a deep learning architecture suffix",
                 ]
             )
+        documents_with_embeddings = result["documents"]
+
+        assert isinstance(documents_with_embeddings, list)
+        assert len(documents_with_embeddings) == len(docs)
+        for doc in documents_with_embeddings:
+            assert isinstance(doc, Document)
+            assert isinstance(doc.embedding, list)
+            assert len(doc.embedding) == 384
+            assert all(isinstance(x, float) for x in doc.embedding)
+
+    @pytest.mark.flaky(reruns=5, reruns_delay=5)
+    @pytest.mark.integration
+    def test_run_inference_api_endpoint(self):
+        docs = [
+            Document(content="I love cheese", meta={"topic": "Cuisine"}),
+            Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
+        ]
+
+        embedder = HuggingFaceTEIDocumentEmbedder(
+            model="sentence-transformers/all-MiniLM-L6-v2", meta_fields_to_embed=["topic"], embedding_separator=" | "
+        )
+
+        result = embedder.run(documents=docs)
         documents_with_embeddings = result["documents"]
 
         assert isinstance(documents_with_embeddings, list)
