@@ -7,6 +7,10 @@ on:
   push:
     branches:
       - main
+      # release branches have the form v1.9.x
+      - "v[0-9]+.[0-9]+.x"
+      # Exclude 1.x release branches, there's another workflow handling those
+      - "!v1.[0-9]+.x"
 
 env:
   HATCH_VERSION: "1.9.3"
@@ -33,18 +37,29 @@ jobs:
           # from Readme.io as we need them to associate the slug
           # in config files with their id.
           README_API_KEY: ${{ secrets.README_API_KEY }}
+        # The command is a bit misleading, we're not actually syncing anything here,
+        # we're just generating the markdown files from the the yaml configs.
         run: hatch run readme:sync
 
-      - name: Sync docs with 2.0
-        # Sync the docs to the `2.0` version on Readme
-        id: sync-main
-        if: github.ref_name == 'main' && github.event_name == 'push'
+      - name: Get version
+        id: version-getter
+        run: |
+          VERSION="$(hatch version | cut -d '.' -f 1,2)"
+          CURRENT_BRANCH="${{ github.ref_name }}"
+          # If we're on `main` branch we should push docs to the unstable version
+          if [ "$CURRENT_BRANCH" = "main" ]; then
+            VERSION="$VERSION-unstable"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Sync docs
+        if: github.event_name == 'push'
         uses: readmeio/rdme@v8
         with:
-          rdme: docs ./docs/pydoc/temp --key=${{ secrets.README_API_KEY }} --version=v2.0
+          rdme: docs ./docs/pydoc/temp --key=${{ secrets.README_API_KEY }} --version="${{ steps.version-getter.outputs.version }}"
 
-      - name: Delete outdated docs for 2.0
-        if: github.ref_name == 'main' && github.event_name == 'push'
+      - name: Delete outdated
+        if: github.event_name == 'push'
         env:
           README_API_KEY: ${{ secrets.README_API_KEY }}
-        run: hatch run readme:delete-outdated  --version=v2.0 --config-path ./docs/pydoc/config
+        run: hatch run readme:delete-outdated  --version="${{ steps.version-getter.outputs.version }}" --config-path ./docs/pydoc/config
