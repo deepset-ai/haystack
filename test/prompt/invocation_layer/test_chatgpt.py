@@ -53,7 +53,7 @@ def test_chatgpt_token_limit_warning_single_prompt(mock_openai_tokenizer, caplog
     with caplog.at_level(logging.WARNING):
         _ = invocation_layer._ensure_token_limit(prompt="This is a test for a mock openai tokenizer.")
         assert "The prompt has been truncated from" in caplog.text
-        assert "and answer length (16379 tokens) fit within the max token limit (16384 tokens)." in caplog.text
+        assert "and answer length (16379 tokens) fit within the max token limit (16385 tokens)." in caplog.text
 
 
 @pytest.mark.unit
