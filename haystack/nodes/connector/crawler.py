@@ -137,6 +137,8 @@ class Crawler(BaseComponent):
         options = Options()
         for option in set(webdriver_options):
             options.add_argument(option)
+        if self.output_dir:
+            options.add_experimental_option("prefs", {"download.default_directory": str(self.output_dir)})
 
         self.driver = selenium_webdriver.Chrome(service=Service(), options=options)
 
