@@ -266,3 +266,15 @@ def test_crawler_custom_webdriver():
     crawler = Crawler(webdriver=webdriver)
 
     assert webdriver is crawler.driver
+
+
+@pytest.mark.integration
+def test_crawler_pdf_download_location(samples_path, tmp_path):
+    crawler = Crawler(output_dir=tmp_path)
+
+    file_name = "sample_pdf_1.pdf"
+    pdf_uri = (samples_path / "pdf" / file_name).absolute().as_uri()
+    documents = crawler.crawl(urls=[pdf_uri])
+    assert len(documents) == 1
+    assert (tmp_path / file_name).exists()
+    assert len(os.listdir(tmp_path)) == 2

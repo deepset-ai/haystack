@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Ensure that the crawled files are downloaded to the `output_dir` directory, as specified in the `Crawler` 
+    constructor. Previously, some files were incorrectly downloaded to the current working directory.
