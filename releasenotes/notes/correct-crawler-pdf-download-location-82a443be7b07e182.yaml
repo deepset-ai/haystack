@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Correct the download location of crawled .pdf files from the present working directory to the specified output_dir param in the Crawler constructor
