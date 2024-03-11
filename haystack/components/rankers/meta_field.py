@@ -191,7 +191,7 @@ class MetaFieldRanker:
             return {"documents": []}
 
         top_k = top_k or self.top_k
-        weight = weight or self.weight
+        weight = weight if weight is not None else self.weight
         ranking_mode = ranking_mode or self.ranking_mode
         sort_order = sort_order or self.sort_order
         meta_value_type = meta_value_type or self.meta_value_type
