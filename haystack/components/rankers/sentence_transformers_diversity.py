@@ -141,6 +141,24 @@ class SentenceTransformersDiversityRanker:
         deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
         return default_from_dict(cls, data)
 
+    def _prepare_texts_to_embed(self, documents: List[Document]) -> List[str]:
+        """
+        Prepare the texts to embed by concatenating the Document text with the metadata fields to embed.
+        """
+        texts_to_embed = []
+        for doc in documents:
+            meta_values_to_embed = [
+                str(doc.meta[key]) for key in self.meta_fields_to_embed if key in doc.meta and doc.meta[key]
+            ]
+            text_to_embed = (
+                self.document_prefix
+                + self.embedding_separator.join(meta_values_to_embed + [doc.content or ""])
+                + self.document_suffix
+            )
+            texts_to_embed.append(text_to_embed)
+
+        return texts_to_embed
+
     def _greedy_diversity_order(self, query: str, documents: List[Document]) -> List[Document]:
         """
         Orders the given list of documents to maximize diversity.
@@ -156,18 +174,7 @@ class SentenceTransformersDiversityRanker:
 
         :return: A list of documents ordered to maximize diversity.
         """
-
-        texts_to_embed = []
-        for doc in documents:
-            meta_values_to_embed = [
-                str(doc.meta[key]) for key in self.meta_fields_to_embed if key in doc.meta and doc.meta[key]
-            ]
-            text_to_embed = (
-                self.document_prefix
-                + self.embedding_separator.join(meta_values_to_embed + [doc.content or ""])
-                + self.document_suffix
-            )
-            texts_to_embed.append(text_to_embed)
+        texts_to_embed = self._prepare_texts_to_embed(documents)
 
         # Calculate embeddings
         doc_embeddings = self.model.encode(texts_to_embed, convert_to_tensor=True)  # type: ignore[attr-defined]
@@ -228,9 +235,11 @@ class SentenceTransformersDiversityRanker:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
 
         if self.model is None:
-            raise ComponentError(
-                f"The component {self.__class__.__name__} wasn't warmed up. Run 'warm_up()' before calling 'run()'."
+            error_msg = (
+                "The component SentenceTransformersDiversityRanker wasn't warmed up. "
+                "Run 'warm_up()' before calling 'run()'."
             )
+            raise ComponentError(error_msg)
 
         diversity_sorted = self._greedy_diversity_order(query=query, documents=documents)
 
