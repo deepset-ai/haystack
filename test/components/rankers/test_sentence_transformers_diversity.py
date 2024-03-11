@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 import torch
@@ -196,6 +196,31 @@ class TestSentenceTransformersDiversityRanker:
         error_msg = "The component SentenceTransformersDiversityRanker wasn't warmed up."
         with pytest.raises(ComponentError, match=error_msg):
             ranker.run(query="test query", documents=documents)
+
+    @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
+    def test_warm_up(self, similarity):
+        """
+        Test that ranker loads the SentenceTransformer model correctly during warm up.
+        """
+        mock_model_class = MagicMock()
+        mock_model_instance = MagicMock()
+        mock_model_class.return_value = mock_model_instance
+
+        with patch(
+            "haystack.components.rankers.sentence_transformers_diversity.SentenceTransformer", new=mock_model_class
+        ):
+            ranker = SentenceTransformersDiversityRanker(model="mock_model_name", similarity=similarity)
+
+            assert ranker.model is None
+
+            ranker.warm_up()
+
+            mock_model_class.assert_called_once_with(
+                model_name_or_path="mock_model_name",
+                device=ComponentDevice.resolve_device(None).to_torch_str(),
+                use_auth_token=None,
+            )
+            assert ranker.model == mock_model_instance
 
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
     def test_run_empty_query(self, similarity):
