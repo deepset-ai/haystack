@@ -17,7 +17,7 @@ processors:
   - type: smart
   - type: crossref
 renderer:
-  type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
+  type: haystack_pydoc_tools.renderers.ReadmeCoreRenderer
   excerpt: Sweeps through a Document Store and returns a set of candidate Documents that are relevant to the query.
   category_slug: haystack-api
   title: Retrievers

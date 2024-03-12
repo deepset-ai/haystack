@@ -10,7 +10,7 @@ loaders:
         "openai_document_embedder",
         "openai_text_embedder",
         "sentence_transformers_document_embedder",
-        "sentence_transformers_text_embedder"
+        "sentence_transformers_text_embedder",
       ]
     ignore_when_discovered: ["__init__"]
 processors:
@@ -22,7 +22,7 @@ processors:
   - type: smart
   - type: crossref
 renderer:
-  type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
+  type: haystack_pydoc_tools.renderers.ReadmeCoreRenderer
   excerpt: Transforms queries into vectors to look for similar or relevant Documents.
   category_slug: haystack-api
   title: Embedders

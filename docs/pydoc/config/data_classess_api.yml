@@ -1,7 +1,8 @@
 loaders:
   - type: haystack_pydoc_tools.loaders.CustomPythonLoader
     search_path: [../../../haystack/dataclasses]
-    modules: ["answer", "byte_stream", "chat_message", "document", "streaming_chunk"]
+    modules:
+      ["answer", "byte_stream", "chat_message", "document", "streaming_chunk"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
@@ -12,7 +13,7 @@ processors:
   - type: smart
   - type: crossref
 renderer:
-  type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
+  type: haystack_pydoc_tools.renderers.ReadmeCoreRenderer
   excerpt: Core classes that carry data through the system.
   category_slug: haystack-api
   title: Data Classes

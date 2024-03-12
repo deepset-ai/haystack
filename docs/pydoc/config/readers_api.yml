@@ -12,7 +12,7 @@ processors:
   - type: smart
   - type: crossref
 renderer:
-  type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
+  type: haystack_pydoc_tools.renderers.ReadmeCoreRenderer
   excerpt: Takes a query and a set of Documents as input and returns ExtractedAnswers by selecting a text span within the Documents.
   category_slug: haystack-api
   title: Readers
