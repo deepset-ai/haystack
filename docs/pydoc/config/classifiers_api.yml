@@ -12,7 +12,7 @@ processors:
   - type: smart
   - type: crossref
 renderer:
-  type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
+  type: haystack_pydoc_tools.renderers.ReadmeCoreRenderer
   excerpt: Detects the language of the Documents and adds it to the metadata.
   category_slug: haystack-api
   title: Classifiers

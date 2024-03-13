@@ -12,7 +12,7 @@ processors:
   - type: smart
   - type: crossref
 renderer:
-  type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
+  type: haystack_pydoc_tools.renderers.ReadmeCoreRenderer
   excerpt: Writes Documents to a DocumentStore.
   category_slug: haystack-api
   title: Document Writers

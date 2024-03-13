@@ -1,7 +1,13 @@
 loaders:
   - type: haystack_pydoc_tools.loaders.CustomPythonLoader
     search_path: [../../../haystack/components/routers]
-    modules: ["conditional_router", "file_type_router", "metadata_router", "text_language_router"]
+    modules:
+      [
+        "conditional_router",
+        "file_type_router",
+        "metadata_router",
+        "text_language_router",
+      ]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
@@ -12,7 +18,7 @@ processors:
   - type: smart
   - type: crossref
 renderer:
-  type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
+  type: haystack_pydoc_tools.renderers.ReadmeCoreRenderer
   excerpt: Routers is a group of components that route queries or Documents to other components that can handle them best.
   category_slug: haystack-api
   title: Routers
