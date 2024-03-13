@@ -115,6 +115,7 @@ extra-dependencies = [
   "langdetect",  # TextLanguageRouter and DocumentLanguageClassifier
   "sentence-transformers>=2.2.0",  # SentenceTransformersTextEmbedder and SentenceTransformersDocumentEmbedder
   "openai-whisper>=20231106",  # LocalWhisperTranscriber
+  "chroma-haystack",  # pipeline predefined templates
 
   # OpenAPI
   "jsonref",  # OpenAPIServiceConnector, OpenAPIServiceToFunctions
