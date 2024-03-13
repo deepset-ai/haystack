@@ -1,4 +1,5 @@
 import tempfile
+from unittest import mock
 
 import pytest
 
@@ -46,14 +47,15 @@ class TestPipelineTemplate:
     #  Building a pipeline directly using all default components specified in a predefined or custom template.
     def test_build_pipeline_with_default_components(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake_key")
-        rendered = PipelineTemplate.from_predefined(PredefinedPipeline.INDEXING).render()
-        pipeline = Pipeline.loads(rendered)
+        with mock.patch("haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore"):
+            rendered = PipelineTemplate.from_predefined(PredefinedPipeline.INDEXING).render()
+            pipeline = Pipeline.loads(rendered)
 
-        # pipeline has components
-        assert pipeline.get_component("cleaner")
-        assert pipeline.get_component("writer")
-        assert pipeline.get_component("embedder")
+            # pipeline has components
+            assert pipeline.get_component("cleaner")
+            assert pipeline.get_component("writer")
+            assert pipeline.get_component("embedder")
 
-        # pipeline should have inputs and outputs
-        assert len(pipeline.inputs()) > 0
-        assert len(pipeline.outputs()) > 0
+            # pipeline should have inputs and outputs
+            assert len(pipeline.inputs()) > 0
+            assert len(pipeline.outputs()) > 0
