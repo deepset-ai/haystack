@@ -1,7 +1,6 @@
-import logging
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional
 
-from haystack import component, Document
+from haystack import Document, component, logging
 from haystack.lazy_imports import LazyImport
 
 logger = logging.getLogger(__name__)
@@ -96,6 +95,8 @@ class DocumentLanguageClassifier:
         try:
             language = langdetect.detect(document.content)
         except langdetect.LangDetectException:
-            logger.warning("Langdetect cannot detect the language of Document with id: %s", document.id)
+            logger.warning(
+                "Langdetect cannot detect the language of Document with id: {document_id}", document_id=document.id
+            )
             language = None
         return language

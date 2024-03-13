@@ -13,13 +13,14 @@ processors:
   - type: crossref
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
-  excerpt: Routes data to the right component based on its file type or metadata.
+  excerpt: Components that join list of different objects
   category_slug: haystack-api
   title: Joiners
   slug: joiners-api
   order: 75
   markdown:
     descriptive_class_title: false
+    classdef_code_block: false
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false

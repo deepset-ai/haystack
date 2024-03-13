@@ -1,14 +1,12 @@
 import dataclasses
-import logging
-from typing import Optional, List, Callable, Dict, Any, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from openai import OpenAI, Stream
-from openai.types.chat import ChatCompletionChunk, ChatCompletion
+from openai.types.chat import ChatCompletion, ChatCompletionChunk
 
-from haystack import component, default_from_dict, default_to_dict
-from haystack.dataclasses import StreamingChunk, ChatMessage
-from haystack.utils import Secret, deserialize_secrets_inplace
-from haystack.utils import serialize_callable, deserialize_callable
+from haystack import component, default_from_dict, default_to_dict, logging
+from haystack.dataclasses import ChatMessage, StreamingChunk
+from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +24,14 @@ class OpenAIGenerator:
     For more details on the parameters supported by the OpenAI API, refer to the OpenAI
     [documentation](https://platform.openai.com/docs/api-reference/chat).
 
+    Key Features and Compatibility:
+     - Primary Compatibility: Designed to work seamlessly with gpt-4, gpt-3.5-turbo family of models.
+     - Streaming Support: Supports streaming responses from the OpenAI API.
+     - Customizability: Supports all parameters supported by the OpenAI API.
+
+     Input and Output Format:
+      - String Format: This component uses the strings for both input and output.
+
     ```python
     from haystack.components.generators import OpenAIGenerator
     client = OpenAIGenerator()
@@ -38,14 +44,6 @@ class OpenAIGenerator:
     >> 'gpt-3.5-turbo-0613', 'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 16,
     >> 'completion_tokens': 49, 'total_tokens': 65}}]}
     ```
-
-     Key Features and Compatibility:
-         - **Primary Compatibility**: Designed to work seamlessly with gpt-4, gpt-3.5-turbo family of models.
-         - **Streaming Support**: Supports streaming responses from the OpenAI API.
-         - **Customizability**: Supports all parameters supported by the OpenAI API.
-
-     Input and Output Format:
-         - **String Format**: This component uses the strings for both input and output.
     """
 
     def __init__(
@@ -59,8 +57,7 @@ class OpenAIGenerator:
         generation_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
-        Creates an instance of OpenAIGenerator. Unless specified otherwise in the `model`, this is for OpenAI's
-        GPT-3.5 model.
+        Creates an instance of OpenAIGenerator. Unless specified otherwise in the `model`, this is for OpenAI's GPT-3.5 model.
 
         :param api_key: The OpenAI API key.
         :param model: The name of the model to use.
@@ -286,11 +283,14 @@ class OpenAIGenerator:
         """
         if message.meta["finish_reason"] == "length":
             logger.warning(
-                "The completion for index %s has been truncated before reaching a natural stopping point. "
+                "The completion for index {index} has been truncated before reaching a natural stopping point. "
                 "Increase the max_tokens parameter to allow for longer completions.",
-                message.meta["index"],
+                index=message.meta["index"],
+                finish_reason=message.meta["finish_reason"],
             )
         if message.meta["finish_reason"] == "content_filter":
             logger.warning(
-                "The completion for index %s has been truncated due to the content filter.", message.meta["index"]
+                "The completion for index {index} has been truncated due to the content filter.",
+                index=message.meta["index"],
+                finish_reason=message.meta["finish_reason"],
             )

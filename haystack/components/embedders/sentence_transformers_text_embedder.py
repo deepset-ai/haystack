@@ -1,10 +1,10 @@
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
 
-from haystack import component, default_to_dict, default_from_dict
+from haystack import component, default_from_dict, default_to_dict
 from haystack.components.embedders.backends.sentence_transformers_backend import (
     _SentenceTransformersEmbeddingBackendFactory,
 )
-from haystack.utils import Secret, deserialize_secrets_inplace, ComponentDevice
+from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
 
 
 @component
@@ -41,18 +41,24 @@ class SentenceTransformersTextEmbedder:
         """
         Create a SentenceTransformersTextEmbedder component.
 
-        :param model: Local path or name of the model in Hugging Face's model hub,
-            such as ``'sentence-transformers/all-mpnet-base-v2'``.
-        :param device: The device on which the model is loaded. If `None`, the default device is automatically
-            selected.
-        :param token: The API token used to download private models from Hugging Face.
-        :param prefix: A string to add to the beginning of each Document text before embedding.
+        :param model:
+            Local path or ID of the model on HuggingFace Hub.
+        :param device:
+            Overrides the default device used to load the model.
+        :param token:
+            The API token used to download private models from Hugging Face.
+        :param prefix:
+            A string to add at the beginning of each text.
             Can be used to prepend the text with an instruction, as required by some embedding models,
             such as E5 and bge.
-        :param suffix: A string to add to the end of each text.
-        :param batch_size: Number of strings to encode at once.
-        :param progress_bar: If true, displays progress bar during embedding.
-        :param normalize_embeddings: If set to true, returned vectors will have length 1.
+        :param suffix:
+            A string to add at the end of each text.
+        :param batch_size:
+            Number of Documents to encode at once.
+        :param progress_bar:
+            If True shows a progress bar when running.
+        :param normalize_embeddings:
+            If True returned vectors will have length 1.
         """
 
         self.model = model
@@ -72,7 +78,10 @@ class SentenceTransformersTextEmbedder:
 
     def to_dict(self) -> Dict[str, Any]:
         """
-        Serialize this component to a dictionary.
+        Serializes the component to a dictionary.
+
+        :returns:
+            Dictionary with serialized data.
         """
         return default_to_dict(
             self,
@@ -88,6 +97,14 @@ class SentenceTransformersTextEmbedder:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "SentenceTransformersTextEmbedder":
+        """
+        Deserializes the component from a dictionary.
+
+        :param data:
+            Dictionary to deserialize from.
+        :returns:
+            Deserialized component.
+        """
         serialized_device = data["init_parameters"]["device"]
         data["init_parameters"]["device"] = ComponentDevice.from_dict(serialized_device)
 
@@ -96,7 +113,7 @@ class SentenceTransformersTextEmbedder:
 
     def warm_up(self):
         """
-        Load the embedding backend.
+        Initializes the component.
         """
         if not hasattr(self, "embedding_backend"):
             self.embedding_backend = _SentenceTransformersEmbeddingBackendFactory.get_embedding_backend(
@@ -105,7 +122,16 @@ class SentenceTransformersTextEmbedder:
 
     @component.output_types(embedding=List[float])
     def run(self, text: str):
-        """Embed a string."""
+        """
+        Embed a single string.
+
+        :param text:
+            Text to embed.
+
+        :returns:
+            A dictionary with the following keys:
+            - `embedding`: The embedding of the input text.
+        """
         if not isinstance(text, str):
             raise TypeError(
                 "SentenceTransformersTextEmbedder expects a string as input."

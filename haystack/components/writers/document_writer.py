@@ -1,9 +1,7 @@
-from typing import List, Optional, Dict, Any
-
 import importlib
-import logging
+from typing import Any, Dict, List, Optional
 
-from haystack import component, Document, default_from_dict, default_to_dict, DeserializationError
+from haystack import DeserializationError, Document, component, default_from_dict, default_to_dict, logging
 from haystack.document_stores.types import DocumentStore, DuplicatePolicy
 
 logger = logging.getLogger(__name__)
@@ -12,14 +10,29 @@ logger = logging.getLogger(__name__)
 @component
 class DocumentWriter:
     """
-    A component for writing documents to a DocumentStore.
+    Writes documents to a DocumentStore.
+
+    Usage example:
+    ```python
+    from haystack import Document
+    from haystack.components.writers import DocumentWriter
+    from haystack.document_stores.in_memory import InMemoryDocumentStore
+    docs = [
+        Document(content="Python is a popular programming language"),
+    ]
+    doc_store = InMemoryDocumentStore()
+    doc_store.write_documents(docs)
+    ```
     """
 
     def __init__(self, document_store: DocumentStore, policy: DuplicatePolicy = DuplicatePolicy.NONE):
         """
         Create a DocumentWriter component.
 
-        :param policy: the policy to apply when a Document with the same id already exists in the DocumentStore.
+        :param document_store:
+            The DocumentStore where the documents are to be written.
+        :param policy:
+            The policy to apply when a Document with the same id already exists in the DocumentStore.
             - `DuplicatePolicy.NONE`: Default policy, behaviour depends on the Document Store.
             - `DuplicatePolicy.SKIP`: If a Document with the same id already exists, it is skipped and not written.
             - `DuplicatePolicy.OVERWRITE`: If a Document with the same id already exists, it is overwritten.
@@ -36,14 +49,24 @@ class DocumentWriter:
 
     def to_dict(self) -> Dict[str, Any]:
         """
-        Serialize this component to a dictionary.
+        Serializes the component to a dictionary.
+        :returns:
+            Dictionary with serialized data.
         """
         return default_to_dict(self, document_store=self.document_store.to_dict(), policy=self.policy.name)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "DocumentWriter":
         """
-        Deserialize this component from a dictionary.
+        Deserializes the component from a dictionary.
+
+        :param data:
+            The dictionary to deserialize from.
+        :returns:
+            The deserialized component.
+
+        :raises DeserializationError:
+            If the document store is not properly specified in the serialization data or its type cannot be imported.
         """
         init_params = data.get("init_parameters", {})
         if "document_store" not in init_params:
@@ -53,7 +76,7 @@ class DocumentWriter:
 
         try:
             module_name, type_ = init_params["document_store"]["type"].rsplit(".", 1)
-            logger.debug("Trying to import %s", module_name)
+            logger.debug("Trying to import module '{module}'", module=module_name)
             module = importlib.import_module(module_name)
         except (ImportError, DeserializationError) as e:
             raise DeserializationError(
@@ -70,13 +93,17 @@ class DocumentWriter:
     @component.output_types(documents_written=int)
     def run(self, documents: List[Document], policy: Optional[DuplicatePolicy] = None):
         """
-        Run DocumentWriter on the given input data.
+        Run the DocumentWriter on the given input data.
 
-        :param documents: A list of documents to write to the store.
-        :param policy: The policy to use when encountering duplicate documents.
-        :return: Number of documents written
+        :param documents:
+            A list of documents to write to the store.
+        :param policy:
+            The policy to use when encountering duplicate documents.
+        :returns:
+            Number of documents written
 
-        :raises ValueError: If the specified document store is not found.
+        :raises ValueError:
+            If the specified document store is not found.
         """
         if policy is None:
             policy = self.policy

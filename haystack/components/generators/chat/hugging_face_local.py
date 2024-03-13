@@ -1,23 +1,28 @@
-import logging
 import sys
-from typing import Any, Dict, List, Literal, Optional, Union, Callable
+from typing import Any, Callable, Dict, List, Literal, Optional, Union
 
-from haystack import component, default_to_dict, default_from_dict
+from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import ChatMessage, StreamingChunk
 from haystack.lazy_imports import LazyImport
-from haystack.utils import ComponentDevice
-from haystack.utils import Secret, deserialize_secrets_inplace, serialize_callable, deserialize_callable
+from haystack.utils import (
+    ComponentDevice,
+    Secret,
+    deserialize_callable,
+    deserialize_secrets_inplace,
+    serialize_callable,
+)
 
 logger = logging.getLogger(__name__)
 
 with LazyImport(message="Run 'pip install transformers[torch]'") as torch_and_transformers_import:
     from huggingface_hub import model_info
-    from transformers import StoppingCriteriaList, pipeline, PreTrainedTokenizer, PreTrainedTokenizerFast
+    from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast, StoppingCriteriaList, pipeline
+
     from haystack.utils.hf import (  # pylint: disable=ungrouped-imports
-        StopWordsCriteria,
         HFTokenStreamingHandler,
-        serialize_hf_model_kwargs,
+        StopWordsCriteria,
         deserialize_hf_model_kwargs,
+        serialize_hf_model_kwargs,
     )
 
 
@@ -27,7 +32,6 @@ PIPELINE_SUPPORTED_TASKS = ["text-generation", "text2text-generation"]
 @component
 class HuggingFaceLocalChatGenerator:
     """
-
     The `HuggingFaceLocalChatGenerator` class is a component designed for generating chat responses using models from
     Hugging Face's model hub. It is tailored for local runtime text generation tasks and provides a convenient interface
     for working with chat-based models, such as `HuggingFaceH4/zephyr-7b-beta` or `meta-llama/Llama-2-7b-chat-hf`
@@ -42,15 +46,22 @@ class HuggingFaceLocalChatGenerator:
     generator.warm_up()
     messages = [ChatMessage.from_user("What's Natural Language Processing? Be brief.")]
     print(generator.run(messages))
+    ```
 
-    # {'replies': [ChatMessage(content=' Natural Language Processing (NLP) is a subfield of artificial
-    intelligence that deals with the interaction between computers and human language. It enables computers
-    to understand, interpret, and generate human language in a valuable way. NLP involves various techniques
-    such as speech recognition, text analysis, sentiment analysis, and machine translation. The ultimate goal
-    is to make it easier for computers to process and derive meaning from human language, improving communication
-    between humans and machines.', role=<ChatRole.ASSISTANT: 'assistant'>, name=None,
-    meta={'finish_reason': 'stop', 'index': 0, 'model': 'mistralai/Mistral-7B-Instruct-v0.2',
-    'usage': {'completion_tokens': 90, 'prompt_tokens': 19, 'total_tokens': 109}})]}
+    ```
+    {'replies':
+        [ChatMessage(content=' Natural Language Processing (NLP) is a subfield of artificial intelligence that deals
+        with the interaction between computers and human language. It enables computers to understand, interpret, and
+        generate human language in a valuable way. NLP involves various techniques such as speech recognition, text
+        analysis, sentiment analysis, and machine translation. The ultimate goal is to make it easier for computers to
+        process and derive meaning from human language, improving communication between humans and machines.',
+        role=<ChatRole.ASSISTANT: 'assistant'>,
+        name=None,
+        meta={'finish_reason': 'stop', 'index': 0, 'model':
+              'mistralai/Mistral-7B-Instruct-v0.2',
+              'usage': {'completion_tokens': 90, 'prompt_tokens': 19, 'total_tokens': 109}})
+              ]
+    }
     ```
     """
 
@@ -68,7 +79,7 @@ class HuggingFaceLocalChatGenerator:
     ):
         """
         :param model: The name or path of a Hugging Face model for text generation,
-            for example, mistralai/Mistral-7B-Instruct-v0.2,T TheBloke/OpenHermes-2.5-Mistral-7B-16k-AWQ, etc.
+            for example, `mistralai/Mistral-7B-Instruct-v0.2`, `TheBloke/OpenHermes-2.5-Mistral-7B-16k-AWQ`, etc.
             The important aspect of the model is that it should be a chat model and that it supports ChatML messaging
             format.
             If the model is also specified in the `huggingface_pipeline_kwargs`, this parameter will be ignored.
@@ -89,10 +100,10 @@ class HuggingFaceLocalChatGenerator:
             or if you wish to use a custom template instead of the model's default, you can use this parameter to
             set your preferred chat template.
         :param generation_kwargs: A dictionary containing keyword arguments to customize text generation.
-            Some examples: `max_length`, `max_new_tokens`, `temperature`, `top_k`, `top_p`,...
+            Some examples: `max_length`, `max_new_tokens`, `temperature`, `top_k`, `top_p`, etc.
             See Hugging Face's documentation for more information:
-            - https://huggingface.co/docs/transformers/main/en/generation_strategies#customize-text-generation
-            - https://huggingface.co/docs/transformers/main/en/main_classes/text_generation#transformers.GenerationConfig
+            - - [customize-text-generation](https://huggingface.co/docs/transformers/main/en/generation_strategies#customize-text-generation)
+            - - [GenerationConfig](https://huggingface.co/docs/transformers/main/en/main_classes/text_generation#transformers.GenerationConfig)
             - The only generation_kwargs we set by default is max_new_tokens, which is set to 512 tokens.
         :param huggingface_pipeline_kwargs: Dictionary containing keyword arguments used to initialize the
             Hugging Face pipeline for text generation.
@@ -100,9 +111,7 @@ class HuggingFaceLocalChatGenerator:
             In case of duplication, these kwargs override `model`, `task`, `device`, and `token` init parameters.
             See Hugging Face's [documentation](https://huggingface.co/docs/transformers/en/main_classes/pipelines#transformers.pipeline.task)
             for more information on the available kwargs.
-            In this dictionary, you can also include `model_kwargs` to specify the kwargs
-            for model initialization:
-            https://huggingface.co/docs/transformers/en/main_classes/model#transformers.PreTrainedModel.from_pretrained
+            In this dictionary, you can also include `model_kwargs` to specify the kwargs for [model initialization](https://huggingface.co/docs/transformers/en/main_classes/model#transformers.PreTrainedModel.from_pretrained)
         :param stop_words: A list of stop words. If any one of the stop words is generated, the generation is stopped.
             If you provide this parameter, you should not specify the `stopping_criteria` in `generation_kwargs`.
             For some chat models, the output includes both the new text and the original prompt.
@@ -169,12 +178,18 @@ class HuggingFaceLocalChatGenerator:
         return {"model": f"[object of type {type(self.huggingface_pipeline_kwargs['model'])}]"}
 
     def warm_up(self):
+        """
+        Initializes the component.
+        """
         if self.pipeline is None:
             self.pipeline = pipeline(**self.huggingface_pipeline_kwargs)
 
     def to_dict(self) -> Dict[str, Any]:
         """
-        Serialize this component to a dictionary.
+        Serializes the component to a dictionary.
+
+        :returns:
+            Dictionary with serialized data.
         """
         callback_name = serialize_callable(self.streaming_callback) if self.streaming_callback else None
         serialization_dict = default_to_dict(
@@ -194,7 +209,12 @@ class HuggingFaceLocalChatGenerator:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "HuggingFaceLocalChatGenerator":
         """
-        Deserialize this component from a dictionary.
+        Deserializes the component from a dictionary.
+
+        :param data:
+            The dictionary to deserialize from.
+        :returns:
+            The deserialized component.
         """
         torch_and_transformers_import.check()  # leave this, cls method
         deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
@@ -214,7 +234,8 @@ class HuggingFaceLocalChatGenerator:
 
         :param messages: A list of ChatMessage instances representing the input messages.
         :param generation_kwargs: Additional keyword arguments for text generation.
-        :return: A list containing the generated responses as ChatMessage instances.
+        :returns:
+            A list containing the generated responses as ChatMessage instances.
         """
         if self.pipeline is None:
             raise RuntimeError("The generation model has not been loaded. Please call warm_up() before running.")
@@ -287,7 +308,7 @@ class HuggingFaceLocalChatGenerator:
         :param tokenizer: The tokenizer used for generation.
         :param prompt: The prompt used for generation.
         :param generation_kwargs: The generation parameters.
-        :return: A ChatMessage instance.
+        :returns: A ChatMessage instance.
         """
         completion_tokens = len(tokenizer.encode(text, add_special_tokens=False))
         prompt_token_count = len(tokenizer.encode(prompt, add_special_tokens=False))
@@ -322,8 +343,8 @@ class HuggingFaceLocalChatGenerator:
         if stop_words and not all(isinstance(word, str) for word in stop_words):
             logger.warning(
                 "Invalid stop words provided. Stop words must be specified as a list of strings. "
-                "Ignoring stop words: %s",
-                stop_words,
+                "Ignoring stop words: {stop_words}",
+                stop_words=stop_words,
             )
             return None
 

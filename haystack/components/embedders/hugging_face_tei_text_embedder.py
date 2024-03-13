@@ -1,13 +1,12 @@
-import logging
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
-from haystack import component, default_to_dict, default_from_dict
+from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.lazy_imports import LazyImport
 from haystack.utils import Secret, deserialize_secrets_inplace
-from haystack.utils.hf import check_valid_model, HFModelType
+from haystack.utils.hf import HFModelType, check_valid_model
 
-with LazyImport(message="Run 'pip install transformers'") as transformers_import:
+with LazyImport(message="Run 'pip install huggingface_hub'") as huggingface_hub_import:
     from huggingface_hub import InferenceClient
 
 logger = logging.getLogger(__name__)
@@ -16,11 +15,13 @@ logger = logging.getLogger(__name__)
 @component
 class HuggingFaceTEITextEmbedder:
     """
-    A component for embedding strings using HuggingFace Text-Embeddings-Inference endpoints. This component
-    is designed to seamlessly inference models deployed on the Text Embeddings Inference (TEI) backend.
+    A component for embedding strings using HuggingFace Text-Embeddings-Inference endpoints.
 
-    You can use this component for embedding models hosted on Hugging Face Inference endpoints, the rate-limited
-    Inference API tier:
+    This component can be used with embedding models hosted on Hugging Face Inference endpoints, the rate-limited
+    Inference API tier, for embedding models hosted on [the paid inference endpoint](https://huggingface.co/inference-endpoints)
+    and/or your own custom TEI endpoint.
+
+    Usage example:
     ```python
     from haystack.components.embedders import HuggingFaceTEITextEmbedder
     from haystack.utils import Secret
@@ -35,40 +36,6 @@ class HuggingFaceTEITextEmbedder:
 
     # {'embedding': [0.017020374536514282, -0.023255806416273117, ...],
     ```
-
-    Or for embedding models hosted on paid https://huggingface.co/inference-endpoints endpoint, and/or your own custom
-    TEI endpoint. In these two cases, you'll need to provide the URL of the endpoint as well as a valid token:
-
-    ```python
-    from haystack.components.embedders import HuggingFaceTEITextEmbedder
-
-    text_to_embed = "I love pizza!"
-
-    text_embedder = HuggingFaceTEITextEmbedder(
-        model="BAAI/bge-small-en-v1.5", url="<your-tei-endpoint-url>", token=Secret.from_token("<your-api-key>")
-    )
-
-    print(text_embedder.run(text_to_embed))
-
-    # {'embedding': [0.017020374536514282, -0.023255806416273117, ...],
-    ```
-
-    Key Features and Compatibility:
-        - **Primary Compatibility**: Designed to work seamlessly with any embedding model deployed using the TEI
-        framework. For more information on TEI, visit https://github.com/huggingface/text-embeddings-inference.
-        - **Hugging Face Inference Endpoints**: Supports inference of TEI embedding models deployed on Hugging Face
-        Inference endpoints. For more details refer to https://huggingface.co/inference-endpoints.
-        - **Inference API Support**: Supports inference of TEI embedding models hosted on the rate-limited Inference
-        API tier. Learn more about the Inference API at: https://huggingface.co/inference-api
-        Discover available embedding models using the following command:
-        ```
-        wget -qO- https://api-inference.huggingface.co/framework/sentence-transformers
-        ```
-        And simply use the model ID as the model parameter for this component. You'll also need to provide a valid
-        Hugging Face API token as the token parameter.
-        - **Custom TEI Endpoints**: Supports inference of embedding models deployed on custom TEI endpoints. Anyone can
-        deploy their own TEI endpoint using the TEI framework. For more details refer
-        to https://huggingface.co/inference-endpoints.
     """
 
     def __init__(
@@ -82,15 +49,20 @@ class HuggingFaceTEITextEmbedder:
         """
         Create an HuggingFaceTEITextEmbedder component.
 
-        :param model: A string representing the model id on HF Hub. Default is "BAAI/bge-small-en-v1.5".
-        :param url: The URL of your self-deployed Text-Embeddings-Inference service or the URL of your paid HF Inference
-                    Endpoint.
-        :param token: The HuggingFace Hub token. This is needed if you are using a paid HF Inference Endpoint or serving
-                      a private or gated model.
-        :param prefix: A string to add to the beginning of each text.
-        :param suffix: A string to add to the end of each text.
+        :param model:
+            ID of the model on HuggingFace Hub.
+        :param url:
+            The URL of your self-deployed Text-Embeddings-Inference service or the URL of your paid HF Inference
+            Endpoint.
+        :param token:
+            The HuggingFace Hub token. This is needed if you are using a paid HF Inference Endpoint or serving
+            a private or gated model.
+        :param prefix:
+            A string to add at the beginning of each text.
+        :param suffix:
+            A string to add at the end of each text.
         """
-        transformers_import.check()
+        huggingface_hub_import.check()
 
         if url:
             r = urlparse(url)
@@ -108,6 +80,12 @@ class HuggingFaceTEITextEmbedder:
         self.suffix = suffix
 
     def to_dict(self) -> Dict[str, Any]:
+        """
+        Serializes the component to a dictionary.
+
+        :returns:
+            Dictionary with serialized data.
+        """
         return default_to_dict(
             self,
             model=self.model,
@@ -119,6 +97,14 @@ class HuggingFaceTEITextEmbedder:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "HuggingFaceTEITextEmbedder":
+        """
+        Deserializes the component from a dictionary.
+
+        :param data:
+            Dictionary to deserialize from.
+        :returns:
+            Deserialized component.
+        """
         deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
         return default_from_dict(cls, data)
 
@@ -131,7 +117,16 @@ class HuggingFaceTEITextEmbedder:
 
     @component.output_types(embedding=List[float])
     def run(self, text: str):
-        """Embed a string."""
+        """
+        Embed a single string.
+
+        :param text:
+            Text to embed.
+
+        :returns:
+            A dictionary with the following keys:
+            - `embedding`: The embedding of the input text.
+        """
         if not isinstance(text, str):
             raise TypeError(
                 "HuggingFaceTEITextEmbedder expects a string as an input."
@@ -140,8 +135,8 @@ class HuggingFaceTEITextEmbedder:
 
         text_to_embed = self.prefix + text + self.suffix
 
-        embedding = self.client.feature_extraction(text=text_to_embed)
+        embeddings = self.client.feature_extraction(text=[text_to_embed])
         # The client returns a numpy array
-        embedding = embedding.tolist()
+        embedding = embeddings.tolist()[0]
 
         return {"embedding": embedding}

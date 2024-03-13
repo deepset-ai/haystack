@@ -1,6 +1,6 @@
-from typing import List, Any, Union, Dict
 from dataclasses import fields
 from datetime import datetime
+from typing import Any, Dict, List, Union
 
 import pandas as pd
 
@@ -11,7 +11,9 @@ from haystack.errors import FilterError
 def document_matches_filter(filters: Dict[str, Any], document: Document) -> bool:
     """
     Return whether `filters` match the Document.
-    For a detailed specification of the filters, refer to the DocumentStore.filter_documents() protocol documentation.
+
+    For a detailed specification of the filters, refer to the
+    `DocumentStore.filter_documents()` protocol documentation.
     """
     if "field" in filters:
         return _comparison_condition(filters, document)

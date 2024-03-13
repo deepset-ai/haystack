@@ -2,15 +2,20 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import logging
-from typing import Optional
+from typing import List, Optional
 from unittest.mock import patch
 
 import pytest
 
+from haystack import Document
+from haystack.components.builders import PromptBuilder
+from haystack.components.others import Multiplexer
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.core.component import component
 from haystack.core.component.types import InputSocket, OutputSocket
 from haystack.core.errors import PipelineDrawingError, PipelineError, PipelineMaxLoops, PipelineRuntimeError
-from haystack.core.pipeline import Pipeline
+from haystack.core.pipeline import Pipeline, PredefinedPipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.testing.factory import component_class
 from haystack.testing.sample_components import AddFixedValue, Double
 
@@ -25,6 +30,45 @@ class FakeComponent:
     @component.output_types(value=str)
     def run(self, input_: str):
         return {"value": input_}
+
+
+def test_run_with_greedy_variadic_after_component_with_default_input_simple(spying_tracer):
+    """
+    This test verifies that `Pipeline.run()` executes the components in the correct order when
+    there's a greedy Component with variadic input right before a Component with at least one default input.
+
+    We use the `spying_tracer` fixture to simplify the code to verify the order of execution.
+    This creates some coupling between this test and how we trace the Pipeline execution.
+    A worthy tradeoff in my opinion, we will notice right away if we change either the run logic or
+    the tracing logic.
+    """
+    document_store = InMemoryDocumentStore()
+    document_store.write_documents([Document(content="This is a simple document")])
+
+    pipeline = Pipeline()
+    template = "Given this documents: {{ documents|join(', ', attribute='content') }} Answer this question: {{ query }}"
+    pipeline.add_component("retriever", InMemoryBM25Retriever(document_store=document_store))
+    pipeline.add_component("prompt_builder", PromptBuilder(template=template))
+    pipeline.add_component("multiplexer", Multiplexer(List[Document]))
+
+    pipeline.connect("retriever", "multiplexer")
+    pipeline.connect("multiplexer", "prompt_builder.documents")
+    res = pipeline.run({"query": "This is my question"})
+
+    assert res == {
+        "prompt_builder": {
+            "prompt": "Given this documents: This is a simple document Answer this question: This is my question"
+        }
+    }
+
+    assert len(spying_tracer.spans) == 4
+    assert spying_tracer.spans[0].operation_name == "haystack.pipeline.run"
+    assert spying_tracer.spans[1].operation_name == "haystack.component.run"
+    assert spying_tracer.spans[1].tags["haystack.component.name"] == "retriever"
+    assert spying_tracer.spans[2].operation_name == "haystack.component.run"
+    assert spying_tracer.spans[2].tags["haystack.component.name"] == "multiplexer"
+    assert spying_tracer.spans[3].operation_name == "haystack.component.run"
+    assert spying_tracer.spans[3].tags["haystack.component.name"] == "prompt_builder"
 
 
 def test_pipeline_resolution_simple_input():
@@ -654,3 +698,79 @@ def test_describe_no_outputs():
     p.connect("a.x", "c.x")
     p.connect("b.y", "c.y")
     assert p.outputs() == {}
+
+
+def test_from_template(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "fake_key")
+    pipe = Pipeline.from_template(PredefinedPipeline.INDEXING)
+    assert pipe.get_component("cleaner")
+
+
+def test_walk_pipeline_with_no_cycles():
+    """
+    This pipeline has two source nodes, source1 and source2, one hello3 node in between, and one sink node, joiner.
+    pipeline.walk() should return each component exactly once. The order is not guaranteed.
+    """
+
+    @component
+    class Hello:
+        @component.output_types(output=str)
+        def run(self, word: str):
+            """
+            Takes a string in input and returns "Hello, <string>!" in output.
+            """
+            return {"output": f"Hello, {word}!"}
+
+    @component
+    class Joiner:
+        @component.output_types(output=str)
+        def run(self, word1: str, word2: str):
+            """
+            Takes two strings in input and returns "Hello, <string1> and <string2>!" in output.
+            """
+            return {"output": f"Hello, {word1} and {word2}!"}
+
+    pipeline = Pipeline()
+    source1 = Hello()
+    source2 = Hello()
+    hello3 = Hello()
+    joiner = Joiner()
+    pipeline.add_component("source1", source1)
+    pipeline.add_component("source2", source2)
+    pipeline.add_component("hello3", hello3)
+    pipeline.add_component("joiner", joiner)
+
+    pipeline.connect("source1", "joiner.word1")
+    pipeline.connect("source2", "hello3")
+    pipeline.connect("hello3", "joiner.word2")
+
+    expected_components = [("source1", source1), ("source2", source2), ("joiner", joiner), ("hello3", hello3)]
+    assert sorted(expected_components) == sorted(pipeline.walk())
+
+
+def test_walk_pipeline_with_cycles():
+    """
+    This pipeline consists of one component, which would run three times in a loop.
+    pipeline.walk() should return this component exactly once. The order is not guaranteed.
+    """
+
+    @component
+    class Hello:
+        def __init__(self):
+            self.iteration_counter = 0
+
+        @component.output_types(intermediate=str, final=str)
+        def run(self, word: str, intermediate: Optional[str] = None):
+            """
+            Takes a string in input and returns "Hello, <string>!" in output.
+            """
+            if self.iteration_counter < 3:
+                self.iteration_counter += 1
+                return {"intermediate": f"Hello, {intermediate or word}!"}
+            return {"final": f"Hello, {intermediate or word}!"}
+
+    pipeline = Pipeline()
+    hello = Hello()
+    pipeline.add_component("hello", hello)
+    pipeline.connect("hello.intermediate", "hello.intermediate")
+    assert [("hello", hello)] == list(pipeline.walk())

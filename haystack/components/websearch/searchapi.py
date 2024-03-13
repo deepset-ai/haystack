@@ -1,10 +1,9 @@
 import json
-import logging
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional, Union
 
 import requests
 
-from haystack import Document, component, default_to_dict, ComponentError, default_from_dict
+from haystack import ComponentError, Document, component, default_from_dict, default_to_dict, logging
 from haystack.utils import Secret, deserialize_secrets_inplace
 
 logger = logging.getLogger(__name__)
@@ -20,9 +19,21 @@ class SearchApiError(ComponentError):
 @component
 class SearchApiWebSearch:
     """
-    Search engine using SearchApi API. Given a query, it returns a list of URLs that are the most relevant.
+    Uses [SearchApi](https://www.searchapi.io/) to search the web for relevant documents.
 
     See the [SearchApi website](https://www.searchapi.io/) for more details.
+
+    Usage example:
+    ```python
+    from haystack.components.websearch import SearchApiWebSearch
+    from haystack.utils import Secret
+
+    websearch = SearchApiWebSearch(top_k=10, api_key=Secret.from_token("test-api-key"))
+    results = websearch.run(query="Who is the boyfriend of Olivia Wilde?")
+
+    assert results["documents"]
+    assert results["links"]
+    ```
     """
 
     def __init__(
@@ -37,8 +48,8 @@ class SearchApiWebSearch:
         :param top_k: Number of documents to return.
         :param allowed_domains: List of domains to limit the search to.
         :param search_params: Additional parameters passed to the SearchApi API.
-        For example, you can set 'num' to 100 to increase the number of search results.
-        See the [SearchApi website](https://www.searchapi.io/) for more details.
+            For example, you can set 'num' to 100 to increase the number of search results.
+            See the [SearchApi website](https://www.searchapi.io/) for more details.
         """
 
         self.api_key = api_key
@@ -51,7 +62,10 @@ class SearchApiWebSearch:
 
     def to_dict(self) -> Dict[str, Any]:
         """
-        Serialize this component to a dictionary.
+        Serializes the component to a dictionary.
+
+        :returns:
+              Dictionary with serialized data.
         """
         return default_to_dict(
             self,
@@ -64,17 +78,27 @@ class SearchApiWebSearch:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "SearchApiWebSearch":
         """
-        Deserialize this component from a dictionary.
+        Deserializes the component from a dictionary.
+
+        :param data:
+            The dictionary to deserialize from.
+        :returns:
+                The deserialized component.
         """
         deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         return default_from_dict(cls, data)
 
     @component.output_types(documents=List[Document], links=List[str])
-    def run(self, query: str):
+    def run(self, query: str) -> Dict[str, Union[List[Document], List[str]]]:
         """
-        Search the SearchApi API for the given query and return the results as a list of Documents and a list of links.
+        Uses [SearchApi](https://www.searchapi.io/) to search the web.
 
-        :param query: Query string.
+        :param query: Search query.
+        :returns: A dictionary with the following keys:
+            - "documents": List of documents returned by the search engine.
+            - "links": List of links returned by the search engine.
+        :raises TimeoutError: If the request to the SearchApi API times out.
+        :raises SearchApiError: If an error occurs while querying the SearchApi API.
         """
         query_prepend = "OR ".join(f"site:{domain} " for domain in self.allowed_domains) if self.allowed_domains else ""
 
@@ -84,8 +108,8 @@ class SearchApiWebSearch:
         try:
             response = requests.get(SEARCHAPI_BASE_URL, headers=headers, params=payload, timeout=90)
             response.raise_for_status()  # Will raise an HTTPError for bad responses
-        except requests.Timeout:
-            raise TimeoutError(f"Request to {self.__class__.__name__} timed out.")
+        except requests.Timeout as error:
+            raise TimeoutError(f"Request to {self.__class__.__name__} timed out.") from error
 
         except requests.RequestException as e:
             raise SearchApiError(f"An error occurred while querying {self.__class__.__name__}. Error: {e}") from e
@@ -142,5 +166,9 @@ class SearchApiWebSearch:
 
         links = [result["link"] for result in json_result["organic_results"]]
 
-        logger.debug("SearchApi returned %s documents for the query '%s'", len(documents), query)
+        logger.debug(
+            "SearchApi returned {number_documents} documents for the query '{query}'",
+            number_documents=len(documents),
+            query=query,
+        )
         return {"documents": documents[: self.top_k], "links": links[: self.top_k]}

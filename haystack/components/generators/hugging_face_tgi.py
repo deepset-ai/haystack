@@ -1,17 +1,16 @@
-import logging
 from dataclasses import asdict
-from typing import Any, Dict, List, Optional, Iterable, Callable
+from typing import Any, Callable, Dict, Iterable, List, Optional
 from urllib.parse import urlparse
 
-from haystack import component, default_to_dict, default_from_dict
+from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import StreamingChunk
 from haystack.lazy_imports import LazyImport
-from haystack.utils import Secret, deserialize_secrets_inplace, serialize_callable, deserialize_callable
-from haystack.utils.hf import check_valid_model, HFModelType, check_generation_params, list_inference_deployed_models
+from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
+from haystack.utils.hf import HFModelType, check_generation_params, check_valid_model, list_inference_deployed_models
 
 with LazyImport(message="Run 'pip install transformers'") as transformers_import:
     from huggingface_hub import InferenceClient
-    from huggingface_hub.inference._text_generation import TextGenerationStreamResponse, TextGenerationResponse, Token
+    from huggingface_hub.inference._text_generation import TextGenerationResponse, TextGenerationStreamResponse, Token
     from transformers import AutoTokenizer
 
 
@@ -25,7 +24,27 @@ class HuggingFaceTGIGenerator:
 
     This component is designed to seamlessly inference models deployed on the Text Generation Inference (TGI) backend.
     You can use this component for LLMs hosted on Hugging Face inference endpoints, the rate-limited
-    Inference API tier:
+    Inference API tier.
+
+    Key Features and Compatibility:
+     - Primary Compatibility: designed to work seamlessly with any non-based model deployed using the TGI
+       framework. For more information on TGI, visit [text-generation-inference](https://github.com/huggingface/text-generation-inference)
+
+    - Hugging Face Inference Endpoints: Supports inference of TGI chat LLMs deployed on Hugging Face
+       inference endpoints. For more details, refer to [inference-endpoints](https://huggingface.co/inference-endpoints)
+
+    - Inference API Support: supports inference of TGI LLMs hosted on the rate-limited Inference
+      API tier. Learn more about the Inference API at [inference-api](https://huggingface.co/inference-api).
+      Discover available chat models using the following command: `wget -qO- https://api-inference.huggingface.co/framework/text-generation-inference | grep chat`
+      and simply use the model ID as the model parameter for this component. You'll also need to provide a valid
+      Hugging Face API token as the token parameter.
+
+    - Custom TGI Endpoints: supports inference of TGI chat LLMs deployed on custom TGI endpoints. Anyone can
+      deploy their own TGI endpoint using the TGI framework. For more details, refer to [inference-endpoints](https://huggingface.co/inference-endpoints)
+
+     Input and Output Format:
+      - String Format: This component uses the str format for structuring both input and output,
+        ensuring coherent and contextually relevant responses in text generation scenarios.
 
     ```python
     from haystack.components.generators import HuggingFaceTGIGenerator
@@ -49,27 +68,6 @@ class HuggingFaceTGIGenerator:
     response = client.run("What's Natural Language Processing?")
     print(response)
     ```
-
-
-     Key Features and Compatibility:
-         - **Primary Compatibility**: Designed to work seamlessly with any non-chat model deployed using the TGI
-           framework. For more information on TGI, visit https://github.com/huggingface/text-generation-inference.
-         - **Hugging Face Inference Endpoints**: Supports inference of TGI chat LLMs deployed on Hugging Face
-           inference endpoints. For more details refer to https://huggingface.co/inference-endpoints.
-         - **Inference API Support**: Supports inference of TGI LLMs hosted on the rate-limited Inference
-           API tier. Learn more about the Inference API at: https://huggingface.co/inference-api
-           Discover available LLMs using the following command:
-           ```
-           wget -qO- https://api-inference.huggingface.co/framework/text-generation-inference
-           ```
-           And simply use the model ID as the model parameter for this component. You'll also need to provide a valid
-           Hugging Face API token as the token parameter.
-         - **Custom TGI Endpoints**: Supports inference of LLMs deployed on custom TGI endpoints. Anyone can
-           deploy their own TGI endpoint using the TGI framework. For more details refer
-           to https://huggingface.co/inference-endpoints.
-     Input and Output Format:
-         - **String Format**: This component uses the str format for structuring both input and output,
-           ensuring coherent and contextually relevant responses in text generation scenarios.
     """
 
     def __init__(

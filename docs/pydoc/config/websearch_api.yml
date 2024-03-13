@@ -1,7 +1,7 @@
 loaders:
   - type: haystack_pydoc_tools.loaders.CustomPythonLoader
     search_path: [../../../haystack/components/websearch]
-    modules: ["serper_dev"]
+    modules: ["serper_dev", "searchapi"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
@@ -20,6 +20,7 @@ renderer:
   order: 170
   markdown:
     descriptive_class_title: false
+    classdef_code_block: false
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false

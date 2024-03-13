@@ -69,11 +69,13 @@
 """
 
 import inspect
-import logging
+import sys
+from collections.abc import Callable
 from copy import deepcopy
 from types import new_class
-from typing import Any, Optional, Protocol, runtime_checkable
+from typing import Any, Dict, Optional, Protocol, runtime_checkable
 
+from haystack import logging
 from haystack.core.errors import ComponentError
 
 from .sockets import Sockets
@@ -108,8 +110,16 @@ class Component(Protocol):
         isinstance(MyComponent, Component)
     """
 
-    def run(self, *args: Any, **kwargs: Any):  # pylint: disable=missing-function-docstring
-        ...
+    # This is the most reliable way to define the protocol for the `run` method.
+    # Defining a method doesn't work as different Components will have different
+    # arguments. Even defining here a method with `**kwargs` doesn't work as the
+    # expected signature must be identical.
+    # This makes most Language Servers and type checkers happy and shows less errors.
+    # NOTE: This check can be removed when we drop Python 3.8 support.
+    if sys.version_info >= (3, 9):
+        run: Callable[..., Dict[str, Any]]
+    else:
+        run: Callable
 
 
 class ComponentMeta(type):
@@ -162,10 +172,10 @@ class ComponentMeta(type):
         # We can have this information only at instance creation time, so we do it here.
         is_variadic = any(socket.is_variadic for socket in instance.__haystack_input__._sockets_dict.values())
         if not is_variadic and cls.__haystack_is_greedy__:
-            logging.warning(
-                "Component '%s' has no variadic input, but it's marked as greedy. "
+            logger.warning(
+                "Component '{component}' has no variadic input, but it's marked as greedy. "
                 "This is not supported and can lead to unexpected behavior.",
-                cls.__name__,
+                component=cls.__name__,
             )
 
         return instance
@@ -322,7 +332,7 @@ class _Component:
         """
         Decorator validating the structure of the component and registering it in the components registry.
         """
-        logger.debug("Registering %s as a component", cls)
+        logger.debug("Registering {component} as a component", component=cls)
 
         # Check for required methods and fail as soon as possible
         if not hasattr(cls, "run"):
@@ -351,13 +361,13 @@ class _Component:
         if class_path in self.registry:
             # Corner case, but it may occur easily in notebooks when re-running cells.
             logger.debug(
-                "Component %s is already registered. Previous imported from '%s', new imported from '%s'",
-                class_path,
-                self.registry[class_path],
-                cls,
+                "Component {component} is already registered. Previous imported from '{module}', new imported from '{new_module}'",
+                component=class_path,
+                module=self.registry[class_path],
+                new_module=cls,
             )
         self.registry[class_path] = cls
-        logger.debug("Registered Component %s", cls)
+        logger.debug("Registered Component {component}", component=cls)
 
         # Override the __repr__ method with a default one
         cls.__repr__ = _component_repr

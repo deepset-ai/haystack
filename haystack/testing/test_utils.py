@@ -1,8 +1,9 @@
 import os
 import random
-import logging
+
 import numpy as np
 
+from haystack import logging
 
 logger = logging.getLogger(__name__)
 
@@ -31,4 +32,4 @@ def set_all_seeds(seed: int, deterministic_cudnn: bool = False) -> None:
             torch.backends.cudnn.benchmark = False
 
     except (ImportError, ModuleNotFoundError) as exc:
-        logger.info("Could not set PyTorch seed because torch is not installed. Exception: %s", exc)
+        logger.info("Could not set PyTorch seed because torch is not installed. Exception: {exception}", exception=exc)

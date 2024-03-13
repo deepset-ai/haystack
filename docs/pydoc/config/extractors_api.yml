@@ -9,6 +9,8 @@ processors:
     documented_only: true
     do_not_filter_modules: false
     skip_empty_modules: true
+  - type: filter
+    expression: "name not in ['_BackendEnumMeta', '_NerBackend', '_HfBackend', '_SpacyBackend']"
   - type: smart
   - type: crossref
 renderer:
@@ -20,6 +22,7 @@ renderer:
   order: 65
   markdown:
     descriptive_class_title: false
+    classdef_code_block: false
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false

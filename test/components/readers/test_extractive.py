@@ -1,15 +1,24 @@
+import logging
 from math import ceil, exp
 from typing import List
 from unittest.mock import Mock, patch
 
 import pytest
-import logging
 import torch
+from _pytest.monkeypatch import MonkeyPatch
 from transformers import pipeline
 
 from haystack import Document, ExtractedAnswer
 from haystack.components.readers import ExtractiveReader
+from haystack.utils import Secret
 from haystack.utils.device import ComponentDevice, DeviceMap
+
+
+@pytest.fixture()
+def initialized_token(monkeypatch: MonkeyPatch) -> Secret:
+    monkeypatch.setenv("HF_API_TOKEN", "secret-token")
+
+    return Secret.from_env_var("HF_API_TOKEN", strict=False)
 
 
 @pytest.fixture
@@ -87,8 +96,8 @@ example_documents = [
 ] * 2
 
 
-def test_to_dict():
-    component = ExtractiveReader("my-model", token="secret-token", model_kwargs={"torch_dtype": torch.float16})
+def test_to_dict(initialized_token: Secret):
+    component = ExtractiveReader("my-model", token=initialized_token, model_kwargs={"torch_dtype": torch.float16})
     data = component.to_dict()
 
     assert data == {
@@ -96,7 +105,7 @@ def test_to_dict():
         "init_parameters": {
             "model": "my-model",
             "device": None,
-            "token": None,  # don't serialize valid tokens
+            "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
             "top_k": 20,
             "score_threshold": None,
             "max_seq_length": 384,
@@ -113,8 +122,8 @@ def test_to_dict():
     }
 
 
-def test_to_dict_empty_model_kwargs():
-    component = ExtractiveReader("my-model", token="secret-token")
+def test_to_dict_no_token():
+    component = ExtractiveReader("my-model", token=None, model_kwargs={"torch_dtype": torch.float16})
     data = component.to_dict()
 
     assert data == {
@@ -122,7 +131,33 @@ def test_to_dict_empty_model_kwargs():
         "init_parameters": {
             "model": "my-model",
             "device": None,
-            "token": None,  # don't serialize valid tokens
+            "token": None,
+            "top_k": 20,
+            "score_threshold": None,
+            "max_seq_length": 384,
+            "stride": 128,
+            "max_batch_size": None,
+            "answers_per_seq": None,
+            "no_answer": True,
+            "calibration_factor": 0.1,
+            "model_kwargs": {
+                "torch_dtype": "torch.float16",
+                "device_map": ComponentDevice.resolve_device(None).to_hf(),
+            },  # torch_dtype is correctly serialized
+        },
+    }
+
+
+def test_to_dict_empty_model_kwargs(initialized_token: Secret):
+    component = ExtractiveReader("my-model", token=initialized_token)
+    data = component.to_dict()
+
+    assert data == {
+        "type": "haystack.components.readers.extractive.ExtractiveReader",
+        "init_parameters": {
+            "model": "my-model",
+            "device": None,
+            "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
             "top_k": 20,
             "score_threshold": None,
             "max_seq_length": 384,
@@ -153,7 +188,7 @@ def test_to_dict_device_map(device_map, expected):
         "init_parameters": {
             "model": "my-model",
             "device": None,
-            "token": None,
+            "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
             "top_k": 20,
             "score_threshold": None,
             "max_seq_length": 384,
@@ -173,7 +208,7 @@ def test_from_dict():
         "init_parameters": {
             "model": "my-model",
             "device": None,
-            "token": None,
+            "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
             "top_k": 20,
             "score_threshold": None,
             "max_seq_length": 384,
@@ -189,7 +224,7 @@ def test_from_dict():
     component = ExtractiveReader.from_dict(data)
     assert component.model_name_or_path == "my-model"
     assert component.device is None
-    assert component.token is None
+    assert component.token == Secret.from_env_var("HF_API_TOKEN", strict=False)
     assert component.top_k == 20
     assert component.score_threshold is None
     assert component.max_seq_length == 384
@@ -203,6 +238,29 @@ def test_from_dict():
         "torch_dtype": torch.float16,
         "device_map": ComponentDevice.resolve_device(None).to_hf(),
     }
+
+
+def test_from_dict_no_token():
+    data = {
+        "type": "haystack.components.readers.extractive.ExtractiveReader",
+        "init_parameters": {
+            "model": "my-model",
+            "device": None,
+            "token": None,
+            "top_k": 20,
+            "score_threshold": None,
+            "max_seq_length": 384,
+            "stride": 128,
+            "max_batch_size": None,
+            "answers_per_seq": None,
+            "no_answer": True,
+            "calibration_factor": 0.1,
+            "model_kwargs": {"torch_dtype": "torch.float16"},
+        },
+    }
+
+    component = ExtractiveReader.from_dict(data)
+    assert component.token is None
 
 
 def test_output(mock_reader: ExtractiveReader):
@@ -336,8 +394,8 @@ def test_nest_answers(mock_reader: ExtractiveReader):
 
 @patch("haystack.components.readers.extractive.AutoTokenizer.from_pretrained")
 @patch("haystack.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained")
-def test_warm_up_use_hf_token(mocked_automodel, mocked_autotokenizer):
-    reader = ExtractiveReader("deepset/roberta-base-squad2", token="fake-token", device=ComponentDevice.from_str("cpu"))
+def test_warm_up_use_hf_token(mocked_automodel, mocked_autotokenizer, initialized_token: Secret):
+    reader = ExtractiveReader("deepset/roberta-base-squad2", device=ComponentDevice.from_str("cpu"))
 
     class MockedModel:
         def __init__(self):
@@ -346,8 +404,8 @@ def test_warm_up_use_hf_token(mocked_automodel, mocked_autotokenizer):
     mocked_automodel.return_value = MockedModel()
     reader.warm_up()
 
-    mocked_automodel.assert_called_once_with("deepset/roberta-base-squad2", token="fake-token", device_map="cpu")
-    mocked_autotokenizer.assert_called_once_with("deepset/roberta-base-squad2", token="fake-token")
+    mocked_automodel.assert_called_once_with("deepset/roberta-base-squad2", token="secret-token", device_map="cpu")
+    mocked_autotokenizer.assert_called_once_with("deepset/roberta-base-squad2", token="secret-token")
 
 
 @patch("haystack.components.readers.extractive.AutoTokenizer.from_pretrained")

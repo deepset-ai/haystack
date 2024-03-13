@@ -2,15 +2,23 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import inspect
-from typing import Type, Dict, Any
+from typing import Any, Dict, Type
 
 from haystack.core.errors import DeserializationError, SerializationError
 
 
 def component_to_dict(obj: Any) -> Dict[str, Any]:
     """
-    The marshaller used by the Pipeline. If a `to_dict` method is present in the
+    Converts a component instance into a dictionary. If a `to_dict` method is present in the
     component instance, that will be used instead of the default method.
+
+    :param obj:
+        The component to be serialized.
+    :returns:
+        A dictionary representation of the component.
+
+    :raises SerializationError:
+        If the component doesn't have a `to_dict` method and the values of the init parameters can't be determined.
     """
     if hasattr(obj, "to_dict"):
         return obj.to_dict()
@@ -39,10 +47,29 @@ def component_to_dict(obj: Any) -> Dict[str, Any]:
     return default_to_dict(obj, **init_parameters)
 
 
+def generate_qualified_class_name(cls: Type[object]) -> str:
+    """
+    Generates a qualified class name for a class.
+
+    :param cls:
+        The class whose qualified name is to be generated.
+    :returns:
+        The qualified name of the class.
+    """
+    return f"{cls.__module__}.{cls.__name__}"
+
+
 def component_from_dict(cls: Type[object], data: Dict[str, Any]) -> Any:
     """
-    The unmarshaller used by the Pipeline. If a `from_dict` method is present in the
-    component instance, that will be used instead of the default method.
+    Creates a component instance from a dictionary. If a `from_dict` method is present in the
+    component class, that will be used instead of the default method.
+
+    :param cls:
+        The class to be used for deserialization.
+    :param data:
+        The serialized data.
+    :returns:
+        The deserialized component.
     """
     if hasattr(cls, "from_dict"):
         return cls.from_dict(data)
@@ -80,8 +107,15 @@ def default_to_dict(obj: Any, **init_parameters) -> Dict[str, Any]:
         },
     }
     ```
+
+    :param obj:
+        The object to be serialized.
+    :param init_parameters:
+        The parameters used to create a new instance of the class.
+    :returns:
+        A dictionary representation of the instance.
     """
-    return {"type": f"{obj.__class__.__module__}.{obj.__class__.__name__}", "init_parameters": init_parameters}
+    return {"type": generate_qualified_class_name(type(obj)), "init_parameters": init_parameters}
 
 
 def default_from_dict(cls: Type[object], data: Dict[str, Any]) -> Any:
@@ -94,10 +128,20 @@ def default_from_dict(cls: Type[object], data: Dict[str, Any]) -> Any:
 
     If `data` contains an `init_parameters` field it will be used as parameters to create
     a new instance of `cls`.
+
+    :param cls:
+        The class to be used for deserialization.
+    :param data:
+        The serialized data.
+    :returns:
+        The deserialized object.
+
+    :raises DeserializationError:
+        If the `type` field in `data` is missing or it doesn't match the type of `cls`.
     """
     init_params = data.get("init_parameters", {})
     if "type" not in data:
         raise DeserializationError("Missing 'type' in serialization data")
-    if data["type"] != f"{cls.__module__}.{cls.__name__}":
+    if data["type"] != generate_qualified_class_name(cls):
         raise DeserializationError(f"Class '{data['type']}' can't be deserialized as '{cls.__name__}'")
     return cls(**init_params)

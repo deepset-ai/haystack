@@ -94,11 +94,3 @@ class TestLostInTheMiddleRanker:
             # top_k is greater than the number of documents, so all documents should be returned in LITM order
             assert len(result["documents"]) == len(docs)
             assert result == ranker.run(documents=docs)
-
-    def test_to_dict(self):
-        component = LostInTheMiddleRanker()
-        data = component.to_dict()
-        assert data == {
-            "type": "haystack.components.rankers.lost_in_the_middle.LostInTheMiddleRanker",
-            "init_parameters": {"word_count_threshold": None, "top_k": None},
-        }
