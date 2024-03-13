@@ -1,5 +1,7 @@
 from unittest.mock import patch
+
 import pytest
+
 from haystack.components.embedders.backends.sentence_transformers_backend import (
     _SentenceTransformersEmbeddingBackendFactory,
 )
@@ -23,10 +25,10 @@ def test_factory_behavior(mock_sentence_transformer):
 @patch("haystack.components.embedders.backends.sentence_transformers_backend.SentenceTransformer")
 def test_model_initialization(mock_sentence_transformer):
     _SentenceTransformersEmbeddingBackendFactory.get_embedding_backend(
-        model="model", device="cpu", auth_token=Secret.from_token("fake-api-token")
+        model="model", device="cpu", auth_token=Secret.from_token("fake-api-token"), trust_remote_code=True
     )
     mock_sentence_transformer.assert_called_once_with(
-        model_name_or_path="model", device="cpu", use_auth_token="fake-api-token"
+        model_name_or_path="model", device="cpu", use_auth_token="fake-api-token", trust_remote_code=True
     )
 
 
