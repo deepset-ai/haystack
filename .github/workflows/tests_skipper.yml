@@ -15,7 +15,6 @@ on:
       - "haystack/**/*.py"
       - "haystack/core/pipeline/predefined/*"
       - "test/**/*.py"
-      - "test/test_requirements.txt"
 
 jobs:
   check_if_changed:
@@ -37,7 +36,6 @@ jobs:
               - haystack/**/*.py
               - "haystack/templates/predefined/*"
               - test/**/*.py
-              - test/test_requirements.txt
 
   catch-all:
     # Don't run this check if the PR contains both code and non-code changes (e.g. release notes)
