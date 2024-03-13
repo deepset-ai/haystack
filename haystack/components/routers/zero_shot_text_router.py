@@ -1,25 +1,25 @@
 import logging
-from typing import Any, List, Dict, Optional
+from typing import Any, Dict, List, Optional
 
-from haystack import component, default_to_dict, default_from_dict
+from haystack import component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
-from haystack.utils import ComponentDevice
-from haystack.utils import Secret, deserialize_secrets_inplace
+from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
 
 logger = logging.getLogger(__name__)
 
 
 with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
     from transformers import pipeline
+
     from haystack.utils.hf import (  # pylint: disable=ungrouped-imports
+        deserialize_hf_model_kwargs,
         resolve_hf_pipeline_kwargs,
         serialize_hf_model_kwargs,
-        deserialize_hf_model_kwargs,
     )
 
 
 @component
-class ZeroShotTextRouter:
+class TransformersZeroShotTextRouter:
     """
     Routes a text input onto different output connections depending on which label it has been categorized into.
     This is useful for routing queries to different models in a pipeline depending on their categorization.
@@ -31,7 +31,7 @@ class ZeroShotTextRouter:
     ```python
     document_store = InMemoryDocumentStore()
     p = Pipeline()
-    p.add_component(instance=ZeroShotTextRouter(labels=["passage", "query"]), name="text_router")
+    p.add_component(instance=TransformersZeroShotTextRouter(labels=["passage", "query"]), name="text_router")
     p.add_component(
         instance=SentenceTransformersTextEmbedder(
             document_store=document_store, model="intfloat/e5-base-v2", prefix="passage: "
@@ -130,7 +130,7 @@ class ZeroShotTextRouter:
         return serialization_dict
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ZeroShotTextRouter":
+    def from_dict(cls, data: Dict[str, Any]) -> "TransformersZeroShotTextRouter":
         """
         Deserialize this component from a dictionary.
         """
@@ -140,7 +140,7 @@ class ZeroShotTextRouter:
 
     def run(self, text: str) -> Dict[str, str]:
         """
-        Run the ZeroShotTextRouter. This method routes the text to one of the different edges based on which label
+        Run the TransformersZeroShotTextRouter. This method routes the text to one of the different edges based on which label
         it has been categorized into.
 
         :param text: A str to route to one of the different edges.
@@ -151,7 +151,7 @@ class ZeroShotTextRouter:
             )
 
         if not isinstance(text, str):
-            raise TypeError("ZeroShotTextRouter expects a str as input.")
+            raise TypeError("TransformersZeroShotTextRouter expects a str as input.")
 
         prediction = self.pipeline(sequences=[text], candidate_labels=self.labels, multi_label=self.multi_label)
         predicted_scores = prediction[0]["scores"]
