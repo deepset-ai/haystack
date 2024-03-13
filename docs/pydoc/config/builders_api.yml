@@ -1,7 +1,13 @@
 loaders:
   - type: haystack_pydoc_tools.loaders.CustomPythonLoader
     search_path: [../../../haystack/components/builders]
-    modules: ["answer_builder", "prompt_builder", "dynamic_prompt_builder", "dynamic_chat_prompt_builder"]
+    modules:
+      [
+        "answer_builder",
+        "prompt_builder",
+        "dynamic_prompt_builder",
+        "dynamic_chat_prompt_builder",
+      ]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
@@ -12,7 +18,7 @@ processors:
   - type: smart
   - type: crossref
 renderer:
-  type: haystack_pydoc_tools.renderers.ReadmePreviewRenderer
+  type: haystack_pydoc_tools.renderers.ReadmeCoreRenderer
   excerpt: Extract the output of a Generator to an Answer format, and build prompts.
   category_slug: haystack-api
   title: Builders
