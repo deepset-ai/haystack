@@ -1,5 +1,6 @@
 from datetime import datetime
 from pathlib import Path
+from test.tracing.utils import SpyingTracer
 from typing import Generator
 from unittest.mock import Mock, patch
 
@@ -9,7 +10,6 @@ from openai.types.chat.chat_completion import Choice
 
 from haystack import tracing
 from haystack.testing.test_utils import set_all_seeds
-from test.tracing.utils import SpyingTracer
 
 set_all_seeds(0)
 
@@ -82,3 +82,11 @@ def spying_tracer() -> Generator[SpyingTracer, None, None]:
 
     # Make sure to disable tracing after the test to avoid affecting other tests
     tracing.disable_tracing()
+
+
+# Collecting this test is causing issues when running tests in CI
+# as it's indirectly importing jsonschema which for some reason
+# is causing collection to fail.
+# See this issue:
+# https://github.com/python-jsonschema/jsonschema/issues/1236
+collect_ignore = ["components/validators/test_json_schema.py"]

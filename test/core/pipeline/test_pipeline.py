@@ -702,8 +702,9 @@ def test_describe_no_outputs():
 
 def test_from_template(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "fake_key")
-    pipe = Pipeline.from_template(PredefinedPipeline.INDEXING)
-    assert pipe.get_component("cleaner")
+    with patch("haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore"):
+        pipe = Pipeline.from_template(PredefinedPipeline.INDEXING)
+        assert pipe.get_component("cleaner")
 
 
 def test_walk_pipeline_with_no_cycles():
