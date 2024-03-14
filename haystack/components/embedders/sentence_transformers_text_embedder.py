@@ -37,6 +37,7 @@ class SentenceTransformersTextEmbedder:
         batch_size: int = 32,
         progress_bar: bool = True,
         normalize_embeddings: bool = False,
+        trust_remote_code: bool = False,
     ):
         """
         Create a SentenceTransformersTextEmbedder component.
@@ -59,6 +60,9 @@ class SentenceTransformersTextEmbedder:
             If True shows a progress bar when running.
         :param normalize_embeddings:
             If True returned vectors will have length 1.
+        :param trust_remote_code:
+            If `False`, only Hugging Face verified model architectures are allowed.
+            If `True`, custom models and scripts are allowed.
         """
 
         self.model = model
@@ -69,6 +73,7 @@ class SentenceTransformersTextEmbedder:
         self.batch_size = batch_size
         self.progress_bar = progress_bar
         self.normalize_embeddings = normalize_embeddings
+        self.trust_remote_code = trust_remote_code
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -93,6 +98,7 @@ class SentenceTransformersTextEmbedder:
             batch_size=self.batch_size,
             progress_bar=self.progress_bar,
             normalize_embeddings=self.normalize_embeddings,
+            trust_remote_code=self.trust_remote_code,
         )
 
     @classmethod
@@ -117,7 +123,10 @@ class SentenceTransformersTextEmbedder:
         """
         if not hasattr(self, "embedding_backend"):
             self.embedding_backend = _SentenceTransformersEmbeddingBackendFactory.get_embedding_backend(
-                model=self.model, device=self.device.to_torch_str(), auth_token=self.token
+                model=self.model,
+                device=self.device.to_torch_str(),
+                auth_token=self.token,
+                trust_remote_code=self.trust_remote_code,
             )
 
     @component.output_types(embedding=List[float])
