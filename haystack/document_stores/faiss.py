@@ -324,6 +324,18 @@ class FAISSDocumentStore(SQLDocumentStore):
     def _create_document_field_map(self) -> Dict:
         return {self.index: self.embedding_field}
 
+    def _validate_embedding_dimension(self, retriever: DenseRetriever, index: Optional[str] = None):
+        """
+        Verify if the embedding dimension set in the document store and embedding dimension of the retriever are the same.
+        This check is done before calculating embeddings for all documents.
+        :param retriever: Retriever to use to get embeddings for text
+        :param index: Index name for which embeddings are to be updated. If set to None, the default self.index is used.
+        :return: None
+        """
+        first_document = self.get_all_documents(index=index)[0]
+        embeddings = retriever.embed_documents([first_document])
+        self._validate_embeddings_shape(embeddings=embeddings, num_documents=1, embedding_dim=self.embedding_dim)
+
     def update_embeddings(
         self,
         retriever: DenseRetriever,
@@ -372,6 +384,8 @@ class FAISSDocumentStore(SQLDocumentStore):
         if document_count == 0:
             logger.warning("Calling DocumentStore.update_embeddings() on an empty index")
             return
+
+        self._validate_embedding_dimension(retriever, index)
 
         logger.info("Updating embeddings for %s docs...", document_count)
         vector_id = self.faiss_indexes[index].ntotal
