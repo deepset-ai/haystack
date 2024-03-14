@@ -108,12 +108,18 @@ class TransformersZeroShotTextRouter:
         return {"model": f"[object of type {type(self.pipeline_kwargs['model'])}]"}
 
     def warm_up(self):
+        """
+        Initializes the component.
+        """
         if self.pipeline is None:
             self.pipeline = pipeline(**self.pipeline_kwargs)
 
     def to_dict(self) -> Dict[str, Any]:
         """
-        Serialize this component to a dictionary.
+        Serializes the component to a dictionary.
+
+        :returns:
+            Dictionary with serialized data.
         """
         serialization_dict = default_to_dict(
             self,
@@ -131,18 +137,31 @@ class TransformersZeroShotTextRouter:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "TransformersZeroShotTextRouter":
         """
-        Deserialize this component from a dictionary.
+        Deserializes the component from a dictionary.
+
+        :param data:
+            Dictionary to deserialize from.
+        :returns:
+            Deserialized component.
         """
         deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
         deserialize_hf_model_kwargs(data["init_parameters"]["pipeline_kwargs"])
         return default_from_dict(cls, data)
 
-    def run(self, text: str) -> Dict[str, str]:
+    @component.output_types(documents=Dict[str, str])
+    def run(self, text: str):
         """
         Run the TransformersZeroShotTextRouter. This method routes the text to one of the different edges based on which label
         it has been categorized into.
 
         :param text: A str to route to one of the different edges.
+        :returns:
+            A dictionary with the label as key and the text as value.
+
+        :raises TypeError:
+            If the input is not a str.
+        :raises RuntimeError:
+            If the pipeline has not been loaded.
         """
         if self.pipeline is None:
             raise RuntimeError(
