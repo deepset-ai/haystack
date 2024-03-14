@@ -61,8 +61,8 @@ class SentenceTransformersTextEmbedder:
         :param normalize_embeddings:
             If True returned vectors will have length 1.
         :param trust_remote_code:
-            If trust_remote_code is false only HuggingFace verified model architectures are allowed. If true
-            then custom models and scripts are allowed.
+            If `False`, only Hugging Face verified model architectures are allowed.
+            If `True`, custom models and scripts are allowed.
         """
 
         self.model = model
