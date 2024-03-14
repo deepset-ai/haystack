@@ -28,19 +28,18 @@ class TransformersZeroShotTextRouter:
     queries to a BM25 retriever:
 
     ```python
-    document_store = InMemoryDocumentStore()
+    from haystack.core.pipeline import Pipeline
+    from haystack.components.routers import TransformersZeroShotTextRouter
+    from haystack.components.embedders import SentenceTransformersTextEmbedder
+
     p = Pipeline()
     p.add_component(instance=TransformersZeroShotTextRouter(labels=["passage", "query"]), name="text_router")
     p.add_component(
-        instance=SentenceTransformersTextEmbedder(
-            document_store=document_store, model="intfloat/e5-base-v2", prefix="passage: "
-        ),
+        instance=SentenceTransformersTextEmbedder(model="intfloat/e5-base-v2", prefix="passage: "),
         name="passage_embedder"
     )
     p.add_component(
-        instance=SentenceTransformersTextEmbedder(
-            document_store=document_store, model="intfloat/e5-base-v2", prefix="query: "
-        ),
+        instance=SentenceTransformersTextEmbedder(model="intfloat/e5-base-v2", prefix="query: "),
         name="query_embedder"
     )
     p.connect("text_router.passage", "passage_embedder.text")
