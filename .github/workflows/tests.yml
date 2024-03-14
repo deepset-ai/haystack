@@ -19,7 +19,6 @@ on:
       - "haystack/**/*.py"
       - "haystack/core/pipeline/predefined/*"
       - "test/**/*.py"
-      - "test/test_requirements.txt"
 
 env:
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -103,7 +102,7 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: ${{ env.pythonLocation }}
-          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ hashFiles('pyproject.toml', 'test/test_requirements.txt') }}
+          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ hashFiles('pyproject.toml') }}
 
   unit-tests:
     name: Unit / ${{ matrix.os }}
@@ -127,7 +126,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ${{ env.pythonLocation }}
-          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ hashFiles('pyproject.toml', 'test/test_requirements.txt') }}
+          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ hashFiles('pyproject.toml') }}
 
       - name: Run
         run: hatch run test:unit
@@ -196,7 +195,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ${{ env.pythonLocation }}
-          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ hashFiles('pyproject.toml', 'test/test_requirements.txt') }}
+          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ hashFiles('pyproject.toml') }}
 
       - name: Run
         run: hatch run test:integration
@@ -254,7 +253,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ${{ env.pythonLocation }}
-          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ hashFiles('pyproject.toml', 'test/test_requirements.txt') }}
+          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ hashFiles('pyproject.toml') }}
 
       - name: Run
         run: hatch run test:integration-mac
@@ -305,7 +304,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ${{ env.pythonLocation }}
-          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ hashFiles('pyproject.toml', 'test/test_requirements.txt') }}
+          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ hashFiles('pyproject.toml') }}
 
       - name: Run
         run: hatch run test:integration-windows
