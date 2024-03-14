@@ -77,11 +77,7 @@ class PyPDFToDocument:
             An instance of a PyPDFConverter compatible class.
         """
         pypdf_import.check()
-
-        if converter:
-            self.converter = converter
-        else:
-            self.converter = DefaultConverter()
+        self.converter = converter or DefaultConverter()
 
     def to_dict(self):
         """
