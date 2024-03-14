@@ -1,9 +1,10 @@
 import logging
 from unittest.mock import patch
+
 import pytest
 
-from haystack import Document
-from haystack.components.converters.pypdf import PyPDFToDocument, CONVERTERS_REGISTRY
+from haystack import Document, default_from_dict, default_to_dict
+from haystack.components.converters.pypdf import DefaultConverter, PyPDFToDocument
 from haystack.dataclasses import ByteStream
 
 
@@ -14,12 +15,27 @@ def pypdf_converter():
 
 class TestPyPDFToDocument:
     def test_init(self, pypdf_converter):
-        assert pypdf_converter.converter_name == "default"
-        assert hasattr(pypdf_converter, "_converter")
+        assert isinstance(pypdf_converter.converter, DefaultConverter)
 
-    def test_init_fail_nonexisting_converter(self):
-        with pytest.raises(ValueError):
-            PyPDFToDocument(converter_name="non_existing_converter")
+    def test_to_dict(self, pypdf_converter):
+        data = pypdf_converter.to_dict()
+        assert data == {
+            "type": "haystack.components.converters.pypdf.PyPDFToDocument",
+            "init_parameters": {
+                "converter": {"type": "haystack.components.converters.pypdf.DefaultConverter", "init_parameters": {}}
+            },
+        }
+
+    def test_from_dict(self):
+        data = {
+            "type": "haystack.components.converters.pypdf.PyPDFToDocument",
+            "init_parameters": {
+                "converter": {"type": "haystack.components.converters.pypdf.DefaultConverter", "init_parameters": {}}
+            },
+        }
+        instance = PyPDFToDocument.from_dict(data)
+        assert isinstance(instance, PyPDFToDocument)
+        assert isinstance(instance.converter, DefaultConverter)
 
     @pytest.mark.integration
     def test_run(self, test_files_path, pypdf_converter):
@@ -90,10 +106,15 @@ class TestPyPDFToDocument:
             def convert(self, reader: PdfReader) -> Document:
                 return Document(content="I don't care about converting given pdfs, I always return this")
 
-        CONVERTERS_REGISTRY["custom"] = MyCustomConverter()
+            def to_dict(self):
+                return default_to_dict(self)
 
-        converter = PyPDFToDocument(converter_name="custom")
-        output = converter.run(sources=paths)
+            @classmethod
+            def from_dict(cls, data):
+                return default_from_dict(cls, data)
+
+        component = PyPDFToDocument(converter=MyCustomConverter())
+        output = component.run(sources=paths)
         docs = output["documents"]
         assert len(docs) == 1
         assert "ReAct" not in docs[0].content
