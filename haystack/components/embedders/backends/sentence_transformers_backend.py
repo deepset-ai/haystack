@@ -15,13 +15,15 @@ class _SentenceTransformersEmbeddingBackendFactory:
     _instances: Dict[str, "_SentenceTransformersEmbeddingBackend"] = {}
 
     @staticmethod
-    def get_embedding_backend(model: str, device: Optional[str] = None, auth_token: Optional[Secret] = None, **kwargs):
+    def get_embedding_backend(
+        model: str, device: Optional[str] = None, auth_token: Optional[Secret] = None, trust_remote_code: bool = False
+    ):
         embedding_backend_id = f"{model}{device}{auth_token}"
 
         if embedding_backend_id in _SentenceTransformersEmbeddingBackendFactory._instances:
             return _SentenceTransformersEmbeddingBackendFactory._instances[embedding_backend_id]
         embedding_backend = _SentenceTransformersEmbeddingBackend(
-            model=model, device=device, auth_token=auth_token, trust_remote_code=kwargs.get("trust_remote_code", False)
+            model=model, device=device, auth_token=auth_token, trust_remote_code=trust_remote_code
         )
         _SentenceTransformersEmbeddingBackendFactory._instances[embedding_backend_id] = embedding_backend
         return embedding_backend
