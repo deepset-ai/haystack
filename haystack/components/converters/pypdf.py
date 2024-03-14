@@ -20,7 +20,7 @@ class PyPDFConverter(Protocol):
     A protocol that defines a converter which takes a PdfReader object and converts it into a Document object.
     """
 
-    def convert(self, reader: "PdfReader", **kwargs) -> Document:
+    def convert(self, reader: "PdfReader") -> Document:
         ...
 
     def to_dict(self):
