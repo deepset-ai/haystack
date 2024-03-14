@@ -39,6 +39,7 @@ class SentenceTransformersDocumentEmbedder:
         normalize_embeddings: bool = False,
         meta_fields_to_embed: Optional[List[str]] = None,
         embedding_separator: str = "\n",
+        trust_remote_code: bool = False,
     ):
         """
         Create a SentenceTransformersDocumentEmbedder component.
@@ -65,6 +66,9 @@ class SentenceTransformersDocumentEmbedder:
             List of meta fields that will be embedded along with the Document text.
         :param embedding_separator:
             Separator used to concatenate the meta fields to the Document text.
+        :param trust_remote_code:
+            If `False`, only Hugging Face verified model architectures are allowed.
+            If `True`, custom models and scripts are allowed.
         """
 
         self.model = model
@@ -77,6 +81,7 @@ class SentenceTransformersDocumentEmbedder:
         self.normalize_embeddings = normalize_embeddings
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
+        self.trust_remote_code = trust_remote_code
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -103,6 +108,7 @@ class SentenceTransformersDocumentEmbedder:
             normalize_embeddings=self.normalize_embeddings,
             meta_fields_to_embed=self.meta_fields_to_embed,
             embedding_separator=self.embedding_separator,
+            trust_remote_code=self.trust_remote_code,
         )
 
     @classmethod
@@ -127,7 +133,10 @@ class SentenceTransformersDocumentEmbedder:
         """
         if not hasattr(self, "embedding_backend"):
             self.embedding_backend = _SentenceTransformersEmbeddingBackendFactory.get_embedding_backend(
-                model=self.model, device=self.device.to_torch_str(), auth_token=self.token
+                model=self.model,
+                device=self.device.to_torch_str(),
+                auth_token=self.token,
+                trust_remote_code=self.trust_remote_code,
             )
 
     @component.output_types(documents=List[Document])
