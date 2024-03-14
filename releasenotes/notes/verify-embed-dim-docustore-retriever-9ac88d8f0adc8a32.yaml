@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Add a check to verify that the embedding dimension set in the docustore and retriever are equal before running embedding calculations.

@@ -42,6 +42,21 @@ class TestFAISSDocumentStore(DocumentStoreBaseTestAbstract):
                 isolation_level="AUTOCOMMIT",
             )
 
+    @pytest.mark.unit
+    def test_validate_embedding_dimension_unequal_embedding_dim(self, ds, documents):
+        retriever = MockDenseRetriever(document_store=ds, embedding_dim=384)
+        ds.write_documents(documents)
+        assert ds.get_document_count() == len(documents)
+        with pytest.raises(RuntimeError):
+            ds._validate_embedding_dimension(retriever)
+
+    @pytest.mark.unit
+    def test_validate_embedding_dimension_equal_embedding_dim(self, ds, documents):
+        retriever = MockDenseRetriever(document_store=ds, embedding_dim=768)
+        ds.write_documents(documents)
+        assert ds.get_document_count() == len(documents)
+        ds._validate_embedding_dimension(retriever)
+
     @pytest.mark.integration
     def test_delete_index(self, ds, documents):
         """Contrary to other Document Stores, FAISSDocumentStore doesn't raise if the index is empty"""
