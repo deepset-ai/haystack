@@ -15,7 +15,7 @@ class TestTransformersZeroShotTextRouter:
             "init_parameters": {
                 "labels": ["query", "passage"],
                 "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
-                "pipeline_kwargs": {
+                "huggingface_pipeline_kwargs": {
                     "model": "MoritzLaurer/deberta-v3-base-zeroshot-v1.1-all-33",
                     "device": ComponentDevice.resolve_device(None).to_hf(),
                     "task": "zero-shot-classification",
@@ -29,7 +29,7 @@ class TestTransformersZeroShotTextRouter:
             "init_parameters": {
                 "labels": ["query", "passage"],
                 "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
-                "pipeline_kwargs": {
+                "huggingface_pipeline_kwargs": {
                     "model": "MoritzLaurer/deberta-v3-base-zeroshot-v1.1-all-33",
                     "device": ComponentDevice.resolve_device(None).to_hf(),
                     "task": "zero-shot-classification",
@@ -41,7 +41,7 @@ class TestTransformersZeroShotTextRouter:
         assert component.labels == ["query", "passage"]
         assert component.pipeline is None
         assert component.token == Secret.from_dict({"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"})
-        assert component.pipeline_kwargs == {
+        assert component.huggingface_pipeline_kwargs == {
             "model": "MoritzLaurer/deberta-v3-base-zeroshot-v1.1-all-33",
             "device": ComponentDevice.resolve_device(None).to_hf(),
             "task": "zero-shot-classification",
