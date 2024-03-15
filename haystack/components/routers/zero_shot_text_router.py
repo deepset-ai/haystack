@@ -24,19 +24,35 @@ class TransformersZeroShotTextRouter:
     This is useful for routing queries to different models in a pipeline depending on their categorization.
     The set of labels to be used for categorization can be specified.
 
-    Example usage in a retrieval pipeline that passes question-like queries to an embedding retriever optimized for
-    query-passage retrieval and passage-like queries to an embedding retriever optimized for passage-passage retrieval.
+    Example usage in a retrieval pipeline that passes question-like queries to a text embedder optimized for
+    query-passage retrieval and passage-like queries to a text embedder optimized for passage-passage retrieval.
 
     ```python
     from haystack import Document
     from haystack.document_stores.in_memory import InMemoryDocumentStore
     from haystack.core.pipeline import Pipeline
     from haystack.components.routers import TransformersZeroShotTextRouter
-    from haystack.components.embedders import SentenceTransformersTextEmbedder
+    from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
     from haystack.components.retrievers import InMemoryEmbeddingRetriever
 
     document_store = InMemoryDocumentStore()
-    document_store.write_documents([Document(text="The capital of Germany is Berlin.")])
+    doc_embedder = SentenceTransformersDocumentEmbedder(model="intfloat/e5-base-v2")
+    doc_embedder.warm_up()
+    docs = [
+        Document(
+            content="Germany, officially the Federal Republic of Germany, is a country in the western region of "
+            "Central Europe. The nation's capital and most populous city is Berlin and its main financial centre "
+            "is Frankfurt; the largest urban area is the Ruhr."
+        ),
+        Document(
+            content="France, officially the French Republic, is a country located primarily in Western Europe. "
+            "France is a unitary semi-presidential republic with its capital in Paris, the country's largest city "
+            "and main cultural and commercial centre; other major urban areas include Marseille, Lyon, Toulouse, "
+            "Lille, Bordeaux, Strasbourg, Nantes and Nice."
+        )
+    ]
+    docs_with_embeddings = doc_embedder.run(docs)
+    document_store.write_documents(docs_with_embeddings["documents"])
 
     p = Pipeline()
     p.add_component(instance=TransformersZeroShotTextRouter(labels=["passage", "query"]), name="text_router")
@@ -49,11 +65,18 @@ class TransformersZeroShotTextRouter:
         name="query_embedder"
     )
     p.add_component(
-        instance=InMemoryEmbeddingRetriever(document_store=document_store, embedding_field="passage_embedding"),
+        instance=InMemoryEmbeddingRetriever(document_store=document_store),
+        name="query_retriever"
+    )
+    p.add_component(
+        instance=InMemoryEmbeddingRetriever(document_store=document_store),
+        name="passage_retriever"
     )
 
     p.connect("text_router.passage", "passage_embedder.text")
+    p.connect("passage_embedder.embedding", "passage_retriever.query_embedding")
     p.connect("text_router.query", "query_embedder.text")
+    p.connect("query_embedder.embedding", "query_retriever.query_embedding")
 
     # Query Example
     p.run({"text_router": {"text": "What is the capital of Germany?"}})
@@ -61,7 +84,9 @@ class TransformersZeroShotTextRouter:
     # Passage Example
     p.run({
         "text_router":{
-            "text": "The capital of France is Paris.",
+            "text": "The United Kingdom of Great Britain and Northern Ireland, commonly known as the "\
+            "United Kingdom (UK) or Britain, is a country in Northwestern Europe, off the north-western coast of "\
+            "the continental mainland."
         }
     })
     ```
