@@ -11,7 +11,7 @@ from haystack.utils import ComponentDevice
 
 
 class TestHuggingFaceLocalGenerator:
-    @patch("haystack.components.generators.hugging_face_local.model_info")
+    @patch("haystack.utils.hf.model_info")
     def test_init_default(self, model_info_mock, monkeypatch):
         monkeypatch.delenv("HF_API_TOKEN", raising=False)
         model_info_mock.return_value.pipeline_tag = "text2text-generation"
@@ -73,7 +73,7 @@ class TestHuggingFaceLocalGenerator:
             "device": ComponentDevice.resolve_device(None).to_hf(),
         }
 
-    @patch("haystack.components.generators.hugging_face_local.model_info")
+    @patch("haystack.utils.hf.model_info")
     def test_init_task_inferred_from_model_name(self, model_info_mock):
         model_info_mock.return_value.pipeline_tag = "text2text-generation"
         generator = HuggingFaceLocalGenerator(model="google/flan-t5-base", token=None)
@@ -137,7 +137,7 @@ class TestHuggingFaceLocalGenerator:
                 generation_kwargs={"stopping_criteria": "fake-stopping-criteria"},
             )
 
-    @patch("haystack.components.generators.hugging_face_local.model_info")
+    @patch("haystack.utils.hf.model_info")
     def test_to_dict_default(self, model_info_mock):
         model_info_mock.return_value.pipeline_tag = "text2text-generation"
 

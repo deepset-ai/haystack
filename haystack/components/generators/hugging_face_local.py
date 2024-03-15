@@ -10,10 +10,9 @@ logger = logging.getLogger(__name__)
 SUPPORTED_TASKS = ["text-generation", "text2text-generation"]
 
 with LazyImport(message="Run 'pip install transformers[torch]'") as transformers_import:
-    from huggingface_hub import model_info
     from transformers import StoppingCriteriaList, pipeline
 
-    from haystack.utils.hf import StopWordsCriteria  # pylint: disable=ungrouped-imports
+    from haystack.utils.hf import StopWordsCriteria, resolve_hf_pipeline_kwargs  # pylint: disable=ungrouped-imports
 
 
 @component
@@ -84,37 +83,21 @@ class HuggingFaceLocalGenerator:
         """
         transformers_import.check()
 
-        huggingface_pipeline_kwargs = huggingface_pipeline_kwargs or {}
+        self.token = token
         generation_kwargs = generation_kwargs or {}
 
-        self.token = token
-        token = token.resolve_value() if token else None
-
-        # check if the huggingface_pipeline_kwargs contain the essential parameters
-        # otherwise, populate them with values from other init parameters
-        huggingface_pipeline_kwargs.setdefault("model", model)
-        huggingface_pipeline_kwargs.setdefault("token", token)
-
-        device = ComponentDevice.resolve_device(device)
-        device.update_hf_kwargs(huggingface_pipeline_kwargs, overwrite=False)
-
-        # task identification and validation
-        if task is None:
-            if "task" in huggingface_pipeline_kwargs:
-                task = huggingface_pipeline_kwargs["task"]
-            elif isinstance(huggingface_pipeline_kwargs["model"], str):
-                task = model_info(
-                    huggingface_pipeline_kwargs["model"], token=huggingface_pipeline_kwargs["token"]
-                ).pipeline_tag
-
-        if task not in SUPPORTED_TASKS:
-            raise ValueError(
-                f"Task '{task}' is not supported. " f"The supported tasks are: {', '.join(SUPPORTED_TASKS)}."
-            )
-        huggingface_pipeline_kwargs["task"] = task
+        huggingface_pipeline_kwargs = resolve_hf_pipeline_kwargs(
+            huggingface_pipeline_kwargs=huggingface_pipeline_kwargs or {},
+            model=model,
+            task=task,
+            supported_tasks=SUPPORTED_TASKS,
+            device=device,
+            token=token,
+        )
 
         # if not specified, set return_full_text to False for text-generation
         # only generated text is returned (excluding prompt)
+        task = huggingface_pipeline_kwargs["task"]
         if task == "text-generation":
             generation_kwargs.setdefault("return_full_text", False)
 
