@@ -1,7 +1,7 @@
-from unittest.mock import patch, MagicMock, Mock
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-from huggingface_hub.inference._text_generation import TextGenerationStreamResponse, Token, StreamDetails, FinishReason
+from huggingface_hub.inference._text_generation import FinishReason, StreamDetails, TextGenerationStreamResponse, Token
 from huggingface_hub.utils import RepositoryNotFoundError
 
 from haystack.components.generators import HuggingFaceTGIGenerator
@@ -63,7 +63,11 @@ class TestHuggingFaceTGIGenerator:
         )
 
         assert generator.model == model
-        assert generator.generation_kwargs == {**generation_kwargs, **{"stop_sequences": ["stop"]}}
+        assert generator.generation_kwargs == {
+            **generation_kwargs,
+            **{"stop_sequences": ["stop"]},
+            **{"max_new_tokens": 512},
+        }
         assert generator.tokenizer is None
         assert generator.client is not None
         assert generator.streaming_callback == streaming_callback
@@ -84,7 +88,7 @@ class TestHuggingFaceTGIGenerator:
         # Assert that the init_params dictionary contains the expected keys and values
         assert init_params["model"] == "mistralai/Mistral-7B-v0.1"
         assert init_params["token"] == {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"}
-        assert init_params["generation_kwargs"] == {"n": 5, "stop_sequences": ["stop", "words"]}
+        assert init_params["generation_kwargs"] == {"n": 5, "stop_sequences": ["stop", "words"], "max_new_tokens": 512}
 
     def test_from_dict(self, mock_check_valid_model):
         generator = HuggingFaceTGIGenerator(
@@ -99,7 +103,7 @@ class TestHuggingFaceTGIGenerator:
         # now deserialize, call from_dict
         generator_2 = HuggingFaceTGIGenerator.from_dict(result)
         assert generator_2.model == "mistralai/Mistral-7B-v0.1"
-        assert generator_2.generation_kwargs == {"n": 5, "stop_sequences": ["stop", "words"]}
+        assert generator_2.generation_kwargs == {"n": 5, "stop_sequences": ["stop", "words"], "max_new_tokens": 512}
         assert generator_2.streaming_callback is streaming_callback_handler
 
     def test_initialize_with_invalid_url(self, mock_check_valid_model):
@@ -135,7 +139,7 @@ class TestHuggingFaceTGIGenerator:
         # check kwargs passed to text_generation
         # note how n was not passed to text_generation
         _, kwargs = mock_text_generation.call_args
-        assert kwargs == {"details": True, "stop_sequences": ["stop"]}
+        assert kwargs == {"details": True, "stop_sequences": ["stop"], "max_new_tokens": 512}
 
         assert isinstance(response, dict)
         assert "replies" in response
@@ -168,7 +172,7 @@ class TestHuggingFaceTGIGenerator:
         # check kwargs passed to text_generation
         # note how n was not passed to text_generation
         _, kwargs = mock_text_generation.call_args
-        assert kwargs == {"details": True, "stop_sequences": ["stop"]}
+        assert kwargs == {"details": True, "stop_sequences": ["stop"], "max_new_tokens": 512}
 
         assert isinstance(response, dict)
         assert "replies" in response
@@ -208,7 +212,7 @@ class TestHuggingFaceTGIGenerator:
 
         # check kwargs passed to text_generation
         _, kwargs = mock_text_generation.call_args
-        assert kwargs == {"details": True, "stop_sequences": ["stop", "words"]}
+        assert kwargs == {"details": True, "stop_sequences": ["stop", "words"], "max_new_tokens": 512}
 
         # Assert that the response contains the generated replies
         assert "replies" in response
@@ -283,7 +287,7 @@ class TestHuggingFaceTGIGenerator:
 
         # check kwargs passed to text_generation
         _, kwargs = mock_text_generation.call_args
-        assert kwargs == {"details": True, "stop_sequences": [], "stream": True}
+        assert kwargs == {"details": True, "stop_sequences": [], "stream": True, "max_new_tokens": 512}
 
         # Assert that the streaming callback was called twice
         assert streaming_call_count == 2

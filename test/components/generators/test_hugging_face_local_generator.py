@@ -4,10 +4,10 @@ from unittest.mock import Mock, patch
 import pytest
 import torch
 from transformers import PreTrainedTokenizerFast
-from haystack.utils.auth import Secret
 
 from haystack.components.generators.hugging_face_local import HuggingFaceLocalGenerator, StopWordsCriteria
 from haystack.utils import ComponentDevice
+from haystack.utils.auth import Secret
 
 
 class TestHuggingFaceLocalGenerator:
@@ -193,7 +193,7 @@ class TestHuggingFaceLocalGenerator:
                         "bnb_4bit_compute_dtype": "torch.bfloat16",
                     },
                 },
-                "generation_kwargs": {"max_new_tokens": 100, "return_full_text": False},
+                "generation_kwargs": {"max_new_tokens": 512, "return_full_text": False},
                 "stop_words": ["coca", "cola"],
             },
         }
