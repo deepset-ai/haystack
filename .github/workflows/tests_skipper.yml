@@ -36,6 +36,7 @@ jobs:
               - haystack/**/*.py
               - "haystack/templates/predefined/*"
               - test/**/*.py
+              - "pyproject.toml"
 
   catch-all:
     # Don't run this check if the PR contains both code and non-code changes (e.g. release notes)
