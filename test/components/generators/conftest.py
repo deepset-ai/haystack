@@ -1,11 +1,11 @@
 from datetime import datetime
 from typing import Iterator
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from openai import Stream
 from openai.types.chat import ChatCompletionChunk
-from openai.types.chat.chat_completion_chunk import ChoiceDelta, Choice
+from openai.types.chat.chat_completion_chunk import Choice, ChoiceDelta
 
 
 @pytest.fixture
@@ -33,8 +33,9 @@ def mock_chat_completion_chunk():
     """
 
     class MockStream(Stream[ChatCompletionChunk]):
-        def __init__(self, mock_chunk: ChatCompletionChunk, *args, **kwargs):
-            super().__init__(*args, **kwargs)
+        def __init__(self, mock_chunk: ChatCompletionChunk, client=None, *args, **kwargs):
+            client = client or MagicMock()
+            super().__init__(client=client, *args, **kwargs)
             self.mock_chunk = mock_chunk
 
         def __stream__(self) -> Iterator[ChatCompletionChunk]:
