@@ -1,10 +1,10 @@
-from unittest.mock import patch, MagicMock
-import pytest
-from haystack.utils import Secret, ComponentDevice
+from unittest.mock import MagicMock, patch
 
 import numpy as np
+import pytest
 
 from haystack.components.embedders.sentence_transformers_text_embedder import SentenceTransformersTextEmbedder
+from haystack.utils import ComponentDevice, Secret
 
 
 class TestSentenceTransformersTextEmbedder:
@@ -18,6 +18,7 @@ class TestSentenceTransformersTextEmbedder:
         assert embedder.batch_size == 32
         assert embedder.progress_bar is True
         assert embedder.normalize_embeddings is False
+        assert embedder.trust_remote_code is False
 
     def test_init_with_parameters(self):
         embedder = SentenceTransformersTextEmbedder(
@@ -29,6 +30,7 @@ class TestSentenceTransformersTextEmbedder:
             batch_size=64,
             progress_bar=False,
             normalize_embeddings=True,
+            trust_remote_code=True,
         )
         assert embedder.model == "model"
         assert embedder.device == ComponentDevice.from_str("cuda:0")
@@ -38,6 +40,7 @@ class TestSentenceTransformersTextEmbedder:
         assert embedder.batch_size == 64
         assert embedder.progress_bar is False
         assert embedder.normalize_embeddings is True
+        assert embedder.trust_remote_code
 
     def test_to_dict(self):
         component = SentenceTransformersTextEmbedder(model="model", device=ComponentDevice.from_str("cpu"))
@@ -53,6 +56,7 @@ class TestSentenceTransformersTextEmbedder:
                 "batch_size": 32,
                 "progress_bar": True,
                 "normalize_embeddings": False,
+                "trust_remote_code": False,
             },
         }
 
@@ -66,6 +70,7 @@ class TestSentenceTransformersTextEmbedder:
             batch_size=64,
             progress_bar=False,
             normalize_embeddings=True,
+            trust_remote_code=True,
         )
         data = component.to_dict()
         assert data == {
@@ -79,6 +84,7 @@ class TestSentenceTransformersTextEmbedder:
                 "batch_size": 64,
                 "progress_bar": False,
                 "normalize_embeddings": True,
+                "trust_remote_code": True,
             },
         }
 
@@ -99,6 +105,7 @@ class TestSentenceTransformersTextEmbedder:
                 "batch_size": 32,
                 "progress_bar": True,
                 "normalize_embeddings": False,
+                "trust_remote_code": False,
             },
         }
         component = SentenceTransformersTextEmbedder.from_dict(data)
@@ -110,6 +117,7 @@ class TestSentenceTransformersTextEmbedder:
         assert component.batch_size == 32
         assert component.progress_bar is True
         assert component.normalize_embeddings is False
+        assert component.trust_remote_code is False
 
     @patch(
         "haystack.components.embedders.sentence_transformers_text_embedder._SentenceTransformersEmbeddingBackendFactory"
@@ -118,7 +126,9 @@ class TestSentenceTransformersTextEmbedder:
         embedder = SentenceTransformersTextEmbedder(model="model", token=None, device=ComponentDevice.from_str("cpu"))
         mocked_factory.get_embedding_backend.assert_not_called()
         embedder.warm_up()
-        mocked_factory.get_embedding_backend.assert_called_once_with(model="model", device="cpu", auth_token=None)
+        mocked_factory.get_embedding_backend.assert_called_once_with(
+            model="model", device="cpu", auth_token=None, trust_remote_code=False
+        )
 
     @patch(
         "haystack.components.embedders.sentence_transformers_text_embedder._SentenceTransformersEmbeddingBackendFactory"
