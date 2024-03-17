@@ -221,3 +221,18 @@ class TestMetaFieldRanker:
         with caplog.at_level(logging.WARNING):
             ranker.run(documents=docs_before)
             assert "The score wasn't provided; defaulting to 0." in caplog.text
+
+    def test_different_ranking_mode_for_init_vs_run(self):
+        ranker = MetaFieldRanker(meta_field="rating", ranking_mode="linear_score", weight=0.5)
+        docs_before = [
+            Document(content="abc", meta={"rating": 1.3}, score=0.3),
+            Document(content="abc", meta={"rating": 0.7}, score=0.4),
+            Document(content="abc", meta={"rating": 2.1}, score=0.6),
+        ]
+        output = ranker.run(documents=docs_before)
+        docs_after = output["documents"]
+        assert docs_after[0].score == 0.8
+
+        output = ranker.run(documents=docs_before, ranking_mode="reciprocal_rank_fusion")
+        docs_after = output["documents"]
+        assert docs_after[0].score == 0.01626123744050767

@@ -250,7 +250,7 @@ class MetaFieldRanker:
         # Add the docs missing the meta_field back on the end
         sorted_by_meta = [doc for meta, doc in tuple_sorted_by_meta]
         sorted_documents = sorted_by_meta + docs_missing_meta_field
-        sorted_documents = self._merge_rankings(documents, sorted_documents, weight)
+        sorted_documents = self._merge_rankings(documents, sorted_documents, weight, ranking_mode)
         return {"documents": sorted_documents[:top_k]}
 
     def _parse_meta(
@@ -296,18 +296,22 @@ class MetaFieldRanker:
         return meta_values
 
     def _merge_rankings(
-        self, documents: List[Document], sorted_documents: List[Document], weight: float
+        self,
+        documents: List[Document],
+        sorted_documents: List[Document],
+        weight: float,
+        ranking_mode: Literal["reciprocal_rank_fusion", "linear_score"],
     ) -> List[Document]:
         """
         Merge the two different rankings for Documents sorted both by their content and by their meta field.
         """
         scores_map: Dict = defaultdict(int)
 
-        if self.ranking_mode == "reciprocal_rank_fusion":
+        if ranking_mode == "reciprocal_rank_fusion":
             for i, (document, sorted_doc) in enumerate(zip(documents, sorted_documents)):
                 scores_map[document.id] += self._calculate_rrf(rank=i) * (1 - weight)
                 scores_map[sorted_doc.id] += self._calculate_rrf(rank=i) * weight
-        elif self.ranking_mode == "linear_score":
+        elif ranking_mode == "linear_score":
             for i, (document, sorted_doc) in enumerate(zip(documents, sorted_documents)):
                 score = float(0)
                 if document.score is None:
