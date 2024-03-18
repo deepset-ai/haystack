@@ -2,9 +2,6 @@ name: Haystack 1.x Benchmarks
 
 on:
   workflow_dispatch:
-  schedule:
-    # At 00:01 on Sunday
-    - cron: "1 0 * * 0"
 
 permissions:
   id-token: write
