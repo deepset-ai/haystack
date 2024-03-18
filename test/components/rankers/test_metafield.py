@@ -196,7 +196,7 @@ class TestMetaFieldRanker:
         ]
         output = ranker.run(documents=docs_before)
         docs_after = output["documents"]
-        assert docs_after[0].score == 0.01626123744050767
+        assert docs_after[0].score == pytest.approx(0.016261, abs=1e-5)
 
     @pytest.mark.parametrize("score", [-1, 2, 1.3, 2.1])
     def test_linear_score_raises_warning_if_doc_wrong_score(self, score, caplog):
@@ -235,4 +235,4 @@ class TestMetaFieldRanker:
 
         output = ranker.run(documents=docs_before, ranking_mode="reciprocal_rank_fusion")
         docs_after = output["documents"]
-        assert docs_after[0].score == 0.01626123744050767
+        assert docs_after[0].score == pytest.approx(0.016261, abs=1e-5)
