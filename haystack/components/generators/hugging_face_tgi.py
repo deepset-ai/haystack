@@ -115,6 +115,7 @@ class HuggingFaceTGIGenerator:
         check_generation_params(generation_kwargs, ["n"])
         generation_kwargs["stop_sequences"] = generation_kwargs.get("stop_sequences", [])
         generation_kwargs["stop_sequences"].extend(stop_words or [])
+        generation_kwargs.setdefault("max_new_tokens", 512)
 
         self.model = model
         self.url = url

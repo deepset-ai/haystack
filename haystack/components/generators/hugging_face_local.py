@@ -132,6 +132,7 @@ class HuggingFaceLocalGenerator:
                 "Found both the `stop_words` init parameter and the `stopping_criteria` key in `generation_kwargs`. "
                 "Please specify only one of them."
             )
+        generation_kwargs.setdefault("max_new_tokens", 512)
 
         self.huggingface_pipeline_kwargs = huggingface_pipeline_kwargs
         self.generation_kwargs = generation_kwargs

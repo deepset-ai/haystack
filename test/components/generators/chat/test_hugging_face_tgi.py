@@ -68,7 +68,11 @@ class TestHuggingFaceTGIChatGenerator:
         )
         generator.warm_up()
 
-        assert generator.generation_kwargs == {**generation_kwargs, **{"stop_sequences": ["stop"]}}
+        assert generator.generation_kwargs == {
+            **generation_kwargs,
+            **{"stop_sequences": ["stop"]},
+            **{"max_new_tokens": 512},
+        }
         assert generator.tokenizer is not None
         assert generator.client is not None
         assert generator.streaming_callback == streaming_callback
@@ -90,7 +94,7 @@ class TestHuggingFaceTGIChatGenerator:
         # Assert that the init_params dictionary contains the expected keys and values
         assert init_params["model"] == "NousResearch/Llama-2-7b-chat-hf"
         assert init_params["token"] == {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"}
-        assert init_params["generation_kwargs"] == {"n": 5, "stop_sequences": ["stop", "words"]}
+        assert init_params["generation_kwargs"] == {"n": 5, "stop_sequences": ["stop", "words"], "max_new_tokens": 512}
 
     def test_from_dict(self, mock_check_valid_model):
         generator = HuggingFaceTGIChatGenerator(
@@ -104,7 +108,7 @@ class TestHuggingFaceTGIChatGenerator:
 
         generator_2 = HuggingFaceTGIChatGenerator.from_dict(result)
         assert generator_2.model == "NousResearch/Llama-2-7b-chat-hf"
-        assert generator_2.generation_kwargs == {"n": 5, "stop_sequences": ["stop", "words"]}
+        assert generator_2.generation_kwargs == {"n": 5, "stop_sequences": ["stop", "words"], "max_new_tokens": 512}
         assert generator_2.streaming_callback is streaming_callback_handler
 
     def test_warm_up(self, mock_check_valid_model, mock_auto_tokenizer, mock_list_inference_deployed_models):
@@ -203,7 +207,7 @@ class TestHuggingFaceTGIChatGenerator:
         # check kwargs passed to text_generation
         # note how n because it is not text generation parameter was not passed to text_generation
         _, kwargs = mock_text_generation.call_args
-        assert kwargs == {"details": True, "stop_sequences": ["stop"]}
+        assert kwargs == {"details": True, "stop_sequences": ["stop"], "max_new_tokens": 512}
 
         assert isinstance(response, dict)
         assert "replies" in response
@@ -238,7 +242,7 @@ class TestHuggingFaceTGIChatGenerator:
 
         # check kwargs passed to text_generation
         _, kwargs = mock_text_generation.call_args
-        assert kwargs == {"details": True, "stop_sequences": ["stop"]}
+        assert kwargs == {"details": True, "stop_sequences": ["stop"], "max_new_tokens": 512}
 
         # note how n caused n replies to be generated
         assert isinstance(response, dict)
@@ -266,7 +270,7 @@ class TestHuggingFaceTGIChatGenerator:
         # check kwargs passed to text_generation
         # we translate stop_words to stop_sequences
         _, kwargs = mock_text_generation.call_args
-        assert kwargs == {"details": True, "stop_sequences": ["stop", "words"]}
+        assert kwargs == {"details": True, "stop_sequences": ["stop", "words"], "max_new_tokens": 512}
 
         # Assert that the response contains the generated replies
         assert "replies" in response
@@ -342,7 +346,7 @@ class TestHuggingFaceTGIChatGenerator:
 
         # check kwargs passed to text_generation
         _, kwargs = mock_text_generation.call_args
-        assert kwargs == {"details": True, "stop_sequences": [], "stream": True}
+        assert kwargs == {"details": True, "stop_sequences": [], "stream": True, "max_new_tokens": 512}
 
         # Assert that the streaming callback was called twice
         assert streaming_call_count == 2

@@ -24,7 +24,7 @@ class TestHuggingFaceLocalGenerator:
             "token": None,
             "device": ComponentDevice.resolve_device(None).to_hf(),
         }
-        assert generator.generation_kwargs == {}
+        assert generator.generation_kwargs == {"max_new_tokens": 512}
         assert generator.pipeline is None
 
     def test_init_custom_token(self):
@@ -125,7 +125,7 @@ class TestHuggingFaceLocalGenerator:
         """
         generator = HuggingFaceLocalGenerator(task="text-generation")
 
-        assert generator.generation_kwargs == {"return_full_text": False}
+        assert generator.generation_kwargs == {"max_new_tokens": 512, "return_full_text": False}
 
     def test_init_fails_with_both_stopwords_and_stoppingcriteria(self):
         with pytest.raises(
