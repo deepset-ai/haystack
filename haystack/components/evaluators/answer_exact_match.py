@@ -27,27 +27,6 @@ class AnswerExactMatchEvaluator:
     ```
     """
 
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Serialize this component to a dictionary.
-
-        :returns:
-            The serialized component as a dictionary.
-        """
-        return default_to_dict(self)
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "AnswerExactMatchEvaluator":
-        """
-        Deserialize this component from a dictionary.
-
-        :param data:
-            The dictionary representation of this component.
-        :returns:
-            The deserialized component instance.
-        """
-        return default_from_dict(cls, data)
-
     @component.output_types(result=float)
     def run(
         self, questions: List[str], ground_truth_answers: List[List[str]], predicted_answers: List[List[str]]
