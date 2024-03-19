@@ -8,6 +8,7 @@ from pandas import DataFrame, read_json
 
 from haystack import logging
 from haystack.dataclasses.byte_stream import ByteStream
+from haystack.dataclasses.sparse_embedding import SparseEmbedding
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +58,8 @@ class Document(metaclass=_BackwardCompatible):
     :param blob: Binary data associated with the document, if the document has any binary data associated with it.
     :param meta: Additional custom metadata for the document. Must be JSON-serializable.
     :param score: Score of the document. Used for ranking, usually assigned by retrievers.
-    :param embedding: Vector representation of the document.
+    :param embedding: dense vector representation of the document.
+    :param sparse_embedding: sparse vector representation of the document.
     """
 
     id: str = field(default="")
@@ -67,6 +69,7 @@ class Document(metaclass=_BackwardCompatible):
     meta: Dict[str, Any] = field(default_factory=dict)
     score: Optional[float] = field(default=None)
     embedding: Optional[List[float]] = field(default=None)
+    sparse_embedding: Optional[SparseEmbedding] = field(default=None)
 
     def __repr__(self):
         fields = []
@@ -84,6 +87,8 @@ class Document(metaclass=_BackwardCompatible):
             fields.append(f"score: {self.score}")
         if self.embedding is not None:
             fields.append(f"embedding: vector of size {len(self.embedding)}")
+        if self.sparse_embedding is not None:
+            fields.append(f"sparse_embedding: vector with {len(self.sparse_embedding.indices)} non-zero elements")
         fields_str = ", ".join(fields)
         return f"{self.__class__.__name__}(id={self.id}, {fields_str})"
 
@@ -114,7 +119,8 @@ class Document(metaclass=_BackwardCompatible):
         mime_type = self.blob.mime_type if self.blob is not None else None
         meta = self.meta or {}
         embedding = self.embedding if self.embedding is not None else None
-        data = f"{text}{dataframe}{blob}{mime_type}{meta}{embedding}"
+        sparse_embedding = self.sparse_embedding.to_dict() if self.sparse_embedding is not None else ""
+        data = f"{text}{dataframe}{blob}{mime_type}{meta}{embedding}{sparse_embedding}"
         return hashlib.sha256(data.encode("utf-8")).hexdigest()
 
     def to_dict(self, flatten=True) -> Dict[str, Any]:
@@ -131,6 +137,9 @@ class Document(metaclass=_BackwardCompatible):
             data["dataframe"] = dataframe.to_json()
         if (blob := data.get("blob")) is not None:
             data["blob"] = {"data": list(blob["data"]), "mime_type": blob["mime_type"]}
+
+        if (sparse_embedding := data.get("sparse_embedding")) is not None:
+            data["sparse_embedding"] = sparse_embedding.to_dict()
 
         if flatten:
             meta = data.pop("meta")
@@ -149,6 +158,9 @@ class Document(metaclass=_BackwardCompatible):
             data["dataframe"] = read_json(io.StringIO(dataframe))
         if blob := data.get("blob"):
             data["blob"] = ByteStream(data=bytes(blob["data"]), mime_type=blob["mime_type"])
+        if sparse_embedding := data.get("sparse_embedding"):
+            data["sparse_embedding"] = SparseEmbedding.from_dict(sparse_embedding)
+
         # Store metadata for a moment while we try un-flattening allegedly flatten metadata.
         # We don't expect both a `meta=` keyword and flatten metadata keys so we'll raise a
         # ValueError later if this is the case.
