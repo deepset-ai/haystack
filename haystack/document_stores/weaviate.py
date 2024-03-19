@@ -104,7 +104,7 @@ class WeaviateDocumentStore(KeywordDocumentStore):
         :param host: Weaviate server connection URL for storing and processing documents and vectors.
                              For more details, see [Weaviate installation](https://weaviate.io/developers/weaviate/current/getting-started/installation.html).
         :param port: The port of the Weaviate instance.
-        :param timeout_config: The Weaviate timeout config as a tuple of (retries, time out seconds).
+        :param timeout_config: The Weaviate timeout config as a tuple of (connect timeout, read timeout).
         :param username: The Weaviate username (standard authentication using http_auth).
         :param password: Weaviate password (standard authentication using http_auth).
         :param scope: The scope of the credentials when using the OIDC Resource Owner Password or Client Credentials authentication flow.
