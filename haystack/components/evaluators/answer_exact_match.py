@@ -1,6 +1,5 @@
-from typing import Any, Dict, List
+from typing import Dict, List
 
-from haystack import default_from_dict, default_to_dict
 from haystack.core.component import component
 
 
