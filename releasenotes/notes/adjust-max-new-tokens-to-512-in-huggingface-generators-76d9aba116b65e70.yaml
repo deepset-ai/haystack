@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Set max_new_tokens default to 512 in Hugging Face generators.

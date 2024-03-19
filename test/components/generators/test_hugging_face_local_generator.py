@@ -4,10 +4,10 @@ from unittest.mock import Mock, patch
 import pytest
 import torch
 from transformers import PreTrainedTokenizerFast
-from haystack.utils.auth import Secret
 
 from haystack.components.generators.hugging_face_local import HuggingFaceLocalGenerator, StopWordsCriteria
 from haystack.utils import ComponentDevice
+from haystack.utils.auth import Secret
 
 
 class TestHuggingFaceLocalGenerator:
@@ -23,7 +23,7 @@ class TestHuggingFaceLocalGenerator:
             "token": None,
             "device": ComponentDevice.resolve_device(None).to_hf(),
         }
-        assert generator.generation_kwargs == {}
+        assert generator.generation_kwargs == {"max_new_tokens": 512}
         assert generator.pipeline is None
 
     def test_init_custom_token(self):
@@ -124,7 +124,7 @@ class TestHuggingFaceLocalGenerator:
         """
         generator = HuggingFaceLocalGenerator(task="text-generation")
 
-        assert generator.generation_kwargs == {"return_full_text": False}
+        assert generator.generation_kwargs == {"max_new_tokens": 512, "return_full_text": False}
 
     def test_init_fails_with_both_stopwords_and_stoppingcriteria(self):
         with pytest.raises(
@@ -153,7 +153,7 @@ class TestHuggingFaceLocalGenerator:
                     "task": "text2text-generation",
                     "device": ComponentDevice.resolve_device(None).to_hf(),
                 },
-                "generation_kwargs": {},
+                "generation_kwargs": {"max_new_tokens": 512},
                 "stop_words": None,
             },
         }
