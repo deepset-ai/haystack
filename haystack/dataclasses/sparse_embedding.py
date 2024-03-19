@@ -1,4 +1,4 @@
-from typing import List, TypedDict
+from typing import List
 
 
 class SparseEmbedding:
