@@ -26,7 +26,7 @@ class AnswerF1Evaluator:
     print(result["scores"])
     # [1.0, 0.0]
 
-    print(result["result"])
+    print(result["average"])
     # 0.5
     ```
     """
