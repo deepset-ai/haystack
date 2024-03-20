@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Tuple, Type
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.builders import PromptBuilder
 from haystack.components.generators import OpenAIGenerator
-from haystack.utils import Secret
+from haystack.utils import Secret, deserialize_secrets_inplace
 
 
 @component
@@ -26,7 +26,7 @@ class LLMEvaluator:
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
     ):
         """
-        Construct a new LLM evaluator.
+        Creates an instance of LLMEvaluator.
 
         :param api:
             The API to use for evaluation.
@@ -88,19 +88,30 @@ class LLMEvaluator:
         # todo: convert result list
         return {"results": [{"name": "llm", "score": 1.0}]}
 
+    def _get_telemetry_data(self) -> Dict[str, Any]:
+        """
+        Data that is sent to Posthog for usage analytics.
+        """
+        return {"api": self.api}
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Serialize this component to a dictionary.
-        """
 
+        :returns:
+            The serialized component as a dictionary.
+        """
         return default_to_dict(self, instruction=self.instruction, api=self.api, api_key=self.api_key.to_dict())
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "LLMEvaluator":
         """
-        Deserialize a component from a dictionary.
+        Deserialize this component from a dictionary.
 
         :param data:
-            The dictionary to deserialize from.
+            The dictionary representation of this component.
+        :returns:
+            The deserialized component instance.
         """
+        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         return default_from_dict(cls, data)
