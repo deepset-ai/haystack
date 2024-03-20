@@ -11,7 +11,7 @@ def test_run_with_all_matching():
         predicted_answers=[["Berlin"], ["Paris"]],
     )
 
-    assert result["result"] == 1.0
+    assert result == {"scores": [1.0, 1.0], "average": 1.0}
 
 
 def test_run_with_no_matching():
@@ -22,7 +22,7 @@ def test_run_with_no_matching():
         predicted_answers=[["Paris"], ["London"]],
     )
 
-    assert result["result"] == 0.0
+    assert result == {"scores": [0.0, 0.0], "average": 0.0}
 
 
 def test_run_with_partial_matching():
@@ -33,7 +33,7 @@ def test_run_with_partial_matching():
         predicted_answers=[["Berlin"], ["London"]],
     )
 
-    assert result["result"] == 0.5
+    assert result == {"scores": [1.0, 0.0], "average": 0.5}
 
 
 def test_run_with_different_lengths():

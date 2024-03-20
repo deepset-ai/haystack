@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Any, Dict, List
 
 from haystack.core.component import component
 
@@ -6,7 +6,7 @@ from haystack.core.component import component
 @component
 class AnswerF1Evaluator:
     """
-    Evaluator that calculates the F1 score of the matches between the predicted and the ground truth answers.
+    Evaluator that calculates the average F1 score of the matches between the predicted and the ground truth answers.
     We first calculate the F1 score for each question, sum all the scores and divide by the number of questions.
     The result is a number from 0.0 to 1.0.
 
@@ -22,15 +22,19 @@ class AnswerF1Evaluator:
         ground_truth_answers=[["Berlin"], ["Paris"]],
         predicted_answers=[["Berlin"], ["London"]],
     )
+
+    print(result["scores"])
+    # [1.0, 0.0]
+
     print(result["result"])
     # 0.5
     ```
     """
 
-    @component.output_types(result=float)
+    @component.output_types(scores=List[float], average=float)
     def run(
         self, questions: List[str], ground_truth_answers: List[List[str]], predicted_answers: List[List[str]]
-    ) -> Dict[str, float]:
+    ) -> Dict[str, Any]:
         """
         Run the AnswerF1Evaluator on the given inputs.
         All lists must have the same length.
@@ -43,7 +47,8 @@ class AnswerF1Evaluator:
             A list of predicted answers for each question.
         :returns:
             A dictionary with the following outputs:
-            - `result`: A number from 0.0 to 1.0 that represents the average F1 score of the predicted
+            - `scores`: A list of numbers from 0.0 to 1.0 that represents the F1 score for each question.
+            - `average`: A number from 0.0 to 1.0 that represents the average F1 score of the predicted
                         answer matched with the ground truth answers.
         """
         if not len(questions) == len(ground_truth_answers) == len(predicted_answers):
@@ -64,6 +69,4 @@ class AnswerF1Evaluator:
                 f1 = 0.0
             scores.append(f1)
 
-        result = sum(scores) / len(questions)
-
-        return {"result": result}
+        return {"scores": scores, "average": sum(scores) / len(questions)}
