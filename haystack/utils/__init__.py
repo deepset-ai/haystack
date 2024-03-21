@@ -4,7 +4,7 @@ from .device import ComponentDevice, Device, DeviceMap, DeviceType
 from .expit import expit
 from .filters import document_matches_filter
 from .jupyter import is_in_jupyter
-from .obj_inspection import get_parameter_info
+from .object_inspection import get_parameter_info
 from .requests_utils import request_with_retry
 from .type_serialization import deserialize_type, serialize_type
 

@@ -17,8 +17,8 @@ def get_parameter_info(method: Callable):
         default_value = parameter.default
 
         if default_value is inspect.Parameter.empty:
-            parameter_info[parameter_name] = {'default_value': None, 'optional': False}
+            parameter_info[parameter_name] = {"default_value": None, "optional": False}
         else:
-            parameter_info[parameter_name] = {'default_value': default_value, 'optional': True}
+            parameter_info[parameter_name] = {"default_value": default_value, "optional": True}
 
     return parameter_info
