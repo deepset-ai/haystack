@@ -723,9 +723,9 @@ class Pipeline:
                 continue
             instance = self.graph.nodes[component_name]["instance"]
 
-            # we need to make sure that all components have all the inputs values explicitly defined even being optional
+            # make sure that all components have all the inputs values explicitly defined even being optional
             parameters = get_parameter_info(instance.run)
-            filled = {k: v['default_value'] for k, v in parameters.items() if k not in data and v['optional']}
+            filled = {k: v["default_value"] for k, v in parameters.items() if k not in data and v["optional"]}
             filled.update(component_inputs)
             data[component_name] = filled
 
