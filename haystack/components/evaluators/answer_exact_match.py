@@ -45,7 +45,7 @@ class AnswerExactMatchEvaluator:
             A list of predicted answers for each question.
         :returns:
             A dictionary with the following outputs:
-            - `scores` - The number of matches per question.
+            - `scores` - A list of 0s and 1s, where 1 means that the predicted answer matched one of the ground truth.
             - `average` - A number from 0.0 to 1.0 that represents the proportion of questions where any predicted
                          answer matched one of the ground truth answers.
         """
@@ -54,9 +54,12 @@ class AnswerExactMatchEvaluator:
 
         matches = []
         for truths, extracted in zip(ground_truth_answers, predicted_answers):
-            matches.append(len(set(truths) & set(extracted)))
+            if set(truths) & set(extracted):
+                matches.append(1)
+            else:
+                matches.append(0)
 
         # The proportion of questions where any predicted answer matched one of the ground truth answers
-        average = sum(bool(m) for m in matches) / len(questions)
+        average = sum(matches) / len(questions)
 
         return {"scores": matches, "average": average}
