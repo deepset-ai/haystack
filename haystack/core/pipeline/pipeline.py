@@ -88,11 +88,6 @@ class Pipeline:
         Returns a text representation of the Pipeline.
         If this runs in a Jupyter notebook, it will instead display the Pipeline image.
         """
-        if is_in_jupyter():
-            # If we're in a Jupyter notebook we want to display the image instead of the text repr.
-            self.show()
-            return ""
-
         res = f"{object.__repr__(self)}\n"
         if self.metadata:
             res += "🧱 Metadata\n"
