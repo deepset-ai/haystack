@@ -16,6 +16,7 @@ with LazyImport(message="Run 'pip install transformers'") as transformers_import
 logger = logging.getLogger(__name__)
 
 
+@component
 class HuggingFaceTGIChatGenerator:
     """
     Enables text generation using HuggingFace Hub hosted chat-based LLMs. This component is designed to seamlessly
