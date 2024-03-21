@@ -11,7 +11,7 @@ def test_run_with_all_matching():
         predicted_answers=[["Berlin"], ["Paris"]],
     )
 
-    assert result["result"] == 1.0
+    assert result == {"individual_scores": [1, 1], "score": 1.0}
 
 
 def test_run_with_no_matching():
@@ -22,7 +22,7 @@ def test_run_with_no_matching():
         predicted_answers=[["Paris"], ["London"]],
     )
 
-    assert result == {"scores": [0, 0], "average": 0.0}
+    assert result == {"individual_scores": [0, 0], "score": 0.0}
 
 
 def test_run_with_partial_matching():
@@ -33,7 +33,7 @@ def test_run_with_partial_matching():
         predicted_answers=[["Berlin"], ["London"]],
     )
 
-    assert result == {"scores": [1, 0], "average": 0.5}
+    assert result == {"individual_scores": [1, 0], "score": 0.5}
 
 
 def test_run_with_complex_data():
@@ -64,7 +64,7 @@ def test_run_with_complex_data():
             ["10th century", "the first half of the 10th century", "10th", "10th"],
         ],
     )
-    assert result == {"scores": [1, 1, 0, 1, 0, 1], "average": 0.6666666666666666}
+    assert result == {"individual_scores": [1, 1, 0, 1, 0, 1], "score": 0.6666666666666666}
 
 
 def test_run_with_different_lengths():

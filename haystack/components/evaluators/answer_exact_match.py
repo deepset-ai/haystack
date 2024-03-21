@@ -22,14 +22,14 @@ class AnswerExactMatchEvaluator:
         predicted_answers=[["Berlin"], ["Lyon"]],
     )
 
-    print(result["scores"])
+    print(result["individual_scores"])
     # [1, 0]
-    print(result["average"])
+    print(result["score"])
     # 0.5
     ```
     """
 
-    @component.output_types(scores=List[int], average=float)
+    @component.output_types(individual_scores=List[int], score=float)
     def run(
         self, questions: List[str], ground_truth_answers: List[List[str]], predicted_answers: List[List[str]]
     ) -> Dict[str, Any]:
@@ -45,8 +45,8 @@ class AnswerExactMatchEvaluator:
             A list of predicted answers for each question.
         :returns:
             A dictionary with the following outputs:
-            - `scores` - A list of 0s and 1s, where 1 means that the predicted answer matched one of the ground truth.
-            - `average` - A number from 0.0 to 1.0 that represents the proportion of questions where any predicted
+            - `individual_scores` - A list of 0s and 1s, where 1 means that the predicted answer matched one of the ground truth.
+            - `score` - A number from 0.0 to 1.0 that represents the proportion of questions where any predicted
                          answer matched one of the ground truth answers.
         """
         if not len(questions) == len(ground_truth_answers) == len(predicted_answers):
@@ -62,4 +62,4 @@ class AnswerExactMatchEvaluator:
         # The proportion of questions where any predicted answer matched one of the ground truth answers
         average = sum(matches) / len(questions)
 
-        return {"scores": matches, "average": average}
+        return {"individual_scores": matches, "score": average}
