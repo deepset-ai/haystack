@@ -27,6 +27,7 @@ from haystack.core.type_utils import _type_name, _types_are_compatible
 from haystack.marshal import Marshaller, YamlMarshaller
 from haystack.telemetry import pipeline_running
 from haystack.utils import is_in_jupyter
+from haystack.utils.obj_inspection import get_parameter_info
 
 from .descriptions import find_pipeline_inputs, find_pipeline_outputs
 from .draw import _to_mermaid_image
@@ -721,6 +722,13 @@ class Pipeline:
                 # Those are handled in a different way, so we skip them here.
                 continue
             instance = self.graph.nodes[component_name]["instance"]
+
+            # we need to make sure that all components have all the inputs values explicitly defined even being optional
+            parameters = get_parameter_info(instance.run)
+            filled = {k: v['default_value'] for k, v in parameters.items() if k not in data and v['optional']}
+            filled.update(component_inputs)
+            data[component_name] = filled
+
             for component_input, input_value in component_inputs.items():
                 # Handle mutable input data
                 data[component_name][component_input] = copy(input_value)
