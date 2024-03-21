@@ -281,8 +281,7 @@ def test_get_component_name_not_added_to_pipeline():
     assert pipe.get_component_name(some_component) == ""
 
 
-@patch("haystack.core.pipeline.pipeline.is_in_jupyter")
-def test_repr(mock_is_in_jupyter):
+def test_repr():
     pipe = Pipeline(metadata={"test": "test"}, max_loops_allowed=42)
     pipe.add_component("add_two", AddFixedValue(add=2))
     pipe.add_component("add_default", AddFixedValue())
@@ -302,26 +301,8 @@ def test_repr(mock_is_in_jupyter):
         "  - add_two.result -> double.value (int)\n"
         "  - double.value -> add_default.value (int)\n"
     )
-    # Simulate not being in a notebook
-    mock_is_in_jupyter.return_value = False
+
     assert repr(pipe) == expected_repr
-
-
-@patch("haystack.core.pipeline.pipeline.is_in_jupyter")
-def test_repr_in_notebook(mock_is_in_jupyter):
-    pipe = Pipeline(metadata={"test": "test"}, max_loops_allowed=42)
-    pipe.add_component("add_two", AddFixedValue(add=2))
-    pipe.add_component("add_default", AddFixedValue())
-    pipe.add_component("double", Double())
-    pipe.connect("add_two", "double")
-    pipe.connect("double", "add_default")
-
-    # Simulate being in a notebook
-    mock_is_in_jupyter.return_value = True
-
-    with patch.object(Pipeline, "show") as mock_show:
-        assert repr(pipe) == ""
-        mock_show.assert_called_once_with()
 
 
 def test_run_raises_if_max_visits_reached():
