@@ -86,7 +86,6 @@ class Pipeline:
     def __repr__(self) -> str:
         """
         Returns a text representation of the Pipeline.
-        If this runs in a Jupyter notebook, it will instead display the Pipeline image.
         """
         res = f"{object.__repr__(self)}\n"
         if self.metadata:
