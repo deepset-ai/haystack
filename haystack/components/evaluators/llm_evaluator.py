@@ -10,11 +10,12 @@ from haystack.utils import Secret, deserialize_secrets_inplace
 @component
 class LLMEvaluator:
     """
-    Uses an LLM to evaluate inputs based on provided instructions and examples.
+    Uses an LLM to evaluate inputs based on a prompt containing instructions and examples.
 
-    The default api requires an OpenAI API key to be provided as an environment variable "OPENAI_API_KEY".
-    The inputs of the component are metric-dependent.
+    The default API requires an OpenAI API key to be provided as an environment variable "OPENAI_API_KEY".
+    The inputs are lists that are user-defined depending on the desired metric.
     The output is a dictionary with a key `results` containing a list of evaluation results.
+    Each result is a dictionary with user-defined keys and values of either 0 for FALSE or 1 for TRUE respectively.
 
     Usage example:
     ```python
@@ -47,18 +48,22 @@ class LLMEvaluator:
 
         :param instructions:
             The prompt instructions to use for evaluation.
+            Should be a question about the inputs that can be answered with yes or no.
         :param inputs:
-            The inputs to use for evaluation. Each input is a tuple containing
-            the name of the input and the type of the input.
+            The inputs that the component expects as incoming connections and that it evaluates.
+            Each input is a tuple of an input name and input type. Input types must be lists.
         :param outputs:
-            The output names of the evaluation results.
+            The output names of the evaluation results. They correspond to keys in the output dictionary.
         :param api:
-            The API to use for evaluation.
+            The API to use for calling an LLM through a Generator.
             Supported APIs: "openai".
         :param api_key:
-            The API key to use.
+            The API key.
         :param examples:
-            Few-shot examples conforming to the input and output format.
+            Optional few-shot examples conforming to the expected input and output format as defined in the `inputs` and
+             `outputs` parameters.
+            Each example is a dictionary with keys "inputs" and "outputs"
+            They contain the input and output as dictionaries respectively.
         """
 
         self.instructions = instructions
@@ -81,20 +86,15 @@ class LLMEvaluator:
         Run the LLM evaluator.
 
         :param inputs:
-            The inputs to evaluate. These are determined by the
-            metric being calculated. See :class:`RagasMetric` for more
-            information.
+            The input values to evaluate. The keys are the input names and the values are lists of input values.
         :returns:
-            A nested list of metric results. Each input can have one or more
-            results, depending on the metric. Each result is a dictionary
-            containing the following keys and values:
-                * `name` - The name of the metric.
-                * `score` - The score of the metric.
+            A dictionary with a single `results` entry that contains a list of results.
+            Each result is a dictionary containing the keys as defined in the `outputs` parameter of the LLMEvaluator
+            and the evaluation results as the values.
         """
         self.validate_input_parameters(dict(self.inputs), inputs)
         self.validate_lengths(*inputs.values())
 
-        results = []
         template = self.prepare_template()
         builder = PromptBuilder(template=template)
 
@@ -103,11 +103,9 @@ class LLMEvaluator:
         input_names, values = inputs.keys(), list(zip(*inputs.values()))
         list_of_input_names_to_values = [dict(zip(input_names, v)) for v in values]
 
+        results = []
         for input_names_to_values in list_of_input_names_to_values:
             prompt = builder.run(**input_names_to_values)
-            # TODO rendered prompt should contain " instead of ' for filled in values such as responses.
-            #  and for strings it should contain " instead of currently no delimiters
-            #  json.dumps() instead of str() should be used
             result = self.generator.run(prompt=prompt["prompt"])
 
             self.validate_outputs(expected=self.outputs, received=result["replies"][0])
@@ -120,6 +118,9 @@ class LLMEvaluator:
     def prepare_template(self) -> str:
         """
         Combine instructions, inputs, outputs, and examples into one prompt template.
+
+        :returns:
+            The prompt template.
         """
         inputs_section = (
             "{" + ",".join([f'"{input_socket[0]}": {{{{ {input_socket[0]} }}}}' for input_socket in self.inputs]) + "}"
@@ -130,7 +131,10 @@ class LLMEvaluator:
                 examples_section += (
                     "Inputs:\n" + json.dumps(example["inputs"]) + "\nOutputs:\n" + json.dumps(example["outputs"]) + "\n"
                 )
-        return f"Respond only in JSON format with a key {json.dumps(self.outputs)} and a value of either 0 for FALSE or 1 for TRUE.\n{self.instructions}\n{examples_section}Inputs:\n{inputs_section}\nOutputs:\n"
+        return (
+            f"Respond only in JSON format with a key {json.dumps(self.outputs)} and a value of either 0 for FALSE "
+            f"or 1 for TRUE.\n{self.instructions}\n{examples_section}Inputs:\n{inputs_section}\nOutputs:\n"
+        )
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -175,12 +179,18 @@ class LLMEvaluator:
 
         :param lists:
             The lists to validate.
+
+        :raises ValueError:
+            If not all input lists have the same length
         """
         length = len(lists[0])
         if all(len(lst) == length for lst in lists[1:]):
             return True
         else:
-            msg = f"LLM evaluator expects all input lists to have the same length but received {lists} with lengths {[len(lst) for lst in lists]}."
+            msg = (
+                f"LLM evaluator expects all input lists to have the same length but received {lists} with lengths "
+                f"{[len(lst) for lst in lists]}."
+            )
             raise ValueError(msg)
 
     @staticmethod
