@@ -1,9 +1,16 @@
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Callable, Dict, List, Literal, Optional
 
 from haystack import component, default_from_dict, default_to_dict, logging
+from haystack.dataclasses import StreamingChunk
 from haystack.lazy_imports import LazyImport
-from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
-from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs
+from haystack.utils import (
+    ComponentDevice,
+    Secret,
+    deserialize_callable,
+    deserialize_secrets_inplace,
+    serialize_callable,
+)
+from haystack.utils.hf import HFTokenStreamingHandler, deserialize_hf_model_kwargs, serialize_hf_model_kwargs
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +55,7 @@ class HuggingFaceLocalGenerator:
         generation_kwargs: Optional[Dict[str, Any]] = None,
         huggingface_pipeline_kwargs: Optional[Dict[str, Any]] = None,
         stop_words: Optional[List[str]] = None,
+        streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
     ):
         """
         Creates an instance of a HuggingFaceLocalGenerator.
@@ -81,6 +89,7 @@ class HuggingFaceLocalGenerator:
             If you provide this parameter, you should not specify the `stopping_criteria` in `generation_kwargs`.
             For some chat models, the output includes both the new text and the original prompt.
             In these cases, it's important to make sure your prompt has no stop words.
+        :param streaming_callback: An optional callable for handling streaming responses.
         """
         transformers_import.check()
 
@@ -129,6 +138,7 @@ class HuggingFaceLocalGenerator:
         self.stop_words = stop_words
         self.pipeline = None
         self.stopping_criteria_list = None
+        self.streaming_callback = streaming_callback
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -158,10 +168,12 @@ class HuggingFaceLocalGenerator:
         :returns:
             Dictionary with serialized data.
         """
+        callback_name = serialize_callable(self.streaming_callback) if self.streaming_callback else None
         serialization_dict = default_to_dict(
             self,
             huggingface_pipeline_kwargs=self.huggingface_pipeline_kwargs,
             generation_kwargs=self.generation_kwargs,
+            streaming_callback=callback_name,
             stop_words=self.stop_words,
             token=self.token.to_dict() if self.token else None,
         )
@@ -184,6 +196,11 @@ class HuggingFaceLocalGenerator:
         """
         deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
         deserialize_hf_model_kwargs(data["init_parameters"]["huggingface_pipeline_kwargs"])
+        init_params = data.get("init_parameters", {})
+        serialized_callback_handler = init_params.get("streaming_callback")
+        if serialized_callback_handler:
+            data["init_parameters"]["streaming_callback"] = deserialize_callable(serialized_callback_handler)
+
         return default_from_dict(cls, data)
 
     @component.output_types(replies=List[str])
@@ -208,6 +225,21 @@ class HuggingFaceLocalGenerator:
 
         # merge generation kwargs from init method with those from run method
         updated_generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
+
+        if self.streaming_callback:
+            num_responses = updated_generation_kwargs.get("num_return_sequences", 1)
+            if num_responses > 1:
+                logger.warning(
+                    "Streaming is enabled, but the number of responses is set to %d. "
+                    "Streaming is only supported for single response generation. "
+                    "Setting the number of responses to 1.",
+                    num_responses,
+                )
+                updated_generation_kwargs["num_return_sequences"] = 1
+            # streamer parameter hooks into HF streaming, HFTokenStreamingHandler is an adapter to our streaming
+            updated_generation_kwargs["streamer"] = HFTokenStreamingHandler(
+                self.pipeline.tokenizer, self.streaming_callback, self.stop_words
+            )
 
         output = self.pipeline(prompt, stopping_criteria=self.stopping_criteria_list, **updated_generation_kwargs)
         replies = [o["generated_text"] for o in output if "generated_text" in o]
