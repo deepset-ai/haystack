@@ -37,8 +37,8 @@ class LLMEvaluator:
         self,
         instructions: str,
         inputs: List[Tuple[str, Type]],
-        outputs: List[str],
         *,
+        outputs: Optional[List[str]] = None,
         api: str = "openai",
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
         examples: Optional[List[Dict[str, Any]]] = None,
@@ -53,7 +53,8 @@ class LLMEvaluator:
             The inputs that the component expects as incoming connections and that it evaluates.
             Each input is a tuple of an input name and input type. Input types must be lists.
         :param outputs:
-            The output names of the evaluation results. They correspond to keys in the output dictionary.
+            Optional output names of the evaluation results. They correspond to keys in the output dictionary.
+            The default is a single key "score".
         :param api:
             The API to use for calling an LLM through a Generator.
             Supported APIs: "openai".
@@ -65,10 +66,9 @@ class LLMEvaluator:
             Each example is a dictionary with keys "inputs" and "outputs"
             They contain the input and output as dictionaries respectively.
         """
-
         self.instructions = instructions
         self.inputs = inputs
-        self.outputs = outputs
+        self.outputs = outputs or ["score"]
         self.api = api
         self.api_key = api_key
         self.examples = examples

@@ -10,7 +10,7 @@ from haystack.utils.auth import Secret
 class TestLLMEvaluator:
     def test_init_default(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        component = LLMEvaluator(instructions="test-instruction", inputs=[("responses", List[str])], outputs=["score"])
+        component = LLMEvaluator(instructions="test-instruction", inputs=[("responses", List[str])])
         assert component.api == "openai"
         assert component.generator.client.api_key == "test-api-key"
         assert component.instructions == "test-instruction"
@@ -21,35 +21,33 @@ class TestLLMEvaluator:
     def test_init_fail_wo_openai_api_key(self, monkeypatch):
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         with pytest.raises(ValueError, match="None of the .* environment variables are set"):
-            LLMEvaluator(
-                api="openai", instructions="test-instruction", inputs=[("responses", List[str])], outputs=["score"]
-            )
+            LLMEvaluator(api="openai", instructions="test-instruction", inputs=[("responses", List[str])])
 
     def test_init_with_parameters(self):
         component = LLMEvaluator(
             instructions="test-instruction",
             api_key=Secret.from_token("test-api-key"),
             inputs=[("responses", List[str])],
-            outputs=["score"],
+            outputs=["custom_score"],
             api="openai",
             examples=[
-                {"inputs": {"responses": "Damn, this is straight outta hell!!!"}, "outputs": {"score": 1}},
-                {"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"score": 0}},
+                {"inputs": {"responses": "Damn, this is straight outta hell!!!"}, "outputs": {"custom_score": 1}},
+                {"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"custom_score": 0}},
             ],
         )
         assert component.generator.client.api_key == "test-api-key"
         assert component.api == "openai"
         assert component.examples == [
-            {"inputs": {"responses": "Damn, this is straight outta hell!!!"}, "outputs": {"score": 1}},
-            {"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"score": 0}},
+            {"inputs": {"responses": "Damn, this is straight outta hell!!!"}, "outputs": {"custom_score": 1}},
+            {"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"custom_score": 0}},
         ]
         assert component.instructions == "test-instruction"
         assert component.inputs == [("responses", List[str])]
-        assert component.outputs == ["score"]
+        assert component.outputs == ["custom_score"]
 
     def test_to_dict_default(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        component = LLMEvaluator(instructions="test-instruction", inputs=[("responses", List[str])], outputs=["score"])
+        component = LLMEvaluator(instructions="test-instruction", inputs=[("responses", List[str])])
         data = component.to_dict()
         assert data == {
             "type": "haystack.components.evaluators.llm_evaluator.LLMEvaluator",
@@ -69,11 +67,11 @@ class TestLLMEvaluator:
             instructions="test-instruction",
             api_key=Secret.from_env_var("ENV_VAR"),
             inputs=[("responses", List[str])],
-            outputs=["score"],
+            outputs=["custom_score"],
             api="openai",
             examples=[
-                {"inputs": {"responses": "Damn, this is straight outta hell!!!"}, "outputs": {"score": 1}},
-                {"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"score": 0}},
+                {"inputs": {"responses": "Damn, this is straight outta hell!!!"}, "outputs": {"custom_score": 1}},
+                {"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"custom_score": 0}},
             ],
         )
         data = component.to_dict()
@@ -84,10 +82,10 @@ class TestLLMEvaluator:
                 "api": "openai",
                 "instructions": "test-instruction",
                 "inputs": [("responses", List[str])],
-                "outputs": ["score"],
+                "outputs": ["custom_score"],
                 "examples": [
-                    {"inputs": {"responses": "Damn, this is straight outta hell!!!"}, "outputs": {"score": 1}},
-                    {"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"score": 0}},
+                    {"inputs": {"responses": "Damn, this is straight outta hell!!!"}, "outputs": {"custom_score": 1}},
+                    {"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"custom_score": 0}},
                 ],
             },
         }
@@ -141,7 +139,7 @@ class TestLLMEvaluator:
 
     def test_invalid_input_parameters(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        component = LLMEvaluator(instructions="test-instruction", inputs=[("responses", List[str])], outputs=["score"])
+        component = LLMEvaluator(instructions="test-instruction", inputs=[("responses", List[str])])
         with pytest.raises(ValueError):
             component.validate_input_parameters(expected={"responses": List[str]}, received={"questions": List[str]})
 
@@ -152,7 +150,7 @@ class TestLLMEvaluator:
 
     def test_invalid_outputs(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        component = LLMEvaluator(instructions="test-instruction", inputs=[("responses", List[str])], outputs=["score"])
+        component = LLMEvaluator(instructions="test-instruction", inputs=[("responses", List[str])])
         with pytest.raises(ValueError):
             component.validate_outputs(expected=["score", "another_expected_output"], received="{'score': 1.0}")
 
@@ -161,9 +159,4 @@ class TestLLMEvaluator:
 
     def test_unsupported_api(self):
         with pytest.raises(ValueError):
-            LLMEvaluator(
-                api="unsupported_api",
-                instructions="test-instruction",
-                inputs=[("responses", List[str])],
-                outputs=["score"],
-            )
+            LLMEvaluator(api="unsupported_api", instructions="test-instruction", inputs=[("responses", List[str])])
