@@ -45,6 +45,51 @@ class TestLLMEvaluator:
         assert component.inputs == [("responses", List[str])]
         assert component.outputs == ["custom_score"]
 
+    def test_init_with_invalid_parameters(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        # Invalid inputs
+        with pytest.raises(ValueError):
+            LLMEvaluator(instructions="test-instruction", inputs={("responses", List[str])})
+        with pytest.raises(ValueError):
+            LLMEvaluator(instructions="test-instruction", inputs=[(List[str], "responses")])
+        with pytest.raises(ValueError):
+            LLMEvaluator(instructions="test-instruction", inputs=[List[str]])
+        with pytest.raises(ValueError):
+            LLMEvaluator(instructions="test-instruction", inputs={("responses", str)})
+
+        # Invalid outputs
+        with pytest.raises(ValueError):
+            LLMEvaluator(instructions="test-instruction", inputs=[("responses", List[str])], outputs="score")
+        with pytest.raises(ValueError):
+            LLMEvaluator(instructions="test-instruction", inputs=[("responses", List[str])], outputs=[["score"]])
+
+        # Invalid examples
+        with pytest.raises(ValueError):
+            LLMEvaluator(
+                instructions="test-instruction",
+                inputs=[("responses", List[str])],
+                examples={
+                    "inputs": {"responses": "Damn, this is straight outta hell!!!"},
+                    "outputs": {"custom_score": 1},
+                },
+            )
+        with pytest.raises(ValueError):
+            LLMEvaluator(
+                instructions="test-instruction",
+                inputs=[("responses", List[str])],
+                examples=[
+                    [{"inputs": {"responses": "Damn, this is straight outta hell!!!"}, "outputs": {"custom_score": 1}}]
+                ],
+            )
+        with pytest.raises(ValueError):
+            LLMEvaluator(
+                instructions="test-instruction",
+                inputs=[("responses", List[str])],
+                examples=[
+                    {"wrong_key": {"responses": "Damn, this is straight outta hell!!!"}, "outputs": {"custom_score": 1}}
+                ],
+            )
+
     def test_to_dict_default(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = LLMEvaluator(instructions="test-instruction", inputs=[("responses", List[str])])

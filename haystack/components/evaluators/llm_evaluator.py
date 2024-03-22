@@ -36,7 +36,7 @@ class LLMEvaluator:
     def __init__(
         self,
         instructions: str,
-        inputs: List[Tuple[str, Type]],
+        inputs: List[Tuple[str, Type[List]]],
         *,
         outputs: Optional[List[str]] = None,
         api: str = "openai",
@@ -66,21 +66,80 @@ class LLMEvaluator:
             Each example is a dictionary with keys "inputs" and "outputs"
             They contain the input and output as dictionaries respectively.
         """
+        self.validate_init_parameters(inputs, outputs, examples)
+
         self.instructions = instructions
         self.inputs = inputs
         self.outputs = outputs or ["score"]
         self.api = api
         self.api_key = api_key
         self.examples = examples
-        expected_inputs = dict(inputs)
+
         if api == "openai":
             self.generator = OpenAIGenerator(api_key=api_key)
         else:
             raise ValueError(f"Unsupported API: {api}")
 
-        component.set_input_types(self, **expected_inputs)
+        template = self.prepare_template()
+        self.builder = PromptBuilder(template=template)
 
-    @component.output_types(results=List[List[Dict[str, Any]]])
+        component.set_input_types(self, **dict(inputs))
+
+    def validate_init_parameters(
+        self,
+        inputs: List[Tuple[str, Type[List]]],
+        outputs: Optional[List[str]],
+        examples: Optional[List[Dict[str, Any]]],
+    ):
+        """
+        Validate the init parameters.
+
+        :param inputs:
+            The inputs to validate.
+        :param outputs:
+            The outputs to validate.
+        :param examples:
+            The examples to validate.
+
+        :raises ValueError:
+            If the inputs are not a list of tuples with a string and a type of list.
+            If the outputs are not a list of strings.
+            If the examples are not a list of dictionaries.
+        """
+        # Validate inputs
+        if (
+            not isinstance(inputs, List)
+            or not all(isinstance(input, Tuple) for input in inputs)
+            or not all(isinstance(input[0], str) and input[1] is not List and len(input) == 2 for input in inputs)
+        ):
+            msg = (
+                f"LLM evaluator expects inputs to be a list of tuples. Each tuple must contain an input name and "
+                f"type of list but received {inputs}."
+            )
+            raise ValueError(msg)
+
+        # Validate outputs
+        if (
+            outputs is not None
+            and not isinstance(outputs, List)
+            or not all(isinstance(output, str) for output in outputs)
+        ):
+            msg = f"LLM evaluator expects outputs to be a list of str but received {outputs}."
+            raise ValueError(msg)
+
+        # Validate examples
+        if examples is not None and (
+            not isinstance(examples, List)
+            or not all(isinstance(example, Dict) for example in examples)
+            or not all({"inputs", "outputs"} == example.keys() for example in examples)
+        ):
+            msg = (
+                f"LLM evaluator expects examples to be a list of dictionaries with keys `inputs` and `outputs` "
+                f"but received {examples}."
+            )
+            raise ValueError(msg)
+
+    @component.output_types(results=List[Dict[str, Any]])
     def run(self, **inputs) -> Dict[str, Any]:
         """
         Run the LLM evaluator.
@@ -93,10 +152,6 @@ class LLMEvaluator:
             and the evaluation results as the values.
         """
         self.validate_input_parameters(dict(self.inputs), inputs)
-        self.validate_lengths(*inputs.values())
-
-        template = self.prepare_template()
-        builder = PromptBuilder(template=template)
 
         # inputs is a dictionary with keys being input names and values being a list of input values
         # We need to iterate through the lists in parallel for all keys of the dictionary
@@ -105,7 +160,7 @@ class LLMEvaluator:
 
         results = []
         for input_names_to_values in list_of_input_names_to_values:
-            prompt = builder.run(**input_names_to_values)
+            prompt = self.builder.run(**input_names_to_values)
             result = self.generator.run(prompt=prompt["prompt"])
 
             self.validate_outputs(expected=self.outputs, received=result["replies"][0])
@@ -135,12 +190,6 @@ class LLMEvaluator:
             f"Respond only in JSON format with a key {json.dumps(self.outputs)} and a value of either 0 for FALSE "
             f"or 1 for TRUE.\n{self.instructions}\n{examples_section}Inputs:\n{inputs_section}\nOutputs:\n"
         )
-
-    def _get_telemetry_data(self) -> Dict[str, Any]:
-        """
-        Data that is sent to Posthog for usage analytics.
-        """
-        return {"api": self.api}
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -173,27 +222,6 @@ class LLMEvaluator:
         return default_from_dict(cls, data)
 
     @staticmethod
-    def validate_lengths(*lists):
-        """
-        Validate that all input lists have the same length.
-
-        :param lists:
-            The lists to validate.
-
-        :raises ValueError:
-            If not all input lists have the same length
-        """
-        length = len(lists[0])
-        if all(len(lst) == length for lst in lists[1:]):
-            return True
-        else:
-            msg = (
-                f"LLM evaluator expects all input lists to have the same length but received {lists} with lengths "
-                f"{[len(lst) for lst in lists]}."
-            )
-            raise ValueError(msg)
-
-    @staticmethod
     def validate_input_parameters(expected: Dict[str, Any], received: Dict[str, Any]) -> None:
         """
         Validate the input parameters.
@@ -205,11 +233,28 @@ class LLMEvaluator:
 
         :raises ValueError:
             If not all expected inputs are present in the received inputs
+            If the received inputs are not lists or have different lengths
         """
+        # Validate that all expected inputs are present in the received inputs
         for param in expected.keys():
             if param not in received:
                 msg = f"LLM evaluator expected input parameter '{param}' but received only {received.keys()}."
                 raise ValueError(msg)
+
+        # Validate that all received inputs are lists
+        if not all(isinstance(input, list) for input in received.values()):
+            msg = f"LLM evaluator expects all input values to be lists but received {[type(input) for input in received.values()]}."
+            raise ValueError(msg)
+
+        # Validate that all received inputs are of the same length
+        inputs = received.values()
+        length = len(next(iter(inputs)))
+        if not all(len(input) == length for input in inputs):
+            msg = (
+                f"LLM evaluator expects all input lists to have the same length but received {inputs} with lengths "
+                f"{[len(input) for input in inputs]}."
+            )
+            raise ValueError(msg)
 
     @staticmethod
     def validate_outputs(expected: List[str], received: str) -> None:
