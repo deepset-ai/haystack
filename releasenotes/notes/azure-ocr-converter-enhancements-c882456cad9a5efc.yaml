@@ -1,0 +1,4 @@
+---
+enhancements:
+ - |
+   Enhanced the AzureOCRDocumentConverter to include advanced handling of tables and text. Features such as extracting preceding and following context for tables, merging multiple column headers, and enabling single column page layout for text have been introduced. This update furthers the flexibility and accuracy of document conversion within complex layouts.
