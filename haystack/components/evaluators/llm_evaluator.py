@@ -108,9 +108,9 @@ class LLMEvaluator:
         """
         # Validate inputs
         if (
-            not isinstance(inputs, List)
-            or not all(isinstance(input, Tuple) for input in inputs)
-            or not all(isinstance(input[0], str) and input[1] is not List and len(input) == 2 for input in inputs)
+            not isinstance(inputs, list)
+            or not all(isinstance(input, tuple) for input in inputs)
+            or not all(isinstance(input[0], str) and input[1] is not list and len(input) == 2 for input in inputs)
         ):
             msg = (
                 f"LLM evaluator expects inputs to be a list of tuples. Each tuple must contain an input name and "
@@ -119,18 +119,16 @@ class LLMEvaluator:
             raise ValueError(msg)
 
         # Validate outputs
-        if (
-            outputs is not None
-            and not isinstance(outputs, List)
-            or not all(isinstance(output, str) for output in outputs)
+        if outputs is not None and (
+            not isinstance(outputs, list) or not all(isinstance(output, str) for output in outputs)
         ):
             msg = f"LLM evaluator expects outputs to be a list of str but received {outputs}."
             raise ValueError(msg)
 
         # Validate examples
         if examples is not None and (
-            not isinstance(examples, List)
-            or not all(isinstance(example, Dict) for example in examples)
+            not isinstance(examples, list)
+            or not all(isinstance(example, dict) for example in examples)
             or not all({"inputs", "outputs"} == example.keys() for example in examples)
         ):
             msg = (
