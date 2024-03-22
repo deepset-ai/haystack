@@ -71,10 +71,10 @@ class LLMEvaluator:
 
         self.instructions = instructions
         self.inputs = inputs
-        self.outputs = outputs or ["score"]
+        self.outputs = outputs
+        self.examples = examples
         self.api = api
         self.api_key = api_key
-        self.examples = examples
 
         if api == "openai":
             self.generator = OpenAIGenerator(api_key=api_key)
