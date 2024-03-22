@@ -134,6 +134,25 @@ class TestLLMEvaluator:
                     {"wrong_key": {"responses": "Damn, this is straight outta hell!!!"}, "outputs": {"custom_score": 1}}
                 ],
             )
+        with pytest.raises(ValueError):
+            LLMEvaluator(
+                instructions="test-instruction",
+                inputs=[("responses", List[str])],
+                outputs=["score"],
+                examples=[
+                    {
+                        "inputs": [{"responses": "Damn, this is straight outta hell!!!"}],
+                        "outputs": [{"custom_score": 1}],
+                    }
+                ],
+            )
+        with pytest.raises(ValueError):
+            LLMEvaluator(
+                instructions="test-instruction",
+                inputs=[("responses", List[str])],
+                outputs=["score"],
+                examples=[{"inputs": {1: "Damn, this is straight outta hell!!!"}, "outputs": {2: 1}}],
+            )
 
     def test_to_dict_default(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")

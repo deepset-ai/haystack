@@ -126,6 +126,11 @@ class LLMEvaluator:
             not isinstance(examples, list)
             or not all(isinstance(example, dict) for example in examples)
             or not all({"inputs", "outputs"} == example.keys() for example in examples)
+            or not all(
+                isinstance(example["inputs"], dict) and isinstance(example["outputs"], dict) for example in examples
+            )
+            or not all(isinstance(key, str) for example in examples for key in example["inputs"])
+            or not all(isinstance(key, str) for example in examples for key in example["outputs"])
         ):
             msg = (
                 f"LLM evaluator expects examples to be a list of dictionaries with keys `inputs` and `outputs` "
