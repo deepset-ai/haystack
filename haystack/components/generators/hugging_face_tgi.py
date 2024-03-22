@@ -8,10 +8,9 @@ from haystack.lazy_imports import LazyImport
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 from haystack.utils.hf import HFModelType, check_generation_params, check_valid_model, list_inference_deployed_models
 
-with LazyImport(message="Run 'pip install transformers'") as transformers_import:
+with LazyImport(message="Run 'pip install huggingface_hub'") as huggingface_hub_import:
     from huggingface_hub import InferenceClient
     from huggingface_hub.inference._text_generation import TextGenerationResponse, TextGenerationStreamResponse, Token
-    from transformers import AutoTokenizer
 
 
 logger = logging.getLogger(__name__)
@@ -61,8 +60,7 @@ class HuggingFaceTGIGenerator:
 
     ```python
     from haystack.components.generators import HuggingFaceTGIGenerator
-    client = HuggingFaceTGIGenerator(model="mistralai/Mistral-7B-v0.1",
-                                     url="<your-tgi-endpoint-url>",
+    client = HuggingFaceTGIGenerator(url="<your-tgi-endpoint-url>",
                                      token=Secret.from_token("<your-api-key>"))
     client.warm_up()
     response = client.run("What's Natural Language Processing?")
@@ -72,7 +70,7 @@ class HuggingFaceTGIGenerator:
 
     def __init__(
         self,
-        model: str = "mistralai/Mistral-7B-v0.1",
+        model: Optional[str] = None,
         url: Optional[str] = None,
         token: Optional[Secret] = Secret.from_env_var("HF_API_TOKEN", strict=False),
         generation_kwargs: Optional[Dict[str, Any]] = None,
@@ -83,10 +81,12 @@ class HuggingFaceTGIGenerator:
         Initialize the HuggingFaceTGIGenerator instance.
 
         :param model:
-            A string representing the model id on HF Hub. Default is "mistralai/Mistral-7B-v0.1".
+            An optional string representing the model id on HF Hub.
+            If not provided, the `url` parameter must be set to a valid TGI endpoint.
         :param url:
-            An optional string representing the URL of the TGI endpoint. If the url is not provided, check if the model
-            is deployed on the free tier of the HF inference API.
+            An optional string representing the URL of the TGI endpoint.
+            If not provided, the `model` parameter must be set to a valid model id and the Hugging Face Inference API
+            will be used.
         :param token: The HuggingFace token to use as HTTP bearer authorization
             You can find your HF token in your [account settings](https://huggingface.co/settings/tokens)
         :param generation_kwargs:
@@ -96,7 +96,10 @@ class HuggingFaceTGIGenerator:
         :param stop_words: An optional list of strings representing the stop words.
         :param streaming_callback: An optional callable for handling streaming responses.
         """
-        transformers_import.check()
+        huggingface_hub_import.check()
+
+        if (not model and not url) or (model and url):
+            raise ValueError("You must provide either a model or a TGI endpoint URL.")
 
         if url:
             r = urlparse(url)
@@ -104,7 +107,16 @@ class HuggingFaceTGIGenerator:
             if not is_valid_url:
                 raise ValueError(f"Invalid TGI endpoint URL provided: {url}")
 
-        check_valid_model(model, HFModelType.GENERATION, token)
+        if model:
+            check_valid_model(model, HFModelType.GENERATION, token)
+            # TODO: remove this check when the huggingface_hub bugfix release is out
+            # https://github.com/huggingface/huggingface_hub/issues/2135
+            tgi_deployed_models = list_inference_deployed_models()
+            if model not in tgi_deployed_models:
+                raise ValueError(
+                    f"The model {model} is not correctly supported by the free tier of the HF inference API. "
+                    f"Valid models are: {tgi_deployed_models}"
+                )
 
         # handle generation kwargs setup
         generation_kwargs = generation_kwargs.copy() if generation_kwargs else {}
@@ -117,29 +129,8 @@ class HuggingFaceTGIGenerator:
         self.url = url
         self.token = token
         self.generation_kwargs = generation_kwargs
-        self.client = InferenceClient(url or model, token=token.resolve_value() if token else None)
+        self._client = InferenceClient(url or model, token=token.resolve_value() if token else None)
         self.streaming_callback = streaming_callback
-        self.tokenizer = None
-
-    def warm_up(self) -> None:
-        """
-        Initializes the component.
-        """
-
-        # is this user using HF free tier inference API?
-        if self.model and not self.url:
-            deployed_models = list_inference_deployed_models()
-            # Determine if the specified model is deployed in the free tier.
-            if self.model not in deployed_models:
-                raise ValueError(
-                    f"The model {self.model} is not deployed on the free tier of the HF inference API. "
-                    "To use free tier models provide the model ID and the token. Valid models are: "
-                    f"{deployed_models}"
-                )
-
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            self.model, token=self.token.resolve_value() if self.token else None
-        )
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -199,21 +190,16 @@ class HuggingFaceTGIGenerator:
         num_responses = generation_kwargs.pop("n", 1)
         generation_kwargs.setdefault("stop_sequences", []).extend(generation_kwargs.pop("stop_words", []))
 
-        if self.tokenizer is None:
-            raise RuntimeError("Please call warm_up() before running LLM inference.")
-
-        prompt_token_count = len(self.tokenizer.encode(prompt, add_special_tokens=False))
-
         if self.streaming_callback:
             if num_responses > 1:
                 raise ValueError("Cannot stream multiple responses, please set n=1.")
 
-            return self._run_streaming(prompt, prompt_token_count, generation_kwargs)
+            return self._run_streaming(prompt, generation_kwargs)
 
-        return self._run_non_streaming(prompt, prompt_token_count, num_responses, generation_kwargs)
+        return self._run_non_streaming(prompt, num_responses, generation_kwargs)
 
-    def _run_streaming(self, prompt: str, prompt_token_count: int, generation_kwargs: Dict[str, Any]):
-        res_chunk: Iterable[TextGenerationStreamResponse] = self.client.text_generation(
+    def _run_streaming(self, prompt: str, generation_kwargs: Dict[str, Any]):
+        res_chunk: Iterable[TextGenerationStreamResponse] = self._client.text_generation(
             prompt, details=True, stream=True, **generation_kwargs
         )
         chunks: List[StreamingChunk] = []
@@ -228,32 +214,22 @@ class HuggingFaceTGIGenerator:
             self.streaming_callback(stream_chunk)  # type: ignore # streaming_callback is not None (verified in the run method)
         metadata = {
             "finish_reason": chunks[-1].meta.get("finish_reason", None),
-            "model": self.client.model,
-            "usage": {
-                "completion_tokens": chunks[-1].meta.get("generated_tokens", 0),
-                "prompt_tokens": prompt_token_count,
-                "total_tokens": prompt_token_count + chunks[-1].meta.get("generated_tokens", 0),
-            },
+            "model": self._client.model,
+            "usage": {"completion_tokens": chunks[-1].meta.get("generated_tokens", 0)},
         }
         return {"replies": ["".join([chunk.content for chunk in chunks])], "meta": [metadata]}
 
-    def _run_non_streaming(
-        self, prompt: str, prompt_token_count: int, num_responses: int, generation_kwargs: Dict[str, Any]
-    ):
+    def _run_non_streaming(self, prompt: str, num_responses: int, generation_kwargs: Dict[str, Any]):
         responses: List[str] = []
         all_metadata: List[Dict[str, Any]] = []
         for _i in range(num_responses):
-            tgr: TextGenerationResponse = self.client.text_generation(prompt, details=True, **generation_kwargs)
+            tgr: TextGenerationResponse = self._client.text_generation(prompt, details=True, **generation_kwargs)
             all_metadata.append(
                 {
-                    "model": self.client.model,
+                    "model": self._client.model,
                     "index": _i,
                     "finish_reason": tgr.details.finish_reason.value,
-                    "usage": {
-                        "completion_tokens": len(tgr.details.tokens),
-                        "prompt_tokens": prompt_token_count,
-                        "total_tokens": prompt_token_count + len(tgr.details.tokens),
-                    },
+                    "usage": {"completion_tokens": len(tgr.details.tokens)},
                 }
             )
             responses.append(tgr.generated_text)

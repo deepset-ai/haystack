@@ -68,13 +68,13 @@ class TestHuggingFaceTGIGenerator:
             **{"stop_sequences": ["stop"]},
             **{"max_new_tokens": 512},
         }
-        assert generator.tokenizer is None
-        assert generator.client is not None
+        assert generator._client is not None
         assert generator.streaming_callback == streaming_callback
 
     def test_to_dict(self, mock_check_valid_model):
         # Initialize the HuggingFaceRemoteGenerator object with valid parameters
         generator = HuggingFaceTGIGenerator(
+            model="mistralai/Mistral-7B-v0.1",
             token=Secret.from_env_var("ENV_VAR", strict=False),
             generation_kwargs={"n": 5},
             stop_words=["stop", "words"],
