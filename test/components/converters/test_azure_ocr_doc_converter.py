@@ -94,7 +94,12 @@ class TestAzureOCRDocumentConverter:
             "init_parameters": {
                 "api_key": {"env_vars": ["AZURE_AI_API_KEY"], "strict": True, "type": "env_var"},
                 "endpoint": "test_endpoint",
+                "following_context_len": 3,
+                "merge_multiple_column_headers": True,
                 "model_id": "prebuilt-read",
+                "page_layout": "natural",
+                "preceding_context_len": 3,
+                "threshold_y": 0.05,
             },
         }
 
@@ -237,7 +242,7 @@ class TestAzureOCRDocumentConverter:
 
         docs = out["documents"]
         # TODO assert below changed from the original test
-        assert docs[1].meta[0]["test"] == "value_1"
+        assert docs[1].meta["test"] == "value_1"
 
     @pytest.mark.integration
     @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_ENDPOINT", None), reason="Azure endpoint not available")
