@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, List, Optional, Tuple, Type
+from typing import Any, Dict, List, Tuple, Type
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.builders import PromptBuilder
@@ -37,11 +37,11 @@ class LLMEvaluator:
         self,
         instructions: str,
         inputs: List[Tuple[str, Type[List]]],
+        outputs: List[str],
+        examples: List[Dict[str, Any]],
         *,
-        outputs: Optional[List[str]] = None,
         api: str = "openai",
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
-        examples: Optional[List[Dict[str, Any]]] = None,
     ):
         """
         Creates an instance of LLMEvaluator.
@@ -53,18 +53,19 @@ class LLMEvaluator:
             The inputs that the component expects as incoming connections and that it evaluates.
             Each input is a tuple of an input name and input type. Input types must be lists.
         :param outputs:
-            Optional output names of the evaluation results. They correspond to keys in the output dictionary.
+            Output names of the evaluation results. They correspond to keys in the output dictionary.
             The default is a single key "score".
+        :param examples:
+            Few-shot examples conforming to the expected input and output format as defined in the `inputs` and
+             `outputs` parameters.
+            Each example is a dictionary with keys "inputs" and "outputs"
+            They contain the input and output as dictionaries respectively.
         :param api:
             The API to use for calling an LLM through a Generator.
             Supported APIs: "openai".
         :param api_key:
             The API key.
-        :param examples:
-            Optional few-shot examples conforming to the expected input and output format as defined in the `inputs` and
-             `outputs` parameters.
-            Each example is a dictionary with keys "inputs" and "outputs"
-            They contain the input and output as dictionaries respectively.
+
         """
         self.validate_init_parameters(inputs, outputs, examples)
 
@@ -86,10 +87,7 @@ class LLMEvaluator:
         component.set_input_types(self, **dict(inputs))
 
     def validate_init_parameters(
-        self,
-        inputs: List[Tuple[str, Type[List]]],
-        outputs: Optional[List[str]],
-        examples: Optional[List[Dict[str, Any]]],
+        self, inputs: List[Tuple[str, Type[List]]], outputs: List[str], examples: List[Dict[str, Any]]
     ):
         """
         Validate the init parameters.
@@ -119,14 +117,12 @@ class LLMEvaluator:
             raise ValueError(msg)
 
         # Validate outputs
-        if outputs is not None and (
-            not isinstance(outputs, list) or not all(isinstance(output, str) for output in outputs)
-        ):
+        if not isinstance(outputs, list) or not all(isinstance(output, str) for output in outputs):
             msg = f"LLM evaluator expects outputs to be a list of str but received {outputs}."
             raise ValueError(msg)
 
         # Validate examples
-        if examples is not None and (
+        if (
             not isinstance(examples, list)
             or not all(isinstance(example, dict) for example in examples)
             or not all({"inputs", "outputs"} == example.keys() for example in examples)
@@ -192,19 +188,16 @@ class LLMEvaluator:
             "{" + ",".join([f'"{input_socket[0]}": {{{{ {input_socket[0]} }}}}' for input_socket in self.inputs]) + "}"
         )
 
-        if self.examples:
-            examples_section = (
-                "Examples:\n"
-                + "\n".join(
-                    [
-                        "Inputs:\n" + json.dumps(example["inputs"]) + "\nOutputs:\n" + json.dumps(example["outputs"])
-                        for example in self.examples
-                    ]
-                )
-                + "\n\n"
+        examples_section = (
+            "Examples:\n"
+            + "\n".join(
+                [
+                    "Inputs:\n" + json.dumps(example["inputs"]) + "\nOutputs:\n" + json.dumps(example["outputs"])
+                    for example in self.examples
+                ]
             )
-        else:
-            examples_section = ""
+            + "\n\n"
+        )
         return (
             f"Instructions:\n"
             f"{self.instructions}\n\n"
@@ -229,9 +222,9 @@ class LLMEvaluator:
             instructions=self.instructions,
             inputs=self.inputs,
             outputs=self.outputs,
+            examples=self.examples,
             api=self.api,
             api_key=self.api_key.to_dict(),
-            examples=self.examples,
         )
 
     @classmethod

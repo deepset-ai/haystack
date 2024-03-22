@@ -9,18 +9,31 @@ from haystack.utils.auth import Secret
 class TestLLMEvaluator:
     def test_init_default(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        component = LLMEvaluator(instructions="test-instruction", inputs=[("responses", List[str])])
+        component = LLMEvaluator(
+            instructions="test-instruction",
+            inputs=[("responses", List[str])],
+            outputs=["score"],
+            examples=[{"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"score": 0}}],
+        )
         assert component.api == "openai"
         assert component.generator.client.api_key == "test-api-key"
         assert component.instructions == "test-instruction"
         assert component.inputs == [("responses", List[str])]
         assert component.outputs == ["score"]
-        assert component.examples == None
+        assert component.examples == [
+            {"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"score": 0}}
+        ]
 
     def test_init_fail_wo_openai_api_key(self, monkeypatch):
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         with pytest.raises(ValueError, match="None of the .* environment variables are set"):
-            LLMEvaluator(api="openai", instructions="test-instruction", inputs=[("responses", List[str])])
+            LLMEvaluator(
+                api="openai",
+                instructions="test-instruction",
+                inputs=[("responses", List[str])],
+                outputs=["score"],
+                examples=[{"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"score": 0}}],
+            )
 
     def test_init_with_parameters(self):
         component = LLMEvaluator(
@@ -48,25 +61,56 @@ class TestLLMEvaluator:
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         # Invalid inputs
         with pytest.raises(ValueError):
-            LLMEvaluator(instructions="test-instruction", inputs={("responses", List[str])})
+            LLMEvaluator(
+                instructions="test-instruction",
+                inputs={("responses", List[str])},
+                outputs=["score"],
+                examples=[{"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"score": 0}}],
+            )
         with pytest.raises(ValueError):
-            LLMEvaluator(instructions="test-instruction", inputs=[(List[str], "responses")])
+            LLMEvaluator(
+                instructions="test-instruction",
+                inputs=[(List[str], "responses")],
+                outputs=["score"],
+                examples=[{"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"score": 0}}],
+            )
         with pytest.raises(ValueError):
-            LLMEvaluator(instructions="test-instruction", inputs=[List[str]])
+            LLMEvaluator(
+                instructions="test-instruction",
+                inputs=[List[str]],
+                outputs=["score"],
+                examples=[{"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"score": 0}}],
+            )
         with pytest.raises(ValueError):
-            LLMEvaluator(instructions="test-instruction", inputs={("responses", str)})
+            LLMEvaluator(
+                instructions="test-instruction",
+                inputs={("responses", str)},
+                outputs=["score"],
+                examples=[{"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"score": 0}}],
+            )
 
         # Invalid outputs
         with pytest.raises(ValueError):
-            LLMEvaluator(instructions="test-instruction", inputs=[("responses", List[str])], outputs="score")
+            LLMEvaluator(
+                instructions="test-instruction",
+                inputs=[("responses", List[str])],
+                outputs="score",
+                examples=[{"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"score": 0}}],
+            )
         with pytest.raises(ValueError):
-            LLMEvaluator(instructions="test-instruction", inputs=[("responses", List[str])], outputs=[["score"]])
+            LLMEvaluator(
+                instructions="test-instruction",
+                inputs=[("responses", List[str])],
+                outputs=[["score"]],
+                examples=[{"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"score": 0}}],
+            )
 
         # Invalid examples
         with pytest.raises(ValueError):
             LLMEvaluator(
                 instructions="test-instruction",
                 inputs=[("responses", List[str])],
+                outputs=["score"],
                 examples={
                     "inputs": {"responses": "Damn, this is straight outta hell!!!"},
                     "outputs": {"custom_score": 1},
@@ -76,6 +120,7 @@ class TestLLMEvaluator:
             LLMEvaluator(
                 instructions="test-instruction",
                 inputs=[("responses", List[str])],
+                outputs=["score"],
                 examples=[
                     [{"inputs": {"responses": "Damn, this is straight outta hell!!!"}, "outputs": {"custom_score": 1}}]
                 ],
@@ -84,6 +129,7 @@ class TestLLMEvaluator:
             LLMEvaluator(
                 instructions="test-instruction",
                 inputs=[("responses", List[str])],
+                outputs=["score"],
                 examples=[
                     {"wrong_key": {"responses": "Damn, this is straight outta hell!!!"}, "outputs": {"custom_score": 1}}
                 ],
@@ -91,7 +137,12 @@ class TestLLMEvaluator:
 
     def test_to_dict_default(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        component = LLMEvaluator(instructions="test-instruction", inputs=[("responses", List[str])])
+        component = LLMEvaluator(
+            instructions="test-instruction",
+            inputs=[("responses", List[str])],
+            outputs=["score"],
+            examples=[{"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"score": 0}}],
+        )
         data = component.to_dict()
         assert data == {
             "type": "haystack.components.evaluators.llm_evaluator.LLMEvaluator",
@@ -101,7 +152,7 @@ class TestLLMEvaluator:
                 "instructions": "test-instruction",
                 "inputs": [("responses", List[str])],
                 "outputs": ["score"],
-                "examples": None,
+                "examples": [{"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"score": 0}}],
             },
         }
 
@@ -140,6 +191,7 @@ class TestLLMEvaluator:
             instructions="test-instruction",
             inputs=[("questions", List[str]), ("responses", List[List[str]])],
             outputs=["score"],
+            examples=[{"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"score": 0}}],
         )
 
         def generator_run(self, *args, **kwargs):
@@ -155,16 +207,7 @@ class TestLLMEvaluator:
                 questions=["What is the capital of Germany?", "What is the capital of France?"], responses=[["Berlin"]]
             )
 
-    def test_prepare_template_wo_examples(self, monkeypatch):
-        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        component = LLMEvaluator(instructions="test-instruction", inputs=[("responses", List[str])], outputs=["score"])
-        template = component.prepare_template()
-        assert (
-            template
-            == 'Instructions:\ntest-instruction\n\nGenerate the response in JSON format with the following keys:\n["score"]\nConsider the instructions and the examples below to determine those values.\n\nInputs:\n{"responses": {{ responses }}}\nOutputs:\n'
-        )
-
-    def test_prepare_template_with_examples(self, monkeypatch):
+    def test_prepare_template(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = LLMEvaluator(
             instructions="test-instruction",
@@ -183,7 +226,12 @@ class TestLLMEvaluator:
 
     def test_invalid_input_parameters(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        component = LLMEvaluator(instructions="test-instruction", inputs=[("responses", List[str])])
+        component = LLMEvaluator(
+            instructions="test-instruction",
+            inputs=[("responses", List[str])],
+            outputs=["score"],
+            examples=[{"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"score": 0}}],
+        )
         with pytest.raises(ValueError):
             component.validate_input_parameters(expected={"responses": List[str]}, received={"questions": List[str]})
 
@@ -194,7 +242,12 @@ class TestLLMEvaluator:
 
     def test_invalid_outputs(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        component = LLMEvaluator(instructions="test-instruction", inputs=[("responses", List[str])])
+        component = LLMEvaluator(
+            instructions="test-instruction",
+            inputs=[("responses", List[str])],
+            outputs=["score"],
+            examples=[{"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"score": 0}}],
+        )
         with pytest.raises(ValueError):
             component.validate_outputs(expected=["score", "another_expected_output"], received="{'score': 1.0}")
 
@@ -203,4 +256,10 @@ class TestLLMEvaluator:
 
     def test_unsupported_api(self):
         with pytest.raises(ValueError):
-            LLMEvaluator(api="unsupported_api", instructions="test-instruction", inputs=[("responses", List[str])])
+            LLMEvaluator(
+                api="unsupported_api",
+                instructions="test-instruction",
+                inputs=[("responses", List[str])],
+                outputs=["score"],
+                examples=[{"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"score": 0}}],
+            )
