@@ -170,7 +170,20 @@ class LLMEvaluator:
 
     def prepare_template(self) -> str:
         """
-        Combine instructions, inputs, outputs, and examples into one prompt template.
+        Combine instructions, inputs, outputs, and examples into one prompt template with the following format:
+        Instructions:
+        <instructions>
+
+        Generate the response in JSON format with the following keys:
+        <list of output keys>
+        Consider the instructions and the examples below to determine those values.
+
+        Examples:
+        <examples>
+
+        Inputs:
+        <inputs>
+        Outputs:
 
         :returns:
             The prompt template.
@@ -178,15 +191,30 @@ class LLMEvaluator:
         inputs_section = (
             "{" + ",".join([f'"{input_socket[0]}": {{{{ {input_socket[0]} }}}}' for input_socket in self.inputs]) + "}"
         )
-        examples_section = ""
+
         if self.examples:
-            for example in self.examples:
-                examples_section += (
-                    "Inputs:\n" + json.dumps(example["inputs"]) + "\nOutputs:\n" + json.dumps(example["outputs"]) + "\n"
+            examples_section = (
+                "Examples:\n"
+                + "\n".join(
+                    [
+                        "Inputs:\n" + json.dumps(example["inputs"]) + "\nOutputs:\n" + json.dumps(example["outputs"])
+                        for example in self.examples
+                    ]
                 )
+                + "\n\n"
+            )
+        else:
+            examples_section = ""
         return (
-            f"Respond only in JSON format with a key {json.dumps(self.outputs)} and a value of either 0 for FALSE "
-            f"or 1 for TRUE.\n{self.instructions}\n{examples_section}Inputs:\n{inputs_section}\nOutputs:\n"
+            f"Instructions:\n"
+            f"{self.instructions}\n\n"
+            f"Generate the response in JSON format with the following keys:\n"
+            f"{json.dumps(self.outputs)}\n"
+            f"Consider the instructions and the examples below to determine those values.\n\n"
+            f"{examples_section}"
+            f"Inputs:\n"
+            f"{inputs_section}\n"
+            f"Outputs:\n"
         )
 
     def to_dict(self) -> Dict[str, Any]:

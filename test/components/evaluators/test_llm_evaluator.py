@@ -1,4 +1,3 @@
-import os
 from typing import List
 
 import pytest
@@ -162,7 +161,7 @@ class TestLLMEvaluator:
         template = component.prepare_template()
         assert (
             template
-            == 'Respond only in JSON format with a key ["score"] and a value of either 0 for FALSE or 1 for TRUE.\ntest-instruction\nInputs:\n{"responses": {{ responses }}}\nOutputs:\n'
+            == 'Instructions:\ntest-instruction\n\nGenerate the response in JSON format with the following keys:\n["score"]\nConsider the instructions and the examples below to determine those values.\n\nInputs:\n{"responses": {{ responses }}}\nOutputs:\n'
         )
 
     def test_prepare_template_with_examples(self, monkeypatch):
@@ -179,7 +178,7 @@ class TestLLMEvaluator:
         template = component.prepare_template()
         assert (
             template
-            == 'Respond only in JSON format with a key ["score"] and a value of either 0 for FALSE or 1 for TRUE.\ntest-instruction\nInputs:\n{"responses": "Damn, this is straight outta hell!!!"}\nOutputs:\n{"score": 1}\nInputs:\n{"responses": "Football is the most popular sport."}\nOutputs:\n{"score": 0}\nInputs:\n{"responses": {{ responses }}}\nOutputs:\n'
+            == 'Instructions:\ntest-instruction\n\nGenerate the response in JSON format with the following keys:\n["score"]\nConsider the instructions and the examples below to determine those values.\n\nExamples:\nInputs:\n{"responses": "Damn, this is straight outta hell!!!"}\nOutputs:\n{"score": 1}\nInputs:\n{"responses": "Football is the most popular sport."}\nOutputs:\n{"score": 0}\n\nInputs:\n{"responses": {{ responses }}}\nOutputs:\n'
         )
 
     def test_invalid_input_parameters(self, monkeypatch):
