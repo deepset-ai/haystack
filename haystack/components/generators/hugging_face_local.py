@@ -19,7 +19,11 @@ SUPPORTED_TASKS = ["text-generation", "text2text-generation"]
 with LazyImport(message="Run 'pip install transformers[torch]'") as transformers_import:
     from transformers import StoppingCriteriaList, pipeline
 
-    from haystack.utils.hf import HFTokenStreamingHandler, StopWordsCriteria, resolve_hf_pipeline_kwargs
+    from haystack.utils.hf import (  # pylint: disable=ungrouped-imports
+        HFTokenStreamingHandler,
+        StopWordsCriteria,
+        resolve_hf_pipeline_kwargs,
+    )
 
 
 @component
