@@ -47,7 +47,9 @@ def streaming_callback_handler(x):
 
 
 class TestHuggingFaceTGIGenerator:
-    def test_initialize_with_valid_model_and_generation_parameters(self, mock_check_valid_model):
+    def test_initialize_with_valid_model_and_generation_parameters(
+        self, mock_check_valid_model, mock_list_inference_deployed_models
+    ):
         model = "HuggingFaceH4/zephyr-7b-alpha"
         generation_kwargs = {"n": 1}
         stop_words = ["stop"]
@@ -71,8 +73,7 @@ class TestHuggingFaceTGIGenerator:
         assert generator._client is not None
         assert generator.streaming_callback == streaming_callback
 
-    def test_to_dict(self, mock_check_valid_model):
-        # Initialize the HuggingFaceRemoteGenerator object with valid parameters
+    def test_to_dict(self, mock_check_valid_model, mock_list_inference_deployed_models):
         generator = HuggingFaceTGIGenerator(
             model="mistralai/Mistral-7B-v0.1",
             token=Secret.from_env_var("ENV_VAR", strict=False),
@@ -90,7 +91,7 @@ class TestHuggingFaceTGIGenerator:
         assert init_params["token"] == {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"}
         assert init_params["generation_kwargs"] == {"n": 5, "stop_sequences": ["stop", "words"], "max_new_tokens": 512}
 
-    def test_from_dict(self, mock_check_valid_model):
+    def test_from_dict(self, mock_check_valid_model, mock_list_inference_deployed_models):
         generator = HuggingFaceTGIGenerator(
             model="mistralai/Mistral-7B-v0.1",
             generation_kwargs={"n": 5},
@@ -110,14 +111,12 @@ class TestHuggingFaceTGIGenerator:
         with pytest.raises(ValueError):
             HuggingFaceTGIGenerator(model="mistralai/Mistral-7B-v0.1", url="invalid_url")
 
-    def test_initialize_with_url_but_invalid_model(self, mock_check_valid_model):
-        # When custom TGI endpoint is used via URL, model must be provided and valid HuggingFace Hub model id
-        mock_check_valid_model.side_effect = RepositoryNotFoundError("Invalid model id")
-        with pytest.raises(RepositoryNotFoundError):
-            HuggingFaceTGIGenerator(model="invalid_model_id", url="https://some_chat_model.com")
+    def test_initialize_without_model_or_url(self):
+        with pytest.raises(ValueError):
+            HuggingFaceTGIGenerator(model=None, url=None)
 
     def test_generate_text_response_with_valid_prompt_and_generation_parameters(
-        self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation, mock_list_inference_deployed_models
+        self, mock_check_valid_model, mock_text_generation, mock_list_inference_deployed_models
     ):
         model = "mistralai/Mistral-7B-v0.1"
 
@@ -131,7 +130,6 @@ class TestHuggingFaceTGIGenerator:
             stop_words=stop_words,
             streaming_callback=streaming_callback,
         )
-        generator.warm_up()
 
         prompt = "Hello, how are you?"
         response = generator.run(prompt)
@@ -151,7 +149,7 @@ class TestHuggingFaceTGIGenerator:
         assert [isinstance(reply, str) for reply in response["replies"]]
 
     def test_generate_multiple_text_responses_with_valid_prompt_and_generation_parameters(
-        self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation, mock_list_inference_deployed_models
+        self, mock_check_valid_model, mock_text_generation, mock_list_inference_deployed_models
     ):
         model = "mistralai/Mistral-7B-v0.1"
         generation_kwargs = {"n": 3}
@@ -164,7 +162,6 @@ class TestHuggingFaceTGIGenerator:
             stop_words=stop_words,
             streaming_callback=streaming_callback,
         )
-        generator.warm_up()
 
         prompt = "Hello, how are you?"
         response = generator.run(prompt)
@@ -202,10 +199,9 @@ class TestHuggingFaceTGIGenerator:
             )
 
     def test_generate_text_with_stop_words(
-        self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation, mock_list_inference_deployed_models
+        self, mock_check_valid_model, mock_text_generation, mock_list_inference_deployed_models
     ):
-        generator = HuggingFaceTGIGenerator()
-        generator.warm_up()
+        generator = HuggingFaceTGIGenerator("HuggingFaceH4/zephyr-7b-alpha")
 
         # Generate text response with stop words
         response = generator.run("How are you?", generation_kwargs={"stop_words": ["stop", "words"]})
@@ -227,10 +223,9 @@ class TestHuggingFaceTGIGenerator:
         assert [isinstance(reply, dict) for reply in response["replies"]]
 
     def test_generate_text_with_custom_generation_parameters(
-        self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation, mock_list_inference_deployed_models
+        self, mock_check_valid_model, mock_text_generation, mock_list_inference_deployed_models
     ):
-        generator = HuggingFaceTGIGenerator()
-        generator.warm_up()
+        generator = HuggingFaceTGIGenerator("HuggingFaceH4/zephyr-7b-alpha")
 
         generation_kwargs = {"temperature": 0.8, "max_new_tokens": 100}
         response = generator.run("How are you?", generation_kwargs=generation_kwargs)
@@ -253,7 +248,7 @@ class TestHuggingFaceTGIGenerator:
         assert [isinstance(reply, str) for reply in response["replies"]]
 
     def test_generate_text_with_streaming_callback(
-        self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation, mock_list_inference_deployed_models
+        self, mock_check_valid_model, mock_text_generation, mock_list_inference_deployed_models
     ):
         streaming_call_count = 0
 
@@ -264,8 +259,9 @@ class TestHuggingFaceTGIGenerator:
             assert isinstance(chunk, StreamingChunk)
 
         # Create an instance of HuggingFaceRemoteGenerator
-        generator = HuggingFaceTGIGenerator(streaming_callback=streaming_callback_fn)
-        generator.warm_up()
+        generator = HuggingFaceTGIGenerator(
+            model="HuggingFaceH4/zephyr-7b-alpha", streaming_callback=streaming_callback_fn
+        )
 
         # Create a fake streamed response
         # Don't remove self

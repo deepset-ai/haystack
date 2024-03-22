@@ -50,7 +50,6 @@ class HuggingFaceTGIGenerator:
     from haystack.utils import Secret
 
     client = HuggingFaceTGIGenerator(model="mistralai/Mistral-7B-v0.1", token=Secret.from_token("<your-api-key>"))
-    client.warm_up()
     response = client.run("What's Natural Language Processing?", max_new_tokens=120)
     print(response)
     ```
@@ -62,7 +61,6 @@ class HuggingFaceTGIGenerator:
     from haystack.components.generators import HuggingFaceTGIGenerator
     client = HuggingFaceTGIGenerator(url="<your-tgi-endpoint-url>",
                                      token=Secret.from_token("<your-api-key>"))
-    client.warm_up()
     response = client.run("What's Natural Language Processing?")
     print(response)
     ```
@@ -100,14 +98,14 @@ class HuggingFaceTGIGenerator:
 
         if not model and not url:
             raise ValueError("You must provide either a model or a TGI endpoint URL.")
+        if model and url:
+            logger.warning("Both `model` and `url` are provided. The `model` parameter will be ignored. ")
 
         if url:
             r = urlparse(url)
             is_valid_url = all([r.scheme in ["http", "https"], r.netloc])
             if not is_valid_url:
                 raise ValueError(f"Invalid TGI endpoint URL provided: {url}")
-            if model:
-                logger.warning("Both model and url are provided. The model parameter will be ignored. ")
 
         if model and not url:
             check_valid_model(model, HFModelType.GENERATION, token)
