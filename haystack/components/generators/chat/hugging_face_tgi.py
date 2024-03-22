@@ -228,8 +228,9 @@ class HuggingFaceTGIChatGenerator:
             raise RuntimeError("Please call warm_up() before running LLM inference.")
 
         # apply either model's chat template or the user-provided one
+        formatted_messages = [message.to_openai_format() for message in messages]
         prepared_prompt: str = self.tokenizer.apply_chat_template(
-            conversation=messages, chat_template=self.chat_template, tokenize=False
+            conversation=formatted_messages, chat_template=self.chat_template, tokenize=False
         )
         prompt_token_count: int = len(self.tokenizer.encode(prepared_prompt, add_special_tokens=False))
 
