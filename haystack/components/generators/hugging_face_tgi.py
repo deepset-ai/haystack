@@ -98,7 +98,7 @@ class HuggingFaceTGIGenerator:
         """
         huggingface_hub_import.check()
 
-        if (not model and not url) or (model and url):
+        if not model and not url:
             raise ValueError("You must provide either a model or a TGI endpoint URL.")
 
         if url:
@@ -106,8 +106,10 @@ class HuggingFaceTGIGenerator:
             is_valid_url = all([r.scheme in ["http", "https"], r.netloc])
             if not is_valid_url:
                 raise ValueError(f"Invalid TGI endpoint URL provided: {url}")
+            if model:
+                logger.warning("Both model and url are provided. The model parameter will be ignored. ")
 
-        if model:
+        if model and not url:
             check_valid_model(model, HFModelType.GENERATION, token)
             # TODO: remove this check when the huggingface_hub bugfix release is out
             # https://github.com/huggingface/huggingface_hub/issues/2135
@@ -129,8 +131,8 @@ class HuggingFaceTGIGenerator:
         self.url = url
         self.token = token
         self.generation_kwargs = generation_kwargs
-        self._client = InferenceClient(url or model, token=token.resolve_value() if token else None)
         self.streaming_callback = streaming_callback
+        self._client = InferenceClient(url or model, token=token.resolve_value() if token else None)
 
     def to_dict(self) -> Dict[str, Any]:
         """
