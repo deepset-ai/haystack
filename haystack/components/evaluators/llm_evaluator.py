@@ -188,15 +188,11 @@ class LLMEvaluator:
             "{" + ",".join([f'"{input_socket[0]}": {{{{ {input_socket[0]} }}}}' for input_socket in self.inputs]) + "}"
         )
 
-        examples_section = (
-            "Examples:\n"
-            + "\n".join(
-                [
-                    "Inputs:\n" + json.dumps(example["inputs"]) + "\nOutputs:\n" + json.dumps(example["outputs"])
-                    for example in self.examples
-                ]
-            )
-            + "\n\n"
+        examples_section = "\n".join(
+            [
+                "Inputs:\n" + json.dumps(example["inputs"]) + "\nOutputs:\n" + json.dumps(example["outputs"])
+                for example in self.examples
+            ]
         )
         return (
             f"Instructions:\n"
@@ -204,7 +200,8 @@ class LLMEvaluator:
             f"Generate the response in JSON format with the following keys:\n"
             f"{json.dumps(self.outputs)}\n"
             f"Consider the instructions and the examples below to determine those values.\n\n"
-            f"{examples_section}"
+            f"Examples:\n"
+            f"{examples_section}\n\n"
             f"Inputs:\n"
             f"{inputs_section}\n"
             f"Outputs:\n"
