@@ -115,8 +115,7 @@ class AzureOCRDocumentConverter:
         """
         documents = []
         azure_output = []
-        meta_list = normalize_metadata(meta=meta, sources_count=len(sources))
-
+        meta_list: List[Dict[str, Any]] = normalize_metadata(meta=meta, sources_count=len(sources))
         for source, metadata in zip(sources, meta_list):
             try:
                 bytestream = get_bytestream_from_source(source=source)
@@ -130,7 +129,7 @@ class AzureOCRDocumentConverter:
             result = poller.result()
             azure_output.append(result.to_dict())
 
-            docs = self._convert_tables_and_text(result=result, meta=meta)
+            docs = self._convert_tables_and_text(result=result, meta=metadata)
             documents.extend(docs)
 
         return {"documents": documents, "raw_azure_response": azure_output}
@@ -282,7 +281,7 @@ class AzureOCRDocumentConverter:
 
         return converted_tables
 
-    def _convert_to_natural_text(self, result: "AnalyzeResult", meta: Optional[Dict[str, str]]) -> Document:
+    def _convert_to_natural_text(self, result: "AnalyzeResult", meta: Optional[Dict[str, Any]]) -> Document:
         """
         This converts the `AnalyzeResult` object into a single Document. We add "\f" separators between to
         differentiate between the text on separate pages. This is the expected format for the PreProcessor.
@@ -322,7 +321,7 @@ class AzureOCRDocumentConverter:
             logger.warning("No text paragraphs were detected by the OCR conversion.")
 
         all_text = "\f".join(texts)
-        return Document(content=all_text, meta=meta)
+        return Document(content=all_text, meta=meta if meta else {})
 
     def _convert_to_single_column_text(
         self, result: "AnalyzeResult", meta: Optional[Dict[str, str]], threshold_y: float = 0.05
@@ -359,9 +358,8 @@ class AzureOCRDocumentConverter:
             # Default if polygon is not available
             else:
                 logger.info(
-                    "Polygon information for lines on page %s is not available so it is not possible to enforce a "
-                    "single column page layout.",
-                    page_idx,
+                    "Polygon information for lines on page {page_idx} is not available so it is not possible "
+                    "to enforce a single column page layout.".format(page_idx=page_idx)
                 )
                 for i in range(len(lines)):
                     pairs_by_page[page_idx].append([i, i])
@@ -411,7 +409,7 @@ class AzureOCRDocumentConverter:
                 page_text += "\n"
             texts.append(page_text)
         all_text = "\f".join(texts)
-        return Document(content=all_text, meta=meta)
+        return Document(content=all_text, meta=meta if meta else {})
 
     def _collect_table_spans(self, result: "AnalyzeResult") -> Dict:
         """
