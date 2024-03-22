@@ -10,7 +10,7 @@ from haystack.utils import (
     deserialize_secrets_inplace,
     serialize_callable,
 )
-from haystack.utils.hf import HFTokenStreamingHandler, deserialize_hf_model_kwargs, serialize_hf_model_kwargs
+from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,11 @@ SUPPORTED_TASKS = ["text-generation", "text2text-generation"]
 with LazyImport(message="Run 'pip install transformers[torch]'") as transformers_import:
     from transformers import StoppingCriteriaList, pipeline
 
-    from haystack.utils.hf import StopWordsCriteria, resolve_hf_pipeline_kwargs  # pylint: disable=ungrouped-imports
+    from haystack.utils.hf import (  # pylint: disable=ungrouped-imports
+        HFTokenStreamingHandler,
+        StopWordsCriteria,
+        resolve_hf_pipeline_kwargs,
+    )
 
 
 @component
