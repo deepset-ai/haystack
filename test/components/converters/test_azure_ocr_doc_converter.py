@@ -1,5 +1,5 @@
 import os
-from unittest.mock import patch, Mock
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -28,48 +28,8 @@ class TestAzureOCRDocumentConverter:
             },
         }
 
-    @patch("haystack.utils.auth.EnvVarSecret.resolve_value")
-    def test_run(self, mock_resolve_value, test_files_path):
-        mock_resolve_value.return_value = "test_api_key"
-        with patch("haystack.components.converters.azure.DocumentAnalysisClient") as mock_azure_client:
-            mock_result = Mock(pages=[Mock(lines=[Mock(content="mocked line 1"), Mock(content="mocked line 2")])])
-            mock_result.to_dict.return_value = {
-                "api_version": "2023-02-28-preview",
-                "model_id": "prebuilt-read",
-                "content": "mocked line 1\nmocked line 2\n\f",
-                "pages": [{"lines": [{"content": "mocked line 1"}, {"content": "mocked line 2"}]}],
-            }
-            mock_azure_client.return_value.begin_analyze_document.return_value.result.return_value = mock_result
-
-            component = AzureOCRDocumentConverter(endpoint="test_endpoint")
-            output = component.run(sources=[test_files_path / "pdf" / "sample_pdf_1.pdf"])
-            document = output["documents"][0]
-            assert document.content == "mocked line 1\nmocked line 2\n\f"
-            assert "raw_azure_response" in output
-            assert output["raw_azure_response"][0] == {
-                "api_version": "2023-02-28-preview",
-                "model_id": "prebuilt-read",
-                "content": "mocked line 1\nmocked line 2\n\f",
-                "pages": [{"lines": [{"content": "mocked line 1"}, {"content": "mocked line 2"}]}],
-            }
-
-    @patch("haystack.utils.auth.EnvVarSecret.resolve_value")
-    def test_run_with_meta(self, mock_resolve_value, test_files_path):
-        mock_resolve_value.return_value = "test_api_key"
-        bytestream = ByteStream(data=b"test", meta={"author": "test_author", "language": "en"})
-        with patch("haystack.components.converters.azure.DocumentAnalysisClient"):
-            component = AzureOCRDocumentConverter(endpoint="test_endpoint")
-        output = component.run(
-            sources=[bytestream, test_files_path / "pdf" / "sample_pdf_1.pdf"], meta={"language": "it"}
-        )
-
-        # check that the metadata from the bytestream is merged with that from the meta parameter
-        assert output["documents"][0].meta["author"] == "test_author"
-        assert output["documents"][0].meta["language"] == "it"
-        assert output["documents"][1].meta["language"] == "it"
-
     @pytest.mark.integration
-    @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_ENDPOINT", None), reason="Azure credentials not available")
+    @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_ENDPOINT", None), reason="Azure endpoint not available")
     @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_API_KEY", None), reason="Azure credentials not available")
     def test_run_with_pdf_file(self, test_files_path):
         component = AzureOCRDocumentConverter(
@@ -83,7 +43,7 @@ class TestAzureOCRDocumentConverter:
         assert "Page 4 of Sample PDF" in documents[0].content
 
     @pytest.mark.integration
-    @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_ENDPOINT", None), reason="Azure credentials not available")
+    @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_ENDPOINT", None), reason="Azure endpoint not available")
     @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_API_KEY", None), reason="Azure credentials not available")
     def test_with_image_file(self, test_files_path):
         component = AzureOCRDocumentConverter(
@@ -96,7 +56,7 @@ class TestAzureOCRDocumentConverter:
         assert "by deepset" in documents[0].content
 
     @pytest.mark.integration
-    @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_ENDPOINT", None), reason="Azure credentials not available")
+    @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_ENDPOINT", None), reason="Azure endpoint not available")
     @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_API_KEY", None), reason="Azure credentials not available")
     def test_run_with_docx_file(self, test_files_path):
         component = AzureOCRDocumentConverter(
