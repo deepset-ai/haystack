@@ -48,7 +48,6 @@ class AzureOCRDocumentConverter:
         endpoint: str,
         api_key: Secret = Secret.from_env_var("AZURE_AI_API_KEY"),
         model_id: str = "prebuilt-read",
-        save_json: bool = False,
         preceding_context_len: int = 3,
         following_context_len: int = 3,
         merge_multiple_column_headers: bool = True,
@@ -63,8 +62,23 @@ class AzureOCRDocumentConverter:
         :param api_key:
             The key of your Azure resource.
         :param model_id:
-            The model ID of the model you want to use. Please refer to [Azure documentation](https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/choose-model-feature)
+            The model ID of the model you want to use. Please refer to
+            [Azure documentation](https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/choose-model-feature)
             for a list of available models. Default: `"prebuilt-read"`.
+                :param preceding_context_len: Number of lines before a table to extract as preceding context
+            (will be returned as part of metadata).
+        :param following_context_len: Number of lines after a table to extract as subsequent context (
+            will be returned as part of metadata).
+        :param merge_multiple_column_headers: Some tables contain more than one row as a column header
+            (i.e., column description).
+            This parameter lets you choose, whether to merge multiple column header rows to a single row.
+        :param page_layout: The type reading order to follow. If "natural" is chosen then the natural reading order
+            determined by Azure will be used. If "single_column" is chosen then all lines with the same height on the
+            page will be grouped together based on a threshold determined by `threshold_y`.
+        :param threshold_y: The threshold to determine if two recognized elements in a PDF should be grouped into a
+            single line. This is especially relevant for section headers or numbers which may be spacially separated
+            on the horizontal axis from the remaining text. The threshold is specified in units of inches.
+            This is only relevant if "single_column" is chosen for `page_layout`.
         """
         azure_import.check()
 
@@ -72,7 +86,6 @@ class AzureOCRDocumentConverter:
         self.endpoint = endpoint
         self.model_id = model_id
         self.api_key = api_key
-        self.save_json = save_json
         self.preceding_context_len = preceding_context_len
         self.following_context_len = following_context_len
         self.merge_multiple_column_headers = merge_multiple_column_headers
@@ -129,7 +142,17 @@ class AzureOCRDocumentConverter:
         :returns:
             Dictionary with serialized data.
         """
-        return default_to_dict(self, api_key=self.api_key.to_dict(), endpoint=self.endpoint, model_id=self.model_id)
+        return default_to_dict(
+            self,
+            api_key=self.api_key.to_dict(),
+            endpoint=self.endpoint,
+            model_id=self.model_id,
+            preceding_context_len=self.preceding_context_len,
+            following_context_len=self.following_context_len,
+            merge_multiple_column_headers=self.merge_multiple_column_headers,
+            page_layout=self.page_layout,
+            threshold_y=self.threshold_y,
+        )
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "AzureOCRDocumentConverter":
@@ -144,26 +167,6 @@ class AzureOCRDocumentConverter:
         deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         return default_from_dict(cls, data)
 
-    @staticmethod
-    def _convert_azure_result_to_document(result: "AnalyzeResult", file_suffix: Optional[str] = None) -> Document:
-        """
-        Convert the result of Azure OCR to a Haystack text Document.
-        """
-        if file_suffix == ".pdf":
-            text = ""
-            for page in result.pages:
-                lines = page.lines if page.lines else []
-                for line in lines:
-                    text += f"{line.content}\n"
-
-                text += "\f"
-        else:
-            text = result.content
-
-        document = Document(content=text)
-
-        return document
-
     # pylint: disable=line-too-long
     def _convert_tables_and_text(self, result: "AnalyzeResult", meta: Optional[Dict[str, Any]]) -> List[Document]:
         """
@@ -171,6 +174,7 @@ class AzureOCRDocumentConverter:
             can be found [here](https://azuresdkdocs.blob.core.windows.net/$web/python/azure-ai-formrecognizer/3.3.0/azure.ai.formrecognizer.html?highlight=read#azure.ai.formrecognizer.AnalyzeResult).
         :param meta: Optional dictionary with metadata that shall be attached to all resulting documents.
             Can be any custom keys and values.
+        :returns: List of Documents containing the tables and text extracted from the AnalyzeResult object.
         """
         tables = self._convert_tables(result=result, meta=meta)
         if self.page_layout == "natural":
@@ -280,13 +284,14 @@ class AzureOCRDocumentConverter:
 
     def _convert_to_natural_text(self, result: "AnalyzeResult", meta: Optional[Dict[str, str]]) -> Document:
         """
-        This converts the `AnalyzeResult` object into a single Haystack Document. We add "\f" separators between to
+        This converts the `AnalyzeResult` object into a single Document. We add "\f" separators between to
         differentiate between the text on separate pages. This is the expected format for the PreProcessor.
 
         :param result: The AnalyzeResult object returned by the `begin_analyze_document` method. Docs on Analyze result
             can be found [here](https://azuresdkdocs.blob.core.windows.net/$web/python/azure-ai-formrecognizer/3.3.0/azure.ai.formrecognizer.html?highlight=read#azure.ai.formrecognizer.AnalyzeResult).
         :param meta: Optional dictionary with metadata that shall be attached to all resulting documents.
             Can be any custom keys and values.
+        :returns: A single Document containing all the text extracted from the AnalyzeResult object.
         """
         table_spans_by_page = self._collect_table_spans(result=result)
 
@@ -331,6 +336,7 @@ class AzureOCRDocumentConverter:
         :param meta: Optional dictionary with metadata that shall be attached to all resulting documents.
             Can be any custom keys and values.
         :param threshold_y: height threshold in inches for PDF and pixels for images
+        :returns: A single Document containing all the text extracted from the AnalyzeResult object.
         """
         table_spans_by_page = self._collect_table_spans(result=result)
 
@@ -408,6 +414,11 @@ class AzureOCRDocumentConverter:
         return Document(content=all_text, meta=meta)
 
     def _collect_table_spans(self, result: "AnalyzeResult") -> Dict:
+        """
+        Collect the spans of all tables by page number.
+        :param result: The AnalyzeResult object returned by the `begin_analyze_document` method.
+        :returns: A dictionary with the page number as key and a list of table spans as value.
+        """
         table_spans_by_page = defaultdict(list)
         tables = result.tables if result.tables else []
         for table in tables:
@@ -419,6 +430,12 @@ class AzureOCRDocumentConverter:
     def _check_if_in_table(
         self, tables_on_page: dict, line_or_paragraph: Union["DocumentLine", "DocumentParagraph"]
     ) -> bool:
+        """
+        Check if a line or paragraph is part of a table.
+        :param tables_on_page: A dictionary with the page number as key and a list of table spans as value.
+        :param line_or_paragraph: The line or paragraph to check.
+        :returns: True if the line or paragraph is part of a table, False otherwise.
+        """
         in_table = False
         # Check if line is part of a table
         for table in tables_on_page:
