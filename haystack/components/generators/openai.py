@@ -1,4 +1,3 @@
-import dataclasses
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from openai import OpenAI, Stream
