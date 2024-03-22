@@ -299,7 +299,7 @@ class AzureOCRDocumentConverter:
                     page_numbers = [b.page_number for b in paragraph.bounding_regions]
                 else:
                     # If page_number is not available we put the paragraph onto an existing page
-                    current_last_page_number = sorted(paragraphs_to_pages.keys())[-1]
+                    current_last_page_number = sorted(paragraphs_to_pages.keys())[-1] if paragraphs_to_pages else 1
                     page_numbers = [current_last_page_number]
                 tables_on_page = table_spans_by_page[page_numbers[0]]
                 # Check if paragraph is part of a table and if so skip
