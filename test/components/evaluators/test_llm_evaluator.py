@@ -175,6 +175,30 @@ class TestLLMEvaluator:
             },
         }
 
+    def test_from_dict(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+
+        data = {
+            "type": "haystack.components.evaluators.llm_evaluator.LLMEvaluator",
+            "init_parameters": {
+                "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
+                "api": "openai",
+                "instructions": "test-instruction",
+                "inputs": [("responses", List[str])],
+                "outputs": ["score"],
+                "examples": [{"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"score": 0}}],
+            },
+        }
+        component = LLMEvaluator.from_dict(data)
+        assert component.api == "openai"
+        assert component.generator.client.api_key == "test-api-key"
+        assert component.instructions == "test-instruction"
+        assert component.inputs == [("responses", List[str])]
+        assert component.outputs == ["score"]
+        assert component.examples == [
+            {"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"score": 0}}
+        ]
+
     def test_to_dict_with_parameters(self, monkeypatch):
         monkeypatch.setenv("ENV_VAR", "test-api-key")
         component = LLMEvaluator(
@@ -214,7 +238,7 @@ class TestLLMEvaluator:
         )
 
         def generator_run(self, *args, **kwargs):
-            return {"replies": [{"score": 0.5}]}
+            return {"replies": ['{"score": 0.5}']}
 
         monkeypatch.setattr("haystack.components.generators.openai.OpenAIGenerator.run", generator_run)
 
@@ -225,6 +249,23 @@ class TestLLMEvaluator:
             component.run(
                 questions=["What is the capital of Germany?", "What is the capital of France?"], responses=[["Berlin"]]
             )
+
+    def test_run_returns_parsed_result(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = LLMEvaluator(
+            instructions="test-instruction",
+            inputs=[("questions", List[str]), ("responses", List[List[str]])],
+            outputs=["score"],
+            examples=[{"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"score": 0}}],
+        )
+
+        def generator_run(self, *args, **kwargs):
+            return {"replies": ['{"score": 0.5}']}
+
+        monkeypatch.setattr("haystack.components.generators.openai.OpenAIGenerator.run", generator_run)
+
+        results = component.run(questions=["What is the capital of Germany?"], responses=["Berlin"])
+        assert results == {"results": [{"score": 0.5, "name": "llm"}]}
 
     def test_prepare_template(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -251,13 +292,19 @@ class TestLLMEvaluator:
             outputs=["score"],
             examples=[{"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"score": 0}}],
         )
+        # None of the expected parameters are received
         with pytest.raises(ValueError):
             component.validate_input_parameters(expected={"responses": List[str]}, received={"questions": List[str]})
 
+        # Only one but not all the expected parameters are received
         with pytest.raises(ValueError):
             component.validate_input_parameters(
                 expected={"responses": List[str], "questions": List[str]}, received={"questions": List[str]}
             )
+
+        # Received inputs are not lists
+        with pytest.raises(ValueError):
+            component.validate_input_parameters(expected={"questions": List[str]}, received={"questions": str})
 
     def test_invalid_outputs(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -268,10 +315,10 @@ class TestLLMEvaluator:
             examples=[{"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"score": 0}}],
         )
         with pytest.raises(ValueError):
-            component.validate_outputs(expected=["score", "another_expected_output"], received="{'score': 1.0}")
+            component.validate_outputs(expected=["score", "another_expected_output"], received='{"score": 1.0}')
 
         with pytest.raises(ValueError):
-            component.validate_outputs(expected=["score"], received="{'wrong_name': 1.0}")
+            component.validate_outputs(expected=["score"], received='{"wrong_name": 1.0}')
 
     def test_unsupported_api(self):
         with pytest.raises(ValueError):
