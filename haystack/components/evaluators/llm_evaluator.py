@@ -103,6 +103,7 @@ class LLMEvaluator:
             If the inputs are not a list of tuples with a string and a type of list.
             If the outputs are not a list of strings.
             If the examples are not a list of dictionaries.
+            If any example does not have keys "inputs" and "outputs" with values that are dictionaries with string keys.
         """
         # Validate inputs
         if (
@@ -121,22 +122,23 @@ class LLMEvaluator:
             msg = f"LLM evaluator expects outputs to be a list of str but received {outputs}."
             raise ValueError(msg)
 
-        # Validate examples
-        if (
-            not isinstance(examples, list)
-            or not all(isinstance(example, dict) for example in examples)
-            or not all({"inputs", "outputs"} == example.keys() for example in examples)
-            or not all(
-                isinstance(example["inputs"], dict) and isinstance(example["outputs"], dict) for example in examples
-            )
-            or not all(isinstance(key, str) for example in examples for key in example["inputs"])
-            or not all(isinstance(key, str) for example in examples for key in example["outputs"])
-        ):
-            msg = (
-                f"LLM evaluator expects examples to be a list of dictionaries with keys `inputs` and `outputs` "
-                f"but received {examples}."
-            )
+        # Validate examples are lists of dicts
+        if not isinstance(examples, list) or not all(isinstance(example, dict) for example in examples):
+            msg = f"LLM evaluator expects examples to be a list of dictionaries but received {examples}."
             raise ValueError(msg)
+
+        # Validate each example
+        for example in examples:
+            if (
+                {"inputs", "outputs"} != example.keys()
+                or not all(isinstance(example[param], dict) for param in ["inputs", "outputs"])
+                or not all(isinstance(key, str) for param in ["inputs", "outputs"] for key in example[param])
+            ):
+                msg = (
+                    f"LLM evaluator expects each example to have keys `inputs` and `outputs` with values that are "
+                    f"dictionaries with str keys but received {example}."
+                )
+                raise ValueError(msg)
 
     @component.output_types(results=List[Dict[str, Any]])
     def run(self, **inputs) -> Dict[str, Any]:
