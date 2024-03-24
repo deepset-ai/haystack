@@ -222,8 +222,7 @@ def check_generation_params(kwargs: Optional[Dict[str, Any]], additional_accepte
 with LazyImport(message="Run 'pip install transformers[torch]'") as torch_and_transformers_import:
     from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast, StoppingCriteria, TextStreamer
 
-    transformers_import.check()
-    torch_import.check()
+    torch_and_transformers_import.check()
 
     class StopWordsCriteria(StoppingCriteria):
         """
