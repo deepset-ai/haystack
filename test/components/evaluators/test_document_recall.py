@@ -56,12 +56,7 @@ class TestDocumentRecallEvaluatorSingleHit:
                 [Document(content="9th century"), Document(content="9th")],
                 [Document(content="classical music"), Document(content="classical")],
                 [Document(content="11th century"), Document(content="the 11th")],
-                [
-                    Document(content="Denmark"),
-                    Document(content="Iceland"),
-                    Document(content="Norway"),
-                    Document(content="Denmark, Iceland and Norway"),
-                ],
+                [Document(content="Denmark, Iceland and Norway")],
                 [Document(content="10th century"), Document(content="10th")],
             ],
             retrieved_documents=[
@@ -78,7 +73,7 @@ class TestDocumentRecallEvaluatorSingleHit:
                 ],
             ],
         )
-        assert result == {"individual_scores": [1.0, 1.0, 0.5, 1.0, 0.75, 1.0], "score": 0.875}
+        assert result == {"individual_scores": [True, True, True, True, False, True], "score": 0.8333333333333334}
 
     def test_run_with_different_lengths(self, evaluator):
         with pytest.raises(ValueError):
