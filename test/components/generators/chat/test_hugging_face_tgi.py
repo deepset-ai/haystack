@@ -1,11 +1,7 @@
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-from huggingface_hub.inference._generated.types.text_generation import (
-    TextGenerationOutputToken,
-    TextGenerationStreamDetails,
-    TextGenerationStreamOutput,
-)
+from huggingface_hub import TextGenerationOutputToken, TextGenerationStreamDetails, TextGenerationStreamOutput
 from huggingface_hub.utils import RepositoryNotFoundError
 
 from haystack.components.generators.chat import HuggingFaceTGIChatGenerator

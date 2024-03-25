@@ -9,12 +9,10 @@ from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inp
 from haystack.utils.hf import HFModelType, check_generation_params, check_valid_model, list_inference_deployed_models
 
 with LazyImport(message="Run 'pip install transformers'") as transformers_import:
-    from huggingface_hub import InferenceClient
-    from huggingface_hub.inference._generated.types.text_generation import (
-        TextGenerationFinishReason,
+    from huggingface_hub import (
+        InferenceClient,
         TextGenerationOutput,
         TextGenerationOutputToken,
-        TextGenerationStreamDetails,
         TextGenerationStreamOutput,
     )
     from transformers import AutoTokenizer
@@ -267,7 +265,7 @@ class HuggingFaceTGIChatGenerator:
         message = ChatMessage.from_assistant(chunk.generated_text)
         message.meta.update(
             {
-                "finish_reason": chunk.details.finish_reason.value,
+                "finish_reason": chunk.details.finish_reason,
                 "index": 0,
                 "model": self.client.model,
                 "usage": {
