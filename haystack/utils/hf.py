@@ -129,7 +129,7 @@ def check_valid_model(model_id: str, model_type: HFModelType, token: Optional[Se
     :param token: The optional authentication token.
     :raises ValueError: If the model is not found or is not a embedding model.
     """
-    transformers_import.check()
+    huggingface_hub_import.check()
 
     api = HfApi()
     try:
@@ -158,7 +158,7 @@ def check_generation_params(kwargs: Optional[Dict[str, Any]], additional_accepte
     :param additional_accepted_params: An optional list of strings representing additional accepted parameters.
     :raises ValueError: If any unknown text generation parameters are provided.
     """
-    transformers_import.check()
+    huggingface_hub_import.check()
 
     if kwargs:
         accepted_params = {
@@ -175,7 +175,7 @@ def check_generation_params(kwargs: Optional[Dict[str, Any]], additional_accepte
             )
 
 
-with LazyImport(message="Run 'pip install transformers[torch]'") as torch_and_transformers_import:
+with LazyImport(message="Run 'pip install transformers[torch]'") as transformers_import:
     from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast, StoppingCriteria, TextStreamer
 
     transformers_import.check()
