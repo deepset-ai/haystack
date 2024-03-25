@@ -10,7 +10,11 @@ from haystack.utils.hf import HFModelType, check_generation_params, check_valid_
 
 with LazyImport(message="Run 'pip install transformers'") as transformers_import:
     from huggingface_hub import InferenceClient
-    from huggingface_hub.inference._text_generation import TextGenerationResponse, TextGenerationStreamResponse, Token
+    from huggingface_hub.inference._generated.types.text_generation import (
+        TextGenerationOutput,
+        TextGenerationOutputToken,
+        TextGenerationStreamOutput,
+    )
     from transformers import AutoTokenizer
 
 
@@ -213,13 +217,13 @@ class HuggingFaceTGIGenerator:
         return self._run_non_streaming(prompt, prompt_token_count, num_responses, generation_kwargs)
 
     def _run_streaming(self, prompt: str, prompt_token_count: int, generation_kwargs: Dict[str, Any]):
-        res_chunk: Iterable[TextGenerationStreamResponse] = self.client.text_generation(
+        res_chunk: Iterable[TextGenerationStreamOutput] = self.client.text_generation(
             prompt, details=True, stream=True, **generation_kwargs
         )
         chunks: List[StreamingChunk] = []
         # pylint: disable=not-an-iterable
         for chunk in res_chunk:
-            token: Token = chunk.token
+            token: TextGenerationOutputToken = chunk.token
             if token.special:
                 continue
             chunk_metadata = {**asdict(token), **(asdict(chunk.details) if chunk.details else {})}
@@ -243,7 +247,7 @@ class HuggingFaceTGIGenerator:
         responses: List[str] = []
         all_metadata: List[Dict[str, Any]] = []
         for _i in range(num_responses):
-            tgr: TextGenerationResponse = self.client.text_generation(prompt, details=True, **generation_kwargs)
+            tgr: TextGenerationOutput = self.client.text_generation(prompt, details=True, **generation_kwargs)
             all_metadata.append(
                 {
                     "model": self.client.model,
