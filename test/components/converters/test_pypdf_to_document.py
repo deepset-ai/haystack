@@ -4,7 +4,7 @@ from unittest.mock import patch
 import pytest
 
 from haystack import Document, default_from_dict, default_to_dict
-from haystack.components.converters.pypdf import DefaultConverter, PyPDFToDocument
+from haystack.components.converters.pypdf import CONVERTERS_REGISTRY, DefaultConverter, PyPDFToDocument
 from haystack.dataclasses import ByteStream
 
 
@@ -133,6 +133,25 @@ class TestPyPDFToDocument:
 
         component = PyPDFToDocument(converter=MyCustomConverter())
         output = component.run(sources=paths)
+        docs = output["documents"]
+        assert len(docs) == 1
+        assert "ReAct" not in docs[0].content
+        assert "I don't care about converting given pdfs, I always return this" in docs[0].content
+
+    @pytest.mark.integration
+    def test_custom_converter_deprecated(self, test_files_path):
+        from pypdf import PdfReader
+
+        paths = [test_files_path / "pdf" / "sample_pdf_1.pdf"]
+
+        class MyCustomConverter:
+            def convert(self, reader: PdfReader) -> Document:
+                return Document(content="I don't care about converting given pdfs, I always return this")
+
+        CONVERTERS_REGISTRY["custom"] = MyCustomConverter()
+
+        converter = PyPDFToDocument(converter_name="custom")
+        output = converter.run(sources=paths)
         docs = output["documents"]
         assert len(docs) == 1
         assert "ReAct" not in docs[0].content
