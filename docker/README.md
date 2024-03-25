@@ -1,11 +1,8 @@
 <p align="center">
-  <a href="https://www.deepset.ai/haystack/"><img src="https://raw.githubusercontent.com/deepset-ai/haystack/main/docs/img/haystack_logo_colored.png" alt="Haystack"></a>
+  <a href="https://haystack.deepset.ai/"><img src="https://raw.githubusercontent.com/deepset-ai/.github/main/haystack-logo-colored.png" alt="Haystack by deepset"></a>
 </p>
 
-Haystack is an end-to-end framework that enables you to build powerful and production-ready
-pipelines for different search use cases. The Docker image comes with a web service
-configured to serve Haystack's `rest_api` to ease pipeline deployments in containerized
-environments.
+[Haystack](https://github.com/deepset-ai/haystack) is an end-to-end LLM framework that allows you to build applications powered by LLMs, Transformer models, vector search and more. Whether you want to perform retrieval-augmented generation (RAG), document search, question answering or answer generation, Haystack can orchestrate state-of-the-art embedding models and LLMs into pipelines to build end-to-end NLP applications and solve your use case.
 
 To start the Docker container binding the TCP port `8000` locally, run:
 ```sh
