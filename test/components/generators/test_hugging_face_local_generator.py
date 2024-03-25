@@ -4,14 +4,15 @@ from unittest.mock import Mock, patch
 import pytest
 import torch
 from transformers import PreTrainedTokenizerFast
-from haystack.utils.auth import Secret
 
 from haystack.components.generators.hugging_face_local import HuggingFaceLocalGenerator, StopWordsCriteria
 from haystack.utils import ComponentDevice
+from haystack.utils.auth import Secret
+from haystack.utils.hf import HFTokenStreamingHandler
 
 
 class TestHuggingFaceLocalGenerator:
-    @patch("haystack.components.generators.hugging_face_local.model_info")
+    @patch("haystack.utils.hf.model_info")
     def test_init_default(self, model_info_mock, monkeypatch):
         monkeypatch.delenv("HF_API_TOKEN", raising=False)
         model_info_mock.return_value.pipeline_tag = "text2text-generation"
@@ -23,7 +24,7 @@ class TestHuggingFaceLocalGenerator:
             "token": None,
             "device": ComponentDevice.resolve_device(None).to_hf(),
         }
-        assert generator.generation_kwargs == {}
+        assert generator.generation_kwargs == {"max_new_tokens": 512}
         assert generator.pipeline is None
 
     def test_init_custom_token(self):
@@ -73,7 +74,7 @@ class TestHuggingFaceLocalGenerator:
             "device": ComponentDevice.resolve_device(None).to_hf(),
         }
 
-    @patch("haystack.components.generators.hugging_face_local.model_info")
+    @patch("haystack.utils.hf.model_info")
     def test_init_task_inferred_from_model_name(self, model_info_mock):
         model_info_mock.return_value.pipeline_tag = "text2text-generation"
         generator = HuggingFaceLocalGenerator(model="google/flan-t5-base", token=None)
@@ -124,7 +125,7 @@ class TestHuggingFaceLocalGenerator:
         """
         generator = HuggingFaceLocalGenerator(task="text-generation")
 
-        assert generator.generation_kwargs == {"return_full_text": False}
+        assert generator.generation_kwargs == {"max_new_tokens": 512, "return_full_text": False}
 
     def test_init_fails_with_both_stopwords_and_stoppingcriteria(self):
         with pytest.raises(
@@ -137,7 +138,7 @@ class TestHuggingFaceLocalGenerator:
                 generation_kwargs={"stopping_criteria": "fake-stopping-criteria"},
             )
 
-    @patch("haystack.components.generators.hugging_face_local.model_info")
+    @patch("haystack.utils.hf.model_info")
     def test_to_dict_default(self, model_info_mock):
         model_info_mock.return_value.pipeline_tag = "text2text-generation"
 
@@ -153,7 +154,8 @@ class TestHuggingFaceLocalGenerator:
                     "task": "text2text-generation",
                     "device": ComponentDevice.resolve_device(None).to_hf(),
                 },
-                "generation_kwargs": {},
+                "generation_kwargs": {"max_new_tokens": 512},
+                "streaming_callback": None,
                 "stop_words": None,
             },
         }
@@ -194,6 +196,7 @@ class TestHuggingFaceLocalGenerator:
                     },
                 },
                 "generation_kwargs": {"max_new_tokens": 100, "return_full_text": False},
+                "streaming_callback": None,
                 "stop_words": ["coca", "cola"],
             },
         }
@@ -238,6 +241,7 @@ class TestHuggingFaceLocalGenerator:
                     },
                 },
                 "generation_kwargs": {"max_new_tokens": 100, "return_full_text": False},
+                "streaming_callback": None,
                 "stop_words": ["coca", "cola"],
             },
         }
@@ -349,6 +353,29 @@ class TestHuggingFaceLocalGenerator:
         generator.pipeline.assert_called_once_with(
             "irrelevant", max_new_tokens=200, temperature=0.5, stopping_criteria=None
         )
+
+    def test_run_with_streaming(self):
+        def streaming_callback_handler(x):
+            return x
+
+        generator = HuggingFaceLocalGenerator(
+            model="google/flan-t5-base", task="text2text-generation", streaming_callback=streaming_callback_handler
+        )
+
+        # create the pipeline object (simulating the warm_up)
+        generator.pipeline = Mock(return_value=[{"generated_text": "Rome"}])
+
+        generator.run(prompt="irrelevant")
+
+        # when we use streaming, the pipeline should be called with the `streamer` argument being an instance of
+        # ouf our adapter class HFTokenStreamingHandler
+        assert isinstance(generator.pipeline.call_args.kwargs["streamer"], HFTokenStreamingHandler)
+        streamer = generator.pipeline.call_args.kwargs["streamer"]
+
+        # check that the streaming callback is set
+        assert streamer.token_handler == streaming_callback_handler
+        # the tokenizer should be set, here it is a mock
+        assert streamer.tokenizer
 
     def test_run_fails_without_warm_up(self):
         generator = HuggingFaceLocalGenerator(

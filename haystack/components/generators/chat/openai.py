@@ -1,9 +1,8 @@
 import copy
-import dataclasses
 import json
 from typing import Any, Callable, Dict, List, Optional, Union
 
-from openai import OpenAI, Stream  # type: ignore
+from openai import OpenAI, Stream
 from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletionMessage
 from openai.types.chat.chat_completion import Choice
 from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
@@ -169,7 +168,7 @@ class OpenAIChatGenerator:
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
 
         # adapt ChatMessage(s) to the format expected by the OpenAI API
-        openai_formatted_messages = self._convert_to_openai_format(messages)
+        openai_formatted_messages = [message.to_openai_format() for message in messages]
 
         chat_completion: Union[Stream[ChatCompletionChunk], ChatCompletion] = self.client.chat.completions.create(
             model=self.model,
@@ -203,20 +202,6 @@ class OpenAIChatGenerator:
             self._check_finish_reason(message)
 
         return {"replies": completions}
-
-    def _convert_to_openai_format(self, messages: List[ChatMessage]) -> List[Dict[str, Any]]:
-        """
-        Converts the list of ChatMessage to the list of messages in the format expected by the OpenAI API.
-        :param messages: The list of ChatMessage.
-        :return: The list of messages in the format expected by the OpenAI API.
-        """
-        openai_chat_message_format = {"role", "content", "name"}
-        openai_formatted_messages = []
-        for m in messages:
-            message_dict = dataclasses.asdict(m)
-            filtered_message = {k: v for k, v in message_dict.items() if k in openai_chat_message_format and v}
-            openai_formatted_messages.append(filtered_message)
-        return openai_formatted_messages
 
     def _connect_chunks(self, chunk: Any, chunks: List[StreamingChunk]) -> ChatMessage:
         """

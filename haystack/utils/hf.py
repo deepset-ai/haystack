@@ -14,8 +14,8 @@ from haystack.utils.device import ComponentDevice
 with LazyImport(message="Run 'pip install transformers[torch]'") as torch_import:
     import torch
 
-with LazyImport(message="Run 'pip install transformers'") as transformers_import:
-    from huggingface_hub import HfApi, InferenceClient
+with LazyImport(message="Run 'pip install huggingface_hub'") as huggingface_hub_import:
+    from huggingface_hub import HfApi, InferenceClient, model_info
     from huggingface_hub.utils import RepositoryNotFoundError
 
 logger = logging.getLogger(__name__)
@@ -98,6 +98,50 @@ def resolve_hf_device_map(device: Optional[ComponentDevice], model_kwargs: Optio
     return model_kwargs
 
 
+def resolve_hf_pipeline_kwargs(
+    huggingface_pipeline_kwargs: Dict[str, Any],
+    model: str,
+    task: Optional[str],
+    supported_tasks: List[str],
+    device: Optional[ComponentDevice],
+    token: Optional[Secret],
+) -> Dict[str, Any]:
+    """
+    Resolve the HuggingFace pipeline keyword arguments based on explicit user inputs.
+
+    :param huggingface_pipeline_kwargs: Dictionary containing keyword arguments used to initialize a
+        Hugging Face pipeline.
+    :param model: The name or path of a Hugging Face model for on the HuggingFace Hub.
+    :param task: The task for the Hugging Face pipeline.
+    :param supported_tasks: The list of supported tasks to check the task of the model against. If the task of the model
+        is not present within this list then a ValueError is thrown.
+    :param device: The device on which the model is loaded. If `None`, the default device is automatically
+        selected. If a device/device map is specified in `huggingface_pipeline_kwargs`, it overrides this parameter.
+    :param token: The token to use as HTTP bearer authorization for remote files.
+        If the token is also specified in the `huggingface_pipeline_kwargs`, this parameter will be ignored.
+    """
+    huggingface_hub_import.check()
+
+    token = token.resolve_value() if token else None
+    # check if the huggingface_pipeline_kwargs contain the essential parameters
+    # otherwise, populate them with values from other init parameters
+    huggingface_pipeline_kwargs.setdefault("model", model)
+    huggingface_pipeline_kwargs.setdefault("token", token)
+
+    device = ComponentDevice.resolve_device(device)
+    device.update_hf_kwargs(huggingface_pipeline_kwargs, overwrite=False)
+
+    # task identification and validation
+    task = task or huggingface_pipeline_kwargs.get("task")
+    if task is None and isinstance(huggingface_pipeline_kwargs["model"], str):
+        task = model_info(huggingface_pipeline_kwargs["model"], token=huggingface_pipeline_kwargs["token"]).pipeline_tag
+
+    if task not in supported_tasks:
+        raise ValueError(f"Task '{task}' is not supported. " f"The supported tasks are: {', '.join(supported_tasks)}.")
+    huggingface_pipeline_kwargs["task"] = task
+    return huggingface_pipeline_kwargs
+
+
 def list_inference_deployed_models(headers: Optional[Dict] = None) -> List[str]:
     """
     List all currently deployed models on HF TGI free tier
@@ -129,7 +173,7 @@ def check_valid_model(model_id: str, model_type: HFModelType, token: Optional[Se
     :param token: The optional authentication token.
     :raises ValueError: If the model is not found or is not a embedding model.
     """
-    transformers_import.check()
+    huggingface_hub_import.check()
 
     api = HfApi()
     try:
@@ -158,7 +202,7 @@ def check_generation_params(kwargs: Optional[Dict[str, Any]], additional_accepte
     :param additional_accepted_params: An optional list of strings representing additional accepted parameters.
     :raises ValueError: If any unknown text generation parameters are provided.
     """
-    transformers_import.check()
+    huggingface_hub_import.check()
 
     if kwargs:
         accepted_params = {
@@ -175,11 +219,11 @@ def check_generation_params(kwargs: Optional[Dict[str, Any]], additional_accepte
             )
 
 
-with LazyImport(message="Run 'pip install transformers[torch]'") as torch_and_transformers_import:
+with LazyImport(message="Run 'pip install transformers[torch]'") as transformers_import:
     from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast, StoppingCriteria, TextStreamer
 
-    transformers_import.check()
     torch_import.check()
+    transformers_import.check()
 
     class StopWordsCriteria(StoppingCriteria):
         """

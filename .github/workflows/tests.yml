@@ -19,6 +19,7 @@ on:
       - "haystack/**/*.py"
       - "haystack/core/pipeline/predefined/*"
       - "test/**/*.py"
+      - "pyproject.toml"
 
 env:
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

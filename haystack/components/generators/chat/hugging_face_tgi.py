@@ -16,6 +16,7 @@ with LazyImport(message="Run 'pip install transformers'") as transformers_import
 logger = logging.getLogger(__name__)
 
 
+@component
 class HuggingFaceTGIChatGenerator:
     """
     Enables text generation using HuggingFace Hub hosted chat-based LLMs. This component is designed to seamlessly
@@ -123,6 +124,7 @@ class HuggingFaceTGIChatGenerator:
         check_generation_params(generation_kwargs, ["n"])
         generation_kwargs["stop_sequences"] = generation_kwargs.get("stop_sequences", [])
         generation_kwargs["stop_sequences"].extend(stop_words or [])
+        generation_kwargs.setdefault("max_new_tokens", 512)
 
         self.model = model
         self.url = url
@@ -226,8 +228,9 @@ class HuggingFaceTGIChatGenerator:
             raise RuntimeError("Please call warm_up() before running LLM inference.")
 
         # apply either model's chat template or the user-provided one
+        formatted_messages = [message.to_openai_format() for message in messages]
         prepared_prompt: str = self.tokenizer.apply_chat_template(
-            conversation=messages, chat_template=self.chat_template, tokenize=False
+            conversation=formatted_messages, chat_template=self.chat_template, tokenize=False
         )
         prompt_token_count: int = len(self.tokenizer.encode(prepared_prompt, add_special_tokens=False))
 
