@@ -95,6 +95,8 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
                 "stream",
                 "stream_handler",
                 "moderate_content",
+                "seed",
+                "response_format",
             ]
             if key in kwargs
         }
@@ -150,6 +152,10 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
             "frequency_penalty": kwargs_with_defaults.get("frequency_penalty", 0),
             "logit_bias": kwargs_with_defaults.get("logit_bias", {}),
         }
+        if kwargs_with_defaults.get("response_format", None):
+            base_payload["response_format"] = kwargs_with_defaults.get("response_format")
+        if kwargs_with_defaults.get("seed", None):
+            base_payload["seed"] = kwargs_with_defaults.get("seed")
 
         return (prompt, base_payload, kwargs_with_defaults, stream, moderation)
 
