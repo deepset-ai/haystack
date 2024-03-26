@@ -12,9 +12,9 @@ logger = logging.getLogger(__name__)
 class DynamicChatPromptBuilder:
     """
     DynamicChatPromptBuilder is designed to construct dynamic prompts from a list of `ChatMessage` instances. It
-    integrates with Jinja2 templating for dynamic prompt generation. It assumes that the last user message in the list
-    contains a template and renders it with variables provided to the constructor. Additional template variables
-    can be feed into the pipeline `run` method and will be merged before rendering the template.
+    integrates with Jinja2 templating for dynamic prompt generation. It considers any user or system message in the list
+    potentially containing a template and renders it with variables provided to the constructor. Additional template
+    variables can be feed into the component/pipeline `run` method and will be merged before rendering the template.
 
     Usage example:
     ```python
@@ -34,11 +34,12 @@ class DynamicChatPromptBuilder:
     pipe.connect("prompt_builder.prompt", "llm.messages")
 
     location = "Berlin"
-    system_message = ChatMessage.from_system("You are a helpful assistant giving out valuable information to tourists.")
+    language = "English"
+    system_message = ChatMessage.from_system("You are an assistant giving information to tourists in {{language}}")
     messages = [system_message, ChatMessage.from_user("Tell me about {{location}}")]
 
-
-    res = pipe.run(data={"prompt_builder": {"template_variables": {"location": location}, "prompt_source": messages}})
+    res = pipe.run(data={"prompt_builder": {"template_variables": {"location": location, "language": language},
+                                        "prompt_source": messages}})
     print(res)
 
     >> {'llm': {'replies': [ChatMessage(content="Berlin is the capital city of Germany and one of the most vibrant
@@ -91,21 +92,22 @@ class DynamicChatPromptBuilder:
     def run(self, prompt_source: List[ChatMessage], template_variables: Optional[Dict[str, Any]] = None, **kwargs):
         """
         Executes the dynamic prompt building process by processing a list of `ChatMessage` instances.
-        The last user message is treated as a template and rendered with the variables provided to the constructor.
-        You can provide additional template variables directly to this method, which are then merged with the variables
-        provided to the constructor.
+        Any user message or system message is inspected for templates and rendered with the variables provided to the
+        constructor. You can provide additional template variables directly to this method, which are then merged with
+        the variables provided to the constructor.
 
         :param prompt_source:
-            A list of `ChatMessage` instances. We make an assumption that the last user message has
-            the template for the chat prompt
+            A list of `ChatMessage` instances. All user and system messages are treated as potentially having templates
+            and are rendered with the provided template variables - if templates are found.
         :param template_variables:
             A dictionary of template variables. Template variables provided at initialization are required
             to resolve pipeline variables, and these are additional variables users can provide directly to this method.
         :param kwargs:
-            Additional keyword arguments, typically resolved from a pipeline, which are merged with the provided template variables.
+            Additional keyword arguments, typically resolved from a pipeline, which are merged with the provided
+            template variables.
 
         :returns: A dictionary with the following keys:
-            - `prompt`: The updated list of `ChatMessage` instances after rendering the string template.
+            - `prompt`: The updated list of `ChatMessage` instances after rendering the found templates.
         """
         kwargs = kwargs or {}
         template_variables = template_variables or {}
