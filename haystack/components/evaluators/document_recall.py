@@ -1,4 +1,3 @@
-import itertools
 from enum import Enum
 from typing import Any, Dict, List, Union
 
