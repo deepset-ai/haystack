@@ -286,7 +286,7 @@ class HuggingFaceTGIChatGenerator:
             message = ChatMessage.from_assistant(tgr.generated_text)
             message.meta.update(
                 {
-                    "finish_reason": tgr.details.finish_reason.value,
+                    "finish_reason": tgr.details.finish_reason,
                     "index": _i,
                     "model": self.client.model,
                     "usage": {

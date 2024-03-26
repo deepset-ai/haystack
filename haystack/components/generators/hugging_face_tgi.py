@@ -252,7 +252,7 @@ class HuggingFaceTGIGenerator:
                 {
                     "model": self.client.model,
                     "index": _i,
-                    "finish_reason": tgr.details.finish_reason.value,
+                    "finish_reason": tgr.details.finish_reason,
                     "usage": {
                         "completion_tokens": len(tgr.details.tokens),
                         "prompt_tokens": prompt_token_count,
