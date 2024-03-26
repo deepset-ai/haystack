@@ -92,6 +92,49 @@ class TestDynamicChatPromptBuilder:
         # provided variables are a superset of the required variables
         prompt_builder._validate_template("Hello, I'm {{ name }}, and I live in {{ city }}.", {"name", "city", "age"})
 
+    def test_multiple_templated_chat_messages(self):
+        prompt_builder = DynamicChatPromptBuilder(runtime_variables=["language", "location"])
+        language = "French"
+        location = "Berlin"
+        messages = [
+            ChatMessage.from_system("Write your response ins this language:{{language}}"),
+            ChatMessage.from_user("Tell me about {{location}}"),
+        ]
+
+        result = prompt_builder.run(
+            template_variables={"language": language, "location": location}, prompt_source=messages
+        )
+        assert result["prompt"] == [
+            ChatMessage.from_system("Write your response ins this language:French"),
+            ChatMessage.from_user("Tell me about Berlin"),
+        ], "The templated messages should match the expected output."
+
+    def test_some_templated_chat_messages(self):
+        prompt_builder = DynamicChatPromptBuilder(runtime_variables=["language", "location"])
+        language = "English"
+        location = "Paris"
+        messages = [
+            ChatMessage.from_system("Please, respond in the following language: {{language}}."),
+            ChatMessage.from_user("I would like to learn more about {{location}}."),
+            ChatMessage.from_assistant("Yes, I can help you with that {{subject}}"),
+            ChatMessage.from_user("Ok so do so please, be elaborate."),
+        ]
+
+        result = prompt_builder.run(
+            template_variables={"language": language, "location": location}, prompt_source=messages
+        )
+
+        expected_messages = [
+            ChatMessage.from_system("Please, respond in the following language: English."),
+            ChatMessage.from_user("I would like to learn more about Paris."),
+            ChatMessage.from_assistant(
+                "Yes, I can help you with that {{subject}}"
+            ),  # assistant message should not be templated
+            ChatMessage.from_user("Ok so do so please, be elaborate."),
+        ]
+
+        assert result["prompt"] == expected_messages, "The templated messages should match the expected output."
+
     def test_example_in_pipeline(self):
         # no parameter init, we don't use any runtime template variables
         prompt_builder = DynamicChatPromptBuilder()
@@ -134,6 +177,62 @@ class TestDynamicChatPromptBuilder:
             "prompt_builder": {
                 "prompt": [
                     ChatMessage.from_system("You are a helpful assistant giving out valuable information to tourists."),
+                    ChatMessage.from_user("What's the weather forecast for Berlin in the next 5 days?"),
+                ]
+            }
+        }
+
+    def test_example_in_pipeline_with_multiple_templated_messages(self):
+        # no parameter init, we don't use any runtime template variables
+        prompt_builder = DynamicChatPromptBuilder()
+
+        pipe = Pipeline()
+        pipe.add_component("prompt_builder", prompt_builder)
+
+        location = "Berlin"
+        system_message = ChatMessage.from_system(
+            "You are a helpful assistant giving out valuable information to tourists in {{language}}."
+        )
+        messages = [system_message, ChatMessage.from_user("Tell me about {{location}}")]
+
+        res = pipe.run(
+            data={
+                "prompt_builder": {
+                    "template_variables": {"location": location, "language": "German"},
+                    "prompt_source": messages,
+                }
+            }
+        )
+        assert res == {
+            "prompt_builder": {
+                "prompt": [
+                    ChatMessage.from_system(
+                        "You are a helpful assistant giving out valuable information to tourists in German."
+                    ),
+                    ChatMessage.from_user("Tell me about Berlin"),
+                ]
+            }
+        }
+
+        messages = [
+            system_message,
+            ChatMessage.from_user("What's the weather forecast for {{location}} in the next {{day_count}} days?"),
+        ]
+
+        res = pipe.run(
+            data={
+                "prompt_builder": {
+                    "template_variables": {"location": location, "day_count": "5", "language": "English"},
+                    "prompt_source": messages,
+                }
+            }
+        )
+        assert res == {
+            "prompt_builder": {
+                "prompt": [
+                    ChatMessage.from_system(
+                        "You are a helpful assistant giving out valuable information to tourists in English."
+                    ),
                     ChatMessage.from_user("What's the weather forecast for Berlin in the next 5 days?"),
                 ]
             }

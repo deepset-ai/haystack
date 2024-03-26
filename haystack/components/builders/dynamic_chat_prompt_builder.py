@@ -120,19 +120,25 @@ class DynamicChatPromptBuilder:
 
     def _process_chat_messages(self, prompt_source: List[ChatMessage], template_variables: Dict[str, Any]):
         """
-        Processes a list of :class:`ChatMessage` instances to generate a chat prompt.
+        Processes a list of `ChatMessage` instances to generate a chat prompt.
+
+        It treats all user and system messages as potentially having templates and renders them with the provided
+        template variables.
+
+        The resulting messages replace the original user and system messages in the list, forming a complete,
+        templated chat prompt.
 
         It takes the last user message in the list, treats it as a template, and renders it with the provided
         template variables. The resulting message replaces the last user message in the list, forming a complete,
         templated chat prompt.
 
         :param prompt_source:
-            A list of `ChatMessage` instances to be processed. The last message is expected
-            to be from a user and is treated as a template.
+            A list of `ChatMessage` instances to be processed. All user and system messages are treated as
+            potentially having templates and are rendered with the provided template variables - if templates are found.
         :param template_variables:
-            A dictionary of template variables used for rendering the last user message.
+            A dictionary of template variables used for rendering the templates in the chat messages.
         :returns:
-            A list of `ChatMessage` instances, where the last user message has been replaced with its
+            A list of `ChatMessage` instances after rendering the found templates.
         :raises ValueError:
             If `chat_messages` is empty or contains elements that are not instances of `ChatMessage`.
         :raises ValueError:
@@ -150,17 +156,17 @@ class DynamicChatPromptBuilder:
                 f"are ChatMessage instances."
             )
 
-        last_message: ChatMessage = prompt_source[-1]
-        if last_message.is_from(ChatRole.USER):
-            template = self._validate_template(last_message.content, set(template_variables.keys()))
-            templated_user_message = ChatMessage.from_user(template.render(template_variables))
-            return prompt_source[:-1] + [templated_user_message]
-        else:
-            logger.warning(
-                "DynamicChatPromptBuilder was not provided with a user message as the last message in "
-                "chat conversation, no templating will be applied."
-            )
-            return prompt_source
+        processed_messages = []
+        for message in prompt_source:
+            if message.is_from(ChatRole.USER) or message.is_from(ChatRole.SYSTEM):
+                template = self._validate_template(message.content, set(template_variables.keys()))
+                templated_message = ChatMessage.with_role(
+                    content=template.render(template_variables), role=message.role
+                )
+                processed_messages.append(templated_message)
+            else:
+                processed_messages.append(message)
+        return processed_messages
 
     def _validate_template(self, template_text: str, provided_variables: Set[str]):
         """
