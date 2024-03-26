@@ -10,7 +10,9 @@ class RecallMode(Enum):
     Enum for the mode to use for calculating the recall score.
     """
 
+    # Only takes into account if at least one document is retrieved to calculate the recall score
     SINGLE_HIT = "single_hit"
+    # Takes into account how many documents are retrieved to calculate the recall score
     MULTI_HIT = "multi_hit"
 
     def __str__(self):
