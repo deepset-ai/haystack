@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import importlib
+import inspect
 import itertools
 from collections import defaultdict
 from copy import copy, deepcopy
@@ -27,7 +28,6 @@ from haystack.core.type_utils import _type_name, _types_are_compatible
 from haystack.marshal import Marshaller, YamlMarshaller
 from haystack.telemetry import pipeline_running
 from haystack.utils import is_in_jupyter
-from haystack.utils.object_inspection import get_parameter_info
 
 from .descriptions import find_pipeline_inputs, find_pipeline_outputs
 from .draw import _to_mermaid_image
@@ -718,10 +718,16 @@ class Pipeline:
             instance = self.graph.nodes[component_name]["instance"]
 
             # make sure that all components have all the inputs values explicitly defined even being optional
-            parameters = get_parameter_info(instance.run)
+            parameters = get_optional_parameter_values(instance)
+            print("\n\n")
+            print(component_name)
+            print("data[component_name]: ", data[component_name])
+            print("get_parameter_info(): ", parameters)
             filled = {k: v["default_value"] for k, v in parameters.items() if k not in data and v["optional"]}
+            print("filled: ", filled)
             filled.update(component_inputs)
             data[component_name] = filled
+            print("data[component_name]: ", data[component_name])
 
             for component_input, input_value in component_inputs.items():
                 # Handle mutable input data
@@ -1079,3 +1085,27 @@ def parse_connect_string(connection: str) -> Tuple[str, Optional[str]]:
         split_str = connection.split(".", maxsplit=1)
         return (split_str[0], split_str[1])
     return connection, None
+
+
+"""""
+def get_optional_parameter_values(comp: Component):
+    parameter_info = {}
+    for param_name, socket in comp.__haystack_input__._sockets_dict.items():
+        if not socket.is_mandatory:
+            parameter_info[param_name] = {"default_value": socket.default_value, "optional": True}
+    return parameter_info
+"""
+
+
+def get_optional_parameter_values(component: Component):
+    signature = inspect.signature(component.run)
+    parameter_info = {}
+    for parameter in signature.parameters.values():
+        parameter_name = parameter.name
+        default_value = parameter.default
+        if default_value is inspect.Parameter.empty:
+            parameter_info[parameter_name] = {"default_value": None, "optional": False}
+        else:
+            parameter_info[parameter_name] = {"default_value": default_value, "optional": True}
+
+    return parameter_info
