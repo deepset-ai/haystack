@@ -35,10 +35,10 @@ jobs:
       run: pip install hatch==${{ env.HATCH_VERSION }}
 
     - name: Run tests
-      run: exit 1 #hatch run test:e2e
+      run: hatch run test:e2e
 
     - name: Send event to Datadog
-      if: failure() #&& github.event_name == 'schedule'
+      if: failure() && github.event_name == 'schedule'
       uses: masci/datadog@v1
       with:
         api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
