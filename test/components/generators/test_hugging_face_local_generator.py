@@ -427,7 +427,7 @@ class TestHuggingFaceLocalGenerator:
     @pytest.mark.integration
     def test_stop_words_criteria_using_hf_tokenizer(self):
         """
-        Test that StopWordsCriteria will caught stop word tokens in a continuous and sequential order in the input_ids
+        Test that StopWordsCriteria catches stop word tokens in a continuous and sequential order in the input_ids
         using a real Huggingface tokenizer.
         """
         from transformers import AutoTokenizer
