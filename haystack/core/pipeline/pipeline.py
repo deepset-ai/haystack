@@ -948,6 +948,26 @@ class Pipeline:
                             if not there_are_only_lazy_variadics:
                                 continue
 
+                        # Components that have defaults for all their inputs must be treated the same identical way as we treat
+                        # lazy variadic components. If there are only components with defaults we can run them.
+                        # If we don't do this the order of execution of the Pipeline's Components will be affected cause we
+                        # enqueue the Components in `to_run` at the start using the order they are added in the Pipeline.
+                        # If a Component A with defaults is added before a Component B that has no defaults, but in the Pipeline
+                        # logic A must be executed after B it could run instead before if we don't do this check.
+                        has_only_defaults = all(
+                            not socket.is_mandatory for socket in comp.__haystack_input__._sockets_dict.values()  # type: ignore
+                        )
+                        if has_only_defaults:
+                            there_are_only_components_with_defaults = True
+                            for other_name, other_comp in waiting_for_input:
+                                if name == other_name:
+                                    continue
+                                there_are_only_components_with_defaults &= all(
+                                    not s.is_mandatory for s in other_comp.__haystack_input__._sockets_dict.values()  # type: ignore
+                                )
+                            if not there_are_only_components_with_defaults:
+                                continue
+
                         # Find the first component that has all the inputs it needs to run
                         has_enough_inputs = True
                         for input_socket in comp.__haystack_input__._sockets_dict.values():  # type: ignore
