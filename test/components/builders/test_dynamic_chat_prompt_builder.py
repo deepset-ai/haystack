@@ -2,7 +2,7 @@ from typing import List
 
 import pytest
 
-from haystack import Pipeline
+from haystack import Pipeline, component
 from haystack.components.builders import DynamicChatPromptBuilder
 from haystack.dataclasses import ChatMessage
 
@@ -93,7 +93,7 @@ class TestDynamicChatPromptBuilder:
         prompt_builder._validate_template("Hello, I'm {{ name }}, and I live in {{ city }}.", {"name", "city", "age"})
 
     def test_multiple_templated_chat_messages(self):
-        prompt_builder = DynamicChatPromptBuilder(runtime_variables=["language", "location"])
+        prompt_builder = DynamicChatPromptBuilder()
         language = "French"
         location = "Berlin"
         messages = [
@@ -109,8 +109,27 @@ class TestDynamicChatPromptBuilder:
             ChatMessage.from_user("Tell me about Berlin"),
         ], "The templated messages should match the expected output."
 
+    def test_multiple_templated_chat_messages_in_place(self):
+        prompt_builder = DynamicChatPromptBuilder()
+        language = "French"
+        location = "Berlin"
+        messages = [
+            ChatMessage.from_system("Write your response ins this language:{{language}}"),
+            ChatMessage.from_user("Tell me about {{location}}"),
+        ]
+
+        res = prompt_builder.run(
+            template_variables={"language": language, "location": location}, prompt_source=messages
+        )
+        assert res == {
+            "prompt": [
+                ChatMessage.from_system("Write your response ins this language:French"),
+                ChatMessage.from_user("Tell me about Berlin"),
+            ]
+        }, "The templated messages should match the expected output."
+
     def test_some_templated_chat_messages(self):
-        prompt_builder = DynamicChatPromptBuilder(runtime_variables=["language", "location"])
+        prompt_builder = DynamicChatPromptBuilder()
         language = "English"
         location = "Paris"
         messages = [
@@ -136,7 +155,6 @@ class TestDynamicChatPromptBuilder:
         assert result["prompt"] == expected_messages, "The templated messages should match the expected output."
 
     def test_example_in_pipeline(self):
-        # no parameter init, we don't use any runtime template variables
         prompt_builder = DynamicChatPromptBuilder()
 
         pipe = Pipeline()
@@ -234,6 +252,36 @@ class TestDynamicChatPromptBuilder:
                         "You are a helpful assistant giving out valuable information to tourists in English."
                     ),
                     ChatMessage.from_user("What's the weather forecast for Berlin in the next 5 days?"),
+                ]
+            }
+        }
+
+    def test_pipeline_complex(self):
+        @component
+        class ValueProducer:
+            def __init__(self, value_to_produce: str):
+                self.value_to_produce = value_to_produce
+
+            @component.output_types(value_output=str)
+            def run(self):
+                return {"value_output": self.value_to_produce}
+
+        pipe = Pipeline()
+        pipe.add_component("prompt_builder", DynamicChatPromptBuilder(runtime_variables=["value_output"]))
+        pipe.add_component("value_producer", ValueProducer(value_to_produce="Berlin"))
+        pipe.connect("value_producer.value_output", "prompt_builder")
+
+        messages = [
+            ChatMessage.from_system("You give valuable information to tourists."),
+            ChatMessage.from_user("Tell me about {{value_output}}"),
+        ]
+
+        res = pipe.run(data={"prompt_source": messages})
+        assert res == {
+            "prompt_builder": {
+                "prompt": [
+                    ChatMessage.from_system("You give valuable information to tourists."),
+                    ChatMessage.from_user("Tell me about Berlin"),
                 ]
             }
         }
