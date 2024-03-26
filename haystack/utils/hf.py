@@ -14,8 +14,8 @@ from haystack.utils.device import ComponentDevice
 with LazyImport(message="Run 'pip install transformers[torch]'") as torch_import:
     import torch
 
-with LazyImport(message="Run 'pip install transformers'") as transformers_import:
-    from huggingface_hub import HfApi, InferenceClient
+with LazyImport(message="Run 'pip install \"huggingface_hub>=0.22.0\"'") as huggingface_hub_import:
+    from huggingface_hub import HfApi, InferenceClient, model_info
     from huggingface_hub.utils import RepositoryNotFoundError
 
 logger = logging.getLogger(__name__)
