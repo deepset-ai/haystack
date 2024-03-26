@@ -453,3 +453,4 @@ class TestHuggingFaceLocalGenerator:
         generator.warm_up()
         results = generator.run(prompt="something that triggers something")
         assert results["replies"] != []
+        assert generator.stopping_criteria_list is not None
