@@ -95,7 +95,7 @@ class TestDynamicChatPromptBuilder:
         language = "French"
         location = "Berlin"
         messages = [
-            ChatMessage.from_system("Write your response ins this language:{{language}}"),
+            ChatMessage.from_system("Write your response in this language:{{language}}"),
             ChatMessage.from_user("Tell me about {{location}}"),
         ]
 
