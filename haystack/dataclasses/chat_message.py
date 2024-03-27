@@ -94,14 +94,3 @@ class ChatMessage:
         :returns: A new ChatMessage instance.
         """
         return cls(content, ChatRole.FUNCTION, name)
-
-    @classmethod
-    def with_role(cls, content: str, role: ChatRole) -> "ChatMessage":
-        """
-        Create a message from a specific role.
-
-        :param content: The text content of the message.
-        :param role: The role of the entity sending the message.
-        :returns: A new ChatMessage instance.
-        """
-        return cls(content, role, None)

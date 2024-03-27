@@ -137,10 +137,13 @@ class DynamicChatPromptBuilder:
         for message in prompt_source:
             if message.is_from(ChatRole.USER) or message.is_from(ChatRole.SYSTEM):
                 template = self._validate_template(message.content, set(template_variables.keys()))
-                templated_message = ChatMessage.with_role(
-                    content=template.render(template_variables), role=message.role
+                rendered_content = template.render(template_variables)
+                rendered_message = (
+                    ChatMessage.from_user(rendered_content)
+                    if message.is_from(ChatRole.USER)
+                    else ChatMessage.from_system(rendered_content)
                 )
-                processed_messages.append(templated_message)
+                processed_messages.append(rendered_message)
             else:
                 processed_messages.append(message)
         return {"prompt": processed_messages}
