@@ -138,8 +138,8 @@ class SASEvaluator:
             A list of generated answers for each question.
         :returns:
             A dictionary with the following outputs:
-                - `score`: Cumulative SAS score for the entire dataset.
-                - `individual_scores`: A list of similarity scores for each prediction-label pair.
+                - `score`: Mean SAS score over all the predictions/ground-truth pairs.
+                - `individual_scores`: A list of similarity scores for each prediction/ground-truth pair.
         """
         if len(ground_truths_answers) != len(predicted_answers):
             raise ValueError("The number of predictions and labels must be the same.")
@@ -153,7 +153,7 @@ class SASEvaluator:
 
         if isinstance(self._similarity_model, CrossEncoder):
             # For Cross Encoders we create a list of pairs of predictions and labels
-            sentence_pairs = [[pred, label] for pred, label in zip(predicted_answers, ground_truths_answers)]
+            sentence_pairs = [(pred, label) for pred, label in zip(predicted_answers, ground_truths_answers)]
             similarity_scores = self._similarity_model.predict(
                 sentence_pairs, batch_size=self._batch_size, convert_to_numpy=True
             )
