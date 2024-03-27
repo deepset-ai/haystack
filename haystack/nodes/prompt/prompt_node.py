@@ -66,6 +66,7 @@ class PromptNode(BaseComponent):
         top_k: int = 1,
         debug: Optional[bool] = False,
         model_kwargs: Optional[Dict] = None,
+        truncate: bool = True,
     ):
         """
         Creates a PromptNode instance.
@@ -83,6 +84,7 @@ class PromptNode(BaseComponent):
         :param stop_words: Stops text generation if any of the stop words is generated.
         :param model_kwargs: Additional keyword arguments passed when loading the model specified in `model_name_or_path`.
         :param debug: Whether to include the used prompts as debug information in the output under the key _debug.
+        :param truncate: Whether to truncate the prompt to the maximum token limit before sending it to the model.
 
         Note that Azure OpenAI InstructGPT models require two additional parameters: azure_base_url (the URL for the
         Azure OpenAI API endpoint, usually in the form `https://<your-endpoint>.openai.azure.com') and
@@ -109,6 +111,7 @@ class PromptNode(BaseComponent):
         self.stop_words: Optional[List[str]] = stop_words
         self.top_k: int = top_k
         self.debug = debug
+        self.truncate = truncate
 
         if isinstance(model_name_or_path, str):
             self.prompt_model = PromptModel(
@@ -165,7 +168,8 @@ class PromptNode(BaseComponent):
             for prompt in template_to_fill.fill(*args, **kwargs):
                 kwargs_copy = template_to_fill.remove_template_params(copy.copy(kwargs))
                 # and pass the prepared prompt and kwargs copy to the model
-                prompt = self.prompt_model._ensure_token_limit(prompt)
+                if self.truncate:
+                    prompt = self.prompt_model._ensure_token_limit(prompt)
                 prompt_collector.append(prompt)
                 logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s", prompt, kwargs_copy)
                 output = self.prompt_model.invoke(prompt, **kwargs_copy)
@@ -177,7 +181,8 @@ class PromptNode(BaseComponent):
             # straightforward prompt, no templates used
             for prompt in list(args):
                 kwargs_copy = copy.copy(kwargs)
-                prompt = self.prompt_model._ensure_token_limit(prompt)
+                if self.truncate:
+                    prompt = self.prompt_model._ensure_token_limit(prompt)
                 prompt_collector.append(prompt)
                 logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s ", prompt, kwargs_copy)
                 output = self.prompt_model.invoke(prompt, **kwargs_copy)
@@ -345,7 +350,8 @@ class PromptNode(BaseComponent):
             for prompt in template_to_fill.fill(*args, **kwargs):
                 kwargs_copy = template_to_fill.remove_template_params(copy.copy(kwargs))
                 # and pass the prepared prompt and kwargs copy to the model
-                prompt = self.prompt_model._ensure_token_limit(prompt)
+                if self.truncate:
+                    prompt = self.prompt_model._ensure_token_limit(prompt)
                 prompt_collector.append(prompt)
                 logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s", prompt, kwargs_copy)
                 output = await self.prompt_model.ainvoke(prompt, **kwargs_copy)
@@ -357,7 +363,8 @@ class PromptNode(BaseComponent):
             # straightforward prompt, no templates used
             for prompt in list(args):
                 kwargs_copy = copy.copy(kwargs)
-                prompt = self.prompt_model._ensure_token_limit(prompt)
+                if self.truncate:
+                    prompt = self.prompt_model._ensure_token_limit(prompt)
                 prompt_collector.append(prompt)
                 logger.debug("Prompt being sent to LLM with prompt %s and kwargs %s ", prompt, kwargs_copy)
                 output = await self.prompt_model.ainvoke(prompt, **kwargs_copy)
