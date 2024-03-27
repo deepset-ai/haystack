@@ -103,7 +103,7 @@ class TestDynamicChatPromptBuilder:
             template_variables={"language": language, "location": location}, prompt_source=messages
         )
         assert result["prompt"] == [
-            ChatMessage.from_system("Write your response ins this language:French"),
+            ChatMessage.from_system("Write your response in this language:French"),
             ChatMessage.from_user("Tell me about Berlin"),
         ], "The templated messages should match the expected output."
 
