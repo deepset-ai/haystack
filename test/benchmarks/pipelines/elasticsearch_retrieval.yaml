@@ -1,0 +1,17 @@
+components:
+  retriever:
+    init_parameters:
+      document_store:
+        init_parameters:
+          embedding_similarity_function: cosine
+          hosts: http://localhost:9200
+          index: default
+        type: elasticsearch_haystack.document_store.ElasticsearchDocumentStore
+      filters: {}
+      fuzziness: AUTO
+      scale_score: false
+      top_k: 10
+    type: elasticsearch_haystack.bm25_retriever.ElasticsearchBM25Retriever
+connections: []
+max_loops_allowed: 100
+metadata: {}
