@@ -1202,3 +1202,14 @@ async def test_aprompt(mock_model):
     mock_model.return_value.ainvoke = AsyncMock()
     await node._aprompt(PromptTemplate("test template"))
     mock_model.return_value.ainvoke.assert_awaited_once()
+
+
+@pytest.mark.unit
+@patch("haystack.nodes.prompt.prompt_node.PromptModel")
+def test_prompt_no_truncation(mock_model, caplog):
+    node = PromptNode(truncate=False)
+    mock_model.return_value.invoke = MagicMock()
+    prompt = "Repeating text" * 200 + "Docs: Berlin is an amazing city.; Answer:"
+    with caplog.at_level(logging.DEBUG):
+        _ = node.prompt(PromptTemplate(prompt))
+        assert prompt in caplog.text
