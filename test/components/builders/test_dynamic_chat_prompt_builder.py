@@ -42,23 +42,21 @@ class TestDynamicChatPromptBuilder:
         prompt_source = [ChatMessage.from_user(content="Hello, {{ who }}!")]
         template_variables = {"who": "World"}
 
-        result = prompt_builder._process_chat_messages(prompt_source, template_variables)
+        result = prompt_builder.run(prompt_source, template_variables)
 
-        assert result == [ChatMessage.from_user(content="Hello, World!")]
+        assert result == {"prompt": [ChatMessage.from_user(content="Hello, World!")]}
 
     def test_empty_chat_message_list(self):
         prompt_builder = DynamicChatPromptBuilder(runtime_variables=["documents"])
 
         with pytest.raises(ValueError):
-            prompt_builder._process_chat_messages(prompt_source=[], template_variables={})
+            prompt_builder.run(prompt_source=[], template_variables={})
 
     def test_chat_message_list_with_mixed_object_list(self):
         prompt_builder = DynamicChatPromptBuilder(runtime_variables=["documents"])
 
         with pytest.raises(ValueError):
-            prompt_builder._process_chat_messages(
-                prompt_source=[ChatMessage.from_user("Hello"), "there world"], template_variables={}
-            )
+            prompt_builder.run(prompt_source=[ChatMessage.from_user("Hello"), "there world"], template_variables={})
 
     def test_chat_message_list_with_missing_variables(self):
         prompt_builder = DynamicChatPromptBuilder(runtime_variables=["documents"])
@@ -66,7 +64,7 @@ class TestDynamicChatPromptBuilder:
 
         # Call the _process_chat_messages method and expect a ValueError
         with pytest.raises(ValueError):
-            prompt_builder._process_chat_messages(prompt_source, template_variables={})
+            prompt_builder.run(prompt_source, template_variables={})
 
     def test_missing_template_variables(self):
         prompt_builder = DynamicChatPromptBuilder(runtime_variables=["documents"])
