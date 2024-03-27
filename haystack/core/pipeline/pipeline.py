@@ -1087,25 +1087,15 @@ def parse_connect_string(connection: str) -> Tuple[str, Optional[str]]:
     return connection, None
 
 
-"""""
-def get_optional_parameter_values(comp: Component):
+def get_optional_parameter_values(comp: Component) -> Dict[str, Dict[str, Any]]:
+    """
+    Get the optional parameter default values for a component.
+
+    :param comp: Component
+    :return: A dictionary of optional parameter default values.
+    """
     parameter_info = {}
     for param_name, socket in comp.__haystack_input__._sockets_dict.items():
         if not socket.is_mandatory:
             parameter_info[param_name] = {"default_value": socket.default_value, "optional": True}
-    return parameter_info
-"""
-
-
-def get_optional_parameter_values(component: Component):
-    signature = inspect.signature(component.run)
-    parameter_info = {}
-    for parameter in signature.parameters.values():
-        parameter_name = parameter.name
-        default_value = parameter.default
-        if default_value is inspect.Parameter.empty:
-            parameter_info[parameter_name] = {"default_value": None, "optional": False}
-        else:
-            parameter_info[parameter_name] = {"default_value": default_value, "optional": True}
-
     return parameter_info
