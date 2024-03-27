@@ -153,7 +153,7 @@ class SASEvaluator:
 
         if isinstance(self._similarity_model, CrossEncoder):
             # For Cross Encoders we create a list of pairs of predictions and labels
-            sentence_pairs = [(pred, label) for pred, label in zip(predicted_answers, ground_truths_answers)]
+            sentence_pairs = list(zip(predicted_answers, ground_truths_answers))
             similarity_scores = self._similarity_model.predict(
                 sentence_pairs, batch_size=self._batch_size, convert_to_numpy=True
             )
