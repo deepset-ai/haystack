@@ -756,3 +756,54 @@ def test_walk_pipeline_with_cycles():
     pipeline.add_component("hello", hello)
     pipeline.connect("hello.intermediate", "hello.intermediate")
     assert [("hello", hello)] == list(pipeline.walk())
+
+
+def test_correct_execution_order_of_components_with_only_defaults(spying_tracer):
+    """
+    We enqueue the Components in internal `to_run` data structure at the start of `Pipeline.run()` using the order
+    they are added in the Pipeline with `Pipeline.add_component()`.
+    If a Component A with defaults is added before a Component B that has no defaults, but in the Pipeline
+    logic A must be executed after B it could run instead before.
+
+    This test verifies that the order of execution is correct.
+    """
+    docs = [Document(content="Rome is the capital of Italy"), Document(content="Paris is the capital of France")]
+    doc_store = InMemoryDocumentStore()
+    doc_store.write_documents(docs)
+    template = (
+        "Given the following information, answer the question.\n"
+        "Context:\n"
+        "{% for document in documents %}"
+        "    {{ document.content }}\n"
+        "{% endfor %}"
+        "Question: {{ query }}"
+    )
+
+    pipe = Pipeline()
+
+    # The order of this addition is important for the test
+    # Do not edit them.
+    pipe.add_component("prompt_builder", PromptBuilder(template=template))
+    pipe.add_component("retriever", InMemoryBM25Retriever(document_store=doc_store))
+    pipe.connect("retriever", "prompt_builder.documents")
+
+    query = "What is the capital of France?"
+    res = pipe.run({"prompt_builder": {"query": query}, "retriever": {"query": query}})
+
+    assert len(spying_tracer.spans) == 3
+    assert spying_tracer.spans[0].operation_name == "haystack.pipeline.run"
+    assert spying_tracer.spans[1].operation_name == "haystack.component.run"
+    assert spying_tracer.spans[1].tags["haystack.component.name"] == "retriever"
+    assert spying_tracer.spans[2].operation_name == "haystack.component.run"
+    assert spying_tracer.spans[2].tags["haystack.component.name"] == "prompt_builder"
+
+    print(res["prompt_builder"]["prompt"])
+    assert res == {
+        "prompt_builder": {
+            "prompt": "Given the following information, answer the question.\n"
+            "Context:\n"
+            "    Paris is the capital of France\n"
+            "    Rome is the capital of Italy\n"
+            "Question: What is the capital of France?"
+        }
+    }
