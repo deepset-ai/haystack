@@ -176,11 +176,9 @@ class SASEvaluator:
             )
 
             # Compute cosine-similarities
-            scores = util.cos_sim(predictions_embeddings, label_embeddings)
-
-            # cos_sim computes cosine similarity between all pairs of vectors in pred_embeddings and label_embeddings
-            # It returns a matrix with shape (len(predictions), len(labels))
-            similarity_scores = [scores[i][i].item() for i in range(len(predicted_answers))]
+            similarity_scores = [
+                util.cos_sim(p.cpu(), l.cpu()) for p, l in zip(predictions_embeddings, label_embeddings)
+            ]
 
         sas_score = np_mean(similarity_scores)
 
