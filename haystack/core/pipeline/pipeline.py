@@ -723,7 +723,7 @@ class Pipeline:
             print(component_name)
             print("data[component_name]: ", data[component_name])
             print("get_parameter_info(): ", parameters)
-            filled = {k: v["default_value"] for k, v in parameters.items() if k not in data and v["optional"]}
+            filled = {k: v["default_value"] for k, v in parameters.items() if k not in data}
             print("filled: ", filled)
             filled.update(component_inputs)
             data[component_name] = filled
@@ -1097,5 +1097,5 @@ def get_optional_parameter_values(comp: Component) -> Dict[str, Dict[str, Any]]:
     parameter_info = {}
     for param_name, socket in comp.__haystack_input__._sockets_dict.items():
         if not socket.is_mandatory:
-            parameter_info[param_name] = {"default_value": socket.default_value, "optional": True}
+            parameter_info[param_name] = {"default_value": socket.default_value}
     return parameter_info
