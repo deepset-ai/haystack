@@ -1139,10 +1139,10 @@ class FilterDocumentsTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin)
     # in comparator
     def test_comparison_in(self, document_store, filterable_docs):
         document_store.write_documents(filterable_docs)
-        result = document_store.filter_documents({"field": "meta.number", "operator": "in", "value": [9, 10]})
-        self.assert_documents_are_equal(
-            result, [d for d in filterable_docs if d.meta.get("number") is not None and d.meta["number"] in [9, 10]]
-        )
+        result = document_store.filter_documents({"field": "meta.number", "operator": "in", "value": [10, -10]})
+        assert len(result)
+        expected = [d for d in filterable_docs if d.meta.get("number") is not None and d.meta["number"] in [10, -10]]
+        self.assert_documents_are_equal(result, expected)
 
     def test_comparison_in_with_with_non_list(self, document_store, filterable_docs):
         document_store.write_documents(filterable_docs)
