@@ -184,7 +184,14 @@ class AzureOCRDocumentConverter:
         docs = [*tables, text]
         return docs
 
-    def _convert_tables(self, result: "AnalyzeResult", meta: Optional[Dict[str, Any]]) -> List[Document]:
+    def _convert_tables(self, result: AnalyzeResult, meta: Optional[Dict[str, Any]]) -> List[Document]:
+        """
+        Converts the tables extracted by Azure's Document Intelligence service into Haystack Documents.
+        :param result: The AnalyzeResult Azure object
+        :param meta: Optional dictionary with metadata that shall be attached to all resulting documents.
+
+        :returns: List of Documents containing the tables extracted from the AnalyzeResult object.
+        """
         converted_tables: List[Document] = []
 
         if not result.tables:
@@ -281,7 +288,7 @@ class AzureOCRDocumentConverter:
 
         return converted_tables
 
-    def _convert_to_natural_text(self, result: "AnalyzeResult", meta: Optional[Dict[str, Any]]) -> Document:
+    def _convert_to_natural_text(self, result: AnalyzeResult, meta: Optional[Dict[str, Any]]) -> Document:
         """
         This converts the `AnalyzeResult` object into a single Document. We add "\f" separators between to
         differentiate between the text on separate pages. This is the expected format for the PreProcessor.
@@ -296,7 +303,7 @@ class AzureOCRDocumentConverter:
 
         texts = []
         if result.paragraphs:
-            paragraphs_to_pages: Dict = defaultdict(str)
+            paragraphs_to_pages: Dict[int, str] = defaultdict(str)
             for paragraph in result.paragraphs:
                 if paragraph.bounding_regions:
                     # If paragraph spans multiple pages we group it with the first page number
@@ -311,7 +318,7 @@ class AzureOCRDocumentConverter:
                     continue
                 paragraphs_to_pages[page_numbers[0]] += paragraph.content + "\n"
 
-            max_page_number = max(n for n in paragraphs_to_pages)
+            max_page_number: int = max(paragraphs_to_pages)
             for page_idx in range(1, max_page_number + 1):
                 # We add empty strings for missing pages so the preprocessor can still extract the correct page number
                 # from the original PDF.
