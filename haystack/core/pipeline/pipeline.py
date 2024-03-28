@@ -897,12 +897,15 @@ class Pipeline:
                         and last_waiting_for_input is not None
                         and before_last_waiting_for_input == last_waiting_for_input
                     ):
-                        # Are we actually stuck or there's a lazy variadic waiting for input?
-                        # This is our last resort, if there's no lazy variadic waiting for input
+                        # Are we actually stuck or there's a lazy variadic or a component with has only default inputs waiting for input?
+                        # This is our last resort, if there's no lazy variadic or component with only default inputs waiting for input
                         # we're stuck for real and we can't make any progress.
                         for name, comp in waiting_for_input:
                             is_variadic = any(socket.is_variadic for socket in comp.__haystack_input__._sockets_dict.values())  # type: ignore
-                            if is_variadic and not comp.__haystack_is_greedy__:  # type: ignore[attr-defined]
+                            has_only_defaults = all(
+                                not socket.is_mandatory for socket in comp.__haystack_input__._sockets_dict.values()  # type: ignore
+                            )
+                            if is_variadic and not comp.__haystack_is_greedy__ or has_only_defaults:  # type: ignore[attr-defined]
                                 break
                         else:
                             # We're stuck in a loop for real, we can't make any progress.
@@ -910,13 +913,13 @@ class Pipeline:
                             break
 
                         if len(waiting_for_input) == 1:
-                            # We have a single component with variadic input waiting for input.
+                            # We have a single component with variadic input or only default inputs waiting for input.
                             # If we're at this point it means it has been waiting for input for at least 2 iterations.
                             # This will never run.
                             # BAIL!
                             break
 
-                        # There was a lazy variadic waiting for input, we can run it
+                        # There was a lazy variadic or a component with only default waiting for input, we can run it
                         waiting_for_input.remove((name, comp))
                         to_run.append((name, comp))
                         continue

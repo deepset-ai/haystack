@@ -9,6 +9,7 @@ import pytest
 
 from haystack import Document
 from haystack.components.builders import PromptBuilder
+from haystack.components.builders.answer_builder import AnswerBuilder
 from haystack.components.others import Multiplexer
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.core.component import component
@@ -805,3 +806,39 @@ def test_correct_execution_order_of_components_with_only_defaults(spying_tracer)
             "Question: What is the capital of France?"
         }
     }
+
+
+def test_pipeline_is_not_stuck_with_components_with_only_defaults():
+    FakeGenerator = component_class(
+        "FakeGenerator", input_types={"prompt": str}, output_types={"replies": List[str]}, output={"replies": ["Paris"]}
+    )
+    docs = [Document(content="Rome is the capital of Italy"), Document(content="Paris is the capital of France")]
+    doc_store = InMemoryDocumentStore()
+    doc_store.write_documents(docs)
+    template = (
+        "Given the following information, answer the question.\n"
+        "Context:\n"
+        "{% for document in documents %}"
+        "    {{ document.content }}\n"
+        "{% endfor %}"
+        "Question: {{ query }}"
+    )
+
+    pipe = Pipeline()
+
+    pipe.add_component("retriever", InMemoryBM25Retriever(document_store=doc_store))
+    pipe.add_component("prompt_builder", PromptBuilder(template=template))
+    pipe.add_component("generator", FakeGenerator())
+    pipe.add_component("answer_builder", AnswerBuilder())
+
+    pipe.connect("retriever", "prompt_builder.documents")
+    pipe.connect("prompt_builder.prompt", "generator.prompt")
+    pipe.connect("generator.replies", "answer_builder.replies")
+    pipe.connect("retriever.documents", "answer_builder.documents")
+
+    query = "What is the capital of France?"
+    res = pipe.run({"query": query})
+    assert len(res) == 1
+    answers = res["answer_builder"]["answers"]
+    assert len(answers) == 1
+    assert answers[0].data == "Paris"
