@@ -1,11 +1,13 @@
 from typing import Any, Dict, List, Optional
 
-import cohere
-
 from haystack import Document, component, default_from_dict, default_to_dict, logging
+from haystack.lazy_imports import LazyImport
 from haystack.utils import Secret, deserialize_secrets_inplace
 
 logger = logging.getLogger(__name__)
+
+with LazyImport(message="Run 'pip install \"cohere==5.1.7\"'") as cohere_import:
+    import cohere
 
 
 @component
