@@ -129,9 +129,7 @@ class CohereRanker:
         cohere_input_docs = self._prepare_cohere_input_docs(documents)
         if len(cohere_input_docs) > 1000:
             logger.warning(
-                "The Cohere reranking endpoint only supports 1000 documents. "
-                "The number of documents has been truncated to 1000 from %s.",
-                len(cohere_input_docs),
+                f"The Cohere reranking endpoint only supports 1000 documents. The number of documents has been truncated to 1000 from {len(cohere_input_docs)}."
             )
             cohere_input_docs = cohere_input_docs[:1000]
 
