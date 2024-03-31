@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Add 'CohereRanker'.
+    Performs reranking of documents using Cohere reranking models.
