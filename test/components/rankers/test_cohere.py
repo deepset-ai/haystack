@@ -131,7 +131,8 @@ class TestCohereRanker:
         with pytest.raises(Exception, match="The client must be instantiated be either passing in token or setting *"):
             CohereRanker.from_dict(data)
 
-    def test_prepare_cohere_input_docs_default_separator(self):
+    def test_prepare_cohere_input_docs_default_separator(self, monkeypatch):
+        monkeypatch.setenv("CO_API_KEY", "fake-api-key")
         component = CohereRanker(meta_fields_to_embed=["meta_field_1", "meta_field_2"])
         documents = [
             Document(
@@ -155,7 +156,8 @@ class TestCohereRanker:
             "meta_value_1 4\nmeta_value_2 9\ndocument number 4",
         ]
 
-    def test_prepare_cohere_input_docs_custom_separator(self):
+    def test_prepare_cohere_input_docs_custom_separator(self, monkeypatch):
+        monkeypatch.setenv("CO_API_KEY", "fake-api-key")
         component = CohereRanker(meta_fields_to_embed=["meta_field_1", "meta_field_2"], meta_data_separator=" ")
         documents = [
             Document(
@@ -179,7 +181,8 @@ class TestCohereRanker:
             "meta_value_1 4 meta_value_2 9 document number 4",
         ]
 
-    def test_prepare_cohere_input_docs_no_meta_data(self):
+    def test_prepare_cohere_input_docs_no_meta_data(self, monkeypatch):
+        monkeypatch.setenv("CO_API_KEY", "fake-api-key")
         component = CohereRanker(meta_fields_to_embed=["meta_field_1", "meta_field_2"], meta_data_separator=" ")
         documents = [Document(content=f"document number {i}") for i in range(5)]
 
