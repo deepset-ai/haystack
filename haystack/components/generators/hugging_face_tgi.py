@@ -1,3 +1,4 @@
+import warnings
 from dataclasses import asdict
 from typing import Any, Callable, Dict, Iterable, List, Optional
 from urllib.parse import urlparse
@@ -18,6 +19,10 @@ with LazyImport(message="Run 'pip install \"huggingface_hub>=0.22.0\"'") as hugg
 
 
 logger = logging.getLogger(__name__)
+
+
+# TODO: remove the default model in Haystack 2.3.0, as explained in the deprecation warning
+DEFAULT_MODEL = "mistralai/Mistral-7B-v0.1"
 
 
 @component
@@ -101,8 +106,13 @@ class HuggingFaceTGIGenerator:
         huggingface_hub_import.check()
 
         if not model and not url:
-            raise ValueError("You must provide either a model or a TGI endpoint URL.")
-        if model and url:
+            warnings.warn(
+                f"Neither `model` nor `url` is provided. The component will use the default model: {DEFAULT_MODEL}. "
+                "This behavior is deprecated and will be removed in Haystack 2.3.0.",
+                DeprecationWarning,
+            )
+            model = DEFAULT_MODEL
+        elif model and url:
             logger.warning("Both `model` and `url` are provided. The `model` parameter will be ignored. ")
 
         if url:
@@ -113,14 +123,6 @@ class HuggingFaceTGIGenerator:
 
         if model and not url:
             check_valid_model(model, HFModelType.GENERATION, token)
-            # TODO: remove this check when the huggingface_hub bugfix release is out
-            # https://github.com/huggingface/huggingface_hub/issues/2135
-            tgi_deployed_models = list_inference_deployed_models()
-            if model not in tgi_deployed_models:
-                raise ValueError(
-                    f"The model {model} is not correctly supported by the free tier of the HF inference API. "
-                    f"Valid models are: {tgi_deployed_models}"
-                )
 
         # handle generation kwargs setup
         generation_kwargs = generation_kwargs.copy() if generation_kwargs else {}
@@ -135,6 +137,13 @@ class HuggingFaceTGIGenerator:
         self.generation_kwargs = generation_kwargs
         self.streaming_callback = streaming_callback
         self._client = InferenceClient(url or model, token=token.resolve_value() if token else None)
+
+    def warm_up(self) -> None:
+        warnings.warn(
+            "The `warm_up` method of `HuggingFaceTGIGenerator` does nothing and is momentarily maintained to ensure backward compatibility. "
+            "It is deprecated and will be removed in Haystack 2.3.0.",
+            DeprecationWarning,
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         """

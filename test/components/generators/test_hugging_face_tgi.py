@@ -4,20 +4,9 @@ import pytest
 from huggingface_hub import TextGenerationOutputToken, TextGenerationStreamDetails, TextGenerationStreamOutput
 from huggingface_hub.utils import RepositoryNotFoundError
 
-from haystack.components.generators import HuggingFaceTGIGenerator
+from haystack.components.generators.hugging_face_tgi import DEFAULT_MODEL, HuggingFaceTGIGenerator
 from haystack.dataclasses import StreamingChunk
 from haystack.utils.auth import Secret
-
-
-@pytest.fixture
-def mock_list_inference_deployed_models():
-    with patch(
-        "haystack.components.generators.hugging_face_tgi.list_inference_deployed_models",
-        MagicMock(
-            return_value=["HuggingFaceH4/zephyr-7b-alpha", "HuggingFaceH4/zephyr-7b-alpha", "mistralai/Mistral-7B-v0.1"]
-        ),
-    ) as mock:
-        yield mock
 
 
 @pytest.fixture
@@ -47,9 +36,7 @@ def streaming_callback_handler(x):
 
 
 class TestHuggingFaceTGIGenerator:
-    def test_initialize_with_valid_model_and_generation_parameters(
-        self, mock_check_valid_model, mock_list_inference_deployed_models
-    ):
+    def test_initialize_with_valid_model_and_generation_parameters(self, mock_check_valid_model):
         model = "HuggingFaceH4/zephyr-7b-alpha"
         generation_kwargs = {"n": 1}
         stop_words = ["stop"]
@@ -73,7 +60,7 @@ class TestHuggingFaceTGIGenerator:
         assert generator._client is not None
         assert generator.streaming_callback == streaming_callback
 
-    def test_to_dict(self, mock_check_valid_model, mock_list_inference_deployed_models):
+    def test_to_dict(self, mock_check_valid_model):
         generator = HuggingFaceTGIGenerator(
             model="mistralai/Mistral-7B-v0.1",
             token=Secret.from_env_var("ENV_VAR", strict=False),
@@ -91,7 +78,7 @@ class TestHuggingFaceTGIGenerator:
         assert init_params["token"] == {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"}
         assert init_params["generation_kwargs"] == {"n": 5, "stop_sequences": ["stop", "words"], "max_new_tokens": 512}
 
-    def test_from_dict(self, mock_check_valid_model, mock_list_inference_deployed_models):
+    def test_from_dict(self, mock_check_valid_model):
         generator = HuggingFaceTGIGenerator(
             model="mistralai/Mistral-7B-v0.1",
             generation_kwargs={"n": 5},
@@ -111,12 +98,13 @@ class TestHuggingFaceTGIGenerator:
         with pytest.raises(ValueError):
             HuggingFaceTGIGenerator(model="mistralai/Mistral-7B-v0.1", url="invalid_url")
 
-    def test_initialize_without_model_or_url(self):
-        with pytest.raises(ValueError):
-            HuggingFaceTGIGenerator(model=None, url=None)
+    def test_initialize_without_model_or_url(self, mock_check_valid_model):
+        generator = HuggingFaceTGIGenerator(model=None, url=None)
+
+        assert generator.model == DEFAULT_MODEL
 
     def test_generate_text_response_with_valid_prompt_and_generation_parameters(
-        self, mock_check_valid_model, mock_text_generation, mock_list_inference_deployed_models
+        self, mock_check_valid_model, mock_text_generation
     ):
         model = "mistralai/Mistral-7B-v0.1"
 
@@ -149,7 +137,7 @@ class TestHuggingFaceTGIGenerator:
         assert [isinstance(reply, str) for reply in response["replies"]]
 
     def test_generate_multiple_text_responses_with_valid_prompt_and_generation_parameters(
-        self, mock_check_valid_model, mock_text_generation, mock_list_inference_deployed_models
+        self, mock_check_valid_model, mock_text_generation
     ):
         model = "mistralai/Mistral-7B-v0.1"
         generation_kwargs = {"n": 3}
@@ -198,9 +186,7 @@ class TestHuggingFaceTGIGenerator:
                 streaming_callback=streaming_callback,
             )
 
-    def test_generate_text_with_stop_words(
-        self, mock_check_valid_model, mock_text_generation, mock_list_inference_deployed_models
-    ):
+    def test_generate_text_with_stop_words(self, mock_check_valid_model, mock_text_generation):
         generator = HuggingFaceTGIGenerator("HuggingFaceH4/zephyr-7b-alpha")
 
         # Generate text response with stop words
@@ -222,9 +208,7 @@ class TestHuggingFaceTGIGenerator:
         assert len(response["meta"]) > 0
         assert [isinstance(reply, dict) for reply in response["replies"]]
 
-    def test_generate_text_with_custom_generation_parameters(
-        self, mock_check_valid_model, mock_text_generation, mock_list_inference_deployed_models
-    ):
+    def test_generate_text_with_custom_generation_parameters(self, mock_check_valid_model, mock_text_generation):
         generator = HuggingFaceTGIGenerator("HuggingFaceH4/zephyr-7b-alpha")
 
         generation_kwargs = {"temperature": 0.8, "max_new_tokens": 100}
@@ -247,9 +231,7 @@ class TestHuggingFaceTGIGenerator:
         assert len(response["meta"]) > 0
         assert [isinstance(reply, str) for reply in response["replies"]]
 
-    def test_generate_text_with_streaming_callback(
-        self, mock_check_valid_model, mock_text_generation, mock_list_inference_deployed_models
-    ):
+    def test_generate_text_with_streaming_callback(self, mock_check_valid_model, mock_text_generation):
         streaming_call_count = 0
 
         # Define the streaming callback function
