@@ -1,0 +1,6 @@
+enhancements:
+ - |
+   Improved the HTML content extraction by iteratively using a prioritized list of content extractors until the content
+   is successfully retrieved. This update ensures that the specific extractor chosen by the user is prioritized, but falls
+   back to other extractors in a predefined order if the initial extraction fails. This enhancement minimizes the risk
+   of failing to extract content from HTML sources, leading to increased robustness in content retrieval processes.
