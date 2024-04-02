@@ -31,24 +31,19 @@ class HuggingFaceTGIGenerator:
     Enables text generation using HuggingFace Hub hosted non-chat LLMs.
 
     This component is designed to seamlessly inference models deployed on the Text Generation Inference (TGI) backend.
-    You can use this component for LLMs hosted on Hugging Face inference endpoints, the rate-limited
-    Inference API tier.
+    You can use this component for LLMs hosted on Hugging Face inference endpoints.
 
     Key Features and Compatibility:
-     - Primary Compatibility: designed to work seamlessly with any non-based model deployed using the TGI
+    - Primary Compatibility: designed to work seamlessly with models deployed using the TGI
        framework. For more information on TGI, visit [text-generation-inference](https://github.com/huggingface/text-generation-inference)
 
-    - Hugging Face Inference Endpoints: Supports inference of TGI chat LLMs deployed on Hugging Face
+    - Hugging Face Inference Endpoints: Supports inference of LLMs deployed on Hugging Face
        inference endpoints. For more details, refer to [inference-endpoints](https://huggingface.co/inference-endpoints)
 
-    - Inference API Support: supports inference of TGI LLMs hosted on the rate-limited Inference
+    - Inference API Support: supports inference of LLMs hosted on the rate-limited Inference
       API tier. Learn more about the Inference API at [inference-api](https://huggingface.co/inference-api).
-      Discover available chat models using the following command: `wget -qO- https://api-inference.huggingface.co/framework/text-generation-inference | grep chat`
-      and simply use the model ID as the model parameter for this component. You'll also need to provide a valid
-      Hugging Face API token as the token parameter.
+      In this case, you need to provide a valid Hugging Face token.
 
-    - Custom TGI Endpoints: supports inference of TGI chat LLMs deployed on custom TGI endpoints. Anyone can
-      deploy their own TGI endpoint using the TGI framework. For more details, refer to [inference-endpoints](https://huggingface.co/inference-endpoints)
 
      Input and Output Format:
       - String Format: This component uses the str format for structuring both input and output,
@@ -64,7 +59,8 @@ class HuggingFaceTGIGenerator:
     ```
 
     Or for LLMs hosted on paid https://huggingface.co/inference-endpoints endpoint, and/or your own custom TGI endpoint.
-    In these two cases, you'll need to provide the URL of the endpoint as well as a valid token:
+    In these two cases, you'll need to provide the URL of the endpoint.
+    For Inference Endpoints, you also need to provide a valid Hugging Face token.
 
     ```python
     from haystack.components.generators import HuggingFaceTGIGenerator
