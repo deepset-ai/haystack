@@ -145,7 +145,7 @@ integration-mac = 'pytest --maxfail=5 -m "integration" test -k "not tika"'
 integration-windows = 'pytest --maxfail=5 -m "integration" test -k "not tika"'
 types = "mypy --install-types --non-interactive --cache-dir=.mypy_cache/ {args:haystack}"
 lint = [
-  # "ruff {args:haystack}",
+  "ruff {args:haystack}",
   "pylint -ry -j 0 {args:haystack}"
 ]
 lint-fix = [
