@@ -96,28 +96,51 @@ class HTMLToDocument:
         documents = []
         meta_list = normalize_metadata(meta=meta, sources_count=len(sources))
 
-        extractor_class = getattr(extractors, self.extractor_type)
-        extractor = extractor_class(raise_on_failure=False)
+        # Use all extractor types, ensuring user chosen extractor is first, preserve order
+        extractors_list = list(
+            dict.fromkeys(
+                [
+                    self.extractor_type,  # User chosen extractor is always tried first
+                    "DefaultExtractor",
+                    "ArticleExtractor",
+                    "ArticleSentencesExtractor",
+                    "LargestContentExtractor",
+                    "CanolaExtractor",
+                    "KeepEverythingExtractor",
+                    "NumWordsRulesExtractor",
+                ]
+            )
+        )
 
         for source, metadata in zip(sources, meta_list):
-            try:
-                bytestream = get_bytestream_from_source(source=source)
-            except Exception as e:
-                logger.warning("Could not read {source}. Skipping it. Error: {error}", source=source, error=e)
+            bytestream = get_bytestream_from_source(source=source)
+            if not bytestream:
+                logger.warning(f"Could not read {source}. Skipping it.")
                 continue
-            try:
-                file_content = bytestream.data.decode("utf-8")
-                text = extractor.get_content(file_content)
-            except Exception as conversion_e:
+
+            text = None
+            for extractor_name in extractors_list:
+                extractor_class = getattr(extractors, extractor_name)
+                extractor = extractor_class(raise_on_failure=False)
+                try:
+                    text = extractor.get_content(bytestream.data.decode("utf-8"))
+                    if text:
+                        break
+                except Exception as conversion_e:
+                    logger.debug(
+                        "Failed to extract text using {extractor} from {source}. Trying next extractor. Error: {error}",
+                        extractor=extractor_name,
+                        source=source,
+                        error=conversion_e,
+                    )
+
+            if not text:
                 logger.warning(
-                    "Failed to extract text from {source}. Skipping it. Error: {error}",
-                    source=source,
-                    error=conversion_e,
+                    "Failed to extract text from {source} using available extractors. Skipping it.", source=source
                 )
                 continue
 
-            merged_metadata = {**bytestream.meta, **metadata}
-            document = Document(content=text, meta=merged_metadata)
+            document = Document(content=text, meta={**bytestream.meta, **metadata})
             documents.append(document)
 
         return {"documents": documents}
