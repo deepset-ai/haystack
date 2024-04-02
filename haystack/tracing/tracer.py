@@ -106,12 +106,10 @@ class ProxyTracer(Tracer):
 
     @contextlib.contextmanager
     def trace(self, operation_name: str, tags: Optional[Dict[str, Any]] = None) -> Iterator[Span]:
-        """Trace the execution of a block of code."""
         with self.actual_tracer.trace(operation_name, tags=tags) as span:
             yield span
 
     def current_span(self) -> Optional[Span]:
-        """Returns the currently active span."""
         return self.actual_tracer.current_span()
 
 
@@ -119,7 +117,6 @@ class NullSpan(Span):
     """A no-op implementation of the `Span` interface. This is used when tracing is disabled."""
 
     def set_tag(self, key: str, value: Any) -> None:
-        """No op"""
         pass
 
 
@@ -128,11 +125,9 @@ class NullTracer(Tracer):
 
     @contextlib.contextmanager
     def trace(self, operation_name: str, tags: Optional[Dict[str, Any]] = None) -> Iterator[Span]:
-        """No op"""
         yield NullSpan()
 
     def current_span(self) -> Optional[Span]:
-        """No op"""
         return NullSpan()
 
 
