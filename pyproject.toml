@@ -205,6 +205,7 @@ skip = "test/nodes/*,test/others/*,test/samples/*"
 
 [tool.pylint.'MESSAGES CONTROL']
 max-line-length=120
+docstring-min-length=10 # every function with 10 or more lines requires docstrings, shorter ones are exempt
 
 disable = [
 
@@ -299,9 +300,6 @@ ignore_missing_imports = true
 line-length = 1486
 target-version = "py38"
 
-[tool.ruff.lint.pydocstyle]
-convention = "pep257"
-
 [tool.ruff.lint]
 select = [
   "AIR",    # Airflow
@@ -323,19 +321,12 @@ select = [
   "T10",    # flake8-debugger
   "W",      # pycodestyle
   "YTT",    # flake8-2020
-  "I",       # isort
+  "I"       # isort
   # "E",    # pycodestyle
   # "NPY",  # NumPy-specific rules
   # "PD",   # pandas-vet
   # "PT",   # flake8-pytest-style
   # "UP",   # pyupgrade
-
-  # NOTE: The following rules are disabled because ruff is yet too strict to rely on docstring linting.
-  # "D102",   # Missing docstring in public method
-  # "D103",   # Missing docstring in public function
-  # "D205",   # 1 blank line required between summary line and description
-  # "D417",   # undocumented-parameter
-  # "D419",   # undocumented-returns
 ]
 
 ignore = [

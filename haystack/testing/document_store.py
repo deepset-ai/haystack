@@ -189,6 +189,7 @@ class FilterableDocsFixtureMixin:
 
     @pytest.fixture
     def filterable_docs(self) -> List[Document]:
+        """Fixture that returns a list of Documents that can be used to test filtering methods."""
         documents = []
         for i in range(3):
             documents.append(
