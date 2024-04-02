@@ -8,9 +8,13 @@ from haystack.lazy_imports import LazyImport
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 from haystack.utils.hf import HFModelType, check_generation_params, check_valid_model, list_inference_deployed_models
 
-with LazyImport(message="Run 'pip install huggingface_hub'") as huggingface_hub_import:
-    from huggingface_hub import InferenceClient
-    from huggingface_hub.inference._text_generation import TextGenerationResponse, TextGenerationStreamResponse, Token
+with LazyImport(message="Run 'pip install \"huggingface_hub>=0.22.0\"'") as huggingface_hub_import:
+    from huggingface_hub import (
+        InferenceClient,
+        TextGenerationOutput,
+        TextGenerationOutputToken,
+        TextGenerationStreamOutput,
+    )
 
 
 logger = logging.getLogger(__name__)
@@ -199,13 +203,13 @@ class HuggingFaceTGIGenerator:
         return self._run_non_streaming(prompt, num_responses, generation_kwargs)
 
     def _run_streaming(self, prompt: str, generation_kwargs: Dict[str, Any]):
-        res_chunk: Iterable[TextGenerationStreamResponse] = self._client.text_generation(
+        res_chunk: Iterable[TextGenerationStreamOutput] = self._client.text_generation(
             prompt, details=True, stream=True, **generation_kwargs
         )
         chunks: List[StreamingChunk] = []
         # pylint: disable=not-an-iterable
         for chunk in res_chunk:
-            token: Token = chunk.token
+            token: TextGenerationOutputToken = chunk.token
             if token.special:
                 continue
             chunk_metadata = {**asdict(token), **(asdict(chunk.details) if chunk.details else {})}
@@ -223,12 +227,12 @@ class HuggingFaceTGIGenerator:
         responses: List[str] = []
         all_metadata: List[Dict[str, Any]] = []
         for _i in range(num_responses):
-            tgr: TextGenerationResponse = self._client.text_generation(prompt, details=True, **generation_kwargs)
+            tgr: TextGenerationOutput = self._client.text_generation(prompt, details=True, **generation_kwargs)
             all_metadata.append(
                 {
                     "model": self._client.model,
                     "index": _i,
-                    "finish_reason": tgr.details.finish_reason.value,
+                    "finish_reason": tgr.details.finish_reason,
                     "usage": {"completion_tokens": len(tgr.details.tokens)},
                 }
             )

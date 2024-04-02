@@ -8,9 +8,13 @@ from haystack.lazy_imports import LazyImport
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 from haystack.utils.hf import HFModelType, check_generation_params, check_valid_model, list_inference_deployed_models
 
-with LazyImport(message="Run 'pip install transformers'") as transformers_import:
-    from huggingface_hub import InferenceClient
-    from huggingface_hub.inference._text_generation import TextGenerationResponse, TextGenerationStreamResponse, Token
+with LazyImport(message="Run 'pip install \"huggingface_hub>=0.22.0\" transformers'") as transformers_import:
+    from huggingface_hub import (
+        InferenceClient,
+        TextGenerationOutput,
+        TextGenerationOutputToken,
+        TextGenerationStreamOutput,
+    )
     from transformers import AutoTokenizer
 
 logger = logging.getLogger(__name__)
@@ -245,13 +249,13 @@ class HuggingFaceTGIChatGenerator:
     def _run_streaming(
         self, prepared_prompt: str, prompt_token_count: int, generation_kwargs: Dict[str, Any]
     ) -> Dict[str, List[ChatMessage]]:
-        res: Iterable[TextGenerationStreamResponse] = self.client.text_generation(
+        res: Iterable[TextGenerationStreamOutput] = self.client.text_generation(
             prepared_prompt, stream=True, details=True, **generation_kwargs
         )
         chunk = None
         # pylint: disable=not-an-iterable
         for chunk in res:
-            token: Token = chunk.token
+            token: TextGenerationOutputToken = chunk.token
             if token.special:
                 continue
             chunk_metadata = {**asdict(token), **(asdict(chunk.details) if chunk.details else {})}
@@ -261,7 +265,7 @@ class HuggingFaceTGIChatGenerator:
         message = ChatMessage.from_assistant(chunk.generated_text)
         message.meta.update(
             {
-                "finish_reason": chunk.details.finish_reason.value,
+                "finish_reason": chunk.details.finish_reason,
                 "index": 0,
                 "model": self.client.model,
                 "usage": {
@@ -278,13 +282,11 @@ class HuggingFaceTGIChatGenerator:
     ) -> Dict[str, List[ChatMessage]]:
         chat_messages: List[ChatMessage] = []
         for _i in range(num_responses):
-            tgr: TextGenerationResponse = self.client.text_generation(
-                prepared_prompt, details=True, **generation_kwargs
-            )
+            tgr: TextGenerationOutput = self.client.text_generation(prepared_prompt, details=True, **generation_kwargs)
             message = ChatMessage.from_assistant(tgr.generated_text)
             message.meta.update(
                 {
-                    "finish_reason": tgr.details.finish_reason.value,
+                    "finish_reason": tgr.details.finish_reason,
                     "index": _i,
                     "model": self.client.model,
                     "usage": {

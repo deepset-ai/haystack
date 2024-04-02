@@ -1,9 +1,10 @@
 import logging
 from unittest.mock import patch
+
 import pytest
 
-from haystack import Document
-from haystack.components.converters.pypdf import PyPDFToDocument, CONVERTERS_REGISTRY
+from haystack import Document, default_from_dict, default_to_dict
+from haystack.components.converters.pypdf import CONVERTERS_REGISTRY, DefaultConverter, PyPDFToDocument
 from haystack.dataclasses import ByteStream
 
 
@@ -14,12 +15,45 @@ def pypdf_converter():
 
 class TestPyPDFToDocument:
     def test_init(self, pypdf_converter):
-        assert pypdf_converter.converter_name == "default"
-        assert hasattr(pypdf_converter, "_converter")
+        assert isinstance(pypdf_converter.converter, DefaultConverter)
+        assert pypdf_converter.converter_name is None
 
     def test_init_fail_nonexisting_converter(self):
         with pytest.raises(ValueError):
             PyPDFToDocument(converter_name="non_existing_converter")
+
+    def test_to_dict(self, pypdf_converter):
+        data = pypdf_converter.to_dict()
+        assert data == {
+            "type": "haystack.components.converters.pypdf.PyPDFToDocument",
+            "init_parameters": {
+                "converter": {"type": "haystack.components.converters.pypdf.DefaultConverter", "init_parameters": {}},
+                "converter_name": None,
+            },
+        }
+
+    def test_from_dict(self):
+        data = {
+            "type": "haystack.components.converters.pypdf.PyPDFToDocument",
+            "init_parameters": {
+                "converter": {"type": "haystack.components.converters.pypdf.DefaultConverter", "init_parameters": {}}
+            },
+        }
+        instance = PyPDFToDocument.from_dict(data)
+        assert isinstance(instance, PyPDFToDocument)
+        assert isinstance(instance.converter, DefaultConverter)
+        assert instance.converter_name is None
+
+    def test_from_dict_with_converter_name(self):
+        data = {
+            "type": "haystack.components.converters.pypdf.PyPDFToDocument",
+            "init_parameters": {"converter_name": "default"},
+        }
+
+        instance = PyPDFToDocument.from_dict(data)
+        assert isinstance(instance, PyPDFToDocument)
+        assert isinstance(instance.converter, DefaultConverter)
+        assert instance.converter_name == "default"
 
     @pytest.mark.integration
     def test_run(self, test_files_path, pypdf_converter):
@@ -82,6 +116,30 @@ class TestPyPDFToDocument:
         """
         Test if the component correctly handles custom converters.
         """
+        from pypdf import PdfReader
+
+        paths = [test_files_path / "pdf" / "sample_pdf_1.pdf"]
+
+        class MyCustomConverter:
+            def convert(self, reader: PdfReader) -> Document:
+                return Document(content="I don't care about converting given pdfs, I always return this")
+
+            def to_dict(self):
+                return default_to_dict(self)
+
+            @classmethod
+            def from_dict(cls, data):
+                return default_from_dict(cls, data)
+
+        component = PyPDFToDocument(converter=MyCustomConverter())
+        output = component.run(sources=paths)
+        docs = output["documents"]
+        assert len(docs) == 1
+        assert "ReAct" not in docs[0].content
+        assert "I don't care about converting given pdfs, I always return this" in docs[0].content
+
+    @pytest.mark.integration
+    def test_custom_converter_deprecated(self, test_files_path):
         from pypdf import PdfReader
 
         paths = [test_files_path / "pdf" / "sample_pdf_1.pdf"]

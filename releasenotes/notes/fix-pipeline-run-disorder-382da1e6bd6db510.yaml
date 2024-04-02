@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixes `Pipeline.run()` logic so Components that have all their inputs with a default are run in the correct order.
+    This happened we gather a list of Components to run internally when running the Pipeline in the order they are
+    added during creation of the Pipeline.
+    This caused some Components to run before they received all their inputs.
