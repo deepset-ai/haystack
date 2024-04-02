@@ -297,6 +297,9 @@ ignore_missing_imports = true
 line-length = 1486
 target-version = "py38"
 
+[tool.ruff.lint.pydocstyle]
+convention = "pep257"
+
 [tool.ruff.lint]
 select = [
   "AIR",    # Airflow
@@ -318,12 +321,25 @@ select = [
   "T10",    # flake8-debugger
   "W",      # pycodestyle
   "YTT",    # flake8-2020
-  "I"       # isort
+  "I",       # isort
   # "E",    # pycodestyle
   # "NPY",  # NumPy-specific rules
   # "PD",   # pandas-vet
   # "PT",   # flake8-pytest-style
   # "UP",   # pyupgrade
+  "D",      # Docstring
+  # "D102",   # Missing docstring in public method
+  # "D103",   # Missing docstring in public function
+  # "D205",   # 1 blank line required between summary line and description
+  # "D417",   # undocumented-parameter
+  # "D419",   # undocumented-returns
+
+  # D106 Missing docstring in public nested class
+  # D200 One-line docstring should fit on one line
+  # D205 1 blank line required between summary line and description
+  # D209 [*] Multi-line docstring closing quotes should be on a separate line
+  # D300 [*] Use triple single quotes `'''`
+
 ]
 
 ignore = [
@@ -338,6 +354,26 @@ ignore = [
   "SIM108",   # if-else-block-instead-of-if-exp
   "SIM115",   # open-file-with-context-handler
   "SIM118",   # in-dict-keys
+
+  "D100",     # Missing docstring in public module
+  "D101",     # Missing docstring in public class
+  "D104",     # Missing docstring in public package
+  "D105",     # Missing docstring in magic method
+  "D212",     # Multi-line docstring summary should start at the second line
+  "D214",     # Section name should be properly capitalized
+  "D400",     # First line should end with a period
+  "D401",     # First line should be in imperative mood; try rephrasing
+  "D301",     # Use r""" if any backslashes in a docstring
+  "D413",     # Missing blank line after last section
+  "D411",     # Missing blank line before section
+  "D407",     # Missing dashed underline after section
+  "D107",     # Missing docstring in __init__
+  "D202",     # No blank lines allowed after function docstring
+  "D412",     # No blank lines allowed between a section and its content
+  "D208",     # Docstring is over-indented
+  "D106",     # Missing docstring in public nested class
+  "D300",     # Use """triple double quotes""" (found '''-quotes)#
+  "D402",     # First line should not be the function's signature
 ]
 
 [tool.ruff.lint.mccabe]
