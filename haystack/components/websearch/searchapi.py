@@ -1,4 +1,3 @@
-import json
 from typing import Any, Dict, List, Optional, Union
 
 import requests
@@ -21,7 +20,8 @@ class SearchApiWebSearch:
     """
     Uses [SearchApi](https://www.searchapi.io/) to search the web for relevant documents.
 
-    See the [SearchApi website](https://www.searchapi.io/) for more details.
+    See the [SearchApi website](https://www.searchapi.io/) for more details. The default search engine is Google,
+    however, users can change it by setting the `engine` parameter in the `search_params`.
 
     Usage example:
     ```python
@@ -101,12 +101,12 @@ class SearchApiWebSearch:
         :raises SearchApiError: If an error occurs while querying the SearchApi API.
         """
         query_prepend = "OR ".join(f"site:{domain} " for domain in self.allowed_domains) if self.allowed_domains else ""
-
-        payload = json.dumps({"q": query_prepend + " " + query, **self.search_params})
-        headers = {"Authorization": f"Bearer {self.api_key.resolve_value()}", "X-SearchApi-Source": "Haystack"}
+        if "engine" not in self.search_params:
+            self.search_params["engine"] = "google"
+        payload = {"q": query_prepend + " " + query, "api_key": self.api_key.resolve_value(), **self.search_params}
 
         try:
-            response = requests.get(SEARCHAPI_BASE_URL, headers=headers, params=payload, timeout=90)
+            response = requests.get(SEARCHAPI_BASE_URL, params=payload, timeout=90)
             response.raise_for_status()  # Will raise an HTTPError for bad responses
         except requests.Timeout as error:
             raise TimeoutError(f"Request to {self.__class__.__name__} timed out.") from error
