@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Add a new FaithfulnessEvaluator component that can be used to evaluate faithfulness / groundedness / hallucinations of LLMs in a RAG pipeline.
+    Given a question, a list of retrieved document contents (contexts), and a predicted answer, FaithfulnessEvaluator returns a score ranging from 0 (poor faithfulness) to 1 (perfect faithfulness).
+    The score is the proportion of statements in the predicted answer that could by inferred from the documents.

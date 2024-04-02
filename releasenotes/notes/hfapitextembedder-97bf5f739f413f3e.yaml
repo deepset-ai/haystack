@@ -1,0 +1,13 @@
+---
+features:
+  - |
+    Introduce `HuggingFaceAPITextEmbedder`.
+    This component can be used to embed strings using different Hugging Face APIs:
+      - free Serverless Inference API
+      - paid Inference Endpoints
+      - self-hosted Text Embeddings Inference.
+    This embedder will replace the `HuggingFaceTEITextEmbedder` in the future.
+deprecations:
+  - |
+    Deprecate `HuggingFaceTEITextEmbedder`. This component will be removed in Haystack 2.3.0.
+    Use `HuggingFaceAPITextEmbedder` instead.

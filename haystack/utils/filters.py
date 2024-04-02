@@ -176,6 +176,7 @@ def _comparison_condition(condition: Dict[str, Any], document: Document) -> bool
 def convert(filters: Dict[str, Any]) -> Dict[str, Any]:
     """
     Convert a filter declared using the legacy style into the new style.
+
     This is mostly meant to ease migration from Haystack 1.x to 2.x for developers
     of Document Stores and Components that use filters.
 

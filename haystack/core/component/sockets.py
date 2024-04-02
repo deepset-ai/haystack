@@ -83,6 +83,7 @@ class Sockets:
     def __setitem__(self, key: str, socket: Union[InputSocket, OutputSocket]):
         """
         Adds a new socket to this Sockets object.
+
         This eases a bit updating the list of sockets after Sockets has been created.
         That should happen only in the `component` decorator.
         """

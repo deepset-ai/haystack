@@ -138,6 +138,7 @@ class InMemoryDocumentStore:
     def delete_documents(self, document_ids: List[str]) -> None:
         """
         Deletes all documents with matching document_ids from the DocumentStore.
+
         :param document_ids: The object_ids to delete.
         """
         for doc_id in document_ids:

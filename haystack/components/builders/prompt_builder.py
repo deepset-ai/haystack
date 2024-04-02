@@ -9,7 +9,9 @@ from haystack import component, default_to_dict
 class PromptBuilder:
     """
     PromptBuilder is a component that renders a prompt from a template string using Jinja2 templates.
-    The template variables found in the template string are used as input types for the component and are all required.
+
+    The template variables found in the template string are used as input types for the component and are all optional.
+    If a template variable is not provided as an input, it will be replaced with an empty string in the rendered prompt.
 
     Usage example:
     ```python

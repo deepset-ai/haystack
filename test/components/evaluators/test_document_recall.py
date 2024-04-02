@@ -16,41 +16,30 @@ class TestDocumentRecallEvaluatorSingleHit:
 
     def test_run_with_all_matching(self, evaluator):
         result = evaluator.run(
-            questions=["What is the capital of Germany?", "What is the capital of France?"],
             ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
             retrieved_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
         )
-
+        assert all(isinstance(individual_score, float) for individual_score in result["individual_scores"])
         assert result == {"individual_scores": [1.0, 1.0], "score": 1.0}
 
     def test_run_with_no_matching(self, evaluator):
         result = evaluator.run(
-            questions=["What is the capital of Germany?", "What is the capital of France?"],
             ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
             retrieved_documents=[[Document(content="Paris")], [Document(content="London")]],
         )
-
+        assert all(isinstance(individual_score, float) for individual_score in result["individual_scores"])
         assert result == {"individual_scores": [0.0, 0.0], "score": 0.0}
 
     def test_run_with_partial_matching(self, evaluator):
         result = evaluator.run(
-            questions=["What is the capital of Germany?", "What is the capital of France?"],
             ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
             retrieved_documents=[[Document(content="Berlin")], [Document(content="London")]],
         )
-
+        assert all(isinstance(individual_score, float) for individual_score in result["individual_scores"])
         assert result == {"individual_scores": [1.0, 0.0], "score": 0.5}
 
     def test_run_with_complex_data(self, evaluator):
         result = evaluator.run(
-            questions=[
-                "In what country is Normandy located?",
-                "When was the Latin version of the word Norman first recorded?",
-                "What developed in Normandy during the 1100s?",
-                "In what century did important classical music developments occur in Normandy?",
-                "From which countries did the Norse originate?",
-                "What century did the Normans first gain their separate identity?",
-            ],
             ground_truth_documents=[
                 [Document(content="France")],
                 [Document(content="9th century"), Document(content="9th")],
@@ -73,26 +62,18 @@ class TestDocumentRecallEvaluatorSingleHit:
                 ],
             ],
         )
-        assert result == {"individual_scores": [True, True, True, True, False, True], "score": 0.8333333333333334}
+        assert all(isinstance(individual_score, float) for individual_score in result["individual_scores"])
+        assert result == {"individual_scores": [1, 1, 1, 1, 0, 1], "score": 0.8333333333333334}
 
     def test_run_with_different_lengths(self, evaluator):
         with pytest.raises(ValueError):
             evaluator.run(
-                questions=["What is the capital of Germany?"],
-                ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
-                retrieved_documents=[[Document(content="Berlin")], [Document(content="London")]],
-            )
-
-        with pytest.raises(ValueError):
-            evaluator.run(
-                questions=["What is the capital of Germany?", "What is the capital of France?"],
                 ground_truth_documents=[[Document(content="Berlin")]],
                 retrieved_documents=[[Document(content="Berlin")], [Document(content="London")]],
             )
 
         with pytest.raises(ValueError):
             evaluator.run(
-                questions=["What is the capital of Germany?", "What is the capital of France?"],
                 ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
                 retrieved_documents=[[Document(content="Berlin")]],
             )
@@ -105,41 +86,30 @@ class TestDocumentRecallEvaluatorMultiHit:
 
     def test_run_with_all_matching(self, evaluator):
         result = evaluator.run(
-            questions=["What is the capital of Germany?", "What is the capital of France?"],
             ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
             retrieved_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
         )
-
+        assert all(isinstance(individual_score, float) for individual_score in result["individual_scores"])
         assert result == {"individual_scores": [1.0, 1.0], "score": 1.0}
 
     def test_run_with_no_matching(self, evaluator):
         result = evaluator.run(
-            questions=["What is the capital of Germany?", "What is the capital of France?"],
             ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
             retrieved_documents=[[Document(content="Paris")], [Document(content="London")]],
         )
-
+        assert all(isinstance(individual_score, float) for individual_score in result["individual_scores"])
         assert result == {"individual_scores": [0.0, 0.0], "score": 0.0}
 
     def test_run_with_partial_matching(self, evaluator):
         result = evaluator.run(
-            questions=["What is the capital of Germany?", "What is the capital of France?"],
             ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
             retrieved_documents=[[Document(content="Berlin")], [Document(content="London")]],
         )
-
+        assert all(isinstance(individual_score, float) for individual_score in result["individual_scores"])
         assert result == {"individual_scores": [1.0, 0.0], "score": 0.5}
 
     def test_run_with_complex_data(self, evaluator):
         result = evaluator.run(
-            questions=[
-                "In what country is Normandy located?",
-                "When was the Latin version of the word Norman first recorded?",
-                "What developed in Normandy during the 1100s?",
-                "In what century did important classical music developments occur in Normandy?",
-                "From which countries did the Norse originate?",
-                "What century did the Normans first gain their separate identity?",
-            ],
             ground_truth_documents=[
                 [Document(content="France")],
                 [Document(content="9th century"), Document(content="9th")],
@@ -167,26 +137,18 @@ class TestDocumentRecallEvaluatorMultiHit:
                 ],
             ],
         )
+        assert all(isinstance(individual_score, float) for individual_score in result["individual_scores"])
         assert result == {"individual_scores": [1.0, 1.0, 0.5, 1.0, 0.75, 1.0], "score": 0.875}
 
     def test_run_with_different_lengths(self, evaluator):
         with pytest.raises(ValueError):
             evaluator.run(
-                questions=["What is the capital of Germany?"],
-                ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
-                retrieved_documents=[[Document(content="Berlin")], [Document(content="London")]],
-            )
-
-        with pytest.raises(ValueError):
-            evaluator.run(
-                questions=["What is the capital of Germany?", "What is the capital of France?"],
                 ground_truth_documents=[[Document(content="Berlin")]],
                 retrieved_documents=[[Document(content="Berlin")], [Document(content="London")]],
             )
 
         with pytest.raises(ValueError):
             evaluator.run(
-                questions=["What is the capital of Germany?", "What is the capital of France?"],
                 ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
                 retrieved_documents=[[Document(content="Berlin")]],
             )

@@ -139,7 +139,7 @@ extra-dependencies = [
 
 [tool.hatch.envs.test.scripts]
 e2e = "pytest e2e"
-unit = 'pytest --cov-report xml:coverage.xml --cov="haystack" -m "not integration" test'
+unit = 'pytest --cov-report xml:coverage.xml --cov="haystack" -m "not integration" test {args:test}'
 integration = 'pytest --maxfail=5 -m "integration" test'
 integration-mac = 'pytest --maxfail=5 -m "integration" test -k "not tika"'
 integration-windows = 'pytest --maxfail=5 -m "integration" test -k "not tika"'
@@ -294,24 +294,17 @@ warn_unused_configs = true
 ignore_missing_imports = true
 
 [tool.ruff]
-line-length = 1486
+line-length = 301
 target-version = "py38"
-
-[tool.ruff.lint.pydocstyle]
-convention = "pep257"
 
 [tool.ruff.lint]
 select = [
-  "AIR",    # Airflow
   "ASYNC",  # flake8-async
   "C4",     # flake8-comprehensions
   "C90",    # McCabe cyclomatic complexity
-  "CPY",    # flake8-copyright
-  "DJ",     # flake8-django
   "E501",   # Long lines
   "EXE",    # flake8-executable
   "F",      # Pyflakes
-  "FURB",   # refurb
   "INT",    # flake8-gettext
   "PERF",   # Perflint
   "PL",     # Pylint
@@ -322,24 +315,18 @@ select = [
   "W",      # pycodestyle
   "YTT",    # flake8-2020
   "I",       # isort
-  # "E",    # pycodestyle
-  # "NPY",  # NumPy-specific rules
-  # "PD",   # pandas-vet
-  # "PT",   # flake8-pytest-style
-  # "UP",   # pyupgrade
-  "D",      # Docstring
-  # "D102",   # Missing docstring in public method
-  # "D103",   # Missing docstring in public function
-  # "D205",   # 1 blank line required between summary line and description
-  # "D417",   # undocumented-parameter
-  # "D419",   # undocumented-returns
-
-  # D106 Missing docstring in public nested class
-  # D200 One-line docstring should fit on one line
-  # D205 1 blank line required between summary line and description
-  # D209 [*] Multi-line docstring closing quotes should be on a separate line
-  # D300 [*] Use triple single quotes `'''`
-
+  # built-in shadowing
+  "A001",	# builtin-variable-shadowing
+  "A002",	# builtin-argument-shadowing
+  "A003",	# builtin-attribute-shadowing
+  # docstring rules
+  "D102",   # Missing docstring in public method
+  "D103",   # Missing docstring in public function
+  "D209",   # Closing triple quotes go to new line
+  "D205",   # 1 blank line required between summary line and description
+  "D213",   # summary lines must be positioned on the second physical line of the docstring
+  "D417",   # undocumented-parameter
+  "D419",   # undocumented-returns
 ]
 
 ignore = [
@@ -354,26 +341,6 @@ ignore = [
   "SIM108",   # if-else-block-instead-of-if-exp
   "SIM115",   # open-file-with-context-handler
   "SIM118",   # in-dict-keys
-
-  "D100",     # Missing docstring in public module
-  "D101",     # Missing docstring in public class
-  "D104",     # Missing docstring in public package
-  "D105",     # Missing docstring in magic method
-  "D212",     # Multi-line docstring summary should start at the second line
-  "D214",     # Section name should be properly capitalized
-  "D400",     # First line should end with a period
-  "D401",     # First line should be in imperative mood; try rephrasing
-  "D301",     # Use r""" if any backslashes in a docstring
-  "D413",     # Missing blank line after last section
-  "D411",     # Missing blank line before section
-  "D407",     # Missing dashed underline after section
-  "D107",     # Missing docstring in __init__
-  "D202",     # No blank lines allowed after function docstring
-  "D412",     # No blank lines allowed between a section and its content
-  "D208",     # Docstring is over-indented
-  "D106",     # Missing docstring in public nested class
-  "D300",     # Use """triple double quotes""" (found '''-quotes)#
-  "D402",     # First line should not be the function's signature
 ]
 
 [tool.ruff.lint.mccabe]
@@ -386,11 +353,11 @@ max-complexity = 28
 
 [tool.ruff.lint.pylint]
 allow-magic-value-types = ["float", "int", "str"]
-max-args = 38  # Default is 5
-max-branches = 32  # Default is 12
-max-public-methods = 90  # Default is 20
-max-returns = 9  # Default is 6
-max-statements = 105  # Default is 50
+max-args = 14  # Default is 5
+max-branches = 21  # Default is 12
+max-public-methods = 20  # Default is 20
+max-returns = 7  # Default is 6
+max-statements = 60  # Default is 50
 
 [tool.coverage.run]
 omit = [

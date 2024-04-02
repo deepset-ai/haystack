@@ -1,0 +1,20 @@
+name: run docstrings linting
+
+on:
+  push:
+    branches:
+      - docstrings-linting
+
+jobs:
+  docstrings-linting:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Hatch
+        run: pip install hatch=="1.9.3"
+
+      - name: ruff docstrings linting
+        run: hatch run ruff check haystack

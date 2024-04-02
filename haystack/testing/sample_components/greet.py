@@ -18,6 +18,8 @@ class Greet:
 
     def __init__(self, message: str = "\nGreeting component says: Hi! The value is {value}\n", log_level: str = "INFO"):
         """
+        Class constructor
+
         :param message: the message to log. Can use `{value}` to embed the value.
         :param log_level: the level to log at.
         """
