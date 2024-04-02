@@ -96,7 +96,7 @@ class HTMLToDocument:
         documents = []
         meta_list = normalize_metadata(meta=meta, sources_count=len(sources))
 
-        # Use all extractor types, ensuring user chosen extractor is first, preserve order
+        # Use all extractor types, ensuring user chosen extractor is first, preserve order, avoid duplicates
         extractors_list = list(
             dict.fromkeys(
                 [
