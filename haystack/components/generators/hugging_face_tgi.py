@@ -120,8 +120,7 @@ class HuggingFaceTGIGenerator:
             is_valid_url = all([r.scheme in ["http", "https"], r.netloc])
             if not is_valid_url:
                 raise ValueError(f"Invalid TGI endpoint URL provided: {url}")
-
-        if model and not url:
+        elif model:
             check_valid_model(model, HFModelType.GENERATION, token)
 
         # handle generation kwargs setup
