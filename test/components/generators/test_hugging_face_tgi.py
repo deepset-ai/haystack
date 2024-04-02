@@ -2,7 +2,6 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from huggingface_hub import TextGenerationOutputToken, TextGenerationStreamDetails, TextGenerationStreamOutput
-from huggingface_hub.utils import RepositoryNotFoundError
 
 from haystack.components.generators.hugging_face_tgi import DEFAULT_MODEL, HuggingFaceTGIGenerator
 from haystack.dataclasses import StreamingChunk
