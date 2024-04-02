@@ -7,7 +7,7 @@ from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import StreamingChunk
 from haystack.lazy_imports import LazyImport
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
-from haystack.utils.hf import HFModelType, check_generation_params, check_valid_model, list_inference_deployed_models
+from haystack.utils.hf import HFModelType, check_generation_params, check_valid_model
 
 with LazyImport(message="Run 'pip install \"huggingface_hub>=0.22.0\"'") as huggingface_hub_import:
     from huggingface_hub import (
