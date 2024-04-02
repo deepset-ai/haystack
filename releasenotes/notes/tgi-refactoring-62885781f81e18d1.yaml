@@ -1,0 +1,11 @@
+---
+enhancements:
+  - |
+    Improve the HuggingFaceTGIGenerator component.
+    - Lighter: the component only depends on the `huggingface_hub` library.
+    - If initialized with an appropriate `url` parameter, the component can run on a local network and does not require internet access.
+deprecations:
+  - |
+    - The HuggingFaceTGIGenerator component requires specifying either a `url` or `model` parameter.
+      Starting from Haystack 2.3.0, the component will raise an error if neither parameter is provided.
+    - The `warm_up` method of the HuggingFaceTGIGenerator component is deprecated and will be removed in 2.3.0 release.
