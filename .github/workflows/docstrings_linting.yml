@@ -1,0 +1,25 @@
+name: run docstrings linting
+
+on:
+  pull_request:
+
+jobs:
+  rebase:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Fetch branches
+        run: git fetch origin docstrings-linting:docstrings-linting
+
+      - name: Rebase onto main
+        run: git rebase main
+
+      - name: Install Hatch
+        run: pip install hatch==${{ env.HATCH_VERSION }}
+
+      - name: Pylint
+        run: |
+         hatch run test:lint
