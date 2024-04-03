@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Adds `truncate` and `normalize` parameters to `HuggingFaceTEITextEmbedder` and `HuggingFaceTEITextEmbedder` for allowing truncation and normalization of embeddings.
