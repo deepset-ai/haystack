@@ -329,7 +329,7 @@ select = [
   # "PT",   # flake8-pytest-style
   # "UP",   # pyupgrade
 
-  # NOTE: The following rules are disabled because ruff is yet too strict to rely on docstring linting.
+  # docstring rules
   "D102",   # Missing docstring in public method
   "D103",   # Missing docstring in public function
   "D205",   # 1 blank line required between summary line and description
