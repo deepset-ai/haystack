@@ -1,4 +1,3 @@
-import json
 from typing import Any, Dict, List, Optional, Union
 
 import requests
@@ -20,8 +19,6 @@ class SearchApiError(ComponentError):
 class SearchApiWebSearch:
     """
     Uses [SearchApi](https://www.searchapi.io/) to search the web for relevant documents.
-
-    See the [SearchApi website](https://www.searchapi.io/) for more details.
 
     Usage example:
     ```python
@@ -50,12 +47,17 @@ class SearchApiWebSearch:
         :param search_params: Additional parameters passed to the SearchApi API.
             For example, you can set 'num' to 100 to increase the number of search results.
             See the [SearchApi website](https://www.searchapi.io/) for more details.
+
+            The default search engine is Google, however, users can change it by setting the `engine`
+            parameter in the `search_params`.
         """
 
         self.api_key = api_key
         self.top_k = top_k
         self.allowed_domains = allowed_domains
         self.search_params = search_params or {}
+        if "engine" not in self.search_params:
+            self.search_params["engine"] = "google"
 
         # Ensure that the API key is resolved.
         _ = self.api_key.resolve_value()
@@ -101,10 +103,8 @@ class SearchApiWebSearch:
         :raises SearchApiError: If an error occurs while querying the SearchApi API.
         """
         query_prepend = "OR ".join(f"site:{domain} " for domain in self.allowed_domains) if self.allowed_domains else ""
-
-        payload = json.dumps({"q": query_prepend + " " + query, **self.search_params})
+        payload = {"q": query_prepend + " " + query, **self.search_params}
         headers = {"Authorization": f"Bearer {self.api_key.resolve_value()}", "X-SearchApi-Source": "Haystack"}
-
         try:
             response = requests.get(SEARCHAPI_BASE_URL, headers=headers, params=payload, timeout=90)
             response.raise_for_status()  # Will raise an HTTPError for bad responses
