@@ -113,8 +113,9 @@ class HTMLToDocument:
         )
 
         for source, metadata in zip(sources, meta_list):
-            bytestream = get_bytestream_from_source(source=source)
-            if not bytestream:
+            try:
+                bytestream = get_bytestream_from_source(source=source)
+            except Exception:
                 logger.warning(f"Could not read {source}. Skipping it.")
                 continue
 

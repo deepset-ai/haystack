@@ -127,7 +127,7 @@ class TestHTMLToDocument:
         converter = HTMLToDocument()
         with caplog.at_level(logging.WARNING):
             results = converter.run(sources=sources)
-            assert "codec can't decode byte" in caplog.text
+            assert "Failed to extract text from" in caplog.text
 
         assert results["documents"] == []
 
