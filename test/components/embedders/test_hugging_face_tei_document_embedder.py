@@ -18,8 +18,8 @@ def mock_check_valid_model():
         yield mock
 
 
-def mock_embedding_generation(text, **kwargs):
-    response = np.array([np.random.rand(384) for i in range(len(text))])
+def mock_embedding_generation(json, **kwargs):
+    response = str(np.array([np.random.rand(384) for i in range(len(json["inputs"]))]).tolist()).encode()
     return response
 
 
@@ -33,6 +33,8 @@ class TestHuggingFaceTEIDocumentEmbedder:
         assert embedder.token == Secret.from_env_var("HF_API_TOKEN", strict=False)
         assert embedder.prefix == ""
         assert embedder.suffix == ""
+        assert embedder.truncate is True
+        assert embedder.normalize is False
         assert embedder.batch_size == 32
         assert embedder.progress_bar is True
         assert embedder.meta_fields_to_embed == []
@@ -45,6 +47,8 @@ class TestHuggingFaceTEIDocumentEmbedder:
             token=Secret.from_token("fake-api-token"),
             prefix="prefix",
             suffix="suffix",
+            truncate=False,
+            normalize=True,
             batch_size=64,
             progress_bar=False,
             meta_fields_to_embed=["test_field"],
@@ -56,6 +60,8 @@ class TestHuggingFaceTEIDocumentEmbedder:
         assert embedder.token == Secret.from_token("fake-api-token")
         assert embedder.prefix == "prefix"
         assert embedder.suffix == "suffix"
+        assert embedder.truncate is False
+        assert embedder.normalize is True
         assert embedder.batch_size == 64
         assert embedder.progress_bar is False
         assert embedder.meta_fields_to_embed == ["test_field"]
@@ -83,12 +89,46 @@ class TestHuggingFaceTEIDocumentEmbedder:
                 "url": None,
                 "prefix": "",
                 "suffix": "",
+                "truncate": True,
+                "normalize": False,
                 "batch_size": 32,
                 "progress_bar": True,
                 "meta_fields_to_embed": [],
                 "embedding_separator": "\n",
             },
         }
+
+    def test_from_dict(self, mock_check_valid_model):
+        data = {
+            "type": "haystack.components.embedders.hugging_face_tei_document_embedder.HuggingFaceTEIDocumentEmbedder",
+            "init_parameters": {
+                "model": "BAAI/bge-small-en-v1.5",
+                "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
+                "url": None,
+                "prefix": "",
+                "suffix": "",
+                "truncate": True,
+                "normalize": False,
+                "batch_size": 32,
+                "progress_bar": True,
+                "meta_fields_to_embed": [],
+                "embedding_separator": "\n",
+            },
+        }
+
+        embedder = HuggingFaceTEIDocumentEmbedder.from_dict(data)
+
+        assert embedder.model == "BAAI/bge-small-en-v1.5"
+        assert embedder.url is None
+        assert embedder.token == Secret.from_env_var("HF_API_TOKEN", strict=False)
+        assert embedder.prefix == ""
+        assert embedder.suffix == ""
+        assert embedder.truncate is True
+        assert embedder.normalize is False
+        assert embedder.batch_size == 32
+        assert embedder.progress_bar is True
+        assert embedder.meta_fields_to_embed == []
+        assert embedder.embedding_separator == "\n"
 
     def test_to_dict_with_custom_init_parameters(self, mock_check_valid_model):
         component = HuggingFaceTEIDocumentEmbedder(
@@ -97,6 +137,8 @@ class TestHuggingFaceTEIDocumentEmbedder:
             token=Secret.from_env_var("ENV_VAR", strict=False),
             prefix="prefix",
             suffix="suffix",
+            truncate=False,
+            normalize=True,
             batch_size=64,
             progress_bar=False,
             meta_fields_to_embed=["test_field"],
@@ -113,12 +155,46 @@ class TestHuggingFaceTEIDocumentEmbedder:
                 "url": "https://some_embedding_model.com",
                 "prefix": "prefix",
                 "suffix": "suffix",
+                "truncate": False,
+                "normalize": True,
                 "batch_size": 64,
                 "progress_bar": False,
                 "meta_fields_to_embed": ["test_field"],
                 "embedding_separator": " | ",
             },
         }
+
+    def test_from_dict_with_custom_init_parameters(self, mock_check_valid_model):
+        data = {
+            "type": "haystack.components.embedders.hugging_face_tei_document_embedder.HuggingFaceTEIDocumentEmbedder",
+            "init_parameters": {
+                "token": {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"},
+                "model": "sentence-transformers/all-mpnet-base-v2",
+                "url": "https://some_embedding_model.com",
+                "prefix": "prefix",
+                "suffix": "suffix",
+                "truncate": False,
+                "normalize": True,
+                "batch_size": 64,
+                "progress_bar": False,
+                "meta_fields_to_embed": ["test_field"],
+                "embedding_separator": " | ",
+            },
+        }
+
+        embedder = HuggingFaceTEIDocumentEmbedder.from_dict(data)
+
+        assert embedder.model == "sentence-transformers/all-mpnet-base-v2"
+        assert embedder.url == "https://some_embedding_model.com"
+        assert embedder.token == Secret.from_env_var("ENV_VAR", strict=False)
+        assert embedder.prefix == "prefix"
+        assert embedder.suffix == "suffix"
+        assert embedder.truncate is False
+        assert embedder.normalize is True
+        assert embedder.batch_size == 64
+        assert embedder.progress_bar is False
+        assert embedder.meta_fields_to_embed == ["test_field"]
+        assert embedder.embedding_separator == " | "
 
     def test_prepare_texts_to_embed_w_metadata(self, mock_check_valid_model):
         documents = [
@@ -167,7 +243,7 @@ class TestHuggingFaceTEIDocumentEmbedder:
     def test_embed_batch(self, mock_check_valid_model):
         texts = ["text 1", "text 2", "text 3", "text 4", "text 5"]
 
-        with patch("huggingface_hub.InferenceClient.feature_extraction") as mock_embedding_patch:
+        with patch("huggingface_hub.InferenceClient.post") as mock_embedding_patch:
             mock_embedding_patch.side_effect = mock_embedding_generation
 
             embedder = HuggingFaceTEIDocumentEmbedder(
@@ -192,7 +268,7 @@ class TestHuggingFaceTEIDocumentEmbedder:
             Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
         ]
 
-        with patch("huggingface_hub.InferenceClient.feature_extraction") as mock_embedding_patch:
+        with patch("huggingface_hub.InferenceClient.post") as mock_embedding_patch:
             mock_embedding_patch.side_effect = mock_embedding_generation
 
             embedder = HuggingFaceTEIDocumentEmbedder(
@@ -207,10 +283,15 @@ class TestHuggingFaceTEIDocumentEmbedder:
             result = embedder.run(documents=docs)
 
             mock_embedding_patch.assert_called_once_with(
-                text=[
-                    "prefix Cuisine | I love cheese suffix",
-                    "prefix ML | A transformer is a deep learning architecture suffix",
-                ]
+                json={
+                    "inputs": [
+                        "prefix Cuisine | I love cheese suffix",
+                        "prefix ML | A transformer is a deep learning architecture suffix",
+                    ],
+                    "truncate": True,
+                    "normalize": False,
+                },
+                task="feature-extraction",
             )
         documents_with_embeddings = result["documents"]
 
@@ -251,7 +332,7 @@ class TestHuggingFaceTEIDocumentEmbedder:
             Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
         ]
 
-        with patch("huggingface_hub.InferenceClient.feature_extraction") as mock_embedding_patch:
+        with patch("huggingface_hub.InferenceClient.post") as mock_embedding_patch:
             mock_embedding_patch.side_effect = mock_embedding_generation
 
             embedder = HuggingFaceTEIDocumentEmbedder(

@@ -12,6 +12,7 @@ class TestAzureOpenAITextEmbedder:
 
         assert embedder._client.api_key == "fake-api-key"
         assert embedder.azure_deployment == "text-embedding-ada-002"
+        assert embedder.dimensions is None
         assert embedder.organization is None
         assert embedder.prefix == ""
         assert embedder.suffix == ""
@@ -26,6 +27,7 @@ class TestAzureOpenAITextEmbedder:
                 "api_key": {"env_vars": ["AZURE_OPENAI_API_KEY"], "strict": False, "type": "env_var"},
                 "azure_ad_token": {"env_vars": ["AZURE_OPENAI_AD_TOKEN"], "strict": False, "type": "env_var"},
                 "azure_deployment": "text-embedding-ada-002",
+                "dimensions": None,
                 "organization": None,
                 "azure_endpoint": "https://example-resource.azure.openai.com/",
                 "api_version": "2023-05-15",
