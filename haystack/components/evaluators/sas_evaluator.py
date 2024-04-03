@@ -36,7 +36,9 @@ class SASEvaluator:
         "The Eiffel Tower, completed in 1889, symbolizes Paris's cultural magnificence.",
         "The Meiji Restoration in 1868 transformed Japan into a modernized world power.",
     ]
-    result = evaluator.run(ground_truths_answers=ground_truths, predicted_answers=predictions)
+    result = evaluator.run(
+        ground_truths_answers=ground_truths, predicted_answers=predictions
+    )
 
     print(result["score"])
     # 0.9999673763910929
@@ -129,12 +131,12 @@ class SASEvaluator:
     @component.output_types(score=float, individual_scores=List[float])
     def run(self, ground_truths_answers: List[str], predicted_answers: List[str]) -> Dict[str, Any]:
         """
-        Run the SASEvaluator to compute the Semantic Answer Similarity (SAS) between a list of predictions and a list of
-        labels. Both must be list of strings of same length.
+        Run the SASEvaluator to compute the Semantic Answer Similarity (SAS) between a list of predicted answers
+        and a list of ground truth answers. Both must be list of strings of same length.
 
         :param ground_truth_answers:
             A list of expected answers for each question.
-        :param retrieved_answers:
+        :param predicted_answers:
             A list of generated answers for each question.
         :returns:
             A dictionary with the following outputs:
