@@ -1,0 +1,10 @@
+---
+enhancements:
+  - |
+    Improve the HuggingFaceTEITextEmbedder and HuggingFaceTEIDocumentEmbedder components:
+    if initialized with an appropriate `url` parameter, the components can run on a local network and do not require internet access.
+deprecations:
+  - |
+    The HuggingFaceTEITextEmbedder and HuggingFaceTEIDocumentEmbedder components require
+    specifying either a `url` or `model` parameter.
+    Starting from Haystack 2.3.0, the components will raise an error if neither parameter is provided.

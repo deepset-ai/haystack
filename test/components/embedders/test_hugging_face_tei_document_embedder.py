@@ -65,11 +65,10 @@ class TestHuggingFaceTEIDocumentEmbedder:
         with pytest.raises(ValueError):
             HuggingFaceTEIDocumentEmbedder(model="sentence-transformers/all-mpnet-base-v2", url="invalid_url")
 
-    def test_initialize_with_url_but_invalid_model(self, mock_check_valid_model):
-        # When custom TEI endpoint is used via URL, model must be provided and valid HuggingFace Hub model id
+    def test_initialize_with_invalid_model(self, mock_check_valid_model):
         mock_check_valid_model.side_effect = RepositoryNotFoundError("Invalid model id")
         with pytest.raises(RepositoryNotFoundError):
-            HuggingFaceTEIDocumentEmbedder(model="invalid_model_id", url="https://some_embedding_model.com")
+            HuggingFaceTEIDocumentEmbedder(model="invalid_model_id")
 
     def test_to_dict(self, mock_check_valid_model):
         component = HuggingFaceTEIDocumentEmbedder()
