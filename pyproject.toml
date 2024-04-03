@@ -205,7 +205,6 @@ skip = "test/nodes/*,test/others/*,test/samples/*"
 
 [tool.pylint.'MESSAGES CONTROL']
 max-line-length=120
-
 disable = [
 
   # To keep
