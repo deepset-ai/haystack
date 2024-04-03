@@ -1,0 +1,5 @@
+---
+fixes:
+ - |
+   Updated the SearchApiWebSearch component with new search format and allowed users to specify the search engine via the `engine`
+   parameter in `search_params`. The default search engine is Google, making it easier for users to tailor their web searches.
