@@ -178,7 +178,9 @@ class SASEvaluator:
             )
 
             # Compute cosine-similarities
-            similarity_scores = [util.cos_sim(p, l).cpu() for p, l in zip(predictions_embeddings, label_embeddings)]
+            similarity_scores = [
+                util.cos_sim(p, l).cpu().numpy() for p, l in zip(predictions_embeddings, label_embeddings)
+            ]
 
         sas_score = np_mean(similarity_scores)
 
