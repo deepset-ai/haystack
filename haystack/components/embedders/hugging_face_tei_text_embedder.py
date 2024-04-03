@@ -1,3 +1,4 @@
+import warnings
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
@@ -12,14 +13,17 @@ with LazyImport(message="Run 'pip install \"huggingface_hub>=0.22.0\"'") as hugg
 logger = logging.getLogger(__name__)
 
 
+# TODO: remove the default model in Haystack 2.3.0, as explained in the deprecation warning
+DEFAULT_MODEL = "BAAI/bge-small-en-v1.5"
+
+
 @component
 class HuggingFaceTEITextEmbedder:
     """
     A component for embedding strings using HuggingFace Text-Embeddings-Inference endpoints.
 
-    This component can be used with embedding models hosted on Hugging Face Inference endpoints, the rate-limited
-    Inference API tier, for embedding models hosted on [the paid inference endpoint](https://huggingface.co/inference-endpoints)
-    and/or your own custom TEI endpoint.
+    This component can be used with embedding models hosted on Hugging Face Inference endpoints,
+    on the rate-limited Hugging Face Inference API or on your own custom TEI endpoint.
 
     Usage example:
     ```python
@@ -40,7 +44,7 @@ class HuggingFaceTEITextEmbedder:
 
     def __init__(
         self,
-        model: str = "BAAI/bge-small-en-v1.5",
+        model: Optional[str] = None,
         url: Optional[str] = None,
         token: Optional[Secret] = Secret.from_env_var("HF_API_TOKEN", strict=False),
         prefix: str = "",
@@ -50,10 +54,13 @@ class HuggingFaceTEITextEmbedder:
         Create an HuggingFaceTEITextEmbedder component.
 
         :param model:
-            ID of the model on HuggingFace Hub.
+            An optional string representing the ID of the model on HuggingFace Hub.
+            If not provided, the `url` parameter must be set to a valid TEI endpoint.
         :param url:
-            The URL of your self-deployed Text-Embeddings-Inference service or the URL of your paid HF Inference
-            Endpoint.
+            An optional string representing the URL of your self-deployed Text-Embeddings-Inference service
+            or the URL of your paid HF Inference Endpoint.
+            If not provided, the `model` parameter must be set to a valid model ID and the Hugging Face Inference API
+            will be used.
         :param token:
             The HuggingFace Hub token. This is needed if you are using a paid HF Inference Endpoint or serving
             a private or gated model.
@@ -64,13 +71,23 @@ class HuggingFaceTEITextEmbedder:
         """
         huggingface_hub_import.check()
 
+        if not model and not url:
+            warnings.warn(
+                f"Neither `model` nor `url` is provided. The component will use the default model: {DEFAULT_MODEL}. "
+                "This behavior is deprecated and will be removed in Haystack 2.3.0.",
+                DeprecationWarning,
+            )
+            model = DEFAULT_MODEL
+        elif model and url:
+            logger.warning("Both `model` and `url` are provided. The `model` parameter will be ignored. ")
+
         if url:
             r = urlparse(url)
             is_valid_url = all([r.scheme in ["http", "https"], r.netloc])
             if not is_valid_url:
                 raise ValueError(f"Invalid TEI endpoint URL provided: {url}")
-
-        check_valid_model(model, HFModelType.EMBEDDING, token)
+        elif model:
+            check_valid_model(model, HFModelType.EMBEDDING, token)
 
         self.model = model
         self.url = url
