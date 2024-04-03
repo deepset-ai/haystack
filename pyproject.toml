@@ -205,7 +205,6 @@ skip = "test/nodes/*,test/others/*,test/samples/*"
 
 [tool.pylint.'MESSAGES CONTROL']
 max-line-length=120
-# docstring-min-length=10 # every function with 10 or more lines requires docstrings, shorter ones are exempt
 
 disable = [
 
