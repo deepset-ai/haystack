@@ -212,11 +212,9 @@ disable = [
   # To keep
   "fixme",
   "c-extension-no-member",
-  "missing-module-docstring",
-  "missing-class-docstring",
-  "missing-function-docstring",
 
   # To review:
+  "missing-docstring",
   "unused-argument",
   "no-member",
   "line-too-long",
