@@ -1,4 +1,3 @@
-from dataclasses import asdict
 from typing import Any, Callable, Dict, Iterable, List, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
@@ -9,12 +8,7 @@ from haystack.utils.hf import HFGenerationAPIType, HFModelType, check_valid_mode
 from haystack.utils.url_validation import is_valid_http_url
 
 with LazyImport(message="Run 'pip install \"huggingface_hub[inference]>=0.22.0\"'") as huggingface_hub_import:
-    from huggingface_hub import (
-        ChatCompletionOutput,
-        ChatCompletionStreamOutput,
-        InferenceClient,
-        TextGenerationOutputToken,
-    )
+    from huggingface_hub import ChatCompletionOutput, ChatCompletionStreamOutput, InferenceClient
 
 
 logger = logging.getLogger(__name__)
@@ -130,9 +124,9 @@ class HuggingFaceAPIChatGenerator:
 
         # handle generation kwargs setup
         generation_kwargs = generation_kwargs.copy() if generation_kwargs else {}
-        generation_kwargs["stop_sequences"] = generation_kwargs.get("stop_sequences", [])
-        generation_kwargs["stop_sequences"].extend(stop_words or [])
-        generation_kwargs.setdefault("max_new_tokens", 512)
+        generation_kwargs["stop"] = generation_kwargs.get("stop", [])
+        generation_kwargs["stop"].extend(stop_words or [])
+        generation_kwargs.setdefault("max_tokens", 512)
 
         self.api_type = api_type
         self.api_params = api_params
