@@ -4,24 +4,6 @@ from typing import Dict, List, Union
 
 import pandas as pd
 
-"""
-This proposal is a good summary of the scenarios there are to evaluate RAG pipelines and the metrics involved.
-
-Having the issue in mind https://github.com/deepset-ai/haystack/issues/7398,
-
-I was expecting this proposal to be more about output format (dataframe, csv?),
-
-what are columns (metrics?),
-what is each row (one query?),
-
-will there be an evaluation report with worst and best predictions,
-
-and how will presentation of evaluation results differ from 1.x (https://docs.haystack.deepset.ai/v1.26-unstable/docs/evaluation).
-
-Including a short description of the metrics like here definitely helps discussing the proposal.
-For metric descriptions, you can also refer to https://www.notion.so/deepsetai/Metrics-03d08dbafef24075924bb3b7b87aae5d.
-"""
-
 
 class RAGPipelineEvaluation:
     def __init__(self, name: str, data: Union[pd.DataFrame, List[Dict[str, Union[str, float]]]]):
