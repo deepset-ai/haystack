@@ -34,6 +34,7 @@ class AzureOpenAIDocumentEmbedder:
         azure_endpoint: Optional[str] = None,
         api_version: Optional[str] = "2023-05-15",
         azure_deployment: str = "text-embedding-ada-002",
+        dimensions: Optional[int] = None,
         api_key: Optional[Secret] = Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=False),
         azure_ad_token: Optional[Secret] = Secret.from_env_var("AZURE_OPENAI_AD_TOKEN", strict=False),
         organization: Optional[str] = None,
@@ -53,6 +54,8 @@ class AzureOpenAIDocumentEmbedder:
             The version of the API to use.
         :param azure_deployment:
             The deployment of the model, usually matches the model name.
+        :param dimensions:
+            The number of dimensions the resulting output embeddings should have. Only supported in text-embedding-3 and later models.
         :param api_key:
             The API key used for authentication.
         :param azure_ad_token:
@@ -90,6 +93,7 @@ class AzureOpenAIDocumentEmbedder:
         self.api_version = api_version
         self.azure_endpoint = azure_endpoint
         self.azure_deployment = azure_deployment
+        self.dimensions = dimensions
         self.organization = organization
         self.prefix = prefix
         self.suffix = suffix
@@ -124,6 +128,7 @@ class AzureOpenAIDocumentEmbedder:
             self,
             azure_endpoint=self.azure_endpoint,
             azure_deployment=self.azure_deployment,
+            dimensions=self.dimensions,
             organization=self.organization,
             api_version=self.api_version,
             prefix=self.prefix,
@@ -175,7 +180,12 @@ class AzureOpenAIDocumentEmbedder:
         meta: Dict[str, Any] = {"model": "", "usage": {"prompt_tokens": 0, "total_tokens": 0}}
         for i in tqdm(range(0, len(texts_to_embed), batch_size), desc="Embedding Texts"):
             batch = texts_to_embed[i : i + batch_size]
-            response = self._client.embeddings.create(model=self.azure_deployment, input=batch)
+            if self.dimensions is not None:
+                response = self._client.embeddings.create(
+                    model=self.azure_deployment, dimensions=self.dimensions, input=batch
+                )
+            else:
+                response = self._client.embeddings.create(model=self.azure_deployment, input=batch)
 
             # Append embeddings to the list
             all_embeddings.extend(el.embedding for el in response.data)

@@ -1,3 +1,4 @@
+import json
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
@@ -45,6 +46,8 @@ class HuggingFaceTEITextEmbedder:
         token: Optional[Secret] = Secret.from_env_var("HF_API_TOKEN", strict=False),
         prefix: str = "",
         suffix: str = "",
+        truncate: bool = True,
+        normalize: bool = False,
     ):
         """
         Create an HuggingFaceTEITextEmbedder component.
@@ -61,6 +64,15 @@ class HuggingFaceTEITextEmbedder:
             A string to add at the beginning of each text.
         :param suffix:
             A string to add at the end of each text.
+        :param truncate:
+            Truncate input text from the end to the maximum length supported by the model. This option is only available
+            for self-deployed Text Embedding Inference (TEI) endpoints and paid HF Inference Endpoints deployed with
+            TEI. It will be ignored when used with free HF Inference endpoints or paid HF Inference endpoints deployed
+            without TEI.
+        :param normalize:
+            Normalize the embeddings to unit length. This option is only available for self-deployed Text Embedding
+            Inference (TEI) endpoints and paid HF Inference Endpoints deployed with TEI. It will be ignored when used
+            with free HF Inference endpoints or paid HF Inference endpoints deployed without TEI.
         """
         huggingface_hub_import.check()
 
@@ -78,6 +90,8 @@ class HuggingFaceTEITextEmbedder:
         self.client = InferenceClient(url or model, token=token.resolve_value() if token else None)
         self.prefix = prefix
         self.suffix = suffix
+        self.truncate = truncate
+        self.normalize = normalize
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -93,6 +107,8 @@ class HuggingFaceTEITextEmbedder:
             prefix=self.prefix,
             suffix=self.suffix,
             token=self.token.to_dict() if self.token else None,
+            truncate=self.truncate,
+            normalize=self.normalize,
         )
 
     @classmethod
@@ -135,8 +151,10 @@ class HuggingFaceTEITextEmbedder:
 
         text_to_embed = self.prefix + text + self.suffix
 
-        embeddings = self.client.feature_extraction(text=[text_to_embed])
-        # The client returns a numpy array
-        embedding = embeddings.tolist()[0]
+        response = self.client.post(
+            json={"inputs": [text_to_embed], "truncate": self.truncate, "normalize": self.normalize},
+            task="feature-extraction",
+        )
+        embedding = json.loads(response.decode())[0]
 
         return {"embedding": embedding}

@@ -1,3 +1,4 @@
+import json
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
@@ -50,6 +51,8 @@ class HuggingFaceTEIDocumentEmbedder:
         token: Optional[Secret] = Secret.from_env_var("HF_API_TOKEN", strict=False),
         prefix: str = "",
         suffix: str = "",
+        truncate: bool = True,
+        normalize: bool = False,
         batch_size: int = 32,
         progress_bar: bool = True,
         meta_fields_to_embed: Optional[List[str]] = None,
@@ -70,6 +73,15 @@ class HuggingFaceTEIDocumentEmbedder:
             A string to add at the beginning of each text.
         :param suffix:
             A string to add at the end of each text.
+        :param truncate:
+            Truncate input text from the end to the maximum length supported by the model. This option is only available
+            for self-deployed Text Embedding Inference (TEI) endpoints and paid HF Inference Endpoints deployed with
+            TEI. It will be ignored when used with free HF Inference endpoints or paid HF Inference endpoints deployed
+            without TEI.
+        :param normalize:
+            Normalize the embeddings to unit length. This option is only available for self-deployed Text Embedding
+            Inference (TEI) endpoints and paid HF Inference Endpoints deployed with TEI. It will be ignored when used
+            with free HF Inference endpoints or paid HF Inference endpoints deployed without TEI.
         :param batch_size:
             Number of Documents to encode at once.
         :param progress_bar:
@@ -95,6 +107,8 @@ class HuggingFaceTEIDocumentEmbedder:
         self.client = InferenceClient(url or model, token=token.resolve_value() if token else None)
         self.prefix = prefix
         self.suffix = suffix
+        self.truncate = truncate
+        self.normalize = normalize
         self.batch_size = batch_size
         self.progress_bar = progress_bar
         self.meta_fields_to_embed = meta_fields_to_embed or []
@@ -113,6 +127,8 @@ class HuggingFaceTEIDocumentEmbedder:
             url=self.url,
             prefix=self.prefix,
             suffix=self.suffix,
+            truncate=self.truncate,
+            normalize=self.normalize,
             batch_size=self.batch_size,
             progress_bar=self.progress_bar,
             meta_fields_to_embed=self.meta_fields_to_embed,
@@ -167,8 +183,12 @@ class HuggingFaceTEIDocumentEmbedder:
             range(0, len(texts_to_embed), batch_size), disable=not self.progress_bar, desc="Calculating embeddings"
         ):
             batch = texts_to_embed[i : i + batch_size]
-            embeddings = self.client.feature_extraction(text=batch)
-            all_embeddings.extend(embeddings.tolist())
+            response = self.client.post(
+                json={"inputs": batch, "truncate": self.truncate, "normalize": self.normalize},
+                task="feature-extraction",
+            )
+            embeddings = json.loads(response.decode())
+            all_embeddings.extend(embeddings)
 
         return all_embeddings
 
