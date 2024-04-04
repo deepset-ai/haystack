@@ -1,7 +1,9 @@
 name: run docstrings linting
 
 on:
-  pull_request:
+  push:
+    branches:
+      - docstrings-linting
 
 jobs:
   rebase:
@@ -10,12 +12,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Fetch branches
-        run: git fetch origin docstrings-linting:docstrings-linting
-
-      - name: Rebase onto main
-        run: git rebase main
 
       - name: Install Hatch
         run: pip install hatch==${{ env.HATCH_VERSION }}
