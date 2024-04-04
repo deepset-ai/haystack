@@ -166,7 +166,6 @@ class LLMEvaluator:
 
             self.validate_outputs(expected=self.outputs, received=result["replies"][0])
             parsed_result = json.loads(result["replies"][0])
-            parsed_result["name"] = "llm"
             results.append(parsed_result)
 
         return {"results": results}
