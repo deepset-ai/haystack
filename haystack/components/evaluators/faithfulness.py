@@ -1,36 +1,60 @@
 from typing import Any, Dict, List, Optional, Tuple, Type
 
+from numpy import mean as np_mean
+
 from haystack import default_from_dict
-from haystack.components.evaluators import LLMEvaluator
+from haystack.components.evaluators.llm_evaluator import LLMEvaluator
 from haystack.core.component import component
 from haystack.utils import Secret, deserialize_secrets_inplace
 
 
-@component
 class FaithfulnessEvaluator(LLMEvaluator):
     """
-    Evaluator that checks if the predicted answers can be inferred from the retrieved documents.
-    For each sample, the result is binary, either 1 if the predicted answer can be inferred from the retrieved
-    documents, or 0 otherwise.
+    Evaluator that checks if a generated answer can be inferred from the provided contexts.
+
+    An LLM separates the answer into multiple statements and checks whether the statement can be inferred from the
+    context or not. The final score for the full answer is a number from 0.0 to 1.0. It represents the proportion of
+    statements that can be inferred from the provided contexts.
 
     Usage example:
     ```python
     from haystack.components.evaluators import FaithfulnessEvaluator
 
+    questions = ["Which is the most popular global sport?", "Who created the Python language?"]
+    contexts = [
+        [
+            "The popularity of sports can be measured in various ways, including TV viewership, social media presence, number of participants, and economic impact. Football is undoubtedly the world's most popular sport with major events like the FIFA World Cup and sports personalities like Ronaldo and Messi, drawing a followership of more than 4 billion people."
+        ],
+        [
+            "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming language. Its design philosophy emphasizes code readability, and its language constructs aim to help programmers write clear, logical code for both small and large-scale software projects."
+        ],
+    ]
+    responses = [
+        "Football is the most popular sport with around 4 billion followers worldwide.",
+        "Python is a high-level general-purpose programming language that was created by George Lucas.",
+    ]
     evaluator = FaithfulnessEvaluator()
     result = evaluator.run(
-        questions=["What is the capital of Germany?", "What is the capital of France?"],
-        contexts=[["Berlin is the capital of Germany."], ["Paris is the capital of France."]],
-        responses=["Berlin", "Paris"],
+        questions=questions,
+        contexts=contexts,
+        responses=responses,
     )
-    print(result["result"])
-    # 1.0
+    print(results["evaluator"])
+    # {'results': [{'statements': ["Football is undoubtedly the world's most popular sport.", 'Football has around 4
+    # billion followers worldwide.'], 'statement_scores': [1, 1], 'name': 'llm', 'score': 1.0}, {'statements': ['Python
+    # is a high-level general-purpose programming language.', 'Python was created by George Lucas.'], 'statement_scores':
+    # [1, 0], 'name': 'llm', 'score': 0.5}], 'score': 0.75, 'individual_scores': [1.0, 0.5]}
+
     ```
     """
 
     def __init__(
         self,
-        instructions: str = "Can the answer be inferred from the context? Answer with 1 if yes, otherwise 0.",
+        instructions: str = "Your task is to judge the faithfulness or groundedness of statements based on context "
+        "information. First, please extract statements from a provided response to a question. "
+        "Second, calculate a faithfulness score for each statement made in the response. "
+        "The score is 1 if the statement can be inferred from the provided context or 0 if it "
+        "cannot be inferred.",
         inputs: Optional[List[Tuple[str, Type[List]]]] = None,
         outputs: Optional[List[str]] = None,
         examples: Optional[List[Dict[str, Any]]] = None,
@@ -42,7 +66,6 @@ class FaithfulnessEvaluator(LLMEvaluator):
 
         :param instructions:
             The prompt instructions to use for evaluation.
-            Should be a question about the inputs that can be answered with yes or no.
         :param inputs:
             The inputs that the component expects as incoming connections and that it evaluates.
             Each input is a tuple of an input name and input type. Input types must be lists.
@@ -63,15 +86,18 @@ class FaithfulnessEvaluator(LLMEvaluator):
         """
         self.instructions = instructions
         self.inputs = inputs or [("questions", List[str]), ("contexts", List[List[str]]), ("responses", List[str])]
-        self.outputs = outputs or ["score"]
+        self.outputs = outputs or ["statements", "statement_scores"]
         self.examples = examples or [
             {
                 "inputs": {
-                    "questions": "What is the capital of Germany?",
-                    "contexts": ["Berlin is the capital of Germany."],
-                    "responses": "Berlin",
+                    "questions": "What is the capital of Germany and when was it founded?",
+                    "contexts": ["Berlin is the capital of Germany and was founded in 1244."],
+                    "responses": "The capital of Germany, Berlin, was founded in the 13th century.",
                 },
-                "outputs": {"score": 1},
+                "outputs": {
+                    "statements": ["Berlin is the capital of Germany.", "Berlin was founded in 1244."],
+                    "statement_scores": [1, 1],
+                },
             },
             {
                 "inputs": {
@@ -79,15 +105,56 @@ class FaithfulnessEvaluator(LLMEvaluator):
                     "contexts": ["Berlin is the capital of Germany."],
                     "responses": "Paris",
                 },
-                "outputs": {"score": 0},
+                "outputs": {"statements": ["Paris is the capital of France."], "statement_scores": [0]},
+            },
+            {
+                "inputs": {
+                    "questions": "What is the capital of Italy?",
+                    "contexts": ["Rome is the capital of Italy."],
+                    "responses": "Rome is the capital of Italy with more than 4 million inhabitants.",
+                },
+                "outputs": {
+                    "statements": ["Rome is the capital of Italy.", "Rome has more than 4 million inhabitants."],
+                    "statement_scores": [1, 0],
+                },
             },
         ]
         self.api = api
         self.api_key = api_key
 
         super().__init__(
-            instructions=instructions, inputs=inputs, outputs=outputs, examples=examples, api=api, api_key=api_key
+            instructions=self.instructions,
+            inputs=self.inputs,
+            outputs=self.outputs,
+            examples=self.examples,
+            api=self.api,
+            api_key=self.api_key,
         )
+
+    @component.output_types(results=List[Dict[str, Any]])
+    def run(self, **inputs) -> Dict[str, Any]:
+        """
+        Run the LLM evaluator.
+
+        :param inputs:
+            The input values to evaluate. The keys are the input names and the values are lists of input values.
+        :returns:
+            A dictionary with the following outputs:
+                - `score`: Mean faithfulness score over all the provided input answers.
+                - `individual_scores`: A list of faithfulness scores for each input answer.
+                - `results`: A list of dictionaries with `statements` and `statement_scores` for each input answer.
+        """
+        result = super().run(**inputs)
+
+        # calculate average statement faithfulness score per query
+        for res in result["results"]:
+            res["score"] = np_mean(res["statement_scores"])
+
+        # calculate average answer faithfulness score over all queries
+        result["score"] = np_mean([res["score"] for res in result["results"]])
+        result["individual_scores"] = [res["score"] for res in result["results"]]
+
+        return result
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "FaithfulnessEvaluator":

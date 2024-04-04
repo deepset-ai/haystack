@@ -69,3 +69,38 @@ class TestFaithfulnessEvaluator:
         assert component.examples == [
             {"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"score": 0}}
         ]
+
+    def test_run_calculates_mean_score(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = FaithfulnessEvaluator()
+
+        def generator_run(self, *args, **kwargs):
+            if "Football" in kwargs["prompt"]:
+                return {"replies": ['{"statements": ["a", "b"], "statement_scores": [1, 0]}']}
+            else:
+                return {"replies": ['{"statements": ["c", "d"], "statement_scores": [1, 1]}']}
+
+        monkeypatch.setattr("haystack.components.generators.openai.OpenAIGenerator.run", generator_run)
+
+        questions = ["Which is the most popular global sport?", "Who created the Python language?"]
+        contexts = [
+            [
+                "The popularity of sports can be measured in various ways, including TV viewership, social media presence, number of participants, and economic impact. Football is undoubtedly the world's most popular sport with major events like the FIFA World Cup and sports personalities like Ronaldo and Messi, drawing a followership of more than 4 billion people."
+            ],
+            [
+                "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming language. Its design philosophy emphasizes code readability, and its language constructs aim to help programmers write clear, logical code for both small and large-scale software projects."
+            ],
+        ]
+        responses = [
+            "Football is the most popular sport with around 4 billion followers worldwide.",
+            "Python is a high-level general-purpose programming language that was created by George Lucas.",
+        ]
+        results = component.run(questions=questions, contexts=contexts, responses=responses)
+        assert results == {
+            "individual_scores": [0.5, 1],
+            "results": [
+                {"name": "llm", "score": 0.5, "statement_scores": [1, 0], "statements": ["a", "b"]},
+                {"name": "llm", "score": 1, "statement_scores": [1, 1], "statements": ["c", "d"]},
+            ],
+            "score": 0.75,
+        }
