@@ -122,8 +122,8 @@ class TestFaithfulnessEvaluator:
         assert results == {
             "individual_scores": [0.5, 1],
             "results": [
-                {"name": "llm", "score": 0.5, "statement_scores": [1, 0], "statements": ["a", "b"]},
-                {"name": "llm", "score": 1, "statement_scores": [1, 1], "statements": ["c", "d"]},
+                {"score": 0.5, "statement_scores": [1, 0], "statements": ["a", "b"]},
+                {"score": 1, "statement_scores": [1, 1], "statements": ["c", "d"]},
             ],
             "score": 0.75,
         }
