@@ -30,37 +30,50 @@ class HuggingFaceAPIChatGenerator:
 
     Example usage with the free Serverless Inference API:
     ```python
-    from haystack.components.generators import HuggingFaceAPIGenerator
+    from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
+    from haystack.dataclasses import ChatMessage
     from haystack.utils import Secret
 
+    messages = [ChatMessage.from_system("\\nYou are a helpful, respectful and honest assistant"),
+                ChatMessage.from_user("What's Natural Language Processing?")]
+
+
     generator = HuggingFaceAPIGenerator(api_type="serverless_inference_api",
-                                        api_params={"model": "mistralai/Mistral-7B-v0.1"},
+                                        api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
                                         token=Secret.from_token("<your-api-key>"))
 
-    result = generator.run(prompt="What's Natural Language Processing?")
+    result = generator.run(messages)
     print(result)
     ```
 
     Example usage with paid Inference Endpoints:
     ```python
-    from haystack.components.generators import HuggingFaceAPIGenerator
+    from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
+    from haystack.dataclasses import ChatMessage
     from haystack.utils import Secret
 
-    generator = HuggingFaceAPIGenerator(api_type="inference_endpoints",
-                                        api_params={"url": "<your-inference-endpoint-url>"},
-                                        token=Secret.from_token("<your-api-key>"))
+    messages = [ChatMessage.from_system("\\nYou are a helpful, respectful and honest assistant"),
+                ChatMessage.from_user("What's Natural Language Processing?")]
 
-    result = generator.run(prompt="What's Natural Language Processing?")
+    generator = HuggingFaceAPIChatGenerator(api_type="inference_endpoints",
+                                            api_params={"url": "<your-inference-endpoint-url>"},
+                                            token=Secret.from_token("<your-api-key>"))
+
+    result = generator.run(messages)
     print(result)
 
     Example usage with self-hosted Text Generation Inference:
     ```python
-    from haystack.components.generators import HuggingFaceAPIGenerator
+    from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
+    from haystack.dataclasses import ChatMessage
 
-    generator = HuggingFaceAPIGenerator(api_type="text_generation_inference",
-                                        api_params={"url": "http://localhost:8080"})
+    messages = [ChatMessage.from_system("\\nYou are a helpful, respectful and honest assistant"),
+                ChatMessage.from_user("What's Natural Language Processing?")]
 
-    result = generator.run(prompt="What's Natural Language Processing?")
+    generator = HuggingFaceAPIChatGenerator(api_type="text_generation_inference",
+                                            api_params={"url": "http://localhost:8080"})
+
+    result = generator.run(messages)
     print(result)
     ```
     """
@@ -75,7 +88,7 @@ class HuggingFaceAPIChatGenerator:
         streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
     ):
         """
-        Initialize the HuggingFaceAPIGenerator instance.
+        Initialize the HuggingFaceAPIChatGenerator instance.
 
         :param api_type:
             The type of Hugging Face API to use.
