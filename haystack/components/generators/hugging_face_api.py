@@ -22,6 +22,50 @@ logger = logging.getLogger(__name__)
 
 @component
 class HuggingFaceAPIGenerator:
+    """
+    This component can be used to generate text using different Hugging Face APIs:
+    - [free Serverless Inference API]((https://huggingface.co/inference-api)
+    - [paid Inference Endpoints](https://huggingface.co/inference-endpoints)
+    - [self-hosted Text Generation Inference](https://github.com/huggingface/text-generation-inference)
+
+
+    Example usage with the free Serverless Inference API:
+    ```python
+    from haystack.components.generators import HuggingFaceAPIGenerator
+    from haystack.utils import Secret
+
+    generator = HuggingFaceAPIGenerator(api_type="serverless_inference_api",
+                                        api_params={"model": "mistralai/Mistral-7B-v0.1"},
+                                        token=Secret.from_token("<your-api-key>"))
+
+    result = generator.run(prompt="What's Natural Language Processing?")
+    print(result)
+    ```
+
+    Example usage with paid Inference Endpoints:
+    ```python
+    from haystack.components.generators import HuggingFaceAPIGenerator
+    from haystack.utils import Secret
+
+    generator = HuggingFaceAPIGenerator(api_type="inference_endpoints",
+                                        api_params={"url": "<your-inference-endpoint-url>"},
+                                        token=Secret.from_token("<your-api-key>"))
+
+    result = generator.run(prompt="What's Natural Language Processing?")
+    print(result)
+
+    Example usage with self-hosted Text Generation Inference:
+    ```python
+    from haystack.components.generators import HuggingFaceAPIGenerator
+
+    generator = HuggingFaceAPIGenerator(api_type="text_generation_inference",
+                                        api_params={"url": "http://localhost:8080"})
+
+    result = generator.run(prompt="What's Natural Language Processing?")
+    print(result)
+    ```
+    """
+
     def __init__(
         self,
         api_type: Union[HFGenerationAPIType, str] = HFGenerationAPIType.SERVERLESS_INFERENCE_API,
@@ -31,6 +75,25 @@ class HuggingFaceAPIGenerator:
         stop_words: Optional[List[str]] = None,
         streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
     ):
+        """
+        Initialize the HuggingFaceAPIGenerator instance.
+
+        :param api_type:
+            The type of Hugging Face API to use.
+        :param api_params:
+            A dictionary containing the following keys:
+            - `model`: model ID on the Hugging Face Hub. Required when `api_type` is `SERVERLESS_INFERENCE_API`.
+            - `url`: URL of the inference endpoint. Required when `api_type` is `INFERENCE_ENDPOINTS` or `TEXT_GENERATION_INFERENCE`.
+        :param token: The HuggingFace token to use as HTTP bearer authorization
+            You can find your HF token in your [account settings](https://huggingface.co/settings/tokens)
+        :param generation_kwargs:
+            A dictionary containing keyword arguments to customize text generation.
+                Some examples: `max_new_tokens`, `temperature`, `top_k`, `top_p`,...
+                See Hugging Face's documentation for more information at: [text_generation](https://huggingface.co/docs/huggingface_hub/en/package_reference/inference_client#huggingface_hub.InferenceClient.text_generation).
+        :param stop_words: An optional list of strings representing the stop words.
+        :param streaming_callback: An optional callable for handling streaming responses.
+        """
+
         huggingface_hub_import.check()
 
         if isinstance(api_type, str):

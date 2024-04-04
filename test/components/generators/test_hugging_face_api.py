@@ -37,6 +37,10 @@ def streaming_callback_handler(x):
 
 
 class TestHuggingFaceAPIGenerator:
+    def test_init_invalid_api_type(self):
+        with pytest.raises(ValueError):
+            HuggingFaceAPIGenerator(api_type="invalid_api_type")
+
     def test_init_serverless(self, mock_check_valid_model):
         model = "HuggingFaceH4/zephyr-7b-alpha"
         generation_kwargs = {"temperature": 0.6}
@@ -266,4 +270,26 @@ class TestHuggingFaceAPIGenerator:
         assert "meta" in response
         assert isinstance(response["meta"], list)
         assert len(response["meta"]) > 0
-        assert [isinstance(reply, dict) for reply in response["replies"]]
+        assert [isinstance(meta, dict) for meta in response["meta"]]
+
+    @pytest.mark.integration
+    def test_run_serverless(self):
+        generator = HuggingFaceAPIGenerator(
+            api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
+            api_params={"model": "mistralai/Mistral-7B-v0.1"},
+            generation_kwargs={"max_new_tokens": 20},
+        )
+
+        response = generator.run("How are you?")
+
+        # Assert that the response contains the generated replies
+        assert "replies" in response
+        assert isinstance(response["replies"], list)
+        assert len(response["replies"]) > 0
+        assert [isinstance(reply, str) for reply in response["replies"]]
+
+        # Assert that the response contains the metadata
+        assert "meta" in response
+        assert isinstance(response["meta"], list)
+        assert len(response["meta"]) > 0
+        assert [isinstance(meta, dict) for meta in response["meta"]]
