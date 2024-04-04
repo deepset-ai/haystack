@@ -6,8 +6,12 @@ from haystack import Document, component
 @component
 class DocumentMeanAveragePrecision:
     """
-    Evaluator that calculates the mean average precision of the retrieved documents.
+    Evaluator that calculates the mean average precision of the retrieved documents, a metric
+    that measures how high retrieved documents are ranked.
     Each question can have multiple ground truth documents and multiple retrieved documents.
+
+    `DocumentMeanAveragePrecision` doesn't normalize its inputs, the `DocumentCleaner` component
+    can be used to clean the documents before passing them to this evaluator.
 
     Usage example:
     ```python
@@ -47,7 +51,7 @@ class DocumentMeanAveragePrecision:
         :returns:
             A dictionary with the following outputs:
             - `score` - The average of calculated scores.
-            - `invididual_scores` - A list of numbers from 0.0 to 1.0 that represents how high ground truth documents are ranked.
+            - `invididual_scores` - A list of numbers from 0.0 to 1.0 that represents how high retrieved documents are ranked.
         """
         if len(ground_truth_documents) != len(retrieved_documents):
             msg = "The length of ground_truth_documents and retrieved_documents must be the same."
