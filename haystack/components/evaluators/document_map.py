@@ -15,10 +15,6 @@ class DocumentMeanAveragePrecision:
 
     evaluator = DocumentMeanAveragePrecision()
     result = evaluator.run(
-        questions=[
-            "In what country is Normandy located?",
-            "When was the Latin version of the word Norman first recorded?",
-        ],
         ground_truth_documents=[
             [Document(content="France")],
             [Document(content="9th century"), Document(content="9th")],
@@ -38,17 +34,12 @@ class DocumentMeanAveragePrecision:
 
     @component.output_types(score=float, individual_scores=List[float])
     def run(
-        self,
-        questions: List[str],
-        ground_truth_documents: List[List[Document]],
-        retrieved_documents: List[List[Document]],
+        self, ground_truth_documents: List[List[Document]], retrieved_documents: List[List[Document]]
     ) -> Dict[str, Any]:
         """
         Run the DocumentMeanAveragePrecision on the given inputs.
         All lists must have the same length.
 
-        :param questions:
-            A list of questions.
         :param ground_truth_documents:
             A list of expected documents for each question.
         :param retrieved_documents:
@@ -58,8 +49,8 @@ class DocumentMeanAveragePrecision:
             - `score` - The average of calculated scores.
             - `invididual_scores` - A list of numbers from 0.0 to 1.0 that represents how high ground truth documents are ranked.
         """
-        if not len(questions) == len(ground_truth_documents) == len(retrieved_documents):
-            msg = "The length of questions, ground_truth_documents, and retrieved_documents must be the same."
+        if len(ground_truth_documents) != len(retrieved_documents):
+            msg = "The length of ground_truth_documents and retrieved_documents must be the same."
             raise ValueError(msg)
 
         individual_scores = []
@@ -84,6 +75,6 @@ class DocumentMeanAveragePrecision:
                     score = average_precision / relevant_documents
             individual_scores.append(score)
 
-        score = sum(individual_scores) / len(questions)
+        score = sum(individual_scores) / len(retrieved_documents)
 
         return {"score": score, "individual_scores": individual_scores}

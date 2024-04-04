@@ -7,7 +7,6 @@ from haystack.components.evaluators.document_map import DocumentMeanAveragePreci
 def test_run_with_all_matching():
     evaluator = DocumentMeanAveragePrecision()
     result = evaluator.run(
-        questions=["What is the capital of Germany?", "What is the capital of France?"],
         ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
         retrieved_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
     )
@@ -18,7 +17,6 @@ def test_run_with_all_matching():
 def test_run_with_no_matching():
     evaluator = DocumentMeanAveragePrecision()
     result = evaluator.run(
-        questions=["What is the capital of Germany?", "What is the capital of France?"],
         ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
         retrieved_documents=[[Document(content="Paris")], [Document(content="London")]],
     )
@@ -29,7 +27,6 @@ def test_run_with_no_matching():
 def test_run_with_partial_matching():
     evaluator = DocumentMeanAveragePrecision()
     result = evaluator.run(
-        questions=["What is the capital of Germany?", "What is the capital of France?"],
         ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
         retrieved_documents=[[Document(content="Berlin")], [Document(content="London")]],
     )
@@ -40,14 +37,6 @@ def test_run_with_partial_matching():
 def test_run_with_complex_data():
     evaluator = DocumentMeanAveragePrecision()
     result = evaluator.run(
-        questions=[
-            "In what country is Normandy located?",
-            "When was the Latin version of the word Norman first recorded?",
-            "What developed in Normandy during the 1100s?",
-            "In what century did important classical music developments occur in Normandy?",
-            "From which countries did the Norse originate?",
-            "What century did the Normans first gain their separate identity?",
-        ],
         ground_truth_documents=[
             [Document(content="France")],
             [Document(content="9th century"), Document(content="9th")],
@@ -77,15 +66,6 @@ def test_run_with_different_lengths():
     with pytest.raises(ValueError):
         evaluator = DocumentMeanAveragePrecision()
         evaluator.run(
-            questions=["What is the capital of Germany?"],
-            ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
-            retrieved_documents=[[Document(content="Berlin")], [Document(content="London")]],
-        )
-
-    with pytest.raises(ValueError):
-        evaluator = DocumentMeanAveragePrecision()
-        evaluator.run(
-            questions=["What is the capital of Germany?", "What is the capital of France?"],
             ground_truth_documents=[[Document(content="Berlin")]],
             retrieved_documents=[[Document(content="Berlin")], [Document(content="London")]],
         )
@@ -93,7 +73,6 @@ def test_run_with_different_lengths():
     with pytest.raises(ValueError):
         evaluator = DocumentMeanAveragePrecision()
         evaluator.run(
-            questions=["What is the capital of Germany?", "What is the capital of France?"],
             ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
             retrieved_documents=[[Document(content="Berlin")]],
         )
