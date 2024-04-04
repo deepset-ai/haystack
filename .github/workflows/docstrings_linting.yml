@@ -6,7 +6,7 @@ on:
       - docstrings-linting
 
 jobs:
-  rebase:
+  docstrings-linting:
     runs-on: ubuntu-latest
 
     steps:
@@ -16,6 +16,5 @@ jobs:
       - name: Install Hatch
         run: pip install hatch=="1.9.3"
 
-      - name: Pylint
-        run: |
-         hatch run test:lint
+      - name: ruff docstrings linting
+        run: hatch run ruff haystack
