@@ -204,7 +204,7 @@ class HuggingFaceAPIChatGenerator:
 
         generated_text = ""
 
-        for chunk in api_output:
+        for chunk in api_output:  # pylint: disable=not-an-iterable
             text = chunk.choices[0].delta.content
             if text:
                 generated_text += text
