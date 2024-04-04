@@ -143,7 +143,7 @@ class HuggingFaceLocalGenerator:
         if self.pipeline is None:
             self.pipeline = pipeline(**self.huggingface_pipeline_kwargs)
 
-        if self.stop_words and self.stopping_criteria_list is None:
+        if self.stop_words:
             stop_words_criteria = StopWordsCriteria(
                 tokenizer=self.pipeline.tokenizer, stop_words=self.stop_words, device=self.pipeline.device
             )

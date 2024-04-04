@@ -14,7 +14,7 @@ from haystack.utils.device import ComponentDevice
 with LazyImport(message="Run 'pip install transformers[torch]'") as torch_import:
     import torch
 
-with LazyImport(message="Run 'pip install huggingface_hub'") as huggingface_hub_import:
+with LazyImport(message="Run 'pip install \"huggingface_hub>=0.22.0\"'") as huggingface_hub_import:
     from huggingface_hub import HfApi, InferenceClient, model_info
     from huggingface_hub.utils import RepositoryNotFoundError
 
@@ -265,7 +265,12 @@ with LazyImport(message="Run 'pip install transformers[torch]'") as transformers
                     return True
             return False
 
-        def is_stop_word_found(self, generated_text_ids: torch.Tensor, stop_id: torch.Tensor) -> bool:
+        @staticmethod
+        def is_stop_word_found(generated_text_ids: torch.Tensor, stop_id: torch.Tensor) -> bool:
+            """
+            Performs phrase matching, checking if a sequence of stop tokens appears in a continuous
+            or sequential order within the generated text.
+            """
             generated_text_ids = generated_text_ids[-1]
             len_generated_text_ids = generated_text_ids.size(0)
             len_stop_id = stop_id.size(0)

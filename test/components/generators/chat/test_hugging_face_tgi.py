@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-from huggingface_hub.inference._text_generation import FinishReason, StreamDetails, TextGenerationStreamResponse, Token
+from huggingface_hub import TextGenerationOutputToken, TextGenerationStreamDetails, TextGenerationStreamOutput
 from huggingface_hub.utils import RepositoryNotFoundError
 
 from haystack.components.generators.chat import HuggingFaceTGIChatGenerator
@@ -328,13 +328,14 @@ class TestHuggingFaceTGIChatGenerator:
         # Create a fake streamed response
         # self needed here, don't remove
         def mock_iter(self):
-            yield TextGenerationStreamResponse(
-                generated_text=None, token=Token(id=1, text="I'm fine, thanks.", logprob=0.0, special=False)
-            )
-            yield TextGenerationStreamResponse(
+            yield TextGenerationStreamOutput(
                 generated_text=None,
-                token=Token(id=1, text="Ok bye", logprob=0.0, special=False),
-                details=StreamDetails(finish_reason=FinishReason.Length, generated_tokens=5),
+                token=TextGenerationOutputToken(id=1, text="I'm fine, thanks.", logprob=0.0, special=False),
+            )
+            yield TextGenerationStreamOutput(
+                generated_text=None,
+                token=TextGenerationOutputToken(id=1, text="Ok bye", logprob=0.0, special=False),
+                details=TextGenerationStreamDetails(finish_reason="length", generated_tokens=5, seed=None),
             )
 
         mock_response = Mock(**{"__iter__": mock_iter})
