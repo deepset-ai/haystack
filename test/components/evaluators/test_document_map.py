@@ -1,11 +1,11 @@
 import pytest
 
 from haystack import Document
-from haystack.components.evaluators.document_map import DocumentMeanAveragePrecision
+from haystack.components.evaluators.document_map import DocumentMAPEvaluator
 
 
 def test_run_with_all_matching():
-    evaluator = DocumentMeanAveragePrecision()
+    evaluator = DocumentMAPEvaluator()
     result = evaluator.run(
         ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
         retrieved_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
@@ -15,7 +15,7 @@ def test_run_with_all_matching():
 
 
 def test_run_with_no_matching():
-    evaluator = DocumentMeanAveragePrecision()
+    evaluator = DocumentMAPEvaluator()
     result = evaluator.run(
         ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
         retrieved_documents=[[Document(content="Paris")], [Document(content="London")]],
@@ -25,7 +25,7 @@ def test_run_with_no_matching():
 
 
 def test_run_with_partial_matching():
-    evaluator = DocumentMeanAveragePrecision()
+    evaluator = DocumentMAPEvaluator()
     result = evaluator.run(
         ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
         retrieved_documents=[[Document(content="Berlin")], [Document(content="London")]],
@@ -35,7 +35,7 @@ def test_run_with_partial_matching():
 
 
 def test_run_with_complex_data():
-    evaluator = DocumentMeanAveragePrecision()
+    evaluator = DocumentMAPEvaluator()
     result = evaluator.run(
         ground_truth_documents=[
             [Document(content="France")],
@@ -64,14 +64,14 @@ def test_run_with_complex_data():
 
 def test_run_with_different_lengths():
     with pytest.raises(ValueError):
-        evaluator = DocumentMeanAveragePrecision()
+        evaluator = DocumentMAPEvaluator()
         evaluator.run(
             ground_truth_documents=[[Document(content="Berlin")]],
             retrieved_documents=[[Document(content="Berlin")], [Document(content="London")]],
         )
 
     with pytest.raises(ValueError):
-        evaluator = DocumentMeanAveragePrecision()
+        evaluator = DocumentMAPEvaluator()
         evaluator.run(
             ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
             retrieved_documents=[[Document(content="Berlin")]],
