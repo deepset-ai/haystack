@@ -20,43 +20,25 @@ class FaithfulnessEvaluator(LLMEvaluator):
     ```python
     from haystack.components.evaluators import FaithfulnessEvaluator
 
-    questions = ["Which is the most popular global sport?", "Who created the Python language?"]
+    questions = ["Who created the Python language?"]
     contexts = [
-        [
-            "The popularity of sports can be measured in various ways, including TV viewership, social media presence, number of participants, and economic impact. Football is undoubtedly the world's most popular sport with major events like the FIFA World Cup and sports personalities like Ronaldo and Messi, drawing a followership of more than 4 billion people."
-        ],
         [
             "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming language. Its design philosophy emphasizes code readability, and its language constructs aim to help programmers write clear, logical code for both small and large-scale software projects."
         ],
     ]
-    responses = [
-        "Football is the most popular sport with around 4 billion followers worldwide.",
-        "Python is a high-level general-purpose programming language that was created by George Lucas.",
-    ]
+    responses = ["Python is a high-level general-purpose programming language that was created by George Lucas."]
     evaluator = FaithfulnessEvaluator()
-    result = evaluator.run(
-        questions=questions,
-        contexts=contexts,
-        responses=responses,
-    )
+    result = evaluator.run(questions=questions, contexts=contexts, responses=responses)
     print(results["evaluator"])
-    # {'results': [{'statements': ["Football is undoubtedly the world's most popular sport.", 'Football has around 4
-    # billion followers worldwide.'], 'statement_scores': [1, 1], 'name': 'llm', 'score': 1.0}, {'statements': ['Python
-    # is a high-level general-purpose programming language.', 'Python was created by George Lucas.'], 'statement_scores':
-    # [1, 0], 'name': 'llm', 'score': 0.5}], 'score': 0.75, 'individual_scores': [1.0, 0.5]}
+    # {'results': [{'statements': ['Python is a high-level general-purpose programming language.',
+    # 'Python was created by George Lucas.'], 'statement_scores':
+    # [1, 0], 'name': 'llm', 'score': 0.5}], 'score': 0.5, 'individual_scores': [0.5]}
 
     ```
     """
 
     def __init__(
         self,
-        instructions: str = "Your task is to judge the faithfulness or groundedness of statements based on context "
-        "information. First, please extract statements from a provided response to a question. "
-        "Second, calculate a faithfulness score for each statement made in the response. "
-        "The score is 1 if the statement can be inferred from the provided context or 0 if it "
-        "cannot be inferred.",
-        inputs: Optional[List[Tuple[str, Type[List]]]] = None,
-        outputs: Optional[List[str]] = None,
         examples: Optional[List[Dict[str, Any]]] = None,
         api: str = "openai",
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
@@ -64,19 +46,11 @@ class FaithfulnessEvaluator(LLMEvaluator):
         """
         Creates an instance of LLMEvaluator.
 
-        :param instructions:
-            The prompt instructions to use for evaluation.
-        :param inputs:
-            The inputs that the component expects as incoming connections and that it evaluates.
-            Each input is a tuple of an input name and input type. Input types must be lists.
-        :param outputs:
-            Output names of the evaluation results. They correspond to keys in the output dictionary.
-            The default is a single key "score".
         :param examples:
-            Few-shot examples conforming to the expected input and output format as defined in the `inputs` and
-             `outputs` parameters.
-            Each example is a dictionary with keys "inputs" and "outputs"
-            They contain the input and output as dictionaries respectively.
+            Few-shot examples conforming to the expected input and output format of FaithfulnessEvaluator.
+            Each example must be a dictionary with keys "inputs" and "outputs".
+            "inputs" must be a dictionary with keys "questions", "contexts", and "responses".
+            "outputs" must be a dictionary with "statements" and "statement_scores".
         :param api:
             The API to use for calling an LLM through a Generator.
             Supported APIs: "openai".
@@ -84,9 +58,15 @@ class FaithfulnessEvaluator(LLMEvaluator):
             The API key.
 
         """
-        self.instructions = instructions
-        self.inputs = inputs or [("questions", List[str]), ("contexts", List[List[str]]), ("responses", List[str])]
-        self.outputs = outputs or ["statements", "statement_scores"]
+        self.instructions = (
+            "Your task is to judge the faithfulness or groundedness of statements based "
+            "on context information. First, please extract statements from a provided "
+            "response to a question. Second, calculate a faithfulness score for each "
+            "statement made in the response. The score is 1 if the statement can be "
+            "inferred from the provided context or 0 if it cannot be inferred."
+        )
+        self.inputs = [("questions", List[str]), ("contexts", List[List[str]]), ("responses", List[str])]
+        self.outputs = ["statements", "statement_scores"]
         self.examples = examples or [
             {
                 "inputs": {
