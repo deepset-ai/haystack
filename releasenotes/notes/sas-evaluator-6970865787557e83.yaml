@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Add SASEvaluator, it can be used to calculate Semantic Answer Similarity of generated answers from an LLM
