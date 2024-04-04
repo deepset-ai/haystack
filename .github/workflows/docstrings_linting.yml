@@ -17,4 +17,4 @@ jobs:
         run: pip install hatch=="1.9.3"
 
       - name: ruff docstrings linting
-        run: hatch run ruff haystack
+        run: hatch run ruff check haystack
