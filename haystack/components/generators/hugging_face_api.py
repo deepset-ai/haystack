@@ -105,7 +105,7 @@ class HuggingFaceAPIGenerator:
             model = api_params.get("model")
             if model is None:
                 raise ValueError(
-                    "To use the Hugging Face Serverless Inference API, you need to specify the `model` parameter in `api_params`."
+                    "To use the Serverless Inference API, you need to specify the `model` parameter in `api_params`."
                 )
             check_valid_model(model, HFModelType.GENERATION, token)
             model_or_url = model
@@ -113,7 +113,7 @@ class HuggingFaceAPIGenerator:
             url = api_params.get("url")
             if url is None:
                 raise ValueError(
-                    "To use TGI or Inference Endpoints, you need to specify the `url` parameter in `api_params`."
+                    "To use Text Generation Inference or Inference Endpoints, you need to specify the `url` parameter in `api_params`."
                 )
             if not is_valid_http_url(url):
                 raise ValueError(f"Invalid URL: {url}")
