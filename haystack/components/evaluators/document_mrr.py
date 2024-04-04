@@ -4,20 +4,20 @@ from haystack import Document, component
 
 
 @component
-class DocumentMeanReciprocalRank:
+class DocumentMeanReciprocalRankEvaluator:
     """
     Evaluator that calculates the mean reciprocal rank of the retrieved documents.
 
     MRR measures how high the first retrieved document is ranked.
     Each question can have multiple ground truth documents and multiple retrieved documents.
 
-    `DocumentMeanReciprocalRank` doesn't normalize its inputs, the `DocumentCleaner` component
+    `DocumentMeanReciprocalRankEvaluator` doesn't normalize its inputs, the `DocumentCleaner` component
     should be used to clean and normalize the documents before passing them to this evaluator.
 
     Usage example:
     ```python
     from haystack.components.evaluators import AnswerExactMatchEvaluator
-    evaluator = DocumentMeanReciprocalRank()
+    evaluator = DocumentMeanReciprocalRankEvaluator()
     result = evaluator.run(
         ground_truth_documents=[
             [Document(content="France")],
@@ -40,7 +40,7 @@ class DocumentMeanReciprocalRank:
         self, ground_truth_documents: List[List[Document]], retrieved_documents: List[List[Document]]
     ) -> Dict[str, Any]:
         """
-        Run the DocumentMeanReciprocalRank on the given inputs.
+        Run the DocumentMeanReciprocalRankEvaluator on the given inputs.
 
         `ground_truth_documents` and `retrieved_documents` must have the same length.
 
