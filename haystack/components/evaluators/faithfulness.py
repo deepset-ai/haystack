@@ -51,6 +51,17 @@ class FaithfulnessEvaluator(LLMEvaluator):
             Each example must be a dictionary with keys "inputs" and "outputs".
             "inputs" must be a dictionary with keys "questions", "contexts", and "responses".
             "outputs" must be a dictionary with "statements" and "statement_scores".
+            Expected format:
+            [{
+                "inputs": {
+                    "questions": "What is the capital of Italy?", "contexts": ["Rome is the capital of Italy."],
+                    "responses": "Rome is the capital of Italy with more than 4 million inhabitants.",
+                },
+                "outputs": {
+                    "statements": ["Rome is the capital of Italy.", "Rome has more than 4 million inhabitants."],
+                    "statement_scores": [1, 0],
+                },
+            }]
         :param api:
             The API to use for calling an LLM through a Generator.
             Supported APIs: "openai".
