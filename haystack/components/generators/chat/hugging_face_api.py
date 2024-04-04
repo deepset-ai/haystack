@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 class HuggingFaceAPIChatGenerator:
     """
     This component can be used to generate text using different Hugging Face APIs with the ChatMessage format:
-    - [free Serverless Inference API]((https://huggingface.co/inference-api)
+    - [free Serverless Inference API](https://huggingface.co/inference-api)
     - [paid Inference Endpoints](https://huggingface.co/inference-endpoints)
     - [self-hosted Text Generation Inference](https://github.com/huggingface/text-generation-inference)
 
