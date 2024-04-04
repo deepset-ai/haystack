@@ -16,7 +16,6 @@ class TestDocumentRecallEvaluatorSingleHit:
 
     def test_run_with_all_matching(self, evaluator):
         result = evaluator.run(
-            questions=["What is the capital of Germany?", "What is the capital of France?"],
             ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
             retrieved_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
         )
@@ -25,7 +24,6 @@ class TestDocumentRecallEvaluatorSingleHit:
 
     def test_run_with_no_matching(self, evaluator):
         result = evaluator.run(
-            questions=["What is the capital of Germany?", "What is the capital of France?"],
             ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
             retrieved_documents=[[Document(content="Paris")], [Document(content="London")]],
         )
@@ -34,7 +32,6 @@ class TestDocumentRecallEvaluatorSingleHit:
 
     def test_run_with_partial_matching(self, evaluator):
         result = evaluator.run(
-            questions=["What is the capital of Germany?", "What is the capital of France?"],
             ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
             retrieved_documents=[[Document(content="Berlin")], [Document(content="London")]],
         )
@@ -43,14 +40,6 @@ class TestDocumentRecallEvaluatorSingleHit:
 
     def test_run_with_complex_data(self, evaluator):
         result = evaluator.run(
-            questions=[
-                "In what country is Normandy located?",
-                "When was the Latin version of the word Norman first recorded?",
-                "What developed in Normandy during the 1100s?",
-                "In what century did important classical music developments occur in Normandy?",
-                "From which countries did the Norse originate?",
-                "What century did the Normans first gain their separate identity?",
-            ],
             ground_truth_documents=[
                 [Document(content="France")],
                 [Document(content="9th century"), Document(content="9th")],
@@ -78,21 +67,12 @@ class TestDocumentRecallEvaluatorSingleHit:
     def test_run_with_different_lengths(self, evaluator):
         with pytest.raises(ValueError):
             evaluator.run(
-                questions=["What is the capital of Germany?"],
-                ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
-                retrieved_documents=[[Document(content="Berlin")], [Document(content="London")]],
-            )
-
-        with pytest.raises(ValueError):
-            evaluator.run(
-                questions=["What is the capital of Germany?", "What is the capital of France?"],
                 ground_truth_documents=[[Document(content="Berlin")]],
                 retrieved_documents=[[Document(content="Berlin")], [Document(content="London")]],
             )
 
         with pytest.raises(ValueError):
             evaluator.run(
-                questions=["What is the capital of Germany?", "What is the capital of France?"],
                 ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
                 retrieved_documents=[[Document(content="Berlin")]],
             )
@@ -105,7 +85,6 @@ class TestDocumentRecallEvaluatorMultiHit:
 
     def test_run_with_all_matching(self, evaluator):
         result = evaluator.run(
-            questions=["What is the capital of Germany?", "What is the capital of France?"],
             ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
             retrieved_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
         )
@@ -114,7 +93,6 @@ class TestDocumentRecallEvaluatorMultiHit:
 
     def test_run_with_no_matching(self, evaluator):
         result = evaluator.run(
-            questions=["What is the capital of Germany?", "What is the capital of France?"],
             ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
             retrieved_documents=[[Document(content="Paris")], [Document(content="London")]],
         )
@@ -123,7 +101,6 @@ class TestDocumentRecallEvaluatorMultiHit:
 
     def test_run_with_partial_matching(self, evaluator):
         result = evaluator.run(
-            questions=["What is the capital of Germany?", "What is the capital of France?"],
             ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
             retrieved_documents=[[Document(content="Berlin")], [Document(content="London")]],
         )
@@ -132,14 +109,6 @@ class TestDocumentRecallEvaluatorMultiHit:
 
     def test_run_with_complex_data(self, evaluator):
         result = evaluator.run(
-            questions=[
-                "In what country is Normandy located?",
-                "When was the Latin version of the word Norman first recorded?",
-                "What developed in Normandy during the 1100s?",
-                "In what century did important classical music developments occur in Normandy?",
-                "From which countries did the Norse originate?",
-                "What century did the Normans first gain their separate identity?",
-            ],
             ground_truth_documents=[
                 [Document(content="France")],
                 [Document(content="9th century"), Document(content="9th")],
@@ -172,21 +141,12 @@ class TestDocumentRecallEvaluatorMultiHit:
     def test_run_with_different_lengths(self, evaluator):
         with pytest.raises(ValueError):
             evaluator.run(
-                questions=["What is the capital of Germany?"],
-                ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
-                retrieved_documents=[[Document(content="Berlin")], [Document(content="London")]],
-            )
-
-        with pytest.raises(ValueError):
-            evaluator.run(
-                questions=["What is the capital of Germany?", "What is the capital of France?"],
                 ground_truth_documents=[[Document(content="Berlin")]],
                 retrieved_documents=[[Document(content="Berlin")], [Document(content="London")]],
             )
 
         with pytest.raises(ValueError):
             evaluator.run(
-                questions=["What is the capital of Germany?", "What is the capital of France?"],
                 ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
                 retrieved_documents=[[Document(content="Berlin")]],
             )

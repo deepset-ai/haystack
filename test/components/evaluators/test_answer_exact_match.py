@@ -5,33 +5,21 @@ from haystack.components.evaluators import AnswerExactMatchEvaluator
 
 def test_run_with_all_matching():
     evaluator = AnswerExactMatchEvaluator()
-    result = evaluator.run(
-        questions=["What is the capital of Germany?", "What is the capital of France?"],
-        ground_truth_answers=[["Berlin"], ["Paris"]],
-        predicted_answers=[["Berlin"], ["Paris"]],
-    )
+    result = evaluator.run(ground_truth_answers=[["Berlin"], ["Paris"]], predicted_answers=[["Berlin"], ["Paris"]])
 
     assert result == {"individual_scores": [1, 1], "score": 1.0}
 
 
 def test_run_with_no_matching():
     evaluator = AnswerExactMatchEvaluator()
-    result = evaluator.run(
-        questions=["What is the capital of Germany?", "What is the capital of France?"],
-        ground_truth_answers=[["Berlin"], ["Paris"]],
-        predicted_answers=[["Paris"], ["London"]],
-    )
+    result = evaluator.run(ground_truth_answers=[["Berlin"], ["Paris"]], predicted_answers=[["Paris"], ["London"]])
 
     assert result == {"individual_scores": [0, 0], "score": 0.0}
 
 
 def test_run_with_partial_matching():
     evaluator = AnswerExactMatchEvaluator()
-    result = evaluator.run(
-        questions=["What is the capital of Germany?", "What is the capital of France?"],
-        ground_truth_answers=[["Berlin"], ["Paris"]],
-        predicted_answers=[["Berlin"], ["London"]],
-    )
+    result = evaluator.run(ground_truth_answers=[["Berlin"], ["Paris"]], predicted_answers=[["Berlin"], ["London"]])
 
     assert result == {"individual_scores": [1, 0], "score": 0.5}
 
@@ -39,14 +27,6 @@ def test_run_with_partial_matching():
 def test_run_with_complex_data():
     evaluator = AnswerExactMatchEvaluator()
     result = evaluator.run(
-        questions=[
-            "In what country is Normandy located?",
-            "When was the Latin version of the word Norman first recorded?",
-            "What developed in Normandy during the 1100s?",
-            "In what century did important classical music developments occur in Normandy?",
-            "From which countries did the Norse originate?",
-            "What century did the Normans first gain their separate identity?",
-        ],
         ground_truth_answers=[
             ["France"],
             ["9th century", "9th"],
@@ -71,22 +51,7 @@ def test_run_with_different_lengths():
     evaluator = AnswerExactMatchEvaluator()
 
     with pytest.raises(ValueError):
-        evaluator.run(
-            questions=["What is the capital of Germany?"],
-            ground_truth_answers=[["Berlin"], ["Paris"]],
-            predicted_answers=[["Berlin"], ["London"]],
-        )
+        evaluator.run(ground_truth_answers=[["Berlin"]], predicted_answers=[["Berlin"], ["London"]])
 
     with pytest.raises(ValueError):
-        evaluator.run(
-            questions=["What is the capital of Germany?", "What is the capital of France?"],
-            ground_truth_answers=[["Berlin"]],
-            predicted_answers=[["Berlin"], ["London"]],
-        )
-
-    with pytest.raises(ValueError):
-        evaluator.run(
-            questions=["What is the capital of Germany?", "What is the capital of France?"],
-            ground_truth_answers=[["Berlin"], ["Paris"]],
-            predicted_answers=[["Berlin"]],
-        )
+        evaluator.run(ground_truth_answers=[["Berlin"], ["Paris"]], predicted_answers=[["Berlin"]])
