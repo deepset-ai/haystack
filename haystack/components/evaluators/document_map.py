@@ -11,7 +11,7 @@ class DocumentMeanAveragePrecision:
     Each question can have multiple ground truth documents and multiple retrieved documents.
 
     `DocumentMeanAveragePrecision` doesn't normalize its inputs, the `DocumentCleaner` component
-    can be used to clean the documents before passing them to this evaluator.
+    should be used to clean and normalize the documents before passing them to this evaluator.
 
     Usage example:
     ```python
