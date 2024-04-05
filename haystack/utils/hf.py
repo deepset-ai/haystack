@@ -28,8 +28,7 @@ class HFModelType(Enum):
 
 def serialize_hf_model_kwargs(kwargs: Dict[str, Any]):
     """
-    Recursively serialize HuggingFace specific model keyword arguments
-    in-place to make them JSON serializable.
+    Recursively serialize HuggingFace specific model keyword arguments in-place to make them JSON serializable.
 
     :param kwargs: The keyword arguments to serialize
     """
@@ -46,8 +45,7 @@ def serialize_hf_model_kwargs(kwargs: Dict[str, Any]):
 
 def deserialize_hf_model_kwargs(kwargs: Dict[str, Any]):
     """
-    Recursively deserialize HuggingFace specific model keyword arguments
-    in-place to make them JSON serializable.
+    Recursively deserialize HuggingFace specific model keyword arguments in-place to make them JSON serializable.
 
     :param kwargs: The keyword arguments to deserialize
     """
@@ -67,9 +65,10 @@ def deserialize_hf_model_kwargs(kwargs: Dict[str, Any]):
 
 def resolve_hf_device_map(device: Optional[ComponentDevice], model_kwargs: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     """
-    Update `model_kwargs` to include the keyword argument `device_map` based on `device` if `device_map` is not
-    already present in `model_kwargs`. This method is useful you want to force loading a transformers model when using
-    `AutoModel.from_pretrained` to use `device_map`.
+    Update `model_kwargs` to include the keyword argument `device_map` based on `device` if `device_map` is not already present in `model_kwargs`.
+
+    This method is useful you want to force loading a transformers model when using `AutoModel.from_pretrained` to
+    use `device_map`.
 
     We handle the edge case where `device` and `device_map` is specified by ignoring the `device` parameter and printing
     a warning.
@@ -166,6 +165,7 @@ def list_inference_deployed_models(headers: Optional[Dict] = None) -> List[str]:
 def check_valid_model(model_id: str, model_type: HFModelType, token: Optional[Secret]) -> None:
     """
     Check if the provided model ID corresponds to a valid model on HuggingFace Hub.
+
     Also check if the model is an embedding or generation model.
 
     :param model_id: A string representing the HuggingFace model ID.
@@ -259,6 +259,7 @@ with LazyImport(message="Run 'pip install transformers[torch]'") as transformers
             self.stop_ids = encoded_stop_words.input_ids.to(device)
 
         def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
+            """Check if any of the stop words are generated in the current text generation step."""
             for stop_id in self.stop_ids:
                 found_stop_word = self.is_stop_word_found(input_ids, stop_id)
                 if found_stop_word:
@@ -268,8 +269,9 @@ with LazyImport(message="Run 'pip install transformers[torch]'") as transformers
         @staticmethod
         def is_stop_word_found(generated_text_ids: torch.Tensor, stop_id: torch.Tensor) -> bool:
             """
-            Performs phrase matching, checking if a sequence of stop tokens appears in a continuous
-            or sequential order within the generated text.
+            Performs phrase matching.
+
+            Checks if a sequence of stop tokens appears in a continuous or sequential order within the generated text.
             """
             generated_text_ids = generated_text_ids[-1]
             len_generated_text_ids = generated_text_ids.size(0)
@@ -298,6 +300,7 @@ with LazyImport(message="Run 'pip install transformers[torch]'") as transformers
             self.stop_words = stop_words or []
 
         def on_finalized_text(self, word: str, stream_end: bool = False):
+            """Callback function for handling the generated text."""
             word_to_send = word + "\n" if stream_end else word
             if word_to_send.strip() not in self.stop_words:
                 self.token_handler(StreamingChunk(content=word_to_send))
