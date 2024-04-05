@@ -80,8 +80,8 @@ class HuggingFaceAPIDocumentEmbedder:
 
     def __init__(
         self,
-        api_type: Union[HFEmbeddingAPIType, str] = HFEmbeddingAPIType.SERVERLESS_INFERENCE_API,
-        api_params: Optional[Dict[str, str]] = None,
+        api_type: Union[HFEmbeddingAPIType, str],
+        api_params: Dict[str, str],
         token: Optional[Secret] = Secret.from_env_var("HF_API_TOKEN", strict=False),
         prefix: str = "",
         suffix: str = "",
