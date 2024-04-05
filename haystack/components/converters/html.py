@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, ClassVar, Dict, List, Literal, Optional, Union
 
 from boilerpy3 import extractors
 
@@ -26,6 +26,16 @@ class HTMLToDocument:
     # 'This is a text from the HTML file.'
     ```
     """
+
+    known_extractors: ClassVar[List[str]] = [
+        "DefaultExtractor",
+        "ArticleExtractor",
+        "ArticleSentencesExtractor",
+        "LargestContentExtractor",
+        "CanolaExtractor",
+        "KeepEverythingExtractor",
+        "NumWordsRulesExtractor",
+    ]
 
     def __init__(
         self,
@@ -100,32 +110,25 @@ class HTMLToDocument:
         meta_list = normalize_metadata(meta=meta, sources_count=len(sources))
 
         # Use all extractor types, ensuring user chosen extractor is first, preserve order, avoid duplicates
-        extractors_list = list(
-            dict.fromkeys(
-                [
-                    self.extractor_type,  # User chosen extractor is always tried first
-                    "DefaultExtractor",
-                    "ArticleExtractor",
-                    "ArticleSentencesExtractor",
-                    "LargestContentExtractor",
-                    "CanolaExtractor",
-                    "KeepEverythingExtractor",
-                    "NumWordsRulesExtractor",
-                ]
+        extractors_list = (
+            list(
+                dict.fromkeys(
+                    [self.extractor_type, *self.known_extractors]  # User chosen extractor is always tried first
+                )
             )
+            if self.try_others
+            else [self.extractor_type]
         )
 
         for source, metadata in zip(sources, meta_list):
             try:
                 bytestream = get_bytestream_from_source(source=source)
             except Exception:
-                logger.warning(f"Could not read {source}. Skipping it.")
+                logger.error(f"Could not read {source}. Skipping it.")
                 continue
 
             text = None
             for extractor_idx, extractor_name in enumerate(extractors_list):
-                if extractor_idx > 0 and not self.try_others:
-                    break
                 extractor_class = getattr(extractors, extractor_name)
                 extractor = extractor_class(raise_on_failure=False)
                 try:
@@ -144,7 +147,7 @@ class HTMLToDocument:
                 logger.warning(
                     f"Failed to extract text from {source} using extractors: {extractors_list}. Skipping it.",
                     source=source,
-                    extractors_list=extractors_list if self.try_others else extractors_list[0],
+                    extractors_list=extractors_list,
                 )
                 continue
 
