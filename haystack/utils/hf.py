@@ -26,13 +26,13 @@ class HFGenerationAPIType(Enum):
     API type to use for Hugging Face API Generators.
     """
 
-    # HF [Text Generation Inference (TGI)](https://github.com/huggingface/text-generation-inference)
+    # HF [Text Generation Inference (TGI)](https://github.com/huggingface/text-generation-inference).
     TEXT_GENERATION_INFERENCE = "text_generation_inference"
 
-    # HF [Inference Endpoints](https://huggingface.co/inference-endpoints)
+    # HF [Inference Endpoints](https://huggingface.co/inference-endpoints).
     INFERENCE_ENDPOINTS = "inference_endpoints"
 
-    # HF [Serverless Inference API](https://huggingface.co/inference-api)
+    # HF [Serverless Inference API](https://huggingface.co/inference-api).
     SERVERLESS_INFERENCE_API = "serverless_inference_api"
 
     def __str__(self):
