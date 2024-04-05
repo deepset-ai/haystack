@@ -5,6 +5,7 @@ import os.path
 from typing import Literal
 from unittest.mock import patch
 
+import pandas as pd
 import pytest
 from azure.ai.formrecognizer import AnalyzeResult
 
@@ -281,3 +282,23 @@ class TestAzureOCRDocumentConverter:
         assert "Sample Docx File" in documents[0].content
         assert "Now we are in Page 2" in documents[0].content
         assert "Page 3 was empty this is page 4" in documents[0].content
+
+    @patch("haystack.utils.auth.EnvVarSecret.resolve_value")
+    def test_hashing_dataframe(self, mock_resolve_value):
+        mock_resolve_value.return_value = "test_api_key"
+        component = AzureOCRDocumentConverter(endpoint="")
+
+        df = pd.DataFrame({"A": [1, 2, 3]})
+        hash_string_1 = component._hash_dataframe(df)
+        assert len(hash_string_1) == 64
+
+        df = pd.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]})
+        hash_string_2 = component._hash_dataframe(df)
+        assert len(hash_string_2) == 64
+
+        df = pd.DataFrame({"B": [4, 5, 6], "A": [1, 2, 3], "D": [7, 8, 9]})
+        hash_string_3 = component._hash_dataframe(df)
+        assert len(hash_string_3) == 64
+
+        # doesn't mean much, more for sanity check
+        assert hash_string_1 != hash_string_2 != hash_string_3

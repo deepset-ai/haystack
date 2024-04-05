@@ -287,7 +287,7 @@ class AzureOCRDocumentConverter:
             table_df = pd.DataFrame(columns=table_list[0], data=table_list[1:])
 
             # Use custom ID for tables, as columns might not be unique and thus failing in the default ID generation
-            pd_hashes = pd.util.hash_pandas_object(table_df, index=True).values
+            pd_hashes = self._hash_dataframe(table_df)
             data = f"{pd_hashes}{table_meta}"
             doc_id = hashlib.sha256(data.encode()).hexdigest()
             converted_tables.append(Document(id=doc_id, dataframe=table_df, meta=table_meta))
@@ -454,3 +454,27 @@ class AzureOCRDocumentConverter:
                 in_table = True
                 break
         return in_table
+
+    def _hash_dataframe(self, df: pd.DataFrame, desired_samples=10, hash_length=4) -> str:
+        """
+        Returns a hash of the DataFrame content. The hash is based on the content of the DataFrame.
+        :param df: The DataFrame to hash.
+        :param desired_samples: The desired number of samples to hash.
+        :param hash_length: The length of the hash for each sample.
+
+        :returns: A hash of the DataFrame content.
+        """
+        # take adaptive sample of rows to hash because we can have very large dataframes
+        hasher = hashlib.sha256()
+        total_rows = len(df)
+        # sample rate based on DataFrame size and desired number of samples
+        sample_rate = max(1, total_rows // desired_samples)
+
+        hashes = pd.util.hash_pandas_object(df, index=True)
+        sampled_hashes = hashes[::sample_rate]
+
+        for hash_value in sampled_hashes:
+            partial_hash = str(hash_value)[:hash_length].encode("utf-8")
+            hasher.update(partial_hash)
+
+        return hasher.hexdigest()
