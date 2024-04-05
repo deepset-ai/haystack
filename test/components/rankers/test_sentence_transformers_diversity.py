@@ -198,10 +198,12 @@ class TestSentenceTransformersDiversityRanker:
             ranker.run(query="test query", documents=documents)
 
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
-    def test_warm_up(self, similarity):
+    def test_warm_up(self, similarity, monkeypatch):
         """
         Test that ranker loads the SentenceTransformer model correctly during warm up.
         """
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)
+
         mock_model_class = MagicMock()
         mock_model_instance = MagicMock()
         mock_model_class.return_value = mock_model_instance
