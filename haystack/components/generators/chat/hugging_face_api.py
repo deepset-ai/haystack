@@ -33,12 +33,16 @@ class HuggingFaceAPIChatGenerator:
     from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
     from haystack.dataclasses import ChatMessage
     from haystack.utils import Secret
+    from haystack.utils.hf import HFGenerationAPIType
 
     messages = [ChatMessage.from_system("\\nYou are a helpful, respectful and honest assistant"),
                 ChatMessage.from_user("What's Natural Language Processing?")]
 
+    # the api_type can be expressed using the HFGenerationAPIType enum or as a string
+    api_type = HFGenerationAPIType.SERVERLESS_INFERENCE_API
+    api_type = "serverless_inference_api" # this is equivalent to the above
 
-    generator = HuggingFaceAPIChatGenerator(api_type="serverless_inference_api",
+    generator = HuggingFaceAPIChatGenerator(api_type=api_type,
                                             api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
                                             token=Secret.from_token("<your-api-key>"))
 
