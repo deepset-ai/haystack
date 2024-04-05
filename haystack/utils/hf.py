@@ -21,6 +21,28 @@ with LazyImport(message="Run 'pip install \"huggingface_hub>=0.22.0\"'") as hugg
 logger = logging.getLogger(__name__)
 
 
+class HFEmbeddingAPIType(Enum):
+    """
+    API type to use for Hugging Face API Embedders.
+    """
+
+    TEXT_EMBEDDINGS_INFERENCE = "text_embeddings_inference"
+    INFERENCE_ENDPOINTS = "inference_endpoints"
+    SERVERLESS_INFERENCE_API = "serverless_inference_api"
+
+    def __str__(self):
+        return self.value
+
+    @staticmethod
+    def from_str(string: str) -> "HFEmbeddingAPIType":
+        enum_map = {e.value: e for e in HFEmbeddingAPIType}
+        mode = enum_map.get(string)
+        if mode is None:
+            msg = f"Unknown Hugging Face API type '{string}'. Supported types are: {list(enum_map.keys())}"
+            raise ValueError(msg)
+        return mode
+
+
 class HFModelType(Enum):
     EMBEDDING = 1
     GENERATION = 2
