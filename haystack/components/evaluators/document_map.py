@@ -4,20 +4,20 @@ from haystack import Document, component
 
 
 @component
-class DocumentMeanAveragePrecision:
+class DocumentMAPEvaluator:
     """
     Evaluator that calculates the mean average precision of the retrieved documents, a metric
     that measures how high retrieved documents are ranked.
     Each question can have multiple ground truth documents and multiple retrieved documents.
 
-    `DocumentMeanAveragePrecision` doesn't normalize its inputs, the `DocumentCleaner` component
+    `DocumentMAPEvaluator` doesn't normalize its inputs, the `DocumentCleaner` component
     should be used to clean and normalize the documents before passing them to this evaluator.
 
     Usage example:
     ```python
     from haystack.components.evaluators import AnswerExactMatchEvaluator
 
-    evaluator = DocumentMeanAveragePrecision()
+    evaluator = DocumentMAPEvaluator()
     result = evaluator.run(
         ground_truth_documents=[
             [Document(content="France")],
@@ -41,7 +41,7 @@ class DocumentMeanAveragePrecision:
         self, ground_truth_documents: List[List[Document]], retrieved_documents: List[List[Document]]
     ) -> Dict[str, Any]:
         """
-        Run the DocumentMeanAveragePrecision on the given inputs.
+        Run the DocumentMAPEvaluator on the given inputs.
         All lists must have the same length.
 
         :param ground_truth_documents:

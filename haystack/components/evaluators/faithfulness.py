@@ -1,0 +1,161 @@
+from typing import Any, Dict, List, Optional
+
+from numpy import mean as np_mean
+
+from haystack import default_from_dict
+from haystack.components.evaluators.llm_evaluator import LLMEvaluator
+from haystack.core.component import component
+from haystack.utils import Secret, deserialize_secrets_inplace
+
+
+class FaithfulnessEvaluator(LLMEvaluator):
+    """
+    Evaluator that checks if a generated answer can be inferred from the provided contexts.
+
+    An LLM separates the answer into multiple statements and checks whether the statement can be inferred from the
+    context or not. The final score for the full answer is a number from 0.0 to 1.0. It represents the proportion of
+    statements that can be inferred from the provided contexts.
+
+    Usage example:
+    ```python
+    from haystack.components.evaluators import FaithfulnessEvaluator
+
+    questions = ["Who created the Python language?"]
+    contexts = [
+        [
+            "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming language. Its design philosophy emphasizes code readability, and its language constructs aim to help programmers write clear, logical code for both small and large-scale software projects."
+        ],
+    ]
+    responses = ["Python is a high-level general-purpose programming language that was created by George Lucas."]
+    evaluator = FaithfulnessEvaluator()
+    result = evaluator.run(questions=questions, contexts=contexts, responses=responses)
+    print(results["evaluator"])
+    # {'results': [{'statements': ['Python is a high-level general-purpose programming language.',
+    # 'Python was created by George Lucas.'], 'statement_scores':
+    # [1, 0], 'score': 0.5}], 'score': 0.5, 'individual_scores': [0.5]}
+
+    ```
+    """
+
+    def __init__(
+        self,
+        examples: Optional[List[Dict[str, Any]]] = None,
+        api: str = "openai",
+        api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
+    ):
+        """
+        Creates an instance of LLMEvaluator.
+
+        :param examples:
+            Few-shot examples conforming to the expected input and output format of FaithfulnessEvaluator.
+            Each example must be a dictionary with keys "inputs" and "outputs".
+            "inputs" must be a dictionary with keys "questions", "contexts", and "responses".
+            "outputs" must be a dictionary with "statements" and "statement_scores".
+            Expected format:
+            [{
+                "inputs": {
+                    "questions": "What is the capital of Italy?", "contexts": ["Rome is the capital of Italy."],
+                    "responses": "Rome is the capital of Italy with more than 4 million inhabitants.",
+                },
+                "outputs": {
+                    "statements": ["Rome is the capital of Italy.", "Rome has more than 4 million inhabitants."],
+                    "statement_scores": [1, 0],
+                },
+            }]
+        :param api:
+            The API to use for calling an LLM through a Generator.
+            Supported APIs: "openai".
+        :param api_key:
+            The API key.
+
+        """
+        self.instructions = (
+            "Your task is to judge the faithfulness or groundedness of statements based "
+            "on context information. First, please extract statements from a provided "
+            "response to a question. Second, calculate a faithfulness score for each "
+            "statement made in the response. The score is 1 if the statement can be "
+            "inferred from the provided context or 0 if it cannot be inferred."
+        )
+        self.inputs = [("questions", List[str]), ("contexts", List[List[str]]), ("responses", List[str])]
+        self.outputs = ["statements", "statement_scores"]
+        self.examples = examples or [
+            {
+                "inputs": {
+                    "questions": "What is the capital of Germany and when was it founded?",
+                    "contexts": ["Berlin is the capital of Germany and was founded in 1244."],
+                    "responses": "The capital of Germany, Berlin, was founded in the 13th century.",
+                },
+                "outputs": {
+                    "statements": ["Berlin is the capital of Germany.", "Berlin was founded in 1244."],
+                    "statement_scores": [1, 1],
+                },
+            },
+            {
+                "inputs": {
+                    "questions": "What is the capital of France?",
+                    "contexts": ["Berlin is the capital of Germany."],
+                    "responses": "Paris",
+                },
+                "outputs": {"statements": ["Paris is the capital of France."], "statement_scores": [0]},
+            },
+            {
+                "inputs": {
+                    "questions": "What is the capital of Italy?",
+                    "contexts": ["Rome is the capital of Italy."],
+                    "responses": "Rome is the capital of Italy with more than 4 million inhabitants.",
+                },
+                "outputs": {
+                    "statements": ["Rome is the capital of Italy.", "Rome has more than 4 million inhabitants."],
+                    "statement_scores": [1, 0],
+                },
+            },
+        ]
+        self.api = api
+        self.api_key = api_key
+
+        super().__init__(
+            instructions=self.instructions,
+            inputs=self.inputs,
+            outputs=self.outputs,
+            examples=self.examples,
+            api=self.api,
+            api_key=self.api_key,
+        )
+
+    @component.output_types(results=List[Dict[str, Any]])
+    def run(self, **inputs) -> Dict[str, Any]:
+        """
+        Run the LLM evaluator.
+
+        :param inputs:
+            The input values to evaluate. The keys are the input names and the values are lists of input values.
+        :returns:
+            A dictionary with the following outputs:
+                - `score`: Mean faithfulness score over all the provided input answers.
+                - `individual_scores`: A list of faithfulness scores for each input answer.
+                - `results`: A list of dictionaries with `statements` and `statement_scores` for each input answer.
+        """
+        result = super().run(**inputs)
+
+        # calculate average statement faithfulness score per query
+        for res in result["results"]:
+            res["score"] = np_mean(res["statement_scores"])
+
+        # calculate average answer faithfulness score over all queries
+        result["score"] = np_mean([res["score"] for res in result["results"]])
+        result["individual_scores"] = [res["score"] for res in result["results"]]
+
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "FaithfulnessEvaluator":
+        """
+        Deserialize this component from a dictionary.
+
+        :param data:
+            The dictionary representation of this component.
+        :returns:
+            The deserialized component instance.
+        """
+        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
+        return default_from_dict(cls, data)
