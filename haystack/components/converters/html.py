@@ -123,12 +123,12 @@ class HTMLToDocument:
         for source, metadata in zip(sources, meta_list):
             try:
                 bytestream = get_bytestream_from_source(source=source)
-            except Exception:
-                logger.error(f"Could not read {source}. Skipping it.")
+            except Exception as e:
+                logger.warning("Could not read {source}. Skipping it. Error: {error}", source=source, error=e)
                 continue
 
             text = None
-            for extractor_idx, extractor_name in enumerate(extractors_list):
+            for extractor_name in extractors_list:
                 extractor_class = getattr(extractors, extractor_name)
                 extractor = extractor_class(raise_on_failure=False)
                 try:
