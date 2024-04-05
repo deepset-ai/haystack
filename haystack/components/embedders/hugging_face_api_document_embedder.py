@@ -20,9 +20,9 @@ logger = logging.getLogger(__name__)
 class HuggingFaceAPIDocumentEmbedder:
     """
     This component can be used to compute Document embeddings using different Hugging Face APIs:
-    - [free Serverless Inference API]((https://huggingface.co/inference-api)
-    - [paid Inference Endpoints](https://huggingface.co/inference-endpoints)
-    - [self-hosted Text Embeddings Inference](https://github.com/huggingface/text-embeddings-inference)
+    - [Free Serverless Inference API]((https://huggingface.co/inference-api)
+    - [Paid Inference Endpoints](https://huggingface.co/inference-endpoints)
+    - [Self-hosted Text Embeddings Inference](https://github.com/huggingface/text-embeddings-inference)
 
 
     Example usage with the free Serverless Inference API:
@@ -101,8 +101,8 @@ class HuggingFaceAPIDocumentEmbedder:
             A dictionary containing the following keys:
             - `model`: model ID on the Hugging Face Hub. Required when `api_type` is `SERVERLESS_INFERENCE_API`.
             - `url`: URL of the inference endpoint. Required when `api_type` is `INFERENCE_ENDPOINTS` or `TEXT_EMBEDDINGS_INFERENCE`.
-        :param token: The HuggingFace token to use as HTTP bearer authorization
-            You can find your HF token in your [account settings](https://huggingface.co/settings/tokens)
+        :param token: The HuggingFace token to use as HTTP bearer authorization.
+            You can find your HF token in your [account settings](https://huggingface.co/settings/tokens).
         :param prefix:
             A string to add at the beginning of each text.
         :param suffix:
