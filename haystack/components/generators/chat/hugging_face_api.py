@@ -130,10 +130,6 @@ class HuggingFaceAPIChatGenerator:
             if not is_valid_http_url(url):
                 raise ValueError(f"Invalid URL: {url}")
             model_or_url = url
-        else:
-            raise ValueError(
-                f"Unsupported API type: {api_type}. Supported types are: {[e.value for e in HFGenerationAPIType]}"
-            )
 
         # handle generation kwargs setup
         generation_kwargs = generation_kwargs.copy() if generation_kwargs else {}
