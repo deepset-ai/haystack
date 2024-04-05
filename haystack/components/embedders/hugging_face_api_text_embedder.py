@@ -17,9 +17,9 @@ logger = logging.getLogger(__name__)
 class HuggingFaceAPITextEmbedder:
     """
     This component can be used to embed strings using different Hugging Face APIs:
-    - [free Serverless Inference API]((https://huggingface.co/inference-api)
-    - [paid Inference Endpoints](https://huggingface.co/inference-endpoints)
-    - [self-hosted Text Embeddings Inference](https://github.com/huggingface/text-embeddings-inference)
+    - [Free Serverless Inference API]((https://huggingface.co/inference-api)
+    - [Paid Inference Endpoints](https://huggingface.co/inference-endpoints)
+    - [Self-hosted Text Embeddings Inference](https://github.com/huggingface/text-embeddings-inference)
 
 
     Example usage with the free Serverless Inference API:
@@ -65,8 +65,8 @@ class HuggingFaceAPITextEmbedder:
 
     def __init__(
         self,
-        api_type: Union[HFEmbeddingAPIType, str] = HFEmbeddingAPIType.SERVERLESS_INFERENCE_API,
-        api_params: Optional[Dict[str, str]] = None,
+        api_type: Union[HFEmbeddingAPIType, str],
+        api_params: Dict[str, str],
         token: Optional[Secret] = Secret.from_env_var("HF_API_TOKEN", strict=False),
         prefix: str = "",
         suffix: str = "",
@@ -103,8 +103,6 @@ class HuggingFaceAPITextEmbedder:
 
         if isinstance(api_type, str):
             api_type = HFEmbeddingAPIType.from_str(api_type)
-
-        api_params = api_params or {}
 
         if api_type == HFEmbeddingAPIType.SERVERLESS_INFERENCE_API:
             model = api_params.get("model")
