@@ -99,7 +99,7 @@ class TestSASEvaluator:
             "The Meiji Restoration in 1868 transformed Japan into a modernized world power.",
         ]
         evaluator.warm_up()
-        result = evaluator.run(ground_truths_answers=ground_truths, predicted_answers=predictions)
+        result = evaluator.run(ground_truth_answers=ground_truths, predicted_answers=predictions)
 
         assert len(result) == 2
         assert result["score"] == pytest.approx(1.0)
@@ -112,7 +112,7 @@ class TestSASEvaluator:
         ground_truths = ["US $2.3 billion"]
         evaluator.warm_up()
         result = evaluator.run(
-            ground_truths_answers=ground_truths, predicted_answers=["A construction budget of US $2.3 billion"]
+            ground_truth_answers=ground_truths, predicted_answers=["A construction budget of US $2.3 billion"]
         )
         assert len(result) == 2
         assert result["score"] == pytest.approx(0.689089, abs=1e-5)
@@ -132,7 +132,7 @@ class TestSASEvaluator:
             "The Meiji Restoration in 1868 transformed Japan into a modernized world power.",
         ]
         evaluator.warm_up()
-        result = evaluator.run(ground_truths_answers=ground_truths, predicted_answers=predictions)
+        result = evaluator.run(ground_truth_answers=ground_truths, predicted_answers=predictions)
         assert len(result) == 2
         assert result["score"] == pytest.approx(0.8227189)
         assert result["individual_scores"] == pytest.approx([0.689089, 0.870389, 0.908679], abs=1e-5)
@@ -151,7 +151,7 @@ class TestSASEvaluator:
             "The Meiji Restoration in 1868 transformed Japan into a modernized world power.",
         ]
         evaluator.warm_up()
-        result = evaluator.run(ground_truths_answers=ground_truths, predicted_answers=predictions)
+        result = evaluator.run(ground_truth_answers=ground_truths, predicted_answers=predictions)
         assert len(result) == 2
         assert result["score"] == pytest.approx(1.0)
         assert result["individual_scores"] == pytest.approx([1.0, 1.0, 1.0])
@@ -170,7 +170,7 @@ class TestSASEvaluator:
             "The Meiji Restoration in 1868 transformed Japan into a modernized world power.",
         ]
         evaluator.warm_up()
-        result = evaluator.run(ground_truths_answers=ground_truths, predicted_answers=predictions)
+        result = evaluator.run(ground_truth_answers=ground_truths, predicted_answers=predictions)
         assert len(result) == 2
         assert result["score"] == pytest.approx(0.999967, abs=1e-5)
         assert result["individual_scores"] == pytest.approx(
