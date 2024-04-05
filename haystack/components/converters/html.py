@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, ClassVar, Dict, List, Literal, Optional, Union
 
 from boilerpy3 import extractors
 
@@ -27,6 +27,16 @@ class HTMLToDocument:
     ```
     """
 
+    known_extractors: ClassVar[List[str]] = [
+        "DefaultExtractor",
+        "ArticleExtractor",
+        "ArticleSentencesExtractor",
+        "LargestContentExtractor",
+        "CanolaExtractor",
+        "KeepEverythingExtractor",
+        "NumWordsRulesExtractor",
+    ]
+
     def __init__(
         self,
         extractor_type: Literal[
@@ -38,6 +48,7 @@ class HTMLToDocument:
             "KeepEverythingExtractor",
             "NumWordsRulesExtractor",
         ] = "DefaultExtractor",
+        try_others: bool = True,
     ):
         """
         Create an HTMLToDocument component.
@@ -46,8 +57,10 @@ class HTMLToDocument:
             extractor_type: Name of the extractor class to use. Defaults to `DefaultExtractor`.
             For more information on the different types of extractors,
             see [boilerpy3 documentation](https://github.com/jmriebold/BoilerPy3?tab=readme-ov-file#extractors).
+        :param try_others: If `True`, the component will try other extractors if the user chosen extractor fails.
         """
         self.extractor_type = extractor_type
+        self.try_others = try_others
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -56,7 +69,7 @@ class HTMLToDocument:
         :returns:
             Dictionary with serialized data.
         """
-        return default_to_dict(self, extractor_type=self.extractor_type)
+        return default_to_dict(self, extractor_type=self.extractor_type, try_others=self.try_others)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "HTMLToDocument":
@@ -96,8 +109,16 @@ class HTMLToDocument:
         documents = []
         meta_list = normalize_metadata(meta=meta, sources_count=len(sources))
 
-        extractor_class = getattr(extractors, self.extractor_type)
-        extractor = extractor_class(raise_on_failure=False)
+        # Use all extractor types, ensuring user chosen extractor is first, preserve order, avoid duplicates
+        extractors_list = (
+            list(
+                dict.fromkeys(
+                    [self.extractor_type, *self.known_extractors]  # User chosen extractor is always tried first
+                )
+            )
+            if self.try_others
+            else [self.extractor_type]
+        )
 
         for source, metadata in zip(sources, meta_list):
             try:
@@ -105,19 +126,32 @@ class HTMLToDocument:
             except Exception as e:
                 logger.warning("Could not read {source}. Skipping it. Error: {error}", source=source, error=e)
                 continue
-            try:
-                file_content = bytestream.data.decode("utf-8")
-                text = extractor.get_content(file_content)
-            except Exception as conversion_e:
+
+            text = None
+            for extractor_name in extractors_list:
+                extractor_class = getattr(extractors, extractor_name)
+                extractor = extractor_class(raise_on_failure=False)
+                try:
+                    text = extractor.get_content(bytestream.data.decode("utf-8"))
+                    if text:
+                        break
+                except Exception as conversion_e:
+                    if self.try_others:
+                        logger.warning(
+                            "Failed to extract text using {extractor} from {source}. Trying next extractor. Error: {error}",
+                            extractor=extractor_name,
+                            source=source,
+                            error=conversion_e,
+                        )
+            if not text:
                 logger.warning(
-                    "Failed to extract text from {source}. Skipping it. Error: {error}",
+                    f"Failed to extract text from {source} using extractors: {extractors_list}. Skipping it.",
                     source=source,
-                    error=conversion_e,
+                    extractors_list=extractors_list,
                 )
                 continue
 
-            merged_metadata = {**bytestream.meta, **metadata}
-            document = Document(content=text, meta=merged_metadata)
+            document = Document(content=text, meta={**bytestream.meta, **metadata})
             documents.append(document)
 
         return {"documents": documents}
