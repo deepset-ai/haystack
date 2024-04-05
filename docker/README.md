@@ -4,19 +4,16 @@
 
 [Haystack](https://github.com/deepset-ai/haystack) is an end-to-end LLM framework that allows you to build applications powered by LLMs, Transformer models, vector search and more. Whether you want to perform retrieval-augmented generation (RAG), document search, question answering or answer generation, Haystack can orchestrate state-of-the-art embedding models and LLMs into pipelines to build end-to-end NLP applications and solve your use case.
 
-To start the Docker container binding the TCP port `8000` locally, run:
-```sh
-docker run -p 8000:8000 deepset/haystack
-```
+## Haystack 2.0
 
-If you need the container to access other services available in the host, run:
-```sh
-docker run -p 8000:8000 --network="host" deepset/haystack
-```
+For the latest version of Haystack there's only one image available:
 
-## Image Variants
+- `haystack:base-<version>` contains a working Python environment with Haystack preinstalled. This image is expected to
+  be derived `FROM`.
 
-The Docker image comes in six variants:
+## Haystack 1.x image variants
+
+The Docker image for Haystack 1.x comes in six variants:
 - `haystack:gpu-<version>` contains Haystack dependencies as well as what's needed to run the REST API and UI. It comes with the CUDA runtime and is capable of running on GPUs.
 - `haystack:cpu-remote-inference-<version>` is a slimmed down version of the CPU image with the REST API and UI. It is specifically designed for PromptNode inferencing using remotely hosted models, such as Hugging Face Inference, OpenAI, Cohere, Anthropic, and similar.
 - `haystack:cpu-<version>` contains Haystack dependencies as well as what's needed to run the REST API and UI. It has no support for GPU so must be run on CPU.
