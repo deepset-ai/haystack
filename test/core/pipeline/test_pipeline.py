@@ -9,6 +9,7 @@ import pytest
 
 from haystack import Document
 from haystack.components.builders import PromptBuilder
+from haystack.components.builders.answer_builder import AnswerBuilder
 from haystack.components.others import Multiplexer
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.core.component import component
@@ -281,8 +282,7 @@ def test_get_component_name_not_added_to_pipeline():
     assert pipe.get_component_name(some_component) == ""
 
 
-@patch("haystack.core.pipeline.pipeline.is_in_jupyter")
-def test_repr(mock_is_in_jupyter):
+def test_repr():
     pipe = Pipeline(metadata={"test": "test"}, max_loops_allowed=42)
     pipe.add_component("add_two", AddFixedValue(add=2))
     pipe.add_component("add_default", AddFixedValue())
@@ -302,26 +302,8 @@ def test_repr(mock_is_in_jupyter):
         "  - add_two.result -> double.value (int)\n"
         "  - double.value -> add_default.value (int)\n"
     )
-    # Simulate not being in a notebook
-    mock_is_in_jupyter.return_value = False
+
     assert repr(pipe) == expected_repr
-
-
-@patch("haystack.core.pipeline.pipeline.is_in_jupyter")
-def test_repr_in_notebook(mock_is_in_jupyter):
-    pipe = Pipeline(metadata={"test": "test"}, max_loops_allowed=42)
-    pipe.add_component("add_two", AddFixedValue(add=2))
-    pipe.add_component("add_default", AddFixedValue())
-    pipe.add_component("double", Double())
-    pipe.connect("add_two", "double")
-    pipe.connect("double", "add_default")
-
-    # Simulate being in a notebook
-    mock_is_in_jupyter.return_value = True
-
-    with patch.object(Pipeline, "show") as mock_show:
-        assert repr(pipe) == ""
-        mock_show.assert_called_once_with()
 
 
 def test_run_raises_if_max_visits_reached():
@@ -775,3 +757,90 @@ def test_walk_pipeline_with_cycles():
     pipeline.add_component("hello", hello)
     pipeline.connect("hello.intermediate", "hello.intermediate")
     assert [("hello", hello)] == list(pipeline.walk())
+
+
+def test_correct_execution_order_of_components_with_only_defaults(spying_tracer):
+    """
+    We enqueue the Components in internal `to_run` data structure at the start of `Pipeline.run()` using the order
+    they are added in the Pipeline with `Pipeline.add_component()`.
+    If a Component A with defaults is added before a Component B that has no defaults, but in the Pipeline
+    logic A must be executed after B it could run instead before.
+
+    This test verifies that the order of execution is correct.
+    """
+    docs = [Document(content="Rome is the capital of Italy"), Document(content="Paris is the capital of France")]
+    doc_store = InMemoryDocumentStore()
+    doc_store.write_documents(docs)
+    template = (
+        "Given the following information, answer the question.\n"
+        "Context:\n"
+        "{% for document in documents %}"
+        "    {{ document.content }}\n"
+        "{% endfor %}"
+        "Question: {{ query }}"
+    )
+
+    pipe = Pipeline()
+
+    # The order of this addition is important for the test
+    # Do not edit them.
+    pipe.add_component("prompt_builder", PromptBuilder(template=template))
+    pipe.add_component("retriever", InMemoryBM25Retriever(document_store=doc_store))
+    pipe.connect("retriever", "prompt_builder.documents")
+
+    query = "What is the capital of France?"
+    res = pipe.run({"prompt_builder": {"query": query}, "retriever": {"query": query}})
+
+    assert len(spying_tracer.spans) == 3
+    assert spying_tracer.spans[0].operation_name == "haystack.pipeline.run"
+    assert spying_tracer.spans[1].operation_name == "haystack.component.run"
+    assert spying_tracer.spans[1].tags["haystack.component.name"] == "retriever"
+    assert spying_tracer.spans[2].operation_name == "haystack.component.run"
+    assert spying_tracer.spans[2].tags["haystack.component.name"] == "prompt_builder"
+
+    print(res["prompt_builder"]["prompt"])
+    assert res == {
+        "prompt_builder": {
+            "prompt": "Given the following information, answer the question.\n"
+            "Context:\n"
+            "    Paris is the capital of France\n"
+            "    Rome is the capital of Italy\n"
+            "Question: What is the capital of France?"
+        }
+    }
+
+
+def test_pipeline_is_not_stuck_with_components_with_only_defaults():
+    FakeGenerator = component_class(
+        "FakeGenerator", input_types={"prompt": str}, output_types={"replies": List[str]}, output={"replies": ["Paris"]}
+    )
+    docs = [Document(content="Rome is the capital of Italy"), Document(content="Paris is the capital of France")]
+    doc_store = InMemoryDocumentStore()
+    doc_store.write_documents(docs)
+    template = (
+        "Given the following information, answer the question.\n"
+        "Context:\n"
+        "{% for document in documents %}"
+        "    {{ document.content }}\n"
+        "{% endfor %}"
+        "Question: {{ query }}"
+    )
+
+    pipe = Pipeline()
+
+    pipe.add_component("retriever", InMemoryBM25Retriever(document_store=doc_store))
+    pipe.add_component("prompt_builder", PromptBuilder(template=template))
+    pipe.add_component("generator", FakeGenerator())
+    pipe.add_component("answer_builder", AnswerBuilder())
+
+    pipe.connect("retriever", "prompt_builder.documents")
+    pipe.connect("prompt_builder.prompt", "generator.prompt")
+    pipe.connect("generator.replies", "answer_builder.replies")
+    pipe.connect("retriever.documents", "answer_builder.documents")
+
+    query = "What is the capital of France?"
+    res = pipe.run({"query": query})
+    assert len(res) == 1
+    answers = res["answer_builder"]["answers"]
+    assert len(answers) == 1
+    assert answers[0].data == "Paris"

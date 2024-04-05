@@ -3,6 +3,7 @@ import pytest
 
 from haystack import Document
 from haystack.dataclasses.byte_stream import ByteStream
+from haystack.dataclasses.sparse_embedding import SparseEmbedding
 
 
 @pytest.mark.parametrize(
@@ -37,6 +38,7 @@ def test_init():
     assert doc.meta == {}
     assert doc.score == None
     assert doc.embedding == None
+    assert doc.sparse_embedding == None
 
 
 def test_init_with_wrong_parameters():
@@ -46,6 +48,7 @@ def test_init_with_wrong_parameters():
 
 def test_init_with_parameters():
     blob_data = b"some bytes"
+    sparse_embedding = SparseEmbedding(indices=[0, 2, 4], values=[0.1, 0.2, 0.3])
     doc = Document(
         content="test text",
         dataframe=pd.DataFrame([0]),
@@ -53,8 +56,9 @@ def test_init_with_parameters():
         meta={"text": "test text"},
         score=0.812,
         embedding=[0.1, 0.2, 0.3],
+        sparse_embedding=sparse_embedding,
     )
-    assert doc.id == "ec92455f3f4576d40031163c89b1b4210b34ea1426ee0ff68ebed86cb7ba13f8"
+    assert doc.id == "967b7bd4a21861ad9e863f638cefcbdd6bf6306bebdd30aa3fedf0c26bc636ed"
     assert doc.content == "test text"
     assert doc.dataframe is not None
     assert doc.dataframe.equals(pd.DataFrame([0]))
@@ -63,6 +67,7 @@ def test_init_with_parameters():
     assert doc.meta == {"text": "test text"}
     assert doc.score == 0.812
     assert doc.embedding == [0.1, 0.2, 0.3]
+    assert doc.sparse_embedding == sparse_embedding
 
 
 def test_init_with_legacy_fields():
@@ -76,6 +81,7 @@ def test_init_with_legacy_fields():
     assert doc.meta == {}
     assert doc.score == 0.812
     assert doc.embedding == [0.1, 0.2, 0.3]
+    assert doc.sparse_embedding == None
 
 
 def test_init_with_legacy_field():
@@ -93,6 +99,7 @@ def test_init_with_legacy_field():
     assert doc.meta == {"date": "10-10-2023", "type": "article"}
     assert doc.score == 0.812
     assert doc.embedding == [0.1, 0.2, 0.3]
+    assert doc.sparse_embedding == None
 
 
 def test_basic_equality_type_mismatch():
@@ -121,6 +128,7 @@ def test_to_dict():
         "blob": None,
         "score": None,
         "embedding": None,
+        "sparse_embedding": None,
     }
 
 
@@ -134,6 +142,7 @@ def test_to_dict_without_flattening():
         "meta": {},
         "score": None,
         "embedding": None,
+        "sparse_embedding": None,
     }
 
 
@@ -145,6 +154,7 @@ def test_to_dict_with_custom_parameters():
         meta={"some": "values", "test": 10},
         score=0.99,
         embedding=[10.0, 10.0],
+        sparse_embedding=SparseEmbedding(indices=[0, 2, 4], values=[0.1, 0.2, 0.3]),
     )
 
     assert doc.to_dict() == {
@@ -156,6 +166,7 @@ def test_to_dict_with_custom_parameters():
         "test": 10,
         "score": 0.99,
         "embedding": [10.0, 10.0],
+        "sparse_embedding": {"indices": [0, 2, 4], "values": [0.1, 0.2, 0.3]},
     }
 
 
@@ -167,6 +178,7 @@ def test_to_dict_with_custom_parameters_without_flattening():
         meta={"some": "values", "test": 10},
         score=0.99,
         embedding=[10.0, 10.0],
+        sparse_embedding=SparseEmbedding(indices=[0, 2, 4], values=[0.1, 0.2, 0.3]),
     )
 
     assert doc.to_dict(flatten=False) == {
@@ -177,6 +189,7 @@ def test_to_dict_with_custom_parameters_without_flattening():
         "meta": {"some": "values", "test": 10},
         "score": 0.99,
         "embedding": [10, 10],
+        "sparse_embedding": {"indices": [0, 2, 4], "values": [0.1, 0.2, 0.3]},
     }
 
 
@@ -194,6 +207,7 @@ def from_from_dict_with_parameters():
             "meta": {"text": "test text"},
             "score": 0.812,
             "embedding": [0.1, 0.2, 0.3],
+            "sparse_embedding": {"indices": [0, 2, 4], "values": [0.1, 0.2, 0.3]},
         }
     ) == Document(
         content="test text",
@@ -202,6 +216,7 @@ def from_from_dict_with_parameters():
         meta={"text": "test text"},
         score=0.812,
         embedding=[0.1, 0.2, 0.3],
+        sparse_embedding=SparseEmbedding(indices=[0, 2, 4], values=[0.1, 0.2, 0.3]),
     )
 
 
@@ -249,6 +264,7 @@ def test_from_dict_with_flat_meta():
             "blob": {"data": list(blob_data), "mime_type": "text/markdown"},
             "score": 0.812,
             "embedding": [0.1, 0.2, 0.3],
+            "sparse_embedding": {"indices": [0, 2, 4], "values": [0.1, 0.2, 0.3]},
             "date": "10-10-2023",
             "type": "article",
         }
@@ -258,6 +274,7 @@ def test_from_dict_with_flat_meta():
         blob=ByteStream(blob_data, mime_type="text/markdown"),
         score=0.812,
         embedding=[0.1, 0.2, 0.3],
+        sparse_embedding=SparseEmbedding(indices=[0, 2, 4], values=[0.1, 0.2, 0.3]),
         meta={"date": "10-10-2023", "type": "article"},
     )
 

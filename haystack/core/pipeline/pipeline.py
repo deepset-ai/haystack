@@ -86,13 +86,7 @@ class Pipeline:
     def __repr__(self) -> str:
         """
         Returns a text representation of the Pipeline.
-        If this runs in a Jupyter notebook, it will instead display the Pipeline image.
         """
-        if is_in_jupyter():
-            # If we're in a Jupyter notebook we want to display the image instead of the text repr.
-            self.show()
-            return ""
-
         res = f"{object.__repr__(self)}\n"
         if self.metadata:
             res += "🧱 Metadata\n"
@@ -903,12 +897,15 @@ class Pipeline:
                         and last_waiting_for_input is not None
                         and before_last_waiting_for_input == last_waiting_for_input
                     ):
-                        # Are we actually stuck or there's a lazy variadic waiting for input?
-                        # This is our last resort, if there's no lazy variadic waiting for input
+                        # Are we actually stuck or there's a lazy variadic or a component with has only default inputs waiting for input?
+                        # This is our last resort, if there's no lazy variadic or component with only default inputs waiting for input
                         # we're stuck for real and we can't make any progress.
                         for name, comp in waiting_for_input:
                             is_variadic = any(socket.is_variadic for socket in comp.__haystack_input__._sockets_dict.values())  # type: ignore
-                            if is_variadic and not comp.__haystack_is_greedy__:  # type: ignore[attr-defined]
+                            has_only_defaults = all(
+                                not socket.is_mandatory for socket in comp.__haystack_input__._sockets_dict.values()  # type: ignore
+                            )
+                            if is_variadic and not comp.__haystack_is_greedy__ or has_only_defaults:  # type: ignore[attr-defined]
                                 break
                         else:
                             # We're stuck in a loop for real, we can't make any progress.
@@ -916,13 +913,13 @@ class Pipeline:
                             break
 
                         if len(waiting_for_input) == 1:
-                            # We have a single component with variadic input waiting for input.
+                            # We have a single component with variadic input or only default inputs waiting for input.
                             # If we're at this point it means it has been waiting for input for at least 2 iterations.
                             # This will never run.
                             # BAIL!
                             break
 
-                        # There was a lazy variadic waiting for input, we can run it
+                        # There was a lazy variadic or a component with only default waiting for input, we can run it
                         waiting_for_input.remove((name, comp))
                         to_run.append((name, comp))
                         continue
@@ -952,6 +949,26 @@ class Pipeline:
                                 )
 
                             if not there_are_only_lazy_variadics:
+                                continue
+
+                        # Components that have defaults for all their inputs must be treated the same identical way as we treat
+                        # lazy variadic components. If there are only components with defaults we can run them.
+                        # If we don't do this the order of execution of the Pipeline's Components will be affected cause we
+                        # enqueue the Components in `to_run` at the start using the order they are added in the Pipeline.
+                        # If a Component A with defaults is added before a Component B that has no defaults, but in the Pipeline
+                        # logic A must be executed after B it could run instead before if we don't do this check.
+                        has_only_defaults = all(
+                            not socket.is_mandatory for socket in comp.__haystack_input__._sockets_dict.values()  # type: ignore
+                        )
+                        if has_only_defaults:
+                            there_are_only_components_with_defaults = True
+                            for other_name, other_comp in waiting_for_input:
+                                if name == other_name:
+                                    continue
+                                there_are_only_components_with_defaults &= all(
+                                    not s.is_mandatory for s in other_comp.__haystack_input__._sockets_dict.values()  # type: ignore
+                                )
+                            if not there_are_only_components_with_defaults:
                                 continue
 
                         # Find the first component that has all the inputs it needs to run

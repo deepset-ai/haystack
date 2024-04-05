@@ -8,14 +8,19 @@ from haystack.lazy_imports import LazyImport
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 from haystack.utils.hf import HFModelType, check_generation_params, check_valid_model, list_inference_deployed_models
 
-with LazyImport(message="Run 'pip install transformers'") as transformers_import:
-    from huggingface_hub import InferenceClient
-    from huggingface_hub.inference._text_generation import TextGenerationResponse, TextGenerationStreamResponse, Token
+with LazyImport(message="Run 'pip install \"huggingface_hub>=0.22.0\" transformers'") as transformers_import:
+    from huggingface_hub import (
+        InferenceClient,
+        TextGenerationOutput,
+        TextGenerationOutputToken,
+        TextGenerationStreamOutput,
+    )
     from transformers import AutoTokenizer
 
 logger = logging.getLogger(__name__)
 
 
+@component
 class HuggingFaceTGIChatGenerator:
     """
     Enables text generation using HuggingFace Hub hosted chat-based LLMs. This component is designed to seamlessly
@@ -123,6 +128,7 @@ class HuggingFaceTGIChatGenerator:
         check_generation_params(generation_kwargs, ["n"])
         generation_kwargs["stop_sequences"] = generation_kwargs.get("stop_sequences", [])
         generation_kwargs["stop_sequences"].extend(stop_words or [])
+        generation_kwargs.setdefault("max_new_tokens", 512)
 
         self.model = model
         self.url = url
@@ -226,8 +232,9 @@ class HuggingFaceTGIChatGenerator:
             raise RuntimeError("Please call warm_up() before running LLM inference.")
 
         # apply either model's chat template or the user-provided one
+        formatted_messages = [message.to_openai_format() for message in messages]
         prepared_prompt: str = self.tokenizer.apply_chat_template(
-            conversation=messages, chat_template=self.chat_template, tokenize=False
+            conversation=formatted_messages, chat_template=self.chat_template, tokenize=False
         )
         prompt_token_count: int = len(self.tokenizer.encode(prepared_prompt, add_special_tokens=False))
 
@@ -242,13 +249,13 @@ class HuggingFaceTGIChatGenerator:
     def _run_streaming(
         self, prepared_prompt: str, prompt_token_count: int, generation_kwargs: Dict[str, Any]
     ) -> Dict[str, List[ChatMessage]]:
-        res: Iterable[TextGenerationStreamResponse] = self.client.text_generation(
+        res: Iterable[TextGenerationStreamOutput] = self.client.text_generation(
             prepared_prompt, stream=True, details=True, **generation_kwargs
         )
         chunk = None
         # pylint: disable=not-an-iterable
         for chunk in res:
-            token: Token = chunk.token
+            token: TextGenerationOutputToken = chunk.token
             if token.special:
                 continue
             chunk_metadata = {**asdict(token), **(asdict(chunk.details) if chunk.details else {})}
@@ -258,7 +265,7 @@ class HuggingFaceTGIChatGenerator:
         message = ChatMessage.from_assistant(chunk.generated_text)
         message.meta.update(
             {
-                "finish_reason": chunk.details.finish_reason.value,
+                "finish_reason": chunk.details.finish_reason,
                 "index": 0,
                 "model": self.client.model,
                 "usage": {
@@ -275,13 +282,11 @@ class HuggingFaceTGIChatGenerator:
     ) -> Dict[str, List[ChatMessage]]:
         chat_messages: List[ChatMessage] = []
         for _i in range(num_responses):
-            tgr: TextGenerationResponse = self.client.text_generation(
-                prepared_prompt, details=True, **generation_kwargs
-            )
+            tgr: TextGenerationOutput = self.client.text_generation(prepared_prompt, details=True, **generation_kwargs)
             message = ChatMessage.from_assistant(tgr.generated_text)
             message.meta.update(
                 {
-                    "finish_reason": tgr.details.finish_reason.value,
+                    "finish_reason": tgr.details.finish_reason,
                     "index": _i,
                     "model": self.client.model,
                     "usage": {

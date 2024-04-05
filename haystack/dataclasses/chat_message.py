@@ -28,6 +28,22 @@ class ChatMessage:
     name: Optional[str]
     meta: Dict[str, Any] = field(default_factory=dict, hash=False)
 
+    def to_openai_format(self) -> Dict[str, Any]:
+        """
+        Convert the message to the format expected by OpenAI's Chat API.
+        See the [API reference](https://platform.openai.com/docs/api-reference/chat/create) for details.
+
+        :returns: A dictionary with the following key:
+            - `role`
+            - `content`
+            - `name` (optional)
+        """
+        msg = {"role": self.role.value, "content": self.content}
+        if self.name:
+            msg["name"] = self.name
+
+        return msg
+
     def is_from(self, role: ChatRole) -> bool:
         """
         Check if the message is from a specific role.

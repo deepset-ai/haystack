@@ -4,14 +4,15 @@ from unittest.mock import Mock, patch
 import pytest
 import torch
 from transformers import PreTrainedTokenizerFast
-from haystack.utils.auth import Secret
 
 from haystack.components.generators.hugging_face_local import HuggingFaceLocalGenerator, StopWordsCriteria
 from haystack.utils import ComponentDevice
+from haystack.utils.auth import Secret
+from haystack.utils.hf import HFTokenStreamingHandler
 
 
 class TestHuggingFaceLocalGenerator:
-    @patch("haystack.components.generators.hugging_face_local.model_info")
+    @patch("haystack.utils.hf.model_info")
     def test_init_default(self, model_info_mock, monkeypatch):
         monkeypatch.delenv("HF_API_TOKEN", raising=False)
         model_info_mock.return_value.pipeline_tag = "text2text-generation"
@@ -23,7 +24,7 @@ class TestHuggingFaceLocalGenerator:
             "token": None,
             "device": ComponentDevice.resolve_device(None).to_hf(),
         }
-        assert generator.generation_kwargs == {}
+        assert generator.generation_kwargs == {"max_new_tokens": 512}
         assert generator.pipeline is None
 
     def test_init_custom_token(self):
@@ -73,7 +74,7 @@ class TestHuggingFaceLocalGenerator:
             "device": ComponentDevice.resolve_device(None).to_hf(),
         }
 
-    @patch("haystack.components.generators.hugging_face_local.model_info")
+    @patch("haystack.utils.hf.model_info")
     def test_init_task_inferred_from_model_name(self, model_info_mock):
         model_info_mock.return_value.pipeline_tag = "text2text-generation"
         generator = HuggingFaceLocalGenerator(model="google/flan-t5-base", token=None)
@@ -124,7 +125,7 @@ class TestHuggingFaceLocalGenerator:
         """
         generator = HuggingFaceLocalGenerator(task="text-generation")
 
-        assert generator.generation_kwargs == {"return_full_text": False}
+        assert generator.generation_kwargs == {"max_new_tokens": 512, "return_full_text": False}
 
     def test_init_fails_with_both_stopwords_and_stoppingcriteria(self):
         with pytest.raises(
@@ -137,7 +138,7 @@ class TestHuggingFaceLocalGenerator:
                 generation_kwargs={"stopping_criteria": "fake-stopping-criteria"},
             )
 
-    @patch("haystack.components.generators.hugging_face_local.model_info")
+    @patch("haystack.utils.hf.model_info")
     def test_to_dict_default(self, model_info_mock):
         model_info_mock.return_value.pipeline_tag = "text2text-generation"
 
@@ -153,7 +154,8 @@ class TestHuggingFaceLocalGenerator:
                     "task": "text2text-generation",
                     "device": ComponentDevice.resolve_device(None).to_hf(),
                 },
-                "generation_kwargs": {},
+                "generation_kwargs": {"max_new_tokens": 512},
+                "streaming_callback": None,
                 "stop_words": None,
             },
         }
@@ -194,6 +196,7 @@ class TestHuggingFaceLocalGenerator:
                     },
                 },
                 "generation_kwargs": {"max_new_tokens": 100, "return_full_text": False},
+                "streaming_callback": None,
                 "stop_words": ["coca", "cola"],
             },
         }
@@ -238,6 +241,7 @@ class TestHuggingFaceLocalGenerator:
                     },
                 },
                 "generation_kwargs": {"max_new_tokens": 100, "return_full_text": False},
+                "streaming_callback": None,
                 "stop_words": ["coca", "cola"],
             },
         }
@@ -297,7 +301,7 @@ class TestHuggingFaceLocalGenerator:
         )
 
     @patch("haystack.components.generators.hugging_face_local.pipeline")
-    def test_warm_up_doesn_reload(self, pipeline_mock):
+    def test_warm_up_doesnt_reload(self, pipeline_mock):
         generator = HuggingFaceLocalGenerator(
             model="google/flan-t5-base", task="text2text-generation", token=Secret.from_token("fake-api-token")
         )
@@ -350,6 +354,29 @@ class TestHuggingFaceLocalGenerator:
             "irrelevant", max_new_tokens=200, temperature=0.5, stopping_criteria=None
         )
 
+    def test_run_with_streaming(self):
+        def streaming_callback_handler(x):
+            return x
+
+        generator = HuggingFaceLocalGenerator(
+            model="google/flan-t5-base", task="text2text-generation", streaming_callback=streaming_callback_handler
+        )
+
+        # create the pipeline object (simulating the warm_up)
+        generator.pipeline = Mock(return_value=[{"generated_text": "Rome"}])
+
+        generator.run(prompt="irrelevant")
+
+        # when we use streaming, the pipeline should be called with the `streamer` argument being an instance of
+        # ouf our adapter class HFTokenStreamingHandler
+        assert isinstance(generator.pipeline.call_args.kwargs["streamer"], HFTokenStreamingHandler)
+        streamer = generator.pipeline.call_args.kwargs["streamer"]
+
+        # check that the streaming callback is set
+        assert streamer.token_handler == streaming_callback_handler
+        # the tokenizer should be set, here it is a mock
+        assert streamer.tokenizer
+
     def test_run_fails_without_warm_up(self):
         generator = HuggingFaceLocalGenerator(
             model="google/flan-t5-base", task="text2text-generation", generation_kwargs={"max_new_tokens": 100}
@@ -358,41 +385,18 @@ class TestHuggingFaceLocalGenerator:
         with pytest.raises(RuntimeError, match="The generation model has not been loaded."):
             generator.run(prompt="irrelevant")
 
-    def test_stop_words_criteria(self):
+    def test_stop_words_criteria_with_a_mocked_tokenizer(self):
         """
-        Test that StopWordsCriteria will check stop word tokens in a continuous and sequential order
+        Test that StopWordsCriteria will caught stop word tokens in a continuous and sequential order in the input_ids
         """
-        # input ids for "unambiguously"
-        stop_words_id = torch.tensor([[73, 24621, 11937]])
-
-        # input ids for "This is ambiguously, but is unrelated."
-        input_ids1 = torch.tensor([[100, 19, 24621, 11937, 6, 68, 19, 73, 3897, 5]])
-        # input ids for "This is unambiguously"
-        input_ids2 = torch.tensor([[100, 19, 73, 24621, 11937]])
-
-        # We used to implement stop words algorithm using the torch.isin function like this:
-        # `all(torch.isin(stop_words_id, input_ids1)[0])`
-        # However, this algorithm is not correct as it will return True for presence of "unambiguously" in input_ids1
-        # and True for presence of "unambiguously" in input_ids2. This is because the algorithm will check
-        # if the stop word tokens are present in the input_ids, but it does not check if the stop word tokens are
-        # present in a continuous/sequential order.
-
-        # In "This is ambiguously, but is unrelated." sentence the "un" token comes from "unrelated" and the
-        # "ambiguously" token comes from "ambiguously". The algorithm will return True for presence of
-        # "unambiguously" in input_ids1 which is not correct.
-
+        stop_words_id = torch.LongTensor([[73, 24621, 11937]])  # "unambiguously"
+        # "This is ambiguously, but is unrelated."
+        input_ids_one = torch.LongTensor([[100, 19, 24621, 11937, 6, 68, 19, 73, 3897, 5]])
+        input_ids_two = torch.LongTensor([[100, 19, 73, 24621, 11937]])  # "This is unambiguously"
         stop_words_criteria = StopWordsCriteria(tokenizer=Mock(spec=PreTrainedTokenizerFast), stop_words=["mock data"])
-        # because we are mocking the tokenizer, we need to set the stop words manually
         stop_words_criteria.stop_ids = stop_words_id
-
-        # this is the correct algorithm to check if the stop word tokens are present in a continuous and sequential order
-        # For the input_ids1, the stop word tokens are present BUT not in a continuous order
-        present_and_continuous = stop_words_criteria(input_ids1, scores=None)
-        assert not present_and_continuous
-
-        # For the input_ids2, the stop word tokens are both present and in a continuous order
-        present_and_continuous = stop_words_criteria(input_ids2, scores=None)
-        assert present_and_continuous
+        assert not stop_words_criteria(input_ids_one, scores=None)
+        assert stop_words_criteria(input_ids_two, scores=None)
 
     @patch("haystack.components.generators.hugging_face_local.pipeline")
     @patch("haystack.components.generators.hugging_face_local.StopWordsCriteria")
@@ -401,32 +405,52 @@ class TestHuggingFaceLocalGenerator:
         self, pipeline_mock, stop_words_criteria_mock, stopping_criteria_list_mock
     ):
         """
-        Test that warm_up method sets the `stopping_criteria_list` attribute
-        if `stop_words` is provided
+        Test that warm_up method sets the `stopping_criteria_list` attribute if `stop_words` is provided
         """
         generator = HuggingFaceLocalGenerator(
-            model="google/flan-t5-base", task="text2text-generation", stop_words=["coca", "cola"]
+            model="google/flan-t5-small", task="text2text-generation", stop_words=["coca", "cola"]
         )
-
         generator.warm_up()
-
         stop_words_criteria_mock.assert_called_once()
         stopping_criteria_list_mock.assert_called_once()
-
         assert hasattr(generator, "stopping_criteria_list")
 
     def test_run_stop_words_removal(self):
-        """
-        Test that stop words are removed from the generated text
-        (does not test stopping text generation)
-        """
+        """Test that stop words are removed from the generated text (does not test stopping text generation)"""
         generator = HuggingFaceLocalGenerator(
-            model="google/flan-t5-base", task="text2text-generation", stop_words=["world"]
+            model="google/flan-t5-small", task="text2text-generation", stop_words=["world"]
         )
-
-        # create the pipeline object (simulating the warm_up)
         generator.pipeline = Mock(return_value=[{"generated_text": "Hello world"}])
-
         results = generator.run(prompt="irrelevant")
-
         assert results == {"replies": ["Hello"]}
+
+    @pytest.mark.integration
+    def test_stop_words_criteria_using_hf_tokenizer(self):
+        """
+        Test that StopWordsCriteria catches stop word tokens in a continuous and sequential order in the input_ids
+        using a real Huggingface tokenizer.
+        """
+        from transformers import AutoTokenizer
+
+        model_name = "google/flan-t5-small"
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        criteria = StopWordsCriteria(tokenizer=tokenizer, stop_words=["unambiguously"])
+
+        text_one = "This is ambiguously, but is unrelated."
+        generated_text_ids = tokenizer.encode(text_one, add_special_tokens=False, return_tensors="pt")
+        assert criteria(generated_text_ids, scores=None) is False
+
+        text_two = "This is unambiguously"
+        generated_text_ids = tokenizer.encode(text_two, add_special_tokens=False, return_tensors="pt")
+        assert criteria(generated_text_ids, scores=None) is True
+
+    @pytest.mark.integration
+    def test_hf_pipeline_runs_with_our_criteria(self):
+        """Test that creating our own StopWordsCriteria and passing it to a Huggingface pipeline works."""
+        generator = HuggingFaceLocalGenerator(
+            model="google/flan-t5-small", task="text2text-generation", stop_words=["unambiguously"]
+        )
+        generator.warm_up()
+        results = generator.run(prompt="something that triggers something")
+        assert results["replies"] != []
+        assert generator.stopping_criteria_list is not None

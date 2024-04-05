@@ -1,13 +1,12 @@
 import os
 from unittest.mock import Mock, patch
-from haystack.utils.auth import Secret
 
 import pytest
-from requests import Timeout, RequestException, HTTPError
+from requests import HTTPError, RequestException, Timeout
 
 from haystack import Document
 from haystack.components.websearch.searchapi import SearchApiError, SearchApiWebSearch
-
+from haystack.utils.auth import Secret
 
 EXAMPLE_SEARCHAPI_RESPONSE = {
     "search_metadata": {
@@ -385,7 +384,7 @@ class TestSearchApiSearchAPI:
                 "api_key": {"env_vars": ["SEARCHAPI_API_KEY"], "strict": True, "type": "env_var"},
                 "top_k": 10,
                 "allowed_domains": ["testdomain.com"],
-                "search_params": {"param": "test params"},
+                "search_params": {"param": "test params", "engine": "google"},
             },
         }
 
