@@ -39,7 +39,7 @@ def streaming_callback_handler(x):
 class TestHuggingFaceAPIGenerator:
     def test_init_invalid_api_type(self):
         with pytest.raises(ValueError):
-            HuggingFaceAPIGenerator(api_type="invalid_api_type")
+            HuggingFaceAPIGenerator(api_type="invalid_api_type", api_params={})
 
     def test_init_serverless(self, mock_check_valid_model):
         model = "HuggingFaceH4/zephyr-7b-alpha"
