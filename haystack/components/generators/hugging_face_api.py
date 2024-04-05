@@ -68,8 +68,8 @@ class HuggingFaceAPIGenerator:
 
     def __init__(
         self,
-        api_type: Union[HFGenerationAPIType, str] = HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-        api_params: Optional[Dict[str, str]] = None,
+        api_type: Union[HFGenerationAPIType, str],
+        api_params: Dict[str, str],
         token: Optional[Secret] = Secret.from_env_var("HF_API_TOKEN", strict=False),
         generation_kwargs: Optional[Dict[str, Any]] = None,
         stop_words: Optional[List[str]] = None,
@@ -98,8 +98,6 @@ class HuggingFaceAPIGenerator:
 
         if isinstance(api_type, str):
             api_type = HFGenerationAPIType.from_str(api_type)
-
-        api_params = api_params or {}
 
         if api_type == HFGenerationAPIType.SERVERLESS_INFERENCE_API:
             model = api_params.get("model")
