@@ -455,7 +455,7 @@ class AzureOCRDocumentConverter:
                 break
         return in_table
 
-    def _hash_dataframe(self, df: pd.DataFrame, desired_samples=10, hash_length=4) -> str:
+    def _hash_dataframe(self, df: pd.DataFrame, desired_samples=5, hash_length=4) -> str:
         """
         Returns a hash of the DataFrame content. The hash is based on the content of the DataFrame.
         :param df: The DataFrame to hash.
@@ -465,7 +465,7 @@ class AzureOCRDocumentConverter:
         :returns: A hash of the DataFrame content.
         """
         # take adaptive sample of rows to hash because we can have very large dataframes
-        hasher = hashlib.sha256()
+        hasher = hashlib.md5()
         total_rows = len(df)
         # sample rate based on DataFrame size and desired number of samples
         sample_rate = max(1, total_rows // desired_samples)
