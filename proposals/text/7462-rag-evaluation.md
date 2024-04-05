@@ -1,8 +1,8 @@
 - Title: Proposal for presentation of RAG evaluation results
 - Decision driver: David S. Batista
 - Start Date: 2024-04-03
-- Proposal PR: (fill in after opening the PR)
-- Github Issue or Discussion: (only if available, link the original request for this change)
+- Proposal PR: #7462
+- Github Issue or Discussion: https://github.com/deepset-ai/haystack/issues/7398
 
 # Summary
 
