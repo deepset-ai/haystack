@@ -25,7 +25,7 @@ def mock_embedding_generation(json, **kwargs):
 class TestHuggingFaceAPITextEmbedder:
     def test_init_invalid_api_type(self):
         with pytest.raises(ValueError):
-            HuggingFaceAPITextEmbedder(api_type="invalid_api_type")
+            HuggingFaceAPITextEmbedder(api_type="invalid_api_type", api_params={})
 
     def test_init_serverless(self, mock_check_valid_model):
         model = "BAAI/bge-small-en-v1.5"
