@@ -1,13 +1,13 @@
+import logging
 from unittest.mock import MagicMock, patch
-from haystack.utils.auth import Secret
 
 import pytest
-import logging
 import torch
 from transformers.modeling_outputs import SequenceClassifierOutput
 
 from haystack import ComponentError, Document
 from haystack.components.rankers.transformers_similarity import TransformersSimilarityRanker
+from haystack.utils.auth import Secret
 from haystack.utils.device import ComponentDevice, DeviceMap
 
 
@@ -272,7 +272,8 @@ class TestSimilarityRanker:
 
     @patch("haystack.components.rankers.transformers_similarity.AutoTokenizer.from_pretrained")
     @patch("haystack.components.rankers.transformers_similarity.AutoModelForSequenceClassification.from_pretrained")
-    def test_device_map_dict(self, mocked_automodel, mocked_autotokenizer):
+    def test_device_map_dict(self, mocked_automodel, _mocked_autotokenizer, monkeypatch):
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)
         ranker = TransformersSimilarityRanker("model", model_kwargs={"device_map": {"layer_1": 1, "classifier": "cpu"}})
 
         class MockedModel:
