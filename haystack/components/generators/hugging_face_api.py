@@ -24,9 +24,9 @@ logger = logging.getLogger(__name__)
 class HuggingFaceAPIGenerator:
     """
     This component can be used to generate text using different Hugging Face APIs:
-    - [free Serverless Inference API]((https://huggingface.co/inference-api)
-    - [paid Inference Endpoints](https://huggingface.co/inference-endpoints)
-    - [self-hosted Text Generation Inference](https://github.com/huggingface/text-generation-inference)
+    - [Free Serverless Inference API]((https://huggingface.co/inference-api)
+    - [Paid Inference Endpoints](https://huggingface.co/inference-endpoints)
+    - [Self-hosted Text Generation Inference](https://github.com/huggingface/text-generation-inference)
 
 
     Example usage with the free Serverless Inference API:
@@ -68,8 +68,8 @@ class HuggingFaceAPIGenerator:
 
     def __init__(
         self,
-        api_type: Union[HFGenerationAPIType, str] = HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-        api_params: Optional[Dict[str, str]] = None,
+        api_type: Union[HFGenerationAPIType, str],
+        api_params: Dict[str, str],
         token: Optional[Secret] = Secret.from_env_var("HF_API_TOKEN", strict=False),
         generation_kwargs: Optional[Dict[str, Any]] = None,
         stop_words: Optional[List[str]] = None,
@@ -84,12 +84,12 @@ class HuggingFaceAPIGenerator:
             A dictionary containing the following keys:
             - `model`: model ID on the Hugging Face Hub. Required when `api_type` is `SERVERLESS_INFERENCE_API`.
             - `url`: URL of the inference endpoint. Required when `api_type` is `INFERENCE_ENDPOINTS` or `TEXT_GENERATION_INFERENCE`.
-        :param token: The HuggingFace token to use as HTTP bearer authorization
-            You can find your HF token in your [account settings](https://huggingface.co/settings/tokens)
+        :param token: The HuggingFace token to use as HTTP bearer authorization.
+            You can find your HF token in your [account settings](https://huggingface.co/settings/tokens).
         :param generation_kwargs:
             A dictionary containing keyword arguments to customize text generation.
                 Some examples: `max_new_tokens`, `temperature`, `top_k`, `top_p`,...
-                See Hugging Face's documentation for more information at: [text_generation](https://huggingface.co/docs/huggingface_hub/en/package_reference/inference_client#huggingface_hub.InferenceClient.text_generation).
+                See Hugging Face's [documentation](https://huggingface.co/docs/huggingface_hub/en/package_reference/inference_client#huggingface_hub.InferenceClient.text_generation) for more information.
         :param stop_words: An optional list of strings representing the stop words.
         :param streaming_callback: An optional callable for handling streaming responses.
         """
@@ -98,8 +98,6 @@ class HuggingFaceAPIGenerator:
 
         if isinstance(api_type, str):
             api_type = HFGenerationAPIType.from_str(api_type)
-
-        api_params = api_params or {}
 
         if api_type == HFGenerationAPIType.SERVERLESS_INFERENCE_API:
             model = api_params.get("model")
@@ -155,10 +153,10 @@ class HuggingFaceAPIGenerator:
         Deserialize this component from a dictionary.
         """
         deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
-        init_params = data.get("init_parameters", {})
+        init_params = data["init_parameters"]
         serialized_callback_handler = init_params.get("streaming_callback")
         if serialized_callback_handler:
-            data["init_parameters"]["streaming_callback"] = deserialize_callable(serialized_callback_handler)
+            init_params["streaming_callback"] = deserialize_callable(serialized_callback_handler)
         return default_from_dict(cls, data)
 
     @component.output_types(replies=List[str], meta=List[Dict[str, Any]])
