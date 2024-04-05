@@ -1,4 +1,5 @@
 import copy
+import hashlib
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Union
@@ -284,7 +285,12 @@ class AzureOCRDocumentConverter:
                 table_meta["page"] = table.bounding_regions[0].page_number
 
             table_df = pd.DataFrame(columns=table_list[0], data=table_list[1:])
-            converted_tables.append(Document(dataframe=table_df, meta=table_meta))
+
+            # Use custom ID for tables, as columns might not be unique and thus failing in the default ID generation
+            pd_hashes = pd.util.hash_pandas_object(table_df, index=True).values
+            data = f"{pd_hashes}{table_meta}"
+            doc_id = hashlib.sha256(data.encode()).hexdigest()
+            converted_tables.append(Document(id=doc_id, dataframe=table_df, meta=table_meta))
 
         return converted_tables
 

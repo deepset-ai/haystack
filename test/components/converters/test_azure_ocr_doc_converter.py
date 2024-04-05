@@ -194,9 +194,6 @@ class TestAzureOCRDocumentConverter:
         # assert docs[0].meta["preceding_context"] == ""
 
     @patch("haystack.utils.auth.EnvVarSecret.resolve_value")
-    @pytest.mark.skip(
-        reason="fails because of non-unique column names, azure_sample_pdf_3.json has duplicate column names"
-    )
     def test_azure_converter_with_multicolumn_header_table(self, mock_resolve_value, test_files_path) -> None:
         mock_resolve_value.return_value = "test_api_key"
 
@@ -216,10 +213,10 @@ class TestAzureOCRDocumentConverter:
         docs = out["documents"]
         assert len(docs) == 2
         assert docs[0].content_type == "table"
-        assert docs[0].content.shape[0] == 1  # number of rows
-        assert docs[0].content.shape[1] == 3  # number of columns
-        assert list(docs[0].content.columns) == ["This is a subheader", "This is a subheader", "This is a subheader"]
-        assert list(docs[0].content.iloc[0]) == ["Value 1", "Value 2", "Val 3"]
+        assert docs[0].dataframe.shape[0] == 1  # number of rows
+        assert docs[0].dataframe.shape[1] == 3  # number of columns
+        assert list(docs[0].dataframe.columns) == ["This is a subheader", "This is a subheader", "This is a subheader"]
+        assert list(docs[0].dataframe.iloc[0]) == ["Value 1", "Value 2", "Val 3"]
         assert (
             docs[0].meta["preceding_context"]
             == "Table 1. This is an example table with two multicolumn headers\nHeader 1"
