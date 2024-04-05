@@ -26,8 +26,13 @@ class HFEmbeddingAPIType(Enum):
     API type to use for Hugging Face API Embedders.
     """
 
+    # HF [Text Embeddings Inference (TEI)](https://github.com/huggingface/text-embeddings-inference).
     TEXT_EMBEDDINGS_INFERENCE = "text_embeddings_inference"
+
+    # HF [Inference Endpoints](https://huggingface.co/inference-endpoints).
     INFERENCE_ENDPOINTS = "inference_endpoints"
+
+    # HF [Serverless Inference API](https://huggingface.co/inference-api).
     SERVERLESS_INFERENCE_API = "serverless_inference_api"
 
     def __str__(self):
