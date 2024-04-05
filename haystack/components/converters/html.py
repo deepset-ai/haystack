@@ -38,6 +38,7 @@ class HTMLToDocument:
             "KeepEverythingExtractor",
             "NumWordsRulesExtractor",
         ] = "DefaultExtractor",
+        try_others: bool = True,
     ):
         """
         Create an HTMLToDocument component.
@@ -46,8 +47,10 @@ class HTMLToDocument:
             extractor_type: Name of the extractor class to use. Defaults to `DefaultExtractor`.
             For more information on the different types of extractors,
             see [boilerpy3 documentation](https://github.com/jmriebold/BoilerPy3?tab=readme-ov-file#extractors).
+        :param try_others: If True, the component will try other extractors if the user chosen extractor fails.
         """
         self.extractor_type = extractor_type
+        self.try_others = try_others
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -56,7 +59,7 @@ class HTMLToDocument:
         :returns:
             Dictionary with serialized data.
         """
-        return default_to_dict(self, extractor_type=self.extractor_type)
+        return default_to_dict(self, extractor_type=self.extractor_type, try_others=self.try_others)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "HTMLToDocument":
@@ -120,7 +123,9 @@ class HTMLToDocument:
                 continue
 
             text = None
-            for extractor_name in extractors_list:
+            for extractor_idx, extractor_name in enumerate(extractors_list):
+                if extractor_idx > 0 and not self.try_others:
+                    break
                 extractor_class = getattr(extractors, extractor_name)
                 extractor = extractor_class(raise_on_failure=False)
                 try:
@@ -128,16 +133,18 @@ class HTMLToDocument:
                     if text:
                         break
                 except Exception as conversion_e:
-                    logger.debug(
-                        "Failed to extract text using {extractor} from {source}. Trying next extractor. Error: {error}",
-                        extractor=extractor_name,
-                        source=source,
-                        error=conversion_e,
-                    )
-
+                    if self.try_others:
+                        logger.warning(
+                            "Failed to extract text using {extractor} from {source}. Trying next extractor. Error: {error}",
+                            extractor=extractor_name,
+                            source=source,
+                            error=conversion_e,
+                        )
             if not text:
                 logger.warning(
-                    "Failed to extract text from {source} using available extractors. Skipping it.", source=source
+                    f"Failed to extract text from {source} using extractors: {extractors_list}. Skipping it.",
+                    source=source,
+                    extractors_list=extractors_list if self.try_others else extractors_list[0],
                 )
                 continue
 
