@@ -47,7 +47,7 @@ class HTMLToDocument:
             extractor_type: Name of the extractor class to use. Defaults to `DefaultExtractor`.
             For more information on the different types of extractors,
             see [boilerpy3 documentation](https://github.com/jmriebold/BoilerPy3?tab=readme-ov-file#extractors).
-        :param try_others: If True, the component will try other extractors if the user chosen extractor fails.
+        :param try_others: If `True`, the component will try other extractors if the user chosen extractor fails.
         """
         self.extractor_type = extractor_type
         self.try_others = try_others
