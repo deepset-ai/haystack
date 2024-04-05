@@ -123,10 +123,6 @@ class HuggingFaceAPITextEmbedder:
             if not is_valid_http_url(url):
                 raise ValueError(f"Invalid URL: {url}")
             model_or_url = url
-        else:
-            raise ValueError(
-                f"Unsupported API type: {api_type}. Supported types are: {[e.value for e in HFEmbeddingAPIType]}"
-            )
 
         self.api_type = api_type
         self.api_params = api_params
