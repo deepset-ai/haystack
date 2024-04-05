@@ -21,6 +21,33 @@ with LazyImport(message="Run 'pip install \"huggingface_hub>=0.22.0\"'") as hugg
 logger = logging.getLogger(__name__)
 
 
+class HFGenerationAPIType(Enum):
+    """
+    API type to use for Hugging Face API Generators.
+    """
+
+    # HF [Text Generation Inference (TGI)](https://github.com/huggingface/text-generation-inference).
+    TEXT_GENERATION_INFERENCE = "text_generation_inference"
+
+    # HF [Inference Endpoints](https://huggingface.co/inference-endpoints).
+    INFERENCE_ENDPOINTS = "inference_endpoints"
+
+    # HF [Serverless Inference API](https://huggingface.co/inference-api).
+    SERVERLESS_INFERENCE_API = "serverless_inference_api"
+
+    def __str__(self):
+        return self.value
+
+    @staticmethod
+    def from_str(string: str) -> "HFGenerationAPIType":
+        enum_map = {e.value: e for e in HFGenerationAPIType}
+        mode = enum_map.get(string)
+        if mode is None:
+            msg = f"Unknown Hugging Face API type '{string}'. Supported types are: {list(enum_map.keys())}"
+            raise ValueError(msg)
+        return mode
+
+
 class HFModelType(Enum):
     EMBEDDING = 1
     GENERATION = 2
