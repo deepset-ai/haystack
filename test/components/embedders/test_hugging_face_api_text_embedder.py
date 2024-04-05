@@ -1,12 +1,10 @@
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
-from huggingface_hub import TextGenerationOutputToken, TextGenerationStreamDetails, TextGenerationStreamOutput
 from huggingface_hub.utils import RepositoryNotFoundError
 from numpy import array, random
 
 from haystack.components.embedders import HuggingFaceAPITextEmbedder
-from haystack.dataclasses import StreamingChunk
 from haystack.utils.auth import Secret
 from haystack.utils.hf import HFEmbeddingAPIType
 

@@ -40,7 +40,7 @@ class HuggingFaceAPITextEmbedder:
     ```python
     from haystack.components.embedders import HuggingFaceAPITextEmbedder
     from haystack.utils import Secret
-    text_embedder = HuggingFaceAPITextEmbedder(api_type="serverless_inference_api",
+    text_embedder = HuggingFaceAPITextEmbedder(api_type="inference_endpoints",
                                                api_params={"model": "BAAI/bge-small-en-v1.5"},
                                                token=Secret.from_token("<your-api-key>"))
 
