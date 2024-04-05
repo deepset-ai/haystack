@@ -38,9 +38,9 @@ class HuggingFaceAPIChatGenerator:
                 ChatMessage.from_user("What's Natural Language Processing?")]
 
 
-    generator = HuggingFaceAPIGenerator(api_type="serverless_inference_api",
-                                        api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
-                                        token=Secret.from_token("<your-api-key>"))
+    generator = HuggingFaceAPIChatGenerator(api_type="serverless_inference_api",
+                                            api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
+                                            token=Secret.from_token("<your-api-key>"))
 
     result = generator.run(messages)
     print(result)
@@ -173,7 +173,7 @@ class HuggingFaceAPIChatGenerator:
             data["init_parameters"]["streaming_callback"] = deserialize_callable(serialized_callback_handler)
         return default_from_dict(cls, data)
 
-    @component.output_types(replies=List[str], meta=List[Dict[str, Any]])
+    @component.output_types(replies=List[ChatMessage])
     def run(self, messages: List[ChatMessage], generation_kwargs: Optional[Dict[str, Any]] = None):
         """
         Invoke the text generation inference based on the provided messages and generation parameters.
