@@ -51,7 +51,7 @@ class TestSASEvaluator:
 
     def test_run_with_empty_inputs(self):
         evaluator = SASEvaluator()
-        result = evaluator.run(ground_truths_answers=[], predicted_answers=[])
+        result = evaluator.run(ground_truth_answers=[], predicted_answers=[])
         assert len(result) == 2
         assert result["score"] == 0.0
         assert result["individual_scores"] == [0.0]
@@ -68,7 +68,7 @@ class TestSASEvaluator:
             "The Meiji Restoration in 1868 transformed Japan into a modernized world power.",
         ]
         with pytest.raises(ValueError):
-            evaluator.run(ground_truths_answers=ground_truths, predicted_answers=predictions)
+            evaluator.run(ground_truth_answers=ground_truths, predicted_answers=predictions)
 
     def test_run_not_warmed_up(self):
         evaluator = SASEvaluator()
@@ -83,7 +83,7 @@ class TestSASEvaluator:
             "The Meiji Restoration in 1868 transformed Japan into a modernized world power.",
         ]
         with pytest.raises(RuntimeError):
-            evaluator.run(ground_truths_answers=ground_truths, predicted_answers=predictions)
+            evaluator.run(ground_truth_answers=ground_truths, predicted_answers=predictions)
 
     @pytest.mark.integration
     def test_run_with_matching_predictions(self):
