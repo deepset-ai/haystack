@@ -31,16 +31,15 @@ class RecallMode(Enum):
 @component
 class DocumentRecallEvaluator:
     """
-    Evaluator that calculates the Recall score for a list of questions.
+    Evaluator that calculates the Recall score for a list of documents.
     Returns both a list of scores for each question and the average.
-    Each question can have multiple ground truth documents and multiple predicted documents.
+    There can be multiple ground truth documents and multiple predicted documents as input.
 
     Usage example:
     ```python
     from haystack.components.evaluators import DocumentRecallEvaluator
     evaluator = DocumentRecallEvaluator()
     result = evaluator.run(
-        questions=["What is the capital of Germany?", "What is the capital of France?"],
         ground_truth_answers=[["Berlin"], ["Paris"]],
         predicted_answers=[["Paris"], ["London"]],
     )
@@ -80,17 +79,12 @@ class DocumentRecallEvaluator:
 
     @component.output_types(score=float, individual_scores=List[float])
     def run(
-        self,
-        questions: List[str],
-        ground_truth_documents: List[List[Document]],
-        retrieved_documents: List[List[Document]],
+        self, ground_truth_documents: List[List[Document]], retrieved_documents: List[List[Document]]
     ) -> Dict[str, Any]:
         """
         Run the DocumentRecallEvaluator on the given inputs.
-        All lists must have the same length.
+        `ground_truth_documents` and `retrieved_documents` must have the same length.
 
-        :param questions:
-            A list of questions.
         :param ground_truth_documents:
             A list of expected documents for each question.
         :param retrieved_documents:
@@ -100,8 +94,8 @@ class DocumentRecallEvaluator:
             - `invididual_scores` - A list of numbers from 0.0 to 1.0 that represents the proportion of matching documents retrieved.
                                     If the mode is `single_hit`, the individual scores are True or False.
         """
-        if not len(questions) == len(ground_truth_documents) == len(retrieved_documents):
-            msg = "The length of questions, ground_truth_documents, and predicted_documents must be the same."
+        if len(ground_truth_documents) != len(retrieved_documents):
+            msg = "The length of ground_truth_documents and retrieved_documents must be the same."
             raise ValueError(msg)
 
         scores = []
@@ -109,4 +103,4 @@ class DocumentRecallEvaluator:
             score = self.mode_function(ground_truth, retrieved)
             scores.append(score)
 
-        return {"score": sum(scores) / len(questions), "individual_scores": scores}
+        return {"score": sum(scores) / len(retrieved_documents), "individual_scores": scores}

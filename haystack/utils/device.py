@@ -16,10 +16,10 @@ with LazyImport(
 
 class DeviceType(Enum):
     """
-    Represents device types supported by Haystack. This also includes
-    devices that are not directly used by models - for example, the disk
-    device is exclusively used in device maps for frameworks that support
-    offloading model weights to disk.
+    Represents device types supported by Haystack.
+
+    This also includes devices that are not directly used by models - for example, the disk device is exclusively used
+    in device maps for frameworks that support offloading model weights to disk.
     """
 
     CPU = "cpu"
@@ -126,6 +126,13 @@ class Device:
 
     @staticmethod
     def from_str(string: str) -> "Device":
+        """
+        Create a generic device from a string.
+
+        :returns:
+            The device.
+
+        """
         device_type_str, device_id = _split_device_string(string)
         return Device(DeviceType.from_str(device_type_str), device_id)
 
@@ -133,9 +140,10 @@ class Device:
 @dataclass
 class DeviceMap:
     """
-    A generic mapping from strings to devices. The semantics of the
-    strings are dependent on target framework. Primarily used to deploy
-    HuggingFace models to multiple devices.
+    A generic mapping from strings to devices.
+
+    The semantics of the strings are dependent on target framework. Primarily used to deploy HuggingFace models to
+    multiple devices.
 
     :param mapping:
         Dictionary mapping strings to devices.
@@ -226,8 +234,9 @@ class DeviceMap:
 @dataclass(frozen=True)
 class ComponentDevice:
     """
-    A representation of a device for a component. This can be either
-    a single device or a device map.
+    A representation of a device for a component.
+
+    This can be either a single device or a device map.
     """
 
     _single_device: Optional[Device] = field(default=None)
@@ -237,6 +246,7 @@ class ComponentDevice:
     def from_str(cls, device_str: str) -> "ComponentDevice":
         """
         Create a component device representation from a device string.
+
         The device string can only represent a single device.
 
         :param device_str:
@@ -251,6 +261,7 @@ class ComponentDevice:
     def from_single(cls, device: Device) -> "ComponentDevice":
         """
         Create a component device representation from a single device.
+
         Disks cannot be used as single devices.
 
         :param device:
@@ -287,6 +298,7 @@ class ComponentDevice:
     def to_torch(self) -> "torch.device":
         """
         Convert the component device representation to PyTorch format.
+
         Device maps are not supported.
 
         :returns:
@@ -304,6 +316,7 @@ class ComponentDevice:
     def to_torch_str(self) -> str:
         """
         Convert the component device representation to PyTorch string format.
+
         Device maps are not supported.
 
         :returns:
@@ -320,6 +333,7 @@ class ComponentDevice:
     def to_spacy(self) -> int:
         """
         Convert the component device representation to spaCy format.
+
         Device maps are not supported.
 
         :returns:
@@ -361,9 +375,9 @@ class ComponentDevice:
 
     def update_hf_kwargs(self, hf_kwargs: Dict[str, Any], *, overwrite: bool) -> Dict[str, Any]:
         """
-        Convert the component device representation to HuggingFace format
-        and add them as canonical keyword arguments to the keyword arguments
-        dictionary.
+        Convert the component device representation to HuggingFace format.
+
+        Add them as canonical keyword arguments to the keyword arguments dictionary.
 
         :param hf_kwargs:
             The HuggingFace keyword arguments dictionary.
@@ -385,8 +399,7 @@ class ComponentDevice:
     @property
     def has_multiple_devices(self) -> bool:
         """
-        Whether this component device representation contains multiple
-        devices.
+        Whether this component device representation contains multiple devices.
         """
         self._validate()
 
@@ -395,8 +408,7 @@ class ComponentDevice:
     @property
     def first_device(self) -> Optional["ComponentDevice"]:
         """
-        Return either the single device or the first device in the
-        device map, if any.
+        Return either the single device or the first device in the device map, if any.
 
         :returns:
             The first device.
@@ -413,8 +425,7 @@ class ComponentDevice:
     @staticmethod
     def resolve_device(device: Optional["ComponentDevice"] = None) -> "ComponentDevice":
         """
-        Select a device for a component. If a device is specified,
-        it's used. Otherwise, the default device is used.
+        Select a device for a component. If a device is specified, it's used. Otherwise, the default device is used.
 
         :param device:
             The provided device, if any.
@@ -433,8 +444,7 @@ class ComponentDevice:
 
     def to_dict(self) -> Dict[str, Any]:
         """
-        Convert the component device representation to a JSON-serializable
-        dictionary.
+        Convert the component device representation to a JSON-serializable dictionary.
 
         :returns:
             The dictionary representation.
@@ -450,8 +460,7 @@ class ComponentDevice:
     @classmethod
     def from_dict(cls, dict: Dict[str, Any]) -> "ComponentDevice":
         """
-        Create a component device representation from a JSON-serialized
-        dictionary.
+        Create a component device representation from a JSON-serialized dictionary.
 
         :param dict:
             The serialized representation.
@@ -468,9 +477,10 @@ class ComponentDevice:
 
 def _get_default_device() -> Device:
     """
-    Return the default device for Haystack. Precedence:
-    GPU > MPS > CPU. If PyTorch is not installed, only CPU
-    is available.
+    Return the default device for Haystack.
+
+    Precedence:
+        GPU > MPS > CPU. If PyTorch is not installed, only CPU is available.
 
     :returns:
         The default device.
