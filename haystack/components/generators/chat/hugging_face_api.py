@@ -184,7 +184,8 @@ class HuggingFaceAPIChatGenerator:
 
         :param messages: A list of ChatMessage instances representing the input messages.
         :param generation_kwargs: Additional keyword arguments for text generation.
-        :return: A list containing the generated responses as ChatMessage instances.
+        :returns: A dictionary with the following keys:
+            - `replies`: A list containing the generated responses as ChatMessage instances.
         """
 
         # update generation kwargs by merging with the default ones
