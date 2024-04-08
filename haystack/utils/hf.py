@@ -40,6 +40,13 @@ class HFGenerationAPIType(Enum):
 
     @staticmethod
     def from_str(string: str) -> "HFGenerationAPIType":
+        """
+        Convert a string to a HFGenerationAPIType enum.
+
+        :param string: The string to convert.
+        :return: The corresponding HFGenerationAPIType enum.
+
+        """
         enum_map = {e.value: e for e in HFGenerationAPIType}
         mode = enum_map.get(string)
         if mode is None:

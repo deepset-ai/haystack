@@ -8,6 +8,7 @@ from haystack import DeserializationError
 def serialize_callable(callable_handle: Callable) -> str:
     """
     Serializes a callable to its full path.
+
     :param callable_handle: The callable to serialize
     :return: The full path of the callable
     """
@@ -24,6 +25,7 @@ def serialize_callable(callable_handle: Callable) -> str:
 def deserialize_callable(callable_handle: str) -> Optional[Callable]:
     """
     Deserializes a callable given its full import path as a string.
+
     :param callable_handle: The full path of the callable_handle
     :return: The callable
     :raises DeserializationError: If the callable cannot be found
