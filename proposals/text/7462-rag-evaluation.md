@@ -90,12 +90,10 @@ def individual_detailed_score_report(queries: Union[List[str], str] = "all"):
 Example output
 
 ```bash
-| query_id | reciprocal_rank | single_hit | multi_hit | context_relevance | faithfulness | semantic_answer_similarity |
-|----------|-----------------|------------|-----------|-------------------|-------------|----------------------------|
-| 53c3b3e6 | 0.378064        | 1          | 0.706125  | 0.805466          | 0.135581    | 0.971241                   |
-| 225f87f7 | 0.534964        | 1          | 0.454976  | 0.410251          | 0.695974    | 0.159320                   |
-| 8ac473ec | 0.216058        | 0          | 0.445512  | 0.750070          | 0.749861    | 0.019722                   |
-| 97d284ca | 0.778642        | 1          | 0.250522  | 0.361332          | 0.041999    | 1                          |
+| question | context | answer | predicted_answer | reciprocal_rank | single_hit | multi_hit | context_relevance | faithfulness | semantic_answer_similarity |
+|----------|---------|--------|------------------|-----------------|------------|-----------|-------------------|-------------|----------------------------|
+| What is the capital of France? | wiki_France | Paris | Paris | 0.378064 | 1 | 0.706125 | 0.805466 | 0.135581 | 0.971241 |
+| What is the capital of Spain? | wiki_Spain | Madrid | Madrid | 0.534964 | 1 | 0.454976 | 0.410251 | 0.695974 | 0.159320 |
 ```
 
 ### Comparative Evaluation Report
@@ -138,13 +136,11 @@ def comparative_detailed_score_report(self, other: "EvaluationResults"):
 ```
 
 ```bash
-| query_id | reciprocal_rank_model_1 | single_hit_model_1 | multi_hit_model_1 | context_relevance_model_1 | faithfulness_model_1 | semantic_answer_similarity_model_1 | reciprocal_rank_model_2 | single_hit_model_2 | multi_hit_model_2 | context_relevance_model_2 | faithfulness_model_2 | semantic_answer_similarity_model_2 |
-|----------|-------------------------|--------------------|-------------------|---------------------------|----------------------|------------------------------------|-------------------------|--------------------|-------------------|---------------------------|----------------------|------------------------------------|
-| 53c3b3e6 | 0.378064                | 1                  | 0.706125          | 0.805466                  | 0.135581            | 0.971241                           | 0.378064                | 1                  | 0.706125          | 0.805466                  | 0.135581            | 0.971241                           |
-| 225f87f7 | 0.534964                | 1                  | 0.454976          | 0.410251                  | 0.695974            | 0.159320                           | 0.534964                | 1                  | 0.454976          | 0.410251                  | 0.695974            | 0.159320                           |
-| 8ac473ec | 0.216058                | 0                  | 0.445512          | 0.750070                  | 0.749861            | 0.019722                           | 0.216058                | 0                  | 0.445512          | 0.750070                  | 0.749861            | 0.019722                           |
-| 97d284ca | 0.778642                | 1                  | 0.250522          | 0.361332                  | 0.041999            | 1                                  | 0.778642                | 1                  | 0.250522          | 0.361332                  | 0.041999            | 1                                  |
-```
+| question | context | answer | predicted_answer_model_1 | predicted_answer_model_2 | reciprocal_rank_model_1 | reciprocal_rank_model_2 | single_hit_model_1 | single_hit_model_2 | multi_hit_model_1 | multi_hit_model_2 | context_relevance_model_1 | context_relevance_model_2 | faithfulness_model_1 | faithfulness_model_2 | semantic_answer_similarity_model_1 | semantic_answer_similarity_model_2 |
+|----------|---------|--------|--------------------------|--------------------------|-------------------------|-------------------------|--------------------|--------------------|-------------------|-------------------|---------------------------|---------------------------|----------------------|----------------------|------------------------------------|------------------------------------|
+| What is the capital of France? | wiki_France | Paris | Paris | Paris | 0.378064 | 0.378064 | 1 | 1 | 0.706125 | 0.706125 | 0.805466 | 0.805466 | 0.135581 | 0.135581 | 0.971241 | 0.971241 |
+| What is the capital of Spain? | wiki_Spain | Madrid | Madrid | Madrid | 0.534964 | 0.534964 | 1 | 1 | 0.454976 | 0.454976 | 0.410251 | 0.410251 | 0.695974 | 0.695974 | 0.159320 | 0.159320 |
+````
 
 
 Have a method to find interesting scores thresholds, typically used for error analysis, for all metrics available.
