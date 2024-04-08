@@ -1,4 +1,5 @@
 import json
+import warnings
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
@@ -91,6 +92,12 @@ class HuggingFaceTEIDocumentEmbedder:
         :param embedding_separator:
             Separator used to concatenate the meta fields to the Document text.
         """
+        warnings.warn(
+            "`HuggingFaceTEIDocumentEmbedder` is deprecated and will be removed in Haystack 2.3.0."
+            "Use `HuggingFaceAPIDocumentEmbedder` instead.",
+            DeprecationWarning,
+        )
+
         huggingface_hub_import.check()
 
         if url:
