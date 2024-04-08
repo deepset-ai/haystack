@@ -37,8 +37,8 @@ class DocumentRecallEvaluator:
 
     Usage example:
     ```python
-    from haystack.components.evaluators import DocumentRecallEvaluator
     from haystack import Document
+    from haystack.components.evaluators import DocumentRecallEvaluator
 
     evaluator = DocumentRecallEvaluator()
     result = evaluator.run(
