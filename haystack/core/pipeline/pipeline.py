@@ -775,10 +775,10 @@ class Pipeline:
             },
         ):
             # This is what we'll return at the end
-            final_outputs = {}
+            final_outputs: Dict[Any, Any] = {}
 
             # Cache for extra outputs, if enabled.
-            extra_outputs = {}
+            extra_outputs: Dict[Any, Any] = {}
 
             while len(to_run) > 0:
                 name, comp = to_run.pop(0)
