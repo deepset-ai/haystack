@@ -156,7 +156,7 @@ def find_thresholds(self, metrics: List[str]) -> Dict[str, float]:
 
 ```bash
 data  = {
-    "thresholds": ["25th percentile", "75th percentile", "mean", "average"],
+    "thresholds": ["25th percentile", "75th percentile", "median", "average"],
     "reciprocal_rank": [0.378064, 0.534964, 0.216058, 0.778642],
     "context_relevance": [0.805466, 0.410251, 0.750070, 0.361332],
     "faithfulness": [0.135581, 0.695974, 0.749861, 0.041999],
@@ -173,8 +173,9 @@ def find_inputs_below_threshold(self, metric: str, threshold: float):
 
 # Drawbacks
 
-- Having the output in a format table may not be flexible enough, and maybe too verbose, for datasets with a large number of queries.
-- Maybe a JSON format would be better with the option to export to a .csv file.
+- Having the output in a format table may not be flexible enough, and maybe too verbose for datasets with a large number of queries.
+- Maybe the option to export to a .csv file would be better than having the output in a table format.
+- Maybe a JSON format would be better with the option for advanced users to do further analysis and visualization.
 
 
 # Adoption strategy
@@ -185,3 +186,42 @@ def find_inputs_below_threshold(self, metric: str, threshold: float):
 
 - A tutorial would be the best approach to teach users how to use this feature.
 - Adding a new entry to the documentation.
+
+# User stories
+
+### 1. I would like to get a single summary score for my RAG pipeline so I can compare several pipeline configurations.
+
+Run `individual_aggregate_score_report()` and get the following output:
+
+```bash
+{'Reciprocal Rank': 0.448,
+ 'Single Hit': 0.5,
+ 'Multi Hit': 0.540,
+ 'Context Relevance': 0.537,
+ 'Faithfulness': 0.452,
+ 'Semantic Answer Similarity': 0.478
+ }
+ ```
+
+### 2. I am not sure what evaluation metrics work best for my RAG pipeline, specially when using the more novel LLM-based
+
+Use `context relevance` or `faithfulness`
+
+### 3. My RAG pipeline has a low aggregate score, so I would like to see examples of specific inputs where the score was low to be able to diagnose what the issue could be.
+
+Let's say it's a low score in `reciprocal_rank` and one already has an idea of what "low" is a query/question, then simply run:
+
+    find_inputs_below_threshold("reciprocal_rank", <threshold>)
+
+If the low score is in `reciprocal_rank` one can first get thresholds for this metric using:
+
+    `find_thresholds(["reciprocal_rank"])`
+
+this will give:
+
+- 25th percentile: (Q1) the value below which 25% of the data falls.
+- median percentile: (Q2) the value below which 50% of the data falls.
+- 75th percentile: (Q3) the value below which 75% of the data falls.
+
+this can help to decide what is considered a low score, and then get, for instance, queries with a score below
+the Q2 threshold using `find_inputs_below_threshold("context_relevance", threshold)`
