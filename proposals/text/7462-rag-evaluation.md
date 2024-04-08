@@ -90,24 +90,12 @@ def individual_detailed_score_report(queries: Union[List[str], str] = "all"):
 Example output
 
 ```bash
-data  = {
-    "query_id": ["53c3b3e6, 225f87f7, 8ac473ec, 97d284ca"],
-    "reciprocal_rank": [0.378064, 0.534964, 0.216058, 0.778642],
-    "single_hit": [1, 1, 0, 1],
-    "multi_hit": [0.706125, 0.454976, 0.445512, 0.250522],
-    "context_relevance": [0.805466, 0.410251, 0.750070, 0.361332],
-    "faithfulness": [0.135581, 0.695974, 0.749861, 0.041999],
-    "semantic_answer_similarity": [0.971241, 0.159320, 0.019722, 1],
-    "aggregated_score":
-      {
-          'Reciprocal Rank': 0.448,
-          'Single Hit': 0.5,
-          'Multi Hit': 0.540,
-          'Context Relevance': 0.537,
-          'Faithfulness': 0.452,
-          'Semantic Answer Similarity': 0.478
-      }
-}
+| query_id | reciprocal_rank | single_hit | multi_hit | context_relevance | faithfulness | semantic_answer_similarity |
+|----------|-----------------|------------|-----------|-------------------|-------------|----------------------------|
+| 53c3b3e6 | 0.378064        | 1          | 0.706125  | 0.805466          | 0.135581    | 0.971241                   |
+| 225f87f7 | 0.534964        | 1          | 0.454976  | 0.410251          | 0.695974    | 0.159320                   |
+| 8ac473ec | 0.216058        | 0          | 0.445512  | 0.750070          | 0.749861    | 0.019722                   |
+| 97d284ca | 0.778642        | 1          | 0.250522  | 0.361332          | 0.041999    | 1                          |
 ```
 
 ### Comparative Evaluation Report
@@ -150,49 +138,14 @@ def comparative_detailed_score_report(self, other: "EvaluationResults"):
 ```
 
 ```bash
-{
-    "queries": {
-      "query_id": ["53c3b3e6, 225f87f7, 8ac473ec, 97d284ca"],
-      "question": ["What is the capital of France?", "What is the capital of Spain?"],
-      "contexts": ["wiki_France", "wiki_Spain"],
-      "answer": ["Paris", "Madrid"]  
-    }
-    "pipeline_1": {  
-        "reciprocal_rank": [0.378064, 0.534964, 0.216058, 0.778642],
-        "single_hit": [1, 1, 0, 1],
-        "multi_hit": [0.706125, 0.454976, 0.445512, 0.250522],
-        "context_relevance": [0.805466, 0.410251, 0.750070, 0.361332],
-        "faithfulness": [0.135581, 0.695974, 0.749861, 0.041999],
-        "semantic_answer_similarity": [0.971241, 0.159320, 0.019722, 1],
-        "aggregated_score":
-          {
-              'Reciprocal Rank': 0.448,
-              'Single Hit': 0.5,
-              'Multi Hit': 0.540,
-              'Context Relevance': 0.537,
-              'Faithfulness': 0.452,
-              'Semantic Answer Similarity': 0.478
-          }
-    },
-    "pipeline_2": {
-        "reciprocal_rank": [0.378064, 0.534964, 0.216058, 0.778642],
-        "single_hit": [1, 1, 0, 1],
-        "multi_hit": [0.706125, 0.454976, 0.445512, 0.250522],
-        "context_relevance": [0.805466, 0.410251, 0.750070, 0.361332],
-        "faithfulness": [0.135581, 0.695974, 0.749861, 0.041999],
-        "semantic_answer_similarity": [0.971241, 0.159320, 0.019722, 1],
-        "aggregated_score":
-          {
-              'Reciprocal Rank': 0.448,
-              'Single Hit': 0.5,
-              'Multi Hit': 0.540,
-              'Context Relevance': 0.537,
-              'Faithfulness': 0.452,
-              'Semantic Answer Similarity': 0.478
-          }
-      }
-}
+| query_id | reciprocal_rank_model_1 | single_hit_model_1 | multi_hit_model_1 | context_relevance_model_1 | faithfulness_model_1 | semantic_answer_similarity_model_1 | reciprocal_rank_model_2 | single_hit_model_2 | multi_hit_model_2 | context_relevance_model_2 | faithfulness_model_2 | semantic_answer_similarity_model_2 |
+|----------|-------------------------|--------------------|-------------------|---------------------------|----------------------|------------------------------------|-------------------------|--------------------|-------------------|---------------------------|----------------------|------------------------------------|
+| 53c3b3e6 | 0.378064                | 1                  | 0.706125          | 0.805466                  | 0.135581            | 0.971241                           | 0.378064                | 1                  | 0.706125          | 0.805466                  | 0.135581            | 0.971241                           |
+| 225f87f7 | 0.534964                | 1                  | 0.454976          | 0.410251                  | 0.695974            | 0.159320                           | 0.534964                | 1                  | 0.454976          | 0.410251                  | 0.695974            | 0.159320                           |
+| 8ac473ec | 0.216058                | 0                  | 0.445512          | 0.750070                  | 0.749861            | 0.019722                           | 0.216058                | 0                  | 0.445512          | 0.750070                  | 0.749861            | 0.019722                           |
+| 97d284ca | 0.778642                | 1                  | 0.250522          | 0.361332                  | 0.041999            | 1                                  | 0.778642                | 1                  | 0.250522          | 0.361332                  | 0.041999            | 1                                  |
 ```
+
 
 Have a method to find interesting scores thresholds, typically used for error analysis, for all metrics available.
 Some potentially interesting thresholds to find are: the 25th percentile, the 75th percentile, the mean , the median.
@@ -220,7 +173,9 @@ def find_inputs_below_threshold(self, metric: str, threshold: float):
 
 # Drawbacks
 
--  
+- Having the output in a format table may not be flexible enough, and maybe too verbose, for datasets with a large number of queries.
+- Maybe a JSON format would be better with the option to export to a .csv file.
+
 
 # Adoption strategy
 
