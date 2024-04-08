@@ -16,7 +16,9 @@ class DocumentMRREvaluator:
 
     Usage example:
     ```python
-    from haystack.components.evaluators import AnswerExactMatchEvaluator
+    from haystack import Document
+    from haystack.components.evaluators import DocumentMRREvaluator
+
     evaluator = DocumentMRREvaluator()
     result = evaluator.run(
         ground_truth_documents=[
@@ -29,9 +31,9 @@ class DocumentMRREvaluator:
         ],
     )
     print(result["individual_scores"])
-    # [1.0, 0.8333333333333333]
+    # [1.0, 1.0]
     print(result["score"])
-    # 0.9166666666666666
+    # 1.0
     ```
     """
 
