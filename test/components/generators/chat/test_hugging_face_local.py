@@ -1,5 +1,4 @@
-from unittest.mock import patch, Mock
-from haystack.utils.auth import Secret
+from unittest.mock import Mock, patch
 
 import pytest
 from transformers import PreTrainedTokenizer
@@ -7,6 +6,7 @@ from transformers import PreTrainedTokenizer
 from haystack.components.generators.chat import HuggingFaceLocalChatGenerator
 from haystack.dataclasses import ChatMessage, ChatRole
 from haystack.utils import ComponentDevice
+from haystack.utils.auth import Secret
 
 
 # used to test serialization of streaming_callback
@@ -160,7 +160,8 @@ class TestHuggingFaceLocalChatGenerator:
         assert generator_2.streaming_callback is streaming_callback_handler
 
     @patch("haystack.components.generators.chat.hugging_face_local.pipeline")
-    def test_warm_up(self, pipeline_mock):
+    def test_warm_up(self, pipeline_mock, monkeypatch):
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)
         generator = HuggingFaceLocalChatGenerator(
             model="mistralai/Mistral-7B-Instruct-v0.2",
             task="text2text-generation",

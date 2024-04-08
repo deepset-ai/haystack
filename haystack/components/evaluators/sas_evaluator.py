@@ -129,7 +129,7 @@ class SASEvaluator:
             self._similarity_model = SentenceTransformer(self._model, device=device, use_auth_token=token)
 
     @component.output_types(score=float, individual_scores=List[float])
-    def run(self, ground_truths_answers: List[str], predicted_answers: List[str]) -> Dict[str, Any]:
+    def run(self, ground_truth_answers: List[str], predicted_answers: List[str]) -> Dict[str, Any]:
         """
         Run the SASEvaluator to compute the Semantic Answer Similarity (SAS) between a list of predicted answers
         and a list of ground truth answers. Both must be list of strings of same length.
@@ -143,7 +143,7 @@ class SASEvaluator:
                 - `score`: Mean SAS score over all the predictions/ground-truth pairs.
                 - `individual_scores`: A list of similarity scores for each prediction/ground-truth pair.
         """
-        if len(ground_truths_answers) != len(predicted_answers):
+        if len(ground_truth_answers) != len(predicted_answers):
             raise ValueError("The number of predictions and labels must be the same.")
 
         if len(predicted_answers) == 0:
@@ -155,7 +155,7 @@ class SASEvaluator:
 
         if isinstance(self._similarity_model, CrossEncoder):
             # For Cross Encoders we create a list of pairs of predictions and labels
-            sentence_pairs = list(zip(predicted_answers, ground_truths_answers))
+            sentence_pairs = list(zip(predicted_answers, ground_truth_answers))
             similarity_scores = self._similarity_model.predict(
                 sentence_pairs, batch_size=self._batch_size, convert_to_numpy=True
             )
@@ -174,7 +174,7 @@ class SASEvaluator:
                 predicted_answers, batch_size=self._batch_size, convert_to_tensor=True
             )
             label_embeddings = self._similarity_model.encode(
-                ground_truths_answers, batch_size=self._batch_size, convert_to_tensor=True
+                ground_truth_answers, batch_size=self._batch_size, convert_to_tensor=True
             )
 
             # Compute cosine-similarities

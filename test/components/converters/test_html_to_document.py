@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 
 import pytest
 
@@ -127,7 +128,7 @@ class TestHTMLToDocument:
         converter = HTMLToDocument()
         with caplog.at_level(logging.WARNING):
             results = converter.run(sources=sources)
-            assert "codec can't decode byte" in caplog.text
+            assert "Failed to extract text from" in caplog.text
 
         assert results["documents"] == []
 
@@ -169,3 +170,22 @@ class TestHTMLToDocument:
         serde_data = converter.to_dict()
         new_converter = HTMLToDocument.from_dict(serde_data)
         assert new_converter.extractor_type == converter.extractor_type
+        assert new_converter.try_others == converter.try_others
+
+    def test_run_try_others_false(self, test_files_path, caplog):
+        converter = HTMLToDocument(try_others=False)
+        result = converter.run(sources=[Path(test_files_path / "html" / "paul_graham_superlinear.html")])
+
+        # paul_graham_superlinear.html is a page that the DefaultExtractor cannot extract text from
+        assert len(result["documents"]) == 0
+        assert "Failed to extract text from" in caplog.text
+        assert "Skipping it" in caplog.text
+
+    def test_run_try_others_true(self, test_files_path, caplog):
+        # try_others=True is the default value
+        converter = HTMLToDocument()
+        result = converter.run(sources=[Path(test_files_path / "html" / "paul_graham_superlinear.html")])
+
+        # paul_graham_superlinear.html is a page that the DefaultExtractor cannot extract text from
+        assert len(result["documents"]) == 1
+        assert "Superlinear" in result["documents"][0].content
