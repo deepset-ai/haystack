@@ -294,7 +294,7 @@ warn_unused_configs = true
 ignore_missing_imports = true
 
 [tool.ruff]
-line-length = 1486
+line-length = 301
 target-version = "py38"
 
 [tool.ruff.lint]
