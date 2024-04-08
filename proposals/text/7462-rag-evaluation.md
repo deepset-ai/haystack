@@ -1,4 +1,4 @@
-- Title: Proposal for presentation of RAG evaluation results
+- Title: Proposal for presentation of evaluation results
 - Decision driver: David S. Batista
 - Start Date: 2024-04-03
 - Proposal PR: #7462
