@@ -54,7 +54,7 @@ Basic users:
 
 Intermediate users:
 - `individual_detailed_score_report()`
-- `comparative_detailed_score_report`
+- `comparative_detailed_score_report()`
 
 Advanced users:
 - `find_thresholds()`
