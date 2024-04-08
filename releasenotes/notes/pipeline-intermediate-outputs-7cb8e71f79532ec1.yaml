@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    `pipeline.run` accepts a set of component names whose intermediate outputs are returned in the final
+    pipeline output dictionary.
