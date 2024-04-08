@@ -1,0 +1,13 @@
+---
+features:
+  - |
+    Introduce `HuggingFaceAPIGenerator`. This text-generation component supports different Hugging Face APIs:
+      - free Serverless Inference API
+      - paid Inference Endpoints
+      - self-hosted Text Generation Inference.
+
+    This generator will replace the `HuggingFaceTGIGenerator` in the future.
+deprecations:
+  - |
+    Deprecate `HuggingFaceTGIGenerator`. This component will be removed in Haystack 2.3.0.
+    Use `HuggingFaceAPIGenerator` instead.

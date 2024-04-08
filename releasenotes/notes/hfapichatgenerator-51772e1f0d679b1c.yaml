@@ -1,0 +1,14 @@
+---
+features:
+  - |
+    Introduce `HuggingFaceAPIChatGenerator`.
+    This text-generation component uses the ChatMessage format and supports different Hugging Face APIs:
+      - free Serverless Inference API
+      - paid Inference Endpoints
+      - self-hosted Text Generation Inference.
+
+    This generator will replace the `HuggingFaceTGIChatGenerator` in the future.
+deprecations:
+  - |
+    Deprecate `HuggingFaceTGIChatGenerator`. This component will be removed in Haystack 2.3.0.
+    Use `HuggingFaceAPIChatGenerator` instead.

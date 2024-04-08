@@ -14,13 +14,25 @@ class DatadogSpan(Span):
         self._span = span
 
     def set_tag(self, key: str, value: Any) -> None:
+        """
+        Set a single tag on the span.
+
+        :param key: the name of the tag.
+        :param value: the value of the tag.
+        """
         coerced_value = tracing_utils.coerce_tag_value(value)
         self._span.set_tag(key, coerced_value)
 
     def raw_span(self) -> Any:
+        """
+        Provides access to the underlying span object of the tracer.
+
+        :return: The underlying span object.
+        """
         return self._span
 
     def get_correlation_data_for_logs(self) -> Dict[str, Any]:
+        """Return a dictionary with correlation data for logs."""
         raw_span = self.raw_span()
         if not raw_span:
             return {}
@@ -44,6 +56,7 @@ class DatadogTracer(Tracer):
 
     @contextlib.contextmanager
     def trace(self, operation_name: str, tags: Optional[Dict[str, Any]] = None) -> Iterator[Span]:
+        """Activate and return a new span that inherits from the current active span."""
         with self._tracer.trace(operation_name) as span:
             span = DatadogSpan(span)
             if tags:
@@ -52,6 +65,7 @@ class DatadogTracer(Tracer):
             yield span
 
     def current_span(self) -> Optional[Span]:
+        """Return the current active span"""
         current_span = self._tracer.current_span()
         if current_span is None:
             return None
