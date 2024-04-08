@@ -1,3 +1,4 @@
+import warnings
 from dataclasses import asdict
 from typing import Any, Callable, Dict, Iterable, List, Optional
 from urllib.parse import urlparse
@@ -113,6 +114,11 @@ class HuggingFaceTGIChatGenerator:
         :param stop_words: An optional list of strings representing the stop words.
         :param streaming_callback: An optional callable for handling streaming responses.
         """
+        warnings.warn(
+            "`HuggingFaceTGIChatGenerator` is deprecated and will be removed in Haystack 2.3.0."
+            "Use `HuggingFaceAPIChatGenerator` instead.",
+            DeprecationWarning,
+        )
         transformers_import.check()
 
         if url:

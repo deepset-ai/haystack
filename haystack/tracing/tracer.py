@@ -16,7 +16,8 @@ class Span(abc.ABC):
 
     @abc.abstractmethod
     def set_tag(self, key: str, value: Any) -> None:
-        """Set a single tag on the span.
+        """
+        Set a single tag on the span.
 
         Note that the value will be serialized to a string, so it's best to use simple types like strings, numbers, or
         booleans.
@@ -27,7 +28,8 @@ class Span(abc.ABC):
         pass
 
     def set_tags(self, tags: Dict[str, Any]) -> None:
-        """Set multiple tags on the span.
+        """
+        Set multiple tags on the span.
 
         :param tags: a mapping of tag names to tag values.
         """
@@ -35,7 +37,8 @@ class Span(abc.ABC):
             self.set_tag(key, value)
 
     def raw_span(self) -> Any:
-        """Provides access to the underlying span object of the tracer.
+        """
+        Provides access to the underlying span object of the tracer.
 
         Use this if you need full access to the underlying span object.
 
@@ -44,7 +47,8 @@ class Span(abc.ABC):
         return self
 
     def set_content_tag(self, key: str, value: Any) -> None:
-        """Set a single tag containing content information.
+        """
+        Set a single tag containing content information.
 
         Content is sensitive information such as
         - the content of a query
@@ -62,7 +66,8 @@ class Span(abc.ABC):
             self.set_tag(key, value)
 
     def get_correlation_data_for_logs(self) -> Dict[str, Any]:
-        """Return a dictionary with correlation data for logs.
+        """
+        Return a dictionary with correlation data for logs.
 
         This is useful if you want to correlate logs with traces."""
         return {}
@@ -74,7 +79,8 @@ class Tracer(abc.ABC):
     @abc.abstractmethod
     @contextlib.contextmanager
     def trace(self, operation_name: str, tags: Optional[Dict[str, Any]] = None) -> Iterator[Span]:
-        """Trace the execution of a block of code.
+        """
+        Trace the execution of a block of code.
 
         :param operation_name: the name of the operation being traced.
         :param tags: tags to apply to the newly created span.
@@ -84,7 +90,8 @@ class Tracer(abc.ABC):
 
     @abc.abstractmethod
     def current_span(self) -> Optional[Span]:
-        """Returns the currently active span. If no span is active, returns `None`.
+        """
+        Returns the currently active span. If no span is active, returns `None`.
 
         :return: Currently active span or `None` if no span is active.
         """
@@ -92,7 +99,8 @@ class Tracer(abc.ABC):
 
 
 class ProxyTracer(Tracer):
-    """Container for the actual tracer instance.
+    """
+    Container for the actual tracer instance.
 
     This eases
     - replacing the actual tracer instance without having to change the global tracer instance
@@ -105,10 +113,12 @@ class ProxyTracer(Tracer):
 
     @contextlib.contextmanager
     def trace(self, operation_name: str, tags: Optional[Dict[str, Any]] = None) -> Iterator[Span]:
+        """Activate and return a new span that inherits from the current active span."""
         with self.actual_tracer.trace(operation_name, tags=tags) as span:
             yield span
 
     def current_span(self) -> Optional[Span]:
+        """Return the current active span"""
         return self.actual_tracer.current_span()
 
 
@@ -116,6 +126,7 @@ class NullSpan(Span):
     """A no-op implementation of the `Span` interface. This is used when tracing is disabled."""
 
     def set_tag(self, key: str, value: Any) -> None:
+        """Set a single tag on the span."""
         pass
 
 
@@ -124,9 +135,11 @@ class NullTracer(Tracer):
 
     @contextlib.contextmanager
     def trace(self, operation_name: str, tags: Optional[Dict[str, Any]] = None) -> Iterator[Span]:
+        """Activate and return a new span that inherits from the current active span."""
         yield NullSpan()
 
     def current_span(self) -> Optional[Span]:
+        """Return the current active span"""
         return NullSpan()
 
 
@@ -152,7 +165,8 @@ def is_tracing_enabled() -> bool:
 
 
 def auto_enable_tracing() -> None:
-    """Auto-enable the right tracing backend.
+    """
+    Auto-enable the right tracing backend.
 
     This behavior can be disabled by setting the environment variable `HAYSTACK_AUTO_TRACE_ENABLED` to `false`.
     Note that it will only work correctly if tracing was configured _before_ Haystack is imported.
