@@ -7,6 +7,7 @@ loaders:
         "azure_text_embedder",
         "hugging_face_tei_document_embedder",
         "hugging_face_tei_text_embedder",
+        "hugging_face_api_text_embedder",
         "openai_document_embedder",
         "openai_text_embedder",
         "sentence_transformers_document_embedder",
