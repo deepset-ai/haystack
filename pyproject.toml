@@ -329,6 +329,7 @@ select = [
   "D102",   # Missing docstring in public method
   "D103",   # Missing docstring in public function
   "D205",   # 1 blank line required between summary line and description
+  "D213",   # summary lines must be positioned on the second physical line of the docstring
   "D417",   # undocumented-parameter
   "D419",   # undocumented-returns
 ]
