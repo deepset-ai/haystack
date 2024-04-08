@@ -9,7 +9,8 @@ PRIMITIVE_TYPES = (bool, str, int, float)
 
 
 def coerce_tag_value(value: Any) -> Union[bool, str, int, float]:
-    """Coerces span tag values to compatible types for the tracing backend.
+    """
+    Coerces span tag values to compatible types for the tracing backend.
 
     Most tracing libraries don't support sending complex types to the backend. Hence, we need to convert them to
     compatible types.
