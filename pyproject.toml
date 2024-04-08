@@ -299,16 +299,12 @@ target-version = "py38"
 
 [tool.ruff.lint]
 select = [
-  "AIR",    # Airflow
   "ASYNC",  # flake8-async
   "C4",     # flake8-comprehensions
   "C90",    # McCabe cyclomatic complexity
-  "CPY",    # flake8-copyright
-  "DJ",     # flake8-django
   "E501",   # Long lines
   "EXE",    # flake8-executable
   "F",      # Pyflakes
-  "FURB",   # refurb
   "INT",    # flake8-gettext
   "PERF",   # Perflint
   "PL",     # Pylint
@@ -319,12 +315,6 @@ select = [
   "W",      # pycodestyle
   "YTT",    # flake8-2020
   "I",       # isort
-  # "E",    # pycodestyle
-  # "NPY",  # NumPy-specific rules
-  # "PD",   # pandas-vet
-  # "PT",   # flake8-pytest-style
-  # "UP",   # pyupgrade
-
   # docstring rules
   "D102",   # Missing docstring in public method
   "D103",   # Missing docstring in public function
