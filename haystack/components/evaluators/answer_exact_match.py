@@ -54,7 +54,7 @@ class AnswerExactMatchEvaluator:
             else:
                 matches.append(0)
 
-        # The proportion of questions where any predicted answer matched one of the ground truth answers
+        # The proportion of questions where the predicted answer matched the ground truth answer
         average = sum(matches) / len(predicted_answers)
 
         return {"individual_scores": matches, "score": average}
