@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Add a new ContextRelevanceEvaluator component that can be used to evaluate whether retrieved documents are relevant to answer a question with a RAG pipeline.
+    Given a question and a list of retrieved document contents (contexts), an LLM is used to score to what extent the provided context is relevant. The score ranges from 0 to 1.
