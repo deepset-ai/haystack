@@ -13,6 +13,8 @@ class Subtract:
     @component.output_types(difference=int)
     def run(self, first_value: int, second_value: int):
         """
+        Run the component.
+
         :param first_value: name of the connection carrying the value to subtract from.
         :param second_value: name of the connection carrying the value to subtract.
         """

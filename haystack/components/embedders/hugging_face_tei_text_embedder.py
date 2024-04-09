@@ -1,4 +1,5 @@
 import json
+import warnings
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
@@ -74,6 +75,12 @@ class HuggingFaceTEITextEmbedder:
             Inference (TEI) endpoints and paid HF Inference Endpoints deployed with TEI. It will be ignored when used
             with free HF Inference endpoints or paid HF Inference endpoints deployed without TEI.
         """
+        warnings.warn(
+            "`HuggingFaceTEITextEmbedder` is deprecated and will be removed in Haystack 2.3.0."
+            "Use `HuggingFaceAPITextEmbedder` instead.",
+            DeprecationWarning,
+        )
+
         huggingface_hub_import.check()
 
         if url:

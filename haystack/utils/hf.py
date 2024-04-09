@@ -40,7 +40,41 @@ class HFGenerationAPIType(Enum):
 
     @staticmethod
     def from_str(string: str) -> "HFGenerationAPIType":
+        """
+        Convert a string to a HFGenerationAPIType enum.
+
+        :param string: The string to convert.
+        :return: The corresponding HFGenerationAPIType enum.
+
+        """
         enum_map = {e.value: e for e in HFGenerationAPIType}
+        mode = enum_map.get(string)
+        if mode is None:
+            msg = f"Unknown Hugging Face API type '{string}'. Supported types are: {list(enum_map.keys())}"
+            raise ValueError(msg)
+        return mode
+
+
+class HFEmbeddingAPIType(Enum):
+    """
+    API type to use for Hugging Face API Embedders.
+    """
+
+    # HF [Text Embeddings Inference (TEI)](https://github.com/huggingface/text-embeddings-inference).
+    TEXT_EMBEDDINGS_INFERENCE = "text_embeddings_inference"
+
+    # HF [Inference Endpoints](https://huggingface.co/inference-endpoints).
+    INFERENCE_ENDPOINTS = "inference_endpoints"
+
+    # HF [Serverless Inference API](https://huggingface.co/inference-api).
+    SERVERLESS_INFERENCE_API = "serverless_inference_api"
+
+    def __str__(self):
+        return self.value
+
+    @staticmethod
+    def from_str(string: str) -> "HFEmbeddingAPIType":
+        enum_map = {e.value: e for e in HFEmbeddingAPIType}
         mode = enum_map.get(string)
         if mode is None:
             msg = f"Unknown Hugging Face API type '{string}'. Supported types are: {list(enum_map.keys())}"
