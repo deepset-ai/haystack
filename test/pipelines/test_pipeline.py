@@ -20,6 +20,7 @@ from haystack.nodes.other.join_docs import JoinDocuments
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.retriever.sparse import BM25Retriever
 from haystack.nodes.retriever.sparse import FilterRetriever
+from haystack.nodes import Shaper
 from haystack.pipelines import (
     Pipeline,
     RootNode,
@@ -2084,6 +2085,88 @@ def test_fix_to_pipeline_execution_when_join_follows_join():
     res = pipeline.run(query="Alpha Beta Gamma Delta")
     documents = res["documents"]
     assert len(documents) == 4  # all four documents should be found
+
+
+@pytest.mark.unit
+def test_pipeline_execution_using_join_preserves_previous_keys():
+    document_store_1 = InMemoryDocumentStore()
+    retriever_1 = FilterRetriever(document_store_1, scale_score=True)
+    dicts_1 = [{"content": "Alpha", "score": 0.552}]
+    document_store_1.write_documents(dicts_1)
+
+    document_store_2 = InMemoryDocumentStore()
+    retriever_2 = FilterRetriever(document_store_2, scale_score=True)
+    dicts_2 = [{"content": "Beta", "score": 0.542}]
+    document_store_2.write_documents(dicts_2)
+
+    # Create Shaper to insert "invocation_context" and "test_key" into the node_output
+    shaper = Shaper(func="rename", inputs={"value": "query"}, outputs=["test_key"])
+
+    pipeline = Pipeline()
+    pipeline.add_node(component=shaper, name="Shaper", inputs=["Query"])
+    pipeline.add_node(component=retriever_1, name="Retriever1", inputs=["Shaper"])
+    pipeline.add_node(component=retriever_2, name="Retriever2", inputs=["Shaper"])
+    pipeline.add_node(
+        component=JoinDocuments(join_mode="concatenate"), name="Join", inputs=["Retriever1", "Retriever2"]
+    )
+    res = pipeline.run(query="Alpha Beta Gamma Delta")
+    assert set(res.keys()) == {
+        "documents",
+        "labels",
+        "root_node",
+        "params",
+        "test_key",
+        "invocation_context",
+        "query",
+        "node_id",
+    }
+    assert res["test_key"] == "Alpha Beta Gamma Delta"
+    assert res["invocation_context"] == {"query": "Alpha Beta Gamma Delta", "test_key": "Alpha Beta Gamma Delta"}
+    assert len(res["documents"]) == 2
+
+
+@pytest.mark.unit
+def test_pipeline_execution_using_join_preserves_previous_keys_three_streams():
+    document_store_1 = InMemoryDocumentStore()
+    retriever_1 = FilterRetriever(document_store_1, scale_score=True)
+    dicts_1 = [{"content": "Alpha", "score": 0.552}]
+    document_store_1.write_documents(dicts_1)
+
+    document_store_2 = InMemoryDocumentStore()
+    retriever_2 = FilterRetriever(document_store_2, scale_score=True)
+    dicts_2 = [{"content": "Beta", "score": 0.542}]
+    document_store_2.write_documents(dicts_2)
+
+    document_store_3 = InMemoryDocumentStore()
+    retriever_3 = FilterRetriever(document_store_3, scale_score=True)
+    dicts_3 = [{"content": "Gamma", "score": 0.532}]
+    document_store_3.write_documents(dicts_3)
+
+    # Create Shaper to insert "invocation_context" and "test_key" into the node_output
+    shaper = Shaper(func="rename", inputs={"value": "query"}, outputs=["test_key"])
+
+    pipeline = Pipeline()
+    pipeline.add_node(component=shaper, name="Shaper", inputs=["Query"])
+    pipeline.add_node(component=retriever_1, name="Retriever1", inputs=["Shaper"])
+    pipeline.add_node(component=retriever_2, name="Retriever2", inputs=["Shaper"])
+    pipeline.add_node(component=retriever_3, name="Retriever3", inputs=["Shaper"])
+    pipeline.add_node(
+        component=JoinDocuments(join_mode="concatenate"), name="Join", inputs=["Retriever1", "Retriever2", "Retriever3"]
+    )
+    res = pipeline.run(query="Alpha Beta Gamma Delta")
+    assert set(res.keys()) == {
+        "documents",
+        "labels",
+        "root_node",
+        "params",
+        "test_key",
+        "invocation_context",
+        "query",
+        "node_id",
+    }
+    assert res["test_key"] == "Alpha Beta Gamma Delta"
+    assert res["invocation_context"] == {"query": "Alpha Beta Gamma Delta", "test_key": "Alpha Beta Gamma Delta"}
+    assert len(res["documents"]) == 3
 
 
 @pytest.mark.unit

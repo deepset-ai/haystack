@@ -596,19 +596,23 @@ class Pipeline:
                                         **existing_input.get("_debug", {}),
                                         **node_output.get("_debug", {}),
                                     }
-                                if query:
+                                additional_input = self._combine_node_outputs(existing_input, node_output)
+                                updated_input = {**additional_input, **updated_input}
+                                if query and "query" not in updated_input:
                                     updated_input["query"] = query
-                                if file_paths:
+                                if file_paths and "file_paths" not in updated_input:
                                     updated_input["file_paths"] = file_paths
-                                if labels:
+                                if labels and "labels" not in updated_input:
                                     updated_input["labels"] = labels
-                                if documents:
+                                if documents and "documents" not in updated_input:
                                     updated_input["documents"] = documents
-                                if meta:
+                                if meta and "meta" not in updated_input:
                                     updated_input["meta"] = meta
                             else:
                                 existing_input["inputs"].append(node_output)
-                                updated_input = existing_input
+                                # TODO This doesn't have an effect until we also pass on keys that only occur once
+                                additional_input = self._combine_node_outputs(existing_input, node_output)
+                                updated_input = {**additional_input, **existing_input}
                             queue[n] = updated_input
                         else:
                             queue[n] = node_output
@@ -617,6 +621,17 @@ class Pipeline:
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
 
         return node_output
+
+    def _combine_node_outputs(self, existing_input: Dict[str, Any], node_output: Dict[str, Any]) -> Dict[str, Any]:
+        additional_input = {}
+        # Pass keys that appear in both inputs that have the same values
+        shared_items = {
+            k: existing_input[k] for k in existing_input if k in node_output and existing_input[k] == node_output[k]
+        }
+        for key in shared_items:
+            if key != "inputs" or key != "params" or key != "_debug":
+                additional_input[key] = shared_items[key]
+        return additional_input
 
     async def _arun(  # noqa: C901,PLR0912 type: ignore
         self,
@@ -734,17 +749,28 @@ class Pipeline:
                                         **existing_input.get("_debug", {}),
                                         **node_output.get("_debug", {}),
                                     }
-                                if query:
+                                # Pass keys that appear in both inputs that have the same values
+                                shared_items = {
+                                    k: existing_input[k]
+                                    for k in existing_input
+                                    if k in node_output and existing_input[k] == node_output[k]
+                                }
+                                for key in shared_items:
+                                    if key != "inputs" or key != "params" or key != "_debug":
+                                        updated_input[key] = shared_items[key]
+                                # TODO Auto pass on keys that only appear once
+                                if query and "query" not in updated_input:
                                     updated_input["query"] = query
-                                if file_paths:
+                                if file_paths and "file_paths" not in updated_input:
                                     updated_input["file_paths"] = file_paths
-                                if labels:
+                                if labels and "labels" not in updated_input:
                                     updated_input["labels"] = labels
-                                if documents:
+                                if documents and "documents" not in updated_input:
                                     updated_input["documents"] = documents
-                                if meta:
+                                if meta and "meta" not in updated_input:
                                     updated_input["meta"] = meta
                             else:
+                                # TODO Would need to redo the shared items here to work with more than 2 streams joining
                                 existing_input["inputs"].append(node_output)
                                 updated_input = existing_input
                             queue[n] = updated_input
