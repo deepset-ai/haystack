@@ -120,7 +120,7 @@ extra-dependencies = [
 
   # OpenAPI
   "jsonref",  # OpenAPIServiceConnector, OpenAPIServiceToFunctions
-  "openapi3",
+  "openapi-service-client",
 
   # Validation
   "jsonschema",
