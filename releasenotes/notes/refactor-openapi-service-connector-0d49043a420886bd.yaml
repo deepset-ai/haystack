@@ -1,0 +1,4 @@
+---
+enhancements:
+ - |
+   Refactored the OpenAPIServiceConnector to use a our `openapi-service-client` library. Simplified the service invocation code and added error handling for method invocations.
