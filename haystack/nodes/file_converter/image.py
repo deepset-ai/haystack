@@ -160,7 +160,7 @@ class ImageToTextConverter(BaseConverter):
         document = Document(content=text, meta=meta, id_hash_keys=id_hash_keys)
         return [document]
 
-    def _image_to_text(self, image: "Image") -> List[str]:
+    def _image_to_text(self, image: "PpmImageFile") -> List[str]:  # type: ignore
         """
         Extract text from image file.
 
