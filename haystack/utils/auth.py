@@ -14,8 +14,13 @@ class SecretType(Enum):
 
     @staticmethod
     def from_str(string: str) -> "SecretType":
-        map = {e.value: e for e in SecretType}
-        type = map.get(string)
+        """
+        Convert a string to a SecretType.
+
+        :param string: The string to convert.
+        """
+        mapping = {e.value: e for e in SecretType}
+        type = mapping.get(string)
         if type is None:
             raise ValueError(f"Unknown secret type '{string}'")
         return type
@@ -47,10 +52,9 @@ class Secret(ABC):
     @staticmethod
     def from_env_var(env_vars: Union[str, List[str]], *, strict: bool = True) -> "Secret":
         """
-        Create an environment variable-based secret. Accepts
-        one or more environment variables. Upon resolution, it
-        returns a string token from the first environment variable
-        that is set.
+        Create an environment variable-based secret. Accepts one or more environment variables.
+
+        Upon resolution, it returns a string token from the first environment variable that is set.
 
         :param env_vars:
             A single environment variable or an ordered list of
@@ -66,6 +70,7 @@ class Secret(ABC):
     def to_dict(self) -> Dict[str, Any]:
         """
         Convert the secret to a JSON-serializable dictionary.
+
         Some secrets may not be serializable.
 
         :returns:
@@ -94,8 +99,7 @@ class Secret(ABC):
     @abstractmethod
     def resolve_value(self) -> Optional[Any]:
         """
-        Resolve the secret to an atomic value. The semantics
-        of the value is secret-dependent.
+        Resolve the secret to an atomic value. The semantics of the value is secret-dependent.
 
         :returns:
             The value of the secret, if any.
@@ -124,6 +128,7 @@ class Secret(ABC):
 class TokenSecret(Secret):
     """
     A secret that uses a string token/API key.
+
     Cannot be serialized.
     """
 
@@ -149,10 +154,12 @@ class TokenSecret(Secret):
         )
 
     def resolve_value(self) -> Optional[Any]:
+        """Return the token."""
         return self._token
 
     @property
     def type(self) -> SecretType:
+        """The type of the secret."""
         return self._type
 
 
@@ -160,8 +167,8 @@ class TokenSecret(Secret):
 class EnvVarSecret(Secret):
     """
     A secret that accepts one or more environment variables.
-    Upon resolution, it returns a string token from the first
-    environment variable that is set. Can be serialized.
+
+    Upon resolution, it returns a string token from the first environment variable that is set. Can be serialized.
     """
 
     _env_vars: Tuple[str, ...]
@@ -183,6 +190,7 @@ class EnvVarSecret(Secret):
         return EnvVarSecret(tuple(dict["env_vars"]), _strict=dict["strict"])
 
     def resolve_value(self) -> Optional[Any]:
+        """Resolve the secret to an atomic value. The semantics of the value is secret-dependent."""
         out = None
         for env_var in self._env_vars:
             value = os.getenv(env_var)
@@ -195,6 +203,7 @@ class EnvVarSecret(Secret):
 
     @property
     def type(self) -> SecretType:
+        """The type of the secret."""
         return self._type
 
 
