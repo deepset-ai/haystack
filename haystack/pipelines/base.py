@@ -623,30 +623,18 @@ class Pipeline:
 
     def _combine_node_outputs(self, existing_input: Dict[str, Any], node_output: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Combines the outputs of two nodes into a single input for a downstream node. This is useful for join nodes.
+        Combines the outputs of two nodes into a single input for a downstream node.
+        For matching keys first node's (existing_input) value is kept. This is used for join nodes.
 
         :param existing_input: The output of the first node.
         :param node_output: The output of the second node.
         """
         additional_input = {}
-        # TODO Should we support overwriting keys that exist in both? --> first node's value is kept
-        # Add shared items from existing_input and node_output that have matching values
-        shared_items = {
-            k: existing_input[k] for k in existing_input if k in node_output and existing_input[k] == node_output[k]
-        }
-        for key in shared_items:
+        combined = {**node_output, **existing_input}
+        for key in combined:
+            # Don't overwrite these keys since they are set in Pipeline.run
             if key not in ["inputs", "params", "_debug"]:
-                additional_input[key] = shared_items[key]
-        unique_existing_input = {k: v for k, v in existing_input.items() if k not in shared_items}
-        # Add unique keys from existing_input
-        for key in unique_existing_input:
-            if key not in ["inputs", "params", "_debug"]:
-                additional_input[key] = unique_existing_input[key]
-        # Add unique keys from node_output
-        unique_node_output = {k: v for k, v in node_output.items() if k not in shared_items}
-        for key in unique_node_output:
-            if key not in ["inputs", "params", "_debug"]:
-                additional_input[key] = unique_node_output[key]
+                additional_input[key] = combined[key]
         return additional_input
 
     async def _arun(  # noqa: C901,PLR0912 type: ignore
