@@ -19,6 +19,10 @@ class ResultsEvaluator:
 
         :param other: The other pipeline to compare against.
         """
+
+        if self.pipeline_name == other.pipeline_name:
+            raise ValueError("The pipelines have the same name.")
+
         return {
             f"{self.pipeline_name}": self.individual_aggregate_score_report(),
             f"{other.pipeline_name}": other.individual_aggregate_score_report(),
@@ -26,8 +30,9 @@ class ResultsEvaluator:
 
     def individual_detailed_score_report(self) -> DataFrame:
         """Return a DataFrame with the scores for each metric in the results."""
-        values = [[entry["scores"]] for entry in self.results["metrics"]["scores"]]
+        values = [[entry["scores"]] for entry in self.results["metrics"]]
         columns = [entry["name"] for entry in self.results["metrics"]]
+        values = list(map(list, zip(*values)))  # transpose the values
         return DataFrame(values, columns=columns)
 
     def comparative_detailed_score_report(self, other: "ResultsEvaluator") -> DataFrame:
@@ -36,18 +41,22 @@ class ResultsEvaluator:
             raise ValueError("The two dataframes do not have the same columns.")
 
         # add the pipeline name to the columns
-        # ToDo: except question, context, answer columns
-        tmp_this = self.individual_detailed_score_report()
-        tmp_other = other.individual_detailed_score_report()
-        tmp_this.columns = [
-            f"{self.pipeline_name}_{column}" for column in self.individual_detailed_score_report().columns
+        pipe_a_df = self.individual_detailed_score_report()
+        pipe_b_df = other.individual_detailed_score_report()
+        ignore_columns = ["question", "context", "answer"]
+        pipe_a_df.columns = [
+            f"{self.pipeline_name}_{column}"
+            for column in self.individual_detailed_score_report().columns
+            if column not in ignore_columns
         ]
-        tmp_other.columns = [
-            f"{other.pipeline_name}_{column}" for column in other.individual_detailed_score_report().columns
+        pipe_b_df.columns = [
+            f"{other.pipeline_name}_{column}"
+            for column in other.individual_detailed_score_report().columns
+            if column not in ignore_columns
         ]
 
         # merge the two dataframes
-        return tmp_this.append(tmp_other)
+        return pipe_a_df.append(pipe_b_df)
 
     def find_thresholds(self, metric: str) -> Dict[str, float]:
         """
