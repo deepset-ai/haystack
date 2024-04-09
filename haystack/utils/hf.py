@@ -74,6 +74,12 @@ class HFEmbeddingAPIType(Enum):
 
     @staticmethod
     def from_str(string: str) -> "HFEmbeddingAPIType":
+        """
+        Convert a string to a HFEmbeddingAPIType enum.
+
+        :param string:
+        :return: The corresponding HFEmbeddingAPIType enum.
+        """
         enum_map = {e.value: e for e in HFEmbeddingAPIType}
         mode = enum_map.get(string)
         if mode is None:
