@@ -31,6 +31,7 @@ class ChatMessage:
     def to_openai_format(self) -> Dict[str, Any]:
         """
         Convert the message to the format expected by OpenAI's Chat API.
+
         See the [API reference](https://platform.openai.com/docs/api-reference/chat/create) for details.
 
         :returns: A dictionary with the following key:
