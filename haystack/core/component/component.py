@@ -87,13 +87,13 @@ logger = logging.getLogger(__name__)
 
 
 # Callback inputs: component class and init parameters (as keyword arguments).
-_COMPONENT_PRE_INIT_CALLBACK: ContextVar[Optional[Callable[[Type, Dict[str, Any]], None]]] = ContextVar(
+_COMPONENT_PRE_INIT_CALLBACK: ContextVar[Optional[Callable[[Type, Dict[str, Any]], None]]] = ContextVar(  # noqa: E1136
     "component_pre_init_callback", default=None
 )
 
 
 @contextmanager
-def _hook_component_init(callback: Callable[[Type, Dict[str, Any]], None]):
+def _hook_component_init(callback: Callable[[Type, Dict[str, Any]], None]):  # noqa: E1136
     """
     Context manager to set a callback that will be invoked
     before a component's constructor is called. The callback
