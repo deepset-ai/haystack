@@ -11,7 +11,7 @@ class ResultsEvaluator:
 
     def individual_aggregate_score_report(self) -> Dict[str, float]:
         """Calculate the average of the scores for each metric in the results."""
-        return {metric: sum(values) / len(values) for metric, values in self.results["metrics"]}
+        return {entry["name"]: sum(entry["scores"]) / len(entry["scores"]) for entry in self.results["metrics"]}
 
     def comparative_aggregate_score_report(self, other: "ResultsEvaluator"):
         """
