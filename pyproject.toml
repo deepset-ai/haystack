@@ -315,6 +315,10 @@ select = [
   "W",      # pycodestyle
   "YTT",    # flake8-2020
   "I",       # isort
+  # built-in shadowing
+  "A001",	# builtin-variable-shadowing
+  "A002",	# builtin-argument-shadowing
+  "A003",	# builtin-attribute-shadowing
   # docstring rules
   "D102",   # Missing docstring in public method
   "D103",   # Missing docstring in public function
