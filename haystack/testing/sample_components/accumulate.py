@@ -19,15 +19,17 @@ def _default_function(first: int, second: int) -> int:
 class Accumulate:
     """
     Accumulates the value flowing through the connection into an internal attribute.
-    The sum function can be customized.
 
-    Example of how to deal with serialization when some of the parameters
+    The sum function can be customized. Example of how to deal with serialization when some of the parameters
     are not directly serializable.
     """
 
     def __init__(self, function: Optional[Callable] = None):
         """
-        :param function: the function to use to accumulate the values.
+        Class constructor
+
+        :param function:
+            the function to use to accumulate the values.
             The function must take exactly two values.
             If it's a callable, it's used as it is.
             If it's a string, the component will look for it in sys.modules and
@@ -36,7 +38,8 @@ class Accumulate:
         self.state = 0
         self.function: Callable = _default_function if function is None else function  # type: ignore
 
-    def to_dict(self) -> Dict[str, Any]:  # pylint: disable=missing-function-docstring
+    def to_dict(self) -> Dict[str, Any]:
+        """Converts the component to a dictionary"""
         module = sys.modules.get(self.function.__module__)
         if not module:
             raise ValueError("Could not locate the import module.")
@@ -48,7 +51,8 @@ class Accumulate:
         return default_to_dict(self, function=function_name)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Accumulate":  # pylint: disable=missing-function-docstring
+    def from_dict(cls, data: Dict[str, Any]) -> "Accumulate":
+        """Loads the component from a dictionary"""
         if "type" not in data:
             raise ComponentDeserializationError("Missing 'type' in component serialization data")
         if data["type"] != f"{cls.__module__}.{cls.__name__}":
@@ -70,6 +74,7 @@ class Accumulate:
     def run(self, value: int):
         """
         Accumulates the value flowing through the connection into an internal attribute.
+
         The sum function can be customized.
         """
         self.state = self.function(self.state, value)
