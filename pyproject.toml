@@ -294,7 +294,7 @@ warn_unused_configs = true
 ignore_missing_imports = true
 
 [tool.ruff]
-line-length = 1486
+line-length = 301
 target-version = "py38"
 
 [tool.ruff.lint]
@@ -350,11 +350,11 @@ max-complexity = 28
 
 [tool.ruff.lint.pylint]
 allow-magic-value-types = ["float", "int", "str"]
-max-args = 38  # Default is 5
-max-branches = 32  # Default is 12
-max-public-methods = 90  # Default is 20
-max-returns = 9  # Default is 6
-max-statements = 105  # Default is 50
+max-args = 14  # Default is 5
+max-branches = 21  # Default is 12
+max-public-methods = 20  # Default is 20
+max-returns = 7  # Default is 6
+max-statements = 60  # Default is 50
 
 [tool.coverage.run]
 omit = [
