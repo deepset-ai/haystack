@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Put `HFTokenStreamingHandler` in a lazy import block in `HuggingFaceLocalGenerator`.
+    This fixed some breaking core-integrations.
