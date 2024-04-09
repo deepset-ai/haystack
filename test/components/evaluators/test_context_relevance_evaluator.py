@@ -18,7 +18,7 @@ class TestContextRelevanceEvaluator:
             "Second, calculate a relevance score for each statement in the context. "
             "The score is 1 if the statement is relevant to answer the question or 0 if it is not relevant."
         )
-        assert component.inputs == [("questions", List[str]), ("contexts", List[List[str]]), ("responses", List[str])]
+        assert component.inputs == [("questions", List[str]), ("contexts", List[List[str]])]
         assert component.outputs == ["statements", "statement_scores"]
         assert component.examples == [
             {
@@ -54,15 +54,15 @@ class TestContextRelevanceEvaluator:
             api_key=Secret.from_token("test-api-key"),
             api="openai",
             examples=[
-                {"inputs": {"responses": "Damn, this is straight outta hell!!!"}, "outputs": {"custom_score": 1}},
-                {"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"custom_score": 0}},
+                {"inputs": {"questions": "Damn, this is straight outta hell!!!"}, "outputs": {"custom_score": 1}},
+                {"inputs": {"questions": "Football is the most popular sport."}, "outputs": {"custom_score": 0}},
             ],
         )
         assert component.generator.client.api_key == "test-api-key"
         assert component.api == "openai"
         assert component.examples == [
-            {"inputs": {"responses": "Damn, this is straight outta hell!!!"}, "outputs": {"custom_score": 1}},
-            {"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"custom_score": 0}},
+            {"inputs": {"questions": "Damn, this is straight outta hell!!!"}, "outputs": {"custom_score": 1}},
+            {"inputs": {"questions": "Football is the most popular sport."}, "outputs": {"custom_score": 0}},
         ]
 
     def test_from_dict(self, monkeypatch):
@@ -73,15 +73,13 @@ class TestContextRelevanceEvaluator:
             "init_parameters": {
                 "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
                 "api": "openai",
-                "examples": [{"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"score": 0}}],
+                "examples": [{"inputs": {"questions": "What is football?"}, "outputs": {"score": 0}}],
             },
         }
         component = ContextRelevanceEvaluator.from_dict(data)
         assert component.api == "openai"
         assert component.generator.client.api_key == "test-api-key"
-        assert component.examples == [
-            {"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"score": 0}}
-        ]
+        assert component.examples == [{"inputs": {"questions": "What is football?"}, "outputs": {"score": 0}}]
 
     def test_run_calculates_mean_score(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -109,11 +107,7 @@ class TestContextRelevanceEvaluator:
                 "programmers write clear, logical code for both small and large-scale software projects."
             ],
         ]
-        responses = [
-            "Football is the most popular sport with around 4 billion followers worldwide.",
-            "Python is a high-level general-purpose programming language that was created by George Lucas.",
-        ]
-        results = component.run(questions=questions, contexts=contexts, responses=responses)
+        results = component.run(questions=questions, contexts=contexts)
         assert results == {
             "individual_scores": [0.5, 1],
             "results": [
