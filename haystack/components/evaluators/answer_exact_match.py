@@ -40,9 +40,9 @@ class AnswerExactMatchEvaluator:
             A list of predicted answers for each question.
         :returns:
             A dictionary with the following outputs:
-            - `individual_scores` - A list of 0s and 1s, where 1 means that the predicted answer matched the ground truth answer.
-            - `score` - A number from 0.0 to 1.0 that represents the proportion of questions where the predicted
-                         answer matched the ground truth answer.
+            - `individual_scores` - A list of 0s and 1s, where 1 means that the predicted answer matched one of the ground truth.
+            - `score` - A number from 0.0 to 1.0 that represents the proportion of questions where any predicted
+                         answer matched one of the ground truth answers.
         """
         if not len(ground_truth_answers) == len(predicted_answers):
             raise ValueError("The length of ground_truth_answers and predicted_answers must be the same.")
@@ -54,7 +54,7 @@ class AnswerExactMatchEvaluator:
             else:
                 matches.append(0)
 
-        # The proportion of questions where the predicted answer matched the ground truth answer
+        # The proportion of questions where any predicted answer matched one of the ground truth answers
         average = sum(matches) / len(predicted_answers)
 
         return {"individual_scores": matches, "score": average}
