@@ -47,7 +47,7 @@ class FaithfulnessEvaluator(LLMEvaluator):
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
     ):
         """
-        Creates an instance of LLMEvaluator.
+        Creates an instance of FaithfulnessEvaluator.
 
         :param examples:
             Few-shot examples conforming to the expected input and output format of FaithfulnessEvaluator.
