@@ -29,11 +29,12 @@ class ContextRelevanceEvaluator(LLMEvaluator):
 
     evaluator = ContextRelevanceEvaluator()
     result = evaluator.run(questions=questions, contexts=contexts)
-    print(results["evaluator"])
-    # {'results': [{'statements': ['Python is a high-level general-purpose programming language.',
-    # 'Python was created by Guido van Rossum in the late 1980s.'], 'statement_scores':
-    # [1, 0], 'score': 0.5}], 'score': 0.5, 'individual_scores': [0.5]}
-
+    print(result["score"])
+    # 1.0
+    print(result["individual_scores"])
+    # [1.0]
+    print(result["results"])
+    # [{'statements': ['Python, created by Guido van Rossum in the late 1980s.'], 'statement_scores': [1], 'score': 1.0}]
     ```
     """
 
@@ -74,7 +75,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
             "Second, calculate a relevance score for each statement in the context. "
             "The score is 1 if the statement is relevant to answer the question or 0 if it is not relevant."
         )
-        self.inputs = [("questions", List[str]), ("contexts", List[List[str]]), ("responses", List[str])]
+        self.inputs = [("questions", List[str]), ("contexts", List[List[str]])]
         self.outputs = ["statements", "statement_scores"]
         self.examples = examples or [
             {
