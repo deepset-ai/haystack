@@ -71,9 +71,11 @@
 import inspect
 import sys
 from collections.abc import Callable
+from contextlib import contextmanager
+from contextvars import ContextVar
 from copy import deepcopy
 from types import new_class
-from typing import Any, Dict, Optional, Protocol, runtime_checkable
+from typing import Any, Dict, Optional, Protocol, Type, runtime_checkable
 
 from haystack import logging
 from haystack.core.errors import ComponentError
@@ -82,6 +84,30 @@ from .sockets import Sockets
 from .types import InputSocket, OutputSocket, _empty
 
 logger = logging.getLogger(__name__)
+
+
+# Callback inputs: component class and init parameters (as keyword arguments).
+_COMPONENT_PRE_INIT_CALLBACK: ContextVar[Optional[Callable[[Type, Dict[str, Any]], None]]] = ContextVar(
+    "component_pre_init_callback", default=None
+)
+
+
+@contextmanager
+def _hook_component_init(callback: Callable[[Type, Dict[str, Any]], None]):
+    """
+    Context manager to set a callback that will be invoked
+    before a component's constructor is called. The callback
+    receives the component class and the init parameters (as keyword
+    arguments) and can modify the init parameters in place.
+
+    :param callback:
+        Callback function to invoke.
+    """
+    token = _COMPONENT_PRE_INIT_CALLBACK.set(callback)
+    try:
+        yield
+    finally:
+        _COMPONENT_PRE_INIT_CALLBACK.reset(token)
 
 
 @runtime_checkable
@@ -123,13 +149,39 @@ class Component(Protocol):
 
 
 class ComponentMeta(type):
+    @staticmethod
+    def positional_to_kwargs(cls_type, args) -> Dict[str, Any]:
+        init_signature = inspect.signature(cls_type.__init__)
+        init_params = {name: info for name, info in init_signature.parameters.items() if name != "self"}
+
+        out = {}
+        for arg, (name, info) in zip(args, init_params.items()):
+            if info.kind == inspect.Parameter.VAR_POSITIONAL:
+                raise ComponentError(
+                    "Pre-init hooks do not support components with variadic positional args in their init method"
+                )
+
+            assert info.kind in (inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.POSITIONAL_ONLY)
+            out[name] = arg
+        return out
+
     def __call__(cls, *args, **kwargs):
         """
         This method is called when clients instantiate a Component and
         runs before __new__ and __init__.
         """
         # This will call __new__ then __init__, giving us back the Component instance
-        instance = super().__call__(*args, **kwargs)
+        pre_init_hook = _COMPONENT_PRE_INIT_CALLBACK.get()
+        if pre_init_hook is None:
+            instance = super().__call__(*args, **kwargs)
+        else:
+            named_positional_args = ComponentMeta.positional_to_kwargs(cls, args)
+            assert (
+                set(named_positional_args.keys()).intersection(kwargs.keys()) == set()
+            ), "positional and keyword arguments overlap"
+            kwargs.update(named_positional_args)
+            pre_init_hook(cls, kwargs)
+            instance = super().__call__(**kwargs)
 
         # Before returning, we have the chance to modify the newly created
         # Component instance, so we take the chance and set up the I/O sockets
