@@ -29,6 +29,11 @@ class FaithfulnessEvaluator(LLMEvaluator):
     responses = ["Python is a high-level general-purpose programming language that was created by George Lucas."]
     evaluator = FaithfulnessEvaluator()
     result = evaluator.run(questions=questions, contexts=contexts, responses=responses)
+
+    print(result["individual_scores"])
+    # [0.5]
+    print(result["score"])
+    # 0.5
     print(result["results"])
     # [{'statements': ['Python is a high-level general-purpose programming language.',
     'Python was created by George Lucas.'], 'statement_scores': [1, 0], 'score': 0.5}]
