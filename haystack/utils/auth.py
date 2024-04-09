@@ -20,10 +20,10 @@ class SecretType(Enum):
         :param string: The string to convert.
         """
         mapping = {e.value: e for e in SecretType}
-        secret_type = mapping.get(string)
+        type = mapping.get(string)
         if type is None:
             raise ValueError(f"Unknown secret type '{string}'")
-        return secret_type
+        return type
 
 
 class Secret(ABC):
