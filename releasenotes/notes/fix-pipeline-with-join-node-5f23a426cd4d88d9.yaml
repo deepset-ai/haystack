@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fixes pipelines using join nodes to properly pass on additional key value pairs from nodes prior to the join node to nodes that come after the join node.
