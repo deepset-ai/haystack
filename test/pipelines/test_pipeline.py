@@ -2143,15 +2143,18 @@ def test_pipeline_execution_using_join_preserves_previous_keys_three_streams():
     document_store_3.write_documents(dicts_3)
 
     # Create Shaper to insert "invocation_context" and "test_key" into the node_output
-    shaper = Shaper(func="rename", inputs={"value": "query"}, outputs=["test_key"])
+    shaper1 = Shaper(func="rename", inputs={"value": "query"}, outputs=["test_key1"])
+    shaper2 = Shaper(func="rename", inputs={"value": "query"}, outputs=["test_key2"])
 
     pipeline = Pipeline()
-    pipeline.add_node(component=shaper, name="Shaper", inputs=["Query"])
-    pipeline.add_node(component=retriever_1, name="Retriever1", inputs=["Shaper"])
-    pipeline.add_node(component=retriever_2, name="Retriever2", inputs=["Shaper"])
-    pipeline.add_node(component=retriever_3, name="Retriever3", inputs=["Shaper"])
+    pipeline.add_node(component=shaper1, name="Shaper1", inputs=["Query"])
+    pipeline.add_node(component=shaper2, name="Shaper2", inputs=["Query"])
+    pipeline.add_node(component=retriever_3, name="Retriever3", inputs=["Shaper2"])
+    pipeline.add_node(component=retriever_1, name="Retriever1", inputs=["Shaper1"])
+    pipeline.add_node(component=retriever_2, name="Retriever2", inputs=["Shaper1"])
+
     pipeline.add_node(
-        component=JoinDocuments(join_mode="concatenate"), name="Join", inputs=["Retriever1", "Retriever2", "Retriever3"]
+        component=JoinDocuments(join_mode="concatenate"), name="Join", inputs=["Retriever3", "Retriever1", "Retriever2"]
     )
     res = pipeline.run(query="Alpha Beta Gamma Delta")
     assert set(res.keys()) == {
@@ -2159,13 +2162,15 @@ def test_pipeline_execution_using_join_preserves_previous_keys_three_streams():
         "labels",
         "root_node",
         "params",
-        "test_key",
+        "test_key1",
+        "test_key2",
         "invocation_context",
         "query",
         "node_id",
     }
-    assert res["test_key"] == "Alpha Beta Gamma Delta"
-    assert res["invocation_context"] == {"query": "Alpha Beta Gamma Delta", "test_key": "Alpha Beta Gamma Delta"}
+    assert res["test_key1"] == "Alpha Beta Gamma Delta"
+    assert res["test_key2"] == "Alpha Beta Gamma Delta"
+    assert res["invocation_context"] == {"query": "Alpha Beta Gamma Delta", "test_key1": "Alpha Beta Gamma Delta"}
     assert len(res["documents"]) == 3
 
 

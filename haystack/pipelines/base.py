@@ -610,7 +610,6 @@ class Pipeline:
                                     updated_input["meta"] = meta
                             else:
                                 existing_input["inputs"].append(node_output)
-                                # TODO This doesn't have an effect until we also pass on keys that only occur once
                                 additional_input = self._combine_node_outputs(existing_input, node_output)
                                 updated_input = {**additional_input, **existing_input}
                             queue[n] = updated_input
@@ -630,13 +629,24 @@ class Pipeline:
         :param node_output: The output of the second node.
         """
         additional_input = {}
-        # Pass keys that appear in both inputs that have the same values
+        # TODO Should we support overwriting keys that exist in both? --> first node's value is kept
+        # Add shared items from existing_input and node_output that have matching values
         shared_items = {
             k: existing_input[k] for k in existing_input if k in node_output and existing_input[k] == node_output[k]
         }
         for key in shared_items:
-            if key != "inputs" or key != "params" or key != "_debug":
+            if key not in ["inputs", "params", "_debug"]:
                 additional_input[key] = shared_items[key]
+        unique_existing_input = {k: v for k, v in existing_input.items() if k not in shared_items}
+        # Add unique keys from existing_input
+        for key in unique_existing_input:
+            if key not in ["inputs", "params", "_debug"]:
+                additional_input[key] = unique_existing_input[key]
+        # Add unique keys from node_output
+        unique_node_output = {k: v for k, v in node_output.items() if k not in shared_items}
+        for key in unique_node_output:
+            if key not in ["inputs", "params", "_debug"]:
+                additional_input[key] = unique_node_output[key]
         return additional_input
 
     async def _arun(  # noqa: C901,PLR0912 type: ignore
