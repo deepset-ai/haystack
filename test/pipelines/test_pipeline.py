@@ -2174,17 +2174,20 @@ def test_pipeline_execution_using_join_preserves_previous_keys_three_streams():
     assert len(res["documents"]) == 3
 
 
+@pytest.mark.unit
 def test_pipeline_execution_using_join_preserves_changed_query():
     shaper1 = Shaper(func="rename", params={"value": "This is a test."}, outputs=["query"])
-    shaper2 = Shaper(func="rename", params={"value": "dummy value"}, outputs=["dummy"])
+    shaper2 = Shaper(func="rename", params={"value": "dummy value 1"}, outputs=["dummy1"])
+    shaper3 = Shaper(func="rename", params={"value": "dummy value 2"}, outputs=["dummy2"])
     pipeline = Pipeline()
     pipeline.add_node(component=shaper1, name="Shaper1", inputs=["Query"])
-    pipeline.add_node(component=JoinDocuments(join_mode="concatenate"), name="Join", inputs=["Shaper1"])
-    pipeline.add_node(component=shaper2, name="DummyNode", inputs=["Join"])
+    pipeline.add_node(component=shaper2, name="DummyNode1", inputs=["Query"])
+    pipeline.add_node(component=JoinDocuments(join_mode="concatenate"), name="Join", inputs=["Shaper1", "DummyNode1"])
+    pipeline.add_node(component=shaper3, name="DummyNode2", inputs=["Join"])
     res = pipeline.run(query="Alpha Beta Gamma Delta", debug=True, documents=[Document(content="Test Document")])
     assert res["_debug"]["Shaper1"]["input"]["query"] == "Alpha Beta Gamma Delta"
     assert res["_debug"]["Join"]["input"]["query"] == "This is a test."
-    assert res["_debug"]["DummyNode"]["input"]["query"] == "This is a test."
+    assert res["_debug"]["DummyNode2"]["input"]["query"] == "This is a test."
     assert res["query"] == "This is a test."
 
 
