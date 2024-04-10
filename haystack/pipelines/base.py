@@ -788,6 +788,7 @@ class Pipeline:
 
         return node_output
 
+    # pylint: disable=too-many-branches
     def run_batch(  # noqa: C901,PLR0912 type: ignore
         self,
         queries: Optional[List[str]] = None,
