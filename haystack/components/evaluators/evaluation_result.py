@@ -5,6 +5,25 @@ from pandas import concat as pd_concat
 
 
 class EvaluationResult:
+    """
+    A class to store the results of an evaluation pipeline.
+
+    data = {
+        "inputs": {
+            "question": ["What is the capital of France?", "What is the capital of Spain?"],
+            "contexts": ["wiki_France", "wiki_Spain"],
+            "predicted_answer": ["Paris", "Madrid"],
+        },
+        "metrics": [
+            {"name": "reciprocal_rank", "scores": [0.378064, 0.534964, 0.216058, 0.778642]},
+            {"name": "context_relevance", "scores": [0.805466, 0.410251, 0.750070, 0.361332]},
+        ],
+    }
+
+    eval_result = EvaluationResult(pipeline_name="testing_pipeline_1", results=data)
+    eval_result.to_pandas()
+    """
+
     def __init__(self, pipeline_name: str, results: Dict[str, Any]):
         """
         Initialize the EvaluationResult object.
@@ -22,7 +41,13 @@ class EvaluationResult:
         self.pipeline_name = pipeline_name
 
     def score_report(self) -> DataFrame:
-        """Transforms the results into a DataFrame with the aggregated scores for each metric."""
+        """
+        Transforms the results into a DataFrame with the aggregated scores for each metric.
+
+        :returns:
+            A DataFrame with the aggregated scores.
+
+        """
         results = {entry["name"]: entry["score"] for entry in self.results["metrics"]}
         return DataFrame.from_dict(results, orient="index", columns=["score"])
 
@@ -30,7 +55,8 @@ class EvaluationResult:
         """
         Creates a DataFrame containing the scores for each query and each metric.
 
-        :return: A DataFrame with the scores.
+        :returns:
+            A DataFrame with the scores.
         """
         inputs_columns = list(self.results["inputs"].keys())
         inputs_values = list(self.results["inputs"].values())
@@ -49,6 +75,8 @@ class EvaluationResult:
         Creates a DataFrame with the scores for each metric in the results of two different pipelines.
 
         :param other: The other EvaluationResults object to compare with.
+        :returns:
+            A DataFrame with the scores from both EvaluationResults objects.
         """
         pipe_a_df = self.to_pandas()
         pipe_b_df = other.to_pandas()
