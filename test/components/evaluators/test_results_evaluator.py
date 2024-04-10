@@ -1,6 +1,6 @@
 from pandas import DataFrame
 
-from haystack.components.evaluators.results_evaluator import ResultsEvaluator
+from haystack.components.evaluators.results_evaluator import EvaluationResults
 
 
 def test_init_results_evaluator():
@@ -22,7 +22,7 @@ def test_init_results_evaluator():
         ],
     }
 
-    _ = ResultsEvaluator(pipeline_name="testing_pipeline_1", results=data)
+    _ = EvaluationResults(pipeline_name="testing_pipeline_1", results=data)
 
 
 def test_individual_aggregate_score_report():
@@ -44,8 +44,8 @@ def test_individual_aggregate_score_report():
         ],
     }
 
-    evaluator = ResultsEvaluator(pipeline_name="testing_pipeline_1", results=data)
-    assert evaluator.individual_aggregate_score_report() == {
+    evaluator = EvaluationResults(pipeline_name="testing_pipeline_1", results=data)
+    assert evaluator.to_pandas() == {
         "reciprocal_rank": 0.476932,
         "single_hit": 0.75,
         "multi_hit": 0.46428375,
@@ -89,8 +89,8 @@ def test_comparative_aggregate_score_report():
         ],
     }
 
-    evaluator_1 = ResultsEvaluator(pipeline_name="testing_pipeline_1", results=data_1)
-    evaluator_2 = ResultsEvaluator(pipeline_name="testing_pipeline_2", results=data_2)
+    evaluator_1 = EvaluationResults(pipeline_name="testing_pipeline_1", results=data_1)
+    evaluator_2 = EvaluationResults(pipeline_name="testing_pipeline_2", results=data_2)
     results = evaluator_1.comparative_aggregate_score_report(evaluator_2)
     assert results == {
         "testing_pipeline_1": {
@@ -129,7 +129,7 @@ def test_individual_detailed_score_report():
         ],
     }
 
-    evaluator = ResultsEvaluator(pipeline_name="testing_pipeline_1", results=data)
+    evaluator = EvaluationResults(pipeline_name="testing_pipeline_1", results=data)
     assert evaluator.individual_detailed_score_report().equals(
         DataFrame(
             {
@@ -181,7 +181,7 @@ def test_comparative_detailed_score_report():
         ],
     }
 
-    evaluator_1 = ResultsEvaluator(pipeline_name="testing_pipeline_1", results=data_1)
-    evaluator_2 = ResultsEvaluator(pipeline_name="testing_pipeline_2", results=data_2)
-    results = evaluator_1.comparative_detailed_score_report(evaluator_2)
+    evaluator_1 = EvaluationResults(pipeline_name="testing_pipeline_1", results=data_1)
+    evaluator_2 = EvaluationResults(pipeline_name="testing_pipeline_2", results=data_2)
+    results = evaluator_1.comparative_individual_score_report(evaluator_2)
     print(results)
