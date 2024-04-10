@@ -54,6 +54,5 @@ class EvaluationResults:
         pipe_a_df.columns = [f"{self.pipeline_name}_{col}" if col not in ignore else col for col in pipe_a_df.columns]
 
         results_df = pd_concat([pipe_a_df, pipe_b_df], axis=1)
-        results_df.set_index([other.pipeline_name, self.pipeline_name], inplace=True)
 
         return results_df

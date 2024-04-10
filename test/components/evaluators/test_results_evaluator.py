@@ -91,7 +91,7 @@ def test_comparative_aggregate_score_report():
 
     evaluator_1 = EvaluationResults(pipeline_name="testing_pipeline_1", results=data_1)
     evaluator_2 = EvaluationResults(pipeline_name="testing_pipeline_2", results=data_2)
-    results = evaluator_1.comparative_aggregate_score_report(evaluator_2)
+    results = evaluator_1.score_report(evaluator_2)
     assert results == {
         "testing_pipeline_1": {
             "reciprocal_rank": 0.476932,
@@ -105,7 +105,7 @@ def test_comparative_aggregate_score_report():
     }
 
 
-def test_individual_detailed_score_report():
+def test_to_pandas():
     data = {
         "inputs": {
             "query_id": ["53c3b3e6", "225f87f7", "53c3b3e6", "225f87f7"],
@@ -130,7 +130,7 @@ def test_individual_detailed_score_report():
     }
 
     evaluator = EvaluationResults(pipeline_name="testing_pipeline_1", results=data)
-    assert evaluator.individual_detailed_score_report().equals(
+    assert evaluator.to_pandas().equals(
         DataFrame(
             {
                 "reciprocal_rank": [[0.378064, 0.534964, 0.216058, 0.778642]],
