@@ -1,6 +1,4 @@
-from pandas import DataFrame
-
-from haystack.components.evaluators.results_evaluator import EvaluationResults
+from haystack.components.evaluators.evaluation_result import EvaluationResult
 
 
 def test_init_results_evaluator():
@@ -22,7 +20,7 @@ def test_init_results_evaluator():
         ],
     }
 
-    _ = EvaluationResults(pipeline_name="testing_pipeline_1", results=data)
+    _ = EvaluationResult(pipeline_name="testing_pipeline_1", results=data)
 
 
 def test_score_report():
@@ -60,7 +58,7 @@ def test_score_report():
         ],
     }
 
-    evaluator = EvaluationResults(pipeline_name="testing_pipeline_1", results=data)
+    evaluator = EvaluationResult(pipeline_name="testing_pipeline_1", results=data)
     result = evaluator.score_report().to_json()
     assert result == (
         '{"score":{"reciprocal_rank":0.476932,"single_hit":0.75,"multi_hit":0.46428375,'
@@ -93,7 +91,7 @@ def test_to_pandas():
         ],
     }
 
-    evaluator = EvaluationResults(pipeline_name="testing_pipeline_1", results=data)
+    evaluator = EvaluationResult(pipeline_name="testing_pipeline_1", results=data)
     assert evaluator.to_pandas().to_json() == (
         '{"query_id":{"0":"53c3b3e6","1":"225f87f7","2":"53c3b3e6","3":"225f87f7"},'
         '"question":{"0":"What is the capital of France?","1":"What is the capital of Spain?",'
@@ -147,8 +145,8 @@ def test_comparative_individual_scores_report():
         ],
     }
 
-    evaluator_1 = EvaluationResults(pipeline_name="testing_pipeline_1", results=data_1)
-    evaluator_2 = EvaluationResults(pipeline_name="testing_pipeline_2", results=data_2)
+    evaluator_1 = EvaluationResult(pipeline_name="testing_pipeline_1", results=data_1)
+    evaluator_2 = EvaluationResult(pipeline_name="testing_pipeline_2", results=data_2)
     results = evaluator_1.comparative_individual_scores_report(evaluator_2)
 
     assert results.to_json() == (

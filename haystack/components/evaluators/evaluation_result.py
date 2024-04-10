@@ -4,7 +4,7 @@ from pandas import DataFrame
 from pandas import concat as pd_concat
 
 
-class EvaluationResults:
+class EvaluationResult:
     def __init__(self, pipeline_name: str, results: Dict[str, Any]):
         self.results = results
         self.pipeline_name = pipeline_name
@@ -32,7 +32,7 @@ class EvaluationResults:
 
         return df_inputs.join(df_scores)
 
-    def comparative_individual_scores_report(self, other: "EvaluationResults") -> DataFrame:
+    def comparative_individual_scores_report(self, other: "EvaluationResult") -> DataFrame:
         """
         Creates a DataFrame with the scores for each metric in the results of two different pipelines.
 
