@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import inspect
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional, Type
+from typing import Any, Dict, Optional, Type
 
 from haystack.core.component.component import _hook_component_init
 from haystack.core.errors import DeserializationError, SerializationError
@@ -25,7 +25,7 @@ class DeserializationCallbacks:
         are passed to the component's constructor.
     """
 
-    component_pre_init: Optional[Callable[[str, Type, Dict[str, Any]], None]] = None
+    component_pre_init: Optional[Callable, None]] = None
 
 
 def component_to_dict(obj: Any) -> Dict[str, Any]:
