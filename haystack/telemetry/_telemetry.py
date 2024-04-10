@@ -40,8 +40,9 @@ class Telemetry:
 
     def __init__(self):
         """
-        Initializes the telemetry. Loads the user_id from the config file,
-        or creates a new id and saves it if the file is not found.
+        Initializes the telemetry.
+
+        Loads the user_id from the config file, or creates a new id and saves it if the file is not found.
 
         It also collects system information which cannot change across the lifecycle
         of the process (for example `is_containerized()`).
@@ -110,6 +111,7 @@ class Telemetry:
 def send_telemetry(func):
     """
     Decorator that sends the output of the wrapped function to PostHog.
+
     The wrapped function is actually called only if telemetry is enabled.
     """
 
@@ -130,6 +132,8 @@ def send_telemetry(func):
 @send_telemetry
 def pipeline_running(pipeline: "Pipeline") -> Optional[Tuple[str, Dict[str, Any]]]:
     """
+    Collects telemetry data for a pipeline run and sends it to Posthog.
+
     Collects name, type and the content of the _telemetry_data attribute, if present, for each component in the
     pipeline and sends such data to Posthog.
 
@@ -170,6 +174,7 @@ def pipeline_running(pipeline: "Pipeline") -> Optional[Tuple[str, Dict[str, Any]
 def tutorial_running(tutorial_id: str) -> Tuple[str, Dict[str, Any]]:
     """
     Send a telemetry event for a tutorial, if telemetry is enabled.
+
     :param tutorial_id: identifier of the tutorial
     """
     return "Tutorial", {"tutorial.id": tutorial_id}
