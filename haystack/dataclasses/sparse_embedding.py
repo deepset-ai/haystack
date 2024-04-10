@@ -19,8 +19,22 @@ class SparseEmbedding:
         self.values = values
 
     def to_dict(self):
+        """
+        Convert the sparse embedding to a dictionary.
+
+        :returns:
+            Serialized sparse embedding.
+        """
         return {"indices": self.indices, "values": self.values}
 
     @classmethod
     def from_dict(cls, sparse_embedding_dict):
+        """
+        Deserializes the sparse embedding  from a dictionary.
+
+        :param sparse_embedding_dict:
+            Dictionary to deserialize from.
+        :returns:
+            Deserialized sparse embedding.
+        """
         return cls(indices=sparse_embedding_dict["indices"], values=sparse_embedding_dict["values"])
