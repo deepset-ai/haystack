@@ -123,7 +123,7 @@ class JoinDocuments(JoinNode):
         Return the documents with the higher score.
         """
         list_id = list(document_map.keys())
-        scores_map = {}
+        scores_map: Dict[str, float] = {}
         for idx in list_id:
             tmp = []
             for result in results:
@@ -134,11 +134,11 @@ class JoinDocuments(JoinNode):
             scores_map.update({idx: item_best_score.score})
         return scores_map
 
-    def _calculate_comb_sum(self, results: List[List[Document]]):
+    def _calculate_comb_sum(self, results: List[List[Document]]) -> Dict[str, float]:
         """
         Calculates a combination sum by multiplying each score by its weight.
         """
-        scores_map = defaultdict(float)
+        scores_map: Dict[str, float] = defaultdict(float)
         weights = self.weights if self.weights else [1 / len(results)] * len(results)
 
         for result, weight in zip(results, weights):
@@ -154,7 +154,7 @@ class JoinDocuments(JoinNode):
         """
         K = 61
 
-        scores_map = defaultdict(float)
+        scores_map: Dict[str, float] = defaultdict(float)
         weights = self.weights if self.weights else [1 / len(results)] * len(results)
 
         # Calculate weighted reciprocal rank fusion score
