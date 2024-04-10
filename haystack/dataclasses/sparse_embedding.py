@@ -8,6 +8,8 @@ class SparseEmbedding:
 
     def __init__(self, indices: List[int], values: List[float]):
         """
+        Initialize a sparse embedding.
+
         :param indices: List of indices of non-zero elements in the embedding.
         :param values: List of values of non-zero elements in the embedding.
 
