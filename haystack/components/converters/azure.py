@@ -185,7 +185,7 @@ class AzureOCRDocumentConverter:
         docs = [*tables, text]
         return docs
 
-    def _convert_tables(self, result: AnalyzeResult, meta: Optional[Dict[str, Any]]) -> List[Document]:
+    def _convert_tables(self, result: "AnalyzeResult", meta: Optional[Dict[str, Any]]) -> List[Document]:
         """
         Converts the tables extracted by Azure's Document Intelligence service into Haystack Documents.
         :param result: The AnalyzeResult Azure object
@@ -294,7 +294,7 @@ class AzureOCRDocumentConverter:
 
         return converted_tables
 
-    def _convert_to_natural_text(self, result: AnalyzeResult, meta: Optional[Dict[str, Any]]) -> Document:
+    def _convert_to_natural_text(self, result: "AnalyzeResult", meta: Optional[Dict[str, Any]]) -> Document:
         """
         This converts the `AnalyzeResult` object into a single Document. We add "\f" separators between to
         differentiate between the text on separate pages. This is the expected format for the PreProcessor.

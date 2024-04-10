@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Forward declaration of `AnalyzeResult` type in `AzureOCRDocumentConverter`.
+
+    `AnalyzeResult` is already imported in a lazy import block.
+    The forward declaration avoids issues when `azure-ai-formrecognizer>=3.2.0b2` is not installed.

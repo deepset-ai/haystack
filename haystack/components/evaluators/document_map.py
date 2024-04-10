@@ -15,7 +15,8 @@ class DocumentMAPEvaluator:
 
     Usage example:
     ```python
-    from haystack.components.evaluators import AnswerExactMatchEvaluator
+    from haystack import Document
+    from haystack.components.evaluators import DocumentMAPEvaluator
 
     evaluator = DocumentMAPEvaluator()
     result = evaluator.run(

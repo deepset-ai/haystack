@@ -21,6 +21,7 @@ class _BackwardCompatible(type):
     def __call__(cls, *args, **kwargs):
         """
         Called before Document.__init__, will remap legacy fields to new ones.
+
         Also handles building a Document from a flattened dictionary.
         """
         # Move `content` to new fields depending on the type

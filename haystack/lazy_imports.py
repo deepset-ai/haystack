@@ -8,8 +8,9 @@ DEFAULT_IMPORT_ERROR_MSG = "Try 'pip install {}'"
 
 class LazyImport(_DeferredImportExceptionContextManager):
     """
-    Wrapper on top of lazy_import's _DeferredImportExceptionContextManager that adds the possibility to customize the
-    error messages.
+    Wrapper on top of lazy_import's _DeferredImportExceptionContextManager.
+
+    It adds the possibility to customize the error messages.
     """
 
     def __init__(self, message: str = DEFAULT_IMPORT_ERROR_MSG) -> None:
