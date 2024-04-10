@@ -60,6 +60,11 @@ class JoinDocuments(JoinNode):
 
     def run_accumulated(self, inputs: List[Dict], top_k_join: Optional[int] = None) -> Tuple[Dict, str]:
         results = [inp["documents"] for inp in inputs]
+
+        # Check if all results are non-empty
+        if all(res is None for res in results) or all(res == [] for res in results):
+            return {"documents": [], "labels": inputs[0].get("labels", None)}, "output_1"
+
         document_map = {doc.id: doc for result in results for doc in result}
 
         if self.join_mode == "concatenate":
@@ -100,7 +105,9 @@ class JoinDocuments(JoinNode):
 
     def run_batch_accumulated(self, inputs: List[dict], top_k_join: Optional[int] = None) -> Tuple[Dict, str]:
         # Join single document lists
-        if isinstance(inputs[0]["documents"][0], Document):
+        if inputs[0]["documents"] is None or inputs[0]["documents"] == []:
+            return {"documents": [], "labels": inputs[0].get("labels", None)}, "output_1"
+        elif isinstance(inputs[0]["documents"][0], Document):
             return self.run(inputs=inputs, top_k_join=top_k_join)
         # Join lists of document lists
         else:
