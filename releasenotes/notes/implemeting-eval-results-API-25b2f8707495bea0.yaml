@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Added a new EvaluationResult component.
+    This is a wrapper for all the results coming from the Evaluators, presenting the metric scores as a DataFrame.
