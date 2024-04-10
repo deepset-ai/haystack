@@ -37,16 +37,24 @@ class DocumentRecallEvaluator:
 
     Usage example:
     ```python
+    from haystack import Document
     from haystack.components.evaluators import DocumentRecallEvaluator
+
     evaluator = DocumentRecallEvaluator()
     result = evaluator.run(
-        ground_truth_answers=[["Berlin"], ["Paris"]],
-        predicted_answers=[["Paris"], ["London"]],
+        ground_truth_documents=[
+            [Document(content="France")],
+            [Document(content="9th century"), Document(content="9th")],
+        ],
+        retrieved_documents=[
+            [Document(content="France")],
+            [Document(content="9th century"), Document(content="10th century"), Document(content="9th")],
+        ],
     )
     print(result["individual_scores"])
-    # [0.0, 0.0]
+    # [1.0, 1.0]
     print(result["score"])
-    # 0.0
+    # 1.0
     ```
     """
 
@@ -63,12 +71,12 @@ class DocumentRecallEvaluator:
         mode_functions = {RecallMode.SINGLE_HIT: self._recall_single_hit, RecallMode.MULTI_HIT: self._recall_multi_hit}
         self.mode_function = mode_functions[mode]
 
-    def _recall_single_hit(self, ground_truth_documents: List[Document], retrieved_documents: List[Document]) -> bool:
+    def _recall_single_hit(self, ground_truth_documents: List[Document], retrieved_documents: List[Document]) -> float:
         unique_truths = {g.content for g in ground_truth_documents}
         unique_retrievals = {p.content for p in retrieved_documents}
         retrieved_ground_truths = unique_truths.intersection(unique_retrievals)
 
-        return len(retrieved_ground_truths) > 0
+        return float(len(retrieved_ground_truths) > 0)
 
     def _recall_multi_hit(self, ground_truth_documents: List[Document], retrieved_documents: List[Document]) -> float:
         unique_truths = {g.content for g in ground_truth_documents}
@@ -92,7 +100,7 @@ class DocumentRecallEvaluator:
         A dictionary with the following outputs:
             - `score` - The average of calculated scores.
             - `invididual_scores` - A list of numbers from 0.0 to 1.0 that represents the proportion of matching documents retrieved.
-                                    If the mode is `single_hit`, the individual scores are True or False.
+                                    If the mode is `single_hit`, the individual scores are 0 or 1.
         """
         if len(ground_truth_documents) != len(retrieved_documents):
             msg = "The length of ground_truth_documents and retrieved_documents must be the same."
