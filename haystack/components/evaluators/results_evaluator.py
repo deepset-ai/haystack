@@ -49,7 +49,7 @@ class EvaluationResults:
 
         # add the pipeline name to the column
         ignore = ["query_id", "question", "contexts", "answer"]
-        pipe_b_df.drop(columns=ignore, inplace=True)
+        pipe_b_df.drop(columns=ignore, inplace=True, errors="ignore")
         pipe_b_df.columns = [f"{other.pipeline_name}_{column}" for column in pipe_b_df.columns]
         pipe_a_df.columns = [f"{self.pipeline_name}_{col}" if col not in ignore else col for col in pipe_a_df.columns]
 
