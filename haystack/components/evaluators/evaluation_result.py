@@ -6,6 +6,18 @@ from pandas import concat as pd_concat
 
 class EvaluationResult:
     def __init__(self, pipeline_name: str, results: Dict[str, Any]):
+        """
+        Initialize the EvaluationResult object.
+
+        :param pipeline_name: The name of the pipeline that generated the results.
+        :param results: A dictionary containing the results of the evaluators used in the EvaluationPipeline.
+                        it should have the following keys:
+                        - inputs: A dictionary containing the inputs used in the evaluation.
+                        - metrics: A list of dictionaries each containing the following keys:
+                            'name': The name of the metric.
+                            'score': The aggregated score for the metric.
+                            'individual_scores': A list of scores for each query.
+        """
         self.results = results
         self.pipeline_name = pipeline_name
 
