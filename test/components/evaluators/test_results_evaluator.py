@@ -84,12 +84,12 @@ def test_to_pandas():
             "predicted_answer": ["Paris", "Madrid", "Luxembourg", "Lisbon"],
         },
         "metrics": [
-            {"name": "reciprocal_rank", "scores": [0.378064, 0.534964, 0.216058, 0.778642]},
-            {"name": "single_hit", "scores": [1, 1, 0, 1]},
-            {"name": "multi_hit", "scores": [0.706125, 0.454976, 0.445512, 0.250522]},
-            {"name": "context_relevance", "scores": [0.805466, 0.410251, 0.750070, 0.361332]},
-            {"name": "faithfulness", "scores": [0.135581, 0.695974, 0.749861, 0.041999]},
-            {"name": "semantic_answer_similarity", "scores": [0.971241, 0.159320, 0.019722, 1]},
+            {"name": "reciprocal_rank", "individual_scores": [0.378064, 0.534964, 0.216058, 0.778642]},
+            {"name": "single_hit", "individual_scores": [1, 1, 0, 1]},
+            {"name": "multi_hit", "individual_scores": [0.706125, 0.454976, 0.445512, 0.250522]},
+            {"name": "context_relevance", "individual_scores": [0.805466, 0.410251, 0.750070, 0.361332]},
+            {"name": "faithfulness", "individual_scores": [0.135581, 0.695974, 0.749861, 0.041999]},
+            {"name": "semantic_answer_similarity", "individual_scores": [0.971241, 0.159320, 0.019722, 1]},
         ],
     }
 
@@ -120,12 +120,12 @@ def test_comparative_individual_scores_report():
             "predicted_answer": ["Paris", "Madrid"],
         },
         "metrics": [
-            {"name": "reciprocal_rank", "scores": [0.378064, 0.534964, 0.216058, 0.778642]},
-            {"name": "single_hit", "scores": [1, 1, 0, 1]},
-            {"name": "multi_hit", "scores": [0.706125, 0.454976, 0.445512, 0.250522]},
-            {"name": "context_relevance", "scores": [0.805466, 0.410251, 0.750070, 0.361332]},
-            {"name": "faithfulness", "scores": [0.135581, 0.695974, 0.749861, 0.041999]},
-            {"name": "semantic_answer_similarity", "scores": [0.971241, 0.159320, 0.019722, 1]},
+            {"name": "reciprocal_rank", "individual_scores": [0.378064, 0.534964, 0.216058, 0.778642]},
+            {"name": "single_hit", "individual_scores": [1, 1, 0, 1]},
+            {"name": "multi_hit", "individual_scores": [0.706125, 0.454976, 0.445512, 0.250522]},
+            {"name": "context_relevance", "individual_scores": [0.805466, 0.410251, 0.750070, 0.361332]},
+            {"name": "faithfulness", "individual_scores": [0.135581, 0.695974, 0.749861, 0.041999]},
+            {"name": "semantic_answer_similarity", "individual_scores": [0.971241, 0.159320, 0.019722, 1]},
         ],
     }
 
@@ -138,12 +138,12 @@ def test_comparative_individual_scores_report():
             "predicted_answer": ["Paris", "Madrid"],
         },
         "metrics": [
-            {"name": "reciprocal_rank", "scores": [0.378064, 0.534964, 0.216058, 0.778642]},
-            {"name": "single_hit", "scores": [1, 1, 0, 1]},
-            {"name": "multi_hit", "scores": [0.706125, 0.454976, 0.445512, 0.250522]},
-            {"name": "context_relevance", "scores": [0.805466, 0.410251, 0.750070, 0.361332]},
-            {"name": "faithfulness", "scores": [0.135581, 0.695974, 0.749861, 0.041999]},
-            {"name": "semantic_answer_similarity", "scores": [0.971241, 0.159320, 0.019722, 1]},
+            {"name": "reciprocal_rank", "individual_scores": [0.378064, 0.534964, 0.216058, 0.778642]},
+            {"name": "single_hit", "individual_scores": [1, 1, 0, 1]},
+            {"name": "multi_hit", "individual_scores": [0.706125, 0.454976, 0.445512, 0.250522]},
+            {"name": "context_relevance", "individual_scores": [0.805466, 0.410251, 0.750070, 0.361332]},
+            {"name": "faithfulness", "individual_scores": [0.135581, 0.695974, 0.749861, 0.041999]},
+            {"name": "semantic_answer_similarity", "individual_scores": [0.971241, 0.159320, 0.019722, 1]},
         ],
     }
 

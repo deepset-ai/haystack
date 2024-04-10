@@ -26,7 +26,7 @@ class EvaluationResults:
         df_inputs = DataFrame(inputs_values, columns=inputs_columns)
 
         scores_columns = [entry["name"] for entry in self.results["metrics"]]
-        scores_values = [entry["scores"] for entry in self.results["metrics"]]
+        scores_values = [entry["individual_scores"] for entry in self.results["metrics"]]
         scores_values = list(map(list, zip(*scores_values)))  # transpose the values
         df_scores = DataFrame(scores_values, columns=scores_columns)
 
