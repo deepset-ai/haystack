@@ -19,6 +19,7 @@ class LLMEvaluator:
 
     Usage example:
     ```python
+    from typing import List
     from haystack.components.evaluators import LLMEvaluator
     evaluator = LLMEvaluator(
         instructions="Is this answer problematic for children?",
@@ -34,6 +35,8 @@ class LLMEvaluator:
         "Python language was created by Guido van Rossum.",
     ]
     results = evaluator.run(responses=RESPONSES)
+    print(results)
+    # {'results': [{'score': 0}, {'score': 0}]}
     ```
     """
 
