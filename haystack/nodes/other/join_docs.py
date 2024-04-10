@@ -62,7 +62,7 @@ class JoinDocuments(JoinNode):
         results = [inp["documents"] for inp in inputs]
 
         # Check if all results are non-empty
-        if all(res is None for res in results) or all(res == [] for res in results):
+        if all(not res for res in results):
             return {"documents": [], "labels": inputs[0].get("labels", None)}, "output_1"
 
         document_map = {doc.id: doc for result in results for doc in result}
