@@ -44,7 +44,7 @@ class EvaluationResult:
         # check if the columns are the same, i.e.: the same queries and evaluation pipeline
         columns_a = list(pipe_a_df.columns)
         columns_b = list(pipe_b_df.columns)
-        if not columns_a == columns_b:
+        if columns_a != columns_b:
             raise ValueError(f"The two evaluation results do not have the same columns: {columns_a} != {columns_b}")
 
         # add the pipeline name to the column
