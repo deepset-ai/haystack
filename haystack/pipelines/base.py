@@ -610,6 +610,11 @@ class Pipeline:
                                     updated_input["meta"] = meta
                             else:
                                 existing_input["inputs"].append(node_output)
+                                if "_debug" in node_output.keys():
+                                    existing_input["_debug"] = {
+                                        **existing_input.get("_debug", {}),
+                                        **node_output.get("_debug", {}),
+                                    }
                                 additional_input = self._combine_node_outputs(existing_input, node_output)
                                 updated_input = {**additional_input, **existing_input}
                             queue[n] = updated_input
@@ -767,6 +772,11 @@ class Pipeline:
                                     updated_input["meta"] = meta
                             else:
                                 existing_input["inputs"].append(node_output)
+                                if "_debug" in node_output.keys():
+                                    existing_input["_debug"] = {
+                                        **existing_input.get("_debug", {}),
+                                        **node_output.get("_debug", {}),
+                                    }
                                 additional_input = self._combine_node_outputs(existing_input, node_output)
                                 updated_input = {**additional_input, **existing_input}
                             queue[n] = updated_input
