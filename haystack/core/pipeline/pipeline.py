@@ -613,7 +613,7 @@ class Pipeline:
 
     # TODO: We're ignoring these linting rules for the time being, after we properly optimize this function we'll remove the noqa
     def run(  # noqa: C901, PLR0912, PLR0915 pylint: disable=too-many-branches
-        self, data: Dict[str, Any], debug: bool = False
+        self, data: Dict[str, Any], debug: bool = False, include_outputs_from: Optional[Set[str]] = None
     ) -> Dict[str, Any]:
         """
         Runs the pipeline with given input data.
@@ -623,8 +623,16 @@ class Pipeline:
             and its value is a dictionary of that component's input parameters.
         :param debug:
             Set to True to collect and return debug information.
+        :param include_outputs_from:
+            Set of component names whose individual outputs are to be
+            included in the pipeline's output. For components that are
+            invoked multiple times (in a loop), only the last-produced
+            output is included.
         :returns:
-            A dictionary containing the pipeline's output.
+            A dictionary where each entry corresponds to a component name
+            and its output. If `include_outputs_from` is `None`, this dictionary
+            will only contain the outputs of leaf components, i.e., components
+            without outgoing connections.
 
         :raises PipelineRuntimeError:
             If a component fails or returns unexpected output.
@@ -756,6 +764,8 @@ class Pipeline:
         # The waiting_for_input list is used to keep track of components that are waiting for input.
         waiting_for_input: List[Tuple[str, Component]] = []
 
+        include_outputs_from = set() if include_outputs_from is None else include_outputs_from
+
         with tracing.tracer.trace(
             "haystack.pipeline.run",
             tags={
@@ -765,7 +775,11 @@ class Pipeline:
             },
         ):
             # This is what we'll return at the end
-            final_outputs = {}
+            final_outputs: Dict[Any, Any] = {}
+
+            # Cache for extra outputs, if enabled.
+            extra_outputs: Dict[Any, Any] = {}
+
             while len(to_run) > 0:
                 name, comp = to_run.pop(0)
 
@@ -825,6 +839,11 @@ class Pipeline:
 
                         span.set_tags(tags={"haystack.component.visits": self.graph.nodes[name]["visits"]})
                         span.set_content_tag("haystack.component.output", res)
+
+                        if name in include_outputs_from:
+                            # Deepcopy the outputs to prevent downstream nodes from modifying them
+                            # We don't care about loops - Always store the last output.
+                            extra_outputs[name] = deepcopy(res)
 
                     # Reset the waiting for input previous states, we managed to run a component
                     before_last_waiting_for_input = None
@@ -987,6 +1006,11 @@ class Pipeline:
 
                     waiting_for_input.remove((name, comp))
                     to_run.append((name, comp))
+
+            if len(include_outputs_from) > 0:
+                for name, output in extra_outputs.items():
+                    if name not in final_outputs:
+                        final_outputs[name] = output
 
             return final_outputs
 
