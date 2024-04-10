@@ -1,4 +1,5 @@
 from pandas import DataFrame
+from pandas.testing import assert_frame_equal
 
 from haystack.components.evaluators.results_evaluator import EvaluationResults
 
@@ -45,14 +46,21 @@ def test_score_report():
     }
 
     evaluator = EvaluationResults(pipeline_name="testing_pipeline_1", results=data)
-    assert evaluator.to_pandas() == {
-        "reciprocal_rank": 0.476932,
-        "single_hit": 0.75,
-        "multi_hit": 0.46428375,
-        "context_relevance": 0.5817797499999999,
-        "faithfulness": 0.40585374999999996,
-        "semantic_answer_similarity": 0.53757075,
-    }
+    result = evaluator.score_report()
+    expected = DataFrame(
+        {
+            "score": {
+                "reciprocal_rank": 0.476932,
+                "single_hit": 0.75,
+                "multi_hit": 0.46428375,
+                "context_relevance": 0.58177975,
+                "faithfulness": 0.40585375,
+                "semantic_answer_similarity": 0.53757075,
+            }
+        }
+    )
+
+    assert_frame_equal(result, expected)
 
 
 def test_to_pandas():
