@@ -2,9 +2,31 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import inspect
-from typing import Any, Dict, Type
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any, Dict, Optional, Type
 
+from haystack.core.component.component import _hook_component_init
 from haystack.core.errors import DeserializationError, SerializationError
+
+
+@dataclass(frozen=True)
+class DeserializationCallbacks:
+    """
+    Callback functions that are invoked in specific
+    stages of the pipeline deserialization process.
+
+    :param component_pre_init:
+        Invoked just before a component instance is
+        initialized. Receives the following inputs:
+        `component_name` (`str`), `component_class` (`Type`), `init_params` (`Dict[str, Any]`).
+
+        The callback is allowed to modify the `init_params`
+        dictionary, which contains all the parameters that
+        are passed to the component's constructor.
+    """
+
+    component_pre_init: Optional[Callable] = None
 
 
 def component_to_dict(obj: Any) -> Dict[str, Any]:
@@ -59,7 +81,9 @@ def generate_qualified_class_name(cls: Type[object]) -> str:
     return f"{cls.__module__}.{cls.__name__}"
 
 
-def component_from_dict(cls: Type[object], data: Dict[str, Any]) -> Any:
+def component_from_dict(
+    cls: Type[object], data: Dict[str, Any], name: str, callbacks: Optional[DeserializationCallbacks] = None
+) -> Any:
     """
     Creates a component instance from a dictionary. If a `from_dict` method is present in the
     component class, that will be used instead of the default method.
@@ -68,13 +92,30 @@ def component_from_dict(cls: Type[object], data: Dict[str, Any]) -> Any:
         The class to be used for deserialization.
     :param data:
         The serialized data.
+    :param name:
+        The name of the component.
+    :param callbacks:
+        Callbacks to invoke during deserialization.
     :returns:
         The deserialized component.
     """
-    if hasattr(cls, "from_dict"):
-        return cls.from_dict(data)
 
-    return default_from_dict(cls, data)
+    def component_pre_init_callback(component_cls, init_params):
+        assert callbacks is not None
+        assert callbacks.component_pre_init is not None
+        callbacks.component_pre_init(name, component_cls, init_params)
+
+    def do_from_dict():
+        if hasattr(cls, "from_dict"):
+            return cls.from_dict(data)
+
+        return default_from_dict(cls, data)
+
+    if callbacks is None or callbacks.component_pre_init is None:
+        return do_from_dict()
+
+    with _hook_component_init(component_pre_init_callback):
+        return do_from_dict()
 
 
 def default_to_dict(obj: Any, **init_parameters) -> Dict[str, Any]:

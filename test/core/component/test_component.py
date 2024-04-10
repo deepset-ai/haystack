@@ -1,9 +1,11 @@
 import logging
+from functools import partial
 from typing import Any
 
 import pytest
 
 from haystack.core.component import Component, InputSocket, OutputSocket, component
+from haystack.core.component.component import _hook_component_init
 from haystack.core.component.types import Variadic
 from haystack.core.errors import ComponentError
 from haystack.core.pipeline import Pipeline
@@ -271,3 +273,120 @@ def test_is_greedy_flag_without_variadic_input(caplog):
         "Component 'MockComponent' has no variadic input, but it's marked as greedy."
         " This is not supported and can lead to unexpected behavior.\n" in caplog.text
     )
+
+
+def test_pre_init_hooking():
+    @component
+    class MockComponent:
+        def __init__(self, pos_arg1, pos_arg2, pos_arg3=None, *, kwarg1=1, kwarg2="string"):
+            self.pos_arg1 = pos_arg1
+            self.pos_arg2 = pos_arg2
+            self.pos_arg3 = pos_arg3
+            self.kwarg1 = kwarg1
+            self.kwarg2 = kwarg2
+
+        @component.output_types(output_value=int)
+        def run(self, input_value: int):
+            return {"output_value": input_value}
+
+    def pre_init_hook(component_class, init_params, expected_params):
+        assert component_class == MockComponent
+        assert init_params == expected_params
+
+    def pre_init_hook_modify(component_class, init_params, expected_params):
+        assert component_class == MockComponent
+        assert init_params == expected_params
+
+        init_params["pos_arg1"] = 2
+        init_params["pos_arg2"] = 0
+        init_params["pos_arg3"] = "modified"
+        init_params["kwarg2"] = "modified string"
+
+    with _hook_component_init(partial(pre_init_hook, expected_params={"pos_arg1": 1, "pos_arg2": 2, "kwarg1": None})):
+        _ = MockComponent(1, 2, kwarg1=None)
+
+    with _hook_component_init(partial(pre_init_hook, expected_params={"pos_arg1": 1, "pos_arg2": 2, "pos_arg3": 0.01})):
+        _ = MockComponent(pos_arg1=1, pos_arg2=2, pos_arg3=0.01)
+
+    with _hook_component_init(
+        partial(pre_init_hook_modify, expected_params={"pos_arg1": 0, "pos_arg2": 1, "pos_arg3": 0.01, "kwarg1": 0})
+    ):
+        c = MockComponent(0, 1, pos_arg3=0.01, kwarg1=0)
+
+        assert c.pos_arg1 == 2
+        assert c.pos_arg2 == 0
+        assert c.pos_arg3 == "modified"
+        assert c.kwarg1 == 0
+        assert c.kwarg2 == "modified string"
+
+
+def test_pre_init_hooking_variadic_positional_args():
+    @component
+    class MockComponent:
+        def __init__(self, *args, kwarg1=1, kwarg2="string"):
+            self.args = args
+            self.kwarg1 = kwarg1
+            self.kwarg2 = kwarg2
+
+        @component.output_types(output_value=int)
+        def run(self, input_value: int):
+            return {"output_value": input_value}
+
+    def pre_init_hook(component_class, init_params, expected_params):
+        assert component_class == MockComponent
+        assert init_params == expected_params
+
+    c = MockComponent(1, 2, 3, kwarg1=None)
+    assert c.args == (1, 2, 3)
+    assert c.kwarg1 is None
+    assert c.kwarg2 == "string"
+
+    with pytest.raises(ComponentError), _hook_component_init(
+        partial(pre_init_hook, expected_params={"args": (1, 2), "kwarg1": None})
+    ):
+        _ = MockComponent(1, 2, kwarg1=None)
+
+
+def test_pre_init_hooking_variadic_kwargs():
+    @component
+    class MockComponent:
+        def __init__(self, pos_arg1, pos_arg2=None, **kwargs):
+            self.pos_arg1 = pos_arg1
+            self.pos_arg2 = pos_arg2
+            self.kwargs = kwargs
+
+        @component.output_types(output_value=int)
+        def run(self, input_value: int):
+            return {"output_value": input_value}
+
+    def pre_init_hook(component_class, init_params, expected_params):
+        assert component_class == MockComponent
+        assert init_params == expected_params
+
+    with _hook_component_init(
+        partial(pre_init_hook, expected_params={"pos_arg1": 1, "kwarg1": None, "kwarg2": 10, "kwarg3": "string"})
+    ):
+        c = MockComponent(1, kwarg1=None, kwarg2=10, kwarg3="string")
+        assert c.pos_arg1 == 1
+        assert c.pos_arg2 is None
+        assert c.kwargs == {"kwarg1": None, "kwarg2": 10, "kwarg3": "string"}
+
+    def pre_init_hook_modify(component_class, init_params, expected_params):
+        assert component_class == MockComponent
+        assert init_params == expected_params
+
+        init_params["pos_arg1"] = 2
+        init_params["pos_arg2"] = 0
+        init_params["some_kwarg"] = "modified string"
+
+    with _hook_component_init(
+        partial(
+            pre_init_hook_modify,
+            expected_params={"pos_arg1": 0, "pos_arg2": 1, "kwarg1": 999, "some_kwarg": "some_value"},
+        )
+    ):
+        c = MockComponent(0, 1, kwarg1=999, some_kwarg="some_value")
+
+        assert c.pos_arg1 == 2
+        assert c.pos_arg2 == 0
+        assert c.kwargs == {"kwarg1": 999, "some_kwarg": "modified string"}

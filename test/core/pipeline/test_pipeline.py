@@ -16,9 +16,10 @@ from haystack.core.component import component
 from haystack.core.component.types import InputSocket, OutputSocket
 from haystack.core.errors import PipelineDrawingError, PipelineError, PipelineMaxLoops, PipelineRuntimeError
 from haystack.core.pipeline import Pipeline, PredefinedPipeline
+from haystack.core.serialization import DeserializationCallbacks
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.testing.factory import component_class
-from haystack.testing.sample_components import AddFixedValue, Double
+from haystack.testing.sample_components import AddFixedValue, Double, Greet
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -444,6 +445,77 @@ def test_from_dict():
             "mandatory": True,
         },
     )
+
+
+def test_from_dict_with_callbacks():
+    data = {
+        "metadata": {"test": "test"},
+        "max_loops_allowed": 101,
+        "components": {
+            "add_two": {
+                "type": "haystack.testing.sample_components.add_value.AddFixedValue",
+                "init_parameters": {"add": 2},
+            },
+            "add_default": {
+                "type": "haystack.testing.sample_components.add_value.AddFixedValue",
+                "init_parameters": {"add": 1},
+            },
+            "double": {"type": "haystack.testing.sample_components.double.Double", "init_parameters": {}},
+            "greet": {"type": "haystack.testing.sample_components.greet.Greet", "init_parameters": {"message": "test"}},
+        },
+        "connections": [
+            {"sender": "add_two.result", "receiver": "double.value"},
+            {"sender": "double.value", "receiver": "add_default.value"},
+        ],
+    }
+
+    components_seen_in_callback = []
+
+    def component_pre_init_callback(name, component_cls, init_params):
+        assert name in ["add_two", "add_default", "double", "greet"]
+        assert component_cls in [AddFixedValue, Double, Greet]
+
+        if name == "add_two":
+            assert init_params == {"add": 2}
+        elif name == "add_default":
+            assert init_params == {"add": 1}
+        elif name == "greet":
+            assert init_params == {"message": "test"}
+
+        components_seen_in_callback.append(name)
+
+    pipe = Pipeline.from_dict(data, callbacks=DeserializationCallbacks(component_pre_init=component_pre_init_callback))
+    assert components_seen_in_callback == ["add_two", "add_default", "double", "greet"]
+    add_two = pipe.graph.nodes["add_two"]["instance"]
+    assert add_two.add == 2
+    add_default = pipe.graph.nodes["add_default"]["instance"]
+    assert add_default.add == 1
+    greet = pipe.graph.nodes["greet"]["instance"]
+    assert greet.message == "test"
+    assert greet.log_level == "INFO"
+
+    def component_pre_init_callback_modify(name, component_cls, init_params):
+        assert name in ["add_two", "add_default", "double", "greet"]
+        assert component_cls in [AddFixedValue, Double, Greet]
+
+        if name == "add_two":
+            init_params["add"] = 3
+        elif name == "add_default":
+            init_params["add"] = 0
+        elif name == "greet":
+            init_params["message"] = "modified test"
+            init_params["log_level"] = "DEBUG"
+
+    pipe = Pipeline.from_dict(
+        data, callbacks=DeserializationCallbacks(component_pre_init=component_pre_init_callback_modify)
+    )
+    add_two = pipe.graph.nodes["add_two"]["instance"]
+    assert add_two.add == 3
+    add_default = pipe.graph.nodes["add_default"]["instance"]
+    assert add_default.add == 0
+    greet = pipe.graph.nodes["greet"]["instance"]
+    assert greet.message == "modified test"
+    assert greet.log_level == "DEBUG"
 
 
 def test_from_dict_with_empty_dict():

@@ -22,7 +22,7 @@ from haystack.core.errors import (
     PipelineUnmarshalError,
     PipelineValidationError,
 )
-from haystack.core.serialization import component_from_dict, component_to_dict
+from haystack.core.serialization import DeserializationCallbacks, component_from_dict, component_to_dict
 from haystack.core.type_utils import _type_name, _types_are_compatible
 from haystack.marshal import Marshaller, YamlMarshaller
 from haystack.telemetry import pipeline_running
@@ -130,12 +130,16 @@ class Pipeline:
         }
 
     @classmethod
-    def from_dict(cls: Type[T], data: Dict[str, Any], **kwargs) -> T:
+    def from_dict(
+        cls: Type[T], data: Dict[str, Any], callbacks: Optional[DeserializationCallbacks] = None, **kwargs
+    ) -> T:
         """
         Deserializes the pipeline from a dictionary.
 
         :param data:
             Dictionary to deserialize from.
+        :param callbacks:
+            Callbacks to invoke during deserialization.
         :param kwargs:
             `components`: a dictionary of {name: instance} to reuse instances of components instead of creating new ones.
         :returns:
@@ -171,7 +175,7 @@ class Pipeline:
 
                 # Create a new one
                 component_class = component.registry[component_data["type"]]
-                instance = component_from_dict(component_class, component_data)
+                instance = component_from_dict(component_class, component_data, name, callbacks)
             pipe.add_component(name=name, instance=instance)
 
         for connection in data.get("connections", []):
@@ -208,7 +212,12 @@ class Pipeline:
         fp.write(marshaller.marshal(self.to_dict()))
 
     @classmethod
-    def loads(cls, data: Union[str, bytes, bytearray], marshaller: Marshaller = DEFAULT_MARSHALLER) -> "Pipeline":
+    def loads(
+        cls,
+        data: Union[str, bytes, bytearray],
+        marshaller: Marshaller = DEFAULT_MARSHALLER,
+        callbacks: Optional[DeserializationCallbacks] = None,
+    ) -> "Pipeline":
         """
         Creates a `Pipeline` object from the string representation passed in the `data` argument.
 
@@ -216,13 +225,20 @@ class Pipeline:
             The string representation of the pipeline, can be `str`, `bytes` or `bytearray`.
         :param marshaller:
             The Marshaller used to create the string representation. Defaults to `YamlMarshaller`.
+        :param callbacks:
+            Callbacks to invoke during deserialization.
         :returns:
             A `Pipeline` object.
         """
-        return cls.from_dict(marshaller.unmarshal(data))
+        return cls.from_dict(marshaller.unmarshal(data), callbacks)
 
     @classmethod
-    def load(cls, fp: TextIO, marshaller: Marshaller = DEFAULT_MARSHALLER) -> "Pipeline":
+    def load(
+        cls,
+        fp: TextIO,
+        marshaller: Marshaller = DEFAULT_MARSHALLER,
+        callbacks: Optional[DeserializationCallbacks] = None,
+    ) -> "Pipeline":
         """
         Creates a `Pipeline` object from the string representation read from the file-like
         object passed in the `fp` argument.
@@ -233,10 +249,12 @@ class Pipeline:
             A file-like object ready to be read from.
         :param marshaller:
             The Marshaller used to create the string representation. Defaults to `YamlMarshaller`.
+        :param callbacks:
+            Callbacks to invoke during deserialization.
         :returns:
             A `Pipeline` object.
         """
-        return cls.from_dict(marshaller.unmarshal(fp.read()))
+        return cls.from_dict(marshaller.unmarshal(fp.read()), callbacks)
 
     def add_component(self, name: str, instance: Component) -> None:
         """
