@@ -39,7 +39,7 @@ from haystack.pipelines.utils import generate_code
 from haystack.errors import PipelineConfigError
 from haystack.nodes import PreProcessor, TextConverter
 from haystack.utils.deepsetcloud import DeepsetCloudError
-from haystack import Answer
+from haystack import Answer, Document
 
 from ..conftest import (
     MOCK_DC,
@@ -2172,6 +2172,20 @@ def test_pipeline_execution_using_join_preserves_previous_keys_three_streams():
     assert res["test_key2"] == "Alpha Beta Gamma Delta"
     assert res["invocation_context"] == {"query": "Alpha Beta Gamma Delta", "test_key1": "Alpha Beta Gamma Delta"}
     assert len(res["documents"]) == 3
+
+
+def test_pipeline_execution_using_join_preserves_changed_query():
+    shaper1 = Shaper(func="rename", params={"value": "This is a test."}, outputs=["query"])
+    shaper2 = Shaper(func="rename", params={"value": "dummy value"}, outputs=["dummy"])
+    pipeline = Pipeline()
+    pipeline.add_node(component=shaper1, name="Shaper1", inputs=["Query"])
+    pipeline.add_node(component=JoinDocuments(join_mode="concatenate"), name="Join", inputs=["Shaper1"])
+    pipeline.add_node(component=shaper2, name="DummyNode", inputs=["Join"])
+    res = pipeline.run(query="Alpha Beta Gamma Delta", debug=True, documents=[Document(content="Test Document")])
+    assert res["_debug"]["Shaper1"]["input"]["query"] == "Alpha Beta Gamma Delta"
+    assert res["_debug"]["Join"]["input"]["query"] == "This is a test."
+    assert res["_debug"]["DummyNode"]["input"]["query"] == "This is a test."
+    assert res["query"] == "This is a test."
 
 
 @pytest.mark.unit
