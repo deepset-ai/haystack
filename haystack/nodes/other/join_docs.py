@@ -105,9 +105,7 @@ class JoinDocuments(JoinNode):
 
     def run_batch_accumulated(self, inputs: List[dict], top_k_join: Optional[int] = None) -> Tuple[Dict, str]:
         # Join single document lists
-        if inputs[0]["documents"] is None or inputs[0]["documents"] == []:
-            return {"documents": [], "labels": inputs[0].get("labels", None)}, "output_1"
-        elif isinstance(inputs[0]["documents"][0], Document):
+        if isinstance(inputs[0]["documents"][0], Document):
             return self.run(inputs=inputs, top_k_join=top_k_join)
         # Join lists of document lists
         else:
