@@ -10,8 +10,8 @@ class EvaluationResults:
         self.pipeline_name = pipeline_name
 
     def score_report(self) -> DataFrame:
-        """Calculate the average of the scores for each metric."""
-        results = {entry["name"]: sum(entry["scores"]) / len(entry["scores"]) for entry in self.results["metrics"]}
+        """Transforms the results into a DataFrame with the aggregated scores for each metric."""
+        results = {entry["name"]: entry["score"] for entry in self.results["metrics"]}
         return DataFrame.from_dict(results, orient="index", columns=["score"])
 
     def to_pandas(self) -> DataFrame:
@@ -32,7 +32,7 @@ class EvaluationResults:
 
         return df_inputs.join(df_scores)
 
-    def comparative_individual_score_report(self, other: "EvaluationResults") -> DataFrame:
+    def comparative_individual_scores_report(self, other: "EvaluationResults") -> DataFrame:
         """
         Creates a DataFrame with the scores for each metric in the results of two different pipelines.
 
@@ -41,14 +41,14 @@ class EvaluationResults:
         pipe_a_df = self.to_pandas()
         pipe_b_df = other.to_pandas()
 
-        # check if the columns are the same except for query_id, question, context, and answer
-        ignore = ["query_id", "question", "contexts", "answer"]
-        columns_a = [column for column in pipe_a_df.columns if column not in ignore]
-        columns_b = [column for column in pipe_b_df.columns if column not in ignore]
+        # check if the columns are the same, i.e.: the same queries and evaluation pipeline
+        columns_a = list(pipe_a_df.columns)
+        columns_b = list(pipe_b_df.columns)
         if not columns_a == columns_b:
-            raise ValueError("The two dataframes do not have the same columns.")
+            raise ValueError(f"The two evaluation results do not have the same columns: {columns_a} != {columns_b}")
 
         # add the pipeline name to the column
+        ignore = ["query_id", "question", "contexts", "answer"]
         pipe_b_df.drop(columns=ignore, inplace=True)
         pipe_b_df.columns = [f"{other.pipeline_name}_{column}" for column in pipe_b_df.columns]
         pipe_a_df.columns = [f"{self.pipeline_name}_{col}" if col not in ignore else col for col in pipe_a_df.columns]

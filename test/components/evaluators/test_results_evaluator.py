@@ -35,12 +35,28 @@ def test_score_report():
             "predicted_answer": ["Paris", "Madrid"],
         },
         "metrics": [
-            {"name": "reciprocal_rank", "scores": [0.378064, 0.534964, 0.216058, 0.778642]},
-            {"name": "single_hit", "scores": [1, 1, 0, 1]},
-            {"name": "multi_hit", "scores": [0.706125, 0.454976, 0.445512, 0.250522]},
-            {"name": "context_relevance", "scores": [0.805466, 0.410251, 0.750070, 0.361332]},
-            {"name": "faithfulness", "scores": [0.135581, 0.695974, 0.749861, 0.041999]},
-            {"name": "semantic_answer_similarity", "scores": [0.971241, 0.159320, 0.019722, 1]},
+            {
+                "name": "reciprocal_rank",
+                "individual_scores": [0.378064, 0.534964, 0.216058, 0.778642],
+                "score": 0.476932,
+            },
+            {"name": "single_hit", "individual_scores": [1, 1, 0, 1], "score": 0.75},
+            {"name": "multi_hit", "individual_scores": [0.706125, 0.454976, 0.445512, 0.250522], "score": 0.46428375},
+            {
+                "name": "context_relevance",
+                "individual_scores": [0.805466, 0.410251, 0.750070, 0.361332],
+                "score": 0.58177975,
+            },
+            {
+                "name": "faithfulness",
+                "individual_scores": [0.135581, 0.695974, 0.749861, 0.041999],
+                "score": 0.40585375,
+            },
+            {
+                "name": "semantic_answer_similarity",
+                "individual_scores": [0.971241, 0.159320, 0.019722, 1],
+                "score": 0.53757075,
+            },
         ],
     }
 
@@ -94,7 +110,7 @@ def test_to_pandas():
     )
 
 
-def test_comparative_detailed_score_report():
+def test_comparative_individual_scores_report():
     data_1 = {
         "inputs": {
             "query_id": ["53c3b3e6", "225f87f7"],
@@ -133,7 +149,7 @@ def test_comparative_detailed_score_report():
 
     evaluator_1 = EvaluationResults(pipeline_name="testing_pipeline_1", results=data_1)
     evaluator_2 = EvaluationResults(pipeline_name="testing_pipeline_2", results=data_2)
-    results = evaluator_1.comparative_individual_score_report(evaluator_2)
+    results = evaluator_1.comparative_individual_scores_report(evaluator_2)
 
     assert results.to_json() == (
         '{"query_id":{"0":"53c3b3e6","1":"225f87f7"},'
