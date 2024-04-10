@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import inspect
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Type
 
@@ -18,14 +19,14 @@ class DeserializationCallbacks:
     :param component_pre_init:
         Invoked just before a component instance is
         initialized. Receives the following inputs:
-        `component_name`, `component_class`, `init_params`.
+        `component_name` (`str`), `component_class` (`Type`), `init_params` (`Dict[str, Any]`).
 
         The callback is allowed to modify the `init_params`
         dictionary, which contains all the parameters that
         are passed to the component's constructor.
     """
 
-    component_pre_init: Optional[Callable, None]] = None
+    component_pre_init: Optional[Callable] = None
 
 
 def component_to_dict(obj: Any) -> Dict[str, Any]:
