@@ -27,7 +27,6 @@ class PatchedLogger(typing.Protocol):
         **kwargs: Any,
     ) -> None:
         """Log a debug message."""
-        ...
 
     def info(
         self,
@@ -40,7 +39,6 @@ class PatchedLogger(typing.Protocol):
         **kwargs: Any,
     ) -> None:
         """Log an info message."""
-        ...
 
     def warn(
         self,
@@ -53,7 +51,6 @@ class PatchedLogger(typing.Protocol):
         **kwargs: Any,
     ) -> None:
         """Log a warning message."""
-        ...
 
     def warning(
         self,
@@ -66,7 +63,6 @@ class PatchedLogger(typing.Protocol):
         **kwargs: Any,
     ) -> None:
         """Log a warning message."""
-        ...
 
     def error(
         self,
@@ -79,7 +75,6 @@ class PatchedLogger(typing.Protocol):
         **kwargs: Any,
     ) -> None:
         """Log an error message."""
-        ...
 
     def critical(
         self,
@@ -92,7 +87,6 @@ class PatchedLogger(typing.Protocol):
         **kwargs: Any,
     ) -> None:
         """Log a critical message."""
-        ...
 
     def exception(
         self,
@@ -105,7 +99,6 @@ class PatchedLogger(typing.Protocol):
         **kwargs: Any,
     ) -> None:
         """Log an exception message."""
-        ...
 
     def fatal(
         self,
@@ -118,7 +111,6 @@ class PatchedLogger(typing.Protocol):
         **kwargs: Any,
     ) -> None:
         """Log a fatal message."""
-        ...
 
     def log(
         self,
@@ -132,11 +124,9 @@ class PatchedLogger(typing.Protocol):
         **kwargs: Any,
     ) -> None:
         """Log a message."""
-        ...
 
     def setLevel(self, level: int) -> None:
         """Set the logging level."""
-        ...
 
 
 def patch_log_method_to_kwargs_only(func: typing.Callable) -> typing.Callable:
