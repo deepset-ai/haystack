@@ -57,6 +57,7 @@ def _types_are_compatible(sender, receiver):  # pylint: disable=too-many-return-
 def _type_name(type_):
     """
     Util methods to get a nice readable representation of a type.
+
     Handles Optional and Literal in a special way to make it more readable.
     """
     # Literal args are strings, so we wrap them in quotes to make it clear
