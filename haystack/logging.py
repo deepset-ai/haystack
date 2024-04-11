@@ -26,6 +26,7 @@ class PatchedLogger(typing.Protocol):
         stacklevel: int = 1,
         **kwargs: Any,
     ) -> None:
+        """Log a debug message."""
         ...
 
     def info(
@@ -38,6 +39,7 @@ class PatchedLogger(typing.Protocol):
         stacklevel: int = 1,
         **kwargs: Any,
     ) -> None:
+        """Log an info message."""
         ...
 
     def warn(
@@ -50,6 +52,7 @@ class PatchedLogger(typing.Protocol):
         stacklevel: int = 1,
         **kwargs: Any,
     ) -> None:
+        """Log a warning message."""
         ...
 
     def warning(
@@ -62,6 +65,7 @@ class PatchedLogger(typing.Protocol):
         stacklevel: int = 1,
         **kwargs: Any,
     ) -> None:
+        """Log a warning message."""
         ...
 
     def error(
@@ -74,6 +78,7 @@ class PatchedLogger(typing.Protocol):
         stacklevel: int = 1,
         **kwargs: Any,
     ) -> None:
+        """Log an error message."""
         ...
 
     def critical(
@@ -86,6 +91,7 @@ class PatchedLogger(typing.Protocol):
         stacklevel: int = 1,
         **kwargs: Any,
     ) -> None:
+        """Log a critical message."""
         ...
 
     def exception(
@@ -98,6 +104,7 @@ class PatchedLogger(typing.Protocol):
         stacklevel: int = 1,
         **kwargs: Any,
     ) -> None:
+        """Log an exception message."""
         ...
 
     def fatal(
@@ -110,6 +117,7 @@ class PatchedLogger(typing.Protocol):
         stacklevel: int = 1,
         **kwargs: Any,
     ) -> None:
+        """Log a fatal message."""
         ...
 
     def log(
@@ -123,9 +131,11 @@ class PatchedLogger(typing.Protocol):
         stacklevel: int = 1,
         **kwargs: Any,
     ) -> None:
+        """Log a message."""
         ...
 
     def setLevel(self, level: int) -> None:
+        """Set the logging level."""
         ...
 
 
@@ -133,7 +143,7 @@ def patch_log_method_to_kwargs_only(func: typing.Callable) -> typing.Callable:
     """A decorator to make sure that a function is only called with keyword arguments."""
 
     @functools.wraps(func)
-    def log_only_with_kwargs(
+    def _log_only_with_kwargs(
         msg, *, _: Any = None, exc_info: Any = None, stack_info: Any = False, stacklevel: int = 1, **kwargs: Any
     ) -> Any:  # we need the `_` to avoid a syntax error
         existing_extra = kwargs.pop("extra", {})
@@ -147,14 +157,14 @@ def patch_log_method_to_kwargs_only(func: typing.Callable) -> typing.Callable:
             extra={**existing_extra, **kwargs},
         )
 
-    return log_only_with_kwargs
+    return _log_only_with_kwargs
 
 
 def patch_log_with_level_method_to_kwargs_only(func: typing.Callable) -> typing.Callable:
     """A decorator to make sure that a function is only called with keyword arguments."""
 
     @functools.wraps(func)
-    def log_only_with_kwargs(
+    def _log_only_with_kwargs(
         level,
         msg,
         *,
@@ -177,17 +187,19 @@ def patch_log_with_level_method_to_kwargs_only(func: typing.Callable) -> typing.
             extra={**existing_extra, **kwargs},
         )
 
-    return log_only_with_kwargs
+    return _log_only_with_kwargs
 
 
 def patch_make_records_to_use_kwarg_string_interpolation(original_make_records: typing.Callable) -> typing.Callable:
+    """A decorator to ensure string interpolation is used."""
+
     @functools.wraps(original_make_records)
-    def wrapper(name, level, fn, lno, msg, args, exc_info, func=None, extra=None, sinfo=None) -> Any:
+    def _wrapper(name, level, fn, lno, msg, args, exc_info, func=None, extra=None, sinfo=None) -> Any:
         safe_extra = extra or {}
         interpolated_msg = msg.format(**safe_extra)
         return original_make_records(name, level, fn, lno, interpolated_msg, (), exc_info, func, extra, sinfo)
 
-    return wrapper
+    return _wrapper
 
 
 def _patch_structlog_call_information(logger: logging.Logger) -> None:
@@ -219,11 +231,15 @@ def _patch_structlog_call_information(logger: logging.Logger) -> None:
 
 
 def getLogger(name: str) -> PatchedLogger:
+    """
+    Get the Haystack logger, a patched version of the one from the standard library.
+
+    We patch the default logger methods to make sure that they are only called with keyword arguments.
+    We enforce keyword-arguments because
+        - it brings in consistency
+        - it makes structure logging effective, not just an available feature
+    """
     logger = logging.getLogger(name)
-    # We patch the default logger methods to make sure that they are only called with keyword arguments.
-    # We enforce keyword-arguments because
-    # - it brings in consistency
-    # - it makes structure logging effective, not just an available feature
     logger.debug = patch_log_method_to_kwargs_only(logger.debug)  # type: ignore
     logger.info = patch_log_method_to_kwargs_only(logger.info)  # type: ignore
     logger.warn = patch_log_method_to_kwargs_only(logger.warn)  # type: ignore
@@ -255,7 +271,8 @@ def add_line_and_file(_: "WrappedLogger", __: str, event_dict: "EventDict") -> "
 
 
 def correlate_logs_with_traces(_: "WrappedLogger", __: str, event_dict: "EventDict") -> "EventDict":
-    """Add correlation data for logs.
+    """
+    Add correlation data for logs.
 
     This is useful if you want to correlate logs with traces.
     """
@@ -272,7 +289,8 @@ def correlate_logs_with_traces(_: "WrappedLogger", __: str, event_dict: "EventDi
 
 
 def configure_logging(use_json: Optional[bool] = None) -> None:
-    """Configure logging for Haystack.
+    """
+    Configure logging for Haystack.
 
     - If `structlog` is not installed, we keep everything as it is. The user is responsible for configuring logging
       themselves.
