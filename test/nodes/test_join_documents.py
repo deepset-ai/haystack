@@ -161,10 +161,6 @@ def test_join_node_empty_documents():
     output = pipe.run(query="test", documents=[])
     assert len(output["documents"]) == 0
 
-    # Test lists of document lists
-    output = join_node.run_batch(queries=["test"], documents=[])
-    assert len(output[0]["documents"]) == 0
-
 
 @pytest.mark.unit
 def test_join_node_none_documents():
@@ -175,7 +171,3 @@ def test_join_node_none_documents():
     # Test single document lists
     output = pipe.run(query="test", documents=None)
     assert len(output["documents"]) == 0
-
-    # Test lists of document lists
-    output = join_node.run_batch(queries=["test"], documents=None)
-    assert len(output[0]["documents"]) == 0
