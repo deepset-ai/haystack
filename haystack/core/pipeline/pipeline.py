@@ -961,8 +961,8 @@ class Pipeline:
                         waiting_for_input.remove((name, comp))
                         to_run.append((name, comp))
 
-                        # Let's also add the default values for the inputs that are missing or the component
-                        # won't run and will put back in the waiting list causing an infinite loop.
+                        # Let's use the default value for the inputs that are still missing, or the component
+                        # won't run and will be put back in the waiting list, causing an infinite loop.
                         for input_socket in comp.__haystack_input__._sockets_dict.values():  # type: ignore
                             if input_socket.is_mandatory:
                                 continue
