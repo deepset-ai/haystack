@@ -13,8 +13,7 @@ from haystack.core.errors import DeserializationError, SerializationError
 @dataclass(frozen=True)
 class DeserializationCallbacks:
     """
-    Callback functions that are invoked in specific
-    stages of the pipeline deserialization process.
+    Callback functions that are invoked in specific stages of the pipeline deserialization process.
 
     :param component_pre_init:
         Invoked just before a component instance is
