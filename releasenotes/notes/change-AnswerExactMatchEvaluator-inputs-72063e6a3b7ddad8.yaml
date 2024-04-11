@@ -1,0 +1,28 @@
+---
+upgrade:
+  - |
+    When using `evaluator = AnswerExactMatchEvaluator()` the code should be changed from
+    ```
+    result = evaluator.run(
+        ground_truth_answers=[["Berlin"], ["Paris"]],
+        predicted_answers=[["Berlin"], ["Lyon"]],
+    )
+    ```
+    to:
+    ```
+    result = evaluator.run(
+        ground_truth_answers=["Berlin", "Paris"],
+        predicted_answers=["Berlin", "Lyon"],
+    )
+    ```
+features:
+  - |
+    The inputs of the AnswerExactMatchEvaluator components were changed from:
+
+    - ground_truth_answers: List[List[str]], predicted_answers: List[List[str]]
+
+    to:
+
+    - ground_truth_answers: List[str], predicted_answers: List[str]
+
+    This change makes all metrics in Haystack core and in integrations, statistical and model-based, consistent in the inputs they expect.
