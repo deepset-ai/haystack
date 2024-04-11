@@ -119,7 +119,7 @@ class ImageToTextConverter(BaseConverter):
 
         file_path = Path(file_path)
         image = Image.open(file_path)
-        pages = self._image_to_text(image)
+        pages = self._image_to_text(image)  # type: ignore
         if remove_numeric_tables is None:
             remove_numeric_tables = self.remove_numeric_tables
         if valid_languages is None:
