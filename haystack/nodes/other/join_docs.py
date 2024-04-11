@@ -1,7 +1,7 @@
 import logging
 from collections import defaultdict
 from math import inf
-from typing import List, Optional
+from typing import List, Optional, Dict, Tuple
 
 from haystack.nodes.other.join import JoinNode
 from haystack.schema import Document
@@ -58,8 +58,13 @@ class JoinDocuments(JoinNode):
         self.top_k_join = top_k_join
         self.sort_by_score = sort_by_score
 
-    def run_accumulated(self, inputs: List[dict], top_k_join: Optional[int] = None):  # type: ignore
+    def run_accumulated(self, inputs: List[Dict], top_k_join: Optional[int] = None) -> Tuple[Dict, str]:
         results = [inp["documents"] for inp in inputs]
+
+        # Check if all results are non-empty
+        if all(not res for res in results):
+            return {"documents": [], "labels": inputs[0].get("labels", None)}, "output_1"
+
         document_map = {doc.id: doc for result in results for doc in result}
 
         if self.join_mode == "concatenate":
@@ -98,7 +103,7 @@ class JoinDocuments(JoinNode):
 
         return output, "output_1"
 
-    def run_batch_accumulated(self, inputs: List[dict], top_k_join: Optional[int] = None):  # type: ignore
+    def run_batch_accumulated(self, inputs: List[dict], top_k_join: Optional[int] = None) -> Tuple[Dict, str]:
         # Join single document lists
         if isinstance(inputs[0]["documents"][0], Document):
             return self.run(inputs=inputs, top_k_join=top_k_join)
@@ -117,13 +122,13 @@ class JoinDocuments(JoinNode):
 
             return output, "output_1"
 
-    def _concatenate_results(self, results, document_map):
+    def _concatenate_results(self, results: List[List[Document]], document_map: Dict) -> Dict[str, float]:
         """
         Concatenates multiple document result lists.
         Return the documents with the higher score.
         """
         list_id = list(document_map.keys())
-        scores_map = {}
+        scores_map: Dict[str, float] = {}
         for idx in list_id:
             tmp = []
             for result in results:
@@ -134,11 +139,11 @@ class JoinDocuments(JoinNode):
             scores_map.update({idx: item_best_score.score})
         return scores_map
 
-    def _calculate_comb_sum(self, results):
+    def _calculate_comb_sum(self, results: List[List[Document]]) -> Dict[str, float]:
         """
         Calculates a combination sum by multiplying each score by its weight.
         """
-        scores_map = defaultdict(int)
+        scores_map: Dict[str, float] = defaultdict(float)
         weights = self.weights if self.weights else [1 / len(results)] * len(results)
 
         for result, weight in zip(results, weights):
@@ -147,14 +152,14 @@ class JoinDocuments(JoinNode):
 
         return scores_map
 
-    def _calculate_rrf(self, results):
+    def _calculate_rrf(self, results: List[List[Document]]) -> Dict[str, float]:
         """
         Calculates the reciprocal rank fusion. The constant K is set to 61 (60 was suggested by the original paper,
         plus 1 as python lists are 0-based and the paper used 1-based ranking).
         """
         K = 61
 
-        scores_map = defaultdict(int)
+        scores_map: Dict[str, float] = defaultdict(float)
         weights = self.weights if self.weights else [1 / len(results)] * len(results)
 
         # Calculate weighted reciprocal rank fusion score

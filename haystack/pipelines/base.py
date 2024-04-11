@@ -596,19 +596,27 @@ class Pipeline:
                                         **existing_input.get("_debug", {}),
                                         **node_output.get("_debug", {}),
                                     }
-                                if query:
+                                additional_input = self._combine_node_outputs(existing_input, node_output)
+                                updated_input = {**additional_input, **updated_input}
+                                if query and "query" not in updated_input:
                                     updated_input["query"] = query
-                                if file_paths:
+                                if file_paths and "file_paths" not in updated_input:
                                     updated_input["file_paths"] = file_paths
-                                if labels:
+                                if labels and "labels" not in updated_input:
                                     updated_input["labels"] = labels
-                                if documents:
+                                if documents and "documents" not in updated_input:
                                     updated_input["documents"] = documents
-                                if meta:
+                                if meta and "meta" not in updated_input:
                                     updated_input["meta"] = meta
                             else:
                                 existing_input["inputs"].append(node_output)
-                                updated_input = existing_input
+                                if "_debug" in node_output.keys():
+                                    existing_input["_debug"] = {
+                                        **existing_input.get("_debug", {}),
+                                        **node_output.get("_debug", {}),
+                                    }
+                                additional_input = self._combine_node_outputs(existing_input, node_output)
+                                updated_input = {**additional_input, **existing_input}
                             queue[n] = updated_input
                         else:
                             queue[n] = node_output
@@ -617,6 +625,22 @@ class Pipeline:
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
 
         return node_output
+
+    def _combine_node_outputs(self, existing_input: Dict[str, Any], node_output: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Combines the outputs of two nodes into a single input for a downstream node.
+        For matching keys first node's (existing_input) value is kept. This is used for join nodes.
+
+        :param existing_input: The output of the first node.
+        :param node_output: The output of the second node.
+        """
+        additional_input = {}
+        combined = {**node_output, **existing_input}
+        for key in combined:
+            # Don't overwrite these keys since they are set in Pipeline.run
+            if key not in ["inputs", "params", "_debug"]:
+                additional_input[key] = combined[key]
+        return additional_input
 
     async def _arun(  # noqa: C901,PLR0912 type: ignore
         self,
@@ -734,19 +758,27 @@ class Pipeline:
                                         **existing_input.get("_debug", {}),
                                         **node_output.get("_debug", {}),
                                     }
-                                if query:
+                                additional_input = self._combine_node_outputs(existing_input, node_output)
+                                updated_input = {**additional_input, **updated_input}
+                                if query and "query" not in updated_input:
                                     updated_input["query"] = query
-                                if file_paths:
+                                if file_paths and "file_paths" not in updated_input:
                                     updated_input["file_paths"] = file_paths
-                                if labels:
+                                if labels and "labels" not in updated_input:
                                     updated_input["labels"] = labels
-                                if documents:
+                                if documents and "documents" not in updated_input:
                                     updated_input["documents"] = documents
-                                if meta:
+                                if meta and "meta" not in updated_input:
                                     updated_input["meta"] = meta
                             else:
                                 existing_input["inputs"].append(node_output)
-                                updated_input = existing_input
+                                if "_debug" in node_output.keys():
+                                    existing_input["_debug"] = {
+                                        **existing_input.get("_debug", {}),
+                                        **node_output.get("_debug", {}),
+                                    }
+                                additional_input = self._combine_node_outputs(existing_input, node_output)
+                                updated_input = {**additional_input, **existing_input}
                             queue[n] = updated_input
                         else:
                             queue[n] = node_output
@@ -756,6 +788,7 @@ class Pipeline:
 
         return node_output
 
+    # pylint: disable=too-many-branches
     def run_batch(  # noqa: C901,PLR0912 type: ignore
         self,
         queries: Optional[List[str]] = None,
@@ -896,19 +929,32 @@ class Pipeline:
                             existing_input = queue[n]
                             if "inputs" not in existing_input.keys():
                                 updated_input: Dict = {"inputs": [existing_input, node_output], "params": params}
-                                if queries:
+                                if "_debug" in existing_input.keys() or "_debug" in node_output.keys():
+                                    updated_input["_debug"] = {
+                                        **existing_input.get("_debug", {}),
+                                        **node_output.get("_debug", {}),
+                                    }
+                                additional_input = self._combine_node_outputs(existing_input, node_output)
+                                updated_input = {**additional_input, **updated_input}
+                                if queries and "queries" not in updated_input:
                                     updated_input["queries"] = queries
-                                if file_paths:
+                                if file_paths and "file_paths" not in updated_input:
                                     updated_input["file_paths"] = file_paths
-                                if labels:
+                                if labels and "labels" not in updated_input:
                                     updated_input["labels"] = labels
-                                if documents:
+                                if documents and "documents" not in updated_input:
                                     updated_input["documents"] = documents
-                                if meta:
+                                if meta and "meta" not in updated_input:
                                     updated_input["meta"] = meta
                             else:
                                 existing_input["inputs"].append(node_output)
-                                updated_input = existing_input
+                                if "_debug" in node_output.keys():
+                                    existing_input["_debug"] = {
+                                        **existing_input.get("_debug", {}),
+                                        **node_output.get("_debug", {}),
+                                    }
+                                additional_input = self._combine_node_outputs(existing_input, node_output)
+                                updated_input = {**additional_input, **existing_input}
                             queue[n] = updated_input
                         else:
                             queue[n] = node_output

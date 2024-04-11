@@ -247,7 +247,10 @@ class PromptNode(BaseComponent):
         """
         Prepare prompt invocation.
         """
-        invocation_context = invocation_context or {}
+        if invocation_context is None:
+            invocation_context = {}
+        else:
+            invocation_context = invocation_context.copy()
 
         if query and "query" not in invocation_context:
             invocation_context["query"] = query

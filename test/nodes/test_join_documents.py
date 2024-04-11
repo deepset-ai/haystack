@@ -1,7 +1,7 @@
 import pytest
 
 
-from haystack import Document
+from haystack import Document, Pipeline
 from haystack.nodes.other.join_docs import JoinDocuments
 from copy import deepcopy
 
@@ -149,3 +149,25 @@ def test_joindocuments_rrf_weights():
     assert result_none["documents"] == result_even["documents"]
     assert result_uneven["documents"] != result_none["documents"]
     assert result_uneven["documents"][0].score > result_none["documents"][0].score
+
+
+@pytest.mark.unit
+def test_join_node_empty_documents():
+    pipe = Pipeline()
+    join_node = JoinDocuments(join_mode="concatenate")
+    pipe.add_node(component=join_node, name="Join", inputs=["Query"])
+
+    # Test single document lists
+    output = pipe.run(query="test", documents=[])
+    assert len(output["documents"]) == 0
+
+
+@pytest.mark.unit
+def test_join_node_none_documents():
+    pipe = Pipeline()
+    join_node = JoinDocuments(join_mode="concatenate")
+    pipe.add_node(component=join_node, name="Join", inputs=["Query"])
+
+    # Test single document lists
+    output = pipe.run(query="test", documents=None)
+    assert len(output["documents"]) == 0

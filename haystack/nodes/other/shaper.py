@@ -745,7 +745,11 @@ class Shaper(BaseComponent):
         meta: Optional[dict] = None,
         invocation_context: Optional[Dict[str, Any]] = None,
     ) -> Tuple[Dict, str]:
-        invocation_context = invocation_context or {}
+        if invocation_context is None:
+            invocation_context = {}
+        else:
+            invocation_context = invocation_context.copy()
+
         if query and "query" not in invocation_context.keys():
             invocation_context["query"] = query
 
@@ -755,7 +759,7 @@ class Shaper(BaseComponent):
         if labels and "labels" not in invocation_context.keys():
             invocation_context["labels"] = labels
 
-        if documents != None and "documents" not in invocation_context.keys():
+        if documents is not None and "documents" not in invocation_context.keys():
             invocation_context["documents"] = documents
 
         if meta and "meta" not in invocation_context.keys():
