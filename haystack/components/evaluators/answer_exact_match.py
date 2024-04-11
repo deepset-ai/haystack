@@ -17,8 +17,8 @@ class AnswerExactMatchEvaluator:
 
     evaluator = AnswerExactMatchEvaluator()
     result = evaluator.run(
-        ground_truth_answers=[["Berlin"], ["Paris"]],
-        predicted_answers=[["Berlin"], ["Lyon"]],
+        ground_truth_answers=["Berlin", "Paris"],
+        predicted_answers=["Berlin", "Lyon"],
     )
 
     print(result["individual_scores"])
@@ -29,15 +29,15 @@ class AnswerExactMatchEvaluator:
     """
 
     @component.output_types(individual_scores=List[int], score=float)
-    def run(self, ground_truth_answers: List[List[str]], predicted_answers: List[List[str]]) -> Dict[str, Any]:
+    def run(self, ground_truth_answers: List[str], predicted_answers: List[str]) -> Dict[str, Any]:
         """
         Run the AnswerExactMatchEvaluator on the given inputs.
         `ground_truth_answers` and `retrieved_answers` must have the same length.
 
         :param ground_truth_answers:
-            A list of expected answers for each question.
+            A list of expected answers.
         :param predicted_answers:
-            A list of predicted answers for each question.
+            A list of predicted answers.
         :returns:
             A dictionary with the following outputs:
             - `individual_scores` - A list of 0s and 1s, where 1 means that the predicted answer matched one of the ground truth.
@@ -48,8 +48,8 @@ class AnswerExactMatchEvaluator:
             raise ValueError("The length of ground_truth_answers and predicted_answers must be the same.")
 
         matches = []
-        for truths, extracted in zip(ground_truth_answers, predicted_answers):
-            if set(truths) & set(extracted):
+        for truth, extracted in zip(ground_truth_answers, predicted_answers):
+            if truth == extracted:
                 matches.append(1)
             else:
                 matches.append(0)
