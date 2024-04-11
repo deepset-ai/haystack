@@ -7,9 +7,9 @@ from haystack.core.component import component
 class AnswerExactMatchEvaluator:
     """
     Evaluator that checks if predicted answers exactly match ground truth answers.
-    
-    Each predicted answer is compared to one ground truth answer. 
-    The final score is a number ranging from 0.0 to 1.0. 
+
+    Each predicted answer is compared to one ground truth answer.
+    The final score is a number ranging from 0.0 to 1.0.
     It represents the proportion of predicted answers that match their corresponding ground truth answer.
 
     Usage example:
