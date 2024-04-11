@@ -26,8 +26,8 @@ target "base" {
   dockerfile = "Dockerfile.base"
   tags = ["${IMAGE_NAME}:base-${IMAGE_TAG_SUFFIX}"]
   args = {
-    build_image = "python:3.10-slim"
-    base_image = "python:3.10-slim"
+    build_image = "python:3.12-slim"
+    base_image = "python:3.12-slim"
     haystack_version = "${HAYSTACK_VERSION}"
   }
   platforms = ["linux/amd64", "linux/arm64"]
