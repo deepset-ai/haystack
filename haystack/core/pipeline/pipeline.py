@@ -846,6 +846,7 @@ class Pipeline:
                     ) as span:
                         span.set_content_tag("haystack.component.input", last_inputs[name])
 
+                        logger.info("Running component {name}", name=name)
                         res = comp.run(**last_inputs[name])
                         self.graph.nodes[name]["visits"] += 1
 
@@ -959,6 +960,15 @@ class Pipeline:
                         # There was a lazy variadic or a component with only default waiting for input, we can run it
                         waiting_for_input.remove((name, comp))
                         to_run.append((name, comp))
+
+                        # Let's use the default value for the inputs that are still missing, or the component
+                        # won't run and will be put back in the waiting list, causing an infinite loop.
+                        for input_socket in comp.__haystack_input__._sockets_dict.values():  # type: ignore
+                            if input_socket.is_mandatory:
+                                continue
+                            if input_socket.name not in last_inputs[name]:
+                                last_inputs[name][input_socket.name] = input_socket.default_value
+
                         continue
 
                     before_last_waiting_for_input = (
