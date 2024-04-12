@@ -139,18 +139,18 @@ extra-dependencies = [
 
 [tool.hatch.envs.test.scripts]
 e2e = "pytest e2e"
-unit = 'pytest --cov-report xml:coverage.xml --cov="haystack" -m "not integration" test {args:test}'
-integration = 'pytest --maxfail=5 -m "integration" test'
-integration-mac = 'pytest --maxfail=5 -m "integration" test -k "not tika"'
-integration-windows = 'pytest --maxfail=5 -m "integration" test -k "not tika"'
+unit = 'pytest --cov-report xml:coverage.xml --cov="haystack" -m "not integration" {args:test}'
+integration = 'pytest --maxfail=5 -m "integration" {args:test}'
+integration-mac = 'pytest --maxfail=5 -m "integration" -k "not tika" {args:test}'
+integration-windows = 'pytest --maxfail=5 -m "integration" -k "not tika" {args:test}'
 types = "mypy --install-types --non-interactive --cache-dir=.mypy_cache/ {args:haystack}"
 lint = [
-  "ruff {args:haystack}",
+  "ruff check {args:haystack}",
   "pylint -ry -j 0 {args:haystack}"
 ]
 lint-fix = [
   "black .",
-  "ruff {args:haystack} --fix",
+  "ruff check {args:haystack} --fix",
 ]
 
 [tool.hatch.envs.readme]
@@ -303,12 +303,10 @@ select = [
   "ASYNC",  # flake8-async
   "C4",     # flake8-comprehensions
   "C90",    # McCabe cyclomatic complexity
-  "CPY",    # flake8-copyright
   "DJ",     # flake8-django
   "E501",   # Long lines
   "EXE",    # flake8-executable
   "F",      # Pyflakes
-  "FURB",   # refurb
   "INT",    # flake8-gettext
   "PERF",   # Perflint
   "PL",     # Pylint
