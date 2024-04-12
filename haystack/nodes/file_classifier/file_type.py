@@ -26,7 +26,9 @@ class FileTypeClassifier(BaseComponent):
 
     outgoing_edges = len(DEFAULT_TYPES)
 
-    def __init__(self, supported_types: Optional[List[str]] = None, full_analysis: bool = False, raise_on_error: bool = True):
+    def __init__(
+        self, supported_types: Optional[List[str]] = None, full_analysis: bool = False, raise_on_error: bool = True
+    ):
         """
         Node that sends out files on a different output edge depending on their extension.
 
