@@ -4,6 +4,7 @@ loaders:
     modules:
       [
         "answer_exact_match",
+        "context_relevance",
         "document_map",
         "document_mrr",
         "document_recall",
