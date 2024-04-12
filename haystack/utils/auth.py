@@ -20,10 +20,10 @@ class SecretType(Enum):
         :param string: The string to convert.
         """
         mapping = {e.value: e for e in SecretType}
-        type = mapping.get(string)
-        if type is None:
+        _type = mapping.get(string)
+        if _type is None:
             raise ValueError(f"Unknown secret type '{string}'")
-        return type
+        return _type
 
 
 class Secret(ABC):
@@ -83,7 +83,7 @@ class Secret(ABC):
         return out
 
     @staticmethod
-    def from_dict(dict: Dict[str, Any]) -> "Secret":
+    def from_dict(dict: Dict[str, Any]) -> "Secret":  # noqa:A002
         """
         Create a secret from a JSON-serializable dictionary.
 
@@ -120,7 +120,7 @@ class Secret(ABC):
 
     @staticmethod
     @abstractmethod
-    def _from_dict(dict: Dict[str, Any]) -> "Secret":
+    def _from_dict(_: Dict[str, Any]) -> "Secret":
         pass
 
 
@@ -148,7 +148,7 @@ class TokenSecret(Secret):
         )
 
     @staticmethod
-    def _from_dict(dict: Dict[str, Any]) -> "Secret":
+    def _from_dict(_: Dict[str, Any]) -> "Secret":
         raise ValueError(
             "Cannot deserialize token-based secret. Use an alternative secret type like environment variables."
         )
@@ -186,8 +186,8 @@ class EnvVarSecret(Secret):
         return {"env_vars": list(self._env_vars), "strict": self._strict}
 
     @staticmethod
-    def _from_dict(dict: Dict[str, Any]) -> "Secret":
-        return EnvVarSecret(tuple(dict["env_vars"]), _strict=dict["strict"])
+    def _from_dict(dictionary: Dict[str, Any]) -> "Secret":
+        return EnvVarSecret(tuple(dictionary["env_vars"]), _strict=dictionary["strict"])
 
     def resolve_value(self) -> Optional[Any]:
         """Resolve the secret to an atomic value. The semantics of the value is secret-dependent."""
