@@ -1,3 +1,4 @@
+import os
 from typing import List
 
 import pytest
@@ -108,10 +109,15 @@ class TestFaithfulnessEvaluator:
         questions = ["Which is the most popular global sport?", "Who created the Python language?"]
         contexts = [
             [
-                "The popularity of sports can be measured in various ways, including TV viewership, social media presence, number of participants, and economic impact. Football is undoubtedly the world's most popular sport with major events like the FIFA World Cup and sports personalities like Ronaldo and Messi, drawing a followership of more than 4 billion people."
+                "The popularity of sports can be measured in various ways, including TV viewership, social media "
+                "presence, number of participants, and economic impact. Football is undoubtedly the world's most "
+                "popular sport with major events like the FIFA World Cup and sports personalities like Ronaldo and "
+                "Messi, drawing a followership of more than 4 billion people."
             ],
             [
-                "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming language. Its design philosophy emphasizes code readability, and its language constructs aim to help programmers write clear, logical code for both small and large-scale software projects."
+                "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming "
+                "language. Its design philosophy emphasizes code readability, and its language constructs aim to help "
+                "programmers write clear, logical code for both small and large-scale software projects."
             ],
         ]
         responses = [
@@ -127,3 +133,28 @@ class TestFaithfulnessEvaluator:
             ],
             "score": 0.75,
         }
+
+    def test_run_missing_parameters(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = FaithfulnessEvaluator()
+        with pytest.raises(TypeError, match="missing 3 required positional arguments"):
+            component.run()
+
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_live_run(self):
+        questions = ["What is Python and who created it?"]
+        contexts = [["Python is a programming language created by Guido van Rossum."]]
+        responses = ["Python is a programming language created by George Lucas."]
+        evaluator = FaithfulnessEvaluator()
+        result = evaluator.run(questions=questions, contexts=contexts, responses=responses)
+
+        assert result["score"] == 0.5
+        assert result["individual_scores"] == [0.5]
+        assert result["results"][0]["score"] == 0.5
+        assert result["results"][0]["statement_scores"] == [1, 0]
+        assert "programming language" in result["results"][0]["statements"][0]
+        assert "George Lucas" in result["results"][0]["statements"][1]
