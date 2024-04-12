@@ -69,7 +69,8 @@ class Span(abc.ABC):
         """
         Return a dictionary with correlation data for logs.
 
-        This is useful if you want to correlate logs with traces."""
+        This is useful if you want to correlate logs with traces.
+        """
         return {}
 
 
