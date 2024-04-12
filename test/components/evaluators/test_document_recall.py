@@ -19,7 +19,7 @@ class TestDocumentRecallEvaluatorSingleHit:
             ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
             retrieved_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
         )
-
+        assert all(isinstance(individual_score, float) for individual_score in result["individual_scores"])
         assert result == {"individual_scores": [1.0, 1.0], "score": 1.0}
 
     def test_run_with_no_matching(self, evaluator):
@@ -27,7 +27,7 @@ class TestDocumentRecallEvaluatorSingleHit:
             ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
             retrieved_documents=[[Document(content="Paris")], [Document(content="London")]],
         )
-
+        assert all(isinstance(individual_score, float) for individual_score in result["individual_scores"])
         assert result == {"individual_scores": [0.0, 0.0], "score": 0.0}
 
     def test_run_with_partial_matching(self, evaluator):
@@ -35,7 +35,7 @@ class TestDocumentRecallEvaluatorSingleHit:
             ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
             retrieved_documents=[[Document(content="Berlin")], [Document(content="London")]],
         )
-
+        assert all(isinstance(individual_score, float) for individual_score in result["individual_scores"])
         assert result == {"individual_scores": [1.0, 0.0], "score": 0.5}
 
     def test_run_with_complex_data(self, evaluator):
@@ -62,7 +62,8 @@ class TestDocumentRecallEvaluatorSingleHit:
                 ],
             ],
         )
-        assert result == {"individual_scores": [True, True, True, True, False, True], "score": 0.8333333333333334}
+        assert all(isinstance(individual_score, float) for individual_score in result["individual_scores"])
+        assert result == {"individual_scores": [1, 1, 1, 1, 0, 1], "score": 0.8333333333333334}
 
     def test_run_with_different_lengths(self, evaluator):
         with pytest.raises(ValueError):
@@ -88,7 +89,7 @@ class TestDocumentRecallEvaluatorMultiHit:
             ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
             retrieved_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
         )
-
+        assert all(isinstance(individual_score, float) for individual_score in result["individual_scores"])
         assert result == {"individual_scores": [1.0, 1.0], "score": 1.0}
 
     def test_run_with_no_matching(self, evaluator):
@@ -96,7 +97,7 @@ class TestDocumentRecallEvaluatorMultiHit:
             ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
             retrieved_documents=[[Document(content="Paris")], [Document(content="London")]],
         )
-
+        assert all(isinstance(individual_score, float) for individual_score in result["individual_scores"])
         assert result == {"individual_scores": [0.0, 0.0], "score": 0.0}
 
     def test_run_with_partial_matching(self, evaluator):
@@ -104,7 +105,7 @@ class TestDocumentRecallEvaluatorMultiHit:
             ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
             retrieved_documents=[[Document(content="Berlin")], [Document(content="London")]],
         )
-
+        assert all(isinstance(individual_score, float) for individual_score in result["individual_scores"])
         assert result == {"individual_scores": [1.0, 0.0], "score": 0.5}
 
     def test_run_with_complex_data(self, evaluator):
@@ -136,6 +137,7 @@ class TestDocumentRecallEvaluatorMultiHit:
                 ],
             ],
         )
+        assert all(isinstance(individual_score, float) for individual_score in result["individual_scores"])
         assert result == {"individual_scores": [1.0, 1.0, 0.5, 1.0, 0.75, 1.0], "score": 0.875}
 
     def test_run_with_different_lengths(self, evaluator):

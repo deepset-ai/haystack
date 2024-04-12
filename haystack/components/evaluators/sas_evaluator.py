@@ -26,6 +26,7 @@ class SASEvaluator:
     from haystack.components.evaluators.sas_evaluator import SASEvaluator
 
     evaluator = SASEvaluator(model="cross-encoder/ms-marco-MiniLM-L-6-v2")
+    evaluator.warm_up()
     ground_truths = [
         "A construction budget of US $2.3 billion",
         "The Eiffel Tower, completed in 1889, symbolizes Paris's cultural magnificence.",

@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Add support for callbacks during pipeline deserialization. Currently supports a pre-init hook for components that can be used to inspect and modify the initialization parameters
+    before the invocation of the component's `__init__` method.

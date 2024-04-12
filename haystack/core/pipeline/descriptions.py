@@ -14,8 +14,9 @@ logger = logging.getLogger(__name__)
 
 def find_pipeline_inputs(graph: networkx.MultiDiGraph) -> Dict[str, List[InputSocket]]:
     """
-    Collect components that have disconnected input sockets. Note that this method returns *ALL* disconnected
-    input sockets, including all such sockets with default values.
+    Collect components that have disconnected input sockets.
+
+    Note that this method returns *ALL* disconnected input sockets, including all such sockets with default values.
     """
     return {
         name: [socket for socket in data.get("input_sockets", {}).values() if not socket.senders or socket.is_variadic]

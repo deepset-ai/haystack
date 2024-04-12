@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 def _prepare_for_drawing(graph: networkx.MultiDiGraph) -> networkx.MultiDiGraph:
     """
     Add some extra nodes to show the inputs and outputs of the pipeline.
+
     Also adds labels to edges.
     """
     # Label the edges
@@ -99,8 +100,10 @@ def _to_mermaid_image(graph: networkx.MultiDiGraph):
 
 def _to_mermaid_text(graph: networkx.MultiDiGraph) -> str:
     """
-    Converts a Networkx graph into Mermaid syntax. The output of this function can be used in the documentation
-    with `mermaid` codeblocks and it will be automatically rendered.
+    Converts a Networkx graph into Mermaid syntax.
+
+    The output of this function can be used in the documentation with `mermaid` codeblocks, and it will
+    be automatically rendered.
     """
     # Copy the graph to avoid modifying the original
     graph = _prepare_for_drawing(graph.copy())

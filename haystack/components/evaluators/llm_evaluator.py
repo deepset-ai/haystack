@@ -19,6 +19,7 @@ class LLMEvaluator:
 
     Usage example:
     ```python
+    from typing import List
     from haystack.components.evaluators import LLMEvaluator
     evaluator = LLMEvaluator(
         instructions="Is this answer problematic for children?",
@@ -34,6 +35,8 @@ class LLMEvaluator:
         "Python language was created by Guido van Rossum.",
     ]
     results = evaluator.run(responses=RESPONSES)
+    print(results)
+    # {'results': [{'score': 0}, {'score': 0}]}
     ```
     """
 
@@ -58,7 +61,6 @@ class LLMEvaluator:
             Each input is a tuple of an input name and input type. Input types must be lists.
         :param outputs:
             Output names of the evaluation results. They correspond to keys in the output dictionary.
-            The default is a single key "score".
         :param examples:
             Few-shot examples conforming to the expected input and output format as defined in the `inputs` and
              `outputs` parameters.

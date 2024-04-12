@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import logging
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from unittest.mock import patch
 
 import pytest
@@ -12,13 +12,15 @@ from haystack.components.builders import PromptBuilder
 from haystack.components.builders.answer_builder import AnswerBuilder
 from haystack.components.others import Multiplexer
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+from haystack.components.routers import ConditionalRouter
 from haystack.core.component import component
 from haystack.core.component.types import InputSocket, OutputSocket
 from haystack.core.errors import PipelineDrawingError, PipelineError, PipelineMaxLoops, PipelineRuntimeError
 from haystack.core.pipeline import Pipeline, PredefinedPipeline
+from haystack.core.serialization import DeserializationCallbacks
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.testing.factory import component_class
-from haystack.testing.sample_components import AddFixedValue, Double
+from haystack.testing.sample_components import AddFixedValue, Double, Greet
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -446,6 +448,77 @@ def test_from_dict():
     )
 
 
+def test_from_dict_with_callbacks():
+    data = {
+        "metadata": {"test": "test"},
+        "max_loops_allowed": 101,
+        "components": {
+            "add_two": {
+                "type": "haystack.testing.sample_components.add_value.AddFixedValue",
+                "init_parameters": {"add": 2},
+            },
+            "add_default": {
+                "type": "haystack.testing.sample_components.add_value.AddFixedValue",
+                "init_parameters": {"add": 1},
+            },
+            "double": {"type": "haystack.testing.sample_components.double.Double", "init_parameters": {}},
+            "greet": {"type": "haystack.testing.sample_components.greet.Greet", "init_parameters": {"message": "test"}},
+        },
+        "connections": [
+            {"sender": "add_two.result", "receiver": "double.value"},
+            {"sender": "double.value", "receiver": "add_default.value"},
+        ],
+    }
+
+    components_seen_in_callback = []
+
+    def component_pre_init_callback(name, component_cls, init_params):
+        assert name in ["add_two", "add_default", "double", "greet"]
+        assert component_cls in [AddFixedValue, Double, Greet]
+
+        if name == "add_two":
+            assert init_params == {"add": 2}
+        elif name == "add_default":
+            assert init_params == {"add": 1}
+        elif name == "greet":
+            assert init_params == {"message": "test"}
+
+        components_seen_in_callback.append(name)
+
+    pipe = Pipeline.from_dict(data, callbacks=DeserializationCallbacks(component_pre_init=component_pre_init_callback))
+    assert components_seen_in_callback == ["add_two", "add_default", "double", "greet"]
+    add_two = pipe.graph.nodes["add_two"]["instance"]
+    assert add_two.add == 2
+    add_default = pipe.graph.nodes["add_default"]["instance"]
+    assert add_default.add == 1
+    greet = pipe.graph.nodes["greet"]["instance"]
+    assert greet.message == "test"
+    assert greet.log_level == "INFO"
+
+    def component_pre_init_callback_modify(name, component_cls, init_params):
+        assert name in ["add_two", "add_default", "double", "greet"]
+        assert component_cls in [AddFixedValue, Double, Greet]
+
+        if name == "add_two":
+            init_params["add"] = 3
+        elif name == "add_default":
+            init_params["add"] = 0
+        elif name == "greet":
+            init_params["message"] = "modified test"
+            init_params["log_level"] = "DEBUG"
+
+    pipe = Pipeline.from_dict(
+        data, callbacks=DeserializationCallbacks(component_pre_init=component_pre_init_callback_modify)
+    )
+    add_two = pipe.graph.nodes["add_two"]["instance"]
+    assert add_two.add == 3
+    add_default = pipe.graph.nodes["add_default"]["instance"]
+    assert add_default.add == 0
+    greet = pipe.graph.nodes["greet"]["instance"]
+    assert greet.message == "modified test"
+    assert greet.log_level == "DEBUG"
+
+
 def test_from_dict_with_empty_dict():
     assert Pipeline() == Pipeline.from_dict({})
 
@@ -844,3 +917,69 @@ def test_pipeline_is_not_stuck_with_components_with_only_defaults():
     answers = res["answer_builder"]["answers"]
     assert len(answers) == 1
     assert answers[0].data == "Paris"
+
+
+def test_pipeline_is_not_stuck_with_components_with_only_defaults_as_first_components():
+    """
+    This tests verifies that a Pipeline doesn't get stuck running in a loop if
+    it has all the following characterics:
+    - The first Component has all defaults for its inputs
+    - The first Component receives one input from the user
+    - The first Component receives one input from a loop in the Pipeline
+    - The second Component has at least one default input
+    """
+
+    def fake_generator_run(self, prompt: str, generation_kwargs: Optional[Dict[str, Any]] = None):
+        # Simple hack to simulate a model returning a different reply after the
+        # the first time it's called
+        if getattr(fake_generator_run, "called", False):
+            return {"replies": ["Rome"]}
+        fake_generator_run.called = True
+        return {"replies": ["Paris"]}
+
+    FakeGenerator = component_class(
+        "FakeGenerator",
+        input_types={"prompt": str, "generation_kwargs": Optional[Dict[str, Any]]},
+        output_types={"replies": List[str]},
+        extra_fields={"run": fake_generator_run},
+    )
+    template = (
+        "Answer the following question.\n"
+        "{% if previous_replies %}\n"
+        "Previously you replied incorrectly this:\n"
+        "{% for reply in previous_replies %}\n"
+        " - {{ reply }}\n"
+        "{% endfor %}\n"
+        "{% endif %}\n"
+        "Question: {{ query }}"
+    )
+    router = ConditionalRouter(
+        routes=[
+            {
+                "condition": "{{ replies == ['Rome'] }}",
+                "output": "{{ replies }}",
+                "output_name": "correct_replies",
+                "output_type": List[int],
+            },
+            {
+                "condition": "{{ replies == ['Paris'] }}",
+                "output": "{{ replies }}",
+                "output_name": "incorrect_replies",
+                "output_type": List[int],
+            },
+        ]
+    )
+
+    pipe = Pipeline()
+
+    pipe.add_component("prompt_builder", PromptBuilder(template=template))
+    pipe.add_component("generator", FakeGenerator())
+    pipe.add_component("router", router)
+
+    pipe.connect("prompt_builder.prompt", "generator.prompt")
+    pipe.connect("generator.replies", "router.replies")
+    pipe.connect("router.incorrect_replies", "prompt_builder.previous_replies")
+
+    res = pipe.run({"prompt_builder": {"query": "What is the capital of Italy?"}})
+
+    assert res == {"router": {"correct_replies": ["Rome"]}}
