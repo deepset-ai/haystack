@@ -126,7 +126,7 @@ class FileTypeClassifier(BaseComponent):
             if self._raise_on_error is False:
                 logger.warning(
                     f"Unsupported files of type '{extension}' ({paths[0]}) found. "
-                    "Unsupported files will be ignored during indexing as `raise_on_error` is set to `False`. "
+                    "Unsupported file types will be ignored during indexing as `raise_on_error` is set to `False`. "
                     f"The supported types are: {self.supported_types}. "
                 )
                 return None, None
