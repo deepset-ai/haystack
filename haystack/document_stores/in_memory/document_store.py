@@ -54,8 +54,8 @@ class InMemoryDocumentStore:
         self._bm25_tokenization_regex = bm25_tokenization_regex
         self.tokenizer = re.compile(bm25_tokenization_regex).findall
 
-        self.bm25_algorithm_name = bm25_algorithm
-        self.bm25_algorithm = self._dispatch_bm25()
+        self.bm25_algorithm = bm25_algorithm
+        self.bm25_algorithm_inst = self._dispatch_bm25()
         self.bm25_parameters = bm25_parameters or {}
         self.embedding_similarity_function = embedding_similarity_function
 
@@ -75,8 +75,8 @@ class InMemoryDocumentStore:
         """
         # TODO other implementations are not available yet, always return BM25+
 
-        if self.bm25_algorithm_name not in {"BM25Okapi", "BM25L", "BM25Plus"}:
-            raise ValueError(f"BM25 algorithm '{self.bm25_algorithm_name}' is not supported.")
+        if self.bm25_algorithm not in {"BM25Okapi", "BM25L", "BM25Plus"}:
+            raise ValueError(f"BM25 algorithm '{self.bm25_algorithm}' is not supported.")
         return self._score_bm25plus
 
     def _tokenize_bm25(self, text: str) -> List[str]:
@@ -116,7 +116,7 @@ class InMemoryDocumentStore:
         def _compute_idf(tokens: List[str]) -> Dict[str, float]:
             """Per-token IDF computation."""
             n = lambda t: self._freq_doc.get(t, 0)
-            idf = {t: math.log(1 + (len(self._index) - n(t) + 0.5) / (n(t) + 0.5)) for t in tokens}
+            idf = {t: math.log(1 + (len(self._bm25_attr) - n(t) + 0.5) / (n(t) + 0.5)) for t in tokens}
             return idf
 
         def _compute_damping(doc_len: int) -> float:
@@ -164,7 +164,7 @@ class InMemoryDocumentStore:
         return default_to_dict(
             self,
             bm25_tokenization_regex=self._bm25_tokenization_regex,
-            bm25_algorithm=self.bm25_algorithm.__name__,
+            bm25_algorithm=self.bm25_algorithm,
             bm25_parameters=self.bm25_parameters,
             embedding_similarity_function=self.embedding_similarity_function,
         )
@@ -312,8 +312,8 @@ class InMemoryDocumentStore:
             logger.info("No documents found for BM25 retrieval. Returning empty list.")
             return []
 
-        # initialize BM25
-        results = self.bm25_algorithm(query, all_documents, scale_score)
+        results = self.bm25_algorithm_inst(query, all_documents, scale_score)
+        # logger.warning("\n".join([str((d.content, s)) for d, s in results]))
 
         # get the last top_k indexes and reverse them
         top_results = heapq.nlargest(top_k, results, key=lambda x: x[1])
@@ -321,7 +321,7 @@ class InMemoryDocumentStore:
         # BM25Okapi can return meaningful negative values, so they should not be filtered out when scale_score is False.
         # It's the only algorithm supported by rank_bm25 at the time of writing (2024) that can return negative scores.
         # see https://github.com/deepset-ai/haystack/pull/6889 for more context.
-        negatives_are_valid = self.bm25_algorithm_name == "BM25Okapi" and not scale_score
+        negatives_are_valid = self.bm25_algorithm == "BM25Okapi" and not scale_score
 
         # Create documents with the BM25 score to return them
         return_documents = []
