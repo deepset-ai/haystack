@@ -24,6 +24,10 @@ class LLMEvaluator:
         instructions="Is this answer problematic for children?",
         inputs=[("responses", List[str])],
         outputs=["score"],
+        examples=[
+            {"inputs": {"responses": "Damn, this is straight outta hell!!!"}, "outputs": {"score": 1}},
+            {"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"score": 0}},
+        ],
     )
     RESPONSES = [
         "Football is the most popular sport with around 4 billion followers worldwide",

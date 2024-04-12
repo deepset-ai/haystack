@@ -1,3 +1,4 @@
+import os
 from typing import List
 
 import pytest
@@ -116,3 +117,26 @@ class TestContextRelevanceEvaluator:
             ],
             "score": 0.75,
         }
+
+    def test_run_missing_parameters(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = ContextRelevanceEvaluator()
+        with pytest.raises(TypeError, match="missing 2 required positional arguments"):
+            component.run()
+
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_live_run(self):
+        questions = ["Who created the Python language?"]
+        contexts = [["Python, created by Guido van Rossum, is a high-level general-purpose programming language."]]
+
+        evaluator = ContextRelevanceEvaluator()
+        result = evaluator.run(questions=questions, contexts=contexts)
+        assert result["score"] == 1.0
+        assert result["individual_scores"] == [1.0]
+        assert result["results"][0]["score"] == 1.0
+        assert result["results"][0]["statement_scores"] == [1.0]
+        assert "Guido van Rossum" in result["results"][0]["statements"][0]

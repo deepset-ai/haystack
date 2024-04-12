@@ -7,6 +7,28 @@ from haystack.components.evaluators.llm_evaluator import LLMEvaluator
 from haystack.core.component import component
 from haystack.utils import Secret, deserialize_secrets_inplace
 
+# Private global variable for default examples to include in the prompt if the user does not provide any examples
+_DEFAULT_EXAMPLES = [
+    {
+        "inputs": {
+            "questions": "What is the capital of Germany?",
+            "contexts": ["Berlin is the capital of Germany and was founded in 1244."],
+        },
+        "outputs": {
+            "statements": ["Berlin is the capital of Germany.", "Berlin was founded in 1244."],
+            "statement_scores": [1, 0],
+        },
+    },
+    {
+        "inputs": {"questions": "What is the capital of France?", "contexts": ["Berlin is the capital of Germany."]},
+        "outputs": {"statements": ["Berlin is the capital of Germany."], "statement_scores": [0]},
+    },
+    {
+        "inputs": {"questions": "What is the capital of Italy?", "contexts": ["Rome is the capital of Italy."]},
+        "outputs": {"statements": ["Rome is the capital of Italy."], "statement_scores": [1]},
+    },
+]
+
 
 class ContextRelevanceEvaluator(LLMEvaluator):
     """
@@ -48,7 +70,8 @@ class ContextRelevanceEvaluator(LLMEvaluator):
         Creates an instance of ContextRelevanceEvaluator.
 
         :param examples:
-            Few-shot examples conforming to the expected input and output format of ContextRelevanceEvaluator.
+            Optional few-shot examples conforming to the expected input and output format of ContextRelevanceEvaluator.
+            Default examples will be used if none are provided.
             Each example must be a dictionary with keys "inputs" and "outputs".
             "inputs" must be a dictionary with keys "questions" and "contexts".
             "outputs" must be a dictionary with "statements" and "statement_scores".
@@ -77,29 +100,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
         )
         self.inputs = [("questions", List[str]), ("contexts", List[List[str]])]
         self.outputs = ["statements", "statement_scores"]
-        self.examples = examples or [
-            {
-                "inputs": {
-                    "questions": "What is the capital of Germany?",
-                    "contexts": ["Berlin is the capital of Germany and was founded in 1244."],
-                },
-                "outputs": {
-                    "statements": ["Berlin is the capital of Germany.", "Berlin was founded in 1244."],
-                    "statement_scores": [1, 0],
-                },
-            },
-            {
-                "inputs": {
-                    "questions": "What is the capital of France?",
-                    "contexts": ["Berlin is the capital of Germany."],
-                },
-                "outputs": {"statements": ["Berlin is the capital of Germany."], "statement_scores": [0]},
-            },
-            {
-                "inputs": {"questions": "What is the capital of Italy?", "contexts": ["Rome is the capital of Italy."]},
-                "outputs": {"statements": ["Rome is the capital of Italy."], "statement_scores": [1]},
-            },
-        ]
+        self.examples = examples or _DEFAULT_EXAMPLES
         self.api = api
         self.api_key = api_key
 
@@ -113,19 +114,21 @@ class ContextRelevanceEvaluator(LLMEvaluator):
         )
 
     @component.output_types(results=List[Dict[str, Any]])
-    def run(self, **inputs) -> Dict[str, Any]:
+    def run(self, questions: List[str], contexts: List[List[str]]) -> Dict[str, Any]:
         """
         Run the LLM evaluator.
 
-        :param inputs:
-            The input values to evaluate. The keys are the input names and the values are lists of input values.
+        :param questions:
+            A list of questions.
+        :param contexts:
+            A list of lists of contexts. Each list of contexts corresponds to one question.
         :returns:
             A dictionary with the following outputs:
                 - `score`: Mean context relevance score over all the provided input questions.
                 - `individual_scores`: A list of context relevance scores for each input question.
                 - `results`: A list of dictionaries with `statements` and `statement_scores` for each input context.
         """
-        result = super().run(**inputs)
+        result = super().run(questions=questions, contexts=contexts)
 
         # calculate average statement relevance score per query
         for res in result["results"]:
