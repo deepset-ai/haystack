@@ -1,3 +1,4 @@
+# pylint: disable=unnecessary-ellipsis
 from typing import Any, Dict, Protocol, Union
 
 
