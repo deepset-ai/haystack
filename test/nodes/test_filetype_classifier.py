@@ -166,3 +166,18 @@ def test_filetype_classifier_batched_same_media_extensions(tmp_path):
     output, edge = node.run_batch(test_files)
     assert edge == "output_1"
     assert output == {"file_paths": test_files}
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("file_type", ["csv", "json", "xml", "pptx", "xlsx"])
+def test_filetype_classifier_raise_on_error_disabled_unsupported_file_types(tmp_path, caplog, file_type):
+    node = FileTypeClassifier(raise_on_error=False)
+    test_file = tmp_path / f"test.{file_type}"
+    caplog.clear()
+    with caplog.at_level(logging.WARNING):
+        output, edge = node.run(test_file)
+        assert edge == output == None
+        assert (
+            f"Unsupported files of type '{file_type}' ({test_file!s}) found. Unsupported file types will be ignored"
+            in caplog.text
+        )
