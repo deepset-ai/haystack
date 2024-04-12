@@ -84,7 +84,7 @@ class AnthropicClaudeAdapter(BedrockModelAdapter):
 
     def prepare_body(self, prompt: str, **inference_kwargs) -> Dict[str, Any]:
         if self.use_messages_api:
-            default_params = {
+            default_params: Dict[str, Any] = {
                 "anthropic_version": "bedrock-2023-05-31",
                 "max_tokens": self.max_length,
                 "system": None,
