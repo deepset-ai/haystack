@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Remove the usage of reserved keywords in the logger calls, causing a `KeyError` when setting the log level
+    to DEBUG.
