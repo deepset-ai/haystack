@@ -26,7 +26,7 @@ class FileTypeClassifier(BaseComponent):
 
     outgoing_edges = len(DEFAULT_TYPES)
 
-    def __init__(self, supported_types: Optional[List[str]] = None, full_analysis: bool = False):
+    def __init__(self, supported_types: Optional[List[str]] = None, full_analysis: bool = False, raise_on_error: bool = True):
         """
         Node that sends out files on a different output edge depending on their extension.
 
@@ -35,9 +35,11 @@ class FileTypeClassifier(BaseComponent):
             You can't use lists with duplicate elements.
         :param full_analysis: If True, the whole file is analyzed to determine the file type.
             If False, only the first 2049 bytes are analyzed.
+        :param raise_on_error: If True, the node will raise an exception if the file type is not supported.
         """
         self.full_analysis = full_analysis
         self._default_types = False
+        self._raise_on_error = raise_on_error
         if supported_types is None:
             self._default_types = True
             supported_types = DEFAULT_TYPES
@@ -121,6 +123,13 @@ class FileTypeClassifier(BaseComponent):
         try:
             index = self.supported_types.index(extension) + 1
         except ValueError:
+            if self._raise_on_error is False:
+                logger.warning(
+                    f"Unsupported files of type '{extension}' ({paths[0]}) found. "
+                    "Unsupported files will be ignored during indexing as `raise_on_error` is set to `False`. "
+                    f"The supported types are: {self.supported_types}. "
+                )
+                return None, None
             raise ValueError(
                 f"Files of type '{extension}' ({paths[0]}) are not supported. "
                 f"The supported types are: {self.supported_types}. "
