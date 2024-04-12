@@ -165,7 +165,7 @@ class Pipeline:
                     try:
                         # Import the module first...
                         module, _ = component_data["type"].rsplit(".", 1)
-                        logger.debug("Trying to import {module}", module=module)
+                        logger.debug("Trying to import module {module_name}", module_name=module)
                         importlib.import_module(module)
                         # ...then try again
                         if component_data["type"] not in component.registry:
@@ -849,7 +849,7 @@ class Pipeline:
                     ) as span:
                         span.set_content_tag("haystack.component.input", last_inputs[name])
 
-                        logger.info("Running component {name}", name=name)
+                        logger.info("Running component {component_name}", component_name=name)
                         res = comp.run(**last_inputs[name])
                         self.graph.nodes[name]["visits"] += 1
 

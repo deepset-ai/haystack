@@ -411,10 +411,10 @@ class _Component:
         if class_path in self.registry:
             # Corner case, but it may occur easily in notebooks when re-running cells.
             logger.debug(
-                "Component {component} is already registered. Previous imported from '{module}', new imported from '{new_module}'",
+                "Component {component} is already registered. Previous imported from '{module_name}', new imported from '{new_module_name}'",
                 component=class_path,
-                module=self.registry[class_path],
-                new_module=cls,
+                module_name=self.registry[class_path],
+                new_module_name=cls,
             )
         self.registry[class_path] = cls
         logger.debug("Registered Component {component}", component=cls)
