@@ -1,9 +1,10 @@
+import heapq
+import math
 import re
-from typing import Any, Dict, Iterable, List, Literal, Optional
+from collections import Counter
+from typing import Any, Dict, Iterable, List, Literal, Optional, Tuple
 
 import numpy as np
-from haystack_bm25 import rank_bm25
-from tqdm.auto import tqdm
 
 from haystack import default_from_dict, default_to_dict, logging
 from haystack.dataclasses import Document
@@ -52,12 +53,106 @@ class InMemoryDocumentStore:
         self.storage: Dict[str, Document] = {}
         self._bm25_tokenization_regex = bm25_tokenization_regex
         self.tokenizer = re.compile(bm25_tokenization_regex).findall
-        algorithm_class = getattr(rank_bm25, bm25_algorithm)
-        if algorithm_class is None:
-            raise ValueError(f"BM25 algorithm '{bm25_algorithm}' not found.")
-        self.bm25_algorithm = algorithm_class
+
+        self.bm25_algorithm_name = bm25_algorithm
+        self.bm25_algorithm = self._dispatch_bm25()
         self.bm25_parameters = bm25_parameters or {}
         self.embedding_similarity_function = embedding_similarity_function
+
+        # Global BM25 statistics
+        self._avg_doc_len: float = 0.0
+        self._freq_doc: Counter = Counter()
+
+        # Per-document statistics
+        self._bm25_attr: Dict[str, Tuple[Dict[str, int], int]] = {}
+
+    def _dispatch_bm25(self):
+        """
+        Select the correct BM25 algorithm based on user specification.
+
+        :returns:
+            The BM25 algorithm method.
+        """
+        # TODO other implementations are not available yet, always return BM25+
+
+        if self.bm25_algorithm_name not in {"BM25Okapi", "BM25L", "BM25Plus"}:
+            raise ValueError(f"BM25 algorithm '{self.bm25_algorithm_name}' is not supported.")
+        return self._score_bm25plus
+
+    def _tokenize_bm25(self, text: str) -> List[str]:
+        """
+        Tokenize text using the BM25 tokenization regex.
+
+        Here we explicitly create a tokenization method to encapsulate
+        all pre-processing logic used to create BM25 tokens, such as
+        lowercasing. This helps track the exact tokenization process
+        used for BM25 scoring at any given time.
+
+        :param text:
+            The text to tokenize.
+        :returns:
+            A list of tokens.
+        """
+        text = text.lower()
+        return self.tokenizer(text)
+
+    def _score_bm25plus(
+        self, query: str, documents: List[Document], scale_score: bool = False
+    ) -> List[Tuple[Document, float]]:
+        """
+        Calculate BM25+ scores for the given query and filtered documents.
+
+        :param query:
+            The query string.
+        :param documents:
+            The list of documents to score, should be produced by
+            the filter_documents method; may be an empty list.
+        :param scale_score:
+            Whether to scale the scores of the retrieved documents.
+        :returns:
+            A list of tuples, each containing a Document and its BM25+ score.
+        """
+
+        def _compute_idf(tokens: List[str]) -> Dict[str, float]:
+            """Per-token IDF computation."""
+            n = lambda t: self._freq_doc.get(t, 0)
+            idf = {t: math.log(1 + (len(self._index) - n(t) + 0.5) / (n(t) + 0.5)) for t in tokens}
+            return idf
+
+        def _compute_damping(doc_len: int) -> float:
+            """Shrink effect of token frequency on the final score.
+            as a function of document length."""
+            return k * (1 - b + b * doc_len / self._avg_doc_len)
+
+        def _compute_bm25(token: str, freq: Dict[str, int], damp: float) -> float:
+            """Per-token BM25+ computation."""
+            freq_term = freq.get(token, 0.0)
+            freq_norm = freq_term / (freq_term + damp) + delta
+            return idf[token] * freq_norm
+
+        # Retrieve args
+        k = self.bm25_parameters.get("k1", 1.5)
+        b = self.bm25_parameters.get("b", 0.75)
+
+        # Adjust the delta value so that we can bring the `(k1 + 1)`
+        # term out of the 'term frequency' term in BM25+ formula and
+        # delete it; this will not affect the ranking
+        delta = self.bm25_parameters.get("delta", 1.0) / (k + 1.0)
+
+        idf = _compute_idf(self._tokenize_bm25(query))
+        bm25_attr = {doc.id: self._bm25_attr[doc.id] for doc in documents}
+
+        ret = []
+        for doc in documents:
+            freq, doc_len = bm25_attr[doc.id]
+            damp = _compute_damping(doc_len)
+
+            score = sum(_compute_bm25(tok, freq, damp) for tok in idf.keys())
+            if scale_score:
+                score = expit(score / BM25_SCALING_FACTOR)
+            ret.append((doc, score))
+
+        return ret
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -132,7 +227,36 @@ class InMemoryDocumentStore:
                     logger.warning("ID '{document_id}' already exists", document_id=document.id)
                     written_documents -= 1
                     continue
+
+            # Since the statistics are updated in an incremental manner,
+            # we need to explicitly remove the existing document to revert
+            # the statistics before updating them with the new document.
+            if document.id in self.storage.keys():
+                self.delete_documents([document.id])
+
+            # This processing logic is extracted from the original bm25_retrieval method.
+            # Since we are creating index incrementally before the first retrieval,
+            # we need to determine what content to use for indexing here, not at query time.
+            if document.content is not None:
+                if document.dataframe is not None:
+                    logger.warning(
+                        "Document '{document_id}' has both text and dataframe content. "
+                        "Using text content for retrieval and skipping dataframe content.",
+                        document_id=document.id,
+                    )
+                tokens = self._tokenize_bm25(document.content)
+            elif document.dataframe is not None:
+                str_content = document.dataframe.astype(str)
+                csv_content = str_content.to_csv(index=False)
+                tokens = self._tokenize_bm25(csv_content)
+            else:
+                tokens = []
+
             self.storage[document.id] = document
+
+            self._bm25_attr[document.id] = (Counter(tokens), len(tokens))
+            self._freq_doc.update(set(tokens))
+            self._avg_doc_len = (len(tokens) + self._avg_doc_len * len(self._bm25_attr)) / (len(self._bm25_attr) + 1)
         return written_documents
 
     def delete_documents(self, document_ids: List[str]) -> None:
@@ -145,6 +269,14 @@ class InMemoryDocumentStore:
             if doc_id not in self.storage.keys():
                 continue
             del self.storage[doc_id]
+
+            # Update statistics accordingly
+            freq, doc_len = self._bm25_attr.pop(doc_id)
+            self._freq_doc.subtract(Counter(freq.keys()))
+            try:
+                self._avg_doc_len = (self._avg_doc_len * (len(self._bm25_attr) + 1) - doc_len) / len(self._bm25_attr)
+            except ZeroDivisionError:
+                self._avg_doc_len = 0
 
     def bm25_retrieval(
         self, query: str, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, scale_score: bool = False
@@ -174,65 +306,34 @@ class InMemoryDocumentStore:
             filters = {"operator": "AND", "conditions": [content_type_filter, filters]}
         else:
             filters = content_type_filter
+
         all_documents = self.filter_documents(filters=filters)
-
-        # Lowercase all documents
-        lower_case_documents = []
-        for doc in all_documents:
-            if doc.content is None and doc.dataframe is None:
-                logger.info(
-                    "Document '{document_id}' has no text or dataframe content. Skipping it.", document_id=doc.id
-                )
-            else:
-                if doc.content is not None:
-                    lower_case_documents.append(doc.content.lower())
-                    if doc.dataframe is not None:
-                        logger.warning(
-                            "Document '{document_id}' has both text and dataframe content. "
-                            "Using text content and skipping dataframe content.",
-                            document_id=doc.id,
-                        )
-                        continue
-                if doc.dataframe is not None:
-                    str_content = doc.dataframe.astype(str)
-                    csv_content = str_content.to_csv(index=False)
-                    lower_case_documents.append(csv_content.lower())
-
-        # Tokenize the entire content of the DocumentStore
-        tokenized_corpus = [
-            self.tokenizer(doc) for doc in tqdm(lower_case_documents, unit=" docs", desc="Ranking by BM25...")
-        ]
-        if len(tokenized_corpus) == 0:
+        if len(all_documents) == 0:
             logger.info("No documents found for BM25 retrieval. Returning empty list.")
             return []
 
         # initialize BM25
-        bm25_scorer = self.bm25_algorithm(tokenized_corpus, **self.bm25_parameters)
-        # tokenize query
-        tokenized_query = self.tokenizer(query.lower())
-        # get scores for the query against the corpus
-        docs_scores = bm25_scorer.get_scores(tokenized_query)
-        if scale_score:
-            docs_scores = [expit(float(score / BM25_SCALING_FACTOR)) for score in docs_scores]
+        results = self.bm25_algorithm(query, all_documents, scale_score)
+
         # get the last top_k indexes and reverse them
-        top_docs_positions = np.argsort(docs_scores)[-top_k:][::-1]
+        top_results = heapq.nlargest(top_k, results, key=lambda x: x[1])
 
         # BM25Okapi can return meaningful negative values, so they should not be filtered out when scale_score is False.
         # It's the only algorithm supported by rank_bm25 at the time of writing (2024) that can return negative scores.
         # see https://github.com/deepset-ai/haystack/pull/6889 for more context.
-        negatives_are_valid = self.bm25_algorithm is rank_bm25.BM25Okapi and not scale_score
+        negatives_are_valid = self.bm25_algorithm_name == "BM25Okapi" and not scale_score
 
         # Create documents with the BM25 score to return them
         return_documents = []
-        for i in top_docs_positions:
-            doc = all_documents[i]
-            score = docs_scores[i]
+        for doc, score in top_results:
             if not negatives_are_valid and score <= 0.0:
                 continue
+
             doc_fields = doc.to_dict()
             doc_fields["score"] = score
             return_document = Document.from_dict(doc_fields)
             return_documents.append(return_document)
+
         return return_documents
 
     def embedding_retrieval(
