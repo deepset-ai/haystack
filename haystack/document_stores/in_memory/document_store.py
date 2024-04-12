@@ -2,6 +2,7 @@ import heapq
 import math
 import re
 from collections import Counter
+from itertools import chain
 from typing import Any, Dict, Iterable, List, Literal, Optional, Tuple
 
 import numpy as np
@@ -66,6 +67,15 @@ class InMemoryDocumentStore:
         # Per-document statistics
         self._bm25_attr: Dict[str, Tuple[Dict[str, int], int]] = {}
 
+    @property
+    def bm25_algorithm(self) -> str:
+        return self._bm25_algorithm
+
+    @bm25_algorithm.setter
+    def bm25_algorithm(self, value: str):
+        self._bm25_algorithm = value
+        self.bm25_algorithm_inst = self._dispatch_bm25()
+
     def _dispatch_bm25(self):
         """
         Select the correct BM25 algorithm based on user specification.
@@ -73,11 +83,11 @@ class InMemoryDocumentStore:
         :returns:
             The BM25 algorithm method.
         """
-        # TODO other implementations are not available yet, always return BM25+
+        table = {"BM25Okapi": self._score_bm25okapi, "BM25L": self._score_bm25l, "BM25Plus": self._score_bm25plus}
 
-        if self.bm25_algorithm not in {"BM25Okapi", "BM25L", "BM25Plus"}:
+        if self.bm25_algorithm not in table:
             raise ValueError(f"BM25 algorithm '{self.bm25_algorithm}' is not supported.")
-        return self._score_bm25plus
+        return table[self.bm25_algorithm]
 
     def _tokenize_bm25(self, text: str) -> List[str]:
         """
@@ -96,48 +106,36 @@ class InMemoryDocumentStore:
         text = text.lower()
         return self.tokenizer(text)
 
-    def _score_bm25plus(
-        self, query: str, documents: List[Document], scale_score: bool = False
-    ) -> List[Tuple[Document, float]]:
+    def _score_bm25l(self, query: str, documents: List[Document]) -> List[Tuple[Document, float]]:
         """
-        Calculate BM25+ scores for the given query and filtered documents.
+        Calculate BM25L scores for the given query and filtered documents.
 
         :param query:
             The query string.
         :param documents:
             The list of documents to score, should be produced by
             the filter_documents method; may be an empty list.
-        :param scale_score:
-            Whether to scale the scores of the retrieved documents.
         :returns:
-            A list of tuples, each containing a Document and its BM25+ score.
+            A list of tuples, each containing a Document and its BM25L score.
         """
-
-        def _compute_idf(tokens: List[str]) -> Dict[str, float]:
-            """Per-token IDF computation."""
-            n = lambda t: self._freq_doc.get(t, 0)
-            idf = {t: math.log(1 + (len(self._bm25_attr) - n(t) + 0.5) / (n(t) + 0.5)) for t in tokens}
-            return idf
-
-        def _compute_damping(doc_len: int) -> float:
-            """Shrink effect of token frequency on the final score.
-            as a function of document length."""
-            return k * (1 - b + b * doc_len / self._avg_doc_len)
-
-        def _compute_bm25(token: str, freq: Dict[str, int], damp: float) -> float:
-            """Per-token BM25+ computation."""
-            freq_term = freq.get(token, 0.0)
-            freq_norm = freq_term / (freq_term + damp) + delta
-            return idf[token] * freq_norm
-
-        # Retrieve args
         k = self.bm25_parameters.get("k1", 1.5)
         b = self.bm25_parameters.get("b", 0.75)
+        delta = self.bm25_parameters.get("delta", 0.5)
 
-        # Adjust the delta value so that we can bring the `(k1 + 1)`
-        # term out of the 'term frequency' term in BM25+ formula and
-        # delete it; this will not affect the ranking
-        delta = self.bm25_parameters.get("delta", 1.0) / (k + 1.0)
+        def _compute_idf(tokens: List[str]) -> Dict[str, float]:
+            """Per-token IDF computation for all tokens."""
+            idf = {}
+            n_corpus = len(self._bm25_attr)
+            for tok in tokens:
+                n = self._freq_doc.get(tok, 0)
+                idf[tok] = math.log((n_corpus + 1.0) / (n + 0.5)) * int(n != 0)
+            return idf
+
+        def _compute_tf(token: str, freq: Dict[str, int], doc_len: int) -> float:
+            """Per-token BM25L computation."""
+            freq_term = freq.get(token, 0.0)
+            ctd = freq_term / (1 - b + b * doc_len / self._avg_doc_len)
+            return (1.0 + k) * (ctd + delta) / (k + ctd + delta)
 
         idf = _compute_idf(self._tokenize_bm25(query))
         bm25_attr = {doc.id: self._bm25_attr[doc.id] for doc in documents}
@@ -145,11 +143,114 @@ class InMemoryDocumentStore:
         ret = []
         for doc in documents:
             freq, doc_len = bm25_attr[doc.id]
-            damp = _compute_damping(doc_len)
 
-            score = sum(_compute_bm25(tok, freq, damp) for tok in idf.keys())
-            if scale_score:
-                score = expit(score / BM25_SCALING_FACTOR)
+            score = 0
+            for tok in idf.keys():
+                score += idf[tok] * _compute_tf(tok, freq, doc_len)
+            ret.append((doc, score))
+
+        return ret
+
+    def _score_bm25okapi(self, query: str, documents: List[Document]) -> List[Tuple[Document, float]]:
+        """
+        Calculate BM25Okapi scores for the given query and filtered documents.
+
+        :param query:
+            The query string.
+        :param documents:
+            The list of documents to score, should be produced by
+            the filter_documents method; may be an empty list.
+        :returns:
+            A list of tuples, each containing a Document and its BM25L score.
+        """
+        k = self.bm25_parameters.get("k1", 1.5)
+        b = self.bm25_parameters.get("b", 0.75)
+        epsilon = self.bm25_parameters.get("epsilon", 0.25)
+
+        def _compute_idf(tokens: List[str]) -> Dict[str, float]:
+            """Per-token IDF computation for all tokens."""
+            sum_idf = 0
+            neg_idf_tokens = []
+
+            # Although this is a global statistic, we compute it here
+            # to make the computation more self-contained. And the
+            # complexity is O(vocab_size), which is acceptable.
+            idf = {}
+            for tok, n in self._freq_doc.items():
+                idf[tok] = math.log((len(self._bm25_attr) - n + 0.5) / (n + 0.5))
+                sum_idf += idf[tok]
+                if idf[tok] < 0:
+                    neg_idf_tokens.append(tok)
+
+            eps = epsilon * sum_idf / len(self._freq_doc)
+            for tok in neg_idf_tokens:
+                idf[tok] = eps
+            return {tok: idf.get(tok, 0.0) for tok in tokens}
+
+        def _compute_tf(token: str, freq: Dict[str, int], doc_len: int) -> float:
+            """Per-token BM25L computation."""
+            freq_term = freq.get(token, 0.0)
+            freq_norm = freq_term + k * (1 - b + b * doc_len / self._avg_doc_len)
+            return freq_term * (1.0 + k) / freq_norm
+
+        idf = _compute_idf(self._tokenize_bm25(query))
+        bm25_attr = {doc.id: self._bm25_attr[doc.id] for doc in documents}
+
+        ret = []
+        for doc in documents:
+            freq, doc_len = bm25_attr[doc.id]
+
+            score = 0
+            for tok in idf.keys():
+                score += idf[tok] * _compute_tf(tok, freq, doc_len)
+            ret.append((doc, score))
+
+        return ret
+
+    def _score_bm25plus(self, query: str, documents: List[Document]) -> List[Tuple[Document, float]]:
+        """
+        Calculate BM25+ scores for the given query and filtered documents.
+
+        This implementation follows the document on BM25 Wikipedia page,
+        which add 1 (smoothing factor) to document frequency when computing IDF.
+
+        :param query:
+            The query string.
+        :param documents:
+            The list of documents to score, should be produced by
+            the filter_documents method; may be an empty list.
+        :returns:
+            A list of tuples, each containing a Document and its BM25+ score.
+        """
+        k = self.bm25_parameters.get("k1", 1.5)
+        b = self.bm25_parameters.get("b", 0.75)
+        delta = self.bm25_parameters.get("delta", 1.0)
+
+        def _compute_idf(tokens: List[str]) -> Dict[str, float]:
+            """Per-token IDF computation."""
+            idf = {}
+            n_corpus = len(self._bm25_attr)
+            for tok in tokens:
+                n = self._freq_doc.get(tok, 0)
+                idf[tok] = math.log(1 + (n_corpus - n + 0.5) / (n + 0.5)) * int(n != 0)
+            return idf
+
+        def _compute_tf(token: str, freq: Dict[str, int], doc_len: float) -> float:
+            """Per-token normalized term frequency."""
+            freq_term = freq.get(token, 0.0)
+            freq_damp = k * (1 - b + b * doc_len / self._avg_doc_len)
+            return freq_term * (1.0 + k) / (freq_term + freq_damp) + delta
+
+        idf = _compute_idf(self._tokenize_bm25(query))
+        bm25_attr = {doc.id: self._bm25_attr[doc.id] for doc in documents}
+
+        ret = []
+        for doc in documents:
+            freq, doc_len = bm25_attr[doc.id]
+
+            score = 0
+            for tok in idf.keys():
+                score += idf[tok] * _compute_tf(tok, freq, doc_len)
             ret.append((doc, score))
 
         return ret
@@ -312,11 +413,7 @@ class InMemoryDocumentStore:
             logger.info("No documents found for BM25 retrieval. Returning empty list.")
             return []
 
-        results = self.bm25_algorithm_inst(query, all_documents, scale_score)
-        # logger.warning("\n".join([str((d.content, s)) for d, s in results]))
-
-        # get the last top_k indexes and reverse them
-        top_results = heapq.nlargest(top_k, results, key=lambda x: x[1])
+        results = heapq.nlargest(top_k, self.bm25_algorithm_inst(query, all_documents), key=lambda x: x[1])
 
         # BM25Okapi can return meaningful negative values, so they should not be filtered out when scale_score is False.
         # It's the only algorithm supported by rank_bm25 at the time of writing (2024) that can return negative scores.
@@ -325,7 +422,10 @@ class InMemoryDocumentStore:
 
         # Create documents with the BM25 score to return them
         return_documents = []
-        for doc, score in top_results:
+        for doc, score in results:
+            if scale_score:
+                score = expit(score / BM25_SCALING_FACTOR)
+
             if not negatives_are_valid and score <= 0.0:
                 continue
 
@@ -334,6 +434,7 @@ class InMemoryDocumentStore:
             return_document = Document.from_dict(doc_fields)
             return_documents.append(return_document)
 
+        logger.warning("\n".join([str((d.content, d.score)) for d in return_documents]))
         return return_documents
 
     def embedding_retrieval(
