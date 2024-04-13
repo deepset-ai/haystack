@@ -2,7 +2,6 @@ import heapq
 import math
 import re
 from collections import Counter
-from itertools import chain
 from typing import Any, Dict, Iterable, List, Literal, Optional, Tuple
 
 import numpy as np
@@ -52,7 +51,7 @@ class InMemoryDocumentStore:
                                               To choose the most appropriate function, look for information about your embedding model.
         """
         self.storage: Dict[str, Document] = {}
-        self._bm25_tokenization_regex = bm25_tokenization_regex
+        self.bm25_tokenization_regex = bm25_tokenization_regex
         self.tokenizer = re.compile(bm25_tokenization_regex).findall
 
         self.bm25_algorithm = bm25_algorithm
@@ -66,15 +65,6 @@ class InMemoryDocumentStore:
 
         # Per-document statistics
         self._bm25_attr: Dict[str, Tuple[Dict[str, int], int]] = {}
-
-    @property
-    def bm25_algorithm(self) -> str:
-        return self._bm25_algorithm
-
-    @bm25_algorithm.setter
-    def bm25_algorithm(self, value: str):
-        self._bm25_algorithm = value
-        self.bm25_algorithm_inst = self._dispatch_bm25()
 
     def _dispatch_bm25(self):
         """
@@ -264,7 +254,7 @@ class InMemoryDocumentStore:
         """
         return default_to_dict(
             self,
-            bm25_tokenization_regex=self._bm25_tokenization_regex,
+            bm25_tokenization_regex=self.bm25_tokenization_regex,
             bm25_algorithm=self.bm25_algorithm,
             bm25_parameters=self.bm25_parameters,
             embedding_similarity_function=self.embedding_similarity_function,
