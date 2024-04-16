@@ -12,7 +12,7 @@ from haystack.lazy_imports import LazyImport
 logger = logging.getLogger(__name__)
 
 with LazyImport("Run 'pip install openapi-service-client'") as openapi_imports:
-    from openapi_service_client import OpenAPIServiceClient, OpenAPIServiceClientConfigurationBuilder
+    from openapi_service_client import ClientConfigurationBuilder, OpenAPIServiceClient
 
 
 @component
@@ -105,8 +105,8 @@ class OpenAPIServiceConnector:
 
         function_invocation_payloads = self._parse_message(last_message)
 
-        # instantiate the OpenAPI service for the given specification
-        builder = OpenAPIServiceClientConfigurationBuilder()
+        # instantiate the OpenAPIServiceClient service for the given specification
+        builder = ClientConfigurationBuilder()
         config_openapi = builder.with_openapi_spec(service_openapi_spec).with_credentials(service_credentials).build()
         openapi_service = OpenAPIServiceClient(config_openapi)
 
