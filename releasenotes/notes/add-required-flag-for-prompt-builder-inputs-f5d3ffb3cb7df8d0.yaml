@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Enhanced PromptBuilder to specify and enforce required variables in prompt templates.
