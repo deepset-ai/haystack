@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Introduced a new `KeywordExtractor` component in Haystack, capable of extracting keywords from a list of documents. The component enhances the framework's text processing capabilities by annotating documents with extracted keywords stored in the metadata field under the key 'extracted_keywords'.
+
+    The KeywordExtractor supports two extraction backends:
+    - YAKE: Automatically identifies and ranks keywords using statistical methods, configurable with parameters for language, n-gram size, deduplication limit, and others.
+    - KEYBERT: Leverages BERT embeddings to extract contextually relevant keywords, adjustable with settings for model choice, n-gram range, and keyword count, enabling precise keyword detection across various document types.
