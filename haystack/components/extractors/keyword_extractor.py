@@ -244,6 +244,18 @@ class _KeywordExtractorBackend(ABC):
 
 
 def initialize_config(config, kwargs):
+    """
+    Initializes a configuration object with values provided in a dictionary.
+    This function dynamically sets attributes on the config object based on
+    the provided kwargs dictionary.
+
+    :param config: A config data class instance (YAKEConfig or KeyBERTConfig).
+    :param kwargs: A dictionary of parameters intended to update the config object.
+
+    :raises ComponentError: If a key in `kwargs` does not correspond to an attribute
+                            in `config`'s annotations.
+
+    """
     for key, value in kwargs.items():
         if hasattr(config, key):
             setattr(config, key, value)
