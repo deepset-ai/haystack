@@ -9,10 +9,15 @@ from tqdm import tqdm
 
 from haystack import ComponentError, DeserializationError, Document, component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
+from haystack.utils import ComponentDevice
 
 with LazyImport(message="Run 'pip install yake'") as yake_import:
     import yake
     from yake.highlight import TextHighlighter
+with LazyImport(message="Run 'pip install keybert'") as keybert_import:
+    from keybert import KeyBERT
+with LazyImport(message="Run 'pip install \"sentence-transformers>=2.2.0\"'") as sentence_transformers_import:
+    from sentence_transformers import SentenceTransformer
 
 
 class _BackendkwEnumMeta(EnumMeta):
@@ -70,7 +75,7 @@ class HighlightedText:
         text (str): The highlighted text.
     """
 
-    text: str
+    text: str = Optional[str]
 
 
 @component
@@ -140,23 +145,11 @@ class KeywordsExtractor:
             backend = KeywordsExtractorBackend(backend)
 
         if backend == KeywordsExtractorBackend.KEYBERT:
-            raise ComponentError(f"'{type(backend).__name__}' is not ready yet")
+            self._backend = _KeyBertBackend(backend_kwargs=backend_kwargs, top_n=top_n, max_ngram_size=max_ngram_size)
         elif backend == KeywordsExtractorBackend.YAKE:
             self._backend = _YakeBackend(backend_kwargs=backend_kwargs, top_n=top_n, max_ngram_size=max_ngram_size)
         else:
             raise ComponentError(f"Unknown keyword backend '{type(backend).__name__}' for extractor")
-
-    def warm_up(self):
-        """
-        Initializes the keyword extractor.
-
-        Raises:
-            ComponentError: If the keyword extractor fails to initialize.
-        """
-        try:
-            self._backend.initialize()
-        except Exception as e:
-            raise ComponentError(f"Keywords extractor with backend '{self.type} failed to initialize.") from e
 
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document], concurrent_workers=10) -> Dict[str, Any]:
@@ -204,6 +197,18 @@ class KeywordsExtractor:
         dict_ = default_to_dict(self, backend=self._backend._type, backend_kwargs=self._backend._backend_kwargs)
         for key, value in dict_.items():
             yield key, value
+
+    def warm_up(self):
+        """
+        Initializes the keyword extractor.
+
+        Raises:
+            ComponentError: If the keyword extractor fails to initialize.
+        """
+        try:
+            self._backend.initialize()
+        except Exception as e:
+            raise ComponentError(f"Keywords extractor with backend '{self.type} failed to initialize.") from e
 
     # It's just kept the method for the sake of compatibility with the rest of the codebase
     def to_dict(self) -> Dict[str, Any]:
@@ -377,3 +382,38 @@ class _YakeBackend(_KWExtracorBackend):
         highlighter = TextHighlighter(max_ngram_size=self._max_ngram_size)
 
         return HighlightedText(highlighter.highlight(text, self._keywords))
+
+
+class _KeyBertBackend(_KWExtracorBackend):
+    """It uses KeyBert package for extracting keywords for documents."""
+
+    def __init__(self, *, top_n: int, max_ngram_size: int, backend_kwargs: Optional[Dict[str, Any]]) -> None:
+        """
+        Initialize the KeyBert KeywordExtractor.
+
+        :param top_n:
+            The number of top keywords to extract. Defaults to 3.
+        :param backend_kwargs:
+            Additional keyword arguments to pass to the backend. Defaults to None.
+        """
+
+        super().__init__(KeywordsExtractorBackend.KEYBERT, top_n, max_ngram_size, backend_kwargs)
+        keybert_import.check()
+        sentence_transformers_import.check()
+
+        self._model: Optional[SentenceTransformer] = None
+
+    def initialize(self):
+        pass
+
+    @property
+    def initialized(self) -> bool:
+        return self._model is not None
+
+    def extract(self, text: str) -> List[KeyWordsSelection]:
+        "extract keywords from a list of documents using KeyBert backend."
+        if not self.initialized:
+            raise ComponentError(f"{KeywordsExtractorBackend.KEYBERT} was not initialized - Did you call `warm_up()`?")
+
+    def highlight(self, text: str) -> HighlightedText:
+        pass
