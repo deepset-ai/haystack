@@ -818,7 +818,9 @@ class Pipeline:
                             waiting_for_input.append((name, comp))
                         continue
 
-                if name in last_inputs and len(comp.__haystack_input__._sockets_dict) == len(last_inputs[name]):  # type: ignore
+                # Check: are all mandatory inputs are present in last_inputs[name]?
+                mandatory_inputs = {k for k, v in comp.__haystack_input__._sockets_dict.items() if v.is_mandatory}
+                if name in last_inputs and mandatory_inputs <= set(last_inputs[name].keys()):  # type: ignore
                     if self.graph.nodes[name]["visits"] > self.max_loops_allowed:
                         msg = f"Maximum loops count ({self.max_loops_allowed}) exceeded for component '{name}'"
                         raise PipelineMaxLoops(msg)
