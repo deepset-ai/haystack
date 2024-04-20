@@ -1,15 +1,16 @@
 import concurrent.futures
+import inspect
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass
 from enum import Enum, EnumMeta
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Union
 
 from tqdm import tqdm
 
 from haystack import ComponentError, DeserializationError, Document, component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
-from haystack.utils import ComponentDevice
+from haystack.utils import ComponentDevice, Secret
 
 with LazyImport(message="Run 'pip install yake'") as yake_import:
     import yake
@@ -46,7 +47,7 @@ class KeywordsExtractorBackend(Enum, metaclass=_BackendkwEnumMeta):
     """
 
     #: Uses keyBert with sentence-transfomer model.
-    KEYBERT = "keybert"
+    SENTENCETRANSFORMER = "sentence_transformer"
 
     #: Uses the yake package.
     YAKE = "yake"
@@ -84,6 +85,7 @@ class KeywordsExtractor:
     Extracts keywords from a list of documents using different backends.
     The component supports the following backends:
     - YAKE: Uses the yake package to extract keywords.
+    - sentence_transformer: Uses the keyBert package and sentence_transformer model to extract keywords.
 
     Usage example:
     ```python
@@ -143,11 +145,18 @@ class KeywordsExtractor:
         """
         if isinstance(backend, str):
             backend = KeywordsExtractorBackend(backend)
-
-        if backend == KeywordsExtractorBackend.KEYBERT:
-            self._backend = _KeyBertBackend(backend_kwargs=backend_kwargs, top_n=top_n, max_ngram_size=max_ngram_size)
+        # Ignore the backend_kwargs if it is not a dictionary
+        backend_kwargs = backend_kwargs if isinstance(backend_kwargs, dict) else {}
+        if backend == KeywordsExtractorBackend.SENTENCETRANSFORMER:
+            self._backend = _KeyBertBackend(
+                backend_kwargs=backend_kwargs,
+                model_type=KeywordsExtractorBackend.SENTENCETRANSFORMER,
+                top_n=top_n,
+                max_ngram_size=max_ngram_size,
+            )
         elif backend == KeywordsExtractorBackend.YAKE:
             self._backend = _YakeBackend(backend_kwargs=backend_kwargs, top_n=top_n, max_ngram_size=max_ngram_size)
+
         else:
             raise ComponentError(f"Unknown keyword backend '{type(backend).__name__}' for extractor")
 
@@ -166,7 +175,7 @@ class KeywordsExtractor:
             Dict[str, Any]: A dictionary containing the extracted keywords for each document.
         """
         result = defaultdict(list)
-
+        #
         doc: Document
         texts = {doc.id: doc.content if doc.content is not None else "" for doc in documents}
 
@@ -210,7 +219,7 @@ class KeywordsExtractor:
         except Exception as e:
             raise ComponentError(f"Keywords extractor with backend '{self.type} failed to initialize.") from e
 
-    # It's just kept the method for the sake of compatibility with the rest of the codebase
+    # Method's just kept for the sake of compatibility with the rest of the codebase
     def to_dict(self) -> Dict[str, Any]:
         """
         Serializes the component to a dictionary.
@@ -292,7 +301,7 @@ class _KWExtracorBackend(ABC):
         self._type = type
         self._top_n = top_n
         self._max_ngram_size = max_ngram_size
-        self._backend_kwargs = backend_kwargs if isinstance(backend_kwargs, dict) else {}
+        self._backend_kwargs = backend_kwargs
         self._keywords: dict = {}
 
     @property
@@ -387,33 +396,130 @@ class _YakeBackend(_KWExtracorBackend):
 class _KeyBertBackend(_KWExtracorBackend):
     """It uses KeyBert package for extracting keywords for documents."""
 
-    def __init__(self, *, top_n: int, max_ngram_size: int, backend_kwargs: Optional[Dict[str, Any]]) -> None:
+    def __init__(
+        self,
+        *,
+        top_n: int,
+        max_ngram_size: int,
+        model_type: KeywordsExtractorBackend,
+        backend_kwargs: Optional[Dict[str, Any]],
+    ) -> None:
         """
         Initialize the KeyBert KeywordExtractor.
 
         :param top_n:
             The number of top keywords to extract. Defaults to 3.
         :param backend_kwargs:
-            Additional keyword arguments to pass to the backend. Defaults to None.
+            Additional keyword arguments to pass to the backend. Defaults to {}.
+            If you want to pass arguments to the SentenceTransformer model, you can pass them here.
         """
-
-        super().__init__(KeywordsExtractorBackend.KEYBERT, top_n, max_ngram_size, backend_kwargs)
+        # check required imports
         keybert_import.check()
-        sentence_transformers_import.check()
 
-        self._model: Optional[SentenceTransformer] = None
+        super().__init__(model_type, top_n, max_ngram_size, backend_kwargs={})
+        self._keybert_model: Optional[_KeyBertModel] = None
+        # Fetch the parameters that are accepted by KeyBERT.extract_keywords
+        keybert_param = inspect.signature(KeyBERT.extract_keywords).parameters
+        keybert_param = [param.name for param in keybert_param.values()]
+        # separate the KeyBert parameters and the model parameters
+        _model_name = None
+        _model_param = {}
+        for key in backend_kwargs.keys():
+            if key in ["model"]:
+                _model_name = backend_kwargs[key]
+
+            elif key in keybert_param:
+                self._backend_kwargs[key] = backend_kwargs[key]
+            else:
+                _model_param[key] = backend_kwargs[key]
+        if self._backend_kwargs.get("keyphrase_ngram_range") is None:
+            self._backend_kwargs["keyphrase_ngram_range"] = (self._max_ngram_size, self._max_ngram_size)
+
+        self._keybert_model = _KeyBertSupportedModel.get_model(model_type.value)(_model_param, model_name=_model_name)
 
     def initialize(self):
-        pass
+        """This method initializes sentence transformer model and then ataches KeyBert to it."""
+        if not self._keybert_model._initialized:
+            self._keybert_model._initialize()
 
     @property
     def initialized(self) -> bool:
-        return self._model is not None
+        return self._keybert_model._initialized
+
+    @property
+    def model_name(self):
+        return self._keybert_model._model_name
 
     def extract(self, text: str) -> List[KeyWordsSelection]:
         "extract keywords from a list of documents using KeyBert backend."
         if not self.initialized:
-            raise ComponentError(f"{KeywordsExtractorBackend.KEYBERT} was not initialized - Did you call `warm_up()`?")
+            raise ComponentError(f"{self._keybert_model} was not initialized - Did you call `warm_up()`?")
 
     def highlight(self, text: str) -> HighlightedText:
         pass
+
+
+class _KeyBertModel(ABC):
+    @abstractmethod
+    def __init__(
+        self,
+        _model_name: Optional[str] = None,
+        _model_kwargs: Optional[dict] = {},
+        _device: Optional[ComponentDevice] = None,
+        _token: Optional[Secret] = None,
+    ) -> None:
+        super().__init__()
+        self._model_name = _model_name
+        self._model_kwargs = _model_kwargs
+        self._device = _device
+        self._token = _token
+        self._model = None
+
+    @abstractmethod
+    def _initialize(self):
+        pass
+
+    @property
+    @abstractmethod
+    def _initialized(self) -> bool:
+        self._model is not None
+
+
+class _SentenceTransformerModel(_KeyBertModel):
+    def __init__(self, model_kwargs: dict, model_name: Optional[str] = None) -> None:
+        sentence_transformers_import.check()
+        super().__init__(model_name or model_kwargs.pop("model_name_or_path", "all-MiniLM-L6-v2"))
+        self._model: Optional[SentenceTransformer] = None
+
+        self._token: Optional[Secret] = Secret.from_env_var("HF_API_TOKEN", strict=False)
+
+        for key in model_kwargs.keys():
+            if key == "device":
+                self._device = model_kwargs[key]
+            elif key == "token":
+                self._token = model_kwargs[key]
+            else:
+                self._model_kwargs[key] = model_kwargs[key]
+        self._device = ComponentDevice.resolve_device(self._device)
+
+    def _initialize(self):
+        """This method initializes sentence transformer model and then ataches KeyBert to it."""
+        if self._model is None:
+            self._model = SentenceTransformer(
+                model_name_or_path=self._model_name,
+                device=self._device.to_torch_str(),
+                use_auth_token=self._token.resolve_value() if self._token else None,
+                **self._model_kwargs,
+            )
+
+
+class _KeyBertSupportedModel:
+    """
+    This class is used to get the supported models for KeyBert.
+    """
+
+    _models_dict = {KeywordsExtractorBackend.SENTENCETRANSFORMER.value: _SentenceTransformerModel}
+
+    @staticmethod
+    def get_model(key: str):
+        return _KeyBertSupportedModel._models_dict[key]
