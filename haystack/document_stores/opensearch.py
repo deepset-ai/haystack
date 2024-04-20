@@ -1559,6 +1559,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         :param headers: Custom HTTP headers to pass to the client (for example, {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out [Elasticsearch documentation](https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html) for more information.
         """
+        index = index or self.index
         body: dict = {
             "size": 0,
             "aggs": {"metadata_agg": {"composite": {"sources": [{key: {"terms": {"field": key}}}]}}},
