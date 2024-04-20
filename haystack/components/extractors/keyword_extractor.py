@@ -105,20 +105,6 @@ class KeywordsExtractor:
     keywords = [KeywordsExtractor.get_stored_annotations(doc) for doc in result]
     pprint(keywords)
     ```
-
-    :param backend:
-        The backend to use for keyword extraction.
-        It can be either a string representing the backend name or an instance of `KeywordsExtractorBackend`.
-    :param backend_kwargs:
-        Additional keyword arguments to pass to the backend.
-    :param top_n:
-        The number of keywords to extract from each document. Defaults to 3.
-    :param max_ngram_size:
-        The maximum size of n-grams to consider when extracting keywords.
-        This is also needed for highliting keywords. Defaults to 3.
-
-    :raises ComponentError:
-        If an unknown keyword backend is provided.
     """
 
     _METADATA_KEYWORDS_KEY = "keywords"
@@ -133,15 +119,21 @@ class KeywordsExtractor:
         max_ngram_size: int = 3,
     ) -> None:
         """
-        Initialize the KeywordExtractor.
-
-        :param data:
-            backend (Union[str, KeywordsExtractorBackend]): The backend to use for keyword extraction.
-                It can be either a string representing the backend name or an instance of `KeywordsExtractorBackend`.
+        create keyword extractor component.
+        :param backend:
+            The backend to use for keyword extraction.
+            It can be either a string representing the backend name or an instance of `KeywordsExtractorBackend`.
         :param backend_kwargs:
+            Additional keyword arguments to pass to the backend.
+        :param top_n:
+            The number of keywords to extract from each document. Defaults to 3.
+        :param max_ngram_size:
+            The maximum size of n-grams to consider when extracting keywords.
+            If backend accepts a range for n-grams, by default, this will be used as both the upper and lower bound.
+            This is also needed for highliting keywords. Defaults to 3.
 
-        Raises:
-            ComponentError: If an unknown keyword backend is provided.
+        :raises ComponentError:
+            If an unknown keyword backend is provided.
         """
         if isinstance(backend, str):
             backend = KeywordsExtractorBackend(backend)
@@ -167,10 +159,8 @@ class KeywordsExtractor:
 
         :param documents:
             A list of Document objects to extract keywords from.
-
         Raises:
             ComponentError: If the keyword extractor backend does not return the correct number of annotations.
-
         :returns:
             Dict[str, Any]: A dictionary containing the extracted keywords for each document.
         """
@@ -463,6 +453,8 @@ class _KeyBertBackend(_KWExtracorBackend):
 
 
 class _KeyBertModel(ABC):
+    """This class represents the abstract base class for different KeyBert models."""
+
     @abstractmethod
     def __init__(
         self,
@@ -488,6 +480,16 @@ class _KeyBertModel(ABC):
 
 
 class _SentenceTransformerModel(_KeyBertModel):
+    """A class representing a Sentence Transformer model.
+
+    This class extends the `_KeyBertModel` class and provides functionality to initialize and use a Sentence Transformer model.
+
+    :param model_kwargs:
+        A dictionary containing the keyword arguments to be passed to the Sentence Transformer model.
+    :param model_name:
+        The name or path of the Sentence Transformer model. If not provided, a default model will be used.
+    """
+
     def __init__(self, model_kwargs: dict, model_name: Optional[str] = None) -> None:
         sentence_transformers_import.check()
         super().__init__(model_name or model_kwargs.pop("model_name_or_path", "all-MiniLM-L6-v2"))
@@ -505,7 +507,7 @@ class _SentenceTransformerModel(_KeyBertModel):
         self._device = ComponentDevice.resolve_device(self._device)
 
     def _initialize(self):
-        """This method initializes sentence transformer model and then ataches KeyBert to it."""
+        """This method initializes the Sentence Transformer model and attaches KeyBert to it."""
         if self._model is None:
             self._model = SentenceTransformer(
                 model_name_or_path=self._model_name,
