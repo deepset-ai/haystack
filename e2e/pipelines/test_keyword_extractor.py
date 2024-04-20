@@ -114,21 +114,79 @@ def yake_keywords_one():
     ]
 
 
-@pytest.mark.parametrize("top_n, expected", [(5, "yake_keywords_five"), (1, "yake_keywords_one")])
-def test_keywords_extractor_yake_backend(raw_texts, top_n, expected, request: pytest.FixtureRequest):
-    expected = request.getfixturevalue(expected)
+@pytest.fixture
+def sentence_transformer_keywords_one():
+    return [
+        {
+            "keywords": [KeyWordsSelection(entity="supervised learning algorithm", score=0.6957)],
+            "highlight": HighlightedText(text=""),
+        },
+        {
+            "keywords": [KeyWordsSelection(entity="haystack open source", score=0.753)],
+            "highlight": HighlightedText(text=""),
+        },
+        {"keywords": [], "highlight": HighlightedText(text="")},
+    ]
+
+
+@pytest.fixture
+def sentence_transformer_keywords_five():
+    return [
+        {
+            "keywords": [
+                KeyWordsSelection(entity="supervised learning algorithm", score=0.6957),
+                KeyWordsSelection(entity="supervised learning example", score=0.6811),
+                KeyWordsSelection(entity="supervised learning machine", score=0.6677),
+                KeyWordsSelection(entity="function labeled training", score=0.6519),
+                KeyWordsSelection(entity="training examples supervised", score=0.6349),
+            ],
+            "highlight": HighlightedText(text=""),
+        },
+        {
+            "keywords": [
+                KeyWordsSelection(entity="haystack open source", score=0.753),
+                KeyWordsSelection(entity="collections learn haystack", score=0.6345),
+                KeyWordsSelection(entity="learn haystack works", score=0.6178),
+                KeyWordsSelection(entity="llm applications retrieval", score=0.5932),
+                KeyWordsSelection(entity="state art search", score=0.5349),
+            ],
+            "highlight": HighlightedText(text=""),
+        },
+        {"keywords": [], "highlight": HighlightedText(text="")},
+    ]
+
+
+@pytest.mark.parametrize("top_n, expected_yake_keywords", [(5, "yake_keywords_five"), (1, "yake_keywords_one")])
+def test_keywords_extractor_yake_backend(raw_texts, top_n, expected_yake_keywords, request: pytest.FixtureRequest):
+    expected_yake_keywords = request.getfixturevalue(expected_yake_keywords)
     extractor = KeywordsExtractor(backend=KeywordsExtractorBackend.YAKE, top_n=top_n)
     extractor.warm_up()
-    _extract_and_check_predictions(extractor, raw_texts, expected)
+    _extract_and_check_predictions(extractor, raw_texts, expected_yake_keywords)
 
 
-@pytest.mark.parametrize("top_n, expected", [(5, "yake_keywords_five"), (1, "yake_keywords_one")])
-def test_keyword_extractor_extractor_in_pipeline(raw_texts, top_n, expected, request: pytest.FixtureRequest):
+@pytest.mark.parametrize(
+    "top_n, expected_st_keywords", [(5, "sentence_transformer_keywords_five"), (1, "sentence_transformer_keywords_one")]
+)
+def test_keywords_extractor_keybert_backend(raw_texts, top_n, expected_st_keywords, request: pytest.FixtureRequest):
+    expected_st_keywords = request.getfixturevalue(expected_st_keywords)
+    extractor = KeywordsExtractor(backend=KeywordsExtractorBackend.SENTENCETRANSFORMER, top_n=top_n)
+    extractor.warm_up()
+    _extract_and_check_predictions(extractor, raw_texts, expected_st_keywords)
+
+
+@pytest.mark.parametrize(
+    "backend,top_n, expected",
+    [
+        ("yake", 5, "yake_keywords_five"),
+        ("yake", 1, "yake_keywords_one"),
+        ("sentence_transformer", 5, "sentence_transformer_keywords_five"),
+        ("sentence_transformer", 1, "sentence_transformer_keywords_one"),
+    ],
+)
+def test_keyword_extractor_extractor_in_pipeline(raw_texts, backend, top_n, expected, request: pytest.FixtureRequest):
     expected = request.getfixturevalue(expected)
     pipeline = Pipeline()
-    pipeline.add_component(
-        name="keyword_extractor", instance=KeywordsExtractor(backend=KeywordsExtractorBackend.YAKE, top_n=top_n)
-    )
+    pipeline.add_component(name="keyword_extractor", instance=KeywordsExtractor(backend=backend, top_n=top_n))
 
     outputs = pipeline.run({"keyword_extractor": {"documents": [Document(content=text) for text in raw_texts]}})[
         "keyword_extractor"

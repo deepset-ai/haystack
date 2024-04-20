@@ -454,9 +454,12 @@ class _KeyBertBackend(_KWExtracorBackend):
         "extract keywords from a list of documents using KeyBert backend."
         if not self.initialized:
             raise ComponentError(f"{self._keybert_model} was not initialized - Did you call `warm_up()`?")
+        extractor = KeyBERT(self._keybert_model._model)
+        self._keywords = extractor.extract_keywords(text, top_n=self._top_n, **self._backend_kwargs)
+        return [KeyWordsSelection(entity=record[0], score=record[1]) for record in self._keywords]
 
     def highlight(self, text: str) -> HighlightedText:
-        pass
+        return HighlightedText("")
 
 
 class _KeyBertModel(ABC):
@@ -480,9 +483,8 @@ class _KeyBertModel(ABC):
         pass
 
     @property
-    @abstractmethod
     def _initialized(self) -> bool:
-        self._model is not None
+        return self._model is not None
 
 
 class _SentenceTransformerModel(_KeyBertModel):
