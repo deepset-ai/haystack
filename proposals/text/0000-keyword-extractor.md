@@ -42,6 +42,20 @@ Keyword extraction is a fundamental task in natural language processing, support
 The provided code defines a Python class KeywordsExtractor that is used to extract keywords from a list of documents. This class supports two backends for keyword extraction: YAKE and sentence_transformer. sentence_transformer uses KeyBert package in background (more detail in [implementation datial](#implementation-detail))). User could use any sentence_transformer model to extract keywords, as default, it uses `all-MiniLM-L6-v2`.
 For sake of backward compatibility with different approaches, user could pass any acceptable parameter from Yake, KeyBert and sentence-transfommer as `backend_kwargs` . For example, in the following code `model` is accepted parameter from `KeyBert` and `model_name_or_path` is compatible with `sentence-transformer`.
 
+Both `yake` and `keyBert` support highlighting keywords. Having a highlighted text could give a good value to the end user. That's why Instead of returning the position of keywords, `KeywordExtractor` returns `keywords` and `highlights` as metadata for **each document**:
+
+````python
+metadata: {
+"keywords": [KeyWordsSelection(entity="machine learning task", score=0.026288458458349206)],
+"highlight": HighlightedText(
+    text=(
+        "Supervised learning is the <kw>machine learning task</kw> of learning afunction that maps an "
+        "input to an output based on example input-output pairs."
+    )
+),
+},
+````
+
 ```python
 extractor = KeywordsExtractor(backend="sentence_transformer", backend_kwargs={"model":"paraphrase-multilingual-MiniLM-L12-v2"})
 
