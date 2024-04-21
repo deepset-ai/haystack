@@ -26,19 +26,23 @@ class _BackendkwEnumMeta(EnumMeta):
     Metaclass for fine-grained error handling of backend enums.
     """
 
-    def __call__(cls, value, names=None, *, module=None, qualname=None, type=None, start=1):
-        if names is None:
-            try:
-                return EnumMeta.__call__(cls, value, names, module=module, qualname=qualname, type=type, start=start)
-            except ValueError:
-                supported_backends = ", ".join(sorted(v.value for v in cls))
-                raise ComponentError(
-                    f"Invalid backend `{value}` for keyword extractor. " f"Supported backends: {supported_backends}"
-                )
-        else:
-            return EnumMeta.__call__(  # pylint: disable=too-many-function-args
-                cls, value, names, module, qualname, type, start
+    def __init__(cls, clsname, bases, clsdict):
+        supported_backends = {v.value: v for v in cls if isinstance(v, Enum)}
+        cls._supported_backends = supported_backends
+        super().__init__(clsname, bases, clsdict)
+
+    def __call__(cls, value, *args, **kwargs):
+        if (
+            isinstance(value, Enum)
+            and value not in cls._supported_backends.values()
+            or isinstance(value, str)
+            and value not in cls._supported_backends.keys()
+        ):
+            raise ComponentError(
+                f"Invalid backend `{value}` for keyword extractor. "
+                f"Supported backends: {cls._supported_backends.keys()}"
             )
+        return super().__call__(value, *args, **kwargs)
 
 
 class KeywordsExtractorBackend(Enum, metaclass=_BackendkwEnumMeta):
