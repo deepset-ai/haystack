@@ -143,10 +143,10 @@ class KeywordsExtractor:
             backend = KeywordsExtractorBackend(backend)
         # Ignore the backend_kwargs if it is not a dictionary
         backend_kwargs = backend_kwargs if isinstance(backend_kwargs, dict) else {}
-        selected_backend = _SupportedBackendModel.get_backend(backend.value)
+        selected_backend: _KWExtracorBackend = _SupportedBackendModel.get_backend(backend.value)
 
         self._backend: _KWExtracorBackend = selected_backend(
-            type=backend, backend_kwargs=backend_kwargs, top_n=top_n, max_ngram_size=max_ngram_size
+            backend_type=backend, backend_kwargs=backend_kwargs, top_n=top_n, max_ngram_size=max_ngram_size
         )
 
     @component.output_types(documents=List[Document])
@@ -282,10 +282,14 @@ class _KWExtracorBackend(ABC):
     """
 
     def __init__(
-        self, type: KeywordsExtractorBackend, top_n: int, max_ngram_size: int, backend_kwargs: Optional[Dict[str, Any]]
+        self,
+        backend_type: KeywordsExtractorBackend,
+        top_n: int,
+        max_ngram_size: int,
+        backend_kwargs: Optional[Dict[str, Any]],
     ) -> None:
         super().__init__()
-        self._type = type
+        self._type = backend_type
         self._top_n = top_n
         self._max_ngram_size = max_ngram_size
         self._backend_kwargs = backend_kwargs
@@ -338,7 +342,11 @@ class _YakeBackend(_KWExtracorBackend):
     """It uses yake package for extracting keywords for documents."""
 
     def __init__(
-        self, type: KeywordsExtractorBackend, top_n: int, max_ngram_size: int, backend_kwargs: Optional[Dict[str, Any]]
+        self,
+        backend_type: KeywordsExtractorBackend,
+        top_n: int,
+        max_ngram_size: int,
+        backend_kwargs: Optional[Dict[str, Any]],
     ) -> None:
         """
         Initialize the Yake KeywordExtractor.
@@ -348,7 +356,7 @@ class _YakeBackend(_KWExtracorBackend):
         :param backend_kwargs:
             Additional keyword arguments to pass to the backend. Defaults to None.
         """
-        super().__init__(type, top_n, max_ngram_size, backend_kwargs)
+        super().__init__(backend_type, top_n, max_ngram_size, backend_kwargs)
         yake_import.check()
 
     def initialize(self):
@@ -386,7 +394,11 @@ class _KeyBertBackend(_KWExtracorBackend):
     """It uses KeyBert package for extracting keywords for documents."""
 
     def __init__(
-        self, type: KeywordsExtractorBackend, top_n: int, max_ngram_size: int, backend_kwargs: Optional[Dict[str, Any]]
+        self,
+        backend_type: KeywordsExtractorBackend,
+        top_n: int,
+        max_ngram_size: int,
+        backend_kwargs: Optional[Dict[str, Any]],
     ) -> None:
         """
         Initialize the KeyBert KeywordExtractor.
@@ -419,7 +431,7 @@ class _KeyBertBackend(_KWExtracorBackend):
         if backend_kwargs.get("keyphrase_ngram_range") is None:
             _backend_kwargs["keyphrase_ngram_range"] = (max_ngram_size, max_ngram_size)
 
-        super().__init__(type, top_n, max_ngram_size, backend_kwargs=_backend_kwargs)
+        super().__init__(backend_type, top_n, max_ngram_size, backend_kwargs=_backend_kwargs)
 
         # Initialize the KeyBert model
         self._keybert_model: _KeyBertModel = _SupportedBackendModel.get_model_type(self._type.value)(
