@@ -1521,6 +1521,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         filters: Optional[FilterType] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
+        batch_size: int = 10,
     ) -> List[dict]:
         """
         Get values associated with a metadata key. The output is in the format:
@@ -1558,10 +1559,16 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                       self.index is used.
         :param headers: Custom HTTP headers to pass to the client (for example, {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out [Elasticsearch documentation](https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html) for more information.
+        :param batch_size: Maximum number of results for each request.
+                    Limited to 10 values by default. You can increase this limit to decrease retrieval time.
+                    To reduce the pressure on the cluster, you shouldn't set this higher than 1,000.
         """
+        index = index or self.index
         body: dict = {
             "size": 0,
-            "aggs": {"metadata_agg": {"composite": {"sources": [{key: {"terms": {"field": key}}}]}}},
+            "aggs": {
+                "metadata_agg": {"composite": {"sources": [{key: {"terms": {"field": key}}}], "size": batch_size}}
+            },
         }
         if query:
             body["query"] = {
