@@ -137,7 +137,7 @@ class FaithfulnessEvaluator(LLMEvaluator):
         :param questions:
             A list of questions.
         :param contexts:
-            A list of lists of contexts. Each list of contexts corresponds to one question and one response.
+            A nested list of contexts that correspond to the questions.
         :param responses:
             A list of responses.
         :returns:
