@@ -13,21 +13,20 @@ logger = logging.getLogger(__name__)
 
 with LazyImport("Run 'pip install openapi-service-client'") as openapi_imports:
     from openapi_service_client import ClientConfigurationBuilder, OpenAPIServiceClient
+    from openapi_service_client.providers import AnthropicLLMProvider, CohereLLMProvider, OpenAILLMProvider
 
 
 @component
 class OpenAPIServiceConnector:
     """
-    The `OpenAPIServiceConnector` component connects the Haystack framework to OpenAPI services, enabling it to call
-    operations as defined in the OpenAPI specification of the service.
+    The `OpenAPIServiceConnector` component connects the Haystack framework to OpenAPI services.
 
     It integrates with `ChatMessage` dataclass, where the payload in messages is used to determine the method to be
-    called and the parameters to be passed. The message payload should be an OpenAI JSON formatted function calling
-    string consisting of the method name and the parameters to be passed to the method. The method name and parameters
-    are then used to invoke the method on the OpenAPI service. The response from the service is returned as a
-    `ChatMessage`.
+    called and the parameters to be passed. The response from the service is returned as a `ChatMessage`.
 
-    Before using this component, users usually resolve service endpoint parameters with a help of
+    Function calling payloads from OpenAI, Anthropic, and Cohere LLMs are supported.
+
+    Before using this component, users usually resolve function calling function definitions with a help of
     `OpenAPIServiceToFunctions` component.
 
     The example below demonstrates how to use the `OpenAPIServiceConnector` to invoke a method on a https://serper.dev/
@@ -65,11 +64,22 @@ class OpenAPIServiceConnector:
 
     """
 
-    def __init__(self):
+    def __init__(self, provider_map: Optional[Dict[str, Any]] = None, default_provider: Optional[str] = "openai"):
         """
         Initializes the OpenAPIServiceConnector instance
+
+        :param provider_map: A dictionary mapping provider names to their respective LLMProvider instances. The default
+        providers are OpenAILLMProvider, AnthropicLLMProvider, and CohereLLMProvider.
         """
         openapi_imports.check()
+        self.provider_map = provider_map or {
+            "openai": OpenAILLMProvider(),
+            "anthropic": AnthropicLLMProvider(),
+            "cohere": CohereLLMProvider(),
+        }
+        if default_provider not in self.provider_map:
+            raise ValueError(f"Default provider {default_provider} not found in provider map.")
+        self.default_provider = default_provider
 
     @component.output_types(service_response=Dict[str, Any])
     def run(
@@ -77,18 +87,22 @@ class OpenAPIServiceConnector:
         messages: List[ChatMessage],
         service_openapi_spec: Dict[str, Any],
         service_credentials: Optional[Union[dict, str]] = None,
+        llm_provider: Optional[str] = "openai",
     ) -> Dict[str, List[ChatMessage]]:
         """
-        Processes a list of chat messages to invoke a method on an OpenAPI service. It parses the last message in the
-        list, expecting it to contain an OpenAI function calling descriptor (name & parameters) in JSON format.
+        Processes a list of chat messages to invoke a method on an OpenAPI service.
+
+        It parses the last message in the list, expecting it to contain an OpenAI function calling descriptor
+        (name & parameters) in JSON format.
 
         :param messages: A list of `ChatMessage` objects containing the messages to be processed. The last message
         should contain the function invocation payload in OpenAI function calling format. See the example in the class
         docstring for the expected format.
-        :param service_openapi_spec: The OpenAPI JSON specification object of the service to be invoked. All the refs
-        should already be resolved.
+        :param service_openapi_spec: The OpenAPI JSON specification object of the service to be invoked.
         :param service_credentials: The credentials to be used for authentication with the service.
         Currently, only the http and apiKey OpenAPI security schemes are supported.
+        :param llm_provider: The name of the LLM provider that generated the function calling payload.
+        Default is "openai".
 
         :return: A dictionary with the following keys:
             - `service_response`:  a list of `ChatMessage` objects, each containing the response from the service. The
@@ -102,48 +116,29 @@ class OpenAPIServiceConnector:
         last_message = messages[-1]
         if not last_message.is_from(ChatRole.ASSISTANT):
             raise ValueError(f"{last_message} is not from the assistant.")
+        if not last_message.content:
+            raise ValueError("Function calling message content is empty.")
 
-        function_invocation_payloads = self._parse_message(last_message)
+        llm_provider = self.provider_map.get(llm_provider, self.provider_map[self.default_provider])
+        logger.debug(f"Using LLM provider: {llm_provider.__class__.__name__}")
 
-        # instantiate the OpenAPIServiceClient service for the given specification
         builder = ClientConfigurationBuilder()
-        config_openapi = builder.with_openapi_spec(service_openapi_spec).with_credentials(service_credentials).build()
+        config_openapi = (
+            builder.with_openapi_spec(service_openapi_spec)
+            .with_credentials(service_credentials)
+            .with_provider(llm_provider)
+            .build()
+        )
+        logger.debug(f"Invoking service {config_openapi.get_openapi_spec().get_name()} with {last_message.content}")
         openapi_service = OpenAPIServiceClient(config_openapi)
-
-        response_messages = []
-        for method_invocation_descriptor in function_invocation_payloads:
-            try:
-                service_response = openapi_service.invoke(method_invocation_descriptor)
-            except Exception as e:
-                logger.error(f"Error invoking function: {method_invocation_descriptor['name']}. Error: {e}")
-                service_response = {"error": str(e)}
-            response_messages.append(ChatMessage.from_user(json.dumps(service_response)))
+        try:
+            payload = (
+                json.loads(last_message.content) if isinstance(last_message.content, str) else last_message.content
+            )
+            service_response = openapi_service.invoke(payload)
+        except Exception as e:
+            logger.error(f"Error invoking OpenAPI endpoint. Error: {e}")
+            service_response = {"error": str(e)}
+        response_messages = [ChatMessage.from_user(json.dumps(service_response))]
 
         return {"service_response": response_messages}
-
-    def _parse_message(self, message: ChatMessage) -> List[Dict[str, Any]]:
-        """
-        Parses the message to extract the method invocation descriptor.
-
-        :param message: ChatMessage containing the tools calls
-        :return: A list of function invocation payloads
-        :raises ValueError: If the content is not valid JSON or lacks required fields.
-        """
-        function_payloads = []
-        try:
-            tool_calls = json.loads(message.content)
-        except json.JSONDecodeError:
-            raise ValueError("Invalid JSON content, expected OpenAI tools message.", message.content)
-
-        for tool_call in tool_calls:
-            # this should never happen, but just in case do a sanity check
-            if "type" not in tool_call:
-                raise ValueError("Message payload doesn't seem to be a tool invocation descriptor", message.content)
-
-            # In OpenAPIServiceConnector we know how to handle functions tools only
-            if tool_call["type"] == "function":
-                function_call = tool_call["function"]
-                function_payloads.append(
-                    {"arguments": json.loads(function_call["arguments"]), "name": function_call["name"]}
-                )
-        return function_payloads

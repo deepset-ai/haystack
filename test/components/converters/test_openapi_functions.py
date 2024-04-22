@@ -161,25 +161,14 @@ def yaml_serperdev_openapi_spec():
     return serper_spec
 
 
+@pytest.fixture
+def fn_definition_transform():
+    return lambda function_def: {"type": "function", "function": function_def}
+
+
 class TestOpenAPIServiceToFunctions:
-    # test we can parse openapi spec given in json
-    def test_openapi_spec_parsing_json(self, json_serperdev_openapi_spec):
-        service = OpenAPIServiceToFunctions()
-
-        serper_spec_json = service._parse_openapi_spec(json_serperdev_openapi_spec)
-        assert serper_spec_json["openapi"] == "3.0.0"
-        assert serper_spec_json["info"]["title"] == "SerperDev"
-
-    # test we can parse openapi spec given in yaml
-    def test_openapi_spec_parsing_yaml(self, yaml_serperdev_openapi_spec):
-        service = OpenAPIServiceToFunctions()
-
-        serper_spec_yaml = service._parse_openapi_spec(yaml_serperdev_openapi_spec)
-        assert serper_spec_yaml["openapi"] == "3.0.0"
-        assert serper_spec_yaml["info"]["title"] == "SerperDev"
-
     # test we can extract functions from openapi spec given
-    def test_run_with_bytestream_source(self, json_serperdev_openapi_spec):
+    def test_run_with_bytestream_source(self, json_serperdev_openapi_spec, fn_definition_transform):
         service = OpenAPIServiceToFunctions()
         spec_stream = ByteStream.from_string(json_serperdev_openapi_spec)
         result = service.run(sources=[spec_stream])
@@ -187,17 +176,19 @@ class TestOpenAPIServiceToFunctions:
         fc = result["functions"][0]
 
         # check that fc definition is as expected
-        assert fc == {
-            "name": "search",
-            "description": "Search the web with Google",
-            "parameters": {"type": "object", "properties": {"q": {"type": "string"}}},
-        }
+        assert fc == fn_definition_transform(
+            {
+                "name": "search",
+                "description": "Search the web with Google",
+                "parameters": {"type": "object", "properties": {"q": {"type": "string"}}},
+            }
+        )
 
     @pytest.mark.skipif(
         sys.platform in ["win32", "cygwin"],
         reason="Can't run on Windows Github CI, need access temp file but windows does not allow it",
     )
-    def test_run_with_file_source(self, json_serperdev_openapi_spec):
+    def test_run_with_file_source(self, json_serperdev_openapi_spec, fn_definition_transform):
         # test we can extract functions from openapi spec given in file
         service = OpenAPIServiceToFunctions()
         # write the spec to NamedTemporaryFile and check that it is parsed correctly
@@ -209,27 +200,21 @@ class TestOpenAPIServiceToFunctions:
             fc = result["functions"][0]
 
             # check that fc definition is as expected
-            assert fc == {
-                "name": "search",
-                "description": "Search the web with Google",
-                "parameters": {"type": "object", "properties": {"q": {"type": "string"}}},
-            }
-
-    def test_run_with_invalid_file_source(self, caplog):
-        # test invalid source
-        service = OpenAPIServiceToFunctions()
-        result = service.run(sources=["invalid_source"])
-        assert result["functions"] == []
-        assert "not found" in caplog.text
+            assert fc == fn_definition_transform(
+                {
+                    "name": "search",
+                    "description": "Search the web with Google",
+                    "parameters": {"type": "object", "properties": {"q": {"type": "string"}}},
+                }
+            )
 
     def test_run_with_invalid_bytestream_source(self, caplog):
         # test invalid source
         service = OpenAPIServiceToFunctions()
-        result = service.run(sources=[ByteStream.from_string("")])
-        assert result["functions"] == []
-        assert "Invalid OpenAPI specification" in caplog.text
+        with pytest.raises(ValueError, match="Invalid OpenAPI specification"):
+            service.run(sources=[ByteStream.from_string("")])
 
-    def test_complex_types_conversion(self, test_files_path):
+    def test_complex_types_conversion(self, test_files_path, fn_definition_transform):
         # ensure that complex types from OpenAPI spec are converted to the expected format in OpenAI function calling
         service = OpenAPIServiceToFunctions()
         result = service.run(sources=[test_files_path / "json" / "complex_types_openapi_service.json"])
@@ -237,9 +222,9 @@ class TestOpenAPIServiceToFunctions:
 
         with open(test_files_path / "json" / "complex_types_openai_spec.json") as openai_spec_file:
             desired_output = json.load(openai_spec_file)
-        assert result["functions"][0] == desired_output
+        assert result["functions"][0] == fn_definition_transform(desired_output)
 
-    def test_simple_and_complex_at_once(self, test_files_path, json_serperdev_openapi_spec):
+    def test_simple_and_complex_at_once(self, test_files_path, json_serperdev_openapi_spec, fn_definition_transform):
         # ensure multiple functions are extracted from multiple paths in OpenAPI spec
         service = OpenAPIServiceToFunctions()
         sources = [
@@ -251,9 +236,11 @@ class TestOpenAPIServiceToFunctions:
 
         with open(test_files_path / "json" / "complex_types_openai_spec.json") as openai_spec_file:
             desired_output = json.load(openai_spec_file)
-        assert result["functions"][0] == {
-            "name": "search",
-            "description": "Search the web with Google",
-            "parameters": {"type": "object", "properties": {"q": {"type": "string"}}},
-        }
-        assert result["functions"][1] == desired_output
+        assert result["functions"][0] == fn_definition_transform(
+            {
+                "name": "search",
+                "description": "Search the web with Google",
+                "parameters": {"type": "object", "properties": {"q": {"type": "string"}}},
+            }
+        )
+        assert result["functions"][1] == fn_definition_transform(desired_output)
