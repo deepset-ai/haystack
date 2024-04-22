@@ -7,6 +7,40 @@ from haystack.components.evaluators.llm_evaluator import LLMEvaluator
 from haystack.core.component import component
 from haystack.utils import Secret, deserialize_secrets_inplace
 
+# Default examples to include in the prompt if the user does not provide any examples
+_DEFAULT_EXAMPLES = [
+    {
+        "inputs": {
+            "questions": "What is the capital of Germany and when was it founded?",
+            "contexts": ["Berlin is the capital of Germany and was founded in 1244."],
+            "responses": "The capital of Germany, Berlin, was founded in the 13th century.",
+        },
+        "outputs": {
+            "statements": ["Berlin is the capital of Germany.", "Berlin was founded in 1244."],
+            "statement_scores": [1, 1],
+        },
+    },
+    {
+        "inputs": {
+            "questions": "What is the capital of France?",
+            "contexts": ["Berlin is the capital of Germany."],
+            "responses": "Paris",
+        },
+        "outputs": {"statements": ["Paris is the capital of France."], "statement_scores": [0]},
+    },
+    {
+        "inputs": {
+            "questions": "What is the capital of Italy?",
+            "contexts": ["Rome is the capital of Italy."],
+            "responses": "Rome is the capital of Italy with more than 4 million inhabitants.",
+        },
+        "outputs": {
+            "statements": ["Rome is the capital of Italy.", "Rome has more than 4 million inhabitants."],
+            "statement_scores": [1, 0],
+        },
+    },
+]
+
 
 class FaithfulnessEvaluator(LLMEvaluator):
     """
@@ -50,7 +84,8 @@ class FaithfulnessEvaluator(LLMEvaluator):
         Creates an instance of FaithfulnessEvaluator.
 
         :param examples:
-            Few-shot examples conforming to the expected input and output format of FaithfulnessEvaluator.
+            Optional few-shot examples conforming to the expected input and output format of FaithfulnessEvaluator.
+            Default examples will be used if none are provided.
             Each example must be a dictionary with keys "inputs" and "outputs".
             "inputs" must be a dictionary with keys "questions", "contexts", and "responses".
             "outputs" must be a dictionary with "statements" and "statement_scores".
@@ -81,38 +116,7 @@ class FaithfulnessEvaluator(LLMEvaluator):
         )
         self.inputs = [("questions", List[str]), ("contexts", List[List[str]]), ("responses", List[str])]
         self.outputs = ["statements", "statement_scores"]
-        self.examples = examples or [
-            {
-                "inputs": {
-                    "questions": "What is the capital of Germany and when was it founded?",
-                    "contexts": ["Berlin is the capital of Germany and was founded in 1244."],
-                    "responses": "The capital of Germany, Berlin, was founded in the 13th century.",
-                },
-                "outputs": {
-                    "statements": ["Berlin is the capital of Germany.", "Berlin was founded in 1244."],
-                    "statement_scores": [1, 1],
-                },
-            },
-            {
-                "inputs": {
-                    "questions": "What is the capital of France?",
-                    "contexts": ["Berlin is the capital of Germany."],
-                    "responses": "Paris",
-                },
-                "outputs": {"statements": ["Paris is the capital of France."], "statement_scores": [0]},
-            },
-            {
-                "inputs": {
-                    "questions": "What is the capital of Italy?",
-                    "contexts": ["Rome is the capital of Italy."],
-                    "responses": "Rome is the capital of Italy with more than 4 million inhabitants.",
-                },
-                "outputs": {
-                    "statements": ["Rome is the capital of Italy.", "Rome has more than 4 million inhabitants."],
-                    "statement_scores": [1, 0],
-                },
-            },
-        ]
+        self.examples = examples or _DEFAULT_EXAMPLES
         self.api = api
         self.api_key = api_key
 
@@ -126,19 +130,23 @@ class FaithfulnessEvaluator(LLMEvaluator):
         )
 
     @component.output_types(results=List[Dict[str, Any]])
-    def run(self, **inputs) -> Dict[str, Any]:
+    def run(self, questions: List[str], contexts: List[List[str]], responses: List[str]) -> Dict[str, Any]:
         """
         Run the LLM evaluator.
 
-        :param inputs:
-            The input values to evaluate. The keys are the input names and the values are lists of input values.
+        :param questions:
+            A list of questions.
+        :param contexts:
+            A nested list of contexts that correspond to the questions.
+        :param responses:
+            A list of responses.
         :returns:
             A dictionary with the following outputs:
                 - `score`: Mean faithfulness score over all the provided input answers.
                 - `individual_scores`: A list of faithfulness scores for each input answer.
                 - `results`: A list of dictionaries with `statements` and `statement_scores` for each input answer.
         """
-        result = super().run(**inputs)
+        result = super().run(questions=questions, contexts=contexts, responses=responses)
 
         # calculate average statement faithfulness score per query
         for res in result["results"]:
