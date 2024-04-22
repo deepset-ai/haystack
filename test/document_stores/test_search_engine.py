@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 import numpy as np
 import pytest
 from haystack.document_stores.search_engine import SearchEngineDocumentStore
-from haystack.schema import FilterType
+from haystack.schema import Document, FilterType
 
 
 @pytest.mark.unit
@@ -59,6 +59,14 @@ class SearchEngineDocumentStoreTestAbstract:
         # test with filters & query
         result = ds.get_metadata_values_by_key(key="year", query="Bar")
         assert result == [{"count": 3, "value": "2021"}]
+
+    @pytest.mark.integration
+    def test_get_meta_values_by_key_with_batch_size(self, ds):
+        docs = [Document(f"content_{i}", meta={"name": f"name_{i}"}) for i in range(10_000)]
+        ds.write_documents(docs)
+
+        result = ds.get_metadata_values_by_key(key="name", batch_size=1_000)
+        assert result == sorted([{"count": 1, "value": f"name_{i}"} for i in range(10_000)], key=lambda x: x["value"])
 
     @pytest.mark.unit
     def test_query_return_embedding_true(self, mocked_document_store):
