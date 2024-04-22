@@ -1,4 +1,4 @@
 ---
 enhancements:
   - |
-    Add an `__eq__` method to `SparseEmbedding` to compare two `SparseEmbedding` objects.
+    Add an `__eq__` method to `SparseEmbedding` class to compare two `SparseEmbedding` objects.
