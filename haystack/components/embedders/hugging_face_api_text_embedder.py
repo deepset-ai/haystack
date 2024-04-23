@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 @component
 class HuggingFaceAPITextEmbedder:
     """
-    A component that embeds text using the Hugging Face API.
+    A component that embeds text using Hugging Face APIs.
 
     This component can be used to embed strings using different Hugging Face APIs:
     - [Free Serverless Inference API]((https://huggingface.co/inference-api)
