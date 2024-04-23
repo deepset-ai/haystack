@@ -40,6 +40,8 @@ class PromptBuilder:
     @component.output_types(prompt=str)
     def run(self, **kwargs):
         """
+        Renders the prompt template with the provided variables.
+
         :param kwargs:
             The variables that will be used to render the prompt template.
 

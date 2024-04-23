@@ -126,7 +126,7 @@ class TestHuggingFaceAPIGenerator:
     def test_to_dict(self, mock_check_valid_model):
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "mistralai/Mistral-7B-v0.1"},
+            api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
             token=Secret.from_env_var("ENV_VAR", strict=False),
             generation_kwargs={"temperature": 0.6},
             stop_words=["stop", "words"],
@@ -136,14 +136,14 @@ class TestHuggingFaceAPIGenerator:
         init_params = result["init_parameters"]
 
         assert init_params["api_type"] == HFGenerationAPIType.SERVERLESS_INFERENCE_API
-        assert init_params["api_params"] == {"model": "mistralai/Mistral-7B-v0.1"}
+        assert init_params["api_params"] == {"model": "HuggingFaceH4/zephyr-7b-beta"}
         assert init_params["token"] == {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"}
         assert init_params["generation_kwargs"] == {"temperature": 0.6, "stop": ["stop", "words"], "max_tokens": 512}
 
     def test_from_dict(self, mock_check_valid_model):
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "mistralai/Mistral-7B-v0.1"},
+            api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
             token=Secret.from_env_var("ENV_VAR", strict=False),
             generation_kwargs={"temperature": 0.6},
             stop_words=["stop", "words"],
@@ -154,7 +154,7 @@ class TestHuggingFaceAPIGenerator:
         # now deserialize, call from_dict
         generator_2 = HuggingFaceAPIChatGenerator.from_dict(result)
         assert generator_2.api_type == HFGenerationAPIType.SERVERLESS_INFERENCE_API
-        assert generator_2.api_params == {"model": "mistralai/Mistral-7B-v0.1"}
+        assert generator_2.api_params == {"model": "HuggingFaceH4/zephyr-7b-beta"}
         assert generator_2.token == Secret.from_env_var("ENV_VAR", strict=False)
         assert generator_2.generation_kwargs == {"temperature": 0.6, "stop": ["stop", "words"], "max_tokens": 512}
         assert generator_2.streaming_callback is streaming_callback_handler
@@ -225,7 +225,6 @@ class TestHuggingFaceAPIGenerator:
 
         # Generate text response with streaming callback
         response = generator.run(chat_messages)
-        print(response)
 
         # check kwargs passed to text_generation
         _, kwargs = mock_chat_completion.call_args

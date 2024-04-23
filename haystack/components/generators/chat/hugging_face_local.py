@@ -32,6 +32,8 @@ PIPELINE_SUPPORTED_TASKS = ["text-generation", "text2text-generation"]
 @component
 class HuggingFaceLocalChatGenerator:
     """
+    A Chat Generator component that uses models available on Hugging Face Hub to generate chat responses locally.
+
     The `HuggingFaceLocalChatGenerator` class is a component designed for generating chat responses using models from
     Hugging Face's model hub. It is tailored for local runtime text generation tasks and provides a convenient interface
     for working with chat-based models, such as `HuggingFaceH4/zephyr-7b-beta` or `meta-llama/Llama-2-7b-chat-hf`
@@ -78,6 +80,8 @@ class HuggingFaceLocalChatGenerator:
         streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
     ):
         """
+        Initializes the HuggingFaceLocalChatGenerator component.
+
         :param model: The name or path of a Hugging Face model for text generation,
             for example, `mistralai/Mistral-7B-Instruct-v0.2`, `TheBloke/OpenHermes-2.5-Mistral-7B-16k-AWQ`, etc.
             The important aspect of the model is that it should be a chat model and that it supports ChatML messaging
