@@ -539,8 +539,8 @@ class PromptTemplate(BasePromptTemplate, ABC):
         if self.output_parser:
             invocation_context = kwargs
             invocation_context["results"] = prompt_output
-            self.output_parser.run(invocation_context=invocation_context)
-            return invocation_context[self.output_parser.outputs[0]]
+            parser_results, _ = self.output_parser.run(invocation_context=invocation_context)
+            return parser_results[self.output_parser.outputs[0]]
         else:
             return prompt_output
 
