@@ -9,7 +9,7 @@ class AnswerExactMatchEvaluator:
     An answer exact match evaluator class.
 
     The evaluator that checks if the predicted answers matches any of the ground truth answers exactly.
-    The result is a number from 0.0 to 1.0, it represents the proportion any predicted answer
+    The result is a number from 0.0 to 1.0, it represents the proportion of predicted answers
     that matched one of the ground truth answers.
     There can be multiple ground truth answers and multiple predicted answers as input.
 
