@@ -46,7 +46,7 @@ class ExtractedAnswer:
         Serialize the object to a dictionary.
 
         :returns:
-            Serialized dictionary representation of the component.
+            Serialized dictionary representation of the object.
         """
         document = self.document.to_dict(flatten=False) if self.document is not None else None
         document_offset = asdict(self.document_offset) if self.document_offset is not None else None
