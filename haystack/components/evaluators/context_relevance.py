@@ -7,44 +7,32 @@ from haystack.components.evaluators.llm_evaluator import LLMEvaluator
 from haystack.core.component import component
 from haystack.utils import Secret, deserialize_secrets_inplace
 
-# Default examples to include in the prompt if the user does not provide any examples
+# Private global variable for default examples to include in the prompt if the user does not provide any examples
 _DEFAULT_EXAMPLES = [
     {
         "inputs": {
-            "questions": "What is the capital of Germany and when was it founded?",
+            "questions": "What is the capital of Germany?",
             "contexts": ["Berlin is the capital of Germany and was founded in 1244."],
-            "responses": "The capital of Germany, Berlin, was founded in the 13th century.",
         },
         "outputs": {
             "statements": ["Berlin is the capital of Germany.", "Berlin was founded in 1244."],
-            "statement_scores": [1, 1],
-        },
-    },
-    {
-        "inputs": {
-            "questions": "What is the capital of France?",
-            "contexts": ["Berlin is the capital of Germany."],
-            "responses": "Paris",
-        },
-        "outputs": {"statements": ["Paris is the capital of France."], "statement_scores": [0]},
-    },
-    {
-        "inputs": {
-            "questions": "What is the capital of Italy?",
-            "contexts": ["Rome is the capital of Italy."],
-            "responses": "Rome is the capital of Italy with more than 4 million inhabitants.",
-        },
-        "outputs": {
-            "statements": ["Rome is the capital of Italy.", "Rome has more than 4 million inhabitants."],
             "statement_scores": [1, 0],
         },
+    },
+    {
+        "inputs": {"questions": "What is the capital of France?", "contexts": ["Berlin is the capital of Germany."]},
+        "outputs": {"statements": ["Berlin is the capital of Germany."], "statement_scores": [0]},
+    },
+    {
+        "inputs": {"questions": "What is the capital of Italy?", "contexts": ["Rome is the capital of Italy."]},
+        "outputs": {"statements": ["Rome is the capital of Italy."], "statement_scores": [1]},
     },
 ]
 
 
-class FaithfulnessEvaluator(LLMEvaluator):
+class ContextRelevanceEvaluator(LLMEvaluator):
     """
-    Evaluator that checks if a generated answer can be inferred from the provided contexts.
+    Evaluator that checks if a provided context is relevant to the question.
 
     An LLM separates the answer into multiple statements and checks whether the statement can be inferred from the
     context or not. The final score for the full answer is a number from 0.0 to 1.0. It represents the proportion of
@@ -52,7 +40,7 @@ class FaithfulnessEvaluator(LLMEvaluator):
 
     Usage example:
     ```python
-    from haystack.components.evaluators import FaithfulnessEvaluator
+    from haystack.components.evaluators import ContextRelevanceEvaluator
 
     questions = ["Who created the Python language?"]
     contexts = [
@@ -60,17 +48,15 @@ class FaithfulnessEvaluator(LLMEvaluator):
             "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming language. Its design philosophy emphasizes code readability, and its language constructs aim to help programmers write clear, logical code for both small and large-scale software projects."
         ],
     ]
-    responses = ["Python is a high-level general-purpose programming language that was created by George Lucas."]
-    evaluator = FaithfulnessEvaluator()
-    result = evaluator.run(questions=questions, contexts=contexts, responses=responses)
 
-    print(result["individual_scores"])
-    # [0.5]
+    evaluator = ContextRelevanceEvaluator()
+    result = evaluator.run(questions=questions, contexts=contexts)
     print(result["score"])
-    # 0.5
+    # 1.0
+    print(result["individual_scores"])
+    # [1.0]
     print(result["results"])
-    # [{'statements': ['Python is a high-level general-purpose programming language.',
-    'Python was created by George Lucas.'], 'statement_scores': [1, 0], 'score': 0.5}]
+    # [{'statements': ['Python, created by Guido van Rossum in the late 1980s.'], 'statement_scores': [1], 'score': 1.0}]
     ```
     """
 
@@ -81,23 +67,22 @@ class FaithfulnessEvaluator(LLMEvaluator):
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
     ):
         """
-        Creates an instance of FaithfulnessEvaluator.
+        Creates an instance of ContextRelevanceEvaluator.
 
         :param examples:
-            Optional few-shot examples conforming to the expected input and output format of FaithfulnessEvaluator.
+            Optional few-shot examples conforming to the expected input and output format of ContextRelevanceEvaluator.
             Default examples will be used if none are provided.
             Each example must be a dictionary with keys "inputs" and "outputs".
-            "inputs" must be a dictionary with keys "questions", "contexts", and "responses".
+            "inputs" must be a dictionary with keys "questions" and "contexts".
             "outputs" must be a dictionary with "statements" and "statement_scores".
             Expected format:
             [{
                 "inputs": {
                     "questions": "What is the capital of Italy?", "contexts": ["Rome is the capital of Italy."],
-                    "responses": "Rome is the capital of Italy with more than 4 million inhabitants.",
                 },
                 "outputs": {
-                    "statements": ["Rome is the capital of Italy.", "Rome has more than 4 million inhabitants."],
-                    "statement_scores": [1, 0],
+                    "statements": ["Rome is the capital of Italy."],
+                    "statement_scores": [1],
                 },
             }]
         :param api:
@@ -108,13 +93,12 @@ class FaithfulnessEvaluator(LLMEvaluator):
 
         """
         self.instructions = (
-            "Your task is to judge the faithfulness or groundedness of statements based "
-            "on context information. First, please extract statements from a provided "
-            "response to a question. Second, calculate a faithfulness score for each "
-            "statement made in the response. The score is 1 if the statement can be "
-            "inferred from the provided context or 0 if it cannot be inferred."
+            "Your task is to judge how relevant the provided context is for answering a question. "
+            "First, please extract statements from the provided context. "
+            "Second, calculate a relevance score for each statement in the context. "
+            "The score is 1 if the statement is relevant to answer the question or 0 if it is not relevant."
         )
-        self.inputs = [("questions", List[str]), ("contexts", List[List[str]]), ("responses", List[str])]
+        self.inputs = [("questions", List[str]), ("contexts", List[List[str]])]
         self.outputs = ["statements", "statement_scores"]
         self.examples = examples or _DEFAULT_EXAMPLES
         self.api = api
@@ -130,36 +114,34 @@ class FaithfulnessEvaluator(LLMEvaluator):
         )
 
     @component.output_types(results=List[Dict[str, Any]])
-    def run(self, questions: List[str], contexts: List[List[str]], responses: List[str]) -> Dict[str, Any]:
+    def run(self, questions: List[str], contexts: List[List[str]]) -> Dict[str, Any]:
         """
         Run the LLM evaluator.
 
         :param questions:
             A list of questions.
         :param contexts:
-            A nested list of contexts that correspond to the questions.
-        :param responses:
-            A list of responses.
+            A list of lists of contexts. Each list of contexts corresponds to one question.
         :returns:
             A dictionary with the following outputs:
-                - `score`: Mean faithfulness score over all the provided input answers.
-                - `individual_scores`: A list of faithfulness scores for each input answer.
-                - `results`: A list of dictionaries with `statements` and `statement_scores` for each input answer.
+                - `score`: Mean context relevance score over all the provided input questions.
+                - `individual_scores`: A list of context relevance scores for each input question.
+                - `results`: A list of dictionaries with `statements` and `statement_scores` for each input context.
         """
-        result = super().run(questions=questions, contexts=contexts, responses=responses)
+        result = super().run(questions=questions, contexts=contexts)
 
-        # calculate average statement faithfulness score per query
+        # calculate average statement relevance score per query
         for res in result["results"]:
             res["score"] = np_mean(res["statement_scores"])
 
-        # calculate average answer faithfulness score over all queries
+        # calculate average context relevance score over all queries
         result["score"] = np_mean([res["score"] for res in result["results"]])
         result["individual_scores"] = [res["score"] for res in result["results"]]
 
         return result
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "FaithfulnessEvaluator":
+    def from_dict(cls, data: Dict[str, Any]) -> "ContextRelevanceEvaluator":
         """
         Deserialize this component from a dictionary.
 

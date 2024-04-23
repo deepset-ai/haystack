@@ -40,11 +40,11 @@ class DeviceType(Enum):
         :returns:
             The device type.
         """
-        map = {e.value: e for e in DeviceType}
-        type = map.get(string)
-        if type is None:
+        mapping = {e.value: e for e in DeviceType}
+        _type = mapping.get(string)
+        if _type is None:
             raise ValueError(f"Unknown device type string '{string}'")
-        return type
+        return _type
 
 
 @dataclass
@@ -61,7 +61,7 @@ class Device:
     type: DeviceType
     id: Optional[int] = field(default=None)
 
-    def __init__(self, type: DeviceType, id: Optional[int] = None):
+    def __init__(self, type: DeviceType, id: Optional[int] = None):  # noqa:A002
         """
         Create a generic device.
 
@@ -93,7 +93,7 @@ class Device:
         return Device(DeviceType.CPU)
 
     @staticmethod
-    def gpu(id: int = 0) -> "Device":
+    def gpu(id: int = 0) -> "Device":  # noqa:A002
         """
         Create a generic GPU device.
 
@@ -189,7 +189,7 @@ class DeviceMap:
             return next(iter(self.mapping.values()))
 
     @staticmethod
-    def from_dict(dict: Dict[str, str]) -> "DeviceMap":
+    def from_dict(dict: Dict[str, str]) -> "DeviceMap":  # noqa:A002
         """
         Create a generic device map from a JSON-serialized dictionary.
 
@@ -458,7 +458,7 @@ class ComponentDevice:
             assert False
 
     @classmethod
-    def from_dict(cls, dict: Dict[str, Any]) -> "ComponentDevice":
+    def from_dict(cls, dict: Dict[str, Any]) -> "ComponentDevice":  # noqa:A002
         """
         Create a component device representation from a JSON-serialized dictionary.
 

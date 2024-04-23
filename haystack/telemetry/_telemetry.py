@@ -132,7 +132,7 @@ def send_telemetry(func):
 @send_telemetry
 def pipeline_running(pipeline: "Pipeline") -> Optional[Tuple[str, Dict[str, Any]]]:
     """
-    Collects telemetry data about the pipeline.
+    Collects telemetry data for a pipeline run and sends it to Posthog.
 
     Collects name, type and the content of the _telemetry_data attribute, if present, for each component in the
     pipeline and sends such data to Posthog.

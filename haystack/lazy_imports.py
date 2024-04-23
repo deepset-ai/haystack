@@ -20,7 +20,8 @@ class LazyImport(_DeferredImportExceptionContextManager):
     def __exit__(
         self, exc_type: Optional[Type[Exception]], exc_value: Optional[Exception], traceback: Optional[TracebackType]
     ) -> Optional[bool]:
-        """Exit the context manager.
+        """
+        Exit the context manager.
 
         Args:
             exc_type:

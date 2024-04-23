@@ -22,7 +22,7 @@ from haystack.core.errors import (
     PipelineUnmarshalError,
     PipelineValidationError,
 )
-from haystack.core.serialization import component_from_dict, component_to_dict
+from haystack.core.serialization import DeserializationCallbacks, component_from_dict, component_to_dict
 from haystack.core.type_utils import _type_name, _types_are_compatible
 from haystack.marshal import Marshaller, YamlMarshaller
 from haystack.telemetry import pipeline_running
@@ -76,7 +76,7 @@ class Pipeline:
 
     def __eq__(self, other) -> bool:
         """
-        Equality comparison between two pipelines.
+        Pipeline equality is defined by the equality of their serialized form.
 
         Equal pipelines share every metadata, node and edge, but they're not required to use
         the same node instances: this allows pipeline saved and then loaded back to be equal to themselves.
@@ -133,12 +133,16 @@ class Pipeline:
         }
 
     @classmethod
-    def from_dict(cls: Type[T], data: Dict[str, Any], **kwargs) -> T:
+    def from_dict(
+        cls: Type[T], data: Dict[str, Any], callbacks: Optional[DeserializationCallbacks] = None, **kwargs
+    ) -> T:
         """
         Deserializes the pipeline from a dictionary.
 
         :param data:
             Dictionary to deserialize from.
+        :param callbacks:
+            Callbacks to invoke during deserialization.
         :param kwargs:
             `components`: a dictionary of {name: instance} to reuse instances of components instead of creating new ones.
         :returns:
@@ -161,7 +165,7 @@ class Pipeline:
                     try:
                         # Import the module first...
                         module, _ = component_data["type"].rsplit(".", 1)
-                        logger.debug("Trying to import {module}", module=module)
+                        logger.debug("Trying to import module {module_name}", module_name=module)
                         importlib.import_module(module)
                         # ...then try again
                         if component_data["type"] not in component.registry:
@@ -174,7 +178,7 @@ class Pipeline:
 
                 # Create a new one
                 component_class = component.registry[component_data["type"]]
-                instance = component_from_dict(component_class, component_data)
+                instance = component_from_dict(component_class, component_data, name, callbacks)
             pipe.add_component(name=name, instance=instance)
 
         for connection in data.get("connections", []):
@@ -209,7 +213,12 @@ class Pipeline:
         fp.write(marshaller.marshal(self.to_dict()))
 
     @classmethod
-    def loads(cls, data: Union[str, bytes, bytearray], marshaller: Marshaller = DEFAULT_MARSHALLER) -> "Pipeline":
+    def loads(
+        cls,
+        data: Union[str, bytes, bytearray],
+        marshaller: Marshaller = DEFAULT_MARSHALLER,
+        callbacks: Optional[DeserializationCallbacks] = None,
+    ) -> "Pipeline":
         """
         Creates a `Pipeline` object from the string representation passed in the `data` argument.
 
@@ -217,26 +226,36 @@ class Pipeline:
             The string representation of the pipeline, can be `str`, `bytes` or `bytearray`.
         :param marshaller:
             The Marshaller used to create the string representation. Defaults to `YamlMarshaller`.
+        :param callbacks:
+            Callbacks to invoke during deserialization.
         :returns:
             A `Pipeline` object.
         """
-        return cls.from_dict(marshaller.unmarshal(data))
+        return cls.from_dict(marshaller.unmarshal(data), callbacks)
 
     @classmethod
-    def load(cls, fp: TextIO, marshaller: Marshaller = DEFAULT_MARSHALLER) -> "Pipeline":
+    def load(
+        cls,
+        fp: TextIO,
+        marshaller: Marshaller = DEFAULT_MARSHALLER,
+        callbacks: Optional[DeserializationCallbacks] = None,
+    ) -> "Pipeline":
         """
         Creates a `Pipeline` object a string representation.
 
         The string representation is read from the file-like object passed in the `fp` argument.
 
+
         :param fp:
             A file-like object ready to be read from.
         :param marshaller:
             The Marshaller used to create the string representation. Defaults to `YamlMarshaller`.
+        :param callbacks:
+            Callbacks to invoke during deserialization.
         :returns:
             A `Pipeline` object.
         """
-        return cls.from_dict(marshaller.unmarshal(fp.read()))
+        return cls.from_dict(marshaller.unmarshal(fp.read()), callbacks)
 
     def add_component(self, name: str, instance: Component) -> None:
         """
@@ -618,7 +637,7 @@ class Pipeline:
 
     # TODO: We're ignoring these linting rules for the time being, after we properly optimize this function we'll remove the noqa
     def run(  # noqa: C901, PLR0912, PLR0915 pylint: disable=too-many-branches
-        self, data: Dict[str, Any], debug: bool = False
+        self, data: Dict[str, Any], debug: bool = False, include_outputs_from: Optional[Set[str]] = None
     ) -> Dict[str, Any]:
         """
         Runs the pipeline with given input data.
@@ -628,8 +647,16 @@ class Pipeline:
             and its value is a dictionary of that component's input parameters.
         :param debug:
             Set to True to collect and return debug information.
+        :param include_outputs_from:
+            Set of component names whose individual outputs are to be
+            included in the pipeline's output. For components that are
+            invoked multiple times (in a loop), only the last-produced
+            output is included.
         :returns:
-            A dictionary containing the pipeline's output.
+            A dictionary where each entry corresponds to a component name
+            and its output. If `include_outputs_from` is `None`, this dictionary
+            will only contain the outputs of leaf components, i.e., components
+            without outgoing connections.
 
         :raises PipelineRuntimeError:
             If a component fails or returns unexpected output.
@@ -761,6 +788,8 @@ class Pipeline:
         # The waiting_for_input list is used to keep track of components that are waiting for input.
         waiting_for_input: List[Tuple[str, Component]] = []
 
+        include_outputs_from = set() if include_outputs_from is None else include_outputs_from
+
         with tracing.tracer.trace(
             "haystack.pipeline.run",
             tags={
@@ -770,7 +799,11 @@ class Pipeline:
             },
         ):
             # This is what we'll return at the end
-            final_outputs = {}
+            final_outputs: Dict[Any, Any] = {}
+
+            # Cache for extra outputs, if enabled.
+            extra_outputs: Dict[Any, Any] = {}
+
             while len(to_run) > 0:
                 name, comp = to_run.pop(0)
 
@@ -819,6 +852,7 @@ class Pipeline:
                     ) as span:
                         span.set_content_tag("haystack.component.input", last_inputs[name])
 
+                        logger.info("Running component {component_name}", component_name=name)
                         res = comp.run(**last_inputs[name])
                         self.graph.nodes[name]["visits"] += 1
 
@@ -830,6 +864,11 @@ class Pipeline:
 
                         span.set_tags(tags={"haystack.component.visits": self.graph.nodes[name]["visits"]})
                         span.set_content_tag("haystack.component.output", res)
+
+                        if name in include_outputs_from:
+                            # Deepcopy the outputs to prevent downstream nodes from modifying them
+                            # We don't care about loops - Always store the last output.
+                            extra_outputs[name] = deepcopy(res)
 
                     # Reset the waiting for input previous states, we managed to run a component
                     before_last_waiting_for_input = None
@@ -927,6 +966,15 @@ class Pipeline:
                         # There was a lazy variadic or a component with only default waiting for input, we can run it
                         waiting_for_input.remove((name, comp))
                         to_run.append((name, comp))
+
+                        # Let's use the default value for the inputs that are still missing, or the component
+                        # won't run and will be put back in the waiting list, causing an infinite loop.
+                        for input_socket in comp.__haystack_input__._sockets_dict.values():  # type: ignore
+                            if input_socket.is_mandatory:
+                                continue
+                            if input_socket.name not in last_inputs[name]:
+                                last_inputs[name][input_socket.name] = input_socket.default_value
+
                         continue
 
                     before_last_waiting_for_input = (
@@ -992,6 +1040,11 @@ class Pipeline:
 
                     waiting_for_input.remove((name, comp))
                     to_run.append((name, comp))
+
+            if len(include_outputs_from) > 0:
+                for name, output in extra_outputs.items():
+                    if name not in final_outputs:
+                        final_outputs[name] = output
 
             return final_outputs
 
