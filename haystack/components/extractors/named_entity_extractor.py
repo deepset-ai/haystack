@@ -257,7 +257,7 @@ class _NerBackend(ABC):
     @abstractmethod
     def initialize(self):
         """
-        Initializes the backend. This would usually entail loading models, pipelines, etc.
+        Initializes the backend. This would usually entail loading models, pipelines, and so on.
         """
 
     @property
