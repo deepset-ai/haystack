@@ -60,7 +60,7 @@ class AzureOpenAIGenerator(OpenAIGenerator):
         generation_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
-        Initialize the Azure OpenAI generator.
+        Initialize the Azure OpenAI Generator.
 
         :param azure_endpoint: The endpoint of the deployed model, e.g. `https://example-resource.azure.openai.com/`
         :param api_version: The version of the API to use. Defaults to 2023-05-15
