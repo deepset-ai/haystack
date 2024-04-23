@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Support for MistralAI and new Claude 3 models on AWS Bedrock.
