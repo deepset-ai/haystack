@@ -22,13 +22,16 @@ class PyPDFConverter(Protocol):
     """
 
     def convert(self, reader: "PdfReader") -> Document:
+        """Convert a PdfReader object to a Document object."""
         ...
 
     def to_dict(self):
+        """Serialize the converter to a dictionary."""
         ...
 
     @classmethod
     def from_dict(cls, data):
+        """Deserialize the converter from a dictionary."""
         ...
 
 
@@ -43,10 +46,12 @@ class DefaultConverter:
         return Document(content=text)
 
     def to_dict(self):
+        """Serialize the converter to a dictionary."""
         return default_to_dict(self)
 
     @classmethod
     def from_dict(cls, data):
+        """Deserialize the converter from a dictionary."""
         return default_from_dict(cls, data)
 
 
