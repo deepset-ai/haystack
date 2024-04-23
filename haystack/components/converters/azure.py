@@ -23,7 +23,7 @@ with LazyImport(message="Run 'pip install \"azure-ai-formrecognizer>=3.2.0b2\"'"
 @component
 class AzureOCRDocumentConverter:
     """
-    Convert files to Documents using Azure's Document Intelligence service.
+    Convert files to documents using Azure's Document Intelligence service.
 
     Supported file formats are: PDF, JPEG, PNG, BMP, TIFF, DOCX, XLSX, PPTX, and HTML.
 
