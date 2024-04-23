@@ -1,0 +1,3 @@
+---
+enhancements:
+  - Upgrade transformers to version 4.39.3 so that Haystack can support the new Cohere Command R models.
