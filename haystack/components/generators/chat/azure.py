@@ -14,6 +14,8 @@ logger = logging.getLogger(__name__)
 
 class AzureOpenAIChatGenerator(OpenAIChatGenerator):
     """
+    A Chat Generator component that uses the Azure OpenAI API to generate text.
+
     Enables text generation using OpenAI's large language models (LLMs) on Azure. It supports `gpt-4` and `gpt-3.5-turbo`
     family of models accessed through the chat completions API endpoint.
 
@@ -76,6 +78,8 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         generation_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
+        Initialize the Azure OpenAI Chat Generator component.
+
         :param azure_endpoint: The endpoint of the deployed model, e.g. `"https://example-resource.azure.openai.com/"`
         :param api_version: The version of the API to use. Defaults to 2023-05-15
         :param azure_deployment: The deployment of the model, usually the model name.

@@ -137,6 +137,7 @@ class DocumentJoiner:
     def _reciprocal_rank_fusion(self, document_lists):
         """
         Merge multiple lists of Documents and assign scores based on reciprocal rank fusion.
+
         The constant k is set to 61 (60 was suggested by the original paper,
         plus 1 as python lists are 0-based and the paper used 1-based ranking).
         """
