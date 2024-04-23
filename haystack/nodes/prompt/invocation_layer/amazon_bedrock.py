@@ -258,7 +258,7 @@ class AmazonBedrockInvocationLayer(AWSBaseInvocationLayer):
         r"ai21.j2.*": AI21LabsJurassic2Adapter,
         r"cohere.command.*": CohereCommandAdapter,
         r"anthropic.claude.*": AnthropicClaudeAdapter,
-        r"meta.llama2.*": MetaLlama2ChatAdapter,
+        r"meta.llama.*": MetaLlama2ChatAdapter,
         r"mistral.mi[sx]tral.*": MistralAIAdapter,  # codespell:ignore tral
     }
 
