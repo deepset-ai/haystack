@@ -125,8 +125,7 @@ class Component(Protocol):
 class ComponentMeta(type):
     def __call__(cls, *args, **kwargs):
         """
-        This method is called when clients instantiate a Component and
-        runs before __new__ and __init__.
+        This method is called when clients instantiate a Component and runs before __new__ and __init__.
         """
         # This will call __new__ then __init__, giving us back the Component instance
         instance = super().__call__(*args, **kwargs)
@@ -184,6 +183,7 @@ class ComponentMeta(type):
 def _component_repr(component: Component) -> str:
     """
     All Components override their __repr__ method with this one.
+
     It prints the component name and the input/output sockets.
     """
     result = object.__repr__(component)
@@ -275,8 +275,7 @@ class _Component:
 
     def set_output_types(self, instance, **types):
         """
-        Method that specifies the output types when the 'run' method is not decorated
-        with 'component.output_types'.
+        Method that specifies the output types when the 'run' method is not decorated with 'component.output_types'.
 
         Use as:
 
@@ -314,6 +313,8 @@ class _Component:
 
         def output_types_decorator(run_method):
             """
+            Decorator that sets the output types of the decorated method.
+
             This happens at class creation time, and since we don't have the decorated
             class available here, we temporarily store the output types as an attribute of
             the decorated method. The ComponentMeta metaclass will use this data to create

@@ -50,6 +50,7 @@ class DocumentWriter:
     def to_dict(self) -> Dict[str, Any]:
         """
         Serializes the component to a dictionary.
+
         :returns:
             Dictionary with serialized data.
         """
