@@ -16,16 +16,18 @@ _IS_DOCKER_CACHE = None
 
 def _in_podman() -> bool:
     """
-    Podman run would create the file /run/.containernv, see:
-    https://github.com/containers/podman/blob/main/docs/source/markdown/podman-run.1.md.in#L31
+    Podman run would create the file /run/.containernv.
+
+    see: https://github.com/containers/podman/blob/main/docs/source/markdown/podman-run.1.md.in#L31
     """
     return os.path.exists("/run/.containerenv")
 
 
 def _has_dockerenv() -> bool:
     """
-    This might not work anymore at some point (even if it's been a while now), see:
-    https://github.com/moby/moby/issues/18355#issuecomment-220484748
+    This might not work anymore at some point (even if it's been a while now).
+
+    see: https://github.com/moby/moby/issues/18355#issuecomment-220484748
     """
     return os.path.exists("/.dockerenv")
 
@@ -40,7 +42,9 @@ def _has_docker_cgroup_v1() -> bool:
 
 def _has_docker_cgroup_v2() -> bool:
     """
-    cgroups v2 version, inspired from
+    cgroups v2 version.
+
+    inspired from:
     https://github.com/jenkinsci/docker-workflow-plugin/blob/master/src/main/java/org/jenkinsci/plugins/docker/workflow/client/DockerClient.java
     """
     path = "/proc/self/mountinfo"  # 'self' should be always symlinked to the actual PID
@@ -61,8 +65,9 @@ def _is_containerized() -> Optional[bool]:
 
 def collect_system_specs() -> Dict[str, Any]:
     """
-    Collects meta data about the setup that is used with Haystack, such as:
-    operating system, python version, Haystack version, transformers version,
+    Collects meta-data about the setup that is used with Haystack.
+
+    Such as: operating system, python version, Haystack version, transformers version,
     pytorch version, number of GPUs, execution environment.
 
     These values are highly unlikely to change during the runtime of the pipeline,

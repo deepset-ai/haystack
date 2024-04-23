@@ -8,6 +8,8 @@ class SparseEmbedding:
 
     def __init__(self, indices: List[int], values: List[float]):
         """
+        Initialize a SparseEmbedding object.
+
         :param indices: List of indices of non-zero elements in the embedding.
         :param values: List of values of non-zero elements in the embedding.
 
@@ -19,8 +21,14 @@ class SparseEmbedding:
         self.values = values
 
     def to_dict(self):
+        """
+        Convert the SparseEmbedding object to a dictionary.
+        """
         return {"indices": self.indices, "values": self.values}
 
     @classmethod
     def from_dict(cls, sparse_embedding_dict):
+        """
+        Create a SparseEmbedding object from a dictionary.
+        """
         return cls(indices=sparse_embedding_dict["indices"], values=sparse_embedding_dict["values"])
