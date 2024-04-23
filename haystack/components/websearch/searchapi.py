@@ -41,6 +41,8 @@ class SearchApiWebSearch:
         search_params: Optional[Dict[str, Any]] = None,
     ):
         """
+        Initialize the SearchApiWebSearch component.
+
         :param api_key: API key for the SearchApi API
         :param top_k: Number of documents to return.
         :param allowed_domains: List of domains to limit the search to.

@@ -23,6 +23,8 @@ logger = logging.getLogger(__name__)
 @component
 class HuggingFaceAPIGenerator:
     """
+    A Generator component that uses Hugging Face APIs to generate text.
+
     This component can be used to generate text using different Hugging Face APIs:
     - [Free Serverless Inference API]((https://huggingface.co/inference-api)
     - [Paid Inference Endpoints](https://huggingface.co/inference-endpoints)

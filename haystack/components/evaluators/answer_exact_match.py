@@ -6,11 +6,13 @@ from haystack.core.component import component
 @component
 class AnswerExactMatchEvaluator:
     """
-    Evaluator that checks if predicted answers exactly match ground truth answers.
+    An answer exact match evaluator class.
 
-    Each predicted answer is compared to one ground truth answer.
-    The final score is a number ranging from 0.0 to 1.0.
-    It represents the proportion of predicted answers that match their corresponding ground truth answer.
+    The evaluator that checks if the predicted answers matches any of the ground truth answers exactly.
+    The result is a number from 0.0 to 1.0, it represents the proportion of predicted answers
+    that matched one of the ground truth answers.
+    There can be multiple ground truth answers and multiple predicted answers as input.
+
 
     Usage example:
     ```python
@@ -33,7 +35,8 @@ class AnswerExactMatchEvaluator:
     def run(self, ground_truth_answers: List[str], predicted_answers: List[str]) -> Dict[str, Any]:
         """
         Run the AnswerExactMatchEvaluator on the given inputs.
-        `ground_truth_answers` and `retrieved_answers` must have the same length.
+
+        The `ground_truth_answers` and `retrieved_answers` must have the same length.
 
         :param ground_truth_answers:
             A list of expected answers.

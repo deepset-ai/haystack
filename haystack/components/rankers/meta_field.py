@@ -141,6 +141,7 @@ class MetaFieldRanker:
     ):
         """
         Ranks a list of Documents based on the selected meta field by:
+
         1. Sorting the Documents by the meta field in descending or ascending order.
         2. Merging the rankings from the previous component and based on the meta field according to ranking mode and
         weight.
@@ -337,8 +338,10 @@ class MetaFieldRanker:
     @staticmethod
     def _calculate_rrf(rank: int, k: int = 61) -> float:
         """
-        Calculates the reciprocal rank fusion. The constant K is set to 61 (60 was suggested by the original paper,
-        plus 1 as python lists are 0-based and the [paper](https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf) used 1-based ranking).
+        Calculates the reciprocal rank fusion.
+
+        The constant K is set to 61 (60 was suggested by the original paper, plus 1 as python lists are 0-based and
+        the [paper](https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf) used 1-based ranking).
         """
         return 1 / (k + rank)
 
@@ -346,6 +349,7 @@ class MetaFieldRanker:
     def _calc_linear_score(rank: int, amount: int) -> float:
         """
         Calculate the meta field score as a linear score between the greatest and the lowest score in the list.
+
         This linear scaling is useful for:
         - Reducing the effect of outliers
         - Creating scores that are meaningfully distributed in the range [0,1],

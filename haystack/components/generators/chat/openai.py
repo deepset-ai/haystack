@@ -17,6 +17,8 @@ logger = logging.getLogger(__name__)
 @component
 class OpenAIChatGenerator:
     """
+    A Chat Generator component that uses the OpenAI API to generate text.
+
     Enables text generation using OpenAI's large language models (LLMs). It supports `gpt-4` and `gpt-3.5-turbo`
     family of models accessed through the chat completions API endpoint.
 
@@ -71,6 +73,8 @@ class OpenAIChatGenerator:
         generation_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
+        Initializes the OpenAIChatGenerator component.
+
         Creates an instance of OpenAIChatGenerator. Unless specified otherwise in the `model`, this is for OpenAI's
         GPT-3.5 model.
 
@@ -206,6 +210,7 @@ class OpenAIChatGenerator:
     def _connect_chunks(self, chunk: Any, chunks: List[StreamingChunk]) -> ChatMessage:
         """
         Connects the streaming chunks into a single ChatMessage.
+
         :param chunk: The last chunk returned by the OpenAI API.
         :param chunks: The list of all chunks returned by the OpenAI API.
         """
@@ -256,6 +261,7 @@ class OpenAIChatGenerator:
     def _build_message(self, completion: ChatCompletion, choice: Choice) -> ChatMessage:
         """
         Converts the non-streaming response from the OpenAI API to a ChatMessage.
+
         :param completion: The completion returned by the OpenAI API.
         :param choice: The choice returned by the OpenAI API.
         :return: The ChatMessage.
@@ -287,6 +293,7 @@ class OpenAIChatGenerator:
     def _build_chunk(self, chunk: ChatCompletionChunk) -> StreamingChunk:
         """
         Converts the streaming response chunk from the OpenAI API to a StreamingChunk.
+
         :param chunk: The chunk returned by the OpenAI API.
         :param choice: The choice returned by the OpenAI API.
         :return: The StreamingChunk.
@@ -311,6 +318,7 @@ class OpenAIChatGenerator:
     def _check_finish_reason(self, message: ChatMessage) -> None:
         """
         Check the `finish_reason` returned with the OpenAI completions.
+
         If the `finish_reason` is `length` or `content_filter`, log a warning.
         :param message: The message returned by the LLM.
         """

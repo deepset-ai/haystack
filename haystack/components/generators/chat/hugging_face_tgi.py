@@ -24,6 +24,8 @@ logger = logging.getLogger(__name__)
 @component
 class HuggingFaceTGIChatGenerator:
     """
+    A Chat-based text generation component using Hugging Face's Text Generation Inference (TGI) framework.
+
     Enables text generation using HuggingFace Hub hosted chat-based LLMs. This component is designed to seamlessly
     inference chat-based models deployed on the Text Generation Inference (TGI) backend.
 
@@ -147,6 +149,8 @@ class HuggingFaceTGIChatGenerator:
 
     def warm_up(self) -> None:
         """
+        Warm up the tokenizer by loading it from the model.
+
         If the url is not provided, check if the model is deployed on the free tier of the HF inference API.
         Load the tokenizer
         """
