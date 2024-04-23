@@ -27,7 +27,7 @@ repos:
   - id: ruff
 
 - repo: https://github.com/codespell-project/codespell
-  rev: v2.2.5
+  rev: b8ecc9b3acf31690c3cb2fc5bb03a3fbbbc2d7a3
   hooks:
   - id: codespell
     additional_dependencies:
