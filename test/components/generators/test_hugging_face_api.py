@@ -226,7 +226,6 @@ class TestHuggingFaceAPIGenerator:
             streaming_call_count += 1
             assert isinstance(chunk, StreamingChunk)
 
-        # Create an instance of HuggingFaceRemoteGenerator
         generator = HuggingFaceAPIGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
             api_params={"model": "google/gemma-1.1-2b-it"},
