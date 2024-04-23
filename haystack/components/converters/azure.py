@@ -300,7 +300,7 @@ class AzureOCRDocumentConverter:
 
     def _convert_to_natural_text(self, result: "AnalyzeResult", meta: Optional[Dict[str, Any]]) -> Document:
         """
-        This converts the `AnalyzeResult` object into a single Document.
+        This converts the `AnalyzeResult` object into a single document.
 
         We add "\f" separators between to differentiate between the text on separate pages. This is the expected format
         for the PreProcessor.
