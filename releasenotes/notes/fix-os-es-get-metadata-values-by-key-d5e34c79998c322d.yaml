@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fixes `SearchEngineDocumentStore.get_metadata_values_by_key` method to make use of `self.index` if no index is provided.
