@@ -851,7 +851,7 @@ class Pipeline:
                         },
                     ) as span:
                         span.set_content_tag("haystack.component.input", last_inputs[name])
-
+                        logger.info("Running component {name}", name=name)
                         logger.info("Running component {component_name}", component_name=name)
                         res = comp.run(**last_inputs[name])
                         self.graph.nodes[name]["visits"] += 1
