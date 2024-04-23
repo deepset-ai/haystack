@@ -93,10 +93,10 @@ _COMPONENT_PRE_INIT_CALLBACK: ContextVar[Optional[Callable]] = ContextVar("compo
 @contextmanager
 def _hook_component_init(callback: Callable):
     """
-    Context manager to set a callback that will be invoked
-    before a component's constructor is called. The callback
-    receives the component class and the init parameters (as keyword
-    arguments) and can modify the init parameters in place.
+    Context manager to set a callback that will be invoked before a component's constructor is called.
+
+    The callback receives the component class and the init parameters (as keyword arguments) and can modify the init
+    parameters in place.
 
     :param callback:
         Callback function to invoke.

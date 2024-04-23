@@ -102,7 +102,6 @@ def _to_mermaid_text(graph: networkx.MultiDiGraph) -> str:
     """
     Converts a Networkx graph into Mermaid syntax.
 
-
     The output of this function can be used in the documentation with `mermaid` codeblocks and it will be
     automatically rendered.
     """

@@ -14,10 +14,9 @@ logger = logging.getLogger(__name__)
 
 class AzureOpenAIGenerator(OpenAIGenerator):
     """
-    A generator component that uses the Azure OpenAI API to generate text.
+    A generator component that uses OpenAI's large language models (LLMs) on Azure to generate text.
 
-    Enables text generation using OpenAI's large language models (LLMs) on Azure. It supports gpt-4 and gpt-3.5-turbo
-    family of models.
+    It supports gpt-4 and gpt-3.5-turbo family of models.
 
     Users can pass any text generation parameters valid for the `openai.ChatCompletion.create` method
     directly to this component via the `**generation_kwargs` parameter in __init__ or the `**generation_kwargs`

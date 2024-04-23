@@ -25,7 +25,6 @@ class AzureOCRDocumentConverter:
     """
     Convert files to Documents using Azure's Document Intelligence service.
 
-    A component for converting files to Documents using Azure's Document Intelligence service.
     Supported file formats are: PDF, JPEG, PNG, BMP, TIFF, DOCX, XLSX, PPTX, and HTML.
 
     In order to be able to use this component, you need an active Azure account
