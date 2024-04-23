@@ -123,7 +123,7 @@ def default_to_dict(obj: Any, **init_parameters) -> Dict[str, Any]:
     """
     Utility function to serialize an object to a dictionary.
 
-    This is mostly necessary for Components but it can be used by any object.
+    This is mostly necessary for components but can be used by any object.
     `init_parameters` are parameters passed to the object class `__init__`.
     They must be defined explicitly as they'll be used when creating a new
     instance of `obj` with `from_dict`. Omitting them might cause deserialisation
