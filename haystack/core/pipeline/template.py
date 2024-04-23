@@ -64,7 +64,7 @@ class PipelineTemplate:
         """
         Initialize a PipelineTemplate.
 
-        Besides calling the constructor directly, a set of utility methods is provided for conveniently create an
+        Besides calling the constructor directly, a set of utility methods is provided to conveniently create an
         instance of `PipelineTemplate` from different sources. See `from_string`, `from_file`, `from_predefined`
         and `from_url`.
 
