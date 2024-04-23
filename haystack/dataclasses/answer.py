@@ -15,13 +15,11 @@ class Answer(Protocol):
     query: str
     meta: Dict[str, Any]
 
-    def to_dict(self) -> Dict[str, Any]:
-        """Serialize the object to a dictionary."""
+    def to_dict(self) -> Dict[str, Any]:  # noqa: D102
         ...
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Answer":
-        """Deserialize the object from a dictionary."""
+    def from_dict(cls, data: Dict[str, Any]) -> "Answer":  # noqa: D102
         ...
 
 
