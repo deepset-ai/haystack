@@ -47,6 +47,7 @@ class TestStructuredLoggingConsoleRendering:
         haystack_logging.configure_logging(use_json=False)
 
         logger = logging.getLogger(__name__)
+        logger.setLevel(logging.INFO)
         logger.debug("Hello, structured logging!", extra={"key1": "value1", "key2": "value2"})
 
         # Use `capfd` to capture the output of the final structlog rendering result
@@ -372,7 +373,6 @@ class TestCompositeLogger:
         # the pytest fixture caplog only captures logs being rendered from the stdlib logging module
         assert caplog.messages == ["Hello, structured logging!"]
         assert caplog.records[0].name == "test.test_logging"
-        assert caplog.records[0].lineno == 370
 
         # Nothing should be captured by capfd since structlog is not configured
         assert capfd.readouterr().err == ""

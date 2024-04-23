@@ -1,12 +1,13 @@
+import logging
 import os
 
 import pytest
 from openai import OpenAIError
-from haystack.utils.auth import Secret
 
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
 from haystack.dataclasses import ChatMessage, StreamingChunk
+from haystack.utils.auth import Secret
 
 
 @pytest.fixture
@@ -191,6 +192,7 @@ class TestOpenAIChatGenerator:
         assert "Hello" in response["replies"][0].content  # see mock_chat_completion_chunk
 
     def test_check_abnormal_completions(self, caplog):
+        caplog.set_level(logging.INFO)
         component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
         messages = [
             ChatMessage.from_assistant(

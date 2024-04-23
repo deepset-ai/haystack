@@ -165,7 +165,7 @@ class Pipeline:
                     try:
                         # Import the module first...
                         module, _ = component_data["type"].rsplit(".", 1)
-                        logger.debug("Trying to import {module}", module=module)
+                        logger.debug("Trying to import module {module_name}", module_name=module)
                         importlib.import_module(module)
                         # ...then try again
                         if component_data["type"] not in component.registry:
@@ -598,7 +598,9 @@ class Pipeline:
 
     def _validate_input(self, data: Dict[str, Any]):
         """
-        Validates that data:
+        Validates input data for the pipeline.
+
+        Validates that:
         * Each Component name actually exists in the Pipeline
         * Each Component is not missing any input
         * Each Component has only one input per input socket, if not variadic
@@ -848,8 +850,8 @@ class Pipeline:
                         },
                     ) as span:
                         span.set_content_tag("haystack.component.input", last_inputs[name])
-
                         logger.info("Running component {name}", name=name)
+                        logger.info("Running component {component_name}", component_name=name)
                         res = comp.run(**last_inputs[name])
                         self.graph.nodes[name]["visits"] += 1
 
@@ -1047,8 +1049,7 @@ class Pipeline:
 
     def _prepare_component_input_data(self, data: Dict[str, Any]) -> Tuple[Dict[str, Dict[str, Any]], Dict[str, Any]]:
         """
-        Organizes input data for pipeline components and identifies any inputs that are not matched to any
-        component's input slots.
+        Organizes input data for pipeline components and identifies any inputs that are not matched to any component's input slots.
 
         This method processes a flat dictionary of input data, where each key-value pair represents an input name
         and its corresponding value. It distributes these inputs to the appropriate pipeline components based on
