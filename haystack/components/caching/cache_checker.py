@@ -10,8 +10,7 @@ logger = logging.getLogger(__name__)
 @component
 class CacheChecker:
     """
-    Checks for the presence of documents in a Document Store based on a specified
-    field in each document's metadata.
+    Checks for the presence of documents in a Document Store based on a specified field in each document's metadata.
 
     If matching documents are found, they are returned as hits. If not, the items
     are returned as misses, indicating they are not in the cache.
@@ -92,8 +91,7 @@ class CacheChecker:
     @component.output_types(hits=List[Document], misses=List)
     def run(self, items: List[Any]):
         """
-        Checks if any document associated with the specified cache field
-        is already present in the store.
+        Checks if any document associated with the specified cache field is already present in the store.
 
         :param items:
             Values to be checked against the cache field.
