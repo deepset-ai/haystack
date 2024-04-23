@@ -21,6 +21,7 @@ with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'") a
 class TransformersZeroShotTextRouter:
     """
     Routes a text input onto different output connections depending on which label it has been categorized into.
+
     This is useful for routing queries to different models in a pipeline depending on their categorization.
     The set of labels to be used for categorization can be specified.
 
@@ -102,6 +103,8 @@ class TransformersZeroShotTextRouter:
         huggingface_pipeline_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
+        Initializes the TransformersZeroShotTextRouter.
+
         :param labels: The set of possible class labels to classify each sequence into. Can be a single label,
             a string of comma-separated labels, or a list of labels.
         :param multi_label: Whether or not multiple candidate labels can be true.
@@ -187,8 +190,9 @@ class TransformersZeroShotTextRouter:
     @component.output_types(documents=Dict[str, str])
     def run(self, text: str):
         """
-        Run the TransformersZeroShotTextRouter. This method routes the text to one of the different edges based on which label
-        it has been categorized into.
+        Run the TransformersZeroShotTextRouter.
+
+        This method routes the text to one of the different edges based on which label it has been categorized into.
 
         :param text: A str to route to one of the different edges.
         :returns:
