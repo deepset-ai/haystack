@@ -268,7 +268,7 @@ class _Component:
     def __init__(self):
         self.registry = {}
 
-    def set_input_type(self, instance, name: str, type: Any, default: Any = _empty):
+    def set_input_type(self, instance, name: str, type: Any, default: Any = _empty):  # noqa: A002
         """
         Add a single input socket to the component instance.
 

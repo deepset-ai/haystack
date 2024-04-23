@@ -155,8 +155,8 @@ class DocumentJoiner:
 
         # Normalize scores. Note: len(results) / k is the maximum possible score,
         # achieved by being ranked first in all doc lists with non-zero weight.
-        for id in scores_map:
-            scores_map[id] /= len(document_lists) / k
+        for _id in scores_map:
+            scores_map[_id] /= len(document_lists) / k
 
         for doc in documents_map.values():
             doc.score = scores_map[doc.id]
