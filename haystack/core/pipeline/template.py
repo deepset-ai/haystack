@@ -22,6 +22,8 @@ class PredefinedPipeline(Enum):
 
 class PipelineTemplate:
     """
+    The PipelineTemplate enables the creation of flexible and configurable pipelines.
+
     The PipelineTemplate class enables the straightforward creation of flexible and configurable pipelines using
     Jinja2 templated YAML files. Specifically designed to simplify the setup of complex data processing pipelines for
     a range of NLP tasks—including question answering, retriever augmented generation (RAG), document indexing, among
@@ -60,9 +62,11 @@ class PipelineTemplate:
 
     def __init__(self, template_content: str):
         """
-        Initialize a PipelineTemplate. Besides calling the constructor directly, a set of utility methods is provided
-        for conveniently create an instance of `PipelineTemplate` from different sources. See `from_string`,
-        `from_file`, `from_predefined` and `from_url`.
+        Initialize a PipelineTemplate.
+
+        Besides calling the constructor directly, a set of utility methods is provided for conveniently create an
+        instance of `PipelineTemplate` from different sources. See `from_string`, `from_file`, `from_predefined`
+        and `from_url`.
 
         :param template_content: The raw template source to use in the template.
         """
@@ -93,6 +97,7 @@ class PipelineTemplate:
     def from_file(cls, file_path: Union[Path, str]) -> "PipelineTemplate":
         """
         Create a PipelineTemplate from a file.
+
         :param file_path: The path to the file containing the template. Must contain valid Jinja2 syntax.
         :returns: An instance of `PipelineTemplate`.
         """
@@ -102,7 +107,10 @@ class PipelineTemplate:
     @classmethod
     def from_predefined(cls, predefined_pipeline: PredefinedPipeline) -> "PipelineTemplate":
         """
-        Create a PipelineTemplate from a predefined template. See `PredefinedPipeline` for available options.
+        Create a PipelineTemplate from a predefined template.
+
+        See `PredefinedPipeline` for available options.
+
         :param predefined_pipeline: The predefined pipeline to use.
         :returns: An instance of `PipelineTemplate `.
         """

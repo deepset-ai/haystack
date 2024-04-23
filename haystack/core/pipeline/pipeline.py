@@ -76,6 +76,8 @@ class Pipeline:
 
     def __eq__(self, other) -> bool:
         """
+        Equality comparison between two pipelines.
+
         Equal pipelines share every metadata, node and edge, but they're not required to use
         the same node instances: this allows pipeline saved and then loaded back to be equal to themselves.
         """
@@ -108,6 +110,7 @@ class Pipeline:
     def to_dict(self) -> Dict[str, Any]:
         """
         Serializes the pipeline to a dictionary.
+
         This is meant to be an intermediate representation but it can be also used to save a pipeline to file.
 
         :returns:
@@ -185,8 +188,7 @@ class Pipeline:
 
     def dumps(self, marshaller: Marshaller = DEFAULT_MARSHALLER) -> str:
         """
-        Returns the string representation of this pipeline according to the
-        format dictated by the `Marshaller` in use.
+        Returns the string representation of this pipeline according to the format dictated by the `Marshaller` in use.
 
         :param marshaller:
             The Marshaller used to create the string representation. Defaults to `YamlMarshaller`.
@@ -197,8 +199,7 @@ class Pipeline:
 
     def dump(self, fp: TextIO, marshaller: Marshaller = DEFAULT_MARSHALLER):
         """
-        Writes the string representation of this pipeline to the file-like object
-        passed in the `fp` argument.
+        Writes the string representation of this pipeline to the file-like object passed in the `fp` argument.
 
         :param fp:
             A file-like object ready to be written to.
@@ -224,11 +225,10 @@ class Pipeline:
     @classmethod
     def load(cls, fp: TextIO, marshaller: Marshaller = DEFAULT_MARSHALLER) -> "Pipeline":
         """
-        Creates a `Pipeline` object from the string representation read from the file-like
-        object passed in the `fp` argument.
+        Creates a `Pipeline` object a string representation.
 
-        :param data:
-            The string representation of the pipeline, can be `str`, `bytes` or `bytearray`.
+        The string representation is read from the file-like object passed in the `fp` argument.
+
         :param fp:
             A file-like object ready to be read from.
         :param marshaller:
@@ -294,7 +294,7 @@ class Pipeline:
         Connects two components together.
 
         All components to connect must exist in the pipeline.
-        If connecting to an component that has several output connections, specify the inputs and output names as
+        If connecting to a component that has several output connections, specify the inputs and output names as
         'component_name.connections_name'.
 
         :param sender:
@@ -488,9 +488,10 @@ class Pipeline:
 
     def inputs(self) -> Dict[str, Dict[str, Any]]:
         """
-        Returns a dictionary containing the inputs of a pipeline. Each key in the dictionary
-        corresponds to a component name, and its value is another dictionary that describes the
-        input sockets of that component, including their types and whether they are optional.
+        Returns a dictionary containing the inputs of a pipeline.
+
+        Each key in the dictionary corresponds to a component name, and its value is another dictionary that describes
+        the input sockets of that component, including their types and whether they are optional.
 
         :returns:
             A dictionary where each key is a pipeline component name and each value is a dictionary of
@@ -510,9 +511,10 @@ class Pipeline:
 
     def outputs(self) -> Dict[str, Dict[str, Any]]:
         """
-        Returns a dictionary containing the outputs of a pipeline. Each key in the dictionary
-        corresponds to a component name, and its value is another dictionary that describes the
-        output sockets of that component.
+        Returns a dictionary containing the outputs of a pipeline.
+
+        Each key in the dictionary corresponds to a component name, and its value is another dictionary that describes
+        the output sockets of that component.
 
         :returns:
             A dictionary where each key is a pipeline component name and each value is a dictionary of
@@ -555,6 +557,7 @@ class Pipeline:
     def walk(self) -> Iterator[Tuple[str, Component]]:
         """
         Visits each component in the pipeline exactly once and yields its name and instance.
+
         No guarantees are provided on the visiting order.
 
         :returns:
@@ -577,6 +580,8 @@ class Pipeline:
 
     def _validate_input(self, data: Dict[str, Any]):
         """
+        Validates pipeline input data.
+
         Validates that data:
         * Each Component name actually exists in the Pipeline
         * Each Component is not missing any input
@@ -992,6 +997,8 @@ class Pipeline:
 
     def _prepare_component_input_data(self, data: Dict[str, Any]) -> Tuple[Dict[str, Dict[str, Any]], Dict[str, Any]]:
         """
+        Prepares input data for pipeline components.
+
         Organizes input data for pipeline components and identifies any inputs that are not matched to any
         component's input slots.
 
