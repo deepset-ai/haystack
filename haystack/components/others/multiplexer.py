@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 @component(is_greedy=True)
 class Multiplexer:
     """
-    A component which receives data connections from multiple components and distributes to multiple components.
+    A component which receives data connections from multiple components and distributes them to multiple components.
 
     `Multiplexer` offers the ability to both receive data connections from multiple other
     components and to distribute it to various other components, enhancing the functionality of complex data

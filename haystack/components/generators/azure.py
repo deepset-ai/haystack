@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 class AzureOpenAIGenerator(OpenAIGenerator):
     """
-    A generator component that uses OpenAI's large language models (LLMs) on Azure to generate text.
+    A Generator component that uses OpenAI's large language models (LLMs) on Azure to generate text.
 
     It supports gpt-4 and gpt-3.5-turbo family of models.
 

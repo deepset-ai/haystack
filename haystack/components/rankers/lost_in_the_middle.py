@@ -6,7 +6,7 @@ from haystack import Document, component
 @component
 class LostInTheMiddleRanker:
     """
-    A LostInTheMiddleRanker ranker.
+    A LostInTheMiddle Ranker.
 
     Ranks documents based on the 'lost in the middle' order so that the most relevant documents are either at the
     beginning or end, while the least relevant are in the middle.

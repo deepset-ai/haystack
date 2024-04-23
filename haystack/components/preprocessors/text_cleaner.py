@@ -8,7 +8,7 @@ from haystack import component
 @component
 class TextCleaner:
     """
-    A preprocessor component to clean text data.
+    A PreProcessor component to clean text data.
 
     It can remove substrings matching a list of regular expressions, convert text to lowercase, remove punctuation,
     and remove numbers.
