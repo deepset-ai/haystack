@@ -78,23 +78,47 @@ class AnthropicClaudeAdapter(BedrockModelAdapter):
     Model adapter for the Anthropic's Claude model.
     """
 
-    def prepare_body(self, prompt: str, **inference_kwargs) -> Dict[str, Any]:
-        default_params = {
-            "max_tokens_to_sample": self.max_length,
-            "stop_sequences": ["\n\nHuman:"],
-            "temperature": None,
-            "top_p": None,
-            "top_k": None,
-        }
-        params = self._get_params(inference_kwargs, default_params)
+    def __init__(self, model_kwargs: Dict[str, Any], max_length: Optional[int]) -> None:
+        self.use_messages_api = model_kwargs.get("use_messages_api", True)
+        super().__init__(model_kwargs, max_length)
 
-        body = {"prompt": f"\n\nHuman: {prompt}\n\nAssistant:", **params}
+    def prepare_body(self, prompt: str, **inference_kwargs) -> Dict[str, Any]:
+        if self.use_messages_api:
+            default_params: Dict[str, Any] = {
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": self.max_length,
+                "system": None,
+                "stop_sequences": None,
+                "temperature": None,
+                "top_p": None,
+                "top_k": None,
+            }
+            params = self._get_params(inference_kwargs, default_params)
+
+            body = {"messages": [{"role": "user", "content": prompt}], **params}
+        else:
+            default_params = {
+                "max_tokens_to_sample": self.max_length,
+                "stop_sequences": ["\n\nHuman:"],
+                "temperature": None,
+                "top_p": None,
+                "top_k": None,
+            }
+            params = self._get_params(inference_kwargs, default_params)
+
+            body = {"prompt": f"\n\nHuman: {prompt}\n\nAssistant:", **params}
         return body
 
     def _extract_completions_from_response(self, response_body: Dict[str, Any]) -> List[str]:
+        if self.use_messages_api:
+            return [content["text"] for content in response_body["content"]]
+
         return [response_body["completion"]]
 
     def _extract_token_from_stream(self, chunk: Dict[str, Any]) -> str:
+        if self.use_messages_api:
+            return chunk.get("delta", {}).get("text", "")
+
         return chunk.get("completion", "")
 
 
@@ -197,6 +221,33 @@ class MetaLlama2ChatAdapter(BedrockModelAdapter):
         return chunk.get("generation", "")
 
 
+class MistralAIAdapter(BedrockModelAdapter):
+    """
+    Model adapter for the Mistral's AI models.
+    """
+
+    def prepare_body(self, prompt: str, **inference_kwargs: Any) -> Dict[str, Any]:
+        default_params = {
+            "max_tokens": self.max_length,
+            "stop": None,
+            "temperature": None,
+            "top_p": None,
+            "top_k": None,
+        }
+        params = self._get_params(inference_kwargs, default_params)
+
+        body = {"prompt": prompt, **params}
+        return body
+
+    def _extract_completions_from_response(self, response_body: Dict[str, Any]) -> List[str]:
+        return [output["text"] for output in response_body["outputs"]]
+
+    def _extract_token_from_stream(self, chunk: Dict[str, Any]) -> str:
+        outputs: List[Dict[str, str]] = chunk.get("outputs", [])
+        output = next(iter(outputs), {})
+        return output.get("text", "")
+
+
 class AmazonBedrockInvocationLayer(AWSBaseInvocationLayer):
     """
     Invocation layer for Amazon Bedrock models.
@@ -208,6 +259,7 @@ class AmazonBedrockInvocationLayer(AWSBaseInvocationLayer):
         r"cohere.command.*": CohereCommandAdapter,
         r"anthropic.claude.*": AnthropicClaudeAdapter,
         r"meta.llama2.*": MetaLlama2ChatAdapter,
+        r"mistral.mi[sx]tral.*": MistralAIAdapter,  # codespell:ignore tral
     }
 
     def __init__(

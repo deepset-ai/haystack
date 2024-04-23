@@ -14,6 +14,7 @@ from haystack.nodes.prompt.invocation_layer.amazon_bedrock import (
     CohereCommandAdapter,
     AmazonTitanAdapter,
     MetaLlama2ChatAdapter,
+    MistralAIAdapter,
 )
 
 with LazyImport() as boto3_import:
@@ -305,6 +306,10 @@ def test_supports_with_stream_true_for_model_that_does_not_support_streaming():
         ("meta.llama2-13b-chat-v1", MetaLlama2ChatAdapter),
         ("meta.llama2-70b-chat-v1", MetaLlama2ChatAdapter),
         ("meta.llama2-130b-v5", MetaLlama2ChatAdapter),  # artificial
+        ("mistral.mistral-7b-instruct-v0:2", MistralAIAdapter),
+        ("mistral.mixtral-8x7b-instruct-v0:1", MistralAIAdapter),
+        ("mistral.mistral-large-2402-v1:0", MistralAIAdapter),
+        ("mistral.mistral-medium-v8:0", MistralAIAdapter),  # artificial
         ("unknown_model", None),
     ],
 )
@@ -317,8 +322,182 @@ def test_get_model_adapter(model_name_or_path: str, expected_model_adapter: Opti
 
 
 class TestAnthropicClaudeAdapter:
+    def test_default_init(self) -> None:
+        adapter = AnthropicClaudeAdapter(model_kwargs={}, max_length=100)
+        assert adapter.use_messages_api is True
+
+    def test_use_messages_api_false(self) -> None:
+        adapter = AnthropicClaudeAdapter(model_kwargs={"use_messages_api": False}, max_length=100)
+        assert adapter.use_messages_api is False
+
+
+class TestAnthropicClaudeAdapterMessagesAPI:
     def test_prepare_body_with_default_params(self) -> None:
         layer = AnthropicClaudeAdapter(model_kwargs={}, max_length=99)
+        prompt = "Hello, how are you?"
+        expected_body = {
+            "messages": [{"role": "user", "content": "Hello, how are you?"}],
+            "max_tokens": 99,
+            "anthropic_version": "bedrock-2023-05-31",
+        }
+
+        body = layer.prepare_body(prompt)
+
+        assert body == expected_body
+
+    def test_prepare_body_with_custom_inference_params(self) -> None:
+        layer = AnthropicClaudeAdapter(model_kwargs={}, max_length=99)
+        prompt = "Hello, how are you?"
+        expected_body = {
+            "messages": [{"role": "user", "content": "Hello, how are you?"}],
+            "max_tokens": 50,
+            "stop_sequences": ["CUSTOM_STOP"],
+            "temperature": 0.7,
+            "top_p": 0.8,
+            "top_k": 5,
+            "system": "system prompt",
+            "anthropic_version": "custom_version",
+        }
+
+        body = layer.prepare_body(
+            prompt,
+            temperature=0.7,
+            top_p=0.8,
+            top_k=5,
+            max_tokens=50,
+            stop_sequences=["CUSTOM_STOP"],
+            system="system prompt",
+            anthropic_version="custom_version",
+            unknown_arg="unknown_value",
+        )
+
+        assert body == expected_body
+
+    def test_prepare_body_with_model_kwargs(self) -> None:
+        layer = AnthropicClaudeAdapter(
+            model_kwargs={
+                "temperature": 0.7,
+                "top_p": 0.8,
+                "top_k": 5,
+                "max_tokens": 50,
+                "stop_sequences": ["CUSTOM_STOP"],
+                "system": "system prompt",
+                "anthropic_version": "custom_version",
+                "unknown_arg": "unknown_value",
+            },
+            max_length=99,
+        )
+        prompt = "Hello, how are you?"
+        expected_body = {
+            "messages": [{"role": "user", "content": "Hello, how are you?"}],
+            "max_tokens": 50,
+            "stop_sequences": ["CUSTOM_STOP"],
+            "temperature": 0.7,
+            "top_p": 0.8,
+            "top_k": 5,
+            "system": "system prompt",
+            "anthropic_version": "custom_version",
+        }
+
+        body = layer.prepare_body(prompt)
+
+        assert body == expected_body
+
+    def test_prepare_body_with_model_kwargs_and_custom_inference_params(self) -> None:
+        layer = AnthropicClaudeAdapter(
+            model_kwargs={
+                "temperature": 0.6,
+                "top_p": 0.7,
+                "top_k": 4,
+                "max_tokens": 49,
+                "stop_sequences": ["CUSTOM_STOP_MODEL_KWARGS"],
+                "system": "system prompt",
+                "anthropic_version": "custom_version",
+            },
+            max_length=99,
+        )
+        prompt = "Hello, how are you?"
+        expected_body = {
+            "messages": [{"role": "user", "content": "Hello, how are you?"}],
+            "max_tokens": 50,
+            "stop_sequences": ["CUSTOM_STOP_MODEL_KWARGS"],
+            "temperature": 0.7,
+            "top_p": 0.8,
+            "top_k": 5,
+            "system": "new system prompt",
+            "anthropic_version": "new_custom_version",
+        }
+
+        body = layer.prepare_body(
+            prompt,
+            temperature=0.7,
+            top_p=0.8,
+            top_k=5,
+            max_tokens=50,
+            system="new system prompt",
+            anthropic_version="new_custom_version",
+        )
+
+        assert body == expected_body
+
+    def test_get_responses(self) -> None:
+        adapter = AnthropicClaudeAdapter(model_kwargs={}, max_length=99)
+        response_body = {"content": [{"text": "This is a single response."}]}
+        expected_responses = ["This is a single response."]
+        assert adapter.get_responses(response_body) == expected_responses
+
+    def test_get_responses_leading_whitespace(self) -> None:
+        adapter = AnthropicClaudeAdapter(model_kwargs={}, max_length=99)
+        response_body = {"content": [{"text": "\n\t This is a single response."}]}
+        expected_responses = ["This is a single response."]
+        assert adapter.get_responses(response_body) == expected_responses
+
+    def test_get_stream_responses(self) -> None:
+        stream_mock = MagicMock()
+        stream_handler_mock = MagicMock()
+
+        stream_mock.__iter__.return_value = [
+            {"chunk": {"bytes": b'{"delta": {"text": " This"}}'}},
+            {"chunk": {"bytes": b'{"delta": {"text": " is"}}'}},
+            {"chunk": {"bytes": b'{"delta": {"text": " a"}}'}},
+            {"chunk": {"bytes": b'{"delta": {"text": " single"}}'}},
+            {"chunk": {"bytes": b'{"delta": {"text": " response."}}'}},
+        ]
+
+        stream_handler_mock.side_effect = lambda token_received, **kwargs: token_received
+
+        adapter = AnthropicClaudeAdapter(model_kwargs={}, max_length=99)
+        expected_responses = ["This is a single response."]
+        assert adapter.get_stream_responses(stream_mock, stream_handler_mock) == expected_responses
+
+        stream_handler_mock.assert_has_calls(
+            [
+                call(" This", event_data={"delta": {"text": " This"}}),
+                call(" is", event_data={"delta": {"text": " is"}}),
+                call(" a", event_data={"delta": {"text": " a"}}),
+                call(" single", event_data={"delta": {"text": " single"}}),
+                call(" response.", event_data={"delta": {"text": " response."}}),
+            ]
+        )
+
+    def test_get_stream_responses_empty(self) -> None:
+        stream_mock = MagicMock()
+        stream_handler_mock = MagicMock()
+
+        stream_mock.__iter__.return_value = []
+
+        stream_handler_mock.side_effect = lambda token_received, **kwargs: token_received
+
+        adapter = AnthropicClaudeAdapter(model_kwargs={}, max_length=99)
+        expected_responses = [""]
+        assert adapter.get_stream_responses(stream_mock, stream_handler_mock) == expected_responses
+
+        stream_handler_mock.assert_not_called()
+
+
+class TestAnthropicClaudeAdapterNoMessagesAPI:
+    def test_prepare_body_with_default_params(self) -> None:
+        layer = AnthropicClaudeAdapter(model_kwargs={"use_messages_api": False}, max_length=99)
         prompt = "Hello, how are you?"
         expected_body = {
             "prompt": "\n\nHuman: Hello, how are you?\n\nAssistant:",
@@ -331,7 +510,7 @@ class TestAnthropicClaudeAdapter:
         assert body == expected_body
 
     def test_prepare_body_with_custom_inference_params(self) -> None:
-        layer = AnthropicClaudeAdapter(model_kwargs={}, max_length=99)
+        layer = AnthropicClaudeAdapter(model_kwargs={"use_messages_api": False}, max_length=99)
         prompt = "Hello, how are you?"
         expected_body = {
             "prompt": "\n\nHuman: Hello, how are you?\n\nAssistant:",
@@ -357,6 +536,7 @@ class TestAnthropicClaudeAdapter:
     def test_prepare_body_with_model_kwargs(self) -> None:
         layer = AnthropicClaudeAdapter(
             model_kwargs={
+                "use_messages_api": False,
                 "temperature": 0.7,
                 "top_p": 0.8,
                 "top_k": 5,
@@ -383,6 +563,7 @@ class TestAnthropicClaudeAdapter:
     def test_prepare_body_with_model_kwargs_and_custom_inference_params(self) -> None:
         layer = AnthropicClaudeAdapter(
             model_kwargs={
+                "use_messages_api": False,
                 "temperature": 0.6,
                 "top_p": 0.7,
                 "top_k": 4,
@@ -406,13 +587,13 @@ class TestAnthropicClaudeAdapter:
         assert body == expected_body
 
     def test_get_responses(self) -> None:
-        adapter = AnthropicClaudeAdapter(model_kwargs={}, max_length=99)
+        adapter = AnthropicClaudeAdapter(model_kwargs={"use_messages_api": False}, max_length=99)
         response_body = {"completion": "This is a single response."}
         expected_responses = ["This is a single response."]
         assert adapter.get_responses(response_body) == expected_responses
 
     def test_get_responses_leading_whitespace(self) -> None:
-        adapter = AnthropicClaudeAdapter(model_kwargs={}, max_length=99)
+        adapter = AnthropicClaudeAdapter(model_kwargs={"use_messages_api": False}, max_length=99)
         response_body = {"completion": "\n\t This is a single response."}
         expected_responses = ["This is a single response."]
         assert adapter.get_responses(response_body) == expected_responses
@@ -431,7 +612,7 @@ class TestAnthropicClaudeAdapter:
 
         stream_handler_mock.side_effect = lambda token_received, **kwargs: token_received
 
-        adapter = AnthropicClaudeAdapter(model_kwargs={}, max_length=99)
+        adapter = AnthropicClaudeAdapter(model_kwargs={"use_messages_api": False}, max_length=99)
         expected_responses = ["This is a single response."]
         assert adapter.get_stream_responses(stream_mock, stream_handler_mock) == expected_responses
 
@@ -453,7 +634,7 @@ class TestAnthropicClaudeAdapter:
 
         stream_handler_mock.side_effect = lambda token_received, **kwargs: token_received
 
-        adapter = AnthropicClaudeAdapter(model_kwargs={}, max_length=99)
+        adapter = AnthropicClaudeAdapter(model_kwargs={"use_messages_api": False}, max_length=99)
         expected_responses = [""]
         assert adapter.get_stream_responses(stream_mock, stream_handler_mock) == expected_responses
 
@@ -1027,6 +1208,109 @@ class TestMetaLlama2ChatAdapter:
         stream_handler_mock.side_effect = lambda token_received, **kwargs: token_received
 
         adapter = MetaLlama2ChatAdapter(model_kwargs={}, max_length=99)
+        expected_responses = [""]
+        assert adapter.get_stream_responses(stream_mock, stream_handler_mock) == expected_responses
+
+        stream_handler_mock.assert_not_called()
+
+
+class TestMistralAIAdapter:
+    def test_prepare_body_with_default_params(self) -> None:
+        layer = MistralAIAdapter(model_kwargs={}, max_length=99)
+        prompt = "Hello, how are you?"
+        expected_body = {"prompt": "Hello, how are you?", "max_tokens": 99}
+
+        body = layer.prepare_body(prompt)
+
+        assert body == expected_body
+
+    def test_prepare_body_with_custom_inference_params(self) -> None:
+        layer = MistralAIAdapter(model_kwargs={}, max_length=99)
+        prompt = "Hello, how are you?"
+        expected_body = {"prompt": "Hello, how are you?", "max_tokens": 50, "temperature": 0.7, "top_p": 0.8}
+
+        body = layer.prepare_body(prompt, temperature=0.7, top_p=0.8, max_tokens=50, unknown_arg="unknown_value")
+
+        assert body == expected_body
+
+    def test_prepare_body_with_model_kwargs(self) -> None:
+        layer = MistralAIAdapter(
+            model_kwargs={"temperature": 0.7, "top_p": 0.8, "max_tokens": 50, "unknown_arg": "unknown_value"},
+            max_length=99,
+        )
+        prompt = "Hello, how are you?"
+        expected_body = {"prompt": "Hello, how are you?", "max_tokens": 50, "temperature": 0.7, "top_p": 0.8}
+
+        body = layer.prepare_body(prompt)
+
+        assert body == expected_body
+
+    def test_prepare_body_with_model_kwargs_and_custom_inference_params(self) -> None:
+        layer = MistralAIAdapter(
+            model_kwargs={"temperature": 0.6, "top_p": 0.7, "top_k": 4, "max_tokens": 49}, max_length=99
+        )
+        prompt = "Hello, how are you?"
+        expected_body = {
+            "prompt": "Hello, how are you?",
+            "max_tokens": 50,
+            "temperature": 0.7,
+            "top_p": 0.7,
+            "top_k": 4,
+        }
+
+        body = layer.prepare_body(prompt, temperature=0.7, max_tokens=50)
+
+        assert body == expected_body
+
+    def test_get_responses(self) -> None:
+        adapter = MistralAIAdapter(model_kwargs={}, max_length=99)
+        response_body = {"outputs": [{"text": "This is a single response."}]}
+        expected_responses = ["This is a single response."]
+        assert adapter.get_responses(response_body) == expected_responses
+
+    def test_get_responses_leading_whitespace(self) -> None:
+        adapter = MistralAIAdapter(model_kwargs={}, max_length=99)
+        response_body = {"outputs": [{"text": "\n\t This is a single response."}]}
+        expected_responses = ["This is a single response."]
+        assert adapter.get_responses(response_body) == expected_responses
+
+    def test_get_stream_responses(self) -> None:
+        stream_mock = MagicMock()
+        stream_handler_mock = MagicMock()
+
+        stream_mock.__iter__.return_value = [
+            {"chunk": {"bytes": b'{"outputs": [{"text": " This"}]}'}},
+            {"chunk": {"bytes": b'{"outputs": [{"text": " is"}]}'}},
+            {"chunk": {"bytes": b'{"outputs": [{"text": " a"}]}'}},
+            {"chunk": {"bytes": b'{"outputs": [{"text": " single"}]}'}},
+            {"chunk": {"bytes": b'{"outputs": [{"text": " response."}]}'}},
+        ]
+
+        stream_handler_mock.side_effect = lambda token_received, **kwargs: token_received
+
+        adapter = MistralAIAdapter(model_kwargs={}, max_length=99)
+        expected_responses = ["This is a single response."]
+        assert adapter.get_stream_responses(stream_mock, stream_handler_mock) == expected_responses
+
+        stream_handler_mock.assert_has_calls(
+            [
+                call(" This", event_data={"outputs": [{"text": " This"}]}),
+                call(" is", event_data={"outputs": [{"text": " is"}]}),
+                call(" a", event_data={"outputs": [{"text": " a"}]}),
+                call(" single", event_data={"outputs": [{"text": " single"}]}),
+                call(" response.", event_data={"outputs": [{"text": " response."}]}),
+            ]
+        )
+
+    def test_get_stream_responses_empty(self) -> None:
+        stream_mock = MagicMock()
+        stream_handler_mock = MagicMock()
+
+        stream_mock.__iter__.return_value = []
+
+        stream_handler_mock.side_effect = lambda token_received, **kwargs: token_received
+
+        adapter = MistralAIAdapter(model_kwargs={}, max_length=99)
         expected_responses = [""]
         assert adapter.get_stream_responses(stream_mock, stream_handler_mock) == expected_responses
 
