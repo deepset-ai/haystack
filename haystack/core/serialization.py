@@ -164,7 +164,7 @@ def default_from_dict(cls: Type[object], data: Dict[str, Any]) -> Any:
     """
     Utility function to deserialize a dictionary to an object.
 
-    This is mostly necessary for Components but it can be used by any object.
+    This is mostly necessary for components but can be used by any object.
 
     The function will raise a `DeserializationError` if the `type` field in `data` is
     missing or it doesn't match the type of `cls`.
