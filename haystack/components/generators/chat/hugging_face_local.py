@@ -32,7 +32,7 @@ PIPELINE_SUPPORTED_TASKS = ["text-generation", "text2text-generation"]
 @component
 class HuggingFaceLocalChatGenerator:
     """
-    A Chat Generator component that uses Hugging Face's model hub to generate chat responses locally.
+    A Chat Generator component that uses models available on Hugging Face Hub to generate chat responses locally.
 
     The `HuggingFaceLocalChatGenerator` class is a component designed for generating chat responses using models from
     Hugging Face's model hub. It is tailored for local runtime text generation tasks and provides a convenient interface
