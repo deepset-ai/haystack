@@ -306,6 +306,9 @@ def test_supports_with_stream_true_for_model_that_does_not_support_streaming():
         ("meta.llama2-13b-chat-v1", MetaLlama2ChatAdapter),
         ("meta.llama2-70b-chat-v1", MetaLlama2ChatAdapter),
         ("meta.llama2-130b-v5", MetaLlama2ChatAdapter),  # artificial
+        ("meta.llama3-8b-instruct-v1:0", MetaLlama2ChatAdapter),
+        ("meta.llama3-70b-instruct-v1:0", MetaLlama2ChatAdapter),
+        ("meta.llama3-130b-instruct-v5:9", MetaLlama2ChatAdapter),  # artificial
         ("mistral.mistral-7b-instruct-v0:2", MistralAIAdapter),
         ("mistral.mixtral-8x7b-instruct-v0:1", MistralAIAdapter),
         ("mistral.mistral-large-2402-v1:0", MistralAIAdapter),
