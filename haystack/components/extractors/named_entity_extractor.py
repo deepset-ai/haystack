@@ -264,7 +264,7 @@ class _NerBackend(ABC):
     @abstractmethod
     def initialized(self) -> bool:
         """
-        Returns if the backend has been initialized, i.e, ready to annotate text.
+        Returns if the backend has been initialized, for example, ready to annotate text.
         """
 
     @abstractmethod
