@@ -149,6 +149,9 @@ class Component(Protocol):
 class ComponentMeta(type):
     @staticmethod
     def positional_to_kwargs(cls_type, args) -> Dict[str, Any]:
+        """
+        Convert positional arguments to keyword arguments based on the signature of the `__init__` method.
+        """
         init_signature = inspect.signature(cls_type.__init__)
         init_params = {name: info for name, info in init_signature.parameters.items() if name != "self"}
 

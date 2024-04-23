@@ -45,6 +45,7 @@ class InputSocket:
 
     @property
     def is_mandatory(self):
+        """Check if the input is mandatory."""
         return self.default_value == _empty
 
     def __post_init__(self):

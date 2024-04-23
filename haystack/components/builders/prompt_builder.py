@@ -35,6 +35,12 @@ class PromptBuilder:
             component.set_input_type(self, var, Any, "")
 
     def to_dict(self) -> Dict[str, Any]:
+        """
+        Returns a dictionary representation of the component.
+
+        :returns:
+            Serialized dictionary representation of the component.
+        """
         return default_to_dict(self, template=self._template_string)
 
     @component.output_types(prompt=str)
