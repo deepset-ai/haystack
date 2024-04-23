@@ -241,10 +241,11 @@ class Pipeline:
         callbacks: Optional[DeserializationCallbacks] = None,
     ) -> "Pipeline":
         """
-        Creates a `Pipeline` object from the string representation read from the file-like object passed in the `fp` argument.
+        Creates a `Pipeline` object a string representation.
 
-        :param data:
-            The string representation of the pipeline, can be `str`, `bytes` or `bytearray`.
+        The string representation is read from the file-like object passed in the `fp` argument.
+
+
         :param fp:
             A file-like object ready to be read from.
         :param marshaller:
@@ -312,7 +313,7 @@ class Pipeline:
         Connects two components together.
 
         All components to connect must exist in the pipeline.
-        If connecting to an component that has several output connections, specify the inputs and output names as
+        If connecting to a component that has several output connections, specify the inputs and output names as
         'component_name.connections_name'.
 
         :param sender:
@@ -598,6 +599,8 @@ class Pipeline:
 
     def _validate_input(self, data: Dict[str, Any]):
         """
+        Validates pipeline input data.
+
         Validates that data:
         * Each Component name actually exists in the Pipeline
         * Each Component is not missing any input
@@ -1047,6 +1050,8 @@ class Pipeline:
 
     def _prepare_component_input_data(self, data: Dict[str, Any]) -> Tuple[Dict[str, Dict[str, Any]], Dict[str, Any]]:
         """
+        Prepares input data for pipeline components.
+
         Organizes input data for pipeline components and identifies any inputs that are not matched to any
         component's input slots.
 

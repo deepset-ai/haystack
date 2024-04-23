@@ -23,6 +23,8 @@ class DocumentSplitter:
         split_overlap: int = 0,
     ):
         """
+        Initialize the DocumentSplitter.
+
         :param split_by: The unit by which the document should be split. Choose from "word" for splitting by " ",
             "sentence" for splitting by ".", "page" for splitting by "\\f" or "passage" for splitting by "\\n\\n".
         :param split_length: The maximum number of units in each split.
@@ -42,6 +44,8 @@ class DocumentSplitter:
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document]):
         """
+        Split documents into smaller parts.
+
         Splits documents by the unit expressed in `split_by`, with a length of `split_length`
         and an overlap of `split_overlap`.
 

@@ -16,6 +16,7 @@ with LazyImport(message="Run 'pip install scikit-learn \"sentence-transformers>=
 class SASEvaluator:
     """
     SASEvaluator computes the Semantic Answer Similarity (SAS) between a list of predictions and a list of ground truths.
+
     It's usually used in Retrieval Augmented Generation (RAG) pipelines to evaluate the quality of the generated answers.
 
     The SAS is computed using a pre-trained model from the Hugging Face model hub. The model can be either a
@@ -132,6 +133,8 @@ class SASEvaluator:
     @component.output_types(score=float, individual_scores=List[float])
     def run(self, ground_truth_answers: List[str], predicted_answers: List[str]) -> Dict[str, Any]:
         """
+        SASEvaluator component run method.
+
         Run the SASEvaluator to compute the Semantic Answer Similarity (SAS) between a list of predicted answers
         and a list of ground truth answers. Both must be list of strings of same length.
 

@@ -178,6 +178,8 @@ class LLMEvaluator:
 
     def prepare_template(self) -> str:
         """
+        Prepare the prompt template.
+
         Combine instructions, inputs, outputs, and examples into one prompt template with the following format:
         Instructions:
         <instructions>

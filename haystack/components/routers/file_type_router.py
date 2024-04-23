@@ -13,6 +13,8 @@ logger = logging.getLogger(__name__)
 @component
 class FileTypeRouter:
     """
+    Groups a list of data sources by their MIME types.
+
     FileTypeRouter groups a list of data sources (file paths or byte streams) by their MIME types, allowing
     for flexible routing of files to different components based on their content type. It supports both exact MIME type
     matching and pattern matching using regular expressions.
@@ -50,6 +52,8 @@ class FileTypeRouter:
 
     def __init__(self, mime_types: List[str]):
         """
+        Initialize the FileTypeRouter component.
+
         :param mime_types: A list of file mime types to consider when routing files
             (e.g. `["text/plain", "audio/x-wav", "image/jpeg"]`).
         """

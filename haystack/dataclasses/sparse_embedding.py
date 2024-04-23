@@ -8,7 +8,7 @@ class SparseEmbedding:
 
     def __init__(self, indices: List[int], values: List[float]):
         """
-        Initialize a sparse embedding.
+        Initialize a SparseEmbedding object.
 
         :param indices: List of indices of non-zero elements in the embedding.
         :param values: List of values of non-zero elements in the embedding.
@@ -22,7 +22,7 @@ class SparseEmbedding:
 
     def to_dict(self):
         """
-        Convert the sparse embedding to a dictionary.
+        Convert the SparseEmbedding object to a dictionary.
 
         :returns:
             Serialized sparse embedding.
@@ -32,7 +32,7 @@ class SparseEmbedding:
     @classmethod
     def from_dict(cls, sparse_embedding_dict):
         """
-        Deserializes the sparse embedding  from a dictionary.
+        Deserializes the sparse embedding from a dictionary.
 
         :param sparse_embedding_dict:
             Dictionary to deserialize from.
