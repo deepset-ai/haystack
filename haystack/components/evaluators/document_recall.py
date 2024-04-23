@@ -20,6 +20,9 @@ class RecallMode(Enum):
 
     @staticmethod
     def from_str(string: str) -> "RecallMode":
+        """
+        Convert a string to a RecallMode enum.
+        """
         enum_map = {e.value: e for e in RecallMode}
         mode = enum_map.get(string)
         if mode is None:
