@@ -20,6 +20,9 @@ class SparseEmbedding:
         self.indices = indices
         self.values = values
 
+    def __eq__(self, other):
+        return self.indices == other.indices and self.values == other.values
+
     def to_dict(self):
         """
         Convert the SparseEmbedding object to a dictionary.
