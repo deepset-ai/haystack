@@ -35,7 +35,7 @@ class HuggingFaceAPIGenerator:
     from haystack.utils import Secret
 
     generator = HuggingFaceAPIGenerator(api_type="serverless_inference_api",
-                                        api_params={"model": "google/gemma-1.1-2b-it"},
+                                        api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
                                         token=Secret.from_token("<your-api-key>"))
 
     result = generator.run(prompt="What's Natural Language Processing?")

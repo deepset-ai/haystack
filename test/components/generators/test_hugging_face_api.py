@@ -118,7 +118,7 @@ class TestHuggingFaceAPIGenerator:
     def test_to_dict(self, mock_check_valid_model):
         generator = HuggingFaceAPIGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "google/gemma-1.1-2b-it"},
+            api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
             token=Secret.from_env_var("ENV_VAR", strict=False),
             generation_kwargs={"temperature": 0.6},
             stop_words=["stop", "words"],
@@ -128,7 +128,7 @@ class TestHuggingFaceAPIGenerator:
         init_params = result["init_parameters"]
 
         assert init_params["api_type"] == HFGenerationAPIType.SERVERLESS_INFERENCE_API
-        assert init_params["api_params"] == {"model": "google/gemma-1.1-2b-it"}
+        assert init_params["api_params"] == {"model": "HuggingFaceH4/zephyr-7b-beta"}
         assert init_params["token"] == {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"}
         assert init_params["generation_kwargs"] == {
             "temperature": 0.6,
@@ -139,7 +139,7 @@ class TestHuggingFaceAPIGenerator:
     def test_from_dict(self, mock_check_valid_model):
         generator = HuggingFaceAPIGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "google/gemma-1.1-2b-it"},
+            api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
             token=Secret.from_env_var("ENV_VAR", strict=False),
             generation_kwargs={"temperature": 0.6},
             stop_words=["stop", "words"],
@@ -150,7 +150,7 @@ class TestHuggingFaceAPIGenerator:
         # now deserialize, call from_dict
         generator_2 = HuggingFaceAPIGenerator.from_dict(result)
         assert generator_2.api_type == HFGenerationAPIType.SERVERLESS_INFERENCE_API
-        assert generator_2.api_params == {"model": "google/gemma-1.1-2b-it"}
+        assert generator_2.api_params == {"model": "HuggingFaceH4/zephyr-7b-beta"}
         assert generator_2.token == Secret.from_env_var("ENV_VAR", strict=False)
         assert generator_2.generation_kwargs == {
             "temperature": 0.6,
@@ -164,7 +164,7 @@ class TestHuggingFaceAPIGenerator:
     ):
         generator = HuggingFaceAPIGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "google/gemma-1.1-2b-it"},
+            api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
             token=Secret.from_env_var("ENV_VAR", strict=False),
             generation_kwargs={"temperature": 0.6},
             stop_words=["stop", "words"],
@@ -194,7 +194,7 @@ class TestHuggingFaceAPIGenerator:
 
     def test_generate_text_with_custom_generation_parameters(self, mock_check_valid_model, mock_text_generation):
         generator = HuggingFaceAPIGenerator(
-            api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API, api_params={"model": "google/gemma-1.1-2b-it"}
+            api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API, api_params={"model": "HuggingFaceH4/zephyr-7b-beta"}
         )
 
         generation_kwargs = {"temperature": 0.8, "max_new_tokens": 100}
@@ -228,7 +228,7 @@ class TestHuggingFaceAPIGenerator:
 
         generator = HuggingFaceAPIGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "google/gemma-1.1-2b-it"},
+            api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
             streaming_callback=streaming_callback_fn,
         )
 
@@ -279,7 +279,7 @@ class TestHuggingFaceAPIGenerator:
     def test_run_serverless(self):
         generator = HuggingFaceAPIGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "google/gemma-1.1-2b-it"},
+            api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
             generation_kwargs={"max_new_tokens": 20},
         )
 
