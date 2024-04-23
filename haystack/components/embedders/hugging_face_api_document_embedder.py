@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 @component
 class HuggingFaceAPIDocumentEmbedder:
     """
-    A component that embeds documents using the Hugging Face API.
+    A component that embeds documents using Hugging Face APIs.
 
     This component can be used to compute Document embeddings using different Hugging Face APIs:
     - [Free Serverless Inference API]((https://huggingface.co/inference-api)
