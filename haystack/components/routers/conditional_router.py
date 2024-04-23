@@ -163,6 +163,8 @@ class ConditionalRouter:
 
     def run(self, **kwargs):
         """
+        Executes the routing logic.
+
         Executes the routing logic by evaluating the specified boolean condition expressions for each route in the order they are listed.
         The method directs the flow of data to the output specified in the first route whose `condition` is True.
 
