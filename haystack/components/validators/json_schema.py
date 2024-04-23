@@ -188,10 +188,9 @@ class JsonSchemaValidator:
 
     def _recursive_json_to_object(self, data: Any) -> Any:
         """
-        Recursively traverses a data structure (dictionary or list).
+        Converting any string values that are valid JSON objects into dictionary objects.
 
-        Converting any string values that are valid JSON objects into dictionary objects, and returns a new
-        data structure.
+        Returns a new data structure.
 
         :param data: The data structure to be traversed.
         :return: A new data structure with JSON strings converted to dictionary objects.

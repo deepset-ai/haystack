@@ -112,7 +112,7 @@ class OpenAPIServiceToFunctions:
 
     def _openapi_to_functions(self, service_openapi_spec: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
-        Converts OpenAPI service definitions to a format suitable for OpenAI function calling.
+        OpenAPI to OpenAI function conversion.
 
         Extracts functions from the OpenAPI specification of the service and converts them into a format
         suitable for OpenAI function calling.
