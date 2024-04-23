@@ -340,9 +340,9 @@ class _Component:
 
         def copy_class_namespace(namespace):
             """
-            This is the callback that `typing.new_class` will use
-            to populate the newly created class. We just copy
-            the whole namespace from the decorated class.
+            This is the callback that `typing.new_class` will use to populate the newly created class.
+
+            We just copy the whole namespace from the decorated class.
             """
             for key, val in dict(cls.__dict__).items():
                 # __dict__ and __weakref__ are class-bound, we should let Python recreate them.

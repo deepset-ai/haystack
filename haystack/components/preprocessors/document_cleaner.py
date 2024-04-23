@@ -12,6 +12,8 @@ logger = logging.getLogger(__name__)
 @component
 class DocumentCleaner:
     """
+    Cleans the text in the documents.
+
     Cleans up text documents by removing extra whitespaces, empty lines, specified substrings, regexes,
     page headers and footers (in this order).
 
@@ -38,6 +40,8 @@ class DocumentCleaner:
         remove_regex: Optional[str] = None,
     ):
         """
+        Initialize the DocumentCleaner.
+
         :param remove_empty_lines: Whether to remove empty lines.
         :param remove_extra_whitespaces: Whether to remove extra whitespaces.
         :param remove_repeated_substrings: Whether to remove repeated substrings (headers/footers) from pages.
@@ -97,6 +101,7 @@ class DocumentCleaner:
     def _remove_empty_lines(self, text: str) -> str:
         """
         Remove empty lines and lines that contain nothing but whitespaces from text.
+
         :param text: Text to clean.
         :returns: The text without empty lines.
         """
@@ -107,6 +112,7 @@ class DocumentCleaner:
     def _remove_extra_whitespaces(self, text: str) -> str:
         """
         Remove extra whitespaces from text.
+
         :param text: Text to clean.
         :returns: The text without extra whitespaces.
         """
@@ -115,6 +121,7 @@ class DocumentCleaner:
     def _remove_regex(self, text: str, regex: str) -> str:
         """
         Remove substrings that match the specified regex from the text.
+
         :param text: Text to clean.
         :param regex: Regex to match and replace substrings by "".
         :returns: The text without the substrings that match the regex.
@@ -124,6 +131,7 @@ class DocumentCleaner:
     def _remove_substrings(self, text: str, substrings: List[str]) -> str:
         """
         Remove all specified substrings from the text.
+
         :param text: Text to clean.
         :param substrings: Substrings to remove.
         :returns: The text without the specified substrings.
@@ -135,6 +143,7 @@ class DocumentCleaner:
     def _remove_repeated_substrings(self, text: str) -> str:
         """
         Remove any substrings from the text that occur repeatedly on every page. For example headers or footers.
+
         Pages in the text need to be separated by form feed character "\f".
         :param text: Text to clean.
         :returns: The text without the repeated substrings.
@@ -148,6 +157,7 @@ class DocumentCleaner:
     ) -> str:
         """
         Heuristic to find footers and headers across different pages by searching for the longest common string.
+
         Pages in the text need to be separated by form feed character "\f".
         For headers, we only search in the first n_chars characters (for footer: last n_chars).
         Note: This heuristic uses exact matches and therefore works well for footers like "Copyright 2019 by XXX",
@@ -182,6 +192,7 @@ class DocumentCleaner:
     def _ngram(self, seq: str, n: int) -> Generator[str, None, None]:
         """
         Return all ngrams of length n from a text sequence. Each ngram consists of n words split by whitespace.
+
         :param seq: The sequence to generate ngrams from.
         :param n: The length of the ngrams to generate.
         :returns: A Generator generating all ngrams of length n from the given sequence.
@@ -202,6 +213,7 @@ class DocumentCleaner:
     def _allngram(self, seq: str, min_ngram: int, max_ngram: int) -> Set[str]:
         """
         Generates all possible ngrams from a given sequence of text.
+
         Considering all ngram lengths between the minimum and maximum length.
 
         :param seq: The sequence to generate ngrams from.
@@ -217,6 +229,7 @@ class DocumentCleaner:
     def _find_longest_common_ngram(self, sequences: List[str], min_ngram: int = 3, max_ngram: int = 30) -> str:
         """
         Find the longest common ngram across a list of text sequences (e.g. start of pages).
+
         Considering all ngram lengths between the minimum and maximum length. Helpful for finding footers, headers etc.
         Empty sequences are ignored.
 
