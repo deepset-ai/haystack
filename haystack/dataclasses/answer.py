@@ -16,10 +16,12 @@ class Answer(Protocol):
     meta: Dict[str, Any]
 
     def to_dict(self) -> Dict[str, Any]:
+        """Serialize the object to a dictionary."""
         ...
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "Answer":
+        """Deserialize the object from a dictionary."""
         ...
 
 
@@ -40,6 +42,12 @@ class ExtractedAnswer:
         end: int
 
     def to_dict(self) -> Dict[str, Any]:
+        """
+        Serialize the object to a dictionary.
+
+        :returns:
+            Serialized dictionary representation of the component.
+        """
         document = self.document.to_dict(flatten=False) if self.document is not None else None
         document_offset = asdict(self.document_offset) if self.document_offset is not None else None
         context_offset = asdict(self.context_offset) if self.context_offset is not None else None
@@ -57,6 +65,14 @@ class ExtractedAnswer:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ExtractedAnswer":
+        """
+        Deserialize the object from a dictionary.
+
+        :param data:
+        :type data:
+        :return:
+        :rtype:
+        """
         init_params = data.get("init_parameters", {})
         if (doc := init_params.get("document")) is not None:
             data["init_parameters"]["document"] = Document.from_dict(doc)
