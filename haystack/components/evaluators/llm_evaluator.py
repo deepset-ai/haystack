@@ -114,8 +114,8 @@ class LLMEvaluator:
         # Validate inputs
         if (
             not isinstance(inputs, list)
-            or not all(isinstance(input, tuple) for input in inputs)
-            or not all(isinstance(input[0], str) and input[1] is not list and len(input) == 2 for input in inputs)
+            or not all(isinstance(_input, tuple) for _input in inputs)
+            or not all(isinstance(_input[0], str) and _input[1] is not list and len(_input) == 2 for _input in inputs)
         ):
             msg = (
                 f"LLM evaluator expects inputs to be a list of tuples. Each tuple must contain an input name and "
@@ -272,17 +272,17 @@ class LLMEvaluator:
                 raise ValueError(msg)
 
         # Validate that all received inputs are lists
-        if not all(isinstance(input, list) for input in received.values()):
-            msg = f"LLM evaluator expects all input values to be lists but received {[type(input) for input in received.values()]}."
+        if not all(isinstance(_input, list) for _input in received.values()):
+            msg = f"LLM evaluator expects all input values to be lists but received {[type(_input) for _input in received.values()]}."
             raise ValueError(msg)
 
         # Validate that all received inputs are of the same length
         inputs = received.values()
         length = len(next(iter(inputs)))
-        if not all(len(input) == length for input in inputs):
+        if not all(len(_input) == length for _input in inputs):
             msg = (
                 f"LLM evaluator expects all input lists to have the same length but received {inputs} with lengths "
-                f"{[len(input) for input in inputs]}."
+                f"{[len(_input) for _input in inputs]}."
             )
             raise ValueError(msg)
 

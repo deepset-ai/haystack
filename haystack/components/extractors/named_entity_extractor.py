@@ -22,7 +22,7 @@ class _BackendEnumMeta(EnumMeta):
     Metaclass for fine-grained error handling of backend enums.
     """
 
-    def __call__(cls, value, names=None, *, module=None, qualname=None, type=None, start=1):
+    def __call__(cls, value, names=None, *, module=None, qualname=None, type=None, start=1):  # noqa: A002
         if names is None:
             try:
                 return EnumMeta.__call__(cls, value, names, module=module, qualname=qualname, type=type, start=start)
@@ -244,13 +244,13 @@ class _NerBackend(ABC):
 
     def __init__(
         self,
-        type: NamedEntityExtractorBackend,
+        _type: NamedEntityExtractorBackend,
         device: ComponentDevice,
         pipeline_kwargs: Optional[Dict[str, Any]] = None,
     ) -> None:
         super().__init__()
 
-        self._type = type
+        self._type = _type
         self._device = device
         self._pipeline_kwargs = pipeline_kwargs if pipeline_kwargs is not None else {}
 
