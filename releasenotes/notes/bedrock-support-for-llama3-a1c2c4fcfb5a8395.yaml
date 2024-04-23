@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Support for Llama3 models on AWS Bedrock.
