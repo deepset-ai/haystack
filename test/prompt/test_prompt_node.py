@@ -432,7 +432,6 @@ def test_pipeline_with_prompt_template_at_query_time(prompt_model):
     )
 
 
-@pytest.mark.skip
 @pytest.mark.integration
 def test_pipeline_with_prompt_template_and_nested_shaper_yaml(tmp_path):
     # TODO: This can be a Shaper unit test?
@@ -444,7 +443,7 @@ def test_pipeline_with_prompt_template_and_nested_shaper_yaml(tmp_path):
             - name: template_with_nested_shaper
               type: PromptTemplate
               params:
-                prompt: "Given the context please answer the question. Context: {{documents}}; Question: {{query}}; Answer: "
+                prompt: "Given the context please answer the question. Context: {documents}; Question: {query}; Answer: "
                 output_parser:
                   type: AnswerParser
             - name: p1

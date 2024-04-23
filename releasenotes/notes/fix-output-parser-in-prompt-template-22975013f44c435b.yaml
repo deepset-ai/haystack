@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fixes OutputParser usage in PromptTemplate after making invocation context immutable in https://github.com/deepset-ai/haystack/pull/7510.
