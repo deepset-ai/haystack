@@ -134,7 +134,7 @@ class FileTypeClassifier(BaseComponent):
                     paths[0],
                     self.supported_types,
                 )
-                return None, None
+                return {"file_paths": paths}, "output_dead_end"
             raise ValueError(
                 f"Files of type '{extension}' ({paths[0]}) are not supported. "
                 f"The supported types are: {self.supported_types}. "
