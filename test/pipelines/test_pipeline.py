@@ -2208,7 +2208,7 @@ def test_pipeline_execution_can_handle_unknown_edge_for_classifier(file_type: st
     classifier = FileTypeClassifier(raise_on_error=False)
     pipeline = Pipeline()
     pipeline.add_node(component=classifier, name="FileTypeClassifier", inputs=["File"])
-    res = pipeline.run_batch(file_paths=[Path(f"./test.{file_type}")])  # By default CSVs are not supported
+    res = pipeline.run_batch(file_paths=[f"./test.{file_type}"])
     assert res["file_paths"] == [Path(f"./test.{file_type}")]
 
 
