@@ -796,17 +796,19 @@ class Pipeline:
 
         include_outputs_from = set() if include_outputs_from is None else include_outputs_from
 
+        # This is what we'll return at the end
+        final_outputs: Dict[Any, Any] = {}
+
         with tracing.tracer.trace(
             "haystack.pipeline.run",
             tags={
+                "haystack.pipeline.input_data": data,
+                "haystack.pipeline.output_data": final_outputs,
                 "haystack.pipeline.debug": debug,
                 "haystack.pipeline.metadata": self.metadata,
                 "haystack.pipeline.max_loops_allowed": self.max_loops_allowed,
             },
         ):
-            # This is what we'll return at the end
-            final_outputs: Dict[Any, Any] = {}
-
             # Cache for extra outputs, if enabled.
             extra_outputs: Dict[Any, Any] = {}
 
