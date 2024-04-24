@@ -1,3 +1,4 @@
+from pathlib import Path
 import ssl
 import json
 import platform
@@ -16,6 +17,7 @@ from haystack import __version__
 from haystack.document_stores.deepsetcloud import DeepsetCloudDocumentStore
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.document_stores.memory import InMemoryDocumentStore
+from haystack.nodes.file_classifier.file_type import FileTypeClassifier
 from haystack.nodes.other.join_docs import JoinDocuments
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.retriever.sparse import BM25Retriever
@@ -2189,6 +2191,25 @@ def test_pipeline_execution_using_join_preserves_changed_query():
     assert res["_debug"]["Join"]["input"]["query"] == "This is a test."
     assert res["_debug"]["DummyNode2"]["input"]["query"] == "This is a test."
     assert res["query"] == "This is a test."
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("file_type", ["csv", "xml"])
+def test_pipeline_execution_can_handle_unknown_edge_for_classifier(file_type: str) -> None:
+    """Tests running a classifier against an unexpected file type.
+
+    We need to route not expected file types against a dead end node.
+    Simply returning "None" for a classification does not work, since
+    the pipeline will raise an error, trying to route the result to the next node
+    here: https://github.com/deepset-ai/haystack/blob/b45ecb355636c3227185e97ee595006c06d17470/haystack/pipelines/base.py#L573
+
+    See fix pr: https://github.com/deepset-ai/haystack/pull/7589
+    """
+    classifier = FileTypeClassifier(raise_on_error=False)
+    pipeline = Pipeline()
+    pipeline.add_node(component=classifier, name="FileTypeClassifier", inputs=["File"])
+    res = pipeline.run_batch(file_paths=[f"./test.{file_type}"])
+    assert res["file_paths"] == [Path(f"./test.{file_type}")]
 
 
 @pytest.mark.unit
