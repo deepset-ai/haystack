@@ -141,3 +141,15 @@ class TestDocumentSplitter:
         for doc, split_doc in zip(documents, result["documents"]):
             assert doc.meta.items() <= split_doc.meta.items()
             assert split_doc.content == "Text."
+
+    def test_add_page_number_to_metadata_with_no_overlap(self):
+        # Check for Word split
+        splitter = DocumentSplitter(split_by="sentence", split_length=2)
+        doc1 = Document(content="This is some text.\f This text is on another page.")
+        doc2 = Document(content="This content has two.\f\f page brakes.")
+        result = splitter.run(documents=[doc1, doc2])
+
+        expected_pages = [1, 2, 1, 3]
+        for doc, p in zip(result["documents"], expected_pages):
+            print(doc.content, doc.meta, p)
+            assert doc.meta["page_number"] == p

@@ -70,10 +70,13 @@ class DocumentSplitter:
                     f"DocumentSplitter only works with text documents but document.content for document ID {doc.id} is None."
                 )
             units = self._split_into_units(doc.content, self.split_by)
-            (text_splits, pages) = self._concatenate_units(units, self.split_length, self.split_overlap)
+            text_splits = self._concatenate_units(units, self.split_length, self.split_overlap)
             metadata = deepcopy(doc.meta)
             metadata["source_id"] = doc.id
-            split_docs += [Document(content=txt, meta=metadata) for txt in text_splits]
+            for txt, p in text_splits:
+                meta = deepcopy(metadata)
+                meta["page_number"] = p
+                split_docs += [Document(content=txt, meta=meta)]
         return {"documents": split_docs}
 
     def _split_into_units(self, text: str, split_by: Literal["word", "sentence", "passage", "page"]) -> List[str]:
@@ -95,24 +98,20 @@ class DocumentSplitter:
             units[i] += split_at
         return units
 
-    def _concatenate_units(
-        self, elements: List[str], split_length: int, split_overlap: int
-    ) -> Tuple[List[str], List[int]]:
+    def _concatenate_units(self, elements: List[str], split_length: int, split_overlap: int) -> List[Tuple[str, int]]:
         """
         Concatenates the elements into parts of split_length units.
         """
-        text_splits = []
         pages = []
+        text_splits = []
         i = 1
         segments = windowed(elements, n=split_length, step=split_length - split_overlap)
         for seg in segments:
-            first_units = [unit for unit in seg[:-split_overlap] if unit is not None]
-            txt = "".join(first_units)
-            page_brakes = txt.count("\f")
-            overlap_units = [unit for unit in seg[split_length - split_overlap + 1 :] if unit is not None]
-            txt = txt + "".join(overlap_units)
+            current_units = [unit for unit in seg if unit is not None]
+            txt = "".join(current_units)
             if len(txt) > 0:
                 text_splits.append(txt)
                 pages.append(i)
-            i += page_brakes
-        return [text_splits, pages]
+            i += txt.count("\f")
+
+        return zip(text_splits, pages)
