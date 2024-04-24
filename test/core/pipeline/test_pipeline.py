@@ -673,6 +673,9 @@ def test_describe_input_only_no_inputs_components():
     p.connect("a.x", "c.x")
     p.connect("b.y", "c.y")
     assert p.inputs() == {}
+    assert p.inputs(include_components_with_connected_inputs=True) == {
+        "c": {"x": {"type": int, "is_mandatory": True}, "y": {"type": int, "is_mandatory": True}}
+    }
 
 
 def test_describe_input_some_components_with_no_inputs():
@@ -686,6 +689,10 @@ def test_describe_input_some_components_with_no_inputs():
     p.connect("a.x", "c.x")
     p.connect("b.y", "c.y")
     assert p.inputs() == {"b": {"y": {"type": int, "is_mandatory": True}}}
+    assert p.inputs(include_components_with_connected_inputs=True) == {
+        "b": {"y": {"type": int, "is_mandatory": True}},
+        "c": {"x": {"type": int, "is_mandatory": True}, "y": {"type": int, "is_mandatory": True}},
+    }
 
 
 def test_describe_input_all_components_have_inputs():
@@ -701,6 +708,11 @@ def test_describe_input_all_components_have_inputs():
     assert p.inputs() == {
         "a": {"x": {"type": Optional[int], "is_mandatory": True}},
         "b": {"y": {"type": int, "is_mandatory": True}},
+    }
+    assert p.inputs(include_components_with_connected_inputs=True) == {
+        "a": {"x": {"type": Optional[int], "is_mandatory": True}},
+        "b": {"y": {"type": int, "is_mandatory": True}},
+        "c": {"x": {"type": int, "is_mandatory": True}, "y": {"type": int, "is_mandatory": True}},
     }
 
 
@@ -718,6 +730,10 @@ def test_describe_output_multiple_possible():
     pipe.connect("a.output_b", "b.input_b")
 
     assert pipe.outputs() == {"b": {"output_b": {"type": str}}, "a": {"output_a": {"type": str}}}
+    assert pipe.outputs(include_components_with_connected_outputs=True) == {
+        "a": {"output_a": {"type": str}, "output_b": {"type": str}},
+        "b": {"output_b": {"type": str}},
+    }
 
 
 def test_describe_output_single():
@@ -736,6 +752,11 @@ def test_describe_output_single():
     p.connect("b.y", "c.y")
 
     assert p.outputs() == {"c": {"z": {"type": int}}}
+    assert p.outputs(include_components_with_connected_outputs=True) == {
+        "a": {"x": {"type": int}},
+        "b": {"y": {"type": int}},
+        "c": {"z": {"type": int}},
+    }
 
 
 def test_describe_no_outputs():
@@ -753,6 +774,10 @@ def test_describe_no_outputs():
     p.connect("a.x", "c.x")
     p.connect("b.y", "c.y")
     assert p.outputs() == {}
+    assert p.outputs(include_components_with_connected_outputs=True) == {
+        "a": {"x": {"type": int}},
+        "b": {"y": {"type": int}},
+    }
 
 
 def test_from_template(monkeypatch):

@@ -505,19 +505,22 @@ class Pipeline:
                 return name
         return ""
 
-    def inputs(self) -> Dict[str, Dict[str, Any]]:
+    def inputs(self, include_components_with_connected_inputs: bool = False) -> Dict[str, Dict[str, Any]]:
         """
         Returns a dictionary containing the inputs of a pipeline.
 
         Each key in the dictionary corresponds to a component name, and its value is another dictionary that describes
         the input sockets of that component, including their types and whether they are optional.
 
+        :param include_components_with_connected_inputs:
+            If `False`, only components that have disconnected input edges are
+            included in the output.
         :returns:
             A dictionary where each key is a pipeline component name and each value is a dictionary of
             inputs sockets of that component.
         """
         inputs: Dict[str, Dict[str, Any]] = {}
-        for component_name, data in find_pipeline_inputs(self.graph).items():
+        for component_name, data in find_pipeline_inputs(self.graph, include_components_with_connected_inputs).items():
             sockets_description = {}
             for socket in data:
                 sockets_description[socket.name] = {"type": socket.type, "is_mandatory": socket.is_mandatory}
@@ -528,20 +531,23 @@ class Pipeline:
                 inputs[component_name] = sockets_description
         return inputs
 
-    def outputs(self) -> Dict[str, Dict[str, Any]]:
+    def outputs(self, include_components_with_connected_outputs: bool = False) -> Dict[str, Dict[str, Any]]:
         """
         Returns a dictionary containing the outputs of a pipeline.
 
         Each key in the dictionary corresponds to a component name, and its value is another dictionary that describes
         the output sockets of that component.
 
+        :param include_components_with_connected_outputs:
+            If `False`, only components that have disconnected output edges are
+            included in the output.
         :returns:
             A dictionary where each key is a pipeline component name and each value is a dictionary of
             output sockets of that component.
         """
         outputs = {
             comp: {socket.name: {"type": socket.type} for socket in data}
-            for comp, data in find_pipeline_outputs(self.graph).items()
+            for comp, data in find_pipeline_outputs(self.graph, include_components_with_connected_outputs).items()
             if data
         }
         return outputs
