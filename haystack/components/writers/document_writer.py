@@ -109,5 +109,8 @@ class DocumentWriter:
         if policy is None:
             policy = self.policy
 
+        for document in documents:
+            document.content = document.content.replace('\x00', '')
+
         documents_written = self.document_store.write_documents(documents=documents, policy=policy)
         return {"documents_written": documents_written}
