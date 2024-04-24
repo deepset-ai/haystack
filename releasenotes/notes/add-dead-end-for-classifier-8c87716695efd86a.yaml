@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Pipeline run error when using the FileTypeClassifier with the raise_on_error: True option.
+    Instead of returning an unexpected NoneType, we route the file to a dead-end edge.
