@@ -12,24 +12,35 @@ from haystack.core.type_utils import _type_name
 logger = logging.getLogger(__name__)
 
 
-def find_pipeline_inputs(graph: networkx.MultiDiGraph) -> Dict[str, List[InputSocket]]:
+def find_pipeline_inputs(
+    graph: networkx.MultiDiGraph, include_connected_sockets: bool = False
+) -> Dict[str, List[InputSocket]]:
     """
-    Collect components that have disconnected input sockets.
-
-    Note that this method returns *ALL* disconnected input sockets, including all such sockets with default values.
+    Collect components that have disconnected/connected input sockets. Note that this method returns *ALL*
+    disconnected input sockets, including all such sockets with default values.
     """
     return {
-        name: [socket for socket in data.get("input_sockets", {}).values() if not socket.senders or socket.is_variadic]
+        name: [
+            socket
+            for socket in data.get("input_sockets", {}).values()
+            if socket.is_variadic or (include_connected_sockets or not socket.senders)
+        ]
         for name, data in graph.nodes(data=True)
     }
 
 
-def find_pipeline_outputs(graph: networkx.MultiDiGraph) -> Dict[str, List[OutputSocket]]:
+def find_pipeline_outputs(
+    graph: networkx.MultiDiGraph, include_connected_sockets: bool = False
+) -> Dict[str, List[OutputSocket]]:
     """
-    Collect components that have disconnected output sockets. They define the pipeline output.
+    Collect components that have disconnected/connected output sockets. They define the pipeline output.
     """
     return {
-        name: [socket for socket in data.get("output_sockets", {}).values() if not socket.receivers]
+        name: [
+            socket
+            for socket in data.get("output_sockets", {}).values()
+            if (include_connected_sockets or not socket.receivers)
+        ]
         for name, data in graph.nodes(data=True)
     }
 
