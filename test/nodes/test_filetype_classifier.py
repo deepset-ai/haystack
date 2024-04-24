@@ -176,7 +176,8 @@ def test_filetype_classifier_raise_on_error_disabled_unsupported_file_types(tmp_
     caplog.clear()
     with caplog.at_level(logging.WARNING):
         output, edge = node.run(test_file)
-        assert edge == output == None
+        assert edge == "output_dead_end"
+        assert output == {"file_paths": [test_file]}
         assert (
             f"Unsupported files of type '{file_type}' ({test_file!s}) found. Unsupported file types will be ignored"
             in caplog.text
