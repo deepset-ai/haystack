@@ -1,3 +1,4 @@
+import re
 from copy import deepcopy
 from typing import List, Literal, Tuple
 
@@ -105,10 +106,15 @@ class DocumentSplitter:
         pages = []
         text_splits = []
         i = 1
+        get_leading_whites = re.compile(r"(\s*)")
+
         segments = windowed(elements, n=split_length, step=split_length - split_overlap)
         for seg in segments:
             current_units = [unit for unit in seg if unit is not None]
             txt = "".join(current_units)
+            leading_whites = get_leading_whites.match(txt)
+            if leading_whites:
+                i += leading_whites[0].count("\f")
             if len(txt) > 0:
                 text_splits.append(txt)
                 pages.append(i)

@@ -144,12 +144,27 @@ class TestDocumentSplitter:
 
     def test_add_page_number_to_metadata_with_no_overlap(self):
         # Check for Word split
-        splitter = DocumentSplitter(split_by="sentence", split_length=2)
+        splitter = DocumentSplitter(split_by="word", split_length=2)
+        doc1 = Document(content="This is some text.\f This text is on another page.")
+        doc2 = Document(content="This content has two.\f\f page brakes.")
+        result = splitter.run(documents=[doc1, doc2])
+
+        expected_pages = [1, 1, 2, 2, 2, 1, 1, 3]
+        i = 1  # DEBUG
+        for doc, p in zip(result["documents"], expected_pages):
+            print(f"{i}.", doc.content, doc.meta, p)  # DEBUG
+            i += 1  # DEBUG
+            assert doc.meta["page_number"] == p  #
+
+        # Check for Sentence split
+        splitter = DocumentSplitter(split_by="sentence", split_length=1)
         doc1 = Document(content="This is some text.\f This text is on another page.")
         doc2 = Document(content="This content has two.\f\f page brakes.")
         result = splitter.run(documents=[doc1, doc2])
 
         expected_pages = [1, 2, 1, 3]
+        i = 1  # DEBUG
         for doc, p in zip(result["documents"], expected_pages):
-            print(doc.content, doc.meta, p)
+            print(f"{1}.", doc.content, doc.meta, p)  # DEBUG
+            i += 1  # DEBUG
             assert doc.meta["page_number"] == p
