@@ -53,9 +53,10 @@ class DocumentSplitter:
         :param documents: The documents to split.
 
         :returns: A dictionary with the following key:
-            - `documents`: List of documents with the split texts. A metadata field "source_id" is added to each
-            document to keep track of the original document that was split. Other metadata are copied from the original
-            document.
+            - `documents`: List of documents with the split texts. Some metadata fuelds are added added to each
+            document, such as "source_id" to keep track of the original document that was split and "page_number"
+            corresponding to the page this new document occupied in the source.
+            Other metadata are copied from the original document.
 
         :raises TypeError: if the input is not a list of Documents.
         :raises ValueError: if the content of a document is None.
@@ -101,7 +102,9 @@ class DocumentSplitter:
 
     def _concatenate_units(self, elements: List[str], split_length: int, split_overlap: int) -> List[Tuple[str, int]]:
         """
-        Concatenates the elements into parts of split_length units.
+        Concatenates the elements into parts of split_length units, saving the original page number.
+
+        Returns a list of Tuple[str, int] where the string corresponds to the content and the integer to the page number.
         """
         pages = []
         text_splits = []
