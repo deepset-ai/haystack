@@ -1,0 +1,10 @@
+---
+highlights: >
+    Add "page_number" to output documents metadata.
+
+enhancements:
+  - |
+    "page_number" field is added to output documents metadata in DocumentSplitter. It contains the page number corresponding to this chunk in the original document.
+issues:
+  - |
+   #6705
