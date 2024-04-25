@@ -50,20 +50,20 @@ def rag_pipeline(document_store: InMemoryDocumentStore, top_k: int):
         Question: {{question}}
         Answer:
         """
-    rag_pipeline = Pipeline()
-    rag_pipeline.add_component("embedder", SentenceTransformersTextEmbedder(model=embeddings_model))
-    rag_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store, top_k=top_k))
-    rag_pipeline.add_component("prompt_builder", PromptBuilder(template=template))
-    rag_pipeline.add_component("generator", OpenAIGenerator(model="gpt-3.5-turbo"))
-    rag_pipeline.add_component("answer_builder", AnswerBuilder())
-    rag_pipeline.connect("embedder", "retriever.query_embedding")
-    rag_pipeline.connect("retriever", "prompt_builder.documents")
-    rag_pipeline.connect("prompt_builder", "generator")
-    rag_pipeline.connect("generator.replies", "answer_builder.replies")
-    rag_pipeline.connect("generator.meta", "answer_builder.meta")
-    rag_pipeline.connect("retriever", "answer_builder.documents")
+    rag = Pipeline()
+    rag.add_component("embedder", SentenceTransformersTextEmbedder(model=embeddings_model))
+    rag.add_component("retriever", InMemoryEmbeddingRetriever(document_store, top_k=top_k))
+    rag.add_component("prompt_builder", PromptBuilder(template=template))
+    rag.add_component("generator", OpenAIGenerator(model="gpt-3.5-turbo"))
+    rag.add_component("answer_builder", AnswerBuilder())
+    rag.connect("embedder", "retriever.query_embedding")
+    rag.connect("retriever", "prompt_builder.documents")
+    rag.connect("prompt_builder", "generator")
+    rag.connect("generator.replies", "answer_builder.replies")
+    rag.connect("generator.meta", "answer_builder.meta")
+    rag.connect("retriever", "answer_builder.documents")
 
-    return rag_pipeline
+    return rag
 
 
 def evaluation_pipeline(questions, truth_docs, truth_answers, retrieved_docs, contexts, pred_answers):
