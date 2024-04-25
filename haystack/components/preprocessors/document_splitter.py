@@ -53,7 +53,7 @@ class DocumentSplitter:
 
         :returns: A dictionary with the following key:
             - `documents`: List of documents with the split texts. A metadata field "source_id" is added to each
-            document to keep track of the original document that was split. Other metadata are copied from the original
+            document to keep track of the original document that was split. Another metadata field "page_number" is added to each number to keep track of the page it belonged to in the original document. Other metadata are copied from the original
             document.
 
         :raises TypeError: if the input is not a list of Documents.
