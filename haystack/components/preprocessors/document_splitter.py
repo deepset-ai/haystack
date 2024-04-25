@@ -107,17 +107,22 @@ class DocumentSplitter:
         text_splits = []
         i = 1
         get_leading_whites = re.compile(r"(\s*)")
+        N = split_length - split_overlap
 
         segments = windowed(elements, n=split_length, step=split_length - split_overlap)
         for seg in segments:
-            current_units = [unit for unit in seg if unit is not None]
-            txt = "".join(current_units)
-            leading_whites = get_leading_whites.match(txt)
+            current_units = [unit for unit in seg[:N] if unit is not None]
+            txt1 = "".join(current_units)
+            leading_whites = get_leading_whites.match(txt1)
+            back_overlap_units = [unit for unit in seg[N:] if unit is not None]
+            txt2 = "".join(back_overlap_units)
+            txt = txt1 + txt2
+            print(f"Text 1: {txt1}\nText 2: {txt2}\nFull Text: {txt}\n")  # DEBUG
             if leading_whites:
                 i += leading_whites[0].count("\f")
             if len(txt) > 0:
                 text_splits.append(txt)
                 pages.append(i)
-            i += txt.count("\f")
+            i += txt1.lstrip().count("\f")
 
         return zip(text_splits, pages)
