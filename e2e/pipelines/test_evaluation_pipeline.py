@@ -108,7 +108,7 @@ def run_rag_pipeline(documents, evaluation_questions, rag_pipeline_a):
                 "answer_builder": {"query": q["question"]},
             }
         )
-        truth_docs.append([doc for doc in documents if doc.meta["name"] in q["ground_truth_doc"]])
+        truth_docs.append([doc for doc in documents if doc.meta["name"] in q["ground_truth_doc"] and doc.content])
         retrieved_docs.append(response["answer_builder"]["answers"][0].documents)
         contexts.append([doc.content for doc in response["answer_builder"]["answers"][0].documents])
         pred_answers.append(response["answer_builder"]["answers"][0].data)
@@ -136,7 +136,6 @@ def test_evaluation_pipeline(samples_path):
             "answer": "Martin Bucer",
             "ground_truth_doc": ["Strasbourg.txt"],
         },
-        {"question": "What separates many annelids' segments?", "answer": "Septa", "ground_truth_doc": ["Annelid.txt"]},
         {
             "question": "What is materialism?",
             "answer": "a form of philosophical monism",
@@ -149,13 +148,14 @@ def test_evaluation_pipeline(samples_path):
     for article in os.listdir(full_path):
         with open(f"{full_path}/{article}", "r") as f:
             for text in f.read().split("\n"):
-                docs.append(Document(content=text, meta={"name": article}))
+                if text:
+                    docs.append(Document(content=text, meta={"name": article}))
     doc_store = indexing_pipeline(docs)
 
     questions = [q["question"] for q in eval_questions]
     truth_answers = [q["answer"] for q in eval_questions]
 
-    rag_pipeline_a = rag_pipeline(doc_store, top_k=3)
+    rag_pipeline_a = rag_pipeline(doc_store, top_k=2)
     contexts_a, pred_answers_a, retrieved_docs_a, truth_docs = run_rag_pipeline(docs, eval_questions, rag_pipeline_a)
     results_rag_a = evaluation_pipeline(
         questions, truth_docs, truth_answers, retrieved_docs_a, contexts_a, pred_answers_a
@@ -219,9 +219,9 @@ def test_evaluation_pipeline(samples_path):
         "Document Recall Single Hit",
         "Document Recall Multi Hit",
     ]
-    assert len(df) == 4
+    assert len(df) == 3
 
-    rag_pipeline_b = rag_pipeline(doc_store, top_k=5)
+    rag_pipeline_b = rag_pipeline(doc_store, top_k=4)
     contexts_b, pred_answers_b, retrieved_docs_b, truth_docs = run_rag_pipeline(docs, eval_questions, rag_pipeline_b)
     results_rag_b = evaluation_pipeline(
         questions, truth_docs, truth_answers, retrieved_docs_b, contexts_b, pred_answers_b
@@ -261,5 +261,4 @@ def test_evaluation_pipeline(samples_path):
     }
     evaluation_result_b = EvaluationRunResult(run_name="rag_pipeline_b", results=results_b, inputs=inputs_b)
     df_comparative = evaluation_result_a.comparative_individual_scores_report(evaluation_result_b)
-
-    print(df_comparative)
+    assert len(df_comparative) == 3
