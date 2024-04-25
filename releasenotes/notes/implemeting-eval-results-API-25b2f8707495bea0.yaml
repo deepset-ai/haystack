@@ -1,5 +1,5 @@
 ---
 features:
   - |
-    Added a new EvaluationResult component.
-    This is a wrapper for all the results coming from the Evaluators, presenting the metric scores as a DataFrame.
+    Added a new EvaluationRunResult dataclass that wraps the results of an evaluation pipeline,
+    allowing for its transformation and visualization.
