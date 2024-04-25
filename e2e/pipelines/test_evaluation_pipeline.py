@@ -8,7 +8,6 @@ from haystack.components.evaluators import (
     DocumentMAPEvaluator,
     DocumentMRREvaluator,
     DocumentRecallEvaluator,
-    EvaluationResult,
     FaithfulnessEvaluator,
     SASEvaluator,
 )
@@ -188,7 +187,7 @@ def test_evaluation_pipeline(samples_path):
         }
     )
 
-    data = {
+    _ = {
         "inputs": {
             "question": all_questions,
             "contexts": all_contexts,
@@ -229,6 +228,5 @@ def test_evaluation_pipeline(samples_path):
         ],
     }
 
-    evaluation_result = EvaluationResult(pipeline_name="pipe_1", results=data)
-
-    print(evaluation_result)
+    # evaluation_result = EvaluationResult(pipeline_name="pipe_1", results=data)
+    # print(evaluation_result)
