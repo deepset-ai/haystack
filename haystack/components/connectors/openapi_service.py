@@ -16,6 +16,8 @@ with LazyImport("Run 'pip install openapi3'") as openapi_imports:
 @component
 class OpenAPIServiceConnector:
     """
+    A component which connects the Haystack framework to OpenAPI services.
+
     The `OpenAPIServiceConnector` component connects the Haystack framework to OpenAPI services, enabling it to call
     operations as defined in the OpenAPI specification of the service.
 
@@ -77,8 +79,10 @@ class OpenAPIServiceConnector:
         service_credentials: Optional[Union[dict, str]] = None,
     ) -> Dict[str, List[ChatMessage]]:
         """
-        Processes a list of chat messages to invoke a method on an OpenAPI service. It parses the last message in the
-        list, expecting it to contain an OpenAI function calling descriptor (name & parameters) in JSON format.
+        Processes a list of chat messages to invoke a method on an OpenAPI service.
+
+        It parses the last message in the list, expecting it to contain an OpenAI function calling descriptor
+        (name & parameters) in JSON format.
 
         :param messages: A list of `ChatMessage` objects containing the messages to be processed. The last message
         should contain the function invocation payload in OpenAI function calling format. See the example in the class
@@ -148,6 +152,8 @@ class OpenAPIServiceConnector:
 
     def _authenticate_service(self, openapi_service: OpenAPI, credentials: Optional[Union[dict, str]] = None):
         """
+        Authentication with an OpenAPI service.
+
         Authenticates with the OpenAPI service if required, supporting both single (str) and multiple
         authentication methods (dict).
 
@@ -201,8 +207,9 @@ class OpenAPIServiceConnector:
 
     def _invoke_method(self, openapi_service: OpenAPI, method_invocation_descriptor: Dict[str, Any]) -> Any:
         """
-        Invokes the specified method on the OpenAPI service. The method name and arguments are passed in the
-        method_invocation_descriptor.
+        Invokes the specified method on the OpenAPI service.
+
+        The method name and arguments are passed in the method_invocation_descriptor.
 
         :param openapi_service: The OpenAPI service instance.
         :param method_invocation_descriptor: The method name and arguments to be passed to the method. The payload

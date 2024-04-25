@@ -26,6 +26,8 @@ REQUEST_HEADERS = {
 
 def _text_content_handler(response: Response) -> ByteStream:
     """
+    Handles text content.
+
     :param response: Response object from the request.
     :return: The extracted text.
     """
@@ -34,6 +36,8 @@ def _text_content_handler(response: Response) -> ByteStream:
 
 def _binary_content_handler(response: Response) -> ByteStream:
     """
+    Handles binary content.
+
     :param response: Response object from the request.
     :return: The extracted binary file-like object.
     """
@@ -211,6 +215,7 @@ class LinkContentFetcher:
     def _switch_user_agent(self, retry_state: RetryCallState) -> None:
         """
         Switches the User-Agent for this LinkContentRetriever to the next one in the list of user agents.
+
         Used by tenacity to retry the requests with a different user agent.
 
         :param retry_state: The retry state (unused, required by tenacity).

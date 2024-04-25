@@ -455,6 +455,8 @@ class ExtractiveReader:
         self, answers: List[ExtractedAnswer], overlap_threshold: Optional[float]
     ) -> List[ExtractedAnswer]:
         """
+        De-duplicates overlapping Extractive Answers.
+
         De-duplicates overlapping Extractive Answers from the same document based on how much the spans of the
         answers overlap.
 

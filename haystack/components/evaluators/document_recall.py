@@ -20,6 +20,9 @@ class RecallMode(Enum):
 
     @staticmethod
     def from_str(string: str) -> "RecallMode":
+        """
+        Convert a string to a RecallMode enum.
+        """
         enum_map = {e.value: e for e in RecallMode}
         mode = enum_map.get(string)
         if mode is None:
@@ -32,6 +35,7 @@ class RecallMode(Enum):
 class DocumentRecallEvaluator:
     """
     Evaluator that calculates the Recall score for a list of documents.
+
     Returns both a list of scores for each question and the average.
     There can be multiple ground truth documents and multiple predicted documents as input.
 
@@ -91,6 +95,7 @@ class DocumentRecallEvaluator:
     ) -> Dict[str, Any]:
         """
         Run the DocumentRecallEvaluator on the given inputs.
+
         `ground_truth_documents` and `retrieved_documents` must have the same length.
 
         :param ground_truth_documents:

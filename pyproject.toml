@@ -296,14 +296,14 @@ ignore_missing_imports = true
 [tool.ruff]
 line-length = 301
 target-version = "py38"
+exclude= ["test"]
+
 
 [tool.ruff.lint]
 select = [
-  "AIR",    # Airflow
   "ASYNC",  # flake8-async
   "C4",     # flake8-comprehensions
   "C90",    # McCabe cyclomatic complexity
-  "DJ",     # flake8-django
   "E501",   # Long lines
   "EXE",    # flake8-executable
   "F",      # Pyflakes
@@ -316,12 +316,19 @@ select = [
   "T10",    # flake8-debugger
   "W",      # pycodestyle
   "YTT",    # flake8-2020
-  "I"       # isort
-  # "E",    # pycodestyle
-  # "NPY",  # NumPy-specific rules
-  # "PD",   # pandas-vet
-  # "PT",   # flake8-pytest-style
-  # "UP",   # pyupgrade
+  "I",       # isort
+  # built-in shadowing
+  "A001",	# builtin-variable-shadowing
+  "A002",	# builtin-argument-shadowing
+  "A003",	# builtin-attribute-shadowing
+  # docstring rules
+  "D102",   # Missing docstring in public method
+  "D103",   # Missing docstring in public function
+  "D209",   # Closing triple quotes go to new line
+  "D205",   # 1 blank line required between summary line and description
+  "D213",   # summary lines must be positioned on the second physical line of the docstring
+  "D417",   # undocumented-parameter
+  "D419",   # undocumented-returns
 ]
 
 ignore = [

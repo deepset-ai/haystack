@@ -241,10 +241,11 @@ class Pipeline:
         callbacks: Optional[DeserializationCallbacks] = None,
     ) -> "Pipeline":
         """
-        Creates a `Pipeline` object from the string representation read from the file-like object passed in the `fp` argument.
+        Creates a `Pipeline` object a string representation.
 
-        :param data:
-            The string representation of the pipeline, can be `str`, `bytes` or `bytearray`.
+        The string representation is read from the file-like object passed in the `fp` argument.
+
+
         :param fp:
             A file-like object ready to be read from.
         :param marshaller:
@@ -312,7 +313,7 @@ class Pipeline:
         Connects two components together.
 
         All components to connect must exist in the pipeline.
-        If connecting to an component that has several output connections, specify the inputs and output names as
+        If connecting to a component that has several output connections, specify the inputs and output names as
         'component_name.connections_name'.
 
         :param sender:
@@ -504,19 +505,22 @@ class Pipeline:
                 return name
         return ""
 
-    def inputs(self) -> Dict[str, Dict[str, Any]]:
+    def inputs(self, include_components_with_connected_inputs: bool = False) -> Dict[str, Dict[str, Any]]:
         """
         Returns a dictionary containing the inputs of a pipeline.
 
         Each key in the dictionary corresponds to a component name, and its value is another dictionary that describes
         the input sockets of that component, including their types and whether they are optional.
 
+        :param include_components_with_connected_inputs:
+            If `False`, only components that have disconnected input edges are
+            included in the output.
         :returns:
             A dictionary where each key is a pipeline component name and each value is a dictionary of
             inputs sockets of that component.
         """
         inputs: Dict[str, Dict[str, Any]] = {}
-        for component_name, data in find_pipeline_inputs(self.graph).items():
+        for component_name, data in find_pipeline_inputs(self.graph, include_components_with_connected_inputs).items():
             sockets_description = {}
             for socket in data:
                 sockets_description[socket.name] = {"type": socket.type, "is_mandatory": socket.is_mandatory}
@@ -527,20 +531,23 @@ class Pipeline:
                 inputs[component_name] = sockets_description
         return inputs
 
-    def outputs(self) -> Dict[str, Dict[str, Any]]:
+    def outputs(self, include_components_with_connected_outputs: bool = False) -> Dict[str, Dict[str, Any]]:
         """
         Returns a dictionary containing the outputs of a pipeline.
 
         Each key in the dictionary corresponds to a component name, and its value is another dictionary that describes
         the output sockets of that component.
 
+        :param include_components_with_connected_outputs:
+            If `False`, only components that have disconnected output edges are
+            included in the output.
         :returns:
             A dictionary where each key is a pipeline component name and each value is a dictionary of
             output sockets of that component.
         """
         outputs = {
             comp: {socket.name: {"type": socket.type} for socket in data}
-            for comp, data in find_pipeline_outputs(self.graph).items()
+            for comp, data in find_pipeline_outputs(self.graph, include_components_with_connected_outputs).items()
             if data
         }
         return outputs
@@ -598,6 +605,8 @@ class Pipeline:
 
     def _validate_input(self, data: Dict[str, Any]):
         """
+        Validates pipeline input data.
+
         Validates that data:
         * Each Component name actually exists in the Pipeline
         * Each Component is not missing any input
@@ -848,7 +857,7 @@ class Pipeline:
                         },
                     ) as span:
                         span.set_content_tag("haystack.component.input", last_inputs[name])
-
+                        logger.info("Running component {name}", name=name)
                         logger.info("Running component {component_name}", component_name=name)
                         res = comp.run(**last_inputs[name])
                         self.graph.nodes[name]["visits"] += 1
@@ -1047,6 +1056,8 @@ class Pipeline:
 
     def _prepare_component_input_data(self, data: Dict[str, Any]) -> Tuple[Dict[str, Dict[str, Any]], Dict[str, Any]]:
         """
+        Prepares input data for pipeline components.
+
         Organizes input data for pipeline components and identifies any inputs that are not matched to any
         component's input slots.
 

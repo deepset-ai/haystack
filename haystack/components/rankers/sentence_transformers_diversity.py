@@ -15,6 +15,8 @@ with LazyImport(message="Run 'pip install \"sentence-transformers>=2.2.0\"'") as
 @component
 class SentenceTransformersDiversityRanker:
     """
+    A Diversity Ranker based on Sentence Transformers.
+
     Implements a document ranking algorithm that orders documents in such a way as to maximize the overall diversity
     of the documents.
 
