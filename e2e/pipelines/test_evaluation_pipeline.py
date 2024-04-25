@@ -1,6 +1,8 @@
 import os
 from typing import List
 
+import pytest
+
 from haystack import Document, Pipeline
 from haystack.components.builders import AnswerBuilder, PromptBuilder
 from haystack.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
@@ -17,15 +19,16 @@ from haystack.components.retrievers import InMemoryEmbeddingRetriever
 from haystack.components.writers import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
+from haystack.evaluation import EvaluationRunResult
+
+embeddings_model = "sentence-transformers/all-MiniLM-L6-v2"
 
 
-def indexing(documents: List[Document]):
-    """
-    Indexing the documents
-    """
+def indexing_pipeline(documents: List[Document]):
+    """Indexing the documents"""
     document_store = InMemoryDocumentStore()
     doc_writer = DocumentWriter(document_store=document_store, policy=DuplicatePolicy.SKIP)
-    doc_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+    doc_embedder = SentenceTransformersDocumentEmbedder(model=embeddings_model)
     ingestion_pipe = Pipeline()
     ingestion_pipe.add_component(instance=doc_embedder, name="doc_embedder")
     ingestion_pipe.add_component(instance=doc_writer, name="doc_writer")
@@ -34,10 +37,8 @@ def indexing(documents: List[Document]):
     return document_store
 
 
-def build_rag_pipeline(document_store, top_k=2):
-    """
-    Building the RAG pipeline
-    """
+def rag_pipeline(document_store: InMemoryDocumentStore, top_k: int):
+    """Building the RAG pipeline"""
     template = """
         You have to answer the following question based on the given context information only.
 
@@ -49,184 +50,215 @@ def build_rag_pipeline(document_store, top_k=2):
         Question: {{question}}
         Answer:
         """
+    rag_pipeline = Pipeline()
+    rag_pipeline.add_component("embedder", SentenceTransformersTextEmbedder(model=embeddings_model))
+    rag_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store, top_k=top_k))
+    rag_pipeline.add_component("prompt_builder", PromptBuilder(template=template))
+    rag_pipeline.add_component("generator", OpenAIGenerator(model="gpt-3.5-turbo"))
+    rag_pipeline.add_component("answer_builder", AnswerBuilder())
+    rag_pipeline.connect("embedder", "retriever.query_embedding")
+    rag_pipeline.connect("retriever", "prompt_builder.documents")
+    rag_pipeline.connect("prompt_builder", "generator")
+    rag_pipeline.connect("generator.replies", "answer_builder.replies")
+    rag_pipeline.connect("generator.meta", "answer_builder.meta")
+    rag_pipeline.connect("retriever", "answer_builder.documents")
 
-    rag_pipeline_1 = Pipeline()
-    rag_pipeline_1.add_component(
-        "query_embedder", SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
-    )
-    rag_pipeline_1.add_component("retriever", InMemoryEmbeddingRetriever(document_store, top_k=top_k))
-    rag_pipeline_1.add_component("prompt_builder", PromptBuilder(template=template))
-    rag_pipeline_1.add_component("generator", OpenAIGenerator(model="gpt-3.5-turbo"))
-    rag_pipeline_1.add_component("answer_builder", AnswerBuilder())
-
-    rag_pipeline_1.connect("query_embedder", "retriever.query_embedding")
-    rag_pipeline_1.connect("retriever", "prompt_builder.documents")
-    rag_pipeline_1.connect("prompt_builder", "generator")
-    rag_pipeline_1.connect("generator.replies", "answer_builder.replies")
-    rag_pipeline_1.connect("generator.meta", "answer_builder.meta")
-    rag_pipeline_1.connect("retriever", "answer_builder.documents")
-
-    return rag_pipeline_1
+    return rag_pipeline
 
 
-def test_evaluation_pipeline(samples_path):
+def evaluation_pipeline(questions, truth_docs, truth_answers, retrieved_docs, contexts, pred_answers):
     """
-    Test the evaluation pipeline
+    Run the evaluation pipeline
     """
-    documents = []
-
-    def create_document(text: str, name: str):
-        return Document(content=text, meta={"name": name})
-
-    for root, dirs, files in os.walk(str(samples_path) + "/test_documents/"):
-        for article in files:
-            with open(f"{root}/{article}", "r") as f:
-                raw_texts = f.read().split("\n")
-                for text in raw_texts:
-                    documents.append(create_document(text, article))
-
-    document_store = indexing(documents)
-
-    # collect all the data for evaluation
-    all_questions = []
-    all_ground_truth_documents = []
-    all_ground_truth_answers = []
-    all_retrieved_documents = []
-    all_contexts = []
-    all_answers = []
-
-    questions = [
-        {
-            "question": "Who re-translated the Reflections into French?",
-            "answer": ["Louis XVI"],
-            "ground_truth_doc": ["Edmund_Burke.txt"],
-        },
-        {
-            "question": "What was Kerry's role in the Yale Political Union as a junior?",
-            "answer": ["President of the Union"],
-            "ground_truth_doc": ["John_Kerry.txt"],
-        },
-        {
-            "question": 'What falls within the term "cultural anthropology"?',
-            "answer": ["the ideology and analytical stance of cultural relativism"],
-            "ground_truth_doc": ["Culture.txt"],
-        },
-        {
-            "question": "Who was the spiritual guide during the Protestant Reformation?",
-            "answer": ["Martin Bucer"],
-            "ground_truth_doc": ["Strasbourg.txt"],
-        },
-        {
-            "question": "What separates many annelids' segments?",
-            "answer": ["Septa"],
-            "ground_truth_doc": ["Annelid.txt"],
-        },
-        {
-            "question": "What is materialism?",
-            "answer": ["a form of philosophical monism"],
-            "ground_truth_doc": ["Materialism.txt"],
-        },
-        {
-            "question": "Who did the Hungarian nobility elect as King of Hungary?",
-            "answer": ["Matthias"],
-            "ground_truth_doc": ["Late_Middle_Ages.txt"],
-        },
-    ]
-
-    rag_pipeline_1 = build_rag_pipeline(document_store, top_k=2)
-
-    # ToDo: do this in batch to avoid multiple calls to the pipeline
-    for q in questions:
-        question = q["question"]
-        answer = q["answer"]
-        ground_truth_docs = [doc for doc in documents if doc.meta["name"] in q["ground_truth_doc"]]
-        all_ground_truth_documents.append(ground_truth_docs)
-        all_ground_truth_answers.append(answer[0])
-        all_questions.append(question)
-
-        response = rag_pipeline_1.run(
-            {
-                "query_embedder": {"text": question},
-                "prompt_builder": {"question": question},
-                "answer_builder": {"query": question},
-            }
-        )
-
-        all_retrieved_documents.append(response["answer_builder"]["answers"][0].documents)
-        all_contexts.append([doc.content for doc in response["answer_builder"]["answers"][0].documents])
-        all_answers.append(response["answer_builder"]["answers"][0].data)
-
     eval_pipeline = Pipeline()
     eval_pipeline.add_component("doc_mrr", DocumentMRREvaluator())
     eval_pipeline.add_component("groundness", FaithfulnessEvaluator())
-    eval_pipeline.add_component("sas", SASEvaluator(model="sentence-transformers/all-MiniLM-L6-v2"))
+    eval_pipeline.add_component("sas", SASEvaluator(model=embeddings_model))
     eval_pipeline.add_component("doc_map", DocumentMAPEvaluator())
     eval_pipeline.add_component("doc_recall_single_hit", DocumentRecallEvaluator(mode=RecallMode.SINGLE_HIT))
     eval_pipeline.add_component("doc_recall_multi_hit", DocumentRecallEvaluator(mode=RecallMode.MULTI_HIT))
 
-    results = eval_pipeline.run(
+    return eval_pipeline.run(
         {
-            "doc_mrr": {
-                "ground_truth_documents": all_ground_truth_documents,
-                "retrieved_documents": all_retrieved_documents,
-            },
-            "groundness": {"questions": all_questions, "contexts": all_contexts, "responses": all_answers},
-            "sas": {"predicted_answers": all_answers, "ground_truth_answers": all_ground_truth_answers},
-            "doc_map": {
-                "ground_truth_documents": all_ground_truth_documents,
-                "retrieved_documents": all_retrieved_documents,
-            },
-            "doc_recall_single_hit": {
-                "ground_truth_documents": all_ground_truth_documents,
-                "retrieved_documents": all_retrieved_documents,
-            },
-            "doc_recall_multi_hit": {
-                "ground_truth_documents": all_ground_truth_documents,
-                "retrieved_documents": all_retrieved_documents,
-            },
+            "doc_mrr": {"ground_truth_documents": truth_docs, "retrieved_documents": retrieved_docs},
+            "groundness": {"questions": questions, "contexts": contexts, "responses": truth_answers},
+            "sas": {"predicted_answers": pred_answers, "ground_truth_answers": truth_answers},
+            "doc_map": {"ground_truth_documents": truth_docs, "retrieved_documents": retrieved_docs},
+            "doc_recall_single_hit": {"ground_truth_documents": truth_docs, "retrieved_documents": retrieved_docs},
+            "doc_recall_multi_hit": {"ground_truth_documents": truth_docs, "retrieved_documents": retrieved_docs},
         }
     )
 
-    _ = {
-        "inputs": {
-            "question": all_questions,
-            "contexts": all_contexts,
-            "answer": all_ground_truth_answers,
-            "predicted_answer": all_answers,
-        },
-        "metrics": [
-            {
-                "name": "Mean Reciprocal Rank",
-                "individual_scores": results["doc_mrr"]["individual_scores"],
-                "score": results["doc_mrr"]["score"],
-            },
-            {
-                "name": "Semantic Answer Similarity",
-                "individual_scores": results["sas"]["individual_scores"],
-                "score": results["sas"]["score"],
-            },
-            {
-                "name": "Faithfulness",
-                "individual_scores": results["groundness"]["individual_scores"],
-                "score": results["groundness"]["score"],
-            },
-            {
-                "name": "Document MAP",
-                "individual_scores": results["doc_map"]["individual_scores"],
-                "score": results["doc_map"]["score"],
-            },
-            {
-                "name": "Document Recall Single Hit",
-                "individual_scores": results["doc_recall_single_hit"]["individual_scores"],
-                "score": results["doc_recall_single_hit"]["score"],
-            },
-            {
-                "name": "Document Recall Multi Hit",
-                "individual_scores": results["doc_recall_multi_hit"]["individual_scores"],
-                "score": results["doc_recall_multi_hit"]["score"],
-            },
-        ],
-    }
 
-    # evaluation_result = EvaluationResult(pipeline_name="pipe_1", results=data)
-    # print(evaluation_result)
+def run_rag_pipeline(documents, evaluation_questions, rag_pipeline_a):
+    """
+    Run the RAG pipeline and return the contexts, predicted answers, retrieved documents and ground truth documents
+    """
+
+    truth_docs = []
+    retrieved_docs = []
+    contexts = []
+    pred_answers = []
+
+    for q in evaluation_questions:
+        response = rag_pipeline_a.run(
+            {
+                "embedder": {"text": q["question"]},
+                "prompt_builder": {"question": q["question"]},
+                "answer_builder": {"query": q["question"]},
+            }
+        )
+        truth_docs.append([doc for doc in documents if doc.meta["name"] in q["ground_truth_doc"]])
+        retrieved_docs.append(response["answer_builder"]["answers"][0].documents)
+        contexts.append([doc.content for doc in response["answer_builder"]["answers"][0].documents])
+        pred_answers.append(response["answer_builder"]["answers"][0].data)
+
+    return contexts, pred_answers, retrieved_docs, truth_docs
+
+
+@pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY", None),
+    reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+)
+def test_evaluation_pipeline(samples_path):
+    """
+    Test the evaluation pipeline
+    """
+    docs = []
+    articles = os.listdir(str(samples_path) + "/test_documents/")
+    for article in articles:
+        with open(f"{str(samples_path)}/test_documents/{article}", "r") as f:
+            for text in f.read().split("\n"):
+                docs.append(Document(content=text, meta={"name": article}))
+    doc_store = indexing_pipeline(docs)
+
+    eval_questions = [
+        {
+            "question": 'What falls within the term "cultural anthropology"?',
+            "answer": "the ideology and analytical stance of cultural relativism",
+            "ground_truth_doc": ["Culture.txt"],
+        },
+        {
+            "question": "Who was the spiritual guide during the Protestant Reformation?",
+            "answer": "Martin Bucer",
+            "ground_truth_doc": ["Strasbourg.txt"],
+        },
+        {"question": "What separates many annelids' segments?", "answer": "Septa", "ground_truth_doc": ["Annelid.txt"]},
+        {
+            "question": "What is materialism?",
+            "answer": "a form of philosophical monism",
+            "ground_truth_doc": ["Materialism.txt"],
+        },
+    ]
+    questions = [q["question"] for q in eval_questions]
+    truth_answers = [q["answer"] for q in eval_questions]
+
+    rag_pipeline_a = rag_pipeline(doc_store, top_k=3)
+    contexts_a, pred_answers_a, retrieved_docs_a, truth_docs = run_rag_pipeline(docs, eval_questions, rag_pipeline_a)
+    results_rag_a = evaluation_pipeline(
+        questions, truth_docs, truth_answers, retrieved_docs_a, contexts_a, pred_answers_a
+    )
+
+    inputs_a = {
+        "question": questions,
+        "contexts": contexts_a,
+        "answer": truth_answers,
+        "predicted_answer": pred_answers_a,
+    }
+    results_a = {
+        "Mean Reciprocal Rank": {
+            "individual_scores": results_rag_a["doc_mrr"]["individual_scores"],
+            "score": results_rag_a["doc_mrr"]["score"],
+        },
+        "Semantic Answer Similarity": {
+            "individual_scores": results_rag_a["sas"]["individual_scores"],
+            "score": results_rag_a["sas"]["score"],
+        },
+        "Faithfulness": {
+            "individual_scores": results_rag_a["groundness"]["individual_scores"],
+            "score": results_rag_a["groundness"]["score"],
+        },
+        "Document MAP": {
+            "individual_scores": results_rag_a["doc_map"]["individual_scores"],
+            "score": results_rag_a["doc_map"]["score"],
+        },
+        "Document Recall Single Hit": {
+            "individual_scores": results_rag_a["doc_recall_single_hit"]["individual_scores"],
+            "score": results_rag_a["doc_recall_single_hit"]["score"],
+        },
+        "Document Recall Multi Hit": {
+            "individual_scores": results_rag_a["doc_recall_multi_hit"]["individual_scores"],
+            "score": results_rag_a["doc_recall_multi_hit"]["score"],
+        },
+    }
+    evaluation_result_a = EvaluationRunResult(run_name="rag_pipeline_a", results=results_a, inputs=inputs_a)
+    df_score_report = evaluation_result_a.score_report()
+
+    assert len(df_score_report) == 6
+    print(df_score_report.columns)
+    assert list(df_score_report.columns) == ["score"]
+    assert list(df_score_report.index) == [
+        "Mean Reciprocal Rank",
+        "Semantic Answer Similarity",
+        "Faithfulness",
+        "Document MAP",
+        "Document Recall Single Hit",
+        "Document Recall Multi Hit",
+    ]
+    df = evaluation_result_a.to_pandas()
+    assert list(df.columns) == [
+        "question",
+        "contexts",
+        "answer",
+        "predicted_answer",
+        "Mean Reciprocal Rank",
+        "Semantic Answer Similarity",
+        "Faithfulness",
+        "Document MAP",
+        "Document Recall Single Hit",
+        "Document Recall Multi Hit",
+    ]
+    assert len(df) == 4
+
+    rag_pipeline_b = rag_pipeline(doc_store, top_k=5)
+    contexts_b, pred_answers_b, retrieved_docs_b, truth_docs = run_rag_pipeline(docs, eval_questions, rag_pipeline_b)
+    results_rag_b = evaluation_pipeline(
+        questions, truth_docs, truth_answers, retrieved_docs_b, contexts_b, pred_answers_b
+    )
+
+    inputs_b = {
+        "question": questions,
+        "contexts": contexts_a,
+        "answer": truth_answers,
+        "predicted_answer": pred_answers_b,
+    }
+    results_b = {
+        "Mean Reciprocal Rank": {
+            "individual_scores": results_rag_b["doc_mrr"]["individual_scores"],
+            "score": results_rag_b["doc_mrr"]["score"],
+        },
+        "Semantic Answer Similarity": {
+            "individual_scores": results_rag_b["sas"]["individual_scores"],
+            "score": results_rag_b["sas"]["score"],
+        },
+        "Faithfulness": {
+            "individual_scores": results_rag_b["groundness"]["individual_scores"],
+            "score": results_rag_b["groundness"]["score"],
+        },
+        "Document MAP": {
+            "individual_scores": results_rag_b["doc_map"]["individual_scores"],
+            "score": results_rag_b["doc_map"]["score"],
+        },
+        "Document Recall Single Hit": {
+            "individual_scores": results_rag_b["doc_recall_single_hit"]["individual_scores"],
+            "score": results_rag_b["doc_recall_single_hit"]["score"],
+        },
+        "Document Recall Multi Hit": {
+            "individual_scores": results_rag_b["doc_recall_multi_hit"]["individual_scores"],
+            "score": results_rag_b["doc_recall_multi_hit"]["score"],
+        },
+    }
+    evaluation_result_b = EvaluationRunResult(run_name="rag_pipeline_b", results=results_b, inputs=inputs_b)
+    df_comparative = evaluation_result_a.comparative_individual_scores_report(evaluation_result_b)
+
+    print(df_comparative)

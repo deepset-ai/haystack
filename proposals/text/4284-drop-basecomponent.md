@@ -533,103 +533,108 @@ A Haystack node is any class that abides the following contract:
 @node
 class MyNode:
 
-    def __init__(self, model_name: str: "deepset-ai/a-model-name"):
-        """
-        Haystack nodes should have an `__init__` method where they define:
+    def __init__(self, model_name: str: "deepset-ai/a-model-name"
 
-        - `self.inputs = [<input_name(s)>]`:
-            A list with all the edges they can possibly receive input from
+    ):
+    """
+    Haystack nodes should have an `__init__` method where they define:
 
-        - `self.outputs = [<output_name(s)>]`:
-            A list with the edges they might possibly produce as output
+    - `self.inputs = [<input_name(s)>]`:
+        A list with all the edges they can possibly receive input from
 
-        - `self.init_parameters = {<init parameters>}`:
-            Any state they wish to be persisted in their YAML serialization.
-            These values will be given to the `__init__` method of a new instance
-            when the pipeline is deserialized.
+    - `self.outputs = [<output_name(s)>]`:
+        A list with the edges they might possibly produce as output
 
-        The `__init__` must be extremely lightweight, because it's a frequent
-        operation during the construction and validation of the pipeline. If a node
-        has some heavy state to initialize (models, backends, etc...) refer to the
-        `warm_up()` method.
-        """
-        # Lightweight state can be initialized here, for example storing the model name
-        # to be loaded later. See self.warm_up()
-        self.model = None
-        self.model_name = model_name
-        self.how_many_times_have_I_been_called = 0
+    - `self.init_parameters = {<init parameters>}`:
+        Any state they wish to be persisted in their YAML serialization.
+        These values will be given to the `__init__` method of a new instance
+        when the pipeline is deserialized.
 
-        # Contract - all three are mandatory.
-        self.init_parameters = {"model_name": model_name}
-        self.inputs = ["input_name"]
-        self.outputs = ["output_name"]
+    The `__init__` must be extremely lightweight, because it's a frequent
+    operation during the construction and validation of the pipeline. If a node
+    has some heavy state to initialize (models, backends, etc...) refer to the
+    `warm_up()` method.
+    """
+    # Lightweight state can be initialized here, for example storing the model name
+    # to be loaded later. See self.warm_up()
+    self.embeddings_model = None
+    self.model_name = model_name
+    self.how_many_times_have_I_been_called = 0
 
-    def warm_up(self):
-        """
-        Optional method.
+    # Contract - all three are mandatory.
+    self.init_parameters = {"model_name": model_name}
+    self.inputs = ["input_name"]
+    self.outputs = ["output_name"]
 
-        This method is called by Pipeline before the graph execution.
-        Make sure to avoid double-initializations, because Pipeline will not keep
-        track of which nodes it called `warm_up` on.
-        """
-        if not self.model:
-            self.model = AutoModel.load_from_pretrained(self.model_name)
 
-    def run(
+def warm_up(self):
+    """
+    Optional method.
+
+    This method is called by Pipeline before the graph execution.
+    Make sure to avoid double-initializations, because Pipeline will not keep
+    track of which nodes it called `warm_up` on.
+    """
+    if not self.embeddings_model:
+        self.embeddings_model = AutoModel.load_from_pretrained(self.model_name)
+
+
+def run(
         self,
         name: str,
         data: List[Tuple[str, Any]],
         parameters: Dict[str, Any],
         stores: Dict[str, Any],
-    ):
-        """
-        Mandatory method.
+):
+    """
+    Mandatory method.
 
-        This is the method where the main functionality of the node should be carried out.
-        It's called by `Pipeline.run()`, which passes the following parameters to it:
+    This is the method where the main functionality of the node should be carried out.
+    It's called by `Pipeline.run()`, which passes the following parameters to it:
 
-        - `name: str`: the name of the node. Allows the node to find its own parameters in the `parameters` dictionary (see below).
+    - `name: str`: the name of the node. Allows the node to find its own parameters in the `parameters` dictionary (see below).
 
-        - `data: List[Tuple[str, Any]]`: the input data.
-            Pipeline guarantees that the following assert always passes: `assert self.inputs == [name for name, value in data]`,
-            which means that:
-            - `data` is of the same length as `self.inputs`.
-            - `data` contains one tuple for each string stored in `self.inputs`.
-            - no guarantee is given on the values of these tuples: notably, if there was a decision node upstream, some values might be `None`.
-            For example, if a node declares `self.inputs = ["value", "value"]` (think of a Sum node), `data` might look like:
-            - `[("value", 1), ("value", 10)]`
-            - `[("value", None), ("value", 10)]`
-            - `[("value", None), ("value", None)]`, or even
-            - `[("value", 1), ("value", ["something", "unexpected"])]`
-            but it will never look like:
-            - `[("value", 1), ("value", 10), ("value", 100)]`,
-            - `[("value": 15)]` or
-            - `[("value": 15), ("unexpected", 10)]`.
+    - `data: List[Tuple[str, Any]]`: the input data.
+        Pipeline guarantees that the following assert always passes: `assert self.inputs == [name for name, value in data]`,
+        which means that:
+        - `data` is of the same length as `self.inputs`.
+        - `data` contains one tuple for each string stored in `self.inputs`.
+        - no guarantee is given on the values of these tuples: notably, if there was a decision node upstream, some values might be `None`.
+        For example, if a node declares `self.inputs = ["value", "value"]` (think of a Sum node), `data` might look like:
+        - `[("value", 1), ("value", 10)]`
+        - `[("value", None), ("value", 10)]`
+        - `[("value", None), ("value", None)]`, or even
+        - `[("value", 1), ("value", ["something", "unexpected"])]`
+        but it will never look like:
+        - `[("value", 1), ("value", 10), ("value", 100)]`,
+        - `[("value": 15)]` or
+        - `[("value": 15), ("unexpected", 10)]`.
 
-        - `parameters: Dict[str, Dict[str, Any]]`: a dictionary of dictionaries with all the parameters for all nodes.
-            Note that all nodes have access to all parameters for all other nodes: this might come handy to nodes like `Agent`s, that
-            want to influence the behavior of nodes downstream.
-            Nodes can access their own parameters using `name`, but they must not assume their name is present in the dictionary.
-            Therefore the best way to get the parameters is with `my_parameters = parameters.get(name, {})`
+    - `parameters: Dict[str, Dict[str, Any]]`: a dictionary of dictionaries with all the parameters for all nodes.
+        Note that all nodes have access to all parameters for all other nodes: this might come handy to nodes like `Agent`s, that
+        want to influence the behavior of nodes downstream.
+        Nodes can access their own parameters using `name`, but they must not assume their name is present in the dictionary.
+        Therefore the best way to get the parameters is with `my_parameters = parameters.get(name, {})`
 
-        - `stores`: a dictionary of all the (Document)Stores connected to this pipeline.
+    - `stores`: a dictionary of all the (Document)Stores connected to this pipeline.
 
-        Pipeline expect the output of this function to be a tuple in the following format:
+    Pipeline expect the output of this function to be a tuple in the following format:
 
-        `( {edge: value for edge in <subset of self.outputs>}, {the parameters dictionary})
+    `( {edge: value for edge in <subset of self.outputs>}, {the parameters dictionary})
 
-        Which means that:
-        - Nodes are not forced to produce output on all the expected outputs: for example nodes taking a decision, like classifiers,
-            can produce output on a subset of the expected output edges and Pipeline will figure out the rest.
-        - Nodes must not add any key in the data dictionary that is not present in `self.outputs`,
-        - Nodes can alter the content of `parameters` and their changes will be propagated downstream.
-        """
-        self.how_many_times_have_I_been_called += 1
+    Which means that:
+    - Nodes are not forced to produce output on all the expected outputs: for example nodes taking a decision, like classifiers,
+        can produce output on a subset of the expected output edges and Pipeline will figure out the rest.
+    - Nodes must not add any key in the data dictionary that is not present in `self.outputs`,
+    - Nodes can alter the content of `parameters` and their changes will be propagated downstream.
+    """
+    self.how_many_times_have_I_been_called += 1
 
-        value = data[0][1]
-        print(f"Hello I'm {name}! This instance have been called {self.how_many_times_have_I_been_called} times and this is the value I received: {value}")
+    value = data[0][1]
+    print(
+        f"Hello I'm {name}! This instance have been called {self.how_many_times_have_I_been_called} times and this is the value I received: {value}")
 
-        return ({self.outputs[0]: value}, parameters)
+    return ({self.outputs[0]: value}, parameters)
 ```
 
 This contract is stored in the docstring of `@node` and acts as the single source of truth.

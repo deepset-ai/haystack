@@ -119,7 +119,7 @@ class EvaluationRunResult(BaseEvaluationRunResult):
             this_name = f"{this_name}_first"
             other_name = f"{other_name}_second"
 
-        if self.inputs != other.inputs:
+        if self.inputs.keys() != other.inputs.keys():
             warn(f"The inputs to the two evaluation results differ; using the inputs of '{this_name}'.")
 
         pipe_a_df = self.to_pandas()
