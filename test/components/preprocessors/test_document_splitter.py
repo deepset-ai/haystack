@@ -150,10 +150,7 @@ class TestDocumentSplitter:
         result = splitter.run(documents=[doc1, doc2])
 
         expected_pages = [1, 1, 2, 2, 2, 1, 1, 3]
-        i = 1  # DEBUG
         for doc, p in zip(result["documents"], expected_pages):
-            print(f"{i}.", doc.content, doc.meta, p)  # DEBUG
-            i += 1  # DEBUG
             assert doc.meta["page_number"] == p  #
 
         # Check for Sentence split
@@ -163,8 +160,36 @@ class TestDocumentSplitter:
         result = splitter.run(documents=[doc1, doc2])
 
         expected_pages = [1, 2, 1, 3]
-        i = 1  # DEBUG
         for doc, p in zip(result["documents"], expected_pages):
-            print(f"{1}.", doc.content, doc.meta, p)  # DEBUG
-            i += 1  # DEBUG
+            assert doc.meta["page_number"] == p
+
+        # Check for Passage Split
+        splitter = DocumentSplitter(split_by="passage", split_length=1)
+        doc1 = Document(
+            content="This is a text with some words.\f There is a second sentence.\n\nAnd there is a third sentence.\n\nAnd more passages.\n\n\f And another passage."
+        )
+        result = splitter.run(documents=[doc1])
+
+        expected_pages = [1, 2, 2, 3]
+        for doc, p in zip(result["documents"], expected_pages):
+            assert doc.meta["page_number"] == p
+
+        # Check for Page Split
+        splitter = DocumentSplitter(split_by="passage", split_length=1)
+        doc1 = Document(
+            content="This is a text with some words. There is a second sentence.\f And there is a third sentence.\f And another passage."
+        )
+        result = splitter.run(documents=[doc1])
+        expected_pages = [1, 2, 3]
+        for doc, p in zip(result["documents"], expected_pages):
+            assert doc.meta["page_number"] == p
+
+        splitter = DocumentSplitter(split_by="passage", split_length=2)
+        doc1 = Document(
+            content="This is a text with some words. There is a second sentence.\f And there is a third sentence.\f And another passage."
+        )
+        result = splitter.run(documents=[doc1])
+        expected_pages = [1, 3]
+
+        for doc, p in zip(result["documents"], expected_pages):
             assert doc.meta["page_number"] == p
