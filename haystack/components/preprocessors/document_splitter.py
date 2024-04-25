@@ -73,7 +73,9 @@ class DocumentSplitter:
             text_splits, splits_pages = self._concatenate_units(units, self.split_length, self.split_overlap)
             metadata = deepcopy(doc.meta)
             metadata["source_id"] = doc.id
-            split_docs += self._create_docs_from_splits(text_splits=text_splits, splits_pages=splits_pages)
+            split_docs += self._create_docs_from_splits(
+                text_splits=text_splits, splits_pages=splits_pages, meta=metadata
+            )
         return {"documents": split_docs}
 
     def _split_into_units(self, text: str, split_by: Literal["word", "sentence", "passage", "page"]) -> List[str]:
@@ -128,6 +130,6 @@ class DocumentSplitter:
         for i, txt in enumerate(text_splits):
             meta = deepcopy(meta)
             doc = Document(content=txt, meta=meta)
-            doc.meta["page"] = splits_pages[i]
+            doc.meta["page_number"] = splits_pages[i]
             documents.append(doc)
         return documents
