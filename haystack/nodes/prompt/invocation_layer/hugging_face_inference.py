@@ -104,6 +104,7 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
                 model_name_or_path=model_name_or_path,
                 model_max_length=model_max_length,
                 max_length=self.max_length or 100,
+                token=self.api_key,
             )
 
     def preprocess_prompt(self, prompt: str):
