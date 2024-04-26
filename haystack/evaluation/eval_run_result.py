@@ -120,7 +120,7 @@ class EvaluationRunResult(BaseEvaluationRunResult):
             other_name = f"{other_name}_second"
 
         if self.inputs.keys() != other.inputs.keys():
-            warn(f"The inputs keys to the two evaluation results differ; using the inputs of '{this_name}'.")
+            warn(f"The input columns differ between the results; using the input columns of '{this_name}'.")
 
         pipe_a_df = self.to_pandas()
         pipe_b_df = other.to_pandas()
