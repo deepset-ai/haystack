@@ -7,6 +7,7 @@ from haystack import Document, Pipeline
 from haystack.components.builders import AnswerBuilder, PromptBuilder
 from haystack.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
 from haystack.components.evaluators import (
+    ContextRelevanceEvaluator,
     DocumentMAPEvaluator,
     DocumentMRREvaluator,
     DocumentRecallEvaluator,
@@ -66,7 +67,7 @@ def rag_pipeline(document_store: InMemoryDocumentStore, top_k: int):
     return rag
 
 
-def evaluation_pipeline(questions, truth_docs, truth_answers, retrieved_docs, contexts, pred_answers):
+def eval_pipeline(questions, truth_docs, truth_answers, retrieved_docs, contexts, pred_answers):
     """
     Run the evaluation pipeline
     """
@@ -77,6 +78,7 @@ def evaluation_pipeline(questions, truth_docs, truth_answers, retrieved_docs, co
     eval_pipeline.add_component("doc_map", DocumentMAPEvaluator())
     eval_pipeline.add_component("doc_recall_single_hit", DocumentRecallEvaluator(mode=RecallMode.SINGLE_HIT))
     eval_pipeline.add_component("doc_recall_multi_hit", DocumentRecallEvaluator(mode=RecallMode.MULTI_HIT))
+    eval_pipeline.add_component("relevance", ContextRelevanceEvaluator())
 
     return eval_pipeline.run(
         {
@@ -86,6 +88,7 @@ def evaluation_pipeline(questions, truth_docs, truth_answers, retrieved_docs, co
             "doc_map": {"ground_truth_documents": truth_docs, "retrieved_documents": retrieved_docs},
             "doc_recall_single_hit": {"ground_truth_documents": truth_docs, "retrieved_documents": retrieved_docs},
             "doc_recall_multi_hit": {"ground_truth_documents": truth_docs, "retrieved_documents": retrieved_docs},
+            "relevance": {"questions": questions, "contexts": contexts},
         }
     )
 
@@ -116,6 +119,40 @@ def run_rag_pipeline(documents, evaluation_questions, rag_pipeline_a):
     return contexts, predicted_answers, retrieved_docs, truth_docs
 
 
+def built_input_for_results_eval(rag_results):
+    """Helper function to build the input for the results evaluation"""
+    return {
+        "Mean Reciprocal Rank": {
+            "individual_scores": rag_results["doc_mrr"]["individual_scores"],
+            "score": rag_results["doc_mrr"]["score"],
+        },
+        "Semantic Answer Similarity": {
+            "individual_scores": rag_results["sas"]["individual_scores"],
+            "score": rag_results["sas"]["score"],
+        },
+        "Faithfulness": {
+            "individual_scores": rag_results["groundness"]["individual_scores"],
+            "score": rag_results["groundness"]["score"],
+        },
+        "Document MAP": {
+            "individual_scores": rag_results["doc_map"]["individual_scores"],
+            "score": rag_results["doc_map"]["score"],
+        },
+        "Document Recall Single Hit": {
+            "individual_scores": rag_results["doc_recall_single_hit"]["individual_scores"],
+            "score": rag_results["doc_recall_single_hit"]["score"],
+        },
+        "Document Recall Multi Hit": {
+            "individual_scores": rag_results["doc_recall_multi_hit"]["individual_scores"],
+            "score": rag_results["doc_recall_multi_hit"]["score"],
+        },
+        "Contextual Relevance": {
+            "individual_scores": rag_results["relevance"]["individual_scores"],
+            "score": rag_results["relevance"]["score"],
+        },
+    }
+
+
 @pytest.mark.skipif(
     not os.environ.get("OPENAI_API_KEY", None),
     reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
@@ -140,23 +177,22 @@ def test_evaluation_pipeline(samples_path):
         },
     ]
 
+    questions = [q["question"] for q in eval_questions]
+    truth_answers = [q["answer"] for q in eval_questions]
+
+    # indexing documents
     docs = []
     full_path = os.path.join(str(samples_path) + "/test_documents/")
     for article in os.listdir(full_path):
         with open(f"{full_path}/{article}", "r") as f:
             for text in f.read().split("\n"):
                 docs.append(Document(content=text, meta={"name": article})) if text else None
-
     doc_store = indexing_pipeline(docs)
 
-    questions = [q["question"] for q in eval_questions]
-    truth_answers = [q["answer"] for q in eval_questions]
-
+    # running the RAG pipeline A
     rag_pipeline_a = rag_pipeline(doc_store, top_k=2)
     contexts_a, pred_answers_a, retrieved_docs_a, truth_docs = run_rag_pipeline(docs, eval_questions, rag_pipeline_a)
-    results_rag_a = evaluation_pipeline(
-        questions, truth_docs, truth_answers, retrieved_docs_a, contexts_a, pred_answers_a
-    )
+    results_rag_a = eval_pipeline(questions, truth_docs, truth_answers, retrieved_docs_a, contexts_a, pred_answers_a)
 
     inputs_a = {
         "question": questions,
@@ -164,37 +200,12 @@ def test_evaluation_pipeline(samples_path):
         "answer": truth_answers,
         "predicted_answer": pred_answers_a,
     }
-    results_a = {
-        "Mean Reciprocal Rank": {
-            "individual_scores": results_rag_a["doc_mrr"]["individual_scores"],
-            "score": results_rag_a["doc_mrr"]["score"],
-        },
-        "Semantic Answer Similarity": {
-            "individual_scores": results_rag_a["sas"]["individual_scores"],
-            "score": results_rag_a["sas"]["score"],
-        },
-        "Faithfulness": {
-            "individual_scores": results_rag_a["groundness"]["individual_scores"],
-            "score": results_rag_a["groundness"]["score"],
-        },
-        "Document MAP": {
-            "individual_scores": results_rag_a["doc_map"]["individual_scores"],
-            "score": results_rag_a["doc_map"]["score"],
-        },
-        "Document Recall Single Hit": {
-            "individual_scores": results_rag_a["doc_recall_single_hit"]["individual_scores"],
-            "score": results_rag_a["doc_recall_single_hit"]["score"],
-        },
-        "Document Recall Multi Hit": {
-            "individual_scores": results_rag_a["doc_recall_multi_hit"]["individual_scores"],
-            "score": results_rag_a["doc_recall_multi_hit"]["score"],
-        },
-    }
+    results_a = built_input_for_results_eval(results_rag_a)
     evaluation_result_a = EvaluationRunResult(run_name="rag_pipeline_a", results=results_a, inputs=inputs_a)
     df_score_report = evaluation_result_a.score_report()
 
     # assert the score report has all the metrics
-    assert len(df_score_report) == 6
+    assert len(df_score_report) == 7
     assert list(df_score_report.columns) == ["score"]
     assert list(df_score_report.index) == [
         "Mean Reciprocal Rank",
@@ -203,6 +214,7 @@ def test_evaluation_pipeline(samples_path):
         "Document MAP",
         "Document Recall Single Hit",
         "Document Recall Multi Hit",
+        "Contextual Relevance",
     ]
 
     # assert the evaluation result has all the metrics, inputs and questions
@@ -218,47 +230,22 @@ def test_evaluation_pipeline(samples_path):
         "Document MAP",
         "Document Recall Single Hit",
         "Document Recall Multi Hit",
+        "Contextual Relevance",
     ]
     assert len(df) == 3
 
+    # running the RAG pipeline B
     rag_pipeline_b = rag_pipeline(doc_store, top_k=4)
     contexts_b, pred_answers_b, retrieved_docs_b, truth_docs = run_rag_pipeline(docs, eval_questions, rag_pipeline_b)
-    results_rag_b = evaluation_pipeline(
-        questions, truth_docs, truth_answers, retrieved_docs_b, contexts_b, pred_answers_b
-    )
+    results_rag_b = eval_pipeline(questions, truth_docs, truth_answers, retrieved_docs_b, contexts_b, pred_answers_b)
 
     inputs_b = {
         "question": questions,
-        "contexts": contexts_a,
+        "contexts": contexts_b,
         "answer": truth_answers,
         "predicted_answer": pred_answers_b,
     }
-    results_b = {
-        "Mean Reciprocal Rank": {
-            "individual_scores": results_rag_b["doc_mrr"]["individual_scores"],
-            "score": results_rag_b["doc_mrr"]["score"],
-        },
-        "Semantic Answer Similarity": {
-            "individual_scores": results_rag_b["sas"]["individual_scores"],
-            "score": results_rag_b["sas"]["score"],
-        },
-        "Faithfulness": {
-            "individual_scores": results_rag_b["groundness"]["individual_scores"],
-            "score": results_rag_b["groundness"]["score"],
-        },
-        "Document MAP": {
-            "individual_scores": results_rag_b["doc_map"]["individual_scores"],
-            "score": results_rag_b["doc_map"]["score"],
-        },
-        "Document Recall Single Hit": {
-            "individual_scores": results_rag_b["doc_recall_single_hit"]["individual_scores"],
-            "score": results_rag_b["doc_recall_single_hit"]["score"],
-        },
-        "Document Recall Multi Hit": {
-            "individual_scores": results_rag_b["doc_recall_multi_hit"]["individual_scores"],
-            "score": results_rag_b["doc_recall_multi_hit"]["score"],
-        },
-    }
+    results_b = built_input_for_results_eval(results_rag_b)
     evaluation_result_b = EvaluationRunResult(run_name="rag_pipeline_b", results=results_b, inputs=inputs_b)
     df_comparative = evaluation_result_a.comparative_individual_scores_report(evaluation_result_b)
 
@@ -275,10 +262,12 @@ def test_evaluation_pipeline(samples_path):
         "rag_pipeline_a_Document MAP",
         "rag_pipeline_a_Document Recall Single Hit",
         "rag_pipeline_a_Document Recall Multi Hit",
+        "rag_pipeline_a_Contextual Relevance",
         "rag_pipeline_b_Mean Reciprocal Rank",
         "rag_pipeline_b_Semantic Answer Similarity",
         "rag_pipeline_b_Faithfulness",
         "rag_pipeline_b_Document MAP",
         "rag_pipeline_b_Document Recall Single Hit",
         "rag_pipeline_b_Document Recall Multi Hit",
+        "rag_pipeline_b_Contextual Relevance",
     ]
