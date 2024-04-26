@@ -2,6 +2,7 @@ import heapq
 import math
 import re
 from collections import Counter
+from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Literal, Optional, Tuple
 
 import numpy as np
@@ -23,6 +24,19 @@ logger = logging.getLogger(__name__)
 # unscaled scores are larger than expected (>30) and otherwise would incorrectly all be mapped to scores ~1.
 BM25_SCALING_FACTOR = 8
 DOT_PRODUCT_SCALING_FACTOR = 100
+
+
+@dataclass
+class BM25DocumentStats:
+    """
+    A dataclass for managing document statistics for BM25 retrieval.
+
+    :param freq_token: A Counter of token frequencies in the document.
+    :param doc_len: Number of tokens in the document.
+    """
+
+    freq_token: Dict[str, int]
+    doc_len: int
 
 
 class InMemoryDocumentStore:
@@ -61,10 +75,10 @@ class InMemoryDocumentStore:
 
         # Global BM25 statistics
         self._avg_doc_len: float = 0.0
-        self._freq_doc: Counter = Counter()
+        self._freq_vocab_for_idf: Counter = Counter()
 
         # Per-document statistics
-        self._bm25_attr: Dict[str, Tuple[Dict[str, int], int]] = {}
+        self._bm25_attr: Dict[str, BM25DocumentStats] = {}
 
     def _dispatch_bm25(self):
         """
@@ -117,7 +131,7 @@ class InMemoryDocumentStore:
             idf = {}
             n_corpus = len(self._bm25_attr)
             for tok in tokens:
-                n = self._freq_doc.get(tok, 0)
+                n = self._freq_vocab_for_idf.get(tok, 0)
                 idf[tok] = math.log((n_corpus + 1.0) / (n + 0.5)) * int(n != 0)
             return idf
 
@@ -132,7 +146,9 @@ class InMemoryDocumentStore:
 
         ret = []
         for doc in documents:
-            freq, doc_len = bm25_attr[doc.id]
+            doc_stats = bm25_attr[doc.id]
+            freq = doc_stats.freq_token
+            doc_len = doc_stats.doc_len
 
             score = 0
             for tok in idf.keys():
@@ -166,13 +182,13 @@ class InMemoryDocumentStore:
             # to make the computation more self-contained. And the
             # complexity is O(vocab_size), which is acceptable.
             idf = {}
-            for tok, n in self._freq_doc.items():
+            for tok, n in self._freq_vocab_for_idf.items():
                 idf[tok] = math.log((len(self._bm25_attr) - n + 0.5) / (n + 0.5))
                 sum_idf += idf[tok]
                 if idf[tok] < 0:
                     neg_idf_tokens.append(tok)
 
-            eps = epsilon * sum_idf / len(self._freq_doc)
+            eps = epsilon * sum_idf / len(self._freq_vocab_for_idf)
             for tok in neg_idf_tokens:
                 idf[tok] = eps
             return {tok: idf.get(tok, 0.0) for tok in tokens}
@@ -188,7 +204,9 @@ class InMemoryDocumentStore:
 
         ret = []
         for doc in documents:
-            freq, doc_len = bm25_attr[doc.id]
+            doc_stats = bm25_attr[doc.id]
+            freq = doc_stats.freq_token
+            doc_len = doc_stats.doc_len
 
             score = 0
             for tok in idf.keys():
@@ -221,7 +239,7 @@ class InMemoryDocumentStore:
             idf = {}
             n_corpus = len(self._bm25_attr)
             for tok in tokens:
-                n = self._freq_doc.get(tok, 0)
+                n = self._freq_vocab_for_idf.get(tok, 0)
                 idf[tok] = math.log(1 + (n_corpus - n + 0.5) / (n + 0.5)) * int(n != 0)
             return idf
 
@@ -236,7 +254,9 @@ class InMemoryDocumentStore:
 
         ret = []
         for doc in documents:
-            freq, doc_len = bm25_attr[doc.id]
+            doc_stats = bm25_attr[doc.id]
+            freq = doc_stats.freq_token
+            doc_len = doc_stats.doc_len
 
             score = 0
             for tok in idf.keys():
@@ -345,8 +365,8 @@ class InMemoryDocumentStore:
 
             self.storage[document.id] = document
 
-            self._bm25_attr[document.id] = (Counter(tokens), len(tokens))
-            self._freq_doc.update(set(tokens))
+            self._bm25_attr[document.id] = BM25DocumentStats(Counter(tokens), len(tokens))
+            self._freq_vocab_for_idf.update(set(tokens))
             self._avg_doc_len = (len(tokens) + self._avg_doc_len * len(self._bm25_attr)) / (len(self._bm25_attr) + 1)
         return written_documents
 
@@ -362,8 +382,11 @@ class InMemoryDocumentStore:
             del self.storage[doc_id]
 
             # Update statistics accordingly
-            freq, doc_len = self._bm25_attr.pop(doc_id)
-            self._freq_doc.subtract(Counter(freq.keys()))
+            doc_stats = self._bm25_attr.pop(doc_id)
+            freq = doc_stats.freq_token
+            doc_len = doc_stats.doc_len
+
+            self._freq_vocab_for_idf.subtract(Counter(freq.keys()))
             try:
                 self._avg_doc_len = (self._avg_doc_len * (len(self._bm25_attr) + 1) - doc_len) / len(self._bm25_attr)
             except ZeroDivisionError:
