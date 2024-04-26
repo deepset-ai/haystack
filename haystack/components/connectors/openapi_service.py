@@ -64,7 +64,7 @@ class OpenAPIServiceConnector:
 
     """
 
-    def __init__(self, provider_map: Optional[Dict[str, Any]] = None, default_provider: Optional[str] = "openai"):
+    def __init__(self, provider_map: Optional[Dict[str, Any]] = None, default_provider: Optional[str] = None):
         """
         Initializes the OpenAPIServiceConnector instance
 
@@ -77,6 +77,7 @@ class OpenAPIServiceConnector:
             "anthropic": AnthropicLLMProvider(),
             "cohere": CohereLLMProvider(),
         }
+        default_provider = default_provider or "openai"
         if default_provider not in self.provider_map:
             raise ValueError(f"Default provider {default_provider} not found in provider map.")
         self.default_provider = default_provider
@@ -87,7 +88,7 @@ class OpenAPIServiceConnector:
         messages: List[ChatMessage],
         service_openapi_spec: Dict[str, Any],
         service_credentials: Optional[Union[dict, str]] = None,
-        llm_provider: Optional[str] = "openai",
+        llm_provider: Optional[str] = None,
     ) -> Dict[str, List[ChatMessage]]:
         """
         Processes a list of chat messages to invoke a method on an OpenAPI service.
@@ -119,7 +120,8 @@ class OpenAPIServiceConnector:
         if not last_message.content:
             raise ValueError("Function calling message content is empty.")
 
-        llm_provider = self.provider_map.get(llm_provider, self.provider_map[self.default_provider])
+        default_provider = self.provider_map.get(self.default_provider, None)
+        llm_provider = self.provider_map.get(llm_provider or "openai", None) or default_provider
         logger.debug(f"Using LLM provider: {llm_provider.__class__.__name__}")
 
         builder = ClientConfigurationBuilder()

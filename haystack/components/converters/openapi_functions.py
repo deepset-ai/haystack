@@ -42,7 +42,7 @@ class OpenAPIServiceToFunctions:
 
     MIN_REQUIRED_OPENAPI_SPEC_VERSION = 3
 
-    def __init__(self, provider_map: Optional[Dict[str, Any]] = None, default_provider: Optional[str] = "openai"):
+    def __init__(self, provider_map: Optional[Dict[str, Any]] = None, default_provider: Optional[str] = None):
         """
         Create an OpenAPIServiceToFunctions component.
 
@@ -57,12 +57,10 @@ class OpenAPIServiceToFunctions:
         }
         if default_provider not in self.provider_map:
             raise ValueError(f"Default provider {default_provider} not found in provider map.")
-        self.default_provider = default_provider
+        self.default_provider = default_provider or "openai"
 
     @component.output_types(functions=List[Dict[str, Any]], openapi_specs=List[Dict[str, Any]])
-    def run(
-        self, sources: List[Union[str, Path, ByteStream]], llm_provider: Optional[str] = "openai"
-    ) -> Dict[str, Any]:
+    def run(self, sources: List[Union[str, Path, ByteStream]], llm_provider: Optional[str] = None) -> Dict[str, Any]:
         """
         Converts OpenAPI definitions into LLM specific function calling format.
 
@@ -83,7 +81,8 @@ class OpenAPIServiceToFunctions:
         """
         all_extracted_fc_definitions: List[Dict[str, Any]] = []
         all_openapi_specs = []
-        llm_provider = self.provider_map.get(llm_provider, self.provider_map.get(self.default_provider, None))
+        default_provider = self.provider_map.get(self.default_provider, "")
+        llm_provider = self.provider_map.get(llm_provider or "openai", None) or default_provider
         if llm_provider is None:
             raise ValueError(f"LLM provider {llm_provider} not found in provider map.")
         logger.debug(f"Using LLM provider: {llm_provider.__class__.__name__}")
