@@ -1,0 +1,4 @@
+---
+enhancements:
+ - |
+   Refactored the OpenAPIServiceConnector and OpenAPIServiceToFunctions to use `openapi-service-client` instead of `openapi3` library.
