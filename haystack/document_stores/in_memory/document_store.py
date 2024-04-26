@@ -150,7 +150,7 @@ class InMemoryDocumentStore:
             freq = doc_stats.freq_token
             doc_len = doc_stats.doc_len
 
-            score = 0
+            score = 0.0
             for tok in idf.keys():
                 score += idf[tok] * _compute_tf(tok, freq, doc_len)
             ret.append((doc, score))
@@ -175,7 +175,7 @@ class InMemoryDocumentStore:
 
         def _compute_idf(tokens: List[str]) -> Dict[str, float]:
             """Per-token IDF computation for all tokens."""
-            sum_idf = 0
+            sum_idf = 0.0
             neg_idf_tokens = []
 
             # Although this is a global statistic, we compute it here
@@ -208,7 +208,7 @@ class InMemoryDocumentStore:
             freq = doc_stats.freq_token
             doc_len = doc_stats.doc_len
 
-            score = 0
+            score = 0.0
             for tok in idf.keys():
                 score += idf[tok] * _compute_tf(tok, freq, doc_len)
             ret.append((doc, score))
@@ -258,7 +258,7 @@ class InMemoryDocumentStore:
             freq = doc_stats.freq_token
             doc_len = doc_stats.doc_len
 
-            score = 0
+            score = 0.0
             for tok in idf.keys():
                 score += idf[tok] * _compute_tf(tok, freq, doc_len)
             ret.append((doc, score))
