@@ -142,8 +142,7 @@ class TestDocumentSplitter:
             assert doc.meta.items() <= split_doc.meta.items()
             assert split_doc.content == "Text."
 
-    def test_add_page_number_to_metadata_with_no_overlap(self):
-        # Check for Word split
+    def test_add_page_number_to_metadata_with_no_overlap_word_split(self):
         splitter = DocumentSplitter(split_by="word", split_length=2)
         doc1 = Document(content="This is some text.\f This text is on another page.")
         doc2 = Document(content="This content has two.\f\f page brakes.")
@@ -153,7 +152,7 @@ class TestDocumentSplitter:
         for doc, p in zip(result["documents"], expected_pages):
             assert doc.meta["page_number"] == p
 
-        # Check for Sentence split
+    def test_add_page_number_to_metadata_with_no_overlap_sentence_split(self):
         splitter = DocumentSplitter(split_by="sentence", split_length=1)
         doc1 = Document(content="This is some text.\f This text is on another page.")
         doc2 = Document(content="This content has two.\f\f page brakes.")
@@ -163,7 +162,7 @@ class TestDocumentSplitter:
         for doc, p in zip(result["documents"], expected_pages):
             assert doc.meta["page_number"] == p
 
-        # Check for Passage Split
+    def test_add_page_number_to_metadata_with_no_overlap_passage_split(self):
         splitter = DocumentSplitter(split_by="passage", split_length=1)
         doc1 = Document(
             content="This is a text with some words.\f There is a second sentence.\n\nAnd there is a third sentence.\n\nAnd more passages.\n\n\f And another passage."
@@ -174,7 +173,7 @@ class TestDocumentSplitter:
         for doc, p in zip(result["documents"], expected_pages):
             assert doc.meta["page_number"] == p
 
-        # Check for Page Split
+    def test_add_page_number_to_metadata_with_no_overlap_page_split(self):
         splitter = DocumentSplitter(split_by="page", split_length=1)
         doc1 = Document(
             content="This is a text with some words. There is a second sentence.\f And there is a third sentence.\f And another passage."
@@ -194,8 +193,7 @@ class TestDocumentSplitter:
         for doc, p in zip(result["documents"], expected_pages):
             assert doc.meta["page_number"] == p
 
-    def test_add_page_number_to_metadata_with_overlap(self):
-        # Check for Word Split
+    def test_add_page_number_to_metadata_with_overlap_word_split(self):
         splitter = DocumentSplitter(split_by="word", split_length=3, split_overlap=1)
         doc1 = Document(content="This is some text. And\f this text is on another page.")
         doc2 = Document(content="This content has two.\f\f page brakes.")
@@ -206,7 +204,7 @@ class TestDocumentSplitter:
             print(doc.content, doc.meta, p)
             assert doc.meta["page_number"] == p
 
-        # Check for Sentence Split
+    def test_add_page_number_to_metadata_with_overlap_sentence_split(self):
         splitter = DocumentSplitter(split_by="sentence", split_length=2, split_overlap=1)
         doc1 = Document(content="This is some text. And this is more text.\f This text is on another page. End.")
         doc2 = Document(content="This content has two.\f\f page brakes. More text.")
@@ -217,7 +215,7 @@ class TestDocumentSplitter:
             print(doc.content, doc.meta, p)
             assert doc.meta["page_number"] == p
 
-        # Check for Passage Split
+    def test_add_page_number_to_metadata_with_overlap_passage_split(self):
         splitter = DocumentSplitter(split_by="passage", split_length=2, split_overlap=1)
         doc1 = Document(
             content="This is a text with some words.\f There is a second sentence.\n\nAnd there is a third sentence.\n\nAnd more passages.\n\n\f And another passage."
@@ -228,7 +226,7 @@ class TestDocumentSplitter:
         for doc, p in zip(result["documents"], expected_pages):
             assert doc.meta["page_number"] == p
 
-        # Check for Page Split
+    def test_add_page_number_to_metadata_with_overlap_page_split(self):
         splitter = DocumentSplitter(split_by="page", split_length=2, split_overlap=1)
         doc1 = Document(
             content="This is a text with some words. There is a second sentence.\f And there is a third sentence.\f And another passage."
