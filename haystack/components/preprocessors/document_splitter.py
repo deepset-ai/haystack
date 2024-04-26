@@ -121,7 +121,9 @@ class DocumentSplitter:
                 cur_page += num_page_breaks
         return text_splits, splits_pages
 
-    def _create_docs_from_splits(self, text_splits: List[str], splits_pages: List[int], meta: Dict) -> List[Document]:
+    @staticmethod
+    def _create_docs_from_splits(text_splits: List[str], splits_pages: List[int], meta: Dict) -> List[Document]:
+
         """
         Creates Document objects from text splits enriching them with page number and the metadata of the original document.
         """
