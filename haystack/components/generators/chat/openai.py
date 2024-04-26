@@ -250,7 +250,7 @@ class OpenAIChatGenerator:
             complete_response = ChatMessage.from_assistant("".join([chunk.content for chunk in chunks]))
         complete_response.meta.update(
             {
-                "model": chunk.embeddings_model,
+                "model": chunk.model,
                 "index": 0,
                 "finish_reason": chunk.choices[0].finish_reason,
                 "usage": {},  # we don't have usage data for streaming responses

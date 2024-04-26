@@ -39,4 +39,4 @@ def test_embedding_function_with_kwargs(mock_sentence_transformer):
     data = ["sentence1", "sentence2"]
     embedding_backend.embed(data=data, normalize_embeddings=True)
 
-    embedding_backend.embeddings_model.encode.assert_called_once_with(data, normalize_embeddings=True)
+    embedding_backend.model.encode.assert_called_once_with(data, normalize_embeddings=True)
