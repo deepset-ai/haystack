@@ -40,7 +40,7 @@ class PDFMinerToDocument:
         word_margin: float = 0.1,
         boxes_flow: Optional[float] = 0.5,
         detect_vertical: bool = True,
-        include_figures: bool = False,
+        all_texts: bool = False,
     ) -> None:
         """
         Create an PDFMinerToDocument component.
@@ -71,7 +71,7 @@ class PDFMinerToDocument:
             layout analysis, and text boxes will be ordered based on the position of their bottom left corner.
         :param detect_vertical:
             This parameter determines whether vertical text should be considered during layout analysis.
-        :param include_figures:
+        :param all_texts:
             If layout analysis should be performed on text in figures.
         """
 
@@ -84,7 +84,7 @@ class PDFMinerToDocument:
             word_margin=word_margin,
             boxes_flow=boxes_flow,
             detect_vertical=detect_vertical,
-            all_texts=include_figures,
+            all_texts=all_texts,
         )
 
     def __converter(self, extractor: Iterator[LTPage]) -> Document:
