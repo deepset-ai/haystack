@@ -101,7 +101,7 @@ class DocumentSplitter:
         self, elements: List[str], split_length: int, split_overlap: int
     ) -> Tuple[List[str], List[int]]:
         """
-        Concatenates the elements into parts of split_length units.
+        Concatenates the elements into parts of split_length units keeping track of the original page number that each element belongs.
         """
         text_splits = []
         splits_pages = []
