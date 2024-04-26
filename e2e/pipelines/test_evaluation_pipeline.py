@@ -31,8 +31,8 @@ def indexing_pipeline(documents: List[Document]):
     doc_writer = DocumentWriter(document_store=document_store, policy=DuplicatePolicy.SKIP)
     doc_embedder = SentenceTransformersDocumentEmbedder(model=EMBEDDINGS_MODEL, progress_bar=False)
     ingestion_pipe = Pipeline()
-    ingestion_pipe.add_component(instance=doc_embedder, name="doc_embedder")
-    ingestion_pipe.add_component(instance=doc_writer, name="doc_writer")
+    ingestion_pipe.add_component(instance=doc_embedder, name="doc_embedder")  # type: ignore
+    ingestion_pipe.add_component(instance=doc_writer, name="doc_writer")  # type: ignore
     ingestion_pipe.connect("doc_embedder.documents", "doc_writer.documents")
     ingestion_pipe.run({"doc_embedder": {"documents": documents}})
     return document_store
@@ -52,11 +52,11 @@ def rag_pipeline(document_store: InMemoryDocumentStore, top_k: int):  # type: ig
         Answer:
         """
     rag = Pipeline()
-    rag.add_component("embedder", SentenceTransformersTextEmbedder(model=EMBEDDINGS_MODEL, progress_bar=False))
-    rag.add_component("retriever", InMemoryEmbeddingRetriever(document_store, top_k=top_k))
-    rag.add_component("prompt_builder", PromptBuilder(template=template))
-    rag.add_component("generator", OpenAIGenerator(model="gpt-3.5-turbo"))
-    rag.add_component("answer_builder", AnswerBuilder())
+    rag.add_component("embedder", SentenceTransformersTextEmbedder(model=EMBEDDINGS_MODEL, progress_bar=False))  # type: ignore
+    rag.add_component("retriever", InMemoryEmbeddingRetriever(document_store, top_k=top_k))  # type: ignore
+    rag.add_component("prompt_builder", PromptBuilder(template=template))  # type: ignore
+    rag.add_component("generator", OpenAIGenerator(model="gpt-3.5-turbo"))  # type: ignore
+    rag.add_component("answer_builder", AnswerBuilder())  # type: ignore
     rag.connect("embedder", "retriever.query_embedding")
     rag.connect("retriever", "prompt_builder.documents")
     rag.connect("prompt_builder", "generator")
