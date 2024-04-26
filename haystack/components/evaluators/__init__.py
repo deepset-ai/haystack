@@ -3,7 +3,6 @@ from .context_relevance import ContextRelevanceEvaluator
 from .document_map import DocumentMAPEvaluator
 from .document_mrr import DocumentMRREvaluator
 from .document_recall import DocumentRecallEvaluator
-from .evaluation_result import EvaluationResult
 from .faithfulness import FaithfulnessEvaluator
 from .llm_evaluator import LLMEvaluator
 from .sas_evaluator import SASEvaluator
@@ -14,7 +13,6 @@ __all__ = [
     "DocumentMAPEvaluator",
     "DocumentMRREvaluator",
     "DocumentRecallEvaluator",
-    "EvaluationResult",
     "FaithfulnessEvaluator",
     "LLMEvaluator",
     "SASEvaluator",
