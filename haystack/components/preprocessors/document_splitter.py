@@ -114,10 +114,10 @@ class DocumentSplitter:
                 text_splits.append(txt)
                 splits_pages.append(cur_page)
                 processed_units = current_units[: split_length - split_overlap]
-                if self.split_by != "page":
-                    num_page_breaks = sum(processed_unit.count("\f") for processed_unit in processed_units)
-                else:
+                if self.split_by == "page":
                     num_page_breaks = len(processed_units)
+                else:
+                    num_page_breaks = sum(processed_unit.count("\f") for processed_unit in processed_units)
                 cur_page += num_page_breaks
         return text_splits, splits_pages
 
