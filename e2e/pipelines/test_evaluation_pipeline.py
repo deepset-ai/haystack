@@ -28,7 +28,7 @@ def indexing_pipeline(documents: List[Document]):
     """Indexing the documents"""
     document_store = InMemoryDocumentStore()
     doc_writer = DocumentWriter(document_store=document_store, policy=DuplicatePolicy.SKIP)
-    doc_embedder = SentenceTransformersDocumentEmbedder(model=embeddings_model)
+    doc_embedder = SentenceTransformersDocumentEmbedder(model=embeddings_model, progress_bar=False)
     ingestion_pipe = Pipeline()
     ingestion_pipe.add_component(instance=doc_embedder, name="doc_embedder")
     ingestion_pipe.add_component(instance=doc_writer, name="doc_writer")
@@ -38,7 +38,7 @@ def indexing_pipeline(documents: List[Document]):
 
 
 def rag_pipeline(document_store: InMemoryDocumentStore, top_k: int):
-    """Building the RAG pipeline"""
+    """RAG pipeline"""
     template = """
         You have to answer the following question based on the given context information only.
 
@@ -51,7 +51,7 @@ def rag_pipeline(document_store: InMemoryDocumentStore, top_k: int):
         Answer:
         """
     rag = Pipeline()
-    rag.add_component("embedder", SentenceTransformersTextEmbedder(model=embeddings_model))
+    rag.add_component("embedder", SentenceTransformersTextEmbedder(model=embeddings_model, progress_bar=False))
     rag.add_component("retriever", InMemoryEmbeddingRetriever(document_store, top_k=top_k))
     rag.add_component("prompt_builder", PromptBuilder(template=template))
     rag.add_component("generator", OpenAIGenerator(model="gpt-3.5-turbo"))
@@ -98,7 +98,7 @@ def run_rag_pipeline(documents, evaluation_questions, rag_pipeline_a):
     truth_docs = []
     retrieved_docs = []
     contexts = []
-    pred_answers = []
+    predicted_answers = []
 
     for q in evaluation_questions:
         response = rag_pipeline_a.run(
@@ -111,9 +111,9 @@ def run_rag_pipeline(documents, evaluation_questions, rag_pipeline_a):
         truth_docs.append([doc for doc in documents if doc.meta["name"] in q["ground_truth_doc"] and doc.content])
         retrieved_docs.append(response["answer_builder"]["answers"][0].documents)
         contexts.append([doc.content for doc in response["answer_builder"]["answers"][0].documents])
-        pred_answers.append(response["answer_builder"]["answers"][0].data)
+        predicted_answers.append(response["answer_builder"]["answers"][0].data)
 
-    return contexts, pred_answers, retrieved_docs, truth_docs
+    return contexts, predicted_answers, retrieved_docs, truth_docs
 
 
 @pytest.mark.skipif(
@@ -121,10 +121,7 @@ def run_rag_pipeline(documents, evaluation_questions, rag_pipeline_a):
     reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
 )
 def test_evaluation_pipeline(samples_path):
-    """
-    Test custom built evaluation pipeline
-    """
-
+    """Test an evaluation pipeline"""
     eval_questions = [
         {
             "question": 'What falls within the term "cultural anthropology"?',
@@ -148,8 +145,8 @@ def test_evaluation_pipeline(samples_path):
     for article in os.listdir(full_path):
         with open(f"{full_path}/{article}", "r") as f:
             for text in f.read().split("\n"):
-                if text:
-                    docs.append(Document(content=text, meta={"name": article}))
+                docs.append(Document(content=text, meta={"name": article})) if text else None
+
     doc_store = indexing_pipeline(docs)
 
     questions = [q["question"] for q in eval_questions]
@@ -196,6 +193,7 @@ def test_evaluation_pipeline(samples_path):
     evaluation_result_a = EvaluationRunResult(run_name="rag_pipeline_a", results=results_a, inputs=inputs_a)
     df_score_report = evaluation_result_a.score_report()
 
+    # assert the score report has all the metrics
     assert len(df_score_report) == 6
     assert list(df_score_report.columns) == ["score"]
     assert list(df_score_report.index) == [
@@ -206,6 +204,8 @@ def test_evaluation_pipeline(samples_path):
         "Document Recall Single Hit",
         "Document Recall Multi Hit",
     ]
+
+    # assert the evaluation result has all the metrics, inputs and questions
     df = evaluation_result_a.to_pandas()
     assert list(df.columns) == [
         "question",
@@ -261,4 +261,24 @@ def test_evaluation_pipeline(samples_path):
     }
     evaluation_result_b = EvaluationRunResult(run_name="rag_pipeline_b", results=results_b, inputs=inputs_b)
     df_comparative = evaluation_result_a.comparative_individual_scores_report(evaluation_result_b)
+
+    # assert the comparative score report has all the metrics, inputs and questions
     assert len(df_comparative) == 3
+    assert list(df_comparative.columns) == [
+        "question",
+        "contexts",
+        "answer",
+        "predicted_answer",
+        "rag_pipeline_a_Mean Reciprocal Rank",
+        "rag_pipeline_a_Semantic Answer Similarity",
+        "rag_pipeline_a_Faithfulness",
+        "rag_pipeline_a_Document MAP",
+        "rag_pipeline_a_Document Recall Single Hit",
+        "rag_pipeline_a_Document Recall Multi Hit",
+        "rag_pipeline_b_Mean Reciprocal Rank",
+        "rag_pipeline_b_Semantic Answer Similarity",
+        "rag_pipeline_b_Faithfulness",
+        "rag_pipeline_b_Document MAP",
+        "rag_pipeline_b_Document Recall Single Hit",
+        "rag_pipeline_b_Document Recall Multi Hit",
+    ]
