@@ -22,14 +22,14 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
 from haystack.evaluation import EvaluationRunResult
 
-embeddings_model = "sentence-transformers/all-MiniLM-L6-v2"
+EMBEDDINGS_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 
 
 def indexing_pipeline(documents: List[Document]):
     """Indexing the documents"""
     document_store = InMemoryDocumentStore()
     doc_writer = DocumentWriter(document_store=document_store, policy=DuplicatePolicy.SKIP)
-    doc_embedder = SentenceTransformersDocumentEmbedder(model=embeddings_model, progress_bar=False)
+    doc_embedder = SentenceTransformersDocumentEmbedder(model=EMBEDDINGS_MODEL, progress_bar=False)
     ingestion_pipe = Pipeline()
     ingestion_pipe.add_component(instance=doc_embedder, name="doc_embedder")
     ingestion_pipe.add_component(instance=doc_writer, name="doc_writer")
@@ -38,7 +38,7 @@ def indexing_pipeline(documents: List[Document]):
     return document_store
 
 
-def rag_pipeline(document_store: InMemoryDocumentStore, top_k: int):
+def rag_pipeline(document_store: InMemoryDocumentStore, top_k: int):  # type: ignore
     """RAG pipeline"""
     template = """
         You have to answer the following question based on the given context information only.
@@ -52,7 +52,7 @@ def rag_pipeline(document_store: InMemoryDocumentStore, top_k: int):
         Answer:
         """
     rag = Pipeline()
-    rag.add_component("embedder", SentenceTransformersTextEmbedder(model=embeddings_model, progress_bar=False))
+    rag.add_component("embedder", SentenceTransformersTextEmbedder(model=EMBEDDINGS_MODEL, progress_bar=False))
     rag.add_component("retriever", InMemoryEmbeddingRetriever(document_store, top_k=top_k))
     rag.add_component("prompt_builder", PromptBuilder(template=template))
     rag.add_component("generator", OpenAIGenerator(model="gpt-3.5-turbo"))
@@ -67,30 +67,40 @@ def rag_pipeline(document_store: InMemoryDocumentStore, top_k: int):
     return rag
 
 
-def eval_pipeline(questions, truth_docs, truth_answers, retrieved_docs, contexts, pred_answers):
+def evaluation_pipeline():
     """
-    Run the evaluation pipeline
+    Create an evaluation pipeline with the following evaluators:
+
+    - DocumentMRREvaluator
+    - FaithfulnessEvaluator
+    - SASEvaluator
+    - DocumentMAPEvaluator
+    - DocumentRecallEvaluator
+    - ContextRelevanceEvaluator
     """
     eval_pipeline = Pipeline()
     eval_pipeline.add_component("doc_mrr", DocumentMRREvaluator())
     eval_pipeline.add_component("groundness", FaithfulnessEvaluator())
-    eval_pipeline.add_component("sas", SASEvaluator(model=embeddings_model))
+    eval_pipeline.add_component("sas", SASEvaluator(model=EMBEDDINGS_MODEL))
     eval_pipeline.add_component("doc_map", DocumentMAPEvaluator())
     eval_pipeline.add_component("doc_recall_single_hit", DocumentRecallEvaluator(mode=RecallMode.SINGLE_HIT))
     eval_pipeline.add_component("doc_recall_multi_hit", DocumentRecallEvaluator(mode=RecallMode.MULTI_HIT))
     eval_pipeline.add_component("relevance", ContextRelevanceEvaluator())
 
-    return eval_pipeline.run(
-        {
-            "doc_mrr": {"ground_truth_documents": truth_docs, "retrieved_documents": retrieved_docs},
-            "groundness": {"questions": questions, "contexts": contexts, "responses": truth_answers},
-            "sas": {"predicted_answers": pred_answers, "ground_truth_answers": truth_answers},
-            "doc_map": {"ground_truth_documents": truth_docs, "retrieved_documents": retrieved_docs},
-            "doc_recall_single_hit": {"ground_truth_documents": truth_docs, "retrieved_documents": retrieved_docs},
-            "doc_recall_multi_hit": {"ground_truth_documents": truth_docs, "retrieved_documents": retrieved_docs},
-            "relevance": {"questions": questions, "contexts": contexts},
-        }
-    )
+    return eval_pipeline
+
+
+def built_eval_input(questions, truth_docs, truth_answers, retrieved_docs, contexts, pred_answers):
+    """Helper function to build the input for the evaluation pipeline"""
+    return {
+        "doc_mrr": {"ground_truth_documents": truth_docs, "retrieved_documents": retrieved_docs},
+        "groundness": {"questions": questions, "contexts": contexts, "responses": truth_answers},
+        "sas": {"predicted_answers": pred_answers, "ground_truth_answers": truth_answers},
+        "doc_map": {"ground_truth_documents": truth_docs, "retrieved_documents": retrieved_docs},
+        "doc_recall_single_hit": {"ground_truth_documents": truth_docs, "retrieved_documents": retrieved_docs},
+        "doc_recall_multi_hit": {"ground_truth_documents": truth_docs, "retrieved_documents": retrieved_docs},
+        "relevance": {"questions": questions, "contexts": contexts},
+    }
 
 
 def run_rag_pipeline(documents, evaluation_questions, rag_pipeline_a):
@@ -189,11 +199,14 @@ def test_evaluation_pipeline(samples_path):
                 docs.append(Document(content=text, meta={"name": article})) if text else None
     doc_store = indexing_pipeline(docs)
 
-    # running the RAG pipeline A
+    # running the RAG pipeline A + evaluation pipeline
     rag_pipeline_a = rag_pipeline(doc_store, top_k=2)
     contexts_a, pred_answers_a, retrieved_docs_a, truth_docs = run_rag_pipeline(docs, eval_questions, rag_pipeline_a)
-    results_rag_a = eval_pipeline(questions, truth_docs, truth_answers, retrieved_docs_a, contexts_a, pred_answers_a)
+    eval_pipeline = evaluation_pipeline()
+    eval_input = built_eval_input(questions, truth_docs, truth_answers, retrieved_docs_a, contexts_a, pred_answers_a)
+    results_rag_a = eval_pipeline.run(eval_input)
 
+    # running the evaluation EvaluationRunResult
     inputs_a = {
         "question": questions,
         "contexts": contexts_a,
@@ -237,7 +250,8 @@ def test_evaluation_pipeline(samples_path):
     # running the RAG pipeline B
     rag_pipeline_b = rag_pipeline(doc_store, top_k=4)
     contexts_b, pred_answers_b, retrieved_docs_b, truth_docs = run_rag_pipeline(docs, eval_questions, rag_pipeline_b)
-    results_rag_b = eval_pipeline(questions, truth_docs, truth_answers, retrieved_docs_b, contexts_b, pred_answers_b)
+    eval_input = built_eval_input(questions, truth_docs, truth_answers, retrieved_docs_b, contexts_b, pred_answers_b)
+    results_rag_b = eval_pipeline.run(eval_input)
 
     inputs_b = {
         "question": questions,
