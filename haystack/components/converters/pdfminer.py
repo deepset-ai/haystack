@@ -34,14 +34,14 @@ class PDFMinerToDocument:
     """
 
     def __init__(
-            self,
-            line_overlap: float = 0.5,
-            char_margin: float = 2.0,
-            line_margin: float = 0.5,
-            word_margin: float = 0.1,
-            boxes_flow: Optional[float] = 0.5,
-            detect_vertical: bool = True,
-            all_texts: bool = False,
+        self,
+        line_overlap: float = 0.5,
+        char_margin: float = 2.0,
+        line_margin: float = 0.5,
+        word_margin: float = 0.1,
+        boxes_flow: Optional[float] = 0.5,
+        detect_vertical: bool = True,
+        all_texts: bool = False,
     ) -> None:
         """
         Create an PDFMinerToDocument component.
@@ -88,7 +88,7 @@ class PDFMinerToDocument:
             all_texts=all_texts,
         )
 
-    def __converter(self, extractor: 'LTPage') -> Document:
+    def __converter(self, extractor: "LTPage") -> Document:
         """
         Extracts text from PDF pages then convert the text into Documents
 
@@ -110,9 +110,9 @@ class PDFMinerToDocument:
 
     @component.output_types(document=List[Document])
     def run(
-            self,
-            sources: List[Union[str, Path, ByteStream]],
-            meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+        self,
+        sources: List[Union[str, Path, ByteStream]],
+        meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
     ):
         """
         Converts PDF files to Documents.
