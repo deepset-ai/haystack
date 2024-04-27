@@ -9,7 +9,7 @@ from haystack.lazy_imports import LazyImport
 
 with LazyImport("Run 'pip install pdfminer.six'") as pdfminer_import:
     from pdfminer.high_level import extract_pages
-    from pdfminer.layout import LAParams, LTPage, LTTextContainer
+    from pdfminer.layout import LAParams, LTTextContainer
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,7 @@ class PDFMinerToDocument:
         all_texts: bool = False,
     ) -> None:
         """
-        Create an PDFMinerToDocument component.
+        Create a PDFMinerToDocument component.
 
         :param line_overlap:
             This parameter determines whether two characters are considered to be on
@@ -102,11 +102,15 @@ class PDFMinerToDocument:
         for page in extractor:
             text = ""
             for container in page:
+                # Keep text only
                 if isinstance(container, LTTextContainer):
                     text += container.get_text()
             pages.append(text)
 
-        return Document(content="\f".join(pages))
+        # Add a page delimiter
+        concat = "\f".join(pages)
+
+        return Document(content=concat)
 
     @component.output_types(document=List[Document])
     def run(
