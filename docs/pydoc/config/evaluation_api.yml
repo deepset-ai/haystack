@@ -1,17 +1,9 @@
 loaders:
   - type: haystack_pydoc_tools.loaders.CustomPythonLoader
-    search_path: [../../../haystack/components/evaluators]
+    search_path: [../../../haystack/evaluation]
     modules:
       [
-        "answer_exact_match",
-        "context_relevance",
-        "document_map",
-        "document_mrr",
-        "document_recall",
-        "document_recall",
-        "faithfulness",
-        "llm_evaluator",
-        "sas_evaluator",
+        "eval_run_result"
       ]
     ignore_when_discovered: ["__init__"]
 processors:
@@ -24,15 +16,15 @@ processors:
   - type: crossref
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmeCoreRenderer
-  excerpt: Evaluate your pipelines or individual components.
+  excerpt: Represents the results of evaluation.
   category_slug: haystack-api
-  title: Evaluators
-  slug: evaluators-api
-  order: 63
+  title: Evaluation
+  slug: evaluation-api
+  order: 61
   markdown:
     descriptive_class_title: false
     classdef_code_block: false
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false
-    filename: evaluators_api.md
+    filename: evaluation_api.md
