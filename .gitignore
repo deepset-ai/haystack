@@ -161,4 +161,3 @@ haystack/json-schemas
 # ruff
 .ruff_cache
 
-.history
