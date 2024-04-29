@@ -64,7 +64,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         store = InMemoryDocumentStore.from_dict(data)
         mock_regex.compile.assert_called_with("custom_regex")
         assert store.tokenizer
-        assert store.bm25_algorithm.__name__ == "BM25Plus"
+        assert store.bm25_algorithm == "BM25Plus"
         assert store.bm25_parameters == {"key": "value"}
 
     def test_write_documents(self, document_store):
