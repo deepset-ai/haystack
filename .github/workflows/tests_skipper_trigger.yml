@@ -43,6 +43,6 @@ jobs:
     # Don't run this check if the PR contains both code and non-code changes (e.g. release notes)
     needs: check_if_changed
     if: needs.check_if_changed.outputs.code_changes == 'false'
-    uses: deepset-ai/haystack/.github/workflows/tests_skipper_workflow.yml@ci/fix-catch-all2
+    uses: ./.github/workflows/tests_skipper_workflow.yml
     with:
       tests_were_skipped: true

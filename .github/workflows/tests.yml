@@ -352,6 +352,6 @@ jobs:
       - integration-tests-linux
       - integration-tests-macos
       - integration-tests-windows
-    uses: deepset-ai/haystack/.github/workflows/tests_skipper_workflow.yml@ci/fix-catch-all2
+    uses: ./.github/workflows/tests_skipper_workflow.yml
     with:
       tests_were_skipped: false
