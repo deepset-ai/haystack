@@ -83,6 +83,7 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
                 "repetition_penalty",
                 "return_full_text",
                 "seed",
+                "stop",
                 "stream",
                 "stream_handler",
                 "temperature",
