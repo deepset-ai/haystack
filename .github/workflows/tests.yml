@@ -342,9 +342,8 @@ jobs:
                 - "branch:${{ github.ref_name }}"
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-  catch-all:
-    name: Catch-all check
-    runs-on: ubuntu-latest
+  trigger-catch-all:
+    name: Tests completed
     # This job will be executed only after all the other tests
     # are successful.
     # This way we'll be able to mark only this test as required
@@ -353,6 +352,6 @@ jobs:
       - integration-tests-linux
       - integration-tests-macos
       - integration-tests-windows
-    steps:
-      - name: Finisher
-        run: echo "Finish him!"
+    uses: ./.github/workflows/tests_skipper_workflow.yml
+    with:
+      tests_were_skipped: false
