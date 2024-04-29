@@ -38,12 +38,11 @@ jobs:
               - test/**/*.py
               - "pyproject.toml"
 
-  catch-all:
+  trigger-catch-all:
+    name: Tests completed
     # Don't run this check if the PR contains both code and non-code changes (e.g. release notes)
     needs: check_if_changed
     if: needs.check_if_changed.outputs.code_changes == 'false'
-    name: Catch-all check
-    runs-on: ubuntu-latest
-    steps:
-      - name: Skip tests
-        run: echo "Skipped!"
+    uses: ./.github/workflows/tests_skipper_workflow.yml
+    with:
+      tests_were_skipped: true
