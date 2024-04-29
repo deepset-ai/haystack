@@ -5,6 +5,3 @@ highlights: >
 enhancements:
   - |
     Now the DocumentSplitter adds the "page_number" field to the metadata of all output documents to keep track of the page of the original document it belongs to.
-issues:
-  - |
-    6705
