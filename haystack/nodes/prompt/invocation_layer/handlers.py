@@ -62,9 +62,13 @@ class DefaultPromptHandler:
     """
 
     def __init__(
-        self, model_name_or_path: str, model_max_length: int, max_length: int = 100, token: Optional[str] = None
+        self,
+        model_name_or_path: str,
+        model_max_length: int,
+        max_length: int = 100,
+        use_auth_token: Optional[Union[str, bool]] = None,
     ):
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, token=token)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, token=use_auth_token)
         self.tokenizer.model_max_length = model_max_length
         self.model_max_length = model_max_length
         self.max_length = max_length
