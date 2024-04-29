@@ -109,6 +109,7 @@ extra-dependencies = [
 
   # Converters
   "pypdf",  # PyPDFConverter
+  "pdfminer.six", # PDFMinerToDocument
   "markdown-it-py",  # MarkdownToDocument
   "mdit_plain",  # MarkdownToDocument
   "tika",  # TikaDocumentConverter

@@ -88,7 +88,7 @@ class PDFMinerToDocument:
             all_texts=all_texts,
         )
 
-    def __converter(self, extractor: "LTPage") -> Document:
+    def __converter(self, extractor) -> Document:
         """
         Extracts text from PDF pages then convert the text into Documents
 
