@@ -123,7 +123,6 @@ class DocumentSplitter:
 
     @staticmethod
     def _create_docs_from_splits(text_splits: List[str], splits_pages: List[int], meta: Dict) -> List[Document]:
-
         """
         Creates Document objects from text splits enriching them with page number and the metadata of the original document.
         """
