@@ -151,8 +151,8 @@ class InMemoryDocumentStore:
             doc_len = doc_stats.doc_len
 
             score = 0.0
-            for tok, idf_score in idf.keys():
-                score += idf_score * _compute_tf(tok, freq, doc_len)
+            for tok in idf.keys():  # pylint: disable=consider-using-dict-items
+                score += idf[tok] * _compute_tf(tok, freq, doc_len)
             ret.append((doc, score))
 
         return ret
@@ -259,8 +259,8 @@ class InMemoryDocumentStore:
             doc_len = doc_stats.doc_len
 
             score = 0.0
-            for tok, idf_score in idf.keys():
-                score += idf_score * _compute_tf(tok, freq, doc_len)
+            for tok in idf.keys():  # pylint: disable=consider-using-dict-items
+                score += idf[tok] * _compute_tf(tok, freq, doc_len)
             ret.append((doc, score))
 
         return ret
