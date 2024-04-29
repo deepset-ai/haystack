@@ -7,10 +7,10 @@ from haystack import Document, Pipeline
 from haystack.components.builders import AnswerBuilder, PromptBuilder
 from haystack.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
 from haystack.components.evaluators import (
-    ContextRelevanceEvaluator,
     DocumentMAPEvaluator,
     DocumentMRREvaluator,
     DocumentRecallEvaluator,
+    DocumentRelevanceEvaluator,
     FaithfulnessEvaluator,
     SASEvaluator,
 )
@@ -85,7 +85,7 @@ def evaluation_pipeline():
     eval_pipeline.add_component("doc_map", DocumentMAPEvaluator())
     eval_pipeline.add_component("doc_recall_single_hit", DocumentRecallEvaluator(mode=RecallMode.SINGLE_HIT))
     eval_pipeline.add_component("doc_recall_multi_hit", DocumentRecallEvaluator(mode=RecallMode.MULTI_HIT))
-    eval_pipeline.add_component("relevance", ContextRelevanceEvaluator())
+    eval_pipeline.add_component("relevance", DocumentRelevanceEvaluator())
 
     return eval_pipeline
 
@@ -99,7 +99,7 @@ def built_eval_input(questions, truth_docs, truth_answers, retrieved_docs, conte
         "doc_map": {"ground_truth_documents": truth_docs, "retrieved_documents": retrieved_docs},
         "doc_recall_single_hit": {"ground_truth_documents": truth_docs, "retrieved_documents": retrieved_docs},
         "doc_recall_multi_hit": {"ground_truth_documents": truth_docs, "retrieved_documents": retrieved_docs},
-        "relevance": {"questions": questions, "contexts": contexts},
+        "relevance": {"questions": questions, "retrieved_documents": retrieved_docs},
     }
 
 
@@ -156,7 +156,7 @@ def built_input_for_results_eval(rag_results):
             "individual_scores": rag_results["doc_recall_multi_hit"]["individual_scores"],
             "score": rag_results["doc_recall_multi_hit"]["score"],
         },
-        "Contextual Relevance": {
+        "Document Relevance": {
             "individual_scores": rag_results["relevance"]["individual_scores"],
             "score": rag_results["relevance"]["score"],
         },

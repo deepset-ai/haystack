@@ -3,14 +3,15 @@ from typing import List
 
 import pytest
 
-from haystack.components.evaluators import ContextRelevanceEvaluator
+from haystack import Document
+from haystack.components.evaluators import DocumentRelevanceEvaluator
 from haystack.utils.auth import Secret
 
 
 class TestContextRelevanceEvaluator:
     def test_init_default(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        component = ContextRelevanceEvaluator()
+        component = DocumentRelevanceEvaluator()
         assert component.api == "openai"
         assert component.generator.client.api_key == "test-api-key"
         assert component.instructions == (
@@ -48,10 +49,10 @@ class TestContextRelevanceEvaluator:
     def test_init_fail_wo_openai_api_key(self, monkeypatch):
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         with pytest.raises(ValueError, match="None of the .* environment variables are set"):
-            ContextRelevanceEvaluator()
+            DocumentRelevanceEvaluator()
 
     def test_init_with_parameters(self):
-        component = ContextRelevanceEvaluator(
+        component = DocumentRelevanceEvaluator(
             api_key=Secret.from_token("test-api-key"),
             api="openai",
             examples=[
@@ -70,21 +71,21 @@ class TestContextRelevanceEvaluator:
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
 
         data = {
-            "type": "haystack.components.evaluators.context_relevance.ContextRelevanceEvaluator",
+            "type": "haystack.components.evaluators.document_relevance.DocumentRelevanceEvaluator",
             "init_parameters": {
                 "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
                 "api": "openai",
                 "examples": [{"inputs": {"questions": "What is football?"}, "outputs": {"score": 0}}],
             },
         }
-        component = ContextRelevanceEvaluator.from_dict(data)
+        component = DocumentRelevanceEvaluator.from_dict(data)
         assert component.api == "openai"
         assert component.generator.client.api_key == "test-api-key"
         assert component.examples == [{"inputs": {"questions": "What is football?"}, "outputs": {"score": 0}}]
 
     def test_run_calculates_mean_score(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        component = ContextRelevanceEvaluator()
+        component = DocumentRelevanceEvaluator()
 
         def generator_run(self, *args, **kwargs):
             if "Football" in kwargs["prompt"]:
@@ -95,20 +96,24 @@ class TestContextRelevanceEvaluator:
         monkeypatch.setattr("haystack.components.generators.openai.OpenAIGenerator.run", generator_run)
 
         questions = ["Which is the most popular global sport?", "Who created the Python language?"]
-        contexts = [
+        docs = [
             [
-                "The popularity of sports can be measured in various ways, including TV viewership, social media "
-                "presence, number of participants, and economic impact. Football is undoubtedly the world's most "
-                "popular sport with major events like the FIFA World Cup and sports personalities like Ronaldo and "
-                "Messi, drawing a followership of more than 4 billion people."
+                Document(
+                    content="The popularity of sports can be measured in various ways, including TV viewership, social media "
+                    "presence, number of participants, and economic impact. Football is undoubtedly the world's most "
+                    "popular sport with major events like the FIFA World Cup and sports personalities like Ronaldo and "
+                    "Messi, drawing a followership of more than 4 billion people."
+                )
             ],
             [
-                "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming "
-                "language. Its design philosophy emphasizes code readability, and its language constructs aim to help "
-                "programmers write clear, logical code for both small and large-scale software projects."
+                Document(
+                    content="Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming "
+                    "language. Its design philosophy emphasizes code readability, and its language constructs aim to help "
+                    "programmers write clear, logical code for both small and large-scale software projects."
+                )
             ],
         ]
-        results = component.run(questions=questions, contexts=contexts)
+        results = component.run(questions=questions, retrieved_documents=docs)
         assert results == {
             "individual_scores": [0.5, 1],
             "results": [
@@ -120,7 +125,7 @@ class TestContextRelevanceEvaluator:
 
     def test_run_missing_parameters(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        component = ContextRelevanceEvaluator()
+        component = DocumentRelevanceEvaluator()
         with pytest.raises(TypeError, match="missing 2 required positional arguments"):
             component.run()
 
@@ -131,10 +136,16 @@ class TestContextRelevanceEvaluator:
     @pytest.mark.integration
     def test_live_run(self):
         questions = ["Who created the Python language?"]
-        contexts = [["Python, created by Guido van Rossum, is a high-level general-purpose programming language."]]
+        docs = [
+            [
+                Document(
+                    content="Python, created by Guido van Rossum, is a high-level general-purpose programming language."
+                )
+            ]
+        ]
 
-        evaluator = ContextRelevanceEvaluator()
-        result = evaluator.run(questions=questions, contexts=contexts)
+        evaluator = DocumentRelevanceEvaluator()
+        result = evaluator.run(questions=questions, retrieved_documents=docs)
 
         required_fields = {"individual_scores", "results", "score"}
         assert all(field in result for field in required_fields)
