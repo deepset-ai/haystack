@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Support gated repos for Huggingface inference.

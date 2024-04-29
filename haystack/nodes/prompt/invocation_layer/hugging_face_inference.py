@@ -39,7 +39,14 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
 
     """
 
-    def __init__(self, api_key: str, model_name_or_path: str, max_length: Optional[int] = 100, **kwargs):
+    def __init__(
+        self,
+        api_key: str,
+        model_name_or_path: str,
+        max_length: Optional[int] = 100,
+        use_auth_token: Optional[Union[str, bool]] = None,
+        **kwargs,
+    ):
         """
          Creates an instance of HFInferenceEndpointInvocationLayer
         :param model_name_or_path: can be either:
@@ -76,6 +83,7 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
                 "repetition_penalty",
                 "return_full_text",
                 "seed",
+                "stop",
                 "stream",
                 "stream_handler",
                 "temperature",
@@ -104,6 +112,7 @@ class HFInferenceEndpointInvocationLayer(PromptModelInvocationLayer):
                 model_name_or_path=model_name_or_path,
                 model_max_length=model_max_length,
                 max_length=self.max_length or 100,
+                use_auth_token=use_auth_token,
             )
 
     def preprocess_prompt(self, prompt: str):
