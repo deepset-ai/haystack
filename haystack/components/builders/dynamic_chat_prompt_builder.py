@@ -11,10 +11,12 @@ logger = logging.getLogger(__name__)
 @component
 class DynamicChatPromptBuilder:
     """
-    DynamicChatPromptBuilder is designed to construct dynamic prompts from a list of `ChatMessage` instances. It
-    integrates with Jinja2 templating for dynamic prompt generation. It considers any user or system message in the list
-    potentially containing a template and renders it with variables provided to the constructor. Additional template
-    variables can be feed into the component/pipeline `run` method and will be merged before rendering the template.
+    DynamicChatPromptBuilder is designed to construct dynamic prompts from a list of `ChatMessage` instances.
+
+    It integrates with Jinja2 templating for dynamic prompt generation. It considers any user or system message in the
+    list potentially containing a template and renders it with variables provided to the constructor. Additional
+    template variables can be feed into the component/pipeline `run` method and will be merged before rendering the
+    template.
 
     Usage example:
     ```python
@@ -92,6 +94,7 @@ class DynamicChatPromptBuilder:
     def run(self, prompt_source: List[ChatMessage], template_variables: Optional[Dict[str, Any]] = None, **kwargs):
         """
         Executes the dynamic prompt building process by processing a list of `ChatMessage` instances.
+
         Any user message or system message is inspected for templates and rendered with the variables provided to the
         constructor. You can provide additional template variables directly to this method, which are then merged with
         the variables provided to the constructor.
@@ -151,6 +154,7 @@ class DynamicChatPromptBuilder:
     def _validate_template(self, template_text: str, provided_variables: Set[str]):
         """
         Checks if all the required template variables are provided to the pipeline `run` method.
+
         If all the required template variables are provided, returns a Jinja2 template object.
         Otherwise, raises a ValueError.
 

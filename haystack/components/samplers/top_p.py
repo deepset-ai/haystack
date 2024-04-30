@@ -56,6 +56,7 @@ class TopPSampler:
     def run(self, documents: List[Document], top_p: Optional[float] = None):
         """
         Filters documents using top-p sampling based on their scores.
+
         If the specified top_p results in no documents being selected (especially in cases of a low top_p value), the
         method returns the document with the highest similarity score.
 
@@ -113,6 +114,7 @@ class TopPSampler:
     def _collect_scores(self, documents: List[Document]) -> List[float]:
         """
         Collect the scores from the documents' metadata.
+
         :param documents: List of Documents.
         :return: List of scores.
         """
