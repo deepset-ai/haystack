@@ -23,18 +23,18 @@ class LLMEvaluator:
     from haystack.components.evaluators import LLMEvaluator
     evaluator = LLMEvaluator(
         instructions="Is this answer problematic for children?",
-        inputs=[("responses", List[str])],
+        inputs=[("predicted_answers", List[str])],
         outputs=["score"],
         examples=[
-            {"inputs": {"responses": "Damn, this is straight outta hell!!!"}, "outputs": {"score": 1}},
-            {"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"score": 0}},
+            {"inputs": {"predicted_answers": "Damn, this is straight outta hell!!!"}, "outputs": {"score": 1}},
+            {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}},
         ],
     )
-    RESPONSES = [
+    predicted_answers = [
         "Football is the most popular sport with around 4 billion followers worldwide",
         "Python language was created by Guido van Rossum.",
     ]
-    results = evaluator.run(responses=RESPONSES)
+    results = evaluator.run(predicted_answers=predicted_answers)
     print(results)
     # {'results': [{'score': 0}, {'score': 0}]}
     ```
@@ -199,7 +199,7 @@ class LLMEvaluator:
             The prompt template.
         """
         inputs_section = (
-            "{" + ",".join([f'"{input_socket[0]}": {{{{ {input_socket[0]} }}}}' for input_socket in self.inputs]) + "}"
+            "{" + ", ".join([f'"{input_socket[0]}": {{{{ {input_socket[0]} }}}}' for input_socket in self.inputs]) + "}"
         )
 
         examples_section = "\n".join(
