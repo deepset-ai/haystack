@@ -54,7 +54,7 @@ def mock_tokenizer():
         tokens.attention_mask = attention_mask
         return tokens
 
-    with patch("haystack.components.readers.extractive.AutoTokenizer.from_pretrained") as tokenizer:
+    with patch("transformers.AutoTokenizer.from_pretrained") as tokenizer:
         tokenizer.return_value = mock_tokenize
         yield tokenizer
 
@@ -79,7 +79,7 @@ def mock_reader(mock_tokenizer):
             prediction.end_logits = end
             return prediction
 
-    with patch("haystack.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained") as model:
+    with patch("transformers.AutoModelForQuestionAnswering.from_pretrained") as model:
         model.return_value = MockModel()
         reader = ExtractiveReader(model="mock-model", device=ComponentDevice.from_str("cpu"))
         reader.warm_up()
@@ -392,8 +392,51 @@ def test_nest_answers(mock_reader: ExtractiveReader):
         assert no_answer.score == pytest.approx(expected_no_answer)
 
 
-@patch("haystack.components.readers.extractive.AutoTokenizer.from_pretrained")
-@patch("haystack.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained")
+def test_nest_answers_with_page_numbers(mock_reader: ExtractiveReader):
+    example_documents = [
+        Document(content="Angela Merkel was the chancellor of Germany.", meta={"page_number": 1}),
+        Document(content="Olaf Scholz is the chancellor of Germany", meta={"page_number": 2}),
+        Document(content="Jerry is the head of the department.", meta={"page_number": 3}),
+    ]
+    start = list(range(5))
+    end = [i + 5 for i in start]
+    start = [start] * 6  # type: ignore
+    end = [end] * 6  # type: ignore
+    probabilities = torch.arange(5).unsqueeze(0) / 5 + torch.arange(6).unsqueeze(-1) / 25
+    query_ids = [0] * 3 + [1] * 3
+    document_ids = list(range(3)) * 2
+    nested_answers = mock_reader._nest_answers(  # type: ignore
+        start=start,
+        end=end,
+        probabilities=probabilities,
+        flattened_documents=example_documents,
+        queries=example_queries,
+        answers_per_seq=5,
+        top_k=3,
+        score_threshold=None,
+        query_ids=query_ids,
+        document_ids=document_ids,
+        no_answer=True,
+        overlap_threshold=None,
+    )
+    expected_no_answers = [0.2 * 0.16 * 0.12, 0]
+    for query, answers, expected_no_answer, probabilities in zip(
+        example_queries, nested_answers, expected_no_answers, [probabilities[:3, -1], probabilities[3:, -1]]
+    ):
+        assert len(answers) == 4
+        for doc, answer, score in zip(example_documents, reversed(answers[:3]), probabilities):
+            assert answer.query == query
+            assert answer.document == doc
+            assert answer.score == pytest.approx(score)
+            assert answer.meta["answer_page_number"] == doc.meta["page_number"]
+        no_answer = answers[-1]
+        assert no_answer.query == query
+        assert no_answer.document is None
+        assert no_answer.score == pytest.approx(expected_no_answer)
+
+
+@patch("transformers.AutoTokenizer.from_pretrained")
+@patch("transformers.AutoModelForQuestionAnswering.from_pretrained")
 def test_warm_up_use_hf_token(mocked_automodel, mocked_autotokenizer, initialized_token: Secret):
     reader = ExtractiveReader("deepset/roberta-base-squad2", device=ComponentDevice.from_str("cpu"))
 
@@ -408,8 +451,8 @@ def test_warm_up_use_hf_token(mocked_automodel, mocked_autotokenizer, initialize
     mocked_autotokenizer.assert_called_once_with("deepset/roberta-base-squad2", token="secret-token")
 
 
-@patch("haystack.components.readers.extractive.AutoTokenizer.from_pretrained")
-@patch("haystack.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained")
+@patch("transformers.AutoTokenizer.from_pretrained")
+@patch("transformers.AutoModelForQuestionAnswering.from_pretrained")
 def test_device_map_auto(mocked_automodel, _mocked_autotokenizer, monkeypatch):
     monkeypatch.delenv("HF_API_TOKEN", raising=False)
     reader = ExtractiveReader("deepset/roberta-base-squad2", model_kwargs={"device_map": "auto"})
@@ -426,8 +469,8 @@ def test_device_map_auto(mocked_automodel, _mocked_autotokenizer, monkeypatch):
     assert reader.device == ComponentDevice.from_multiple(DeviceMap.from_hf({"": auto_device.to_hf()}))
 
 
-@patch("haystack.components.readers.extractive.AutoTokenizer.from_pretrained")
-@patch("haystack.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained")
+@patch("transformers.AutoTokenizer.from_pretrained")
+@patch("transformers.AutoModelForQuestionAnswering.from_pretrained")
 def test_device_map_str(mocked_automodel, _mocked_autotokenizer, monkeypatch):
     monkeypatch.delenv("HF_API_TOKEN", raising=False)
     reader = ExtractiveReader("deepset/roberta-base-squad2", model_kwargs={"device_map": "cpu:0"})
@@ -443,8 +486,8 @@ def test_device_map_str(mocked_automodel, _mocked_autotokenizer, monkeypatch):
     assert reader.device == ComponentDevice.from_multiple(DeviceMap.from_hf({"": "cpu:0"}))
 
 
-@patch("haystack.components.readers.extractive.AutoTokenizer.from_pretrained")
-@patch("haystack.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained")
+@patch("transformers.AutoTokenizer.from_pretrained")
+@patch("transformers.AutoModelForQuestionAnswering.from_pretrained")
 def test_device_map_dict(mocked_automodel, _mocked_autotokenizer, monkeypatch):
     monkeypatch.delenv("HF_API_TOKEN", raising=False)
     reader = ExtractiveReader(
