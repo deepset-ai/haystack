@@ -15,19 +15,23 @@ class TestFaithfulnessEvaluator:
         assert component.generator.client.api_key == "test-api-key"
         assert component.instructions == (
             "Your task is to judge the faithfulness or groundedness of statements based "
-            "on context information. First, please extract statements from a provided "
-            "response to a question. Second, calculate a faithfulness score for each "
-            "statement made in the response. The score is 1 if the statement can be "
+            "on context information. First, please extract statements from a provided predicted "
+            "answer to a question. Second, calculate a faithfulness score for each "
+            "statement made in the predicted answer. The score is 1 if the statement can be "
             "inferred from the provided context or 0 if it cannot be inferred."
         )
-        assert component.inputs == [("questions", List[str]), ("contexts", List[List[str]]), ("responses", List[str])]
+        assert component.inputs == [
+            ("questions", List[str]),
+            ("contexts", List[List[str]]),
+            ("predicted_answers", List[str]),
+        ]
         assert component.outputs == ["statements", "statement_scores"]
         assert component.examples == [
             {
                 "inputs": {
                     "questions": "What is the capital of Germany and when was it founded?",
                     "contexts": ["Berlin is the capital of Germany and was founded in 1244."],
-                    "responses": "The capital of Germany, Berlin, was founded in the 13th century.",
+                    "predicted_answers": "The capital of Germany, Berlin, was founded in the 13th century.",
                 },
                 "outputs": {
                     "statements": ["Berlin is the capital of Germany.", "Berlin was founded in 1244."],
@@ -38,7 +42,7 @@ class TestFaithfulnessEvaluator:
                 "inputs": {
                     "questions": "What is the capital of France?",
                     "contexts": ["Berlin is the capital of Germany."],
-                    "responses": "Paris",
+                    "predicted_answers": "Paris",
                 },
                 "outputs": {"statements": ["Paris is the capital of France."], "statement_scores": [0]},
             },
@@ -46,7 +50,7 @@ class TestFaithfulnessEvaluator:
                 "inputs": {
                     "questions": "What is the capital of Italy?",
                     "contexts": ["Rome is the capital of Italy."],
-                    "responses": "Rome is the capital of Italy with more than 4 million inhabitants.",
+                    "predicted_answers": "Rome is the capital of Italy with more than 4 million inhabitants.",
                 },
                 "outputs": {
                     "statements": ["Rome is the capital of Italy.", "Rome has more than 4 million inhabitants."],
@@ -65,15 +69,21 @@ class TestFaithfulnessEvaluator:
             api_key=Secret.from_token("test-api-key"),
             api="openai",
             examples=[
-                {"inputs": {"responses": "Damn, this is straight outta hell!!!"}, "outputs": {"custom_score": 1}},
-                {"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"custom_score": 0}},
+                {
+                    "inputs": {"predicted_answers": "Damn, this is straight outta hell!!!"},
+                    "outputs": {"custom_score": 1},
+                },
+                {
+                    "inputs": {"predicted_answers": "Football is the most popular sport."},
+                    "outputs": {"custom_score": 0},
+                },
             ],
         )
         assert component.generator.client.api_key == "test-api-key"
         assert component.api == "openai"
         assert component.examples == [
-            {"inputs": {"responses": "Damn, this is straight outta hell!!!"}, "outputs": {"custom_score": 1}},
-            {"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"custom_score": 0}},
+            {"inputs": {"predicted_answers": "Damn, this is straight outta hell!!!"}, "outputs": {"custom_score": 1}},
+            {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"custom_score": 0}},
         ]
 
     def test_from_dict(self, monkeypatch):
@@ -84,14 +94,16 @@ class TestFaithfulnessEvaluator:
             "init_parameters": {
                 "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
                 "api": "openai",
-                "examples": [{"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"score": 0}}],
+                "examples": [
+                    {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
+                ],
             },
         }
         component = FaithfulnessEvaluator.from_dict(data)
         assert component.api == "openai"
         assert component.generator.client.api_key == "test-api-key"
         assert component.examples == [
-            {"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"score": 0}}
+            {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
         ]
 
     def test_run_calculates_mean_score(self, monkeypatch):
@@ -120,11 +132,11 @@ class TestFaithfulnessEvaluator:
                 "programmers write clear, logical code for both small and large-scale software projects."
             ],
         ]
-        responses = [
+        predicted_answers = [
             "Football is the most popular sport with around 4 billion followers worldwide.",
             "Python is a high-level general-purpose programming language that was created by George Lucas.",
         ]
-        results = component.run(questions=questions, contexts=contexts, responses=responses)
+        results = component.run(questions=questions, contexts=contexts, predicted_answers=predicted_answers)
         assert results == {
             "individual_scores": [0.5, 1],
             "results": [
@@ -148,9 +160,9 @@ class TestFaithfulnessEvaluator:
     def test_live_run(self):
         questions = ["What is Python and who created it?"]
         contexts = [["Python is a programming language created by Guido van Rossum."]]
-        responses = ["Python is a programming language created by George Lucas."]
+        predicted_answers = ["Python is a programming language created by George Lucas."]
         evaluator = FaithfulnessEvaluator()
-        result = evaluator.run(questions=questions, contexts=contexts, responses=responses)
+        result = evaluator.run(questions=questions, contexts=contexts, predicted_answers=predicted_answers)
 
         required_fields = {"individual_scores", "results", "score"}
         assert all(field in result for field in required_fields)

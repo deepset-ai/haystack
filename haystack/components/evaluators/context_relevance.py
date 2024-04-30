@@ -113,7 +113,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
             api_key=self.api_key,
         )
 
-    @component.output_types(results=List[Dict[str, Any]])
+    @component.output_types(individual_scores=List[int], score=float, results=List[Dict[str, Any]])
     def run(self, questions: List[str], contexts: List[List[str]]) -> Dict[str, Any]:
         """
         Run the LLM evaluator.
