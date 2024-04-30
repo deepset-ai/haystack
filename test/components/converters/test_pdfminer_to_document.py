@@ -35,6 +35,7 @@ class TestPDFMinerToDocument:
         """
         sources = [test_files_path / "audio" / "answer.wav"]
         converter = PDFMinerToDocument()
+
         with caplog.at_level(logging.WARNING):
             output = converter.run(sources=sources)
             assert "Is this really a PDF?" in caplog.text

@@ -19,7 +19,7 @@ class PDFMinerToDocument:
     """
     Converts PDF files to Documents.
 
-    Uses `pdfminer` compatible converters to convert PDF files to Documents.
+    Uses `pdfminer` compatible converters to convert PDF files to Documents. https://pdfminersix.readthedocs.io/en/latest/
 
     Usage example:
     ```python
@@ -45,8 +45,6 @@ class PDFMinerToDocument:
     ) -> None:
         """
         Create a PDFMinerToDocument component.
-
-        Documentation: https://pdfminersix.readthedocs.io/en/latest/
 
         :param line_overlap:
             This parameter determines whether two characters are considered to be on
