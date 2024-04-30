@@ -166,7 +166,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         results = document_store.bm25_retrieval(query="Python", top_k=1, scale_score=False)
         assert results[0].score != results1[0].score
 
-    def test_bm25_retrieval_with_non_scaled_BM25Okapi(self, document_store: InMemoryDocumentStore):
+    def test_bm25_retrieval_with_non_scaled_BM25Okapi(self):
         # Highly repetitive documents make BM25Okapi return negative scores, which should not be filtered if the
         # scores are not scaled
         docs = [
@@ -188,9 +188,9 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
                 to try the new features as soon as they are merged."""
             ),
         ]
+        document_store = InMemoryDocumentStore(bm25_algorithm="BM25Okapi")
         document_store.write_documents(docs)
 
-        document_store.bm25_algorithm = rank_bm25.BM25Okapi
         results1 = document_store.bm25_retrieval(query="Haystack installation", top_k=10, scale_score=False)
         assert len(results1) == 3
         assert all(res.score < 0.0 for res in results1)
