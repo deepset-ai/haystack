@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    The ExtractiveReader can now page numbers to the meta data of ExtractedAnswers.
+    It's done automatically if the source document of the ExtractedAnswer contains a page number in its meta data.

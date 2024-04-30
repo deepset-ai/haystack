@@ -317,7 +317,7 @@ class ExtractiveReader:
 
         # Calculate the answer page number
         meta_to_add = {}
-        if answer.document and "page_number" in answer.document.meta:
+        if answer.document and "page_number" in answer.document.meta and answer.document.content:
             ans_start = answer.document_offset.start
             answer_page_number = answer.document.meta["page_number"] + answer.document.content[:ans_start].count("\f")
             meta_to_add = {"answer_page_number": answer_page_number}
