@@ -13,6 +13,8 @@ logger = logging.getLogger(__name__)
 @component
 class OpenAIGenerator:
     """
+    Text generation component using OpenAI's large language models (LLMs).
+
     Enables text generation using OpenAI's large language models (LLMs). It supports gpt-4 and gpt-3.5-turbo
     family of models.
 
@@ -258,6 +260,7 @@ class OpenAIGenerator:
     def _check_finish_reason(self, message: ChatMessage) -> None:
         """
         Check the `finish_reason` returned with the OpenAI completions.
+
         If the `finish_reason` is `length`, log a warning to the user.
 
         :param message:

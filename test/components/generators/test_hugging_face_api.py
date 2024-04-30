@@ -118,7 +118,7 @@ class TestHuggingFaceAPIGenerator:
     def test_to_dict(self, mock_check_valid_model):
         generator = HuggingFaceAPIGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "mistralai/Mistral-7B-v0.1"},
+            api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
             token=Secret.from_env_var("ENV_VAR", strict=False),
             generation_kwargs={"temperature": 0.6},
             stop_words=["stop", "words"],
@@ -128,7 +128,7 @@ class TestHuggingFaceAPIGenerator:
         init_params = result["init_parameters"]
 
         assert init_params["api_type"] == HFGenerationAPIType.SERVERLESS_INFERENCE_API
-        assert init_params["api_params"] == {"model": "mistralai/Mistral-7B-v0.1"}
+        assert init_params["api_params"] == {"model": "HuggingFaceH4/zephyr-7b-beta"}
         assert init_params["token"] == {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"}
         assert init_params["generation_kwargs"] == {
             "temperature": 0.6,
@@ -139,7 +139,7 @@ class TestHuggingFaceAPIGenerator:
     def test_from_dict(self, mock_check_valid_model):
         generator = HuggingFaceAPIGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "mistralai/Mistral-7B-v0.1"},
+            api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
             token=Secret.from_env_var("ENV_VAR", strict=False),
             generation_kwargs={"temperature": 0.6},
             stop_words=["stop", "words"],
@@ -150,7 +150,7 @@ class TestHuggingFaceAPIGenerator:
         # now deserialize, call from_dict
         generator_2 = HuggingFaceAPIGenerator.from_dict(result)
         assert generator_2.api_type == HFGenerationAPIType.SERVERLESS_INFERENCE_API
-        assert generator_2.api_params == {"model": "mistralai/Mistral-7B-v0.1"}
+        assert generator_2.api_params == {"model": "HuggingFaceH4/zephyr-7b-beta"}
         assert generator_2.token == Secret.from_env_var("ENV_VAR", strict=False)
         assert generator_2.generation_kwargs == {
             "temperature": 0.6,
@@ -164,7 +164,7 @@ class TestHuggingFaceAPIGenerator:
     ):
         generator = HuggingFaceAPIGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "mistralai/Mistral-7B-v0.1"},
+            api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
             token=Secret.from_env_var("ENV_VAR", strict=False),
             generation_kwargs={"temperature": 0.6},
             stop_words=["stop", "words"],
@@ -194,7 +194,7 @@ class TestHuggingFaceAPIGenerator:
 
     def test_generate_text_with_custom_generation_parameters(self, mock_check_valid_model, mock_text_generation):
         generator = HuggingFaceAPIGenerator(
-            api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API, api_params={"model": "mistralai/Mistral-7B-v0.1"}
+            api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API, api_params={"model": "HuggingFaceH4/zephyr-7b-beta"}
         )
 
         generation_kwargs = {"temperature": 0.8, "max_new_tokens": 100}
@@ -217,9 +217,7 @@ class TestHuggingFaceAPIGenerator:
         assert len(response["meta"]) > 0
         assert [isinstance(reply, str) for reply in response["replies"]]
 
-    def test_generate_text_with_streaming_callback(
-        self, mock_check_valid_model, mock_auto_tokenizer, mock_text_generation
-    ):
+    def test_generate_text_with_streaming_callback(self, mock_check_valid_model, mock_text_generation):
         streaming_call_count = 0
 
         # Define the streaming callback function
@@ -228,10 +226,9 @@ class TestHuggingFaceAPIGenerator:
             streaming_call_count += 1
             assert isinstance(chunk, StreamingChunk)
 
-        # Create an instance of HuggingFaceRemoteGenerator
         generator = HuggingFaceAPIGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "mistralai/Mistral-7B-v0.1"},
+            api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
             streaming_callback=streaming_callback_fn,
         )
 
@@ -282,12 +279,11 @@ class TestHuggingFaceAPIGenerator:
     def test_run_serverless(self):
         generator = HuggingFaceAPIGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "mistralai/Mistral-7B-v0.1"},
+            api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
             generation_kwargs={"max_new_tokens": 20},
         )
 
         response = generator.run("How are you?")
-
         # Assert that the response contains the generated replies
         assert "replies" in response
         assert isinstance(response["replies"], list)

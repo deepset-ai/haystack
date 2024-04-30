@@ -10,8 +10,10 @@ logger = logging.getLogger(__name__)
 @component
 class DynamicPromptBuilder:
     """
-    DynamicPromptBuilder is designed to construct dynamic prompts for the pipeline. Users can change the prompt
-    template at runtime by providing a new template for each pipeline run invocation if needed.
+    DynamicPromptBuilder is designed to construct dynamic prompts for the pipeline.
+
+    Users can change the prompt template at runtime by providing a new template for each pipeline run invocation
+    if needed.
 
     Usage example:
     ```python
@@ -92,12 +94,15 @@ class DynamicPromptBuilder:
 
     def run(self, prompt_source: str, template_variables: Optional[Dict[str, Any]] = None, **kwargs):
         """
-        Executes the dynamic prompt building process. Depending on the provided type of `prompt_source`, this method
-        either processes a list of `ChatMessage` instances or a string template. In the case of `ChatMessage` instances,
-        the last user message is treated as a template and rendered with the resolved pipeline variables and any
-        additional template variables provided. For a string template, it directly applies the template variables to
-        render the final prompt. You can provide additional template variables directly to this method, that are then
-        merged with the variables resolved from the pipeline runtime.
+        Executes the dynamic prompt building process.
+
+        Depending on the provided type of `prompt_source`, this method either processes a list of `ChatMessage`
+        instances or a string template. In the case of `ChatMessage` instances, the last user message is treated as a
+        template and rendered with the resolved pipeline variables and any additional template variables provided.
+
+        For a string template, it directly applies the template variables to render the final prompt. You can provide
+        additional template variables directly to this method, that are then merged with the variables resolved from
+        the pipeline runtime.
 
         :param prompt_source:
             A string template.
@@ -127,6 +132,7 @@ class DynamicPromptBuilder:
     def _validate_template(self, template_text: str, provided_variables: Set[str]):
         """
         Checks if all the required template variables are provided to the pipeline `run` method.
+
         If all the required template variables are provided, returns a Jinja2 template object.
         Otherwise, raises a ValueError.
 

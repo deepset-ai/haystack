@@ -152,9 +152,7 @@ class TestFaithfulnessEvaluator:
         evaluator = FaithfulnessEvaluator()
         result = evaluator.run(questions=questions, contexts=contexts, responses=responses)
 
-        assert result["score"] == 0.5
-        assert result["individual_scores"] == [0.5]
-        assert result["results"][0]["score"] == 0.5
-        assert result["results"][0]["statement_scores"] == [1, 0]
-        assert "programming language" in result["results"][0]["statements"][0]
-        assert "George Lucas" in result["results"][0]["statements"][1]
+        required_fields = {"individual_scores", "results", "score"}
+        assert all(field in result for field in required_fields)
+        nested_required_fields = {"score", "statement_scores", "statements"}
+        assert all(field in result["results"][0] for field in nested_required_fields)

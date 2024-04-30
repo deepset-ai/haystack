@@ -112,6 +112,8 @@ class OpenAPIServiceToFunctions:
 
     def _openapi_to_functions(self, service_openapi_spec: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
+        OpenAPI to OpenAI function conversion.
+
         Extracts functions from the OpenAPI specification of the service and converts them into a format
         suitable for OpenAI function calling.
 
@@ -188,6 +190,8 @@ class OpenAPIServiceToFunctions:
         self, property_schema: Dict[str, Any], include_attributes: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """
+        Parses the attributes of a property schema.
+
         Recursively parses the attributes of a property schema, including nested objects and arrays,
         and includes specified attributes like description, pattern, etc.
 

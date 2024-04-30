@@ -22,7 +22,7 @@ class _BackendEnumMeta(EnumMeta):
     Metaclass for fine-grained error handling of backend enums.
     """
 
-    def __call__(cls, value, names=None, *, module=None, qualname=None, type=None, start=1):
+    def __call__(cls, value, names=None, *, module=None, qualname=None, type=None, start=1):  # noqa: A002
         if names is None:
             try:
                 return EnumMeta.__call__(cls, value, names, module=module, qualname=qualname, type=type, start=start)
@@ -159,8 +159,7 @@ class NamedEntityExtractor:
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document], batch_size: int = 1) -> Dict[str, Any]:
         """
-        Annotate named entities in each document and store
-        the annotations in the document's metadata.
+        Annotate named entities in each document and store the annotations in the document's metadata.
 
         :param documents:
             Documents to process.
@@ -227,8 +226,7 @@ class NamedEntityExtractor:
     @classmethod
     def get_stored_annotations(cls, document: Document) -> Optional[List[NamedEntityAnnotation]]:
         """
-        Returns the document's named entity annotations stored
-        in its metadata, if any.
+        Returns the document's named entity annotations stored in its metadata, if any.
 
         :param document:
             Document whose annotations are to be fetched.
@@ -246,29 +244,27 @@ class _NerBackend(ABC):
 
     def __init__(
         self,
-        type: NamedEntityExtractorBackend,
+        _type: NamedEntityExtractorBackend,
         device: ComponentDevice,
         pipeline_kwargs: Optional[Dict[str, Any]] = None,
     ) -> None:
         super().__init__()
 
-        self._type = type
+        self._type = _type
         self._device = device
         self._pipeline_kwargs = pipeline_kwargs if pipeline_kwargs is not None else {}
 
     @abstractmethod
     def initialize(self):
         """
-        Initializes the backend. This would usually
-        entail loading models, pipelines, etc.
+        Initializes the backend. This would usually entail loading models, pipelines, and so on.
         """
 
     @property
     @abstractmethod
     def initialized(self) -> bool:
         """
-        Returns if the backend has been initialized, i.e,
-        ready to annotate text.
+        Returns if the backend has been initialized, for example, ready to annotate text.
         """
 
     @abstractmethod
@@ -295,6 +291,8 @@ class _NerBackend(ABC):
     @property
     def device(self) -> ComponentDevice:
         """
+        The device on which the backend's model is loaded.
+
         :returns:
             The device on which the backend's model is loaded.
         """
@@ -457,8 +455,7 @@ class _SpacyBackend(_NerBackend):
     @contextmanager
     def _select_device(self):
         """
-        Context manager used to run spaCy models on a specific
-        GPU in a scoped manner.
+        Context manager used to run spaCy models on a specific GPU in a scoped manner.
         """
 
         # TODO: This won't restore the active device.

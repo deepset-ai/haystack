@@ -23,7 +23,8 @@ with LazyImport(message="Run 'pip install \"azure-ai-formrecognizer>=3.2.0b2\"'"
 @component
 class AzureOCRDocumentConverter:
     """
-    A component for converting files to Documents using Azure's Document Intelligence service.
+    Convert files to documents using Azure's Document Intelligence service.
+
     Supported file formats are: PDF, JPEG, PNG, BMP, TIFF, DOCX, XLSX, PPTX, and HTML.
 
     In order to be able to use this component, you need an active Azure account
@@ -170,6 +171,8 @@ class AzureOCRDocumentConverter:
     # pylint: disable=line-too-long
     def _convert_tables_and_text(self, result: "AnalyzeResult", meta: Optional[Dict[str, Any]]) -> List[Document]:
         """
+        Converts the tables and text extracted by Azure's Document Intelligence service into Haystack Documents.
+
         :param result: The AnalyzeResult object returned by the `begin_analyze_document` method. Docs on Analyze result
             can be found [here](https://azuresdkdocs.blob.core.windows.net/$web/python/azure-ai-formrecognizer/3.3.0/azure.ai.formrecognizer.html?highlight=read#azure.ai.formrecognizer.AnalyzeResult).
         :param meta: Optional dictionary with metadata that shall be attached to all resulting documents.
@@ -188,6 +191,7 @@ class AzureOCRDocumentConverter:
     def _convert_tables(self, result: "AnalyzeResult", meta: Optional[Dict[str, Any]]) -> List[Document]:
         """
         Converts the tables extracted by Azure's Document Intelligence service into Haystack Documents.
+
         :param result: The AnalyzeResult Azure object
         :param meta: Optional dictionary with metadata that shall be attached to all resulting documents.
 
@@ -296,8 +300,10 @@ class AzureOCRDocumentConverter:
 
     def _convert_to_natural_text(self, result: "AnalyzeResult", meta: Optional[Dict[str, Any]]) -> Document:
         """
-        This converts the `AnalyzeResult` object into a single Document. We add "\f" separators between to
-        differentiate between the text on separate pages. This is the expected format for the PreProcessor.
+        This converts the `AnalyzeResult` object into a single document.
+
+        We add "\f" separators between to differentiate between the text on separate pages. This is the expected format
+        for the PreProcessor.
 
         :param result: The AnalyzeResult object returned by the `begin_analyze_document` method. Docs on Analyze result
             can be found [here](https://azuresdkdocs.blob.core.windows.net/$web/python/azure-ai-formrecognizer/3.3.0/azure.ai.formrecognizer.html?highlight=read#azure.ai.formrecognizer.AnalyzeResult).
@@ -340,8 +346,10 @@ class AzureOCRDocumentConverter:
         self, result: "AnalyzeResult", meta: Optional[Dict[str, str]], threshold_y: float = 0.05
     ) -> Document:
         """
-        This converts the `AnalyzeResult` object into a single Haystack Document. We add "\f" separators between to
-        differentiate between the text on separate pages. This is the expected format for the PreProcessor.
+        This converts the `AnalyzeResult` object into a single Haystack Document.
+
+        We add "\f" separators between to differentiate between the text on separate pages. This is the expected format
+        for the PreProcessor.
 
         :param result: The AnalyzeResult object returned by the `begin_analyze_document` method. Docs on Analyze result
             can be found [here](https://azuresdkdocs.blob.core.windows.net/$web/python/azure-ai-formrecognizer/3.3.0/azure.ai.formrecognizer.html?highlight=read#azure.ai.formrecognizer.AnalyzeResult).
@@ -427,6 +435,7 @@ class AzureOCRDocumentConverter:
     def _collect_table_spans(self, result: "AnalyzeResult") -> Dict:
         """
         Collect the spans of all tables by page number.
+
         :param result: The AnalyzeResult object returned by the `begin_analyze_document` method.
         :returns: A dictionary with the page number as key and a list of table spans as value.
         """
@@ -443,6 +452,7 @@ class AzureOCRDocumentConverter:
     ) -> bool:
         """
         Check if a line or paragraph is part of a table.
+
         :param tables_on_page: A dictionary with the page number as key and a list of table spans as value.
         :param line_or_paragraph: The line or paragraph to check.
         :returns: True if the line or paragraph is part of a table, False otherwise.
@@ -457,7 +467,9 @@ class AzureOCRDocumentConverter:
 
     def _hash_dataframe(self, df: pd.DataFrame, desired_samples=5, hash_length=4) -> str:
         """
-        Returns a hash of the DataFrame content. The hash is based on the content of the DataFrame.
+        Returns a hash of the DataFrame content.
+
+        The hash is based on the content of the DataFrame.
         :param df: The DataFrame to hash.
         :param desired_samples: The desired number of samples to hash.
         :param hash_length: The length of the hash for each sample.
