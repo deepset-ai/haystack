@@ -46,6 +46,8 @@ class PDFMinerToDocument:
         """
         Create a PDFMinerToDocument component.
 
+        Documentation: https://pdfminersix.readthedocs.io/en/latest/
+
         :param line_overlap:
             This parameter determines whether two characters are considered to be on
             the same line based on the amount of overlap between them.
