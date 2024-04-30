@@ -292,7 +292,7 @@ class _Component:
         class MyComponent:
 
             def __init__(self, value: int):
-                component.set_input_types(value_1=str, value_2=str)
+                component.set_input_types(self, value_1=str, value_2=str)
                 ...
 
             @component.output_types(output_1=int, output_2=str)
@@ -309,7 +309,7 @@ class _Component:
         class MyComponent:
 
             def __init__(self, value: int):
-                component.set_input_types(value_1=str, value_2=str)
+                component.set_input_types(self, value_1=str, value_2=str)
                 ...
 
             @component.output_types(output_1=int, output_2=str)
@@ -337,7 +337,7 @@ class _Component:
         class MyComponent:
 
             def __init__(self, value: int):
-                component.set_output_types(output_1=int, output_2=str)
+                component.set_output_types(self, output_1=int, output_2=str)
                 ...
 
             # no decorators here
