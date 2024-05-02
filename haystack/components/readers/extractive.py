@@ -308,6 +308,31 @@ class ExtractiveReader:
 
         return start_candidates_tokens_to_chars, end_candidates_tokens_to_chars, candidates_values
 
+    def _add_answer_page_number(self, answer: ExtractedAnswer) -> ExtractedAnswer:
+        if answer.meta is None:
+            answer.meta = {}
+
+        if answer.document_offset is None:
+            return answer
+
+        if not answer.document or "page_number" not in answer.document.meta:
+            return answer
+
+        if not isinstance(answer.document.meta["page_number"], int):
+            logger.warning(
+                f"Document's page_number must be int but is {type(answer.document.meta['page_number'])}. "
+                f"No page number will be added to the answer."
+            )
+            return answer
+
+        # Calculate the answer page number
+        if answer.document.content:
+            ans_start = answer.document_offset.start
+            answer_page_number = answer.document.meta["page_number"] + answer.document.content[:ans_start].count("\f")
+            answer.meta.update({"answer_page_number": answer_page_number})
+
+        return answer
+
     def _nest_answers(
         self,
         start: List[List[int]],
@@ -358,6 +383,10 @@ class ExtractiveReader:
             current_answers = sorted(current_answers, key=lambda ans: ans.score, reverse=True)
             current_answers = self.deduplicate_by_overlap(current_answers, overlap_threshold=overlap_threshold)
             current_answers = current_answers[:top_k]
+
+            # Calculate the answer page number and add it to meta
+            current_answers = [self._add_answer_page_number(answer=answer) for answer in current_answers]
+
             if no_answer:
                 no_answer_score = math.prod(1 - answer.score for answer in current_answers)
                 answer_ = ExtractedAnswer(
