@@ -315,14 +315,22 @@ class ExtractiveReader:
         if answer.document_offset is None:
             return answer
 
+        if not answer.document or "page_number" not in answer.document.meta:
+            return answer
+
+        if not isinstance(answer.document.meta["page_number"], int):
+            logger.warning(
+                f"Document's page_number must be int but is {type(answer.document.meta['page_number'])}. "
+                f"No page number will be added to the answer."
+            )
+            return answer
+
         # Calculate the answer page number
-        meta_to_add = {}
-        if answer.document and "page_number" in answer.document.meta and answer.document.content:
+        if answer.document.content:
             ans_start = answer.document_offset.start
             answer_page_number = answer.document.meta["page_number"] + answer.document.content[:ans_start].count("\f")
-            meta_to_add = {"answer_page_number": answer_page_number}
+            answer.meta.update({"answer_page_number": answer_page_number})
 
-        answer.meta.update(meta_to_add)
         return answer
 
     def _nest_answers(
