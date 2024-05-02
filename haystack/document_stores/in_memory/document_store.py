@@ -1,4 +1,3 @@
-import heapq
 import math
 import re
 from collections import Counter
@@ -426,7 +425,10 @@ class InMemoryDocumentStore:
             logger.info("No documents found for BM25 retrieval. Returning empty list.")
             return []
 
-        results = heapq.nlargest(top_k, self.bm25_algorithm_inst(query, all_documents), key=lambda x: x[1])
+        results = sorted(self.bm25_algorithm_inst(query, all_documents), key=lambda x: x[1], reverse=True)[:top_k]
+
+        for doc, score in results:
+            print(f"Document: {doc.content}, Score: {score}")
 
         # BM25Okapi can return meaningful negative values, so they should not be filtered out when scale_score is False.
         # It's the only algorithm supported by rank_bm25 at the time of writing (2024) that can return negative scores.
@@ -447,7 +449,6 @@ class InMemoryDocumentStore:
             return_document = Document.from_dict(doc_fields)
             return_documents.append(return_document)
 
-        logger.warning("\n".join([str((d.content, d.score)) for d in return_documents]))
         return return_documents
 
     def embedding_retrieval(
