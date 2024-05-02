@@ -208,8 +208,8 @@ class HuggingFaceAPIGenerator:
         meta = [
             {
                 "model": self._client.model,
-                "finish_reason": tgr.details.finish_reason,
-                "usage": {"completion_tokens": len(tgr.details.tokens)},
+                "finish_reason": tgr.details.finish_reason if tgr.details else None,
+                "usage": {"completion_tokens": len(tgr.details.tokens) if tgr.details else 0},
             }
         ]
         return {"replies": [tgr.generated_text], "meta": meta}

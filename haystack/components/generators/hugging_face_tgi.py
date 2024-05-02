@@ -255,15 +255,22 @@ class HuggingFaceTGIGenerator:
         all_metadata: List[Dict[str, Any]] = []
         for _i in range(num_responses):
             tgr: TextGenerationOutput = self.client.text_generation(prompt, details=True, **generation_kwargs)
+            if tgr.details:
+                completion_tokens = len(tgr.details.tokens)
+                prompt_token_count = prompt_token_count + completion_tokens
+                finish_reason = tgr.details.finish_reason
+            else:
+                finish_reason = None
+                completion_tokens = 0
             all_metadata.append(
                 {
                     "model": self.client.model,
                     "index": _i,
-                    "finish_reason": tgr.details.finish_reason,
+                    "finish_reason": finish_reason,
                     "usage": {
-                        "completion_tokens": len(tgr.details.tokens),
+                        "completion_tokens": completion_tokens,
                         "prompt_tokens": prompt_token_count,
-                        "total_tokens": prompt_token_count + len(tgr.details.tokens),
+                        "total_tokens": prompt_token_count + completion_tokens,
                     },
                 }
             )

@@ -294,15 +294,22 @@ class HuggingFaceTGIChatGenerator:
         for _i in range(num_responses):
             tgr: TextGenerationOutput = self.client.text_generation(prepared_prompt, details=True, **generation_kwargs)
             message = ChatMessage.from_assistant(tgr.generated_text)
+            if tgr.details:
+                completion_tokens = len(tgr.details.tokens)
+                prompt_token_count = prompt_token_count + completion_tokens
+                finish_reason = tgr.details.finish_reason
+            else:
+                finish_reason = None
+                completion_tokens = 0
             message.meta.update(
                 {
-                    "finish_reason": tgr.details.finish_reason,
+                    "finish_reason": finish_reason,
                     "index": _i,
                     "model": self.client.model,
                     "usage": {
-                        "completion_tokens": len(tgr.details.tokens),
+                        "completion_tokens": completion_tokens,
                         "prompt_tokens": prompt_token_count,
-                        "total_tokens": prompt_token_count + len(tgr.details.tokens),
+                        "total_tokens": prompt_token_count + completion_tokens,
                     },
                 }
             )
