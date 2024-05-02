@@ -3,7 +3,6 @@ from unittest.mock import patch
 
 import pandas as pd
 import pytest
-from haystack_bm25 import rank_bm25
 
 from haystack import Document
 from haystack.document_stores.errors import DocumentStoreError, DuplicateDocumentError
@@ -113,7 +112,18 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         results = document_store.bm25_retrieval(query="languages", top_k=3)
         assert len(results) == 3
 
-    # Test two queries and make sure the results are different
+    def test_bm25_plus_retrieval(self):
+        doc_store = InMemoryDocumentStore(bm25_algorithm="BM25Plus")
+        docs = [
+            Document(content="Hello world"),
+            Document(content="Haystack supports multiple languages"),
+            Document(content="Python is a popular programming language"),
+        ]
+        doc_store.write_documents(docs)
+
+        results = doc_store.bm25_retrieval(query="language", top_k=1)
+        assert len(results) == 1
+        assert results[0].content == "Python is a popular programming language"
 
     def test_bm25_retrieval_with_two_queries(self, document_store: InMemoryDocumentStore):
         # Tests if the bm25_retrieval method returns different documents for different queries.
