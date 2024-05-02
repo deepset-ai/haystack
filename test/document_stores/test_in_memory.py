@@ -66,6 +66,10 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         assert store.bm25_algorithm == "BM25Plus"
         assert store.bm25_parameters == {"key": "value"}
 
+    def test_invalid_bm25_algorithm(self):
+        with pytest.raises(ValueError, match="BM25 algorithm 'invalid' is not supported"):
+            InMemoryDocumentStore(bm25_algorithm="invalid")
+
     def test_write_documents(self, document_store):
         docs = [Document(id="1")]
         assert document_store.write_documents(docs) == 1
