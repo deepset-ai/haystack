@@ -275,13 +275,13 @@ class HuggingFaceTGIChatGenerator:
         message = ChatMessage.from_assistant(chunk.generated_text)
         message.meta.update(
             {
-                "finish_reason": chunk.details.finish_reason,
+                "finish_reason": chunk.details.finish_reason if chunk.details else None,
                 "index": 0,
                 "model": self.client.model,
                 "usage": {
-                    "completion_tokens": chunk.details.generated_tokens,
+                    "completion_tokens": chunk.details.generated_tokens if chunk.details else 0,
                     "prompt_tokens": prompt_token_count,
-                    "total_tokens": prompt_token_count + chunk.details.generated_tokens,
+                    "total_tokens": prompt_token_count + chunk.details.generated_tokens if chunk.details else 0,
                 },
             }
         )

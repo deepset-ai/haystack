@@ -57,7 +57,7 @@ class HuggingFaceTGIGenerator:
 
     client = HuggingFaceTGIGenerator(model="mistralai/Mistral-7B-v0.1", token=Secret.from_token("<your-api-key>"))
     client.warm_up()
-    response = client.run("What's Natural Language Processing?", max_new_tokens=120)
+    response = client.run("What's Natural Language Processing?", generation_kwargs={"max_new_tokens": 120})
     print(response)
     ```
 
