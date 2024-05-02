@@ -427,9 +427,6 @@ class InMemoryDocumentStore:
 
         results = sorted(self.bm25_algorithm_inst(query, all_documents), key=lambda x: x[1], reverse=True)[:top_k]
 
-        for doc, score in results:
-            print(f"Document: {doc.content}, Score: {score}")
-
         # BM25Okapi can return meaningful negative values, so they should not be filtered out when scale_score is False.
         # It's the only algorithm supported by rank_bm25 at the time of writing (2024) that can return negative scores.
         # see https://github.com/deepset-ai/haystack/pull/6889 for more context.

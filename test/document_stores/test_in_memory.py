@@ -215,11 +215,11 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         table_content = pd.DataFrame({"language": ["Python", "Java"], "use": ["Data Science", "Web Development"]})
         document = Document(content="Gardening", dataframe=table_content)
         docs = [
-            document,
             Document(content="Python"),
             Document(content="Bird Watching"),
             Document(content="Gardening"),
             Document(content="Java"),
+            document,
         ]
         document_store.write_documents(docs)
         results = document_store.bm25_retrieval(query="Gardening", top_k=2)
