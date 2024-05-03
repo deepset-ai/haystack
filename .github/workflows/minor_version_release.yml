@@ -79,9 +79,11 @@ jobs:
           # Create the PR
           gh pr create -B "${{ steps.branch.outputs.name }}" \
             -H bump-version \
-            --title 'Bump unstable version' \
-            --body 'Part of the release process' \
-            --label 'ignore-for-release-notes'
+            --title "Bump unstable version" \
+            --body "This PR bumps the unstable version for ${{ inputs.version }}.\n \
+          The release branch \`v${{ steps.versions.outputs.current_release_minor }}.x\` has been correctly created.\n\
+          Verify documentation on Readme has been correctly updated before approving and merging this PR." \
+            --label "ignore-for-release-notes"
 
       - uses: actions/setup-python@v5
         with:
