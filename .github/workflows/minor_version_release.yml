@@ -74,7 +74,7 @@ jobs:
           git checkout -b bump-version
           git add .
           git commit -m "Update unstable version to $NEW_VERSION"
-          g push -u origin bump-version
+          git push -u origin bump-version
 
           # Create the PR
           gh pr create -B "${{ steps.branch.outputs.name }}" \
