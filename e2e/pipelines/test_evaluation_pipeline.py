@@ -80,7 +80,7 @@ def evaluation_pipeline():
     """
     eval_pipeline = Pipeline()
     eval_pipeline.add_component("doc_mrr", DocumentMRREvaluator())
-    eval_pipeline.add_component("groundness", FaithfulnessEvaluator())
+    eval_pipeline.add_component("groundedness", FaithfulnessEvaluator())
     eval_pipeline.add_component("sas", SASEvaluator(model=EMBEDDINGS_MODEL))
     eval_pipeline.add_component("doc_map", DocumentMAPEvaluator())
     eval_pipeline.add_component("doc_recall_single_hit", DocumentRecallEvaluator(mode=RecallMode.SINGLE_HIT))
