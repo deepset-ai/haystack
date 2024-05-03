@@ -103,7 +103,6 @@ class AnswerBuilder:
         for reply, metadata in zip(replies, meta):
             referenced_docs = []
             if documents:
-                reference_idxs = []
                 if reference_pattern:
                     reference_idxs = AnswerBuilder._extract_reference_idxs(reply, reference_pattern)
                 else:
