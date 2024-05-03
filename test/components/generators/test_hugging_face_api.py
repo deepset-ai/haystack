@@ -2,7 +2,11 @@ import os
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-from huggingface_hub import TextGenerationOutputToken, TextGenerationStreamDetails, TextGenerationStreamOutput
+from huggingface_hub import (
+    TextGenerationOutputToken,
+    TextGenerationStreamOutput,
+    TextGenerationStreamOutputStreamDetails,
+)
 from huggingface_hub.utils import RepositoryNotFoundError
 
 from haystack.components.generators import HuggingFaceAPIGenerator
@@ -236,13 +240,15 @@ class TestHuggingFaceAPIGenerator:
         # Don't remove self
         def mock_iter(self):
             yield TextGenerationStreamOutput(
+                index=0,
                 generated_text=None,
                 token=TextGenerationOutputToken(id=1, text="I'm fine, thanks.", logprob=0.0, special=False),
             )
             yield TextGenerationStreamOutput(
+                index=1,
                 generated_text=None,
                 token=TextGenerationOutputToken(id=1, text="Ok bye", logprob=0.0, special=False),
-                details=TextGenerationStreamDetails(finish_reason="length", generated_tokens=5, seed=None),
+                details=TextGenerationStreamOutputStreamDetails(finish_reason="length", generated_tokens=5, seed=None),
             )
 
         mock_response = Mock(**{"__iter__": mock_iter})
