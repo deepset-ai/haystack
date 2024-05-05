@@ -7,7 +7,7 @@ from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inp
 from haystack.utils.hf import HFGenerationAPIType, HFModelType, check_valid_model
 from haystack.utils.url_validation import is_valid_http_url
 
-with LazyImport(message="Run 'pip install \"huggingface_hub[inference]>=0.22.0\"'") as huggingface_hub_import:
+with LazyImport(message="Run 'pip install \"huggingface_hub[inference]>=0.23.0\"'") as huggingface_hub_import:
     from huggingface_hub import ChatCompletionOutput, ChatCompletionStreamOutput, InferenceClient
 
 

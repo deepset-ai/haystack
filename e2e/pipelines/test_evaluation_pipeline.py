@@ -80,7 +80,7 @@ def evaluation_pipeline():
     """
     eval_pipeline = Pipeline()
     eval_pipeline.add_component("doc_mrr", DocumentMRREvaluator())
-    eval_pipeline.add_component("groundness", FaithfulnessEvaluator())
+    eval_pipeline.add_component("groundedness", FaithfulnessEvaluator())
     eval_pipeline.add_component("sas", SASEvaluator(model=EMBEDDINGS_MODEL))
     eval_pipeline.add_component("doc_map", DocumentMAPEvaluator())
     eval_pipeline.add_component("doc_recall_single_hit", DocumentRecallEvaluator(mode=RecallMode.SINGLE_HIT))
@@ -94,7 +94,7 @@ def built_eval_input(questions, truth_docs, truth_answers, retrieved_docs, conte
     """Helper function to build the input for the evaluation pipeline"""
     return {
         "doc_mrr": {"ground_truth_documents": truth_docs, "retrieved_documents": retrieved_docs},
-        "groundness": {"questions": questions, "contexts": contexts, "responses": truth_answers},
+        "groundedness": {"questions": questions, "contexts": contexts, "predicted_answers": pred_answers},
         "sas": {"predicted_answers": pred_answers, "ground_truth_answers": truth_answers},
         "doc_map": {"ground_truth_documents": truth_docs, "retrieved_documents": retrieved_docs},
         "doc_recall_single_hit": {"ground_truth_documents": truth_docs, "retrieved_documents": retrieved_docs},
@@ -141,8 +141,8 @@ def built_input_for_results_eval(rag_results):
             "score": rag_results["sas"]["score"],
         },
         "Faithfulness": {
-            "individual_scores": rag_results["groundness"]["individual_scores"],
-            "score": rag_results["groundness"]["score"],
+            "individual_scores": rag_results["groundedness"]["individual_scores"],
+            "score": rag_results["groundedness"]["score"],
         },
         "Document MAP": {
             "individual_scores": rag_results["doc_map"]["individual_scores"],

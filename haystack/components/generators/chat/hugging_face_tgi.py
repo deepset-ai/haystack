@@ -9,7 +9,7 @@ from haystack.lazy_imports import LazyImport
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 from haystack.utils.hf import HFModelType, check_generation_params, check_valid_model, list_inference_deployed_models
 
-with LazyImport(message="Run 'pip install \"huggingface_hub>=0.22.0\" transformers'") as transformers_import:
+with LazyImport(message="Run 'pip install \"huggingface_hub>=0.23.0\" transformers'") as transformers_import:
     from huggingface_hub import (
         InferenceClient,
         TextGenerationOutput,
@@ -275,13 +275,13 @@ class HuggingFaceTGIChatGenerator:
         message = ChatMessage.from_assistant(chunk.generated_text)
         message.meta.update(
             {
-                "finish_reason": chunk.details.finish_reason,
+                "finish_reason": chunk.details.finish_reason if chunk.details else None,
                 "index": 0,
                 "model": self.client.model,
                 "usage": {
-                    "completion_tokens": chunk.details.generated_tokens,
+                    "completion_tokens": chunk.details.generated_tokens if chunk.details else 0,
                     "prompt_tokens": prompt_token_count,
-                    "total_tokens": prompt_token_count + chunk.details.generated_tokens,
+                    "total_tokens": prompt_token_count + chunk.details.generated_tokens if chunk.details else 0,
                 },
             }
         )
@@ -294,15 +294,22 @@ class HuggingFaceTGIChatGenerator:
         for _i in range(num_responses):
             tgr: TextGenerationOutput = self.client.text_generation(prepared_prompt, details=True, **generation_kwargs)
             message = ChatMessage.from_assistant(tgr.generated_text)
+            if tgr.details:
+                completion_tokens = len(tgr.details.tokens)
+                prompt_token_count = prompt_token_count + completion_tokens
+                finish_reason = tgr.details.finish_reason
+            else:
+                finish_reason = None
+                completion_tokens = 0
             message.meta.update(
                 {
-                    "finish_reason": tgr.details.finish_reason,
+                    "finish_reason": finish_reason,
                     "index": _i,
                     "model": self.client.model,
                     "usage": {
-                        "completion_tokens": len(tgr.details.tokens),
+                        "completion_tokens": completion_tokens,
                         "prompt_tokens": prompt_token_count,
-                        "total_tokens": prompt_token_count + len(tgr.details.tokens),
+                        "total_tokens": prompt_token_count + completion_tokens,
                     },
                 }
             )
