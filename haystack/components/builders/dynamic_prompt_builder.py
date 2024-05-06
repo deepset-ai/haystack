@@ -91,7 +91,7 @@ class DynamicPromptBuilder:
         component.set_output_types(self, prompt=str)
 
         self.runtime_variables = runtime_variables
-        self.default_template: Template | None = None
+        self.default_template: Optional[Template] = None
         self.required_default_template_variables: Set[str] = set()
         if template:
             self.default_template = Template(template)
