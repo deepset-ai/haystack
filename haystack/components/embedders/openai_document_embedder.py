@@ -1,3 +1,4 @@
+import os
 from typing import Any, Dict, List, Optional, Tuple
 
 from openai import OpenAI
@@ -82,7 +83,13 @@ class OpenAIDocumentEmbedder:
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
 
-        self.client = OpenAI(api_key=api_key.resolve_value(), organization=organization, base_url=api_base_url)
+        self.client = OpenAI(
+            api_key=api_key.resolve_value(),
+            organization=organization,
+            base_url=api_base_url,
+            timeout=float(os.environ.get("OPENAI_TIMEOUT", 30)),
+            max_retries=int(os.environ.get("OPENAI_MAX_RETRIES", 5)),
+        )
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
