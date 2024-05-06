@@ -125,8 +125,8 @@ class DynamicPromptBuilder:
         kwargs = kwargs or {}
         template_variables = template_variables or {}
         template_variables_combined = {**kwargs, **template_variables}
-        template = self._validate_template(template, set(template_variables_combined.keys()))
-        result = template.render(template_variables_combined)
+        compiled_template = self._validate_template(template, set(template_variables_combined.keys()))
+        result = compiled_template.render(template_variables_combined)
         return {"prompt": result}
 
     def _validate_template(self, template_text: Optional[str], provided_variables: Set[str]):
