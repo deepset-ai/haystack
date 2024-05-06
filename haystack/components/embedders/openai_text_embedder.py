@@ -1,9 +1,13 @@
+import os
 from typing import Any, Dict, List, Optional
 
 from openai import OpenAI
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.utils import Secret, deserialize_secrets_inplace
+
+OPENAI_TIMEOUT = float(os.environ.get("OPENAI_API_KEY", 30))
+OPENAI_MAX_RETRIES = int(os.environ.get("OPENAI_MAX_RETRIES", 5))
 
 
 @component
@@ -65,7 +69,13 @@ class OpenAITextEmbedder:
         self.suffix = suffix
         self.api_key = api_key
 
-        self.client = OpenAI(api_key=api_key.resolve_value(), organization=organization, base_url=api_base_url)
+        self.client = OpenAI(
+            api_key=api_key.resolve_value(),
+            organization=organization,
+            base_url=api_base_url,
+            timeout=float(os.environ.get("OPENAI_TIMEOUT", 30)),
+            max_retries=int(os.environ.get("OPENAI_MAX_RETRIES", 5)),
+        )
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
