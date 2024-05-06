@@ -1,5 +1,6 @@
 import copy
 import json
+import os
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from openai import OpenAI, Stream
@@ -111,7 +112,13 @@ class OpenAIChatGenerator:
         self.streaming_callback = streaming_callback
         self.api_base_url = api_base_url
         self.organization = organization
-        self.client = OpenAI(api_key=api_key.resolve_value(), organization=organization, base_url=api_base_url)
+        self.client = OpenAI(
+            api_key=api_key.resolve_value(),
+            organization=organization,
+            base_url=api_base_url,
+            timeout=float(os.environ.get("OPENAI_TIMEOUT", 30)),
+            max_retries=int(os.environ.get("OPENAI_MAX_RETRIES", 5)),
+        )
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
