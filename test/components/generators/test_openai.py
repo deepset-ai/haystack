@@ -19,13 +19,17 @@ class TestOpenAIGenerator:
         assert component.model == "gpt-3.5-turbo"
         assert component.streaming_callback is None
         assert not component.generation_kwargs
+        assert component.client.timeout == 30
+        assert component.client.max_retries == 5
 
     def test_init_fail_wo_api_key(self, monkeypatch):
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         with pytest.raises(ValueError, match="None of the .* environment variables are set"):
             OpenAIGenerator()
 
-    def test_init_with_parameters(self):
+    def test_init_with_parameters(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_TIMEOUT", "100")
+        monkeypatch.setenv("OPENAI_MAX_RETRIES", "10")
         component = OpenAIGenerator(
             api_key=Secret.from_token("test-api-key"),
             model="gpt-4",
@@ -37,6 +41,8 @@ class TestOpenAIGenerator:
         assert component.model == "gpt-4"
         assert component.streaming_callback is print_streaming_chunk
         assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
+        assert component.client.timeout == 100
+        assert component.client.max_retries == 10
 
     def test_to_dict_default(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")

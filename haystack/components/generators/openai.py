@@ -6,13 +6,9 @@ from openai.types.chat import ChatCompletion, ChatCompletionChunk
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import ChatMessage, StreamingChunk
-from haystack.telemetry._enviroment import HAYSTACK_REMOTE_API_MAX_RETRIES, HAYSTACK_REMOTE_API_TIMEOUT_SEC
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 
 logger = logging.getLogger(__name__)
-
-OPENAI_TIMEOUT_SEC = float(os.environ.get(HAYSTACK_REMOTE_API_TIMEOUT_SEC, 30))
-OPENAI_MAX_RETRIES = int(os.environ.get(HAYSTACK_REMOTE_API_MAX_RETRIES, 5))
 
 
 @component
@@ -106,8 +102,8 @@ class OpenAIGenerator:
             api_key=api_key.resolve_value(),
             organization=organization,
             base_url=api_base_url,
-            max_retries=OPENAI_MAX_RETRIES,
-            timeout=OPENAI_TIMEOUT_SEC,
+            timeout=float(os.environ.get("OPENAI_TIMEOUT", 30)),
+            max_retries=int(os.environ.get("OPENAI_MAX_RETRIES", 5)),
         )
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
