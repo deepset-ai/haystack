@@ -1,3 +1,4 @@
+import warnings
 from typing import Any, Dict, List, Optional, Set
 
 from jinja2 import Template, meta
@@ -47,7 +48,7 @@ class DynamicPromptBuilder:
         data={
             "doc_producer": {"doc_input": "Hello world, I live in Berlin"},
             "prompt_builder": {
-                "template": template,
+                "prompt_source": template,
                 "template_variables": {"query": "Where does the speaker live?"},
             },
         }
@@ -69,7 +70,7 @@ class DynamicPromptBuilder:
 
     """
 
-    def __init__(self, runtime_variables: Optional[List[str]] = None, template: Optional[str] = None):
+    def __init__(self, runtime_variables: Optional[List[str]] = None):
         """
         Constructs a DynamicPromptBuilder component.
 
@@ -80,10 +81,16 @@ class DynamicPromptBuilder:
             pipeline execution. The values associated with variables from the pipeline runtime are then injected into
             template placeholders of a prompt text template that is provided to the `run` method.
         """
+        warnings.warn(
+            "`DynamicPromptBuilder` is deprecated and will be removed in Haystack 2.3.0."
+            "Use `PromptBuilder` instead.",
+            DeprecationWarning,
+        )
+
         runtime_variables = runtime_variables or []
 
         # setup inputs
-        run_input_slots = {"template": Optional[str], "template_variables": Optional[Dict[str, Any]]}
+        run_input_slots = {"prompt_source": str, "template_variables": Optional[Dict[str, Any]]}
         kwargs_input_slots = {var: Optional[Any] for var in runtime_variables}
         component.set_input_types(self, **run_input_slots, **kwargs_input_slots)
 
@@ -91,18 +98,12 @@ class DynamicPromptBuilder:
         component.set_output_types(self, prompt=str)
 
         self.runtime_variables = runtime_variables
-        self.default_template: Optional[Template] = None
-        self.required_default_template_variables: Set[str] = set()
-        if template:
-            self.default_template = Template(template)
-            ast = self.default_template.environment.parse(template)
-            self.required_default_template_variables = meta.find_undeclared_variables(ast)
 
-    def run(self, template: Optional[str] = None, template_variables: Optional[Dict[str, Any]] = None, **kwargs):
+    def run(self, prompt_source: str, template_variables: Optional[Dict[str, Any]] = None, **kwargs):
         """
         Executes the dynamic prompt building process.
 
-        Depending on the provided type of `template`, this method either processes a list of `ChatMessage`
+        Depending on the provided type of `prompt_source`, this method either processes a list of `ChatMessage`
         instances or a string template. In the case of `ChatMessage` instances, the last user message is treated as a
         template and rendered with the resolved pipeline variables and any additional template variables provided.
 
@@ -110,7 +111,7 @@ class DynamicPromptBuilder:
         additional template variables directly to this method, that are then merged with the variables resolved from
         the pipeline runtime.
 
-        :param template:
+        :param prompt_source:
             A string template.
         :param template_variables:
             An optional dictionary of template variables. Template variables provided at initialization are required
@@ -125,11 +126,17 @@ class DynamicPromptBuilder:
         kwargs = kwargs or {}
         template_variables = template_variables or {}
         template_variables_combined = {**kwargs, **template_variables}
-        compiled_template = self._validate_template(template, set(template_variables_combined.keys()))
-        result = compiled_template.render(template_variables_combined)
+        if not template_variables_combined:
+            raise ValueError(
+                "The DynamicPromptBuilder run method requires template variables, but none were provided. "
+                "Please provide an appropriate template variable to enable prompt generation."
+            )
+
+        template = self._validate_template(prompt_source, set(template_variables_combined.keys()))
+        result = template.render(template_variables_combined)
         return {"prompt": result}
 
-    def _validate_template(self, template_text: Optional[str], provided_variables: Set[str]):
+    def _validate_template(self, template_text: str, provided_variables: Set[str]):
         """
         Checks if all the required template variables are provided to the pipeline `run` method.
 
@@ -145,22 +152,13 @@ class DynamicPromptBuilder:
         :raises ValueError:
             If all the required template variables are not provided.
         """
-        if isinstance(template_text, str):
-            template = Template(template_text)
-            ast = template.environment.parse(template_text)
-            required_template_variables = meta.find_undeclared_variables(ast)
-        elif self.default_template is not None:
-            template = self.default_template
-            required_template_variables = self.required_default_template_variables
-        else:
-            raise ValueError(
-                "The DynamicPromptBuilder run method requires a template, but none was provided. "
-                "Please provide an appropriate template to enable prompt generation."
-            )
+        template = Template(template_text)
+        ast = template.environment.parse(template_text)
+        required_template_variables = meta.find_undeclared_variables(ast)
         filled_template_vars = required_template_variables.intersection(provided_variables)
         if len(filled_template_vars) != len(required_template_variables):
             raise ValueError(
-                f"The DynamicPromptBuilder requires specific template variables that are missing. "
+                f"The {self.__class__.__name__} requires specific template variables that are missing. "
                 f"Required variables: {required_template_variables}. Only the following variables were "
                 f"provided: {provided_variables}. Please provide all the required template variables."
             )
