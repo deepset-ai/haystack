@@ -91,7 +91,7 @@ example_documents = [
     [
         Document(content="Angela Merkel was the chancellor of Germany."),
         Document(content="Olaf Scholz is the chancellor of Germany"),
-        Document(content="Jerry is the head of the department."),
+        Document(content="Jerry is the head of the department.", meta={"page_number": 3}),
     ]
 ] * 2
 
@@ -386,10 +386,82 @@ def test_nest_answers(mock_reader: ExtractiveReader):
             assert answer.query == query
             assert answer.document == doc
             assert answer.score == pytest.approx(score)
+            if "page_number" in doc.meta:
+                assert answer.meta["answer_page_number"] == doc.meta["page_number"]
         no_answer = answers[-1]
         assert no_answer.query == query
         assert no_answer.document is None
         assert no_answer.score == pytest.approx(expected_no_answer)
+
+
+def test_add_answer_page_number_returns_same_answer(mock_reader: ExtractiveReader, caplog):
+    # answer.document_offset is None
+    document = Document(content="I thought a lot about this. The answer is 42.", meta={"page_number": 5})
+    answer = ExtractedAnswer(
+        data="42",
+        query="What is the answer?",
+        document=document,
+        score=1.0,
+        document_offset=None,
+        meta={"meta_key": "meta_value"},
+    )
+    assert mock_reader._add_answer_page_number(answer=answer) == answer
+
+    # answer.document is None
+    answer = ExtractedAnswer(
+        data="42",
+        query="What is the answer?",
+        document=None,
+        score=1.0,
+        document_offset=ExtractedAnswer.Span(42, 44),
+        meta={"meta_key": "meta_value"},
+    )
+    assert mock_reader._add_answer_page_number(answer=answer) == answer
+
+    # answer.document.meta is None
+    document = Document(content="I thought a lot about this. The answer is 42.")
+    answer = ExtractedAnswer(
+        data="42",
+        query="What is the answer?",
+        document=document,
+        score=1.0,
+        document_offset=ExtractedAnswer.Span(42, 44),
+        meta={"meta_key": "meta_value"},
+    )
+    assert mock_reader._add_answer_page_number(answer=answer) == answer
+
+    # answer.document.meta["page_number"] is not int
+    document = Document(content="I thought a lot about this. The answer is 42.", meta={"page_number": "5"})
+    answer = ExtractedAnswer(
+        data="42",
+        query="What is the answer?",
+        document=document,
+        score=1.0,
+        document_offset=ExtractedAnswer.Span(42, 44),
+        meta={"meta_key": "meta_value"},
+    )
+    with caplog.at_level(logging.WARNING):
+        assert mock_reader._add_answer_page_number(answer=answer) == answer
+        assert "page_number must be int" in caplog.text
+
+
+def test_add_answer_page_number_with_form_feed(mock_reader: ExtractiveReader):
+    document = Document(
+        content="I thought a lot about this. \f And this document is long. \f The answer is 42.",
+        meta={"page_number": 5},
+    )
+    answer = ExtractedAnswer(
+        data="42",
+        query="What is the answer?",
+        document=document,
+        context="The answer is 42.",
+        score=1.0,
+        document_offset=ExtractedAnswer.Span(73, 75),
+        context_offset=ExtractedAnswer.Span(14, 16),
+        meta={"meta_key": "meta_value"},
+    )
+    answer_with_page_number = mock_reader._add_answer_page_number(answer=answer)
+    assert answer_with_page_number.meta["answer_page_number"] == 7
 
 
 @patch("haystack.components.readers.extractive.AutoTokenizer.from_pretrained")

@@ -4,10 +4,10 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 from huggingface_hub import (
     ChatCompletionOutput,
-    ChatCompletionOutputChoice,
-    ChatCompletionOutputChoiceMessage,
     ChatCompletionStreamOutput,
+    ChatCompletionOutputComplete,
     ChatCompletionStreamOutputChoice,
+    ChatCompletionOutputMessage,
     ChatCompletionStreamOutputDelta,
 )
 from huggingface_hub.utils import RepositoryNotFoundError
@@ -33,14 +33,17 @@ def mock_chat_completion():
     with patch("huggingface_hub.InferenceClient.chat_completion", autospec=True) as mock_chat_completion:
         completion = ChatCompletionOutput(
             choices=[
-                ChatCompletionOutputChoice(
+                ChatCompletionOutputComplete(
                     finish_reason="eos_token",
                     index=0,
-                    message=ChatCompletionOutputChoiceMessage(
-                        content="The capital of France is Paris.", role="assistant"
-                    ),
+                    message=ChatCompletionOutputMessage(content="The capital of France is Paris.", role="assistant"),
                 )
             ],
+            id="some_id",
+            model="some_model",
+            object="some_object",
+            system_fingerprint="some_fingerprint",
+            usage={"completion_tokens": 10, "prompt_tokens": 5, "total_tokens": 15},
             created=1710498360,
         )
 
@@ -208,6 +211,10 @@ class TestHuggingFaceAPIGenerator:
                         finish_reason=None,
                     )
                 ],
+                id="some_id",
+                model="some_model",
+                object="some_object",
+                system_fingerprint="some_fingerprint",
                 created=1710498504,
             )
 
@@ -217,6 +224,10 @@ class TestHuggingFaceAPIGenerator:
                         delta=ChatCompletionStreamOutputDelta(content=None, role=None), index=0, finish_reason="length"
                     )
                 ],
+                id="some_id",
+                model="some_model",
+                object="some_object",
+                system_fingerprint="some_fingerprint",
                 created=1710498504,
             )
 

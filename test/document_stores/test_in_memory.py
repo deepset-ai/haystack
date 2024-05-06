@@ -3,7 +3,6 @@ from unittest.mock import patch
 
 import pandas as pd
 import pytest
-from haystack_bm25 import rank_bm25
 
 from haystack import Document
 from haystack.document_stores.errors import DocumentStoreError, DuplicateDocumentError
@@ -64,8 +63,12 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         store = InMemoryDocumentStore.from_dict(data)
         mock_regex.compile.assert_called_with("custom_regex")
         assert store.tokenizer
-        assert store.bm25_algorithm.__name__ == "BM25Plus"
+        assert store.bm25_algorithm == "BM25Plus"
         assert store.bm25_parameters == {"key": "value"}
+
+    def test_invalid_bm25_algorithm(self):
+        with pytest.raises(ValueError, match="BM25 algorithm 'invalid' is not supported"):
+            InMemoryDocumentStore(bm25_algorithm="invalid")
 
     def test_write_documents(self, document_store):
         docs = [Document(id="1")]
@@ -113,7 +116,18 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         results = document_store.bm25_retrieval(query="languages", top_k=3)
         assert len(results) == 3
 
-    # Test two queries and make sure the results are different
+    def test_bm25_plus_retrieval(self):
+        doc_store = InMemoryDocumentStore(bm25_algorithm="BM25Plus")
+        docs = [
+            Document(content="Hello world"),
+            Document(content="Haystack supports multiple languages"),
+            Document(content="Python is a popular programming language"),
+        ]
+        doc_store.write_documents(docs)
+
+        results = doc_store.bm25_retrieval(query="language", top_k=1)
+        assert len(results) == 1
+        assert results[0].content == "Python is a popular programming language"
 
     def test_bm25_retrieval_with_two_queries(self, document_store: InMemoryDocumentStore):
         # Tests if the bm25_retrieval method returns different documents for different queries.
@@ -166,7 +180,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         results = document_store.bm25_retrieval(query="Python", top_k=1, scale_score=False)
         assert results[0].score != results1[0].score
 
-    def test_bm25_retrieval_with_non_scaled_BM25Okapi(self, document_store: InMemoryDocumentStore):
+    def test_bm25_retrieval_with_non_scaled_BM25Okapi(self):
         # Highly repetitive documents make BM25Okapi return negative scores, which should not be filtered if the
         # scores are not scaled
         docs = [
@@ -188,9 +202,9 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
                 to try the new features as soon as they are merged."""
             ),
         ]
+        document_store = InMemoryDocumentStore(bm25_algorithm="BM25Okapi")
         document_store.write_documents(docs)
 
-        document_store.bm25_algorithm = rank_bm25.BM25Okapi
         results1 = document_store.bm25_retrieval(query="Haystack installation", top_k=10, scale_score=False)
         assert len(results1) == 3
         assert all(res.score < 0.0 for res in results1)
@@ -215,11 +229,11 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         table_content = pd.DataFrame({"language": ["Python", "Java"], "use": ["Data Science", "Web Development"]})
         document = Document(content="Gardening", dataframe=table_content)
         docs = [
-            document,
             Document(content="Python"),
             Document(content="Bird Watching"),
             Document(content="Gardening"),
             Document(content="Java"),
+            document,
         ]
         document_store.write_documents(docs)
         results = document_store.bm25_retrieval(query="Gardening", top_k=2)
