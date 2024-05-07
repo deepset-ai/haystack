@@ -2,6 +2,7 @@ import pytest
 
 from haystack.components.evaluators.document_recall import DocumentRecallEvaluator, RecallMode
 from haystack.dataclasses import Document
+from haystack import default_from_dict
 
 
 def test_init_with_unknown_mode_string():
@@ -77,6 +78,21 @@ class TestDocumentRecallEvaluatorSingleHit:
                 ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
                 retrieved_documents=[[Document(content="Berlin")]],
             )
+
+    def test_to_dict(self, evaluator):
+        data = evaluator.to_dict()
+        assert data == {
+            "type": "haystack.components.evaluators.document_recall.DocumentRecallEvaluator",
+            "init_parameters": {"mode": "single_hit"},
+        }
+
+    def test_from_dict(self):
+        data = {
+            "type": "haystack.components.evaluators.document_recall.DocumentRecallEvaluator",
+            "init_parameters": {"mode": "single_hit"},
+        }
+        new_evaluator = default_from_dict(DocumentRecallEvaluator, data)
+        assert new_evaluator.mode == RecallMode.SINGLE_HIT
 
 
 class TestDocumentRecallEvaluatorMultiHit:
