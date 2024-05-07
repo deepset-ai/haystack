@@ -1,16 +1,9 @@
-import io
-import gzip
-import tarfile
-import zipfile
 import logging
 import importlib
 import importlib.util
-from pathlib import Path
-from typing import Optional, Dict, Union, Tuple, List
+from typing import Optional, Tuple, List
 from urllib.parse import urlparse, unquote
 from os.path import splitext, basename
-
-import requests
 
 from haystack.errors import DatasetsError
 from haystack.schema import Document
