@@ -20,9 +20,6 @@ from haystack.schema import Document, MultiLabel
 
 logger = logging.getLogger(__name__)
 
-with LazyImport("Run 'pip install farm-haystack[pdf]'") as fitz_import:
-    import fitz
-
 
 def html_content_handler(response: Response) -> Optional[str]:
     """
@@ -32,20 +29,6 @@ def html_content_handler(response: Response) -> Optional[str]:
     """
     extractor = extractors.ArticleExtractor(raise_on_failure=False)
     return extractor.get_content(response.text)
-
-
-def pdf_content_handler(response: Response) -> Optional[str]:
-    """
-    Extracts text from PDF response stream using the PyMuPDF library.
-
-    :param response: Response object from the request.
-    :return: The extracted text.
-    """
-    file_path = io.BytesIO(response.content)
-    with fitz.open(stream=file_path, filetype="pdf") as doc:
-        text = "\f".join([page.get_text() for page in doc])
-
-    return text.encode("ascii", errors="ignore").decode()
 
 
 class LinkContentFetcher(BaseComponent):
@@ -153,8 +136,6 @@ class LinkContentFetcher(BaseComponent):
 
         # register default content handlers
         self._register_content_handler("text/html", html_content_handler)
-        if fitz_import.is_successful():
-            self._register_content_handler("application/pdf", pdf_content_handler)
 
         # register custom content handlers, can override default handlers
         if content_handlers:
