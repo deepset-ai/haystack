@@ -15,6 +15,11 @@ class PromptBuilder:
     It is designed to construct prompts for the pipeline using static or dynamic templates: Users can change
     the prompt template at runtime by providing a new template for each pipeline run invocation if needed.
 
+    The template variables found in the init template string are used as input types for the component and are all optional,
+    unless explicitly specified. If an optional template variable is not provided as an input, it will be replaced with
+    an empty string in the rendered prompt. Use `variable` and `required_variables` to specify the input types and
+    required variables.
+
     Usage example with static prompt template:
     ```python
     template = "Translate the following context to {{ target_language }}. Context: {{ snippet }}; Translation:"
