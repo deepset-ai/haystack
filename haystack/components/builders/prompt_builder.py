@@ -92,8 +92,8 @@ class PromptBuilder:
     def __init__(
         self,
         template: Optional[str] = None,
-        variables: Optional[List[str]] = None,
         required_variables: Optional[List[str]] = None,
+        variables: Optional[List[str]] = None,
     ):
         """
         Constructs a PromptBuilder component.
@@ -101,6 +101,8 @@ class PromptBuilder:
         :param template:
             A Jinja2 template string that will be used to render the prompt text. If not provided, the template
             must be provided at runtime using the `template` parameter of the `run` method.
+        :param required_variables: An optional list of input variables that must be provided at all times.
+            If not provided, an exception will be raised.
         :param variables:
             A list of template variable names you can use in prompt construction. For example,
             if `variables` contains the string `documents`, the component will create an input called
@@ -108,8 +110,6 @@ class PromptBuilder:
             pipeline execution. The values associated with variables from the pipeline runtime are then injected into
             template placeholders of a prompt text template that is provided to the `run` method.
             If not provided, variables are inferred from `template`.
-        :param required_variables: An optional list of input variables that must be provided at all times.
-            If not provided, an exception will be raised.
         """
         self._template_string = template
         self._variables = variables
