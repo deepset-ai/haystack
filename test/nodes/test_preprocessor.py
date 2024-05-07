@@ -12,7 +12,7 @@ from _pytest.tmpdir import TempPathFactory
 from transformers import AutoTokenizer, PreTrainedTokenizerBase
 
 from haystack import Document
-from haystack.nodes.file_converter.pdf import PDFToTextConverter
+from haystack.nodes.file_converter.pdf_xpdf import PDFToTextConverter
 from haystack.nodes.preprocessor.preprocessor import PreProcessor
 
 
