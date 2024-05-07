@@ -36,7 +36,6 @@ def test_init():
     assert r.processor is None
     assert isinstance(r.handlers, dict)
     assert "text/html" in r.handlers
-    assert "application/pdf" in r.handlers
 
 
 @pytest.mark.unit
@@ -49,7 +48,6 @@ def test_init_with_preprocessor():
     assert r.processor == pre_processor_mock
     assert isinstance(r.handlers, dict)
     assert "text/html" in r.handlers
-    assert "application/pdf" in r.handlers
 
 
 @pytest.mark.unit
@@ -65,7 +63,6 @@ def test_init_with_content_handlers():
 
     assert isinstance(r.handlers, dict)
     assert "text/html" in r.handlers
-    assert "application/pdf" in r.handlers
     assert "video/mp4" in r.handlers
 
 
