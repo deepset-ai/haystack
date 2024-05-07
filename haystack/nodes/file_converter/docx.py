@@ -74,8 +74,8 @@ class DocxToTextConverter(BaseConverter):
         if id_hash_keys is None:
             id_hash_keys = self.id_hash_keys
 
-        file = docx.Document(file_path)  # Creating word reader object.
-        paragraphs = [para.text for para in file.paragraphs]
+        file = docx.Document(file_path)  # type: ignore
+        paragraphs = [para.text for para in file.paragraphs]  # type: ignore
         text = "\n".join(paragraphs)
         document = Document(content=text, meta=meta, id_hash_keys=id_hash_keys)
         return [document]
