@@ -128,8 +128,12 @@ class PromptBuilder:
 
         # setup inputs
         static_input_slots = {"template": Optional[str], "template_variables": Optional[Dict[str, Any]]}
-        variable_input_slots = {var: Optional[Any] for var in variables}
-        component.set_input_types(self, **static_input_slots, **variable_input_slots)
+        component.set_input_types(self, **static_input_slots)
+        for var in variables:
+            if var in self.required_variables:
+                component.set_input_type(self, var, Any)
+            else:
+                component.set_input_type(self, var, Any, "")
 
     @component.output_types(prompt=str)
     def run(self, template: Optional[str] = None, template_variables: Optional[Dict[str, Any]] = None, **kwargs):

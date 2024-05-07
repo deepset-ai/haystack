@@ -22,7 +22,7 @@ class TestPromptBuilder:
         assert set(inputs.keys()) == {"template", "template_variables", "variable"}
         assert inputs["template"].type == Optional[str]
         assert inputs["template_variables"].type == Optional[Dict[str, Any]]
-        assert inputs["variable"].type == Optional[Any]
+        assert inputs["variable"].type == Any
 
         # response is always prompt
         outputs = builder.__haystack_output__._sockets_dict
@@ -43,8 +43,8 @@ class TestPromptBuilder:
         assert set(inputs.keys()) == {"template", "template_variables", "var1", "var2"}
         assert inputs["template"].type == Optional[str]
         assert inputs["template_variables"].type == Optional[Dict[str, Any]]
-        assert inputs["var1"].type == Optional[Any]
-        assert inputs["var2"].type == Optional[Any]
+        assert inputs["var1"].type == Any
+        assert inputs["var2"].type == Any
 
         # response is always prompt
         outputs = builder.__haystack_output__._sockets_dict
@@ -64,7 +64,7 @@ class TestPromptBuilder:
         assert set(inputs.keys()) == {"template", "template_variables", "variable"}
         assert inputs["template"].type == Optional[str]
         assert inputs["template_variables"].type == Optional[Dict[str, Any]]
-        assert inputs["variable"].type == Optional[Any]
+        assert inputs["variable"].type == Any
 
         # response is always prompt
         outputs = builder.__haystack_output__._sockets_dict
@@ -86,9 +86,9 @@ class TestPromptBuilder:
         assert set(inputs.keys()) == {"template", "template_variables", "var1", "var2", "var3"}
         assert inputs["template"].type == Optional[str]
         assert inputs["template_variables"].type == Optional[Dict[str, Any]]
-        assert inputs["var1"].type == Optional[Any]
-        assert inputs["var2"].type == Optional[Any]
-        assert inputs["var3"].type == Optional[Any]
+        assert inputs["var1"].type == Any
+        assert inputs["var2"].type == Any
+        assert inputs["var3"].type == Any
 
         # response is always prompt
         outputs = builder.__haystack_output__._sockets_dict
