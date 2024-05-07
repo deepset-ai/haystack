@@ -7,6 +7,8 @@ from haystack.nodes.file_converter.base import BaseConverter
 from haystack.schema import Document
 from haystack.lazy_imports import LazyImport
 
+# type: ignore
+
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +76,7 @@ class DocxToTextConverter(BaseConverter):
         if id_hash_keys is None:
             id_hash_keys = self.id_hash_keys
 
-        file = docx.Document(file_path)  # Creating word reader object.  # type:ignore
+        file = docx.Document(file_path)  # Creating word reader object.
         paragraphs = [para.text for para in file.paragraphs]
         text = "\n".join(paragraphs)
         document = Document(content=text, meta=meta, id_hash_keys=id_hash_keys)
