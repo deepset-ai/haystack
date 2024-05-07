@@ -12,7 +12,7 @@ class TestPromptBuilder:
     def test_init(self):
         builder = PromptBuilder(template="This is a {{ variable }}")
         assert builder.template is not None
-        assert builder.required_variables == set()
+        assert builder.required_variables == []
         assert builder._template_string == "This is a {{ variable }}"
         assert builder._variables is None
         assert builder._required_variables is None
@@ -33,7 +33,7 @@ class TestPromptBuilder:
         variables = ["var1", "var2"]
         builder = PromptBuilder(variables=variables)
         assert builder.template is None
-        assert builder.required_variables == set()
+        assert builder.required_variables == []
         assert builder._variables == variables
         assert builder._required_variables is None
         assert builder._template_string is None
@@ -54,7 +54,7 @@ class TestPromptBuilder:
     def test_init_with_required_variables(self):
         builder = PromptBuilder(template="This is a {{ variable }}", required_variables=["variable"])
         assert builder.template is not None
-        assert builder.required_variables == {"variable"}
+        assert builder.required_variables == ["variable"]
         assert builder._template_string == "This is a {{ variable }}"
         assert builder._variables is None
         assert builder._required_variables == ["variable"]
@@ -76,7 +76,7 @@ class TestPromptBuilder:
         template = "Hello, {{ var1 }}, {{ var2 }}!"
         builder = PromptBuilder(template=template, variables=variables)
         assert builder.template is not None
-        assert builder.required_variables == set()
+        assert builder.required_variables == []
         assert builder._variables == variables
         assert builder._template_string == "Hello, {{ var1 }}, {{ var2 }}!"
         assert builder._required_variables is None
@@ -142,13 +142,13 @@ class TestPromptBuilder:
         res = builder.run()
         assert res == {"prompt": "This is a "}
 
-    def test_run_with_required_input_missing(self):
+    def test_run_with_missing_required_input(self):
         builder = PromptBuilder(template="This is a {{ foo }}, not a {{ bar }}", required_variables=["foo", "bar"])
-        with pytest.raises(ValueError, match="'foo'"):
+        with pytest.raises(ValueError, match="foo"):
             builder.run(bar="bar")
-        with pytest.raises(ValueError, match="'bar'"):
+        with pytest.raises(ValueError, match="bar"):
             builder.run(foo="foo")
-        with pytest.raises(ValueError, match="'foo', 'bar'|'bar', 'foo'"):
+        with pytest.raises(ValueError, match="foo, bar"):
             builder.run()
 
     def test_run_with_variables(self):

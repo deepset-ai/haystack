@@ -110,7 +110,7 @@ class PromptBuilder:
         self._template_string = template
         self._variables = variables
         self._required_variables = required_variables
-        self.required_variables = set(required_variables or [])
+        self.required_variables = required_variables or []
         self.template: Optional[Template] = None
         if template:
             self.template = Template(template)
@@ -189,13 +189,14 @@ class PromptBuilder:
                 "Please provide an appropriate template to enable prompt generation."
             )
 
-        missing_required_vars = self.required_variables.difference(provided_variables)
-        if missing_required_vars:
+        missing_variables = [var for var in self.required_variables if var not in provided_variables]
+        if missing_variables:
+            missing_vars_str = ", ".join(missing_variables)
             raise ValueError(
-                f"The PromptBuilder requires specific template variables that are missing. "
-                f"Required variables: {self.required_variables}. Only the following variables were "
-                f"provided: {provided_variables}. Please provide all the required template variables."
+                f"Missing required input variables in PromptBuilder: {missing_vars_str}. "
+                f"Required variables: {self.required_variables}. Provided variables: {provided_variables}."
             )
+
         return template
 
     def to_dict(self) -> Dict[str, Any]:
