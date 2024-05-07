@@ -11,9 +11,9 @@ from haystack.dataclasses.document import Document
 class TestPromptBuilder:
     def test_init(self):
         builder = PromptBuilder(template="This is a {{ variable }}")
-        assert builder.default_template is not None
+        assert builder.template is not None
         assert builder.required_variables == set()
-        assert builder._default_template_string == "This is a {{ variable }}"
+        assert builder._template_string == "This is a {{ variable }}"
         assert builder._variables is None
         assert builder._required_variables is None
 
@@ -32,11 +32,11 @@ class TestPromptBuilder:
     def test_init_without_template(self):
         variables = ["var1", "var2"]
         builder = PromptBuilder(variables=variables)
-        assert builder.default_template is None
+        assert builder.template is None
         assert builder.required_variables == set()
         assert builder._variables == variables
         assert builder._required_variables is None
-        assert builder._default_template_string is None
+        assert builder._template_string is None
 
         # we have inputs that contain: template, template_variables + variables
         inputs = builder.__haystack_input__._sockets_dict
@@ -53,9 +53,9 @@ class TestPromptBuilder:
 
     def test_init_with_required_variables(self):
         builder = PromptBuilder(template="This is a {{ variable }}", required_variables=["variable"])
-        assert builder.default_template is not None
+        assert builder.template is not None
         assert builder.required_variables == {"variable"}
-        assert builder._default_template_string == "This is a {{ variable }}"
+        assert builder._template_string == "This is a {{ variable }}"
         assert builder._variables is None
         assert builder._required_variables == ["variable"]
 
@@ -75,10 +75,10 @@ class TestPromptBuilder:
         variables = ["var1", "var2", "var3"]
         template = "Hello, {{ var1 }}, {{ var2 }}!"
         builder = PromptBuilder(template=template, variables=variables)
-        assert builder.default_template is not None
+        assert builder.template is not None
         assert builder.required_variables == set()
         assert builder._variables == variables
-        assert builder._default_template_string == "Hello, {{ var1 }}, {{ var2 }}!"
+        assert builder._template_string == "Hello, {{ var1 }}, {{ var2 }}!"
         assert builder._required_variables is None
 
         # we have inputs that contain: template, template_variables + variables

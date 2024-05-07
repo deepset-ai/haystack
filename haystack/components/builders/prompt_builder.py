@@ -107,16 +107,16 @@ class PromptBuilder:
             A list of required template variable names you can use in prompt. These variables are required to be
             provided at runtime. If not provided, an exception will be raised.
         """
-        self._default_template_string = template
+        self._template_string = template
         self._variables = variables
         self._required_variables = required_variables
         self.required_variables = set(required_variables or [])
-        self.default_template: Optional[Template] = None
+        self.template: Optional[Template] = None
         if template:
-            self.default_template = Template(template)
+            self.template = Template(template)
             if not variables:
                 # infere variables from template
-                ast = self.default_template.environment.parse(template)
+                ast = self.template.environment.parse(template)
                 default_template_variables = meta.find_undeclared_variables(ast)
                 variables = list(default_template_variables)
 
@@ -181,8 +181,8 @@ class PromptBuilder:
         """
         if isinstance(template_text, str):
             template = Template(template_text)
-        elif self.default_template is not None:
-            template = self.default_template
+        elif self.template is not None:
+            template = self.template
         else:
             raise ValueError(
                 "The PromptBuilder run method requires a template, but none was provided. "
@@ -206,8 +206,5 @@ class PromptBuilder:
             Serialized dictionary representation of the component.
         """
         return default_to_dict(
-            self,
-            template=self._default_template_string,
-            variables=self._variables,
-            required_variables=self._required_variables,
+            self, template=self._template_string, variables=self._variables, required_variables=self._required_variables
         )
