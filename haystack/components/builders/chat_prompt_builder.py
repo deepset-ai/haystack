@@ -188,8 +188,8 @@ class ChatPromptBuilder:
         processed_messages = []
         for message in template:
             if message.is_from(ChatRole.USER) or message.is_from(ChatRole.SYSTEM):
-                template = self._validate_template(message.content, set(template_variables_combined.keys()))
-                rendered_content = template.render(template_variables_combined)
+                compiled_template = self._validate_template(message.content, set(template_variables_combined.keys()))
+                rendered_content = compiled_template.render(template_variables_combined)
                 rendered_message = (
                     ChatMessage.from_user(rendered_content)
                     if message.is_from(ChatRole.USER)
