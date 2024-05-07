@@ -116,19 +116,17 @@ class PromptBuilder:
             if not variables:
                 # infere variables from template
                 ast = self.template.environment.parse(template)
-                default_template_variables = meta.find_undeclared_variables(ast)
-                variables = list(default_template_variables)
+                template_variables = meta.find_undeclared_variables(ast)
+                variables = list(template_variables)
 
         variables = variables or []
 
         # setup inputs
-        run_input_slots = {"template": Optional[str], "template_variables": Optional[Dict[str, Any]]}
-        kwargs_input_slots = {var: Optional[Any] for var in variables}
-        component.set_input_types(self, **run_input_slots, **kwargs_input_slots)
+        static_input_slots = {"template": Optional[str], "template_variables": Optional[Dict[str, Any]]}
+        variable_input_slots = {var: Optional[Any] for var in variables}
+        component.set_input_types(self, **static_input_slots, **variable_input_slots)
 
-        # setup outputs
-        component.set_output_types(self, prompt=str)
-
+    @component.output_types(prompt=str)
     def run(self, template: Optional[str] = None, template_variables: Optional[Dict[str, Any]] = None, **kwargs):
         """
         Executes the dynamic prompt building process.
