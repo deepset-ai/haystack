@@ -22,6 +22,16 @@ class PromptBuilder:
     builder.run(target_language="spanish", snippet="I can't speak spanish.")
     ```
 
+    Usage example of overriding the static template at runtime:
+    ```python
+    template = "Translate the following context to {{ target_language }}. Context: {{ snippet }}; Translation:"
+    builder = PromptBuilder(template=template)
+    builder.run(target_language="spanish", snippet="I can't speak spanish.")
+
+    summary_template = "Translate to {{ target_language }} and summarize the following context. Context: {{ snippet }}; Summary:"
+    builder.run(target_language="spanish", snippet="I can't speak spanish.", template=summary_template)
+    ```
+
     Usage example with dynamic prompt template:
     ```python
     from typing import List
@@ -78,7 +88,7 @@ class PromptBuilder:
         self,
         template: Optional[str] = None,
         variables: Optional[List[str]] = None,
-        optional_variables: Optional[List[str]] = None,
+        required_variables: Optional[List[str]] = None,
     ):
         """
         Constructs a PromptBuilder component.
@@ -93,22 +103,22 @@ class PromptBuilder:
             pipeline execution. The values associated with variables from the pipeline runtime are then injected into
             template placeholders of a prompt text template that is provided to the `run` method.
             If not provided, variables are inferred from `template`.
-        :param optional_variables:
-            A list of optional template variable names you can use in prompt. These variables are not required to be
-            provided at runtime. If not provided, optional variables are rendered as empty string.
+        :param required_variables:
+            A list of required template variable names you can use in prompt. These variables are required to be
+            provided at runtime. If not provided, an exception will be raised.
         """
         self._default_template_string = template
         self._variables = variables
-        self._optional_variables = optional_variables
-        self.optional_variables = optional_variables or []
+        self._required_variables = required_variables
+        self.required_variables = set(required_variables or [])
         self.default_template: Optional[Template] = None
-        self.required_default_template_variables: Set[str] = set()
         if template:
             self.default_template = Template(template)
-            ast = self.default_template.environment.parse(template)
-            self.required_default_template_variables = meta.find_undeclared_variables(ast)
             if not variables:
-                variables = list(self.required_default_template_variables)
+                # infere variables from template
+                ast = self.default_template.environment.parse(template)
+                default_template_variables = meta.find_undeclared_variables(ast)
+                variables = list(default_template_variables)
 
         variables = variables or []
 
@@ -171,23 +181,19 @@ class PromptBuilder:
         """
         if isinstance(template_text, str):
             template = Template(template_text)
-            ast = template.environment.parse(template_text)
-            template_variables = meta.find_undeclared_variables(ast)
         elif self.default_template is not None:
             template = self.default_template
-            template_variables = self.required_default_template_variables
         else:
             raise ValueError(
                 "The PromptBuilder run method requires a template, but none was provided. "
                 "Please provide an appropriate template to enable prompt generation."
             )
 
-        required_variables = template_variables.difference(self.optional_variables)
-        filled_template_vars = required_variables.intersection(provided_variables)
-        if len(filled_template_vars) != len(required_variables):
+        missing_required_vars = self.required_variables.difference(provided_variables)
+        if missing_required_vars:
             raise ValueError(
                 f"The PromptBuilder requires specific template variables that are missing. "
-                f"Required variables: {required_variables}. Only the following variables were "
+                f"Required variables: {self.required_variables}. Only the following variables were "
                 f"provided: {provided_variables}. Please provide all the required template variables."
             )
         return template
@@ -203,5 +209,5 @@ class PromptBuilder:
             self,
             template=self._default_template_string,
             variables=self._variables,
-            optional_variables=self._optional_variables,
+            required_variables=self._required_variables,
         )

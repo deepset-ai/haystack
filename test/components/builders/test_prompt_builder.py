@@ -12,11 +12,10 @@ class TestPromptBuilder:
     def test_init(self):
         builder = PromptBuilder(template="This is a {{ variable }}")
         assert builder.default_template is not None
-        assert builder.required_default_template_variables == {"variable"}
-        assert builder.optional_variables == []
+        assert builder.required_variables == set()
         assert builder._default_template_string == "This is a {{ variable }}"
         assert builder._variables is None
-        assert builder._optional_variables is None
+        assert builder._required_variables is None
 
         # we have inputs that contain: template, template_variables + inferred variables
         inputs = builder.__haystack_input__._sockets_dict
@@ -34,10 +33,9 @@ class TestPromptBuilder:
         variables = ["var1", "var2"]
         builder = PromptBuilder(variables=variables)
         assert builder.default_template is None
-        assert builder.required_default_template_variables == set()
-        assert builder.optional_variables == []
+        assert builder.required_variables == set()
         assert builder._variables == variables
-        assert builder._optional_variables is None
+        assert builder._required_variables is None
         assert builder._default_template_string is None
 
         # we have inputs that contain: template, template_variables + variables
@@ -53,14 +51,13 @@ class TestPromptBuilder:
         assert set(outputs.keys()) == {"prompt"}
         assert outputs["prompt"].type == str
 
-    def test_init_with_optional_variables(self):
-        builder = PromptBuilder(template="This is a {{ variable }}", optional_variables=["variable"])
+    def test_init_with_required_variables(self):
+        builder = PromptBuilder(template="This is a {{ variable }}", required_variables=["variable"])
         assert builder.default_template is not None
-        assert builder.required_default_template_variables == {"variable"}
-        assert builder.optional_variables == ["variable"]
+        assert builder.required_variables == {"variable"}
         assert builder._default_template_string == "This is a {{ variable }}"
         assert builder._variables is None
-        assert builder._optional_variables == ["variable"]
+        assert builder._required_variables == ["variable"]
 
         # we have inputs that contain: template, template_variables + inferred variables
         inputs = builder.__haystack_input__._sockets_dict
@@ -79,11 +76,10 @@ class TestPromptBuilder:
         template = "Hello, {{ var1 }}, {{ var2 }}!"
         builder = PromptBuilder(template=template, variables=variables)
         assert builder.default_template is not None
-        assert builder.required_default_template_variables == {"var1", "var2"}
-        assert builder.optional_variables == []
+        assert builder.required_variables == set()
         assert builder._variables == variables
         assert builder._default_template_string == "Hello, {{ var1 }}, {{ var2 }}!"
-        assert builder._optional_variables is None
+        assert builder._required_variables is None
 
         # we have inputs that contain: template, template_variables + variables
         inputs = builder.__haystack_input__._sockets_dict
@@ -100,17 +96,41 @@ class TestPromptBuilder:
         assert outputs["prompt"].type == str
 
     def test_to_dict(self):
-        builder = PromptBuilder(template="This is a {{ variable }}")
+        builder = PromptBuilder(
+            template="This is a {{ variable }}", variables=["var1", "var2"], required_variables=["var1", "var3"]
+        )
         res = builder.to_dict()
         assert res == {
             "type": "haystack.components.builders.prompt_builder.PromptBuilder",
-            "init_parameters": {"template": "This is a {{ variable }}", "variables": None, "optional_variables": None},
+            "init_parameters": {
+                "template": "This is a {{ variable }}",
+                "variables": ["var1", "var2"],
+                "required_variables": ["var1", "var3"],
+            },
+        }
+
+    def test_to_dict_no_params(self):
+        builder = PromptBuilder()
+        res = builder.to_dict()
+        assert res == {
+            "type": "haystack.components.builders.prompt_builder.PromptBuilder",
+            "init_parameters": {"template": None, "variables": None, "required_variables": None},
         }
 
     def test_run(self):
         builder = PromptBuilder(template="This is a {{ variable }}")
         res = builder.run(variable="test")
         assert res == {"prompt": "This is a test"}
+
+    def test_run_template_variable(self):
+        builder = PromptBuilder(template="This is a {{ variable }}")
+        res = builder.run(template_variables={"variable": "test"})
+        assert res == {"prompt": "This is a test"}
+
+    def test_run_template_variable_overrides_variable(self):
+        builder = PromptBuilder(template="This is a {{ variable }}")
+        res = builder.run(template_variables={"variable": "test_from_template_var"}, variable="test")
+        assert res == {"prompt": "This is a test_from_template_var"}
 
     def test_run_without_input(self):
         builder = PromptBuilder(template="This is a template without input")
@@ -119,24 +139,30 @@ class TestPromptBuilder:
 
     def test_run_with_missing_input(self):
         builder = PromptBuilder(template="This is a {{ variable }}")
-        with pytest.raises(ValueError, match="variable"):
-            builder.run()
-
-    def test_run_with_missing_input_for_optional_variable(self):
-        builder = PromptBuilder(template="This is a {{ variable }}", optional_variables=["variable"])
         res = builder.run()
         assert res == {"prompt": "This is a "}
 
-    def test_run_with_missing_required_input(self):
-        builder = PromptBuilder(template="This is a {{ foo }}, not a {{ bar }}")
+    def test_run_with_required_input_missing(self):
+        builder = PromptBuilder(template="This is a {{ foo }}, not a {{ bar }}", required_variables=["foo", "bar"])
         with pytest.raises(ValueError, match="'foo'"):
             builder.run(bar="bar")
         with pytest.raises(ValueError, match="'bar'"):
             builder.run(foo="foo")
-        with pytest.raises(ValueError, match="'foo', 'bar'"):
+        with pytest.raises(ValueError, match="'foo', 'bar'|'bar', 'foo'"):
             builder.run()
 
-    def test_processing_a_simple_template_with_provided_variables(self):
+    def test_run_with_variables(self):
+        variables = ["var1", "var2", "var3"]
+        template = "Hello, {{ name }}! {{ var1 }}"
+
+        builder = PromptBuilder(template=template, variables=variables)
+
+        template_variables = {"name": "John"}
+        expected_result = {"prompt": "Hello, John! How are you?"}
+
+        assert builder.run(template_variables=template_variables, var1="How are you?") == expected_result
+
+    def test_run_with_variables_and_runtime_template(self):
         variables = ["var1", "var2", "var3"]
 
         builder = PromptBuilder(variables=variables)
@@ -150,28 +176,37 @@ class TestPromptBuilder:
             == expected_result
         )
 
-    def test_processing_a_simple_default_template_with_provided_variables(self):
-        variables = ["var1", "var2", "var3"]
-        template = "Hello, {{ name }}! {{ var1 }}"
+    def test_run_overwriting_default_template(self):
+        default_template = "Hello, {{ name }}!"
 
-        builder = PromptBuilder(template=template, variables=variables)
+        builder = PromptBuilder(template=default_template)
 
-        template_variables = {"name": "John"}
-        expected_result = {"prompt": "Hello, John! How are you?"}
+        template = "Hello, {{ var1 }}{{ name }}!"
+        expected_result = {"prompt": "Hello, John!"}
 
-        assert builder.run(template_variables=template_variables, var1="How are you?") == expected_result
+        assert builder.run(template, name="John") == expected_result
 
-    def test_overwriting_default_template(self):
-        variables = ["var1", "var2", "var3"]
+    def test_run_overwriting_default_template_with_template_variables(self):
+        default_template = "Hello, {{ name }}!"
+
+        builder = PromptBuilder(template=default_template)
+
+        template = "Hello, {{ var1 }} {{ name }}!"
+        template_variables = {"var1": "Big"}
+        expected_result = {"prompt": "Hello, Big John!"}
+
+        assert builder.run(template, template_variables, name="John") == expected_result
+
+    def test_run_overwriting_default_template_with_variables(self):
+        variables = ["var1", "var2", "name"]
         default_template = "Hello, {{ name }}!"
 
         builder = PromptBuilder(template=default_template, variables=variables)
 
         template = "Hello, {{ var1 }} {{ name }}!"
-        template_variables = {"name": "John"}
         expected_result = {"prompt": "Hello, Big John!"}
 
-        assert builder.run(template, template_variables, var1="Big") == expected_result
+        assert builder.run(template, name="John", var1="Big") == expected_result
 
     def test_processing_a_simple_template_with_invalid_template(self):
         builder = PromptBuilder()
@@ -186,35 +221,17 @@ class TestPromptBuilder:
         with pytest.raises(TemplateSyntaxError):
             PromptBuilder(template)
 
-    def test_processing_a_simple_template_with_missing_variables(self):
-        builder = PromptBuilder()
-
-        with pytest.raises(ValueError, match="name"):
-            builder.run("Hello, {{ name }}!")
-
-    def test_missing_template_variables(self):
-        prompt_builder = PromptBuilder(variables=["documents"])
-
-        # missing template variable city
-        with pytest.raises(ValueError):
-            prompt_builder._validate_template("Hello, I'm {{ name }}, and I live in {{ city }}.", {"name"})
-
-        # missing template variable name
-        with pytest.raises(ValueError):
-            prompt_builder._validate_template("Hello, I'm {{ name }}, and I live in {{ city }}.", {"city"})
-
-        # completely unknown template variable
-        with pytest.raises(ValueError):
-            prompt_builder._validate_template("Hello, I'm {{ name }}, and I live in {{ city }}.", {"age"})
-
     def test_provided_template_variables(self):
-        prompt_builder = PromptBuilder(variables=["documents"])
+        prompt_builder = PromptBuilder(variables=["documents"], required_variables=["city"])
 
         # both variables are provided
         prompt_builder._validate_template("Hello, I'm {{ name }}, and I live in {{ city }}.", {"name", "city"})
 
         # provided variables are a superset of the required variables
         prompt_builder._validate_template("Hello, I'm {{ name }}, and I live in {{ city }}.", {"name", "city", "age"})
+
+        with pytest.raises(ValueError):
+            prompt_builder._validate_template("Hello, I'm {{ name }}, and I live in {{ city }}.", {"name"})
 
     def test_example_in_pipeline(self):
         default_template = "Here is the document: {{documents[0].content}} \\n Answer: {{query}}"
@@ -231,7 +248,7 @@ class TestPromptBuilder:
         pipe.add_component("prompt_builder", prompt_builder)
         pipe.connect("doc_producer.documents", "prompt_builder.documents")
 
-        template = "Here is the document: {{documents[0].content}} \\n Query: {{query}}"
+        template = "Here is the document: {{documents[0].content}} \n Query: {{query}}"
         result = pipe.run(
             data={
                 "doc_producer": {"doc_input": "Hello world, I live in Berlin"},
@@ -244,6 +261,29 @@ class TestPromptBuilder:
 
         assert result == {
             "prompt_builder": {
-                "prompt": "Here is the document: Hello world, I live in Berlin \\n Query: Where does the speaker live?"
+                "prompt": "Here is the document: Hello world, I live in Berlin \n Query: Where does the speaker live?"
             }
         }
+
+    def test_example_in_pipeline_simple(self):
+        default_template = "This is the default prompt:\n Query: {{query}}"
+        prompt_builder = PromptBuilder(template=default_template)
+
+        pipe = Pipeline()
+        pipe.add_component("prompt_builder", prompt_builder)
+
+        # using the default prompt
+        result = pipe.run(data={"query": "Where does the speaker live?"})
+        expected_default = {
+            "prompt_builder": {"prompt": "This is the default prompt:\n Query: Where does the speaker live?"}
+        }
+        assert result == expected_default
+
+        # using the dynamic prompt
+        result = pipe.run(
+            data={"query": "Where does the speaker live?", "template": "This is the dynamic prompt:\n Query: {{query}}"}
+        )
+        expected_dynamic = {
+            "prompt_builder": {"prompt": "This is the dynamic prompt:\n Query: Where does the speaker live?"}
+        }
+        assert result == expected_dynamic
