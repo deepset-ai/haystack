@@ -46,6 +46,9 @@ class OpenAIDocumentEmbedder:
         """
         Create a OpenAIDocumentEmbedder component.
 
+        By setting the 'OPENAI_TIMEOUT' and 'OPENAI_MAX_RETRIES' you can change the timeout and max_retries parameters in the OpenAI client.
+
+
         :param api_key:
             The OpenAI API key.
         :param model:

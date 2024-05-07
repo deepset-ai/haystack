@@ -61,6 +61,9 @@ class OpenAIGenerator:
         """
         Creates an instance of OpenAIGenerator. Unless specified otherwise in the `model`, this is for OpenAI's GPT-3.5 model.
 
+        By setting the 'OPENAI_TIMEOUT' and 'OPENAI_MAX_RETRIES' you can change the timeout and max_retries parameters in the OpenAI client.
+
+
         :param api_key: The OpenAI API key.
         :param model: The name of the model to use.
         :param streaming_callback: A callback function that is called when a new token is received from the stream.
