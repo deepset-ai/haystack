@@ -1,5 +1,4 @@
 import inspect
-import io
 import logging
 from collections import defaultdict
 from datetime import datetime
@@ -14,7 +13,6 @@ from requests.exceptions import InvalidURL, HTTPError
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type, RetryCallState
 
 from haystack import __version__
-from haystack.lazy_imports import LazyImport
 from haystack.nodes import PreProcessor, BaseComponent
 from haystack.schema import Document, MultiLabel
 
