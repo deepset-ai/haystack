@@ -155,6 +155,8 @@ class PromptBuilder:
 
         :returns: A dictionary with the following keys:
             - `prompt`: The updated prompt text after rendering the prompt template.
+        :raises ValueError:
+            If no template is provided or if any of the required template variables are not provided.
         """
         kwargs = kwargs or {}
         template_variables = template_variables or {}
