@@ -129,29 +129,23 @@ class PromptBuilder:
     @component.output_types(prompt=str)
     def run(self, template: Optional[str] = None, template_variables: Optional[Dict[str, Any]] = None, **kwargs):
         """
-        Executes the dynamic prompt building process.
+        Executes the prompt building process.
 
-        Depending on the provided type of `template`, this method either processes a list of `ChatMessage`
-        instances or a string template. In the case of `ChatMessage` instances, the last user message is treated as a
-        template and rendered with the resolved pipeline variables and any additional template variables provided.
-
-        For a string template, it directly applies the template variables to render the final prompt. You can provide
-        additional template variables directly to this method, that are then merged with the variables resolved from
-        the pipeline runtime.
+        It applies the template variables to render the final prompt. You can provide variables either via pipeline
+        (set through `variables` or inferred from `template` at initialization) or via additional template variables
+        set directly to this method. On collision, the variables provided directly to this method take precedence.
 
         :param template:
-            A string template.
+            An optional string template to overwrite PromptBuilder's default template. If None, the default template
+            provided at initialization is used.
         :param template_variables:
-            An optional dictionary of template variables. Template variables provided at initialization are required
-            to resolve pipeline variables, and these are additional variables users can provide directly to this method.
-        :param prompt_source:
-            A string template (deprecated). Will be removed in future releases. Use `template` instead.
+            An optional dictionary of template variables. These are additional variables users can provide directly
+            to this method in contrast to pipeline variables.
         :param kwargs:
-            Additional keyword arguments, typically resolved from a pipeline, which are merged with the provided
-            template variables.
+            Pipeline variables (typically resolved from a pipeline) which are merged with the provided template variables.
 
         :returns: A dictionary with the following keys:
-            - `prompt`: The updated prompt text after rendering the string template.
+            - `prompt`: The updated prompt text after rendering the prompt template.
         """
         kwargs = kwargs or {}
         template_variables = template_variables or {}
@@ -162,7 +156,7 @@ class PromptBuilder:
 
     def _validate_template(self, template_text: Optional[str], provided_variables: Set[str]):
         """
-        Checks if all the required template variables are provided to the pipeline `run` method.
+        Checks if the template is valid and all the required template variables are provided.
 
         If all the required template variables are provided, returns a Jinja2 template object.
         Otherwise, raises a ValueError.
@@ -174,7 +168,7 @@ class PromptBuilder:
         :returns:
             A Jinja2 template object if all the required template variables are provided.
         :raises ValueError:
-            If all the required template variables are not provided.
+            If no template is provided or if all the required template variables are not provided.
         """
         if isinstance(template_text, str):
             template = Template(template_text)
