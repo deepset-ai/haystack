@@ -1,0 +1,8 @@
+---
+prelude: >
+    The utility functions `fetch_archive_from_http`, `build_pipeline` and
+    `add_example_data` were removed from Haystack.
+upgrade:
+  - |
+    We recommend replacing calls to the `fetch_archive_from_http` function with
+    other tools available in Python or in the operating system of use.
