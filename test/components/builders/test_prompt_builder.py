@@ -208,7 +208,7 @@ class TestPromptBuilder:
 
         assert builder.run(template, name="John", var1="Big") == expected_result
 
-    def test_processing_a_simple_template_with_invalid_template(self):
+    def test_run_with_invalid_template(self):
         builder = PromptBuilder()
 
         template = "Hello, {{ name }!"
@@ -216,10 +216,15 @@ class TestPromptBuilder:
         with pytest.raises(TemplateSyntaxError):
             builder.run(template, template_variables)
 
-    def test_processing_a_simple_default_template_with_invalid_template(self):
+    def test_init_with_invalid_template(self):
         template = "Hello, {{ name }!"
         with pytest.raises(TemplateSyntaxError):
             PromptBuilder(template)
+
+    def test_run_without_template(self):
+        prompt_builder = PromptBuilder()
+        with pytest.raises(ValueError, match="The PromptBuilder run method requires a template"):
+            prompt_builder.run()
 
     def test_provided_template_variables(self):
         prompt_builder = PromptBuilder(variables=["documents"], required_variables=["city"])
