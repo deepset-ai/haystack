@@ -103,9 +103,8 @@ class PromptBuilder:
             pipeline execution. The values associated with variables from the pipeline runtime are then injected into
             template placeholders of a prompt text template that is provided to the `run` method.
             If not provided, variables are inferred from `template`.
-        :param required_variables:
-            A list of required template variable names you can use in prompt. These variables are required to be
-            provided at runtime. If not provided, an exception will be raised.
+        :param required_variables: An optional list of input variables that must be provided at all times.
+            If not provided, an exception will be raised.
         """
         self._template_string = template
         self._variables = variables
