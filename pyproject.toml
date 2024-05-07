@@ -161,9 +161,7 @@ file-conversion = [
   "python-magic; platform_system != 'Windows'",  # Depends on libmagic: https://pypi.org/project/python-magic/
   "python-magic-bin; platform_system == 'Windows'",  # Needs to be installed without python-magic, otherwise Windows CI gets stuck.
 ]
-pdf = [
-  "PyMuPDF>=1.18.16" ,  # PDF text extraction alternative to xpdf; please check AGPLv3 license
-]
+pdf = []
 ocr = [
   "pytesseract>0.3.7",
   "pdf2image>1.14",

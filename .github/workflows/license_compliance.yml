@@ -42,10 +42,9 @@ jobs:
           # Exclusions in the vanilla distribution must be explicitly motivated
           #
           # - tqdm is MLP but there are no better alternatives
-          # - PyMuPDF is optional
           # - pinecone-client is optional
           # - psycopg2 is optional
-          exclude: "(?i)^(PyMuPDF|tqdm|pinecone-client|psycopg2).*"
+          exclude: "(?i)^(tqdm|pinecone-client|psycopg2).*"
 
       # We keep the license inventory on FOSSA
       - name: Send license report to Fossa
@@ -199,7 +198,7 @@ jobs:
           # Special cases:
           # - pyzmq is flagged because dual-licensed, but we assume using BSD
           # - tqdm is MLP but there are no better alternatives
-          exclude: "(?i)^(astroid|certifi|chardet|num2words|nvidia-|pathspec|pinecone-client|psycopg2|pylint|PyMuPDF|pyzmq|tqdm).*"
+          exclude: "(?i)^(astroid|certifi|chardet|num2words|nvidia-|pathspec|pinecone-client|psycopg2|pylint|pyzmq|tqdm).*"
 
       - name: Print report
         if: ${{ always() }}
@@ -272,7 +271,7 @@ jobs:
           # Special cases:
           # - pyzmq is flagged because dual-licensed, but we assume using BSD
           # - tqdm is MLP but there are no better alternatives
-          exclude: "(?i)^(astroid|certifi|chardet|num2words|nvidia-|pathspec|pinecone-client|psycopg2|pylint|PyMuPDF|pyzmq|tqdm).*"
+          exclude: "(?i)^(astroid|certifi|chardet|num2words|nvidia-|pathspec|pinecone-client|psycopg2|pylint|pyzmq|tqdm).*"
 
       - name: Print report
         if: ${{ always() }}
