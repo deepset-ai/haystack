@@ -1,0 +1,7 @@
+---
+prelude: >
+    This release changes the `PDFToTextConverter` so that it doesn't support PyMuPDF anymore.
+    The converter will always assume `xpdf` is used by default.
+upgrade:
+  - |
+    To keep using PyMuPDF you must create a custom node, you can use the previous Haystack version for inspiration.
