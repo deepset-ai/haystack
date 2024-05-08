@@ -68,3 +68,41 @@ def test_to_file(tmp_path, request):
     ByteStream(test_str.encode()).to_file(test_path)
     with open(test_path, "rb") as fd:
         assert fd.read().decode() == test_str
+
+
+# tests resolved_mime_type with different priority orders
+def test_resolved_mime_type_priority():
+    test_string = "Hello, world!"
+
+    b = ByteStream(
+        data=test_string.encode(),
+        mime_type="application/octet-stream",
+        meta={"content_type": "text/plain"},
+        mime_type_resolution_priority=["meta", "attribute"],
+    )
+    assert b.resolved_mime_type == "text/plain"
+
+    b.mime_type_resolution_priority = ["attribute", "meta"]
+    assert b.resolved_mime_type == "application/octet-stream"
+
+    b = ByteStream(
+        data=test_string.encode(), mime_type=None, meta={}, mime_type_resolution_priority=["meta", "attribute"]
+    )
+    assert b.resolved_mime_type is None
+
+
+# test resolved_mime_type with default priority which is ["attribute", "meta"]
+def test_resolved_mime_type_no_priority():
+    test_string = "Hello, world!"
+
+    b = ByteStream(data=test_string.encode(), mime_type="application/octet-stream", meta={"content_type": "text/plain"})
+    assert b.resolved_mime_type == "application/octet-stream"
+
+    b = ByteStream(data=test_string.encode(), mime_type=None, meta={"content_type": "text/plain"})
+    assert b.resolved_mime_type == "text/plain"
+
+    b = ByteStream(data=test_string.encode(), mime_type="application/octet-stream", meta={})
+    assert b.resolved_mime_type == "application/octet-stream"
+
+    b = ByteStream(data=test_string.encode(), mime_type=None, meta={})
+    assert b.resolved_mime_type is None
