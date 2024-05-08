@@ -69,7 +69,7 @@ class ByteStream:
             data=text.encode(encoding),
             mime_type=mime_type,
             meta=meta or {},
-            mime_type_resolution_priority=mime_type_resolution_priority,
+            mime_type_resolution_priority=mime_type_resolution_priority or ["attribute", "meta"],
         )
 
     def to_string(self, encoding: str = "utf-8") -> str:
