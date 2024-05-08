@@ -131,7 +131,7 @@ class TestHuggingFaceAPIGenerator:
         result = generator.to_dict()
         init_params = result["init_parameters"]
 
-        assert init_params["api_type"] == HFGenerationAPIType.SERVERLESS_INFERENCE_API
+        assert init_params["api_type"] == "serverless_inference_api"
         assert init_params["api_params"] == {"model": "HuggingFaceH4/zephyr-7b-beta"}
         assert init_params["token"] == {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"}
         assert init_params["generation_kwargs"] == {
