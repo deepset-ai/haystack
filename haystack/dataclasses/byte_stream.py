@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
@@ -12,6 +12,7 @@ class ByteStream:
     data: bytes
     meta: Dict[str, Any] = field(default_factory=dict, hash=False)
     mime_type: Optional[str] = field(default=None)
+    mime_type_resolution_priority: List[str] = field(default_factory=lambda: ["attribute", "meta"])
 
     def to_file(self, destination_path: Path):
         """
@@ -24,7 +25,11 @@ class ByteStream:
 
     @classmethod
     def from_file_path(
-        cls, filepath: Path, mime_type: Optional[str] = None, meta: Optional[Dict[str, Any]] = None
+        cls,
+        filepath: Path,
+        mime_type: Optional[str] = None,
+        meta: Optional[Dict[str, Any]] = None,
+        mime_type_resolution_priority: Optional[List[str]] = None,
     ) -> "ByteStream":
         """
         Create a ByteStream from the contents read from a file.
@@ -32,13 +37,24 @@ class ByteStream:
         :param filepath: A valid path to a file.
         :param mime_type: The mime type of the file.
         :param meta: Additional metadata to be stored with the ByteStream.
+        :param mime_type_resolution_priority: The priority order of the mime type resolution
         """
         with open(filepath, "rb") as fd:
-            return cls(data=fd.read(), mime_type=mime_type, meta=meta or {})
+            return cls(
+                data=fd.read(),
+                mime_type=mime_type,
+                meta=meta or {},
+                mime_type_resolution_priority=mime_type_resolution_priority or ["attribute", "meta"],
+            )
 
     @classmethod
     def from_string(
-        cls, text: str, encoding: str = "utf-8", mime_type: Optional[str] = None, meta: Optional[Dict[str, Any]] = None
+        cls,
+        text: str,
+        encoding: str = "utf-8",
+        mime_type: Optional[str] = None,
+        meta: Optional[Dict[str, Any]] = None,
+        mime_type_resolution_priority: Optional[List[str]] = None,
     ) -> "ByteStream":
         """
         Create a ByteStream encoding a string.
@@ -47,8 +63,14 @@ class ByteStream:
         :param encoding: The encoding used to convert the string into bytes
         :param mime_type: The mime type of the file.
         :param meta: Additional metadata to be stored with the ByteStream.
+        :param mime_type_resolution_priority: The priority order of the mime type resolution
         """
-        return cls(data=text.encode(encoding), mime_type=mime_type, meta=meta or {})
+        return cls(
+            data=text.encode(encoding),
+            mime_type=mime_type,
+            meta=meta or {},
+            mime_type_resolution_priority=mime_type_resolution_priority,
+        )
 
     def to_string(self, encoding: str = "utf-8") -> str:
         """
@@ -63,12 +85,15 @@ class ByteStream:
     @property
     def resolved_mime_type(self) -> Optional[str]:
         """
-        Returns the resolved MIME type of the ByteStream
-
-        The mime type value comes from either from the `content_type` value of the `meta` dictionary or from
-        the `mime_type` attribute.
+        Returns the resolved MIME type of the ByteStream based on the `mime_type_resolution_priority` priority.
 
         :return: The MIME type if available, otherwise `None`.
         :rtype: Optional[str]
         """
-        return self.meta.get("content_type", None) or self.mime_type
+        sources = {"meta": self.meta.get("content_type", None), "attribute": self.mime_type}
+
+        for source in self.mime_type_resolution_priority:
+            if sources[source]:
+                return sources[source]
+
+        return None
