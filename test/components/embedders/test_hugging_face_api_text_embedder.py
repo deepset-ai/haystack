@@ -95,7 +95,7 @@ class TestHuggingFaceAPITextEmbedder:
         assert data == {
             "type": "haystack.components.embedders.hugging_face_api_text_embedder.HuggingFaceAPITextEmbedder",
             "init_parameters": {
-                "api_type": HFEmbeddingAPIType.SERVERLESS_INFERENCE_API,
+                "api_type": "serverless_inference_api",
                 "api_params": {"model": "BAAI/bge-small-en-v1.5"},
                 "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
                 "prefix": "prefix",
