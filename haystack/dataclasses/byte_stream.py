@@ -85,10 +85,19 @@ class ByteStream:
     @property
     def resolved_mime_type(self) -> Optional[str]:
         """
-        Returns the resolved MIME type of the ByteStream based on the `mime_type_resolution_priority` priority.
+        Returns the resolved MIME type of the ByteStream based on the `mime_type_resolution_priority` property.
+
+        The MIME type is consolidated using two different contexts:
+        - `content_type`: Used for resources fetched from the web and stored in the `meta` field.
+        - `mime_type`: Used for local files.
+
+        The `mime_type_resolution_priority` property prioritizes the resolution of the MIME type based on the order
+        of preference, picking one of the two sources of truth. The default order is `["attribute", "meta"]`.
+
+        This property is useful because it can be used with any `ByteStream` instance, regardless of the origin of
+        creation, to conveniently determine the MIME type instead of checking both sources of truth separately.
 
         :return: The MIME type if available, otherwise `None`.
-        :rtype: Optional[str]
         """
         sources = {"meta": self.meta.get("content_type", None), "attribute": self.mime_type}
 
