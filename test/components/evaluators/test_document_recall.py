@@ -168,3 +168,18 @@ class TestDocumentRecallEvaluatorMultiHit:
                 ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
                 retrieved_documents=[[Document(content="Berlin")]],
             )
+
+    def test_to_dict(self, evaluator):
+        data = evaluator.to_dict()
+        assert data == {
+            "type": "haystack.components.evaluators.document_recall.DocumentRecallEvaluator",
+            "init_parameters": {"mode": "multi_hit"},
+        }
+
+    def test_from_dict(self):
+        data = {
+            "type": "haystack.components.evaluators.document_recall.DocumentRecallEvaluator",
+            "init_parameters": {"mode": "multi_hit"},
+        }
+        new_evaluator = default_from_dict(DocumentRecallEvaluator, data)
+        assert new_evaluator.mode == RecallMode.MULTI_HIT
