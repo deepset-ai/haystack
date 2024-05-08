@@ -59,3 +59,16 @@ class ByteStream:
         :raises: UnicodeDecodeError: If the ByteStream data cannot be decoded with the specified encoding.
         """
         return self.data.decode(encoding)
+
+    @property
+    def resolved_mime_type(self) -> Optional[str]:
+        """
+        Returns the resolved MIME type of the ByteStream
+
+        The mime type value comes from either from the `content_type` value of the `meta` dictionary or from
+        the `mime_type` attribute.
+
+        :return: The MIME type if available, otherwise `None`.
+        :rtype: Optional[str]
+        """
+        return self.meta.get("content_type", None) or self.mime_type

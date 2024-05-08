@@ -86,7 +86,7 @@ class FileTypeRouter:
             if isinstance(source, Path):
                 mime_type = self._get_mime_type(source)
             elif isinstance(source, ByteStream):
-                mime_type = source.meta.get("content_type", None)
+                mime_type = source.resolved_mime_type
             else:
                 raise ValueError(f"Unsupported data source type: {type(source).__name__}")
 
