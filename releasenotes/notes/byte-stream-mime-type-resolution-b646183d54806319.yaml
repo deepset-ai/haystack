@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Improved MIME type resolution in ByteStream dataclass to allow priority-based MIME type determination. Users can now specify a priority order for resolving the MIME type of a ByteStream, utilizing either the explicitly set mime_type attribute or the content_type found within the ByteStream's metadata. This enhancement simplifies handling of MIME types, especially when dealing with ByteStreams originating from various sources.
