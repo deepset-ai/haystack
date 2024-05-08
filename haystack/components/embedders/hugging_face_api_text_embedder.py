@@ -142,7 +142,7 @@ class HuggingFaceAPITextEmbedder:
         """
         return default_to_dict(
             self,
-            api_type=self.api_type,
+            api_type=str(self.api_type),
             api_params=self.api_params,
             prefix=self.prefix,
             suffix=self.suffix,
