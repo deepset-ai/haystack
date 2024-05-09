@@ -19,6 +19,8 @@ jobs:
     steps:
       - name: Check License Header
         uses: korandoru/hawkeye@v5
+        with:
+          config: $GITHUB_WORKSPACE/licenserc.toml
 
   mypy:
     runs-on: ubuntu-latest
