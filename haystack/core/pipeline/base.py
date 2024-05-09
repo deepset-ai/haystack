@@ -628,7 +628,7 @@ class PipelineBase:
                         f"Input {socket_name} for component {component_name} is already sent by {socket.senders}."
                     )
 
-    def _prepare_component_input_data(self, data: Dict[str, Any]) -> Tuple[Dict[str, Dict[str, Any]], Dict[str, Any]]:
+    def _prepare_component_input_data(self, data: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
         """
         Prepares input data for pipeline components.
 
@@ -646,6 +646,15 @@ class PipelineBase:
              1. A dictionary mapping component names to their respective matched inputs.
              2. A dictionary of inputs that were not matched to any component, termed as unresolved keyword arguments.
         """
+        # check whether the data is a nested dictionary of component inputs where each key is a component name
+        # and each value is a dictionary of input parameters for that component
+        is_nested_component_input = all(isinstance(value, dict) for value in data.values())
+        if is_nested_component_input:
+            return data
+
+        # flat input, a dict where keys are input names and values are the corresponding values
+        # we need to convert it to a nested dictionary of component inputs and then run the pipeline
+        # just like in the previous case
         pipeline_input_data: Dict[str, Dict[str, Any]] = defaultdict(dict)
         unresolved_kwargs = {}
 
@@ -666,7 +675,13 @@ class PipelineBase:
             if not resolved_at_least_once:
                 unresolved_kwargs[input_name] = input_value
 
-        return pipeline_input_data, unresolved_kwargs
+        if unresolved_kwargs:
+            logger.warning(
+                "Inputs {input_keys} were not matched to any component inputs, please check your run parameters.",
+                input_keys=list(unresolved_kwargs.keys()),
+            )
+
+        return pipeline_input_data
 
     @classmethod
     def from_template(

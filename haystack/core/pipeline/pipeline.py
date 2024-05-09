@@ -42,7 +42,19 @@ class Pipeline(PipelineBase):
 
         :param data:
             A dictionary of inputs for the pipeline's components. Each key is a component name
-            and its value is a dictionary of that component's input parameters.
+            and its value is a dictionary of that component's input parameters:
+            ```
+            data = {
+                "comp1": {"input1": 1, "input2": 2},
+            }
+            ```
+            For convenience, this format is also supported when input names are unique:
+            ```
+            data = {
+                "input1": 1, "input2": 2,
+            }
+            ```
+
         :param debug:
             Set to True to collect and return debug information.
         :param include_outputs_from:
@@ -94,15 +106,6 @@ class Pipeline(PipelineBase):
         {'hello2': {'output': 'Hello, Hello, world!!'}}.
         """
         pipeline_running(self)
-        # NOTE: We're assuming data is formatted like so as of now
-        # data = {
-        #     "comp1": {"input1": 1, "input2": 2},
-        # }
-        #
-        # TODO: Support also this format:
-        # data = {
-        #     "input1": 1, "input2": 2,
-        # }
 
         # Reset the visits count for each component
         self._init_graph()
@@ -111,27 +114,11 @@ class Pipeline(PipelineBase):
         # As of now it's here to make sure we don't have failing tests that assume warm_up() is called in run()
         self.warm_up()
 
-        # check whether the data is a nested dictionary of component inputs where each key is a component name
-        # and each value is a dictionary of input parameters for that component
-        is_nested_component_input = all(isinstance(value, dict) for value in data.values())
-        if not is_nested_component_input:
-            # flat input, a dict where keys are input names and values are the corresponding values
-            # we need to convert it to a nested dictionary of component inputs and then run the pipeline
-            # just like in the previous case
-            data, unresolved_inputs = self._prepare_component_input_data(data)
-            if unresolved_inputs:
-                logger.warning(
-                    "Inputs {input_keys} were not matched to any component inputs, please check your run parameters.",
-                    input_keys=list(unresolved_inputs.keys()),
-                )
+        # normalize `data`
+        data = self._prepare_component_input_data(data)
 
         # Raise if input is malformed in some way
         self._validate_input(data)
-        # NOTE: The above NOTE and TODO are technically not true.
-        # This implementation of run supports only the first format, but the second format is actually
-        # never received by this method. It's handled by the `run()` method of the `Pipeline` class
-        # defined in `haystack/pipeline.py`.
-        # As of now we're ok with this, but we'll need to merge those two classes at some point.
 
         # deepcopying the inputs prevents the Pipeline run logic from being altered unexpectedly
         # when the same input reference is passed to multiple components.
