@@ -16,8 +16,9 @@ def find_pipeline_inputs(
     graph: networkx.MultiDiGraph, include_connected_sockets: bool = False
 ) -> Dict[str, List[InputSocket]]:
     """
-    Collect components that have disconnected/connected input sockets. Note that this method returns *ALL*
-    disconnected input sockets, including all such sockets with default values.
+    Collect components that have disconnected/connected input sockets.
+
+    Note that this method returns *ALL* disconnected input sockets, including all such sockets with default values.
     """
     return {
         name: [
