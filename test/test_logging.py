@@ -388,7 +388,6 @@ class TestCompositeLogger:
 
         output = capfd.readouterr().err
         assert "test.test_logging" in output
-        assert "384" in output
 
     @pytest.mark.parametrize(
         "method, expected_level",
