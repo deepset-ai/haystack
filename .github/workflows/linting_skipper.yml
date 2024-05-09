@@ -10,6 +10,12 @@ on:
       - "**/pyproject.toml"
 
 jobs:
+  license-header:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip mypy
+        run: echo "Skipped mypy"
+
   mypy:
     runs-on: ubuntu-latest
     steps:
