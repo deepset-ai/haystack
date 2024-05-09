@@ -1,4 +1,7 @@
-# pylint: disable=too-many-public-methods
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import random
 from datetime import datetime
 from typing import List
@@ -17,6 +20,9 @@ with LazyImport("Run 'pip install pytest'") as pytest_import:
 
 def _random_embeddings(n):
     return [random.random() for _ in range(n)]
+
+
+# pylint: disable=too-many-public-methods
 
 
 # These are random embedding that are used to test filters.

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 from .answer_exact_match import AnswerExactMatchEvaluator
 from .context_relevance import ContextRelevanceEvaluator
 from .document_map import DocumentMAPEvaluator
