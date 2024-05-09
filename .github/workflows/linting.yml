@@ -18,6 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check License Header
+        working-directory: $GITHUB_WORKSPACE
         run: docker run --rm -v "$(pwd):/github/workspace" ghcr.io/korandoru/hawkeye check
 
   mypy:
