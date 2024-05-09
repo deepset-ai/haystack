@@ -1008,3 +1008,13 @@ def test_pipeline_is_not_stuck_with_components_with_only_defaults_as_first_compo
     res = pipe.run({"prompt_builder": {"query": "What is the capital of Italy?"}})
 
     assert res == {"router": {"correct_replies": ["Rome"]}}
+
+
+def test__init_graph():
+    pipe = Pipeline()
+    pipe.add_component("greet", Greet())
+    pipe.add_component("adder", AddFixedValue())
+    pipe.connect("greet", "adder")
+    pipe._init_graph()
+    for node in pipe.graph.nodes:
+        assert pipe.graph.nodes[node]["visits"] == 0
