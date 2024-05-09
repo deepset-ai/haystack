@@ -221,8 +221,8 @@ def test_pipeline_load(test_files_path):
         assert isinstance(pipeline.get_component("Comp2"), FakeComponent)
 
 
-@patch("haystack.core.pipeline.pipeline._to_mermaid_image")
-@patch("haystack.core.pipeline.pipeline.is_in_jupyter")
+@patch("haystack.core.pipeline.base._to_mermaid_image")
+@patch("haystack.core.pipeline.base.is_in_jupyter")
 @patch("IPython.display.Image")
 @patch("IPython.display.display")
 def test_show_in_notebook(mock_ipython_display, mock_ipython_image, mock_is_in_jupyter, mock_to_mermaid_image):
@@ -236,7 +236,7 @@ def test_show_in_notebook(mock_ipython_display, mock_ipython_image, mock_is_in_j
     mock_ipython_display.assert_called_once()
 
 
-@patch("haystack.core.pipeline.pipeline.is_in_jupyter")
+@patch("haystack.core.pipeline.base.is_in_jupyter")
 def test_show_not_in_notebook(mock_is_in_jupyter):
     pipe = Pipeline()
 
@@ -246,7 +246,7 @@ def test_show_not_in_notebook(mock_is_in_jupyter):
         pipe.show()
 
 
-@patch("haystack.core.pipeline.pipeline._to_mermaid_image")
+@patch("haystack.core.pipeline.base._to_mermaid_image")
 def test_draw(mock_to_mermaid_image, tmp_path):
     pipe = Pipeline()
     mock_to_mermaid_image.return_value = b"some_image_data"
