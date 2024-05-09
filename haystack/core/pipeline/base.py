@@ -707,6 +707,11 @@ class PipelineBase:
             msg += f"Source:\n{rendered}"
             raise PipelineUnmarshalError(msg)
 
+    def _init_graph(self):
+        """Resets the visits count for each component"""
+        for node in self.graph.nodes:
+            self.graph.nodes[node]["visits"] = 0
+
 
 def _connections_status(
     sender_node: str, receiver_node: str, sender_sockets: List[OutputSocket], receiver_sockets: List[InputSocket]

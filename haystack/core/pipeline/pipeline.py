@@ -94,8 +94,7 @@ class Pipeline(PipelineBase):
         # }
 
         # Reset the visits count for each component
-        for node in self.graph.nodes:
-            self.graph.nodes[node]["visits"] = 0
+        self._init_graph()
 
         # TODO: Remove this warmup once we can check reliably whether a component has been warmed up or not
         # As of now it's here to make sure we don't have failing tests that assume warm_up() is called in run()
