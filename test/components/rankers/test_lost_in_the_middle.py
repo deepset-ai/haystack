@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
 import pytest
 from haystack import Document
 from haystack.components.rankers.lost_in_the_middle import LostInTheMiddleRanker

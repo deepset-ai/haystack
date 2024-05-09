@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
 from pandas import DataFrame
 
 from haystack.dataclasses.answer import Answer, ExtractedAnswer, ExtractedTableAnswer, GeneratedAnswer

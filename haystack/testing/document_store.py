@@ -1,4 +1,7 @@
-# pylint: disable=too-many-public-methods
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import random
 from datetime import datetime
 from typing import List

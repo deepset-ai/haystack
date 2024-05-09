@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import copy
 import json
 from typing import Any, Callable, Dict, List, Optional, Union

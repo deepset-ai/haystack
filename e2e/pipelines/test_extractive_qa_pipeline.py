@@ -1,9 +1,13 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import json
 
-from haystack import Pipeline, Document
-from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+from haystack import Document, Pipeline
 from haystack.components.readers import ExtractiveReader
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 
 def test_extractive_qa_pipeline(tmp_path):
