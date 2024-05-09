@@ -139,9 +139,6 @@ class Document(metaclass=_BackwardCompatible):
         if (blob := data.get("blob")) is not None:
             data["blob"] = {"data": list(blob["data"]), "mime_type": blob["mime_type"]}
 
-        if (sparse_embedding := data.get("sparse_embedding")) is not None:
-            data["sparse_embedding"] = sparse_embedding.to_dict()
-
         if flatten:
             meta = data.pop("meta")
             return {**data, **meta}
