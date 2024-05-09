@@ -17,8 +17,8 @@ jobs:
   license-header:
     runs-on: ubuntu-latest
     steps:
-      - name: Check License Headers
-        uses: korandoru/hawkeye@v5
+      - name: Check License Header
+        run: docker run -it --rm -v "$(pwd):/github/workspace" ghcr.io/korandoru/hawkeye check
 
   mypy:
     runs-on: ubuntu-latest
