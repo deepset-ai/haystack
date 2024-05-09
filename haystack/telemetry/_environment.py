@@ -59,7 +59,7 @@ def _is_containerized() -> Optional[bool]:
     """
     This code is based on the popular 'is-docker' package for node.js
     """
-    global _IS_DOCKER_CACHE
+    global _IS_DOCKER_CACHE  # pylint: disable=global-statement
 
     if _IS_DOCKER_CACHE is None:
         _IS_DOCKER_CACHE = _in_podman() or _has_dockerenv() or _has_docker_cgroup_v1() or _has_docker_cgroup_v2()
