@@ -6,7 +6,7 @@ import pytest
 from haystack.core.component.types import Variadic
 from haystack.core.errors import PipelineConnectError
 from haystack.core.pipeline import Pipeline
-from haystack.core.pipeline.pipeline import parse_connect_string
+from haystack.core.pipeline.utils import parse_connect_string
 from haystack.testing import factory
 
 
