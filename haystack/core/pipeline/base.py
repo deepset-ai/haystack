@@ -5,6 +5,7 @@
 import importlib
 import itertools
 from collections import defaultdict
+from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional, TextIO, Tuple, Type, TypeVar, Union
@@ -645,55 +646,59 @@ class PipelineBase:
         Prepares input data for pipeline components.
 
         Organizes input data for pipeline components and identifies any inputs that are not matched to any
-        component's input slots.
+        component's input slots. Deep-copies data items to avoid sharing mutables across multiple components.
 
         This method processes a flat dictionary of input data, where each key-value pair represents an input name
         and its corresponding value. It distributes these inputs to the appropriate pipeline components based on
         their input requirements. Inputs that don't match any component's input slots are classified as unresolved.
 
         :param data:
-            A dictionary with input names as keys and input values as values.
+            A dictionary potentially having input names as keys and input values as values.
+
         :returns:
-            A tuple containing two elements:
-             1. A dictionary mapping component names to their respective matched inputs.
-             2. A dictionary of inputs that were not matched to any component, termed as unresolved keyword arguments.
+            A dictionary mapping component names to their respective matched inputs.
         """
         # check whether the data is a nested dictionary of component inputs where each key is a component name
         # and each value is a dictionary of input parameters for that component
         is_nested_component_input = all(isinstance(value, dict) for value in data.values())
-        if is_nested_component_input:
-            return data
+        if not is_nested_component_input:
+            # flat input, a dict where keys are input names and values are the corresponding values
+            # we need to convert it to a nested dictionary of component inputs and then run the pipeline
+            # just like in the previous case
+            pipeline_input_data: Dict[str, Dict[str, Any]] = defaultdict(dict)
+            unresolved_kwargs = {}
 
-        # flat input, a dict where keys are input names and values are the corresponding values
-        # we need to convert it to a nested dictionary of component inputs and then run the pipeline
-        # just like in the previous case
-        pipeline_input_data: Dict[str, Dict[str, Any]] = defaultdict(dict)
-        unresolved_kwargs = {}
+            # Retrieve the input slots for each component in the pipeline
+            available_inputs: Dict[str, Dict[str, Any]] = self.inputs()
 
-        # Retrieve the input slots for each component in the pipeline
-        available_inputs: Dict[str, Dict[str, Any]] = self.inputs()
+            # Go through all provided to distribute them to the appropriate component inputs
+            for input_name, input_value in data.items():
+                resolved_at_least_once = False
 
-        # Go through all provided to distribute them to the appropriate component inputs
-        for input_name, input_value in data.items():
-            resolved_at_least_once = False
+                # Check each component to see if it has a slot for the current kwarg
+                for component_name, component_inputs in available_inputs.items():
+                    if input_name in component_inputs:
+                        # If a match is found, add the kwarg to the component's input data
+                        pipeline_input_data[component_name][input_name] = input_value
+                        resolved_at_least_once = True
 
-            # Check each component to see if it has a slot for the current kwarg
-            for component_name, component_inputs in available_inputs.items():
-                if input_name in component_inputs:
-                    # If a match is found, add the kwarg to the component's input data
-                    pipeline_input_data[component_name][input_name] = input_value
-                    resolved_at_least_once = True
+                if not resolved_at_least_once:
+                    unresolved_kwargs[input_name] = input_value
 
-            if not resolved_at_least_once:
-                unresolved_kwargs[input_name] = input_value
+            if unresolved_kwargs:
+                logger.warning(
+                    "Inputs {input_keys} were not matched to any component inputs, please check your run parameters.",
+                    input_keys=list(unresolved_kwargs.keys()),
+                )
 
-        if unresolved_kwargs:
-            logger.warning(
-                "Inputs {input_keys} were not matched to any component inputs, please check your run parameters.",
-                input_keys=list(unresolved_kwargs.keys()),
-            )
+            data = dict(pipeline_input_data)
 
-        return pipeline_input_data
+        # deepcopying the inputs prevents the Pipeline run logic from being altered unexpectedly
+        # when the same input reference is passed to multiple components.
+        for component_name, component_inputs in data.items():
+            data[component_name] = {k: deepcopy(v) for k, v in component_inputs.items()}
+
+        return data
 
     @classmethod
     def from_template(

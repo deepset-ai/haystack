@@ -109,11 +109,6 @@ class Pipeline(PipelineBase):
         # Raise if input is malformed in some way
         self._validate_input(data)
 
-        # deepcopying the inputs prevents the Pipeline run logic from being altered unexpectedly
-        # when the same input reference is passed to multiple components.
-        for component_name, component_inputs in data.items():
-            data[component_name] = {k: deepcopy(v) for k, v in component_inputs.items()}
-
         for component_name, component_inputs in data.items():
             if component_name not in self.graph.nodes:
                 # This is not a component name, it must be the name of one or more input sockets.
