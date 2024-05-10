@@ -5,7 +5,7 @@
 import importlib
 import itertools
 from collections import defaultdict
-from copy import deepcopy
+from copy import copy, deepcopy
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional, TextIO, Tuple, Type, TypeVar, Union
@@ -699,6 +699,25 @@ class PipelineBase:
             data[component_name] = {k: deepcopy(v) for k, v in component_inputs.items()}
 
         return data
+
+    def _init_inputs_state(self, data: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+        for component_name, component_inputs in data.items():
+            if component_name not in self.graph.nodes:
+                # This is not a component name, it must be the name of one or more input sockets.
+                # Those are handled in a different way, so we skip them here.
+                continue
+            instance = self.graph.nodes[component_name]["instance"]
+            for component_input, input_value in component_inputs.items():
+                # Handle mutable input data
+                data[component_name][component_input] = copy(input_value)
+                if instance.__haystack_input__._sockets_dict[component_input].is_variadic:
+                    # Components that have variadic inputs need to receive lists as input.
+                    # We don't want to force the user to always pass lists, so we convert single values to lists here.
+                    # If it's already a list we assume the component takes a variadic input of lists, so we
+                    # convert it in any case.
+                    data[component_name][component_input] = [input_value]
+
+        return {**data}
 
     @classmethod
     def from_template(

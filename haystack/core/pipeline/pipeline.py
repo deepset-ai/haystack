@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from copy import copy, deepcopy
+from copy import deepcopy
 from typing import Any, Dict, List, Mapping, Optional, Set, Tuple
 
 from haystack import logging, tracing
@@ -109,23 +109,8 @@ class Pipeline(PipelineBase):
         # Raise if input is malformed in some way
         self._validate_input(data)
 
-        for component_name, component_inputs in data.items():
-            if component_name not in self.graph.nodes:
-                # This is not a component name, it must be the name of one or more input sockets.
-                # Those are handled in a different way, so we skip them here.
-                continue
-            instance = self.graph.nodes[component_name]["instance"]
-            for component_input, input_value in component_inputs.items():
-                # Handle mutable input data
-                data[component_name][component_input] = copy(input_value)
-                if instance.__haystack_input__._sockets_dict[component_input].is_variadic:
-                    # Components that have variadic inputs need to receive lists as input.
-                    # We don't want to force the user to always pass lists, so we convert single values to lists here.
-                    # If it's already a list we assume the component takes a variadic input of lists, so we
-                    # convert it in any case.
-                    data[component_name][component_input] = [input_value]
-
-        last_inputs: Dict[str, Dict[str, Any]] = {**data}
+        # Initialize the inputs state
+        last_inputs: Dict[str, Dict[str, Any]] = self._init_inputs_state(data)
 
         # Take all components that have at least 1 input not connected or is variadic,
         # and all components that have no inputs at all
