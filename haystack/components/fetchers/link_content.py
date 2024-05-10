@@ -151,6 +151,7 @@ class LinkContentFetcher:
             for stream_metadata, stream in results:  # type: ignore
                 if stream_metadata is not None and stream is not None:
                     stream.meta.update(stream_metadata)
+                    stream.mime_type = stream.meta.get("content_type", None)
                     streams.append(stream)
 
         return {"streams": streams}
