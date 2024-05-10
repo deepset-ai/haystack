@@ -22,17 +22,6 @@ class Pipeline(PipelineBase):
     Orchestrates component execution according to the execution graph, one after the other.
     """
 
-    def __eq__(self, other) -> bool:
-        """
-        Pipeline equality is defined by the equality of their serialized form.
-
-        Equal pipelines share every metadata, node and edge, but they're not required to use
-        the same node instances: this allows pipeline saved and then loaded back to be equal to themselves.
-        """
-        if not isinstance(other, Pipeline):
-            return False
-        return self.to_dict() == other.to_dict()
-
     # TODO: We're ignoring these linting rules for the time being, after we properly optimize this function we'll remove the noqa
     def run(  # noqa: C901, PLR0912, PLR0915 pylint: disable=too-many-branches
         self, data: Dict[str, Any], debug: bool = False, include_outputs_from: Optional[Set[str]] = None

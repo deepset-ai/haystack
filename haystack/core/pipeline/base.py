@@ -73,6 +73,17 @@ class PipelineBase:
         self._debug: Dict[int, Dict[str, Any]] = {}
         self._debug_path = Path(debug_path)
 
+    def __eq__(self, other) -> bool:
+        """
+        Pipeline equality is defined by their type and the equality of their serialized form.
+
+        Pipelines of the same type share every metadata, node and edge, but they're not required to use
+        the same node instances: this allows pipeline saved and then loaded back to be equal to themselves.
+        """
+        if not isinstance(type(other), type(self)):
+            return False
+        return self.to_dict() == other.to_dict()
+
     def __repr__(self) -> str:
         """
         Returns a text representation of the Pipeline.
