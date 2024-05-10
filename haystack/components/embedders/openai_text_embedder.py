@@ -44,6 +44,8 @@ class OpenAITextEmbedder:
         organization: Optional[str] = None,
         prefix: str = "",
         suffix: str = "",
+        timeout: float = 30.0,
+        max_retries: int = 5,
     ):
         """
         Create an OpenAITextEmbedder component.
@@ -66,6 +68,10 @@ class OpenAITextEmbedder:
             A string to add at the beginning of each text.
         :param suffix:
             A string to add at the end of each text.
+        :param timeout:
+            Timeout for OpenAI Client calls, if not set it is inferred from the `OPENAI_TIMEOUT` environment variable or set to 30.
+        :param max_retries:
+            Maximum retries to stablish contact with OpenAI if it returns an internal error, if not set it is inferred from the `OPENAI_MAX_RETRIES` environment variable or set to 5.
         """
         self.model = model
         self.dimensions = dimensions
@@ -75,12 +81,17 @@ class OpenAITextEmbedder:
         self.suffix = suffix
         self.api_key = api_key
 
+        if timeout == 30.0:
+            timeout = float(os.environ.get("OPENAI_TIMEOUT", 30.0))
+        if max_retries == 5:
+            max_retries = int(os.environ.get("OPENAI_MAX_RETRIES", 5))
+
         self.client = OpenAI(
             api_key=api_key.resolve_value(),
             organization=organization,
             base_url=api_base_url,
-            timeout=float(os.environ.get("OPENAI_TIMEOUT", 30)),
-            max_retries=int(os.environ.get("OPENAI_MAX_RETRIES", 5)),
+            timeout=timeout,
+            max_retries=max_retries,
         )
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
