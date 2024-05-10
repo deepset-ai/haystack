@@ -114,20 +114,7 @@ class Pipeline(PipelineBase):
 
         # Take all components that have at least 1 input not connected or is variadic,
         # and all components that have no inputs at all
-        to_run: List[Tuple[str, Component]] = []
-        for node_name in self.graph.nodes:
-            component = self.graph.nodes[node_name]["instance"]
-
-            if len(component.__haystack_input__._sockets_dict) == 0:
-                # Component has no input, can run right away
-                to_run.append((node_name, component))
-                continue
-
-            for socket in component.__haystack_input__._sockets_dict.values():
-                if not socket.senders or socket.is_variadic:
-                    # Component has at least one input not connected or is variadic, can run right away.
-                    to_run.append((node_name, component))
-                    break
+        to_run: List[Tuple[str, Component]] = self._init_to_run()
 
         # These variables are used to detect when we're stuck in a loop.
         # Stuck loops can happen when one or more components are waiting for input but
