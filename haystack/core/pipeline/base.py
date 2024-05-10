@@ -80,7 +80,7 @@ class PipelineBase:
         Pipelines of the same type share every metadata, node and edge, but they're not required to use
         the same node instances: this allows pipeline saved and then loaded back to be equal to themselves.
         """
-        if not isinstance(type(other), type(self)):
+        if not isinstance(self, type(other)):
             return False
         return self.to_dict() == other.to_dict()
 
