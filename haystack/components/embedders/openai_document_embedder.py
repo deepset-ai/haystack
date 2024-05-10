@@ -46,6 +46,8 @@ class OpenAIDocumentEmbedder:
         progress_bar: bool = True,
         meta_fields_to_embed: Optional[List[str]] = None,
         embedding_separator: str = "\n",
+        timeout: float = 30.0,
+        max_retries: int = 5,
     ):
         """
         Create a OpenAIDocumentEmbedder component.
@@ -77,6 +79,10 @@ class OpenAIDocumentEmbedder:
             List of meta fields that will be embedded along with the Document text.
         :param embedding_separator:
             Separator used to concatenate the meta fields to the Document text.
+        :param timeout:
+            Timeout for OpenAI Client calls, if not set it is inferred from the `OPENAI_TIMEOUT` environment variable or set to 30.
+        :param max_retries:
+            Maximum retries to stablish contact with OpenAI if it returns an internal error, if not set it is inferred from the `OPENAI_MAX_RETRIES` environment variable or set to 5.
         """
         self.api_key = api_key
         self.model = model
@@ -90,12 +96,17 @@ class OpenAIDocumentEmbedder:
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
 
+        if timeout == 30.0:
+            timeout = float(os.environ.get("OPENAI_TIMEOUT", 30.0))
+        if max_retries == 5:
+            max_retries = int(os.environ.get("OPENAI_MAX_RETRIES", 5))
+
         self.client = OpenAI(
             api_key=api_key.resolve_value(),
             organization=organization,
             base_url=api_base_url,
-            timeout=float(os.environ.get("OPENAI_TIMEOUT", 30)),
-            max_retries=int(os.environ.get("OPENAI_MAX_RETRIES", 5)),
+            timeout=timeout,
+            max_retries=max_retries,
         )
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
