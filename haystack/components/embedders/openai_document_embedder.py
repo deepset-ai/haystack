@@ -46,8 +46,8 @@ class OpenAIDocumentEmbedder:
         progress_bar: bool = True,
         meta_fields_to_embed: Optional[List[str]] = None,
         embedding_separator: str = "\n",
-        timeout: float = 30.0,
-        max_retries: int = 5,
+        timeout: Optional[float] = None,
+        max_retries: Optional[int] = None,
     ):
         """
         Create a OpenAIDocumentEmbedder component.
@@ -96,9 +96,9 @@ class OpenAIDocumentEmbedder:
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
 
-        if timeout == 30.0:
+        if timeout is None:
             timeout = float(os.environ.get("OPENAI_TIMEOUT", 30.0))
-        if max_retries == 5:
+        if max_retries is None:
             max_retries = int(os.environ.get("OPENAI_MAX_RETRIES", 5))
 
         self.client = OpenAI(
