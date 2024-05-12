@@ -6,11 +6,14 @@ import re
 from copy import deepcopy
 from functools import partial, reduce
 from itertools import chain
-from typing import Generator, List, Optional, Set
+from typing import Callable, Generator, List, Optional, Set
 
 from haystack import Document, component, logging
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_ID_GENERATOR: Callable[[Document, Document], str] = lambda old_doc, new_doc: new_doc.id
+KEEP_ID: Callable[[Document, Document], str] = lambda old_doc, new_doc: old_doc.id
 
 
 @component
@@ -42,6 +45,7 @@ class DocumentCleaner:
         remove_repeated_substrings: bool = False,
         remove_substrings: Optional[List[str]] = None,
         remove_regex: Optional[str] = None,
+        id_generator: Callable[[Document, Document], str] = DEFAULT_ID_GENERATOR,
     ):
         """
         Initialize the DocumentCleaner.
@@ -53,6 +57,7 @@ class DocumentCleaner:
             which is supported by `TextFileToDocument` and `AzureOCRDocumentConverter`.
         :param remove_substrings: List of substrings to remove from the text.
         :param remove_regex: Regex to match and replace substrings by "".
+        :param id_generator: Function that expects the original and new documents and returns the id for the new document.
         """
 
         self.remove_empty_lines = remove_empty_lines
@@ -60,6 +65,7 @@ class DocumentCleaner:
         self.remove_repeated_substrings = remove_repeated_substrings
         self.remove_substrings = remove_substrings
         self.remove_regex = remove_regex
+        self.id_generator = id_generator
 
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document]):
@@ -98,7 +104,9 @@ class DocumentCleaner:
             if self.remove_repeated_substrings:
                 text = self._remove_repeated_substrings(text)
 
-            cleaned_docs.append(Document(content=text, meta=deepcopy(doc.meta)))
+            cleaned_doc = Document(content=text, meta=deepcopy(doc.meta))
+            cleaned_doc.id = self.id_generator(doc, cleaned_doc)
+            cleaned_docs.append(cleaned_doc)
 
         return {"documents": cleaned_docs}
 

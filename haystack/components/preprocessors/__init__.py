@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from .document_cleaner import DocumentCleaner
+from .document_cleaner import DEFAULT_ID_GENERATOR, KEEP_ID, DocumentCleaner
 from .document_splitter import DocumentSplitter
 from .text_cleaner import TextCleaner
 

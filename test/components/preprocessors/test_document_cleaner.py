@@ -6,7 +6,7 @@ import logging
 import pytest
 
 from haystack import Document
-from haystack.components.preprocessors import DocumentCleaner
+from haystack.components.preprocessors import DocumentCleaner, DEFAULT_ID_GENERATOR, KEEP_ID
 
 
 class TestDocumentCleaner:
@@ -128,5 +128,38 @@ class TestDocumentCleaner:
         assert len(result["documents"]) == 2
         assert result["documents"][0].id != result["documents"][1].id
         for doc, cleaned_doc in zip(documents, result["documents"]):
+            assert doc.meta == cleaned_doc.meta
+            assert cleaned_doc.content == "Text."
+
+    def test_keep_id_generator(self):
+        cleaner = DocumentCleaner(id_generator=KEEP_ID)
+
+        documents = [
+            Document(content="Text. ", meta={"name": "doc 0"}),
+            Document(content="Text. ", meta={"name": "doc 1"}),
+        ]
+        result = cleaner.run(documents=documents)
+        assert len(result["documents"]) == 2
+        assert result["documents"][0].id != result["documents"][1].id
+        for doc, cleaned_doc in zip(documents, result["documents"]):
+            assert doc.id == cleaned_doc.id
+            assert doc.meta == cleaned_doc.meta
+            assert cleaned_doc.content == "Text."
+
+    def test_custom_id_generator(self):
+        def id_generator(old_doc: Document, new_doc: Document) -> str:
+            return old_doc.id + "-new"
+
+        cleaner = DocumentCleaner(id_generator=id_generator)
+
+        documents = [
+            Document(content="Text. ", meta={"name": "doc 0"}),
+            Document(content="Text. ", meta={"name": "doc 1"}),
+        ]
+        result = cleaner.run(documents=documents)
+        assert len(result["documents"]) == 2
+        assert result["documents"][0].id != result["documents"][1].id
+        for doc, cleaned_doc in zip(documents, result["documents"]):
+            assert doc.id + "-new" == cleaned_doc.id
             assert doc.meta == cleaned_doc.meta
             assert cleaned_doc.content == "Text."
