@@ -34,15 +34,12 @@ def serialize_type(target: Any) -> str:
     type_obj = target if is_type_or_typing else type(target)
     type_obj_repr = repr(type_obj)
 
-    # get the origin (base type of the parameterized generic type)
-    origin = get_origin(type_obj)
-    # get the arguments of the generic type
-    args = get_args(type_obj)
-
     if type_obj_repr.startswith("typing."):
         # e.g., typing.List[int] -> List[int], we'll add the module below
         type_name = type_obj_repr.split(".", 1)[1]
-    elif origin:
+    elif origin := get_origin(type_obj):  # get the origin (base type of the parameterized generic type)
+        # get the arguments of the generic type
+        args = get_args(type_obj)
         args_repr = ", ".join(serialize_type(arg) for arg in args)
         type_name = f"{origin.__name__}[{args_repr}]"
     elif hasattr(type_obj, "__name__"):
