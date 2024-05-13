@@ -139,7 +139,7 @@ class TestSentenceTransformersTextEmbedder:
         }
         component = SentenceTransformersTextEmbedder.from_dict(data)
         assert component.model == "model"
-        assert component.device == ComponentDevice.from_str("cpu")
+        assert component.device == ComponentDevice.resolve_device(None)
         assert component.token == Secret.from_env_var("HF_API_TOKEN", strict=False)
         assert component.prefix == ""
         assert component.suffix == ""
