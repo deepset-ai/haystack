@@ -23,6 +23,14 @@ def test_output_type_serialization():
     assert serialize_type(int) == "int"
     assert serialize_type(ChatMessage.from_user("ciao")) == "haystack.dataclasses.chat_message.ChatMessage"
 
+    # PEP 585 types
+    assert serialize_type(list[int]) == "list[int]"
+    assert serialize_type(list[list[int]]) == "list[list[int]]"
+
+    # more nested types
+    assert serialize_type(list[list[list[int]]]) == "list[list[list[int]]]"
+    assert serialize_type(dict[str, int]) == "dict[str, int]"
+
 
 def test_output_type_deserialization():
     assert deserialize_type("str") == str
@@ -38,3 +46,10 @@ def test_output_type_deserialization():
     )
     assert deserialize_type("haystack.dataclasses.chat_message.ChatMessage") == ChatMessage
     assert deserialize_type("int") == int
+
+    # PEP 585 types
+    assert deserialize_type("list[int]") == list[int]
+    assert deserialize_type("dict[str, int]") == dict[str, int]
+    # more nested types
+    assert deserialize_type("list[list[int]]") == list[list[int]]
+    assert deserialize_type("list[list[list[int]]]") == list[list[list[int]]]

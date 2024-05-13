@@ -5,7 +5,7 @@
 import importlib
 import inspect
 import sys
-from typing import Any, get_origin
+from typing import Any, get_args, get_origin
 
 from haystack import DeserializationError
 
@@ -32,19 +32,26 @@ def serialize_type(target: Any) -> str:
     # Determine if the target is a type or an instance of a typing object
     is_type_or_typing = isinstance(target, type) or bool(get_origin(target))
     type_obj = target if is_type_or_typing else type(target)
-    module = inspect.getmodule(type_obj)
     type_obj_repr = repr(type_obj)
+
+    # get the origin (base type of the parameterized generic type)
+    origin = get_origin(type_obj)
+    # get the arguments of the generic type
+    args = get_args(type_obj)
 
     if type_obj_repr.startswith("typing."):
         # e.g., typing.List[int] -> List[int], we'll add the module below
         type_name = type_obj_repr.split(".", 1)[1]
+    elif origin:
+        args_repr = ", ".join(serialize_type(arg) for arg in args)
+        type_name = f"{origin.__name__}[{args_repr}]"
     elif hasattr(type_obj, "__name__"):
         type_name = type_obj.__name__
     else:
         # If type cannot be serialized, raise an error
         raise ValueError(f"Could not serialize type: {type_obj_repr}")
 
-    # Construct the full path with module name if available
+    module = inspect.getmodule(type_obj)
     if module and hasattr(module, "__name__"):
         if module.__name__ == "builtins":
             # omit the module name for builtins, it just clutters the output
