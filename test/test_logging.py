@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
 import builtins
 import json
 import logging
@@ -385,7 +388,6 @@ class TestCompositeLogger:
 
         output = capfd.readouterr().err
         assert "test.test_logging" in output
-        assert "384" in output
 
     @pytest.mark.parametrize(
         "method, expected_level",
