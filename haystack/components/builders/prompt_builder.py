@@ -6,9 +6,7 @@ from typing import Any, Dict, List, Optional, Set
 
 from jinja2 import Template, meta
 
-from haystack import component, default_to_dict, logging
-
-logger = logging.getLogger(__name__)
+from haystack import component, default_to_dict
 
 
 @component
