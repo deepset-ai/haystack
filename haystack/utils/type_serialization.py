@@ -5,6 +5,7 @@
 import importlib
 import inspect
 import sys
+import typing
 from typing import Any, get_args, get_origin
 
 from haystack import DeserializationError
@@ -77,6 +78,14 @@ def deserialize_type(type_str: str) -> Any:
         If the type cannot be deserialized due to missing module or type.
     """
 
+    type_mapping = {
+        list: typing.List,
+        dict: typing.Dict,
+        set: typing.Set,
+        tuple: typing.Tuple,
+        frozenset: typing.FrozenSet,
+    }
+
     def parse_generic_args(args_str):
         args = []
         bracket_count = 0
@@ -108,7 +117,10 @@ def deserialize_type(type_str: str) -> Any:
         generic_args = tuple(deserialize_type(arg) for arg in parse_generic_args(generics_str))
 
         # Reconstruct
-        return main_type[generic_args]
+        if sys.version_info >= (3, 9) or repr(main_type).startswith("typing."):
+            return main_type[generic_args]
+        else:
+            return type_mapping[main_type][generic_args]  # type: ignore
 
     else:
         # Handle non-generics
