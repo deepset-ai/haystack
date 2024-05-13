@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Updates the from_dict method of SentenceTransformersTextEmbedder and SentenceTransformersDocumentEmbedder to allow None as a valid value for device.
+    This allows a deserialized pipeline to auto-determine what device to use using the ComponentDevice.resolve_device logic.
