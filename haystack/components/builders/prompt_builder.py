@@ -114,6 +114,17 @@ class PromptBuilder:
             else:
                 component.set_input_type(self, var, Any, "")
 
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Returns a dictionary representation of the component.
+
+        :returns:
+            Serialized dictionary representation of the component.
+        """
+        return default_to_dict(
+            self, template=self._template_string, variables=self._variables, required_variables=self._required_variables
+        )
+
     @component.output_types(prompt=str)
     def run(self, template: Optional[str] = None, template_variables: Optional[Dict[str, Any]] = None, **kwargs):
         """
@@ -165,14 +176,3 @@ class PromptBuilder:
                 f"Missing required input variables in PromptBuilder: {missing_vars_str}. "
                 f"Required variables: {self.required_variables}. Provided variables: {provided_variables}."
             )
-
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Returns a dictionary representation of the component.
-
-        :returns:
-            Serialized dictionary representation of the component.
-        """
-        return default_to_dict(
-            self, template=self._template_string, variables=self._variables, required_variables=self._required_variables
-        )
