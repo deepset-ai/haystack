@@ -92,9 +92,7 @@ class LLMEvaluator:
 
         if api == "openai":
             self.generator = OpenAIGenerator(
-                api_key=api_key,
-                # model="gpt-3.5-turbo-0125",
-                generation_kwargs={"response_format": {"type": "json_object"}},
+                api_key=api_key, generation_kwargs={"response_format": {"type": "json_object"}}
             )
         else:
             raise ValueError(f"Unsupported API: {api}")
