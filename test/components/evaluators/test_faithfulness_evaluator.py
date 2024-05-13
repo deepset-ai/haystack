@@ -149,6 +149,40 @@ class TestFaithfulnessEvaluator:
             "score": 0.75,
         }
 
+    def test_run_no_statements_extracted(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = FaithfulnessEvaluator()
+
+        def generator_run(self, *args, **kwargs):
+            if "Football" in kwargs["prompt"]:
+                return {"replies": ['{"statements": ["a", "b"], "statement_scores": [1, 0]}']}
+            else:
+                return {"replies": ['{"statements": [], "statement_scores": []}']}
+
+        questions = ["Which is the most popular global sport?", "Who created the Python language?"]
+        contexts = [
+            [
+                "The popularity of sports can be measured in various ways, including TV viewership, social media "
+                "presence, number of participants, and economic impact. Football is undoubtedly the world's most "
+                "popular sport with major events like the FIFA World Cup and sports personalities like Ronaldo and "
+                "Messi, drawing a followership of more than 4 billion people."
+            ],
+            [],
+        ]
+        predicted_answers = [
+            "Football is the most popular sport with around 4 billion followers worldwide.",
+            "I don't know.",
+        ]
+        results = component.run(questions=questions, contexts=contexts, predicted_answers=predicted_answers)
+        assert results == {
+            "individual_scores": [0, 1],
+            "results": [
+                {"score": 0, "statement_scores": [], "statements": []},
+                {"score": 1, "statement_scores": [1, 1], "statements": ["a", "b"]},
+            ],
+            "score": 0.5,
+        }
+
     def test_run_missing_parameters(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = FaithfulnessEvaluator()
