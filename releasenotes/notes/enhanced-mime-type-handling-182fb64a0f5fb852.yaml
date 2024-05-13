@@ -1,0 +1,4 @@
+---
+enhancements:
+ - |
+   Improved MIME type management by directly setting MIME types on ByteStreams, enhancing the overall handling and routing of different file types. This update makes MIME type data more consistently accessible and simplifies the process of working with various document formats.
