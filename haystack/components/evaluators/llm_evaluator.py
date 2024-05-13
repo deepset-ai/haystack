@@ -21,6 +21,10 @@ class LLMEvaluator:
     The output is a dictionary with a key `results` containing a list of evaluation results.
     Each result is a dictionary with user-defined keys and values of either 0 for FALSE or 1 for TRUE respectively.
 
+    OpenAI API supports JSON-mode constraining the model generate only strings that parse into valid JSON object.
+    We use this feature as default to generate JSON objects as outputs when calling the LLM.
+    see: https://platform.openai.com/docs/guides/text-generation/json-mode
+
     Usage example:
     ```python
     from typing import List
@@ -87,7 +91,11 @@ class LLMEvaluator:
         self.api_key = api_key
 
         if api == "openai":
-            self.generator = OpenAIGenerator(api_key=api_key)
+            self.generator = OpenAIGenerator(
+                api_key=api_key,
+                # model="gpt-3.5-turbo-0125",
+                generation_kwargs={"response_format": {"type": "json_object"}},
+            )
         else:
             raise ValueError(f"Unsupported API: {api}")
 
