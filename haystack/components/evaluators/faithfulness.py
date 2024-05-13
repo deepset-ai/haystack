@@ -154,7 +154,7 @@ class FaithfulnessEvaluator(LLMEvaluator):
 
         # calculate average statement faithfulness score per query
         for res in result["results"]:
-            if not res["statements"] and not res["statement_scores"]:
+            if not res["statements"]:
                 res["score"] = 0
             else:
                 res["score"] = np_mean(res["statement_scores"])
