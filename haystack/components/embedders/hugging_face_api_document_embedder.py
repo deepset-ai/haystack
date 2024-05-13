@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import json
 from typing import Any, Dict, List, Optional, Union
 
@@ -175,7 +179,7 @@ class HuggingFaceAPIDocumentEmbedder:
         """
         return default_to_dict(
             self,
-            api_type=self.api_type,
+            api_type=str(self.api_type),
             api_params=self.api_params,
             prefix=self.prefix,
             suffix=self.suffix,

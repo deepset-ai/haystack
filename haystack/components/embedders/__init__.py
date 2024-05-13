@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 from haystack.components.embedders.azure_document_embedder import AzureOpenAIDocumentEmbedder
 from haystack.components.embedders.azure_text_embedder import AzureOpenAITextEmbedder
 from haystack.components.embedders.hugging_face_api_document_embedder import HuggingFaceAPIDocumentEmbedder

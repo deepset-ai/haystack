@@ -1,39 +1,43 @@
-from typing import List
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
+from dataclasses import asdict, dataclass
+from typing import Any, Dict, List
 
 
+@dataclass
 class SparseEmbedding:
     """
     Class representing a sparse embedding.
+
+    :param indices: List of indices of non-zero elements in the embedding.
+    :param values: List of values of non-zero elements in the embedding.
     """
 
-    def __init__(self, indices: List[int], values: List[float]):
-        """
-        Initialize a SparseEmbedding object.
+    indices: List[int]
+    values: List[float]
 
-        :param indices: List of indices of non-zero elements in the embedding.
-        :param values: List of values of non-zero elements in the embedding.
-
-        :raises ValueError: If the indices and values lists are not of the same length.
+    def __post_init__(self):
         """
-        if len(indices) != len(values):
+        Checks if the indices and values lists are of the same length.
+
+        Raises a ValueError if they are not.
+        """
+        if len(self.indices) != len(self.values):
             raise ValueError("Length of indices and values must be the same.")
-        self.indices = indices
-        self.values = values
 
-    def __eq__(self, other):
-        return self.indices == other.indices and self.values == other.values
-
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         """
         Convert the SparseEmbedding object to a dictionary.
 
         :returns:
             Serialized sparse embedding.
         """
-        return {"indices": self.indices, "values": self.values}
+        return asdict(self)
 
     @classmethod
-    def from_dict(cls, sparse_embedding_dict):
+    def from_dict(cls, sparse_embedding_dict: Dict[str, Any]) -> "SparseEmbedding":
         """
         Deserializes the sparse embedding from a dictionary.
 
@@ -42,4 +46,4 @@ class SparseEmbedding:
         :returns:
             Deserialized sparse embedding.
         """
-        return cls(indices=sparse_embedding_dict["indices"], values=sparse_embedding_dict["values"])
+        return cls(**sparse_embedding_dict)
