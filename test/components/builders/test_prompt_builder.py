@@ -29,28 +29,6 @@ class TestPromptBuilder:
         assert set(outputs.keys()) == {"prompt"}
         assert outputs["prompt"].type == str
 
-    def test_init_without_template(self):
-        variables = ["var1", "var2"]
-        builder = PromptBuilder(variables=variables)
-        assert builder.template is None
-        assert builder.required_variables == []
-        assert builder._variables == variables
-        assert builder._required_variables is None
-        assert builder._template_string is None
-
-        # we have inputs that contain: template, template_variables + variables
-        inputs = builder.__haystack_input__._sockets_dict
-        assert set(inputs.keys()) == {"template", "template_variables", "var1", "var2"}
-        assert inputs["template"].type == Optional[str]
-        assert inputs["template_variables"].type == Optional[Dict[str, Any]]
-        assert inputs["var1"].type == Any
-        assert inputs["var2"].type == Any
-
-        # response is always prompt
-        outputs = builder.__haystack_output__._sockets_dict
-        assert set(outputs.keys()) == {"prompt"}
-        assert outputs["prompt"].type == str
-
     def test_init_with_required_variables(self):
         builder = PromptBuilder(template="This is a {{ variable }}", required_variables=["variable"])
         assert builder.template is not None
@@ -109,12 +87,12 @@ class TestPromptBuilder:
             },
         }
 
-    def test_to_dict_no_params(self):
-        builder = PromptBuilder()
+    def test_to_dict_without_optional_params(self):
+        builder = PromptBuilder(template="This is a {{ variable }}")
         res = builder.to_dict()
         assert res == {
             "type": "haystack.components.builders.prompt_builder.PromptBuilder",
-            "init_parameters": {"template": None, "variables": None, "required_variables": None},
+            "init_parameters": {"template": "This is a {{ variable }}", "variables": None, "required_variables": None},
         }
 
     def test_run(self):
@@ -162,20 +140,6 @@ class TestPromptBuilder:
 
         assert builder.run(template_variables=template_variables, var1="How are you?") == expected_result
 
-    def test_run_with_variables_and_runtime_template(self):
-        variables = ["var1", "var2", "var3"]
-
-        builder = PromptBuilder(variables=variables)
-
-        template = "Hello, {{ name }}! {{ var1 }}"
-        template_variables = {"name": "John"}
-        expected_result = {"prompt": "Hello, John! How are you?"}
-
-        assert (
-            builder.run(template=template, template_variables=template_variables, var1="How are you?")
-            == expected_result
-        )
-
     def test_run_overwriting_default_template(self):
         default_template = "Hello, {{ name }}!"
 
@@ -209,7 +173,7 @@ class TestPromptBuilder:
         assert builder.run(template, name="John", var1="Big") == expected_result
 
     def test_run_with_invalid_template(self):
-        builder = PromptBuilder()
+        builder = PromptBuilder(template="Hello, {{ name }}!")
 
         template = "Hello, {{ name }!"
         template_variables = {"name": "John"}
@@ -221,22 +185,17 @@ class TestPromptBuilder:
         with pytest.raises(TemplateSyntaxError):
             PromptBuilder(template)
 
-    def test_run_without_template(self):
-        prompt_builder = PromptBuilder()
-        with pytest.raises(ValueError, match="The PromptBuilder run method requires a template"):
-            prompt_builder.run()
-
     def test_provided_template_variables(self):
-        prompt_builder = PromptBuilder(variables=["documents"], required_variables=["city"])
+        prompt_builder = PromptBuilder(template="", variables=["documents"], required_variables=["city"])
 
         # both variables are provided
-        prompt_builder._validate_template("Hello, I'm {{ name }}, and I live in {{ city }}.", {"name", "city"})
+        prompt_builder._validate_variables({"name", "city"})
 
         # provided variables are a superset of the required variables
-        prompt_builder._validate_template("Hello, I'm {{ name }}, and I live in {{ city }}.", {"name", "city", "age"})
+        prompt_builder._validate_variables({"name", "city", "age"})
 
         with pytest.raises(ValueError):
-            prompt_builder._validate_template("Hello, I'm {{ name }}, and I live in {{ city }}.", {"name"})
+            prompt_builder._validate_variables({"name"})
 
     def test_example_in_pipeline(self):
         default_template = "Here is the document: {{documents[0].content}} \\n Answer: {{query}}"

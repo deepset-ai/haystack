@@ -12,117 +12,96 @@ class PromptBuilder:
     """
     PromptBuilder is a component that renders a prompt from a template string using Jinja2 templates.
 
-    It is designed to construct prompts for the pipeline using static or dynamic templates: Users can change
-    the prompt template at runtime by providing a new template for each pipeline run invocation if needed.
+    For prompt engineering, users can switch the template at runtime by providing a template for each pipeline run invocation.
 
-    The template variables found in the init template string are used as input types for the component and are all optional,
+    The template variables found in the default template string are used as input types for the component and are all optional,
     unless explicitly specified. If an optional template variable is not provided as an input, it will be replaced with
-    an empty string in the rendered prompt. Use `variable` and `required_variables` to specify the input types and
-    required variables.
+    an empty string in the rendered prompt. Use `variables` and `required_variables` to change the default variable behavior.
 
-    Usage example with static prompt template:
+    Usage example:
     ```python
     template = "Translate the following context to {{ target_language }}. Context: {{ snippet }}; Translation:"
     builder = PromptBuilder(template=template)
     builder.run(target_language="spanish", snippet="I can't speak spanish.")
     ```
 
-    Usage example of overriding the static template at runtime:
+    Usage example in a pipeline with prompt engineering:
     ```python
-    template = "Translate the following context to {{ target_language }}. Context: {{ snippet }}; Translation:"
-    builder = PromptBuilder(template=template)
-    builder.run(target_language="spanish", snippet="I can't speak spanish.")
+    default_prompt_template = \"\"\"
+        Given these documents, answer the question.
+        Documents:
+        {% for doc in documents %}
+            {{ doc.content }}
+        {% endfor %}
 
-    summary_template = "Translate to {{ target_language }} and summarize the following context. Context: {{ snippet }}; Summary:"
-    builder.run(target_language="spanish", snippet="I can't speak spanish.", template=summary_template)
+        Question: {{query}}
+        Answer:
+        \"\"\"
+    p = Pipeline()
+    p.add_component(instance=InMemoryBM25Retriever(document_store=InMemoryDocumentStore()), name="retriever")
+    p.add_component(instance=PromptBuilder(template=default_prompt_template), name="prompt_builder")
+    p.add_component(instance=OpenAIGenerator(api_key=Secret.from_env_var("OPENAI_API_KEY")), name="llm")
+    p.add_component(instance=AnswerBuilder(), name="answer_builder")
+    p.connect("retriever", "prompt_builder.documents")
+    p.connect("prompt_builder", "llm")
+    p.connect("llm.replies", "answer_builder.replies")
+    p.connect("llm.metadata", "answer_builder.metadata")
+    p.connect("retriever", "answer_builder.documents")
+
+    # run with default template
+    p.run({"query": "What is the capital of Germany?"}, include_outputs_from={"prompt_builder"})
+
+    # run with overwritten template
+    overwriting_prompt_template = \"\"\"
+        You are a helpful assistant.
+        Given these documents, answer the question.
+        Documents:
+        {% for doc in documents %}
+            Document {{loop.index}}:
+            Document name: {{ doc.meta['name'] }}
+            {{ doc.content }}
+        {% endfor %}
+
+        Question: {{query}}
+        Answer:
+        \"\"\"
+    p.run({
+            "query": "What is the capital of Germany?",
+            "template": overwriting_prompt_template,
+        }, include_outputs_from={"prompt_builder"})
     ```
 
-    Usage example with dynamic prompt template:
-    ```python
-    from typing import List
-    from haystack.components.builders import PromptBuilder
-    from haystack.components.generators import OpenAIGenerator
-    from haystack import Pipeline, component, Document
-    from haystack.utils import Secret
-
-    prompt_builder = PromptBuilder(variables=["documents"])
-    llm = OpenAIGenerator(api_key=Secret.from_token("<your-api-key>"), model="gpt-3.5-turbo")
-
-
-    @component
-    class DocumentProducer:
-
-        @component.output_types(documents=List[Document])
-        def run(self, doc_input: str):
-            return {"documents": [Document(content=doc_input)]}
-
-
-    pipe = Pipeline()
-    pipe.add_component("doc_producer", DocumentProducer())
-    pipe.add_component("prompt_builder", prompt_builder)
-    pipe.add_component("llm", llm)
-    pipe.connect("doc_producer.documents", "prompt_builder.documents")
-    pipe.connect("prompt_builder.prompt", "llm.prompt")
-
-    template = "Here is the document: {{documents[0].content}} \\n Answer: {{query}}"
-    result = pipe.run(
-        data={
-            "doc_producer": {"doc_input": "Hello world, I live in Berlin"},
-            "prompt_builder": {
-                "template": template,
-                "template_variables": {"query": "Where does the speaker live?"},
-            },
-        }
-    )
-    print(result)
-
-    >> {'llm': {'replies': ['The speaker lives in Berlin.'],
-    >> 'meta': [{'model': 'gpt-3.5-turbo-0613',
-    >> 'index': 0,
-    >> 'finish_reason': 'stop',
-    >> 'usage': {'prompt_tokens': 28,
-    >> 'completion_tokens': 6,
-    >> 'total_tokens': 34}}]}}
-
-    Note how in the example above, we can dynamically change the prompt template by providing a new template to the
+    Note how in the example above, we can change the prompt template by providing a new template to the
     run method of the pipeline.
 
     """
 
     def __init__(
-        self,
-        template: Optional[str] = None,
-        required_variables: Optional[List[str]] = None,
-        variables: Optional[List[str]] = None,
+        self, template: str, required_variables: Optional[List[str]] = None, variables: Optional[List[str]] = None
     ):
         """
         Constructs a PromptBuilder component.
 
         :param template:
-            A Jinja2 template string that will be used to render the prompt text. If not provided, the template
-            must be provided at runtime using the `template` parameter of the `run` method.
-        :param required_variables: An optional list of input variables that must be provided at all times.
-            If not provided, an exception will be raised.
+            A Jinja2 template string that is used to render the prompt, e.g.:
+            `"Summarize this document: {{ documents[0].content }}\\nSummary:"`
+        :param required_variables: An optional list of input variables that must be provided at runtime.
+            If a required variable is not provided at runtime, an exception will be raised.
         :param variables:
-            A list of template variable names you can use in prompt construction. For example,
-            if `variables` contains the string `documents`, the component will create an input called
-            `documents` of type `Any`. These variable names are used to resolve variables and their values during
-            pipeline execution. The values associated with variables from the pipeline runtime are then injected into
-            template placeholders of a prompt text template that is provided to the `run` method.
-            If not provided, variables are inferred from `template`.
+            An optional list of input variables to be used in prompt templates instead of the ones inferred from `template`.
+            For example, if you want to use more variables during prompt engineering than the ones present in the default
+            template, you can provide them here.
         """
         self._template_string = template
         self._variables = variables
         self._required_variables = required_variables
         self.required_variables = required_variables or []
-        self.template: Optional[Template] = None
-        if template:
-            self.template = Template(template)
-            if not variables:
-                # infere variables from template
-                ast = self.template.environment.parse(template)
-                template_variables = meta.find_undeclared_variables(ast)
-                variables = list(template_variables)
+        self.template = Template(template)
+        if not variables:
+            # infere variables from template
+            ast = self.template.environment.parse(template)
+            template_variables = meta.find_undeclared_variables(ast)
+            variables = list(template_variables)
 
         variables = variables or []
 
@@ -140,57 +119,45 @@ class PromptBuilder:
         """
         Executes the prompt building process.
 
-        It applies the template variables to render the final prompt. You can provide variables either via pipeline
-        (set through `variables` or inferred from `template` at initialization) or via additional template variables
-        set directly to this method. On collision, the variables provided directly to this method take precedence.
+        It applies the template variables to render the final prompt. You can provide variables via pipeline kwargs.
+        In order to overwrite the default template, you can set the `template` parameter.
+        In order to overwrite pipeline kwargs, you can set the `template_variables` parameter.
 
         :param template:
             An optional string template to overwrite PromptBuilder's default template. If None, the default template
             provided at initialization is used.
         :param template_variables:
-            An optional dictionary of template variables. These are additional variables users can provide directly
-            to this method in contrast to pipeline variables.
+            An optional dictionary of template variables to overwrite the pipeline variables.
         :param kwargs:
-            Pipeline variables (typically resolved from a pipeline) which are merged with the provided template variables.
+            Pipeline variables used for rendering the prompt.
 
         :returns: A dictionary with the following keys:
             - `prompt`: The updated prompt text after rendering the prompt template.
+
         :raises ValueError:
-            If no template is provided or if any of the required template variables are not provided.
+            If any of the required template variables is not provided.
         """
         kwargs = kwargs or {}
         template_variables = template_variables or {}
         template_variables_combined = {**kwargs, **template_variables}
-        compiled_template = self._validate_template(template, set(template_variables_combined.keys()))
+        self._validate_variables(set(template_variables_combined.keys()))
+
+        compiled_template = self.template
+        if isinstance(template, str):
+            compiled_template = Template(template)
+
         result = compiled_template.render(template_variables_combined)
         return {"prompt": result}
 
-    def _validate_template(self, template_text: Optional[str], provided_variables: Set[str]):
+    def _validate_variables(self, provided_variables: Set[str]):
         """
-        Checks if the template is valid and all the required template variables are provided.
+        Checks if all the required template variables are provided.
 
-        If all the required template variables are provided, returns a Jinja2 template object.
-        Otherwise, raises a ValueError.
-
-        :param template_text:
-            A Jinja2 template as a string.
         :param provided_variables:
             A set of provided template variables.
-        :returns:
-            A Jinja2 template object if all the required template variables are provided.
         :raises ValueError:
-            If no template is provided or if all the required template variables are not provided.
+            If any of the required template variables is not provided.
         """
-        if isinstance(template_text, str):
-            template = Template(template_text)
-        elif self.template is not None:
-            template = self.template
-        else:
-            raise ValueError(
-                "The PromptBuilder run method requires a template, but none was provided. "
-                "Please provide an appropriate template to enable prompt generation."
-            )
-
         missing_variables = [var for var in self.required_variables if var not in provided_variables]
         if missing_variables:
             missing_vars_str = ", ".join(missing_variables)
@@ -198,8 +165,6 @@ class PromptBuilder:
                 f"Missing required input variables in PromptBuilder: {missing_vars_str}. "
                 f"Required variables: {self.required_variables}. Provided variables: {provided_variables}."
             )
-
-        return template
 
     def to_dict(self) -> Dict[str, Any]:
         """
