@@ -117,7 +117,7 @@ class PromptBuilder:
     @component.output_types(prompt=str)
     def run(self, template: Optional[str] = None, template_variables: Optional[Dict[str, Any]] = None, **kwargs):
         """
-        Executes the prompt building process.
+        Renders the prompt template with the provided variables.
 
         It applies the template variables to render the final prompt. You can provide variables via pipeline kwargs.
         In order to overwrite the default template, you can set the `template` parameter.
