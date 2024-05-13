@@ -159,6 +159,8 @@ class TestFaithfulnessEvaluator:
             else:
                 return {"replies": ['{"statements": [], "statement_scores": []}']}
 
+        monkeypatch.setattr("haystack.components.generators.openai.OpenAIGenerator.run", generator_run)
+
         questions = ["Which is the most popular global sport?", "Who created the Python language?"]
         contexts = [
             [
@@ -175,12 +177,12 @@ class TestFaithfulnessEvaluator:
         ]
         results = component.run(questions=questions, contexts=contexts, predicted_answers=predicted_answers)
         assert results == {
-            "individual_scores": [0, 1],
+            "individual_scores": [0.5, 0],
             "results": [
+                {"score": 0.5, "statement_scores": [1, 0], "statements": ["a", "b"]},
                 {"score": 0, "statement_scores": [], "statements": []},
-                {"score": 1, "statement_scores": [1, 1], "statements": ["a", "b"]},
             ],
-            "score": 0.5,
+            "score": 0.25,
         }
 
     def test_run_missing_parameters(self, monkeypatch):
