@@ -121,6 +121,38 @@ class TestContextRelevanceEvaluator:
             "score": 0.75,
         }
 
+    def test_run_no_statements_extracted(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = ContextRelevanceEvaluator()
+
+        def generator_run(self, *args, **kwargs):
+            if "Football" in kwargs["prompt"]:
+                return {"replies": ['{"statements": ["a", "b"], "statement_scores": [1, 0]}']}
+            else:
+                return {"replies": ['{"statements": [], "statement_scores": []}']}
+
+        monkeypatch.setattr("haystack.components.generators.openai.OpenAIGenerator.run", generator_run)
+
+        questions = ["Which is the most popular global sport?", "Who created the Python language?"]
+        contexts = [
+            [
+                "The popularity of sports can be measured in various ways, including TV viewership, social media "
+                "presence, number of participants, and economic impact. Football is undoubtedly the world's most "
+                "popular sport with major events like the FIFA World Cup and sports personalities like Ronaldo and "
+                "Messi, drawing a followership of more than 4 billion people."
+            ],
+            [],
+        ]
+        results = component.run(questions=questions, contexts=contexts)
+        assert results == {
+            "individual_scores": [0.5, 0],
+            "results": [
+                {"score": 0.5, "statement_scores": [1, 0], "statements": ["a", "b"]},
+                {"score": 0, "statement_scores": [], "statements": []},
+            ],
+            "score": 0.25,
+        }
+
     def test_run_missing_parameters(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = ContextRelevanceEvaluator()

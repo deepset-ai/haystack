@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    `FaithfullnessEvaluator` and `ContextRelevanceEvaluator` now return `0` instead of `NaN` when applied to an empty context or empty statements.
