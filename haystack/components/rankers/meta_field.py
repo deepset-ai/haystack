@@ -43,6 +43,7 @@ class MetaFieldRanker:
         top_k: Optional[int] = None,
         ranking_mode: Literal["reciprocal_rank_fusion", "linear_score"] = "reciprocal_rank_fusion",
         sort_order: Literal["ascending", "descending"] = "descending",
+        missing_meta: Literal["drop", "top", "bottom"] = "bottom",
         meta_value_type: Optional[Literal["float", "int", "date"]] = None,
     ):
         """
@@ -65,6 +66,14 @@ class MetaFieldRanker:
         :param sort_order:
             Whether to sort the meta field by ascending or descending order.
             Possible values are `descending` (default) and `ascending`.
+        :param missing_meta:
+            What to do with documents that are missing the sorting metadata field.
+            Possible values are:
+            - 'drop' will drop the documents entirely.
+            - 'top' will place the documents at the top of the metadata-sorted list
+                (regardless of 'ascending' or 'descending').
+            - 'bottom' will place the documents at the bottom of metadata-sorted list
+                (regardless of 'ascending' or 'descending').
         :param meta_value_type:
             Parse the meta value into the data type specified before sorting.
             This will only work if all meta values stored under `meta_field` in the provided documents are strings.
@@ -82,11 +91,13 @@ class MetaFieldRanker:
         self.top_k = top_k
         self.ranking_mode = ranking_mode
         self.sort_order = sort_order
+        self.missing_meta = missing_meta
         self._validate_params(
             weight=self.weight,
             top_k=self.top_k,
             ranking_mode=self.ranking_mode,
             sort_order=self.sort_order,
+            missing_meta=self.missing_meta,
             meta_value_type=meta_value_type,
         )
         self.meta_value_type = meta_value_type
@@ -97,6 +108,7 @@ class MetaFieldRanker:
         top_k: Optional[int],
         ranking_mode: Literal["reciprocal_rank_fusion", "linear_score"],
         sort_order: Literal["ascending", "descending"],
+        missing_meta: Literal["drop", "top", "bottom"],
         meta_value_type: Optional[Literal["float", "int", "date"]],
     ):
         if top_k is not None and top_k <= 0:
@@ -125,6 +137,14 @@ class MetaFieldRanker:
                 "MetaFieldRanker." % sort_order
             )
 
+        if missing_meta not in ["drop", "top", "bottom"]:
+            raise ValueError(
+                "The value of parameter <missing_meta> must be 'drop', 'top', or 'bottom', "
+                "but is currently set to '%s'.\n"
+                "Change the <missing_meta> value to 'drop', 'top', or 'bottom' when initializing the "
+                "MetaFieldRanker." % missing_meta
+            )
+
         if meta_value_type not in ["float", "int", "date", None]:
             raise ValueError(
                 "The value of parameter <meta_value_type> must be 'float', 'int', 'date' or None but is "
@@ -141,6 +161,7 @@ class MetaFieldRanker:
         weight: Optional[float] = None,
         ranking_mode: Optional[Literal["reciprocal_rank_fusion", "linear_score"]] = None,
         sort_order: Optional[Literal["ascending", "descending"]] = None,
+        missing_meta: Optional[Literal["drop", "top", "bottom"]] = None,
         meta_value_type: Optional[Literal["float", "int", "date"]] = None,
     ):
         """
@@ -199,12 +220,14 @@ class MetaFieldRanker:
         weight = weight if weight is not None else self.weight
         ranking_mode = ranking_mode or self.ranking_mode
         sort_order = sort_order or self.sort_order
+        missing_meta = missing_meta or self.missing_meta
         meta_value_type = meta_value_type or self.meta_value_type
         self._validate_params(
             weight=weight,
             top_k=top_k,
             ranking_mode=ranking_mode,
             sort_order=sort_order,
+            missing_meta=missing_meta,
             meta_value_type=meta_value_type,
         )
 
