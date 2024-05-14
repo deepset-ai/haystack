@@ -8,7 +8,6 @@ from haystack.components.extractors import NamedEntityExtractor, NamedEntityExtr
 from haystack.utils.device import ComponentDevice
 
 
-@pytest.mark.unit
 def test_named_entity_extractor_backend():
     _ = NamedEntityExtractor(backend=NamedEntityExtractorBackend.HUGGING_FACE, model="dslim/bert-base-NER")
 
@@ -22,7 +21,6 @@ def test_named_entity_extractor_backend():
         NamedEntityExtractor(backend="random_backend", model="dslim/bert-base-NER")
 
 
-@pytest.mark.unit
 def test_named_entity_extractor_serde():
     extractor = NamedEntityExtractor(
         backend=NamedEntityExtractorBackend.HUGGING_FACE,
@@ -54,9 +52,8 @@ def test_named_entity_extractor_pipeline_serde(tmp_path):
         q = Pipeline.load(f)
 
     assert p.to_dict() == q.to_dict(), "Pipeline serialization/deserialization with NamedEntityExtractor failed."
-    
-    
-@pytest.mark.unit
+
+
 def test_named_entity_extractor_serde_none_device():
     extractor = NamedEntityExtractor(
         backend=NamedEntityExtractorBackend.HUGGING_FACE, model="dslim/bert-base-NER", device=None
