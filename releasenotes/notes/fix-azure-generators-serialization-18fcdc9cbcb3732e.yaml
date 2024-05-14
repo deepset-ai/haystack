@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fixes the (de)serialization of Azure generators.
