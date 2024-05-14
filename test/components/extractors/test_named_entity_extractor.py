@@ -54,3 +54,17 @@ def test_named_entity_extractor_pipeline_serde(tmp_path):
         q = Pipeline.load(f)
 
     assert p.to_dict() == q.to_dict(), "Pipeline serialization/deserialization with NamedEntityExtractor failed."
+    
+    
+@pytest.mark.unit
+def test_named_entity_extractor_serde_none_device():
+    extractor = NamedEntityExtractor(
+        backend=NamedEntityExtractorBackend.HUGGING_FACE, model="dslim/bert-base-NER", device=None
+    )
+
+    serde_data = extractor.to_dict()
+    new_extractor = NamedEntityExtractor.from_dict(serde_data)
+
+    assert type(new_extractor._backend) == type(extractor._backend)
+    assert new_extractor._backend.model_name == extractor._backend.model_name
+    assert new_extractor._backend.device == extractor._backend.device
