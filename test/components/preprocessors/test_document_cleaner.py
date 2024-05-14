@@ -18,6 +18,88 @@ class TestDocumentCleaner:
         assert cleaner.remove_substrings is None
         assert cleaner.remove_regex is None
 
+    def test_to_dict_default(self):
+        component = DocumentCleaner()
+        data = component.to_dict()
+        assert data == {
+            "type": "haystack.components.preprocessors.document_cleaner.DocumentCleaner",
+            "init_parameters": {
+                "remove_empty_lines": True,
+                "remove_extra_whitespaces": True,
+                "remove_repeated_substrings": False,
+                "remove_substrings": None,
+                "remove_regex": None,
+                "id_generator": "haystack.components.preprocessors.document_cleaner.DEFAULT_ID_GENERATOR",
+            },
+        }
+
+    def test_to_dict_with_parameters(self):
+        def my_id_generator(old_doc: Document, new_doc: Document) -> str:
+            return "1234"
+
+        component = DocumentCleaner(
+            remove_empty_lines=False,
+            remove_extra_whitespaces=False,
+            remove_repeated_substrings=True,
+            remove_substrings=["random"],
+            remove_regex="(.*)",
+            id_generator=my_id_generator,
+        )
+        data = component.to_dict()
+        assert data == {
+            "type": "haystack.components.preprocessors.document_cleaner.DocumentCleaner",
+            "init_parameters": {
+                "remove_empty_lines": False,
+                "remove_extra_whitespaces": False,
+                "remove_repeated_substrings": True,
+                "remove_substrings": ["random"],
+                "remove_regex": "(.*)",
+                "id_generator": "preprocessors.test_document_cleaner.my_id_generator",
+            },
+        }
+
+    def test_to_dict_with_lambda_id_generator(self):
+        component = DocumentCleaner(
+            remove_empty_lines=False,
+            remove_extra_whitespaces=False,
+            remove_repeated_substrings=True,
+            remove_substrings=["random"],
+            remove_regex="(.*)",
+            id_generator=lambda old_doc, new_doc: old_doc.id,
+        )
+        data = component.to_dict()
+        assert data == {
+            "type": "haystack.components.preprocessors.document_cleaner.DocumentCleaner",
+            "init_parameters": {
+                "remove_empty_lines": False,
+                "remove_extra_whitespaces": False,
+                "remove_repeated_substrings": True,
+                "remove_substrings": ["random"],
+                "remove_regex": "(.*)",
+                "id_generator": "preprocessors.test_document_cleaner.<lambda>",
+            },
+        }
+
+    def test_from_dict(self):
+        data = {
+            "type": "haystack.components.preprocessors.document_cleaner.DocumentCleaner",
+            "init_parameters": {
+                "remove_empty_lines": False,
+                "remove_extra_whitespaces": False,
+                "remove_repeated_substrings": True,
+                "remove_substrings": ["random"],
+                "remove_regex": "(.*)",
+                "id_generator": "haystack.components.preprocessors.document_cleaner.KEEP_ID",
+            },
+        }
+        component = DocumentCleaner.from_dict(data)
+        assert component.remove_empty_lines is False
+        assert component.remove_extra_whitespaces is False
+        assert component.remove_repeated_substrings is True
+        assert component.remove_substrings == ["random"]
+        assert component.remove_regex == "(.*)"
+        assert component.id_generator is KEEP_ID
+
     def test_non_text_document(self, caplog):
         with caplog.at_level(logging.WARNING):
             cleaner = DocumentCleaner()

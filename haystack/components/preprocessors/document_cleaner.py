@@ -6,14 +6,26 @@ import re
 from copy import deepcopy
 from functools import partial, reduce
 from itertools import chain
-from typing import Callable, Generator, List, Optional, Set
+from typing import Any, Callable, Dict, Generator, List, Optional, Set
 
-from haystack import Document, component, logging
+from haystack import Document, component, default_from_dict, default_to_dict, logging
+from haystack.utils import deserialize_callable, serialize_callable
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_ID_GENERATOR: Callable[[Document, Document], str] = lambda old_doc, new_doc: new_doc.id
-KEEP_ID: Callable[[Document, Document], str] = lambda old_doc, new_doc: old_doc.id
+
+def DEFAULT_ID_GENERATOR(old_doc: Document, new_doc: Document) -> str:
+    """
+    Default id_generator for the DocumentCleaner.
+    """
+    return new_doc.id
+
+
+def KEEP_ID(old_doc: Document, new_doc: Document) -> str:
+    """
+    Sample id_generator to keep the original ids for the cleaned documents.
+    """
+    return old_doc.id
 
 
 @component
@@ -66,6 +78,40 @@ class DocumentCleaner:
         self.remove_substrings = remove_substrings
         self.remove_regex = remove_regex
         self.id_generator = id_generator
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serialize this component to a dictionary.
+
+        :returns:
+            The serialized component as a dictionary.
+        """
+        serialized_id_generator = serialize_callable(self.id_generator)
+        return default_to_dict(
+            self,
+            remove_empty_lines=self.remove_empty_lines,
+            remove_extra_whitespaces=self.remove_extra_whitespaces,
+            remove_repeated_substrings=self.remove_repeated_substrings,
+            remove_substrings=self.remove_substrings,
+            remove_regex=self.remove_regex,
+            id_generator=serialized_id_generator,
+        )
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "DocumentCleaner":
+        """
+        Deserialize this component from a dictionary.
+
+        :param data:
+            The dictionary representation of this component.
+        :returns:
+            The deserialized component instance.
+        """
+        init_params = data.get("init_parameters", {})
+        serialized_id_generator = init_params.get("id_generator")
+        if serialized_id_generator:
+            data["init_parameters"]["id_generator"] = deserialize_callable(serialized_id_generator)
+        return default_from_dict(cls, data)
 
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document]):
