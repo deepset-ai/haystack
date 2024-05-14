@@ -86,9 +86,9 @@ class LocalWhisperTranscriber:
         :returns:
             The deserialized component.
         """
-        serialized_device = data["init_parameters"]["device"]
-        data["init_parameters"]["device"] = ComponentDevice.from_dict(serialized_device)
-
+        init_params = data["init_parameters"]
+        if init_params["device"] is not None:
+            init_params["device"] = ComponentDevice.from_dict(init_params["device"])
         return default_from_dict(cls, data)
 
     @component.output_types(documents=List[Document])

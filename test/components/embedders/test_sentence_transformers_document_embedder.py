@@ -134,6 +134,38 @@ class TestSentenceTransformersDocumentEmbedder:
         assert component.trust_remote_code
         assert component.meta_fields_to_embed == ["meta_field"]
 
+    def test_from_dict_none_device(self):
+        init_parameters = {
+            "model": "model",
+            "device": None,
+            "token": {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"},
+            "prefix": "prefix",
+            "suffix": "suffix",
+            "batch_size": 64,
+            "progress_bar": False,
+            "normalize_embeddings": True,
+            "embedding_separator": " - ",
+            "meta_fields_to_embed": ["meta_field"],
+            "trust_remote_code": True,
+        }
+        component = SentenceTransformersDocumentEmbedder.from_dict(
+            {
+                "type": "haystack.components.embedders.sentence_transformers_document_embedder.SentenceTransformersDocumentEmbedder",
+                "init_parameters": init_parameters,
+            }
+        )
+        assert component.model == "model"
+        assert component.device == ComponentDevice.resolve_device(None)
+        assert component.token == Secret.from_env_var("ENV_VAR", strict=False)
+        assert component.prefix == "prefix"
+        assert component.suffix == "suffix"
+        assert component.batch_size == 64
+        assert component.progress_bar is False
+        assert component.normalize_embeddings is True
+        assert component.embedding_separator == " - "
+        assert component.trust_remote_code
+        assert component.meta_fields_to_embed == ["meta_field"]
+
     @patch(
         "haystack.components.embedders.sentence_transformers_document_embedder._SentenceTransformersEmbeddingBackendFactory"
     )
