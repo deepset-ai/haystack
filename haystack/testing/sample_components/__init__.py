@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+
 from haystack.testing.sample_components.accumulate import Accumulate
 from haystack.testing.sample_components.add_value import AddFixedValue
 from haystack.testing.sample_components.concatenate import Concatenate

@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
 import sys
 from pathlib import Path
 from unittest.mock import patch, MagicMock
@@ -66,6 +69,17 @@ class TestLocalWhisperTranscriber:
         transcriber = LocalWhisperTranscriber.from_dict(data)
         assert transcriber.model == "tiny"
         assert transcriber.device == ComponentDevice.from_single(Device.cpu())
+        assert transcriber.whisper_params == {}
+        assert transcriber._model is None
+
+    def test_from_dict_none_device(self):
+        data = {
+            "type": "haystack.components.audio.whisper_local.LocalWhisperTranscriber",
+            "init_parameters": {"model": "tiny", "device": None, "whisper_params": {}},
+        }
+        transcriber = LocalWhisperTranscriber.from_dict(data)
+        assert transcriber.model == "tiny"
+        assert transcriber.device == ComponentDevice.resolve_device(None)
         assert transcriber.whisper_params == {}
         assert transcriber._model is None
 

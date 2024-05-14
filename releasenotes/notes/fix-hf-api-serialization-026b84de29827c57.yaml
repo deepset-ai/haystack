@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fix the broken serialization of HuggingFaceAPITextEmbedder, HuggingFaceAPIDocumentEmbedder,
+    HuggingFaceAPIGenerator, and HuggingFaceAPIChatGenerator.

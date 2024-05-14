@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import hashlib
 import io
 from dataclasses import asdict, dataclass, field, fields
@@ -138,9 +142,6 @@ class Document(metaclass=_BackwardCompatible):
             data["dataframe"] = dataframe.to_json()
         if (blob := data.get("blob")) is not None:
             data["blob"] = {"data": list(blob["data"]), "mime_type": blob["mime_type"]}
-
-        if (sparse_embedding := data.get("sparse_embedding")) is not None:
-            data["sparse_embedding"] = sparse_embedding.to_dict()
 
         if flatten:
             meta = data.pop("meta")
