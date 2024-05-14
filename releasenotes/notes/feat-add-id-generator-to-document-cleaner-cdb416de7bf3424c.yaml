@@ -1,9 +1,4 @@
 ---
-highlights: >
-    Added `id_generator` to `DocumentCleaner`.
 enhancements:
   - |
     Now you can set the `id_generator` parameter to customize how your 'DocumentCleaner' manages the new document ids.
-issues:
-  - |
-    7557
