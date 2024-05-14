@@ -250,12 +250,27 @@ class MetaFieldRanker:
             return {"documents": documents[:top_k]}
 
         if len(docs_missing_meta_field) > 0:
-            logger.warning(
-                "The parameter <meta_field> is currently set to '{meta_field}' but the Documents with IDs {document_ids} don't have this meta key.\n"
-                "These Documents will be placed at the end of the sorting order.",
-                meta_field=self.meta_field,
-                document_ids=",".join([doc.id for doc in docs_missing_meta_field]),
-            )
+            if missing_meta == "bottom":
+                logger.warning(
+                    "The parameter <meta_field> is currently set to '{meta_field}' but the Documents with IDs {document_ids} don't have this meta key.\n"
+                    "Because the parameter <missing_meta> is set to 'bottom', these Documents will be placed at the end of the sorting order.",
+                    meta_field=self.meta_field,
+                    document_ids=",".join([doc.id for doc in docs_missing_meta_field]),
+                )
+            elif missing_meta == "top":
+                logger.warning(
+                    "The parameter <meta_field> is currently set to '{meta_field}' but the Documents with IDs {document_ids} don't have this meta key.\n"
+                    "Because the parameter <missing_meta> is set to 'top', these Documents will be placed at the top of the sorting order.",
+                    meta_field=self.meta_field,
+                    document_ids=",".join([doc.id for doc in docs_missing_meta_field]),
+                )
+            else:
+                logger.warning(
+                    "The parameter <meta_field> is currently set to '{meta_field}' but the Documents with IDs {document_ids} don't have this meta key.\n"
+                    "Because the parameter <missing_meta> is set to 'drop', these Documents will be removed from the list of retrieved Documents.",
+                    meta_field=self.meta_field,
+                    document_ids=",".join([doc.id for doc in docs_missing_meta_field]),
+                )
 
         # If meta_value_type is provided try to parse the meta values
         parsed_meta = self._parse_meta(docs_with_meta_field=docs_with_meta_field, meta_value_type=meta_value_type)
@@ -275,10 +290,18 @@ class MetaFieldRanker:
             )
             return {"documents": documents[:top_k]}
 
-        # Add the docs missing the meta_field back on the end
+        # Handle missing meta fields as specified in the missing_meta parameter
         sorted_by_meta = [doc for meta, doc in tuple_sorted_by_meta]
-        sorted_documents = sorted_by_meta + docs_missing_meta_field
-        sorted_documents = self._merge_rankings(documents, sorted_documents, weight, ranking_mode)
+        if missing_meta == "bottom":
+            sorted_documents = sorted_by_meta + docs_missing_meta_field
+            sorted_documents = self._merge_rankings(documents, sorted_documents, weight, ranking_mode)
+        elif missing_meta == "top":
+            sorted_documents = docs_missing_meta_field + sorted_by_meta
+            sorted_documents = self._merge_rankings(documents, sorted_documents, weight, ranking_mode)
+        else:
+            sorted_documents = sorted_by_meta
+            sorted_documents = self._merge_rankings(docs_with_meta_field, sorted_documents, weight, ranking_mode)
+
         return {"documents": sorted_documents[:top_k]}
 
     def _parse_meta(
