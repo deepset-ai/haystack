@@ -1,4 +1,4 @@
 ---
 fixes:
   - |
-    Fixes the (de)serialization of Azure generators.
+    Azure generators components fixed, they were missing the `@component` decorator.
