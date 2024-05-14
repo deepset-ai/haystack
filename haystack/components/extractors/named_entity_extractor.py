@@ -215,7 +215,8 @@ class NamedEntityExtractor:
         """
         try:
             init_params = data["init_parameters"]
-            init_params["device"] = ComponentDevice.from_dict(init_params["device"])
+            if init_params["device"] is not None:
+                init_params["device"] = ComponentDevice.from_dict(init_params["device"])
             return default_from_dict(cls, data)
         except Exception as e:
             raise DeserializationError(f"Couldn't deserialize {cls.__name__} instance") from e
