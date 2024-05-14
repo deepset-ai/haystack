@@ -14,7 +14,7 @@ from haystack.components.others import Multiplexer
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.components.routers import ConditionalRouter
 from haystack.core.component import component
-from haystack.core.component.types import InputSocket, OutputSocket
+from haystack.core.component.types import InputSocket, OutputSocket, Variadic
 from haystack.core.errors import PipelineDrawingError, PipelineError, PipelineMaxLoops, PipelineRuntimeError
 from haystack.core.pipeline import Pipeline, PredefinedPipeline
 from haystack.core.serialization import DeserializationCallbacks
@@ -1018,3 +1018,35 @@ def test__init_graph():
     pipe._init_graph()
     for node in pipe.graph.nodes:
         assert pipe.graph.nodes[node]["visits"] == 0
+
+
+def test__init_to_run():
+    ComponentWithVariadic = component_class(
+        "ComponentWithVariadic", input_types={"in": Variadic[int]}, output_types={"out": int}
+    )
+    ComponentWithNoInputs = component_class("ComponentWithNoInputs", input_types={}, output_types={"out": int})
+    ComponentWithSingleInput = component_class(
+        "ComponentWithSingleInput", input_types={"in": int}, output_types={"out": int}
+    )
+    ComponentWithMultipleInputs = component_class(
+        "ComponentWithMultipleInputs", input_types={"in1": int, "in2": int}, output_types={"out": int}
+    )
+
+    pipe = Pipeline()
+    pipe.add_component("with_variadic", ComponentWithVariadic())
+    pipe.add_component("with_no_inputs", ComponentWithNoInputs())
+    pipe.add_component("with_single_input", ComponentWithSingleInput())
+    pipe.add_component("another_with_single_input", ComponentWithSingleInput())
+    pipe.add_component("with_multiple_inputs", ComponentWithMultipleInputs())
+
+    pipe.connect("with_no_inputs.out", "with_variadic.in")
+    pipe.connect("with_single_input.out", "another_with_single_input.in")
+    pipe.connect("another_with_single_input.out", "with_multiple_inputs.in1")
+    pipe.connect("with_multiple_inputs.out", "with_variadic.in")
+
+    to_run = pipe._init_to_run()
+    assert len(to_run) == 4
+    assert to_run[0][0] == "with_variadic"
+    assert to_run[1][0] == "with_no_inputs"
+    assert to_run[2][0] == "with_single_input"
+    assert to_run[3][0] == "with_multiple_inputs"
