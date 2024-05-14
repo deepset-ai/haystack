@@ -193,7 +193,7 @@ class NamedEntityExtractor:
         """
         return default_to_dict(
             self,
-            backend=self._backend.type,
+            backend=self._backend.type.name,
             model=self._backend.model_name,
             device=self._backend.device.to_dict(),
             pipeline_kwargs=self._backend._pipeline_kwargs,
@@ -213,6 +213,7 @@ class NamedEntityExtractor:
             init_params = data["init_parameters"]
             if init_params["device"] is not None:
                 init_params["device"] = ComponentDevice.from_dict(init_params["device"])
+            init_params["backend"] = NamedEntityExtractorBackend[init_params["backend"]]
             return default_from_dict(cls, data)
         except Exception as e:
             raise DeserializationError(f"Couldn't deserialize {cls.__name__} instance") from e
