@@ -23,7 +23,7 @@ class Pipeline(PipelineBase):
     """
 
     # TODO: We're ignoring these linting rules for the time being, after we properly optimize this function we'll remove the noqa
-    def run(  # noqa: C901, PLR0912, PLR0915 pylint: disable=too-many-branches
+    def run(  # noqa: C901, PLR0912, PLR0915 pylint: disable=too-many-branches,too-many-locals
         self, data: Dict[str, Any], debug: bool = False, include_outputs_from: Optional[Set[str]] = None
     ) -> Dict[str, Any]:
         """
@@ -431,7 +431,16 @@ class Pipeline(PipelineBase):
 
             if len(include_outputs_from) > 0:
                 for name, output in extra_outputs.items():
-                    if name not in final_outputs:
+                    inner = final_outputs.get(name)
+                    if inner is None:
                         final_outputs[name] = output
+                    else:
+                        # Let's not override any keys that are already
+                        # in the final_outputs as they might be different
+                        # from what we cached in extra_outputs, e.g. when loops
+                        # are involved.
+                        for k, v in output.items():
+                            if k not in inner:
+                                inner[k] = v
 
             return final_outputs
