@@ -14,7 +14,7 @@ from haystack.components.others import Multiplexer
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.components.routers import ConditionalRouter
 from haystack.core.component import component
-from haystack.core.component.types import InputSocket, OutputSocket
+from haystack.core.component.types import InputSocket, OutputSocket, Variadic
 from haystack.core.errors import PipelineDrawingError, PipelineError, PipelineMaxLoops, PipelineRuntimeError
 from haystack.core.pipeline import Pipeline, PredefinedPipeline
 from haystack.core.serialization import DeserializationCallbacks
@@ -175,7 +175,7 @@ def test_pipeline_resolution_duplicate_input_names_across_components():
     result = pipe.run(data={"what": "Haystack", "who": "world"})
     assert result == {"hello2": {"output": "Hello Hello world Haystack! Haystack!"}}
 
-    resolved, _ = pipe._prepare_component_input_data(data={"what": "Haystack", "who": "world"})
+    resolved = pipe._prepare_component_input_data(data={"what": "Haystack", "who": "world"})
 
     # why does hello2 have only one input? Because who of hello2 is inserted from hello.output
     assert resolved == {"hello": {"what": "Haystack", "who": "world"}, "hello2": {"what": "Haystack"}}
@@ -1008,3 +1008,82 @@ def test_pipeline_is_not_stuck_with_components_with_only_defaults_as_first_compo
     res = pipe.run({"prompt_builder": {"query": "What is the capital of Italy?"}})
 
     assert res == {"router": {"correct_replies": ["Rome"]}}
+
+
+def test__init_graph():
+    pipe = Pipeline()
+    pipe.add_component("greet", Greet())
+    pipe.add_component("adder", AddFixedValue())
+    pipe.connect("greet", "adder")
+    pipe._init_graph()
+    for node in pipe.graph.nodes:
+        assert pipe.graph.nodes[node]["visits"] == 0
+
+
+def test__init_to_run():
+    ComponentWithVariadic = component_class(
+        "ComponentWithVariadic", input_types={"in": Variadic[int]}, output_types={"out": int}
+    )
+    ComponentWithNoInputs = component_class("ComponentWithNoInputs", input_types={}, output_types={"out": int})
+    ComponentWithSingleInput = component_class(
+        "ComponentWithSingleInput", input_types={"in": int}, output_types={"out": int}
+    )
+    ComponentWithMultipleInputs = component_class(
+        "ComponentWithMultipleInputs", input_types={"in1": int, "in2": int}, output_types={"out": int}
+    )
+
+    pipe = Pipeline()
+    pipe.add_component("with_variadic", ComponentWithVariadic())
+    pipe.add_component("with_no_inputs", ComponentWithNoInputs())
+    pipe.add_component("with_single_input", ComponentWithSingleInput())
+    pipe.add_component("another_with_single_input", ComponentWithSingleInput())
+    pipe.add_component("with_multiple_inputs", ComponentWithMultipleInputs())
+
+    pipe.connect("with_no_inputs.out", "with_variadic.in")
+    pipe.connect("with_single_input.out", "another_with_single_input.in")
+    pipe.connect("another_with_single_input.out", "with_multiple_inputs.in1")
+    pipe.connect("with_multiple_inputs.out", "with_variadic.in")
+
+    to_run = pipe._init_to_run()
+    assert len(to_run) == 4
+    assert to_run[0][0] == "with_variadic"
+    assert to_run[1][0] == "with_no_inputs"
+    assert to_run[2][0] == "with_single_input"
+    assert to_run[3][0] == "with_multiple_inputs"
+
+
+def test__init_inputs_state():
+    pipe = Pipeline()
+    template = """
+    Answer the following questions:
+    {{ questions | join("\n") }}
+    """
+    pipe.add_component("prompt_builder", PromptBuilder(template=template))
+    pipe.add_component("multiplexer", Multiplexer(type_=int))
+    questions = ["What is the capital of Italy?", "What is the capital of France?"]
+    data = {
+        "prompt_builder": {"questions": questions},
+        "multiplexer": {"value": 1},
+        "not_a_component": "some input data",
+    }
+    res = pipe._init_inputs_state(data)
+    assert res == {
+        "prompt_builder": {"questions": ["What is the capital of Italy?", "What is the capital of France?"]},
+        "multiplexer": {"value": [1]},
+        "not_a_component": "some input data",
+    }
+    assert id(questions) != id(res["prompt_builder"]["questions"])
+
+
+def test__prepare_component_input_data():
+    MockComponent = component_class("MockComponent", input_types={"x": List[str], "y": str})
+    pipe = Pipeline()
+    pipe.add_component("first_mock", MockComponent())
+    pipe.add_component("second_mock", MockComponent())
+
+    res = pipe._prepare_component_input_data({"x": ["some data"], "y": "some other data"})
+    assert res == {
+        "first_mock": {"x": ["some data"], "y": "some other data"},
+        "second_mock": {"x": ["some data"], "y": "some other data"},
+    }
+    assert id(res["first_mock"]["x"]) != id(res["second_mock"]["x"])

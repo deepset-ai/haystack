@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from copy import copy, deepcopy
+from copy import deepcopy
 from typing import Any, Dict, List, Mapping, Optional, Set, Tuple
 
 from haystack import logging, tracing
@@ -31,7 +31,19 @@ class Pipeline(PipelineBase):
 
         :param data:
             A dictionary of inputs for the pipeline's components. Each key is a component name
-            and its value is a dictionary of that component's input parameters.
+            and its value is a dictionary of that component's input parameters:
+            ```
+            data = {
+                "comp1": {"input1": 1, "input2": 2},
+            }
+            ```
+            For convenience, this format is also supported when input names are unique:
+            ```
+            data = {
+                "input1": 1, "input2": 2,
+            }
+            ```
+
         :param debug:
             Set to True to collect and return debug information.
         :param include_outputs_from:
@@ -83,85 +95,26 @@ class Pipeline(PipelineBase):
         {'hello2': {'output': 'Hello, Hello, world!!'}}.
         """
         pipeline_running(self)
-        # NOTE: We're assuming data is formatted like so as of now
-        # data = {
-        #     "comp1": {"input1": 1, "input2": 2},
-        # }
-        #
-        # TODO: Support also this format:
-        # data = {
-        #     "input1": 1, "input2": 2,
-        # }
 
         # Reset the visits count for each component
-        for node in self.graph.nodes:
-            self.graph.nodes[node]["visits"] = 0
+        self._init_graph()
 
         # TODO: Remove this warmup once we can check reliably whether a component has been warmed up or not
         # As of now it's here to make sure we don't have failing tests that assume warm_up() is called in run()
         self.warm_up()
 
-        # check whether the data is a nested dictionary of component inputs where each key is a component name
-        # and each value is a dictionary of input parameters for that component
-        is_nested_component_input = all(isinstance(value, dict) for value in data.values())
-        if not is_nested_component_input:
-            # flat input, a dict where keys are input names and values are the corresponding values
-            # we need to convert it to a nested dictionary of component inputs and then run the pipeline
-            # just like in the previous case
-            data, unresolved_inputs = self._prepare_component_input_data(data)
-            if unresolved_inputs:
-                logger.warning(
-                    "Inputs {input_keys} were not matched to any component inputs, please check your run parameters.",
-                    input_keys=list(unresolved_inputs.keys()),
-                )
+        # normalize `data`
+        data = self._prepare_component_input_data(data)
 
         # Raise if input is malformed in some way
         self._validate_input(data)
-        # NOTE: The above NOTE and TODO are technically not true.
-        # This implementation of run supports only the first format, but the second format is actually
-        # never received by this method. It's handled by the `run()` method of the `Pipeline` class
-        # defined in `haystack/pipeline.py`.
-        # As of now we're ok with this, but we'll need to merge those two classes at some point.
 
-        # deepcopying the inputs prevents the Pipeline run logic from being altered unexpectedly
-        # when the same input reference is passed to multiple components.
-        for component_name, component_inputs in data.items():
-            data[component_name] = {k: deepcopy(v) for k, v in component_inputs.items()}
-
-        for component_name, component_inputs in data.items():
-            if component_name not in self.graph.nodes:
-                # This is not a component name, it must be the name of one or more input sockets.
-                # Those are handled in a different way, so we skip them here.
-                continue
-            instance = self.graph.nodes[component_name]["instance"]
-            for component_input, input_value in component_inputs.items():
-                # Handle mutable input data
-                data[component_name][component_input] = copy(input_value)
-                if instance.__haystack_input__._sockets_dict[component_input].is_variadic:
-                    # Components that have variadic inputs need to receive lists as input.
-                    # We don't want to force the user to always pass lists, so we convert single values to lists here.
-                    # If it's already a list we assume the component takes a variadic input of lists, so we
-                    # convert it in any case.
-                    data[component_name][component_input] = [input_value]
-
-        last_inputs: Dict[str, Dict[str, Any]] = {**data}
+        # Initialize the inputs state
+        last_inputs: Dict[str, Dict[str, Any]] = self._init_inputs_state(data)
 
         # Take all components that have at least 1 input not connected or is variadic,
         # and all components that have no inputs at all
-        to_run: List[Tuple[str, Component]] = []
-        for node_name in self.graph.nodes:
-            component = self.graph.nodes[node_name]["instance"]
-
-            if len(component.__haystack_input__._sockets_dict) == 0:
-                # Component has no input, can run right away
-                to_run.append((node_name, component))
-                continue
-
-            for socket in component.__haystack_input__._sockets_dict.values():
-                if not socket.senders or socket.is_variadic:
-                    # Component has at least one input not connected or is variadic, can run right away.
-                    to_run.append((node_name, component))
-                    break
+        to_run: List[Tuple[str, Component]] = self._init_to_run()
 
         # These variables are used to detect when we're stuck in a loop.
         # Stuck loops can happen when one or more components are waiting for input but
