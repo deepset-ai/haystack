@@ -1050,3 +1050,26 @@ def test__init_to_run():
     assert to_run[1][0] == "with_no_inputs"
     assert to_run[2][0] == "with_single_input"
     assert to_run[3][0] == "with_multiple_inputs"
+
+
+def test__init_inputs_state():
+    pipe = Pipeline()
+    template = """
+    Answer the following questions:
+    {{ questions | join("\n") }}
+    """
+    pipe.add_component("prompt_builder", PromptBuilder(template=template))
+    pipe.add_component("multiplexer", Multiplexer(type_=int))
+    questions = ["What is the capital of Italy?", "What is the capital of France?"]
+    data = {
+        "prompt_builder": {"questions": questions},
+        "multiplexer": {"value": 1},
+        "not_a_component": "some input data",
+    }
+    res = pipe._init_inputs_state(data)
+    assert res == {
+        "prompt_builder": {"questions": ["What is the capital of Italy?", "What is the capital of France?"]},
+        "multiplexer": {"value": [1]},
+        "not_a_component": "some input data",
+    }
+    assert id(questions) != id(res["prompt_builder"]["questions"])
