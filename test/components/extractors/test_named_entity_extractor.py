@@ -3,12 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 import pytest
 
-from haystack import ComponentError, DeserializationError
+from haystack import ComponentError, DeserializationError, Pipeline
 from haystack.components.extractors import NamedEntityExtractor, NamedEntityExtractorBackend
 from haystack.utils.device import ComponentDevice
 
 
-@pytest.mark.unit
 def test_named_entity_extractor_backend():
     _ = NamedEntityExtractor(backend=NamedEntityExtractorBackend.HUGGING_FACE, model="dslim/bert-base-NER")
 
@@ -22,7 +21,6 @@ def test_named_entity_extractor_backend():
         NamedEntityExtractor(backend="random_backend", model="dslim/bert-base-NER")
 
 
-@pytest.mark.unit
 def test_named_entity_extractor_serde():
     extractor = NamedEntityExtractor(
         backend=NamedEntityExtractorBackend.HUGGING_FACE,
@@ -42,7 +40,20 @@ def test_named_entity_extractor_serde():
         _ = NamedEntityExtractor.from_dict(serde_data)
 
 
-@pytest.mark.unit
+# tests for NamedEntityExtractor serialization/deserialization in a pipeline
+def test_named_entity_extractor_pipeline_serde(tmp_path):
+    extractor = NamedEntityExtractor(backend=NamedEntityExtractorBackend.HUGGING_FACE, model="dslim/bert-base-NER")
+    p = Pipeline()
+    p.add_component(instance=extractor, name="extractor")
+
+    with open(tmp_path / "test_pipeline.yaml", "w") as f:
+        p.dump(f)
+    with open(tmp_path / "test_pipeline.yaml", "r") as f:
+        q = Pipeline.load(f)
+
+    assert p.to_dict() == q.to_dict(), "Pipeline serialization/deserialization with NamedEntityExtractor failed."
+
+
 def test_named_entity_extractor_serde_none_device():
     extractor = NamedEntityExtractor(
         backend=NamedEntityExtractorBackend.HUGGING_FACE, model="dslim/bert-base-NER", device=None
