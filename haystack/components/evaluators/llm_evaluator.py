@@ -87,7 +87,9 @@ class LLMEvaluator:
         self.api_key = api_key
 
         if api == "openai":
-            self.generator = OpenAIGenerator(api_key=api_key)
+            self.generator = OpenAIGenerator(
+                api_key=api_key, generation_kwargs={"response_format": {"type": "json_object"}}
+            )
         else:
             raise ValueError(f"Unsupported API: {api}")
 
