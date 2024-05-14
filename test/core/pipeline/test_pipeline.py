@@ -1073,3 +1073,17 @@ def test__init_inputs_state():
         "not_a_component": "some input data",
     }
     assert id(questions) != id(res["prompt_builder"]["questions"])
+
+
+def test__prepare_component_input_data():
+    MockComponent = component_class("MockComponent", input_types={"x": List[str], "y": str})
+    pipe = Pipeline()
+    pipe.add_component("first_mock", MockComponent())
+    pipe.add_component("second_mock", MockComponent())
+
+    res = pipe._prepare_component_input_data({"x": ["some data"], "y": "some other data"})
+    assert res == {
+        "first_mock": {"x": ["some data"], "y": "some other data"},
+        "second_mock": {"x": ["some data"], "y": "some other data"},
+    }
+    assert id(res["first_mock"]["x"]) != id(res["second_mock"]["x"])
