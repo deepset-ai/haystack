@@ -86,13 +86,8 @@ class TestOpenAIChatGenerator:
         generator = AzureOpenAIChatGenerator(azure_endpoint="some-non-existing-endpoint")
         p = Pipeline()
         p.add_component(instance=generator, name="generator")
-
-        with open(tmp_path / "test_pipeline.yaml", "w") as f:
-            p.dump(f)
-
-        with open(tmp_path / "test_pipeline.yaml", "r") as f:
-            q = Pipeline.load(f)
-
+        p_str = p.dumps()
+        q = Pipeline.loads(p_str)
         assert p.to_dict() == q.to_dict(), "Pipeline serialization/deserialization w/ AzureOpenAIChatGenerator failed."
 
     @pytest.mark.integration
