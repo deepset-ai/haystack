@@ -45,7 +45,7 @@ class OpenAITextEmbedder:
         prefix: str = "",
         suffix: str = "",
         timeout: Optional[float] = None,
-        max_retries: Optional[float] = None,
+        max_retries: Optional[int] = None,
     ):
         """
         Create an OpenAITextEmbedder component.
