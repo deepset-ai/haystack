@@ -12,11 +12,6 @@ from haystack.version import __version__
 
 logger = logging.getLogger(__name__)
 
-# Any remote API (OpenAI, Cohere etc.)
-HAYSTACK_REMOTE_API_BACKOFF_SEC = "HAYSTACK_REMOTE_API_BACKOFF_SEC"
-HAYSTACK_REMOTE_API_MAX_RETRIES = "HAYSTACK_REMOTE_API_MAX_RETRIES"
-HAYSTACK_REMOTE_API_TIMEOUT_SEC = "HAYSTACK_REMOTE_API_TIMEOUT_SEC"
-
 # This value cannot change during the lifetime of the process
 _IS_DOCKER_CACHE = None
 
