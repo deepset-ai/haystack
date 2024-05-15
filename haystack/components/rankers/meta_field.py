@@ -192,6 +192,15 @@ class MetaFieldRanker:
             Whether to sort the meta field by ascending or descending order.
             Possible values are `descending` (default) and `ascending`.
             If not provided, the sort_order provided at initialization time is used.
+        :param missing_meta:
+            What to do with documents that are missing the sorting metadata field.
+            Possible values are:
+            - 'drop' will drop the documents entirely.
+            - 'top' will place the documents at the top of the metadata-sorted list
+                (regardless of 'ascending' or 'descending').
+            - 'bottom' will place the documents at the bottom of metadata-sorted list
+                (regardless of 'ascending' or 'descending').
+            If not provided, the missing_meta provided at initialization time is used.
         :param meta_value_type:
             Parse the meta value into the data type specified before sorting.
             This will only work if all meta values stored under `meta_field` in the provided documents are strings.
@@ -290,7 +299,7 @@ class MetaFieldRanker:
             )
             return {"documents": documents[:top_k]}
 
-        # Handle missing meta fields as specified in the missing_meta parameter
+        # Merge rankings and handle missing meta fields as specified in the missing_meta parameter
         sorted_by_meta = [doc for meta, doc in tuple_sorted_by_meta]
         if missing_meta == "bottom":
             sorted_documents = sorted_by_meta + docs_missing_meta_field
