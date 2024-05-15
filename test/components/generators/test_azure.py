@@ -1,4 +1,6 @@
 import os
+
+from haystack import Pipeline
 from haystack.utils.auth import Secret
 
 import pytest
@@ -79,6 +81,15 @@ class TestAzureOpenAIGenerator:
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
             },
         }
+
+    def test_pipeline_serialization_deserialization(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
+        generator = AzureOpenAIGenerator(azure_endpoint="some-non-existing-endpoint")
+        p = Pipeline()
+        p.add_component(instance=generator, name="generator")
+        p_str = p.dumps()
+        q = Pipeline.loads(p_str)
+        assert p.to_dict() == q.to_dict(), "Pipeline serialization/deserialization with AzureOpenAIGenerator failed."
 
     @pytest.mark.integration
     @pytest.mark.skipif(
