@@ -57,7 +57,7 @@ class DocumentCleaner:
         remove_repeated_substrings: bool = False,
         remove_substrings: Optional[List[str]] = None,
         remove_regex: Optional[str] = None,
-        id_generator: Callable[[Document, Document], str] = DEFAULT_ID_GENERATOR,
+        id_generator: Optional[Callable[[Document, Document], str]] = None,
     ):
         """
         Initialize the DocumentCleaner.
@@ -77,7 +77,7 @@ class DocumentCleaner:
         self.remove_repeated_substrings = remove_repeated_substrings
         self.remove_substrings = remove_substrings
         self.remove_regex = remove_regex
-        self.id_generator = id_generator
+        self.id_generator = id_generator or DEFAULT_ID_GENERATOR
 
     def to_dict(self) -> Dict[str, Any]:
         """
