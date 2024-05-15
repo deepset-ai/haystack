@@ -5,9 +5,21 @@ import logging
 
 from haystack.components.others import Multiplexer
 from haystack.core.pipeline import Pipeline
+from haystack.core.component import component
 from haystack.testing.sample_components import Accumulate, AddFixedValue, Double, Threshold
 
 logging.basicConfig(level=logging.DEBUG)
+
+
+@component
+class DoubleWithOriginal:
+    """
+    Doubles the input value and returns the original value as well.
+    """
+
+    @component.output_types(value=int, original=int)
+    def run(self, value: int):
+        return {"value": value * 2, "original": value}
 
 
 def test_pipeline_intermediate_outputs():
@@ -62,3 +74,24 @@ def test_pipeline_with_loops_intermediate_outputs():
         "below_5": {"above": 8},
         "add_three": {"result": 11},
     }
+
+
+def test_pipeline_intermediate_outputs_multiple_output_sockets():
+    pipeline = Pipeline()
+    pipeline.add_component("first_addition", AddFixedValue(add=2))
+    pipeline.add_component("second_addition", AddFixedValue())
+    pipeline.add_component("double", DoubleWithOriginal())
+    pipeline.connect("first_addition", "double")
+    pipeline.connect("double.value", "second_addition")
+
+    results = pipeline.run(
+        {"first_addition": {"value": 1}}, include_outputs_from={"first_addition", "second_addition", "double"}
+    )
+    assert results == {
+        "second_addition": {"result": 7},
+        "first_addition": {"result": 3},
+        "double": {"value": 6, "original": 3},
+    }
+
+    results = pipeline.run({"first_addition": {"value": 1}}, include_outputs_from={"double"})
+    assert results == {"second_addition": {"result": 7}, "double": {"value": 6, "original": 3}}
