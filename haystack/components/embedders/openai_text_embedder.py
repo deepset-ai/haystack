@@ -10,7 +10,7 @@ from openai import OpenAI
 from haystack import component, default_from_dict, default_to_dict
 from haystack.utils import Secret, deserialize_secrets_inplace
 
-OPENAI_TIMEOUT = float(os.environ.get("OPENAI_API_KEY", 30))
+OPENAI_TIMEOUT = float(os.environ.get("OPENAI_TIMEOUT", 30))
 OPENAI_MAX_RETRIES = int(os.environ.get("OPENAI_MAX_RETRIES", 5))
 
 
