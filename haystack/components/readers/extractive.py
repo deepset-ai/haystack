@@ -602,7 +602,8 @@ class ExtractiveReader:
             cur_input_ids = input_ids[start_index:end_index]
             cur_attention_mask = attention_mask[start_index:end_index]
 
-            output = self.model(input_ids=cur_input_ids, attention_mask=cur_attention_mask)
+            with torch.inference_mode():
+                output = self.model(input_ids=cur_input_ids, attention_mask=cur_attention_mask)
             cur_start_logits = output.start_logits
             cur_end_logits = output.end_logits
             if num_batches != 1:
