@@ -79,6 +79,7 @@ class JsonSchemaValidator:
         "{json_schema}\n"
         "and provide the corrected JSON content ONLY. Please do not output anything else than the raw corrected JSON string, this is the most important part of the task. Don't use any markdown and don't add any comment."
     )
+
     def __init__(self, json_schema: Optional[Dict[str, Any]] = None, error_template: Optional[str] = None):
         """
         Initialize the JsonSchemaValidator component.
@@ -150,7 +151,12 @@ class JsonSchemaValidator:
             error_template = error_template or self.default_error_template
 
             recovery_prompt = self._construct_error_recovery_message(
-                error_template, str(e), error_path, error_schema_path, validation_schema, failing_json=last_message.content
+                error_template,
+                str(e),
+                error_path,
+                error_schema_path,
+                validation_schema,
+                failing_json=last_message.content,
             )
             return {"validation_error": [ChatMessage.from_user(recovery_prompt)]}
 
