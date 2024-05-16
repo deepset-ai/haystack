@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 from typing import Any, Dict, List
 
 from haystack import Document, component
@@ -6,6 +10,8 @@ from haystack import Document, component
 @component
 class DocumentMAPEvaluator:
     """
+    A Mean Average Precision (MAP) evaluator for documents.
+
     Evaluator that calculates the mean average precision of the retrieved documents, a metric
     that measures how high retrieved documents are ranked.
     Each question can have multiple ground truth documents and multiple retrieved documents.
@@ -43,6 +49,7 @@ class DocumentMAPEvaluator:
     ) -> Dict[str, Any]:
         """
         Run the DocumentMAPEvaluator on the given inputs.
+
         All lists must have the same length.
 
         :param ground_truth_documents:
@@ -52,7 +59,7 @@ class DocumentMAPEvaluator:
         :returns:
             A dictionary with the following outputs:
             - `score` - The average of calculated scores.
-            - `invididual_scores` - A list of numbers from 0.0 to 1.0 that represents how high retrieved documents are ranked.
+            - `individual_scores` - A list of numbers from 0.0 to 1.0 that represents how high retrieved documents are ranked.
         """
         if len(ground_truth_documents) != len(retrieved_documents):
             msg = "The length of ground_truth_documents and retrieved_documents must be the same."

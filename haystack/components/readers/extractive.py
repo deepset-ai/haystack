@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import math
 import warnings
 from pathlib import Path
@@ -308,6 +312,31 @@ class ExtractiveReader:
 
         return start_candidates_tokens_to_chars, end_candidates_tokens_to_chars, candidates_values
 
+    def _add_answer_page_number(self, answer: ExtractedAnswer) -> ExtractedAnswer:
+        if answer.meta is None:
+            answer.meta = {}
+
+        if answer.document_offset is None:
+            return answer
+
+        if not answer.document or "page_number" not in answer.document.meta:
+            return answer
+
+        if not isinstance(answer.document.meta["page_number"], int):
+            logger.warning(
+                f"Document's page_number must be int but is {type(answer.document.meta['page_number'])}. "
+                f"No page number will be added to the answer."
+            )
+            return answer
+
+        # Calculate the answer page number
+        if answer.document.content:
+            ans_start = answer.document_offset.start
+            answer_page_number = answer.document.meta["page_number"] + answer.document.content[:ans_start].count("\f")
+            answer.meta.update({"answer_page_number": answer_page_number})
+
+        return answer
+
     def _nest_answers(
         self,
         start: List[List[int]],
@@ -358,6 +387,10 @@ class ExtractiveReader:
             current_answers = sorted(current_answers, key=lambda ans: ans.score, reverse=True)
             current_answers = self.deduplicate_by_overlap(current_answers, overlap_threshold=overlap_threshold)
             current_answers = current_answers[:top_k]
+
+            # Calculate the answer page number and add it to meta
+            current_answers = [self._add_answer_page_number(answer=answer) for answer in current_answers]
+
             if no_answer:
                 no_answer_score = math.prod(1 - answer.score for answer in current_answers)
                 answer_ = ExtractedAnswer(
@@ -455,6 +488,8 @@ class ExtractiveReader:
         self, answers: List[ExtractedAnswer], overlap_threshold: Optional[float]
     ) -> List[ExtractedAnswer]:
         """
+        De-duplicates overlapping Extractive Answers.
+
         De-duplicates overlapping Extractive Answers from the same document based on how much the spans of the
         answers overlap.
 
@@ -567,7 +602,8 @@ class ExtractiveReader:
             cur_input_ids = input_ids[start_index:end_index]
             cur_attention_mask = attention_mask[start_index:end_index]
 
-            output = self.model(input_ids=cur_input_ids, attention_mask=cur_attention_mask)
+            with torch.inference_mode():
+                output = self.model(input_ids=cur_input_ids, attention_mask=cur_attention_mask)
             cur_start_logits = output.start_logits
             cur_end_logits = output.end_logits
             if num_batches != 1:

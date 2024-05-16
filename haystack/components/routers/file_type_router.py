@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import mimetypes
 import re
 from collections import defaultdict
@@ -13,6 +17,8 @@ logger = logging.getLogger(__name__)
 @component
 class FileTypeRouter:
     """
+    Groups a list of data sources by their MIME types.
+
     FileTypeRouter groups a list of data sources (file paths or byte streams) by their MIME types, allowing
     for flexible routing of files to different components based on their content type. It supports both exact MIME type
     matching and pattern matching using regular expressions.
@@ -50,6 +56,8 @@ class FileTypeRouter:
 
     def __init__(self, mime_types: List[str]):
         """
+        Initialize the FileTypeRouter component.
+
         :param mime_types: A list of file mime types to consider when routing files
             (e.g. `["text/plain", "audio/x-wav", "image/jpeg"]`).
         """
@@ -82,7 +90,7 @@ class FileTypeRouter:
             if isinstance(source, Path):
                 mime_type = self._get_mime_type(source)
             elif isinstance(source, ByteStream):
-                mime_type = source.meta.get("content_type", None)
+                mime_type = source.mime_type
             else:
                 raise ValueError(f"Unsupported data source type: {type(source).__name__}")
 

@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
 from test.tracing.utils import SpyingSpan, SpyingTracer
 from typing import Optional
 from unittest.mock import ANY
@@ -39,6 +42,8 @@ class TestTracing:
             SpyingSpan(
                 operation_name="haystack.pipeline.run",
                 tags={
+                    "haystack.pipeline.input_data": {"hello": {"word": "world"}},
+                    "haystack.pipeline.output_data": {"hello2": {"output": "Hello, Hello, world!!"}},
                     "haystack.pipeline.debug": False,
                     "haystack.pipeline.metadata": {},
                     "haystack.pipeline.max_loops_allowed": 100,
@@ -97,6 +102,8 @@ class TestTracing:
                     "haystack.pipeline.debug": False,
                     "haystack.pipeline.metadata": {},
                     "haystack.pipeline.max_loops_allowed": 100,
+                    "haystack.pipeline.input_data": {"hello": {"word": "world"}},
+                    "haystack.pipeline.output_data": {"hello2": {"output": "Hello, Hello, world!!"}},
                 },
                 trace_id=ANY,
                 span_id=ANY,

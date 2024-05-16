@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import io
 import warnings
 from pathlib import Path
@@ -21,14 +25,14 @@ class PyPDFConverter(Protocol):
     A protocol that defines a converter which takes a PdfReader object and converts it into a Document object.
     """
 
-    def convert(self, reader: "PdfReader") -> Document:
+    def convert(self, reader: "PdfReader") -> Document:  # noqa: D102
         ...
 
-    def to_dict(self):
+    def to_dict(self):  # noqa: D102
         ...
 
     @classmethod
-    def from_dict(cls, data):
+    def from_dict(cls, data):  # noqa: D102
         ...
 
 
@@ -43,10 +47,12 @@ class DefaultConverter:
         return Document(content=text)
 
     def to_dict(self):
+        """Serialize the converter to a dictionary."""
         return default_to_dict(self)
 
     @classmethod
     def from_dict(cls, data):
+        """Deserialize the converter from a dictionary."""
         return default_from_dict(cls, data)
 
 

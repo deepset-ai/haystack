@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import json
 from typing import Any, Dict, List, Tuple, Type
 
@@ -23,18 +27,18 @@ class LLMEvaluator:
     from haystack.components.evaluators import LLMEvaluator
     evaluator = LLMEvaluator(
         instructions="Is this answer problematic for children?",
-        inputs=[("responses", List[str])],
+        inputs=[("predicted_answers", List[str])],
         outputs=["score"],
         examples=[
-            {"inputs": {"responses": "Damn, this is straight outta hell!!!"}, "outputs": {"score": 1}},
-            {"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"score": 0}},
+            {"inputs": {"predicted_answers": "Damn, this is straight outta hell!!!"}, "outputs": {"score": 1}},
+            {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}},
         ],
     )
-    RESPONSES = [
+    predicted_answers = [
         "Football is the most popular sport with around 4 billion followers worldwide",
         "Python language was created by Guido van Rossum.",
     ]
-    results = evaluator.run(responses=RESPONSES)
+    results = evaluator.run(predicted_answers=predicted_answers)
     print(results)
     # {'results': [{'score': 0}, {'score': 0}]}
     ```
@@ -83,7 +87,9 @@ class LLMEvaluator:
         self.api_key = api_key
 
         if api == "openai":
-            self.generator = OpenAIGenerator(api_key=api_key)
+            self.generator = OpenAIGenerator(
+                api_key=api_key, generation_kwargs={"response_format": {"type": "json_object"}}
+            )
         else:
             raise ValueError(f"Unsupported API: {api}")
 
@@ -114,8 +120,8 @@ class LLMEvaluator:
         # Validate inputs
         if (
             not isinstance(inputs, list)
-            or not all(isinstance(input, tuple) for input in inputs)
-            or not all(isinstance(input[0], str) and input[1] is not list and len(input) == 2 for input in inputs)
+            or not all(isinstance(_input, tuple) for _input in inputs)
+            or not all(isinstance(_input[0], str) and _input[1] is not list and len(_input) == 2 for _input in inputs)
         ):
             msg = (
                 f"LLM evaluator expects inputs to be a list of tuples. Each tuple must contain an input name and "
@@ -178,6 +184,8 @@ class LLMEvaluator:
 
     def prepare_template(self) -> str:
         """
+        Prepare the prompt template.
+
         Combine instructions, inputs, outputs, and examples into one prompt template with the following format:
         Instructions:
         <instructions>
@@ -197,7 +205,7 @@ class LLMEvaluator:
             The prompt template.
         """
         inputs_section = (
-            "{" + ",".join([f'"{input_socket[0]}": {{{{ {input_socket[0]} }}}}' for input_socket in self.inputs]) + "}"
+            "{" + ", ".join([f'"{input_socket[0]}": {{{{ {input_socket[0]} }}}}' for input_socket in self.inputs]) + "}"
         )
 
         examples_section = "\n".join(
@@ -270,17 +278,17 @@ class LLMEvaluator:
                 raise ValueError(msg)
 
         # Validate that all received inputs are lists
-        if not all(isinstance(input, list) for input in received.values()):
-            msg = f"LLM evaluator expects all input values to be lists but received {[type(input) for input in received.values()]}."
+        if not all(isinstance(_input, list) for _input in received.values()):
+            msg = f"LLM evaluator expects all input values to be lists but received {[type(_input) for _input in received.values()]}."
             raise ValueError(msg)
 
         # Validate that all received inputs are of the same length
         inputs = received.values()
         length = len(next(iter(inputs)))
-        if not all(len(input) == length for input in inputs):
+        if not all(len(_input) == length for _input in inputs):
             msg = (
                 f"LLM evaluator expects all input lists to have the same length but received {inputs} with lengths "
-                f"{[len(input) for input in inputs]}."
+                f"{[len(_input) for _input in inputs]}."
             )
             raise ValueError(msg)
 

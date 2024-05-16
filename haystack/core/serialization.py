@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+
 import inspect
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -123,8 +124,7 @@ def default_to_dict(obj: Any, **init_parameters) -> Dict[str, Any]:
     """
     Utility function to serialize an object to a dictionary.
 
-    This is mostly necessary for Components, but it can be used by any object.
-
+    This is mostly necessary for components but can be used by any object.
     `init_parameters` are parameters passed to the object class `__init__`.
     They must be defined explicitly as they'll be used when creating a new
     instance of `obj` with `from_dict`. Omitting them might cause deserialisation
@@ -165,7 +165,7 @@ def default_from_dict(cls: Type[object], data: Dict[str, Any]) -> Any:
     """
     Utility function to deserialize a dictionary to an object.
 
-    This is mostly necessary for Components but, it can be used by any object.
+    This is mostly necessary for components but can be used by any object.
 
     The function will raise a `DeserializationError` if the `type` field in `data` is
     missing or it doesn't match the type of `cls`.

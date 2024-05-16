@@ -1,10 +1,14 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import os
 from typing import Any, Callable, Dict, Optional
 
 # pylint: disable=import-error
 from openai.lib.azure import AzureOpenAI
 
-from haystack import default_from_dict, default_to_dict, logging
+from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import StreamingChunk
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
@@ -12,8 +16,11 @@ from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inp
 logger = logging.getLogger(__name__)
 
 
+@component
 class AzureOpenAIChatGenerator(OpenAIChatGenerator):
     """
+    A Chat Generator component that uses the Azure OpenAI API to generate text.
+
     Enables text generation using OpenAI's large language models (LLMs) on Azure. It supports `gpt-4` and `gpt-3.5-turbo`
     family of models accessed through the chat completions API endpoint.
 
@@ -76,6 +83,8 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         generation_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
+        Initialize the Azure OpenAI Chat Generator component.
+
         :param azure_endpoint: The endpoint of the deployed model, e.g. `"https://example-resource.azure.openai.com/"`
         :param api_version: The version of the API to use. Defaults to 2023-05-15
         :param azure_deployment: The deployment of the model, usually the model name.

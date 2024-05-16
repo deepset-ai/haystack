@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 from dataclasses import asdict
 from typing import Any, Callable, Dict, Iterable, List, Optional, Union
 
@@ -8,7 +12,7 @@ from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inp
 from haystack.utils.hf import HFGenerationAPIType, HFModelType, check_valid_model
 from haystack.utils.url_validation import is_valid_http_url
 
-with LazyImport(message="Run 'pip install \"huggingface_hub>=0.22.0\"'") as huggingface_hub_import:
+with LazyImport(message="Run 'pip install \"huggingface_hub>=0.23.0\"'") as huggingface_hub_import:
     from huggingface_hub import (
         InferenceClient,
         TextGenerationOutput,
@@ -23,6 +27,8 @@ logger = logging.getLogger(__name__)
 @component
 class HuggingFaceAPIGenerator:
     """
+    A Generator component that uses Hugging Face APIs to generate text.
+
     This component can be used to generate text using different Hugging Face APIs:
     - [Free Serverless Inference API]((https://huggingface.co/inference-api)
     - [Paid Inference Endpoints](https://huggingface.co/inference-endpoints)
@@ -35,7 +41,7 @@ class HuggingFaceAPIGenerator:
     from haystack.utils import Secret
 
     generator = HuggingFaceAPIGenerator(api_type="serverless_inference_api",
-                                        api_params={"model": "mistralai/Mistral-7B-v0.1"},
+                                        api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
                                         token=Secret.from_token("<your-api-key>"))
 
     result = generator.run(prompt="What's Natural Language Processing?")
@@ -140,7 +146,7 @@ class HuggingFaceAPIGenerator:
         callback_name = serialize_callable(self.streaming_callback) if self.streaming_callback else None
         return default_to_dict(
             self,
-            api_type=self.api_type,
+            api_type=str(self.api_type),
             api_params=self.api_params,
             token=self.token.to_dict() if self.token else None,
             generation_kwargs=self.generation_kwargs,
@@ -206,8 +212,8 @@ class HuggingFaceAPIGenerator:
         meta = [
             {
                 "model": self._client.model,
-                "finish_reason": tgr.details.finish_reason,
-                "usage": {"completion_tokens": len(tgr.details.tokens)},
+                "finish_reason": tgr.details.finish_reason if tgr.details else None,
+                "usage": {"completion_tokens": len(tgr.details.tokens) if tgr.details else 0},
             }
         ]
         return {"replies": [tgr.generated_text], "meta": meta}

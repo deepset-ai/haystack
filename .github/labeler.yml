@@ -1,7 +1,4 @@
 # Release lines
-2.x:
- - base-branch: 'main'
-
 1.x:
  - base-branch: 'v1.x'
 

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import re
 from typing import Any, Dict, List, Optional
 
@@ -10,6 +14,7 @@ logger = logging.getLogger(__name__)
 class AnswerBuilder:
     """
     Takes a query and the replies a Generator returns as input and parses them into GeneratedAnswer objects.
+
     Optionally, it also takes Documents and metadata from the Generator as inputs to enrich the GeneratedAnswer objects.
 
     Usage example:
@@ -126,9 +131,10 @@ class AnswerBuilder:
     def _extract_answer_string(reply: str, pattern: Optional[str] = None) -> str:
         """
         Extract the answer string from the generator output using the specified pattern.
+
         If no pattern is specified, the whole string is used as the answer.
 
-        :param replies:
+        :param reply:
             The output of the Generator. A string.
         :param pattern:
             The regular expression pattern to use to extract the answer text from the generator output.

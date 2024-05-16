@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import json
 from typing import Any, Dict, List, Optional
 
@@ -77,6 +81,8 @@ class JsonSchemaValidator:
     )
     def __init__(self, json_schema: Optional[Dict[str, Any]] = None, error_template: Optional[str] = None):
         """
+        Initialize the JsonSchemaValidator component.
+
         :param json_schema: A dictionary representing the [JSON schema](https://json-schema.org/) against which
             the messages' content is validated.
         :param error_template: A custom template string for formatting the error message in case of validation failure.
@@ -188,8 +194,9 @@ class JsonSchemaValidator:
 
     def _recursive_json_to_object(self, data: Any) -> Any:
         """
-        Recursively traverses a data structure (dictionary or list), converting any string values
-        that are valid JSON objects into dictionary objects, and returns a new data structure.
+        Convert any string values that are valid JSON objects into dictionary objects.
+
+        Returns a new data structure.
 
         :param data: The data structure to be traversed.
         :return: A new data structure with JSON strings converted to dictionary objects.

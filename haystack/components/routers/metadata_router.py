@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 from typing import Dict, List
 
 from haystack import Document, component
@@ -72,6 +76,8 @@ class MetadataRouter:
 
     def run(self, documents: List[Document]):
         """
+        Route the documents.
+
         Route the documents to different edges based on their fields content and the rules specified during initialization.
         If a document does not match any of the rules, it is routed to a connection named "unmatched".
 

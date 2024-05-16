@@ -4,10 +4,10 @@ loaders:
     modules:
       [
         "answer_exact_match",
+        "context_relevance",
         "document_map",
         "document_mrr",
         "document_recall",
-        "evaluation_result",
         "document_recall",
         "faithfulness",
         "llm_evaluator",
@@ -28,7 +28,7 @@ renderer:
   category_slug: haystack-api
   title: Evaluators
   slug: evaluators-api
-  order: 5
+  order: 63
   markdown:
     descriptive_class_title: false
     classdef_code_block: false

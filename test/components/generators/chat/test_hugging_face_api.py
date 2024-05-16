@@ -1,13 +1,16 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
 import os
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from huggingface_hub import (
     ChatCompletionOutput,
-    ChatCompletionOutputChoice,
-    ChatCompletionOutputChoiceMessage,
     ChatCompletionStreamOutput,
+    ChatCompletionOutputComplete,
     ChatCompletionStreamOutputChoice,
+    ChatCompletionOutputMessage,
     ChatCompletionStreamOutputDelta,
 )
 from huggingface_hub.utils import RepositoryNotFoundError
@@ -33,14 +36,17 @@ def mock_chat_completion():
     with patch("huggingface_hub.InferenceClient.chat_completion", autospec=True) as mock_chat_completion:
         completion = ChatCompletionOutput(
             choices=[
-                ChatCompletionOutputChoice(
+                ChatCompletionOutputComplete(
                     finish_reason="eos_token",
                     index=0,
-                    message=ChatCompletionOutputChoiceMessage(
-                        content="The capital of France is Paris.", role="assistant"
-                    ),
+                    message=ChatCompletionOutputMessage(content="The capital of France is Paris.", role="assistant"),
                 )
             ],
+            id="some_id",
+            model="some_model",
+            object="some_object",
+            system_fingerprint="some_fingerprint",
+            usage={"completion_tokens": 10, "prompt_tokens": 5, "total_tokens": 15},
             created=1710498360,
         )
 
@@ -126,7 +132,7 @@ class TestHuggingFaceAPIGenerator:
     def test_to_dict(self, mock_check_valid_model):
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "mistralai/Mistral-7B-v0.1"},
+            api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
             token=Secret.from_env_var("ENV_VAR", strict=False),
             generation_kwargs={"temperature": 0.6},
             stop_words=["stop", "words"],
@@ -135,15 +141,15 @@ class TestHuggingFaceAPIGenerator:
         result = generator.to_dict()
         init_params = result["init_parameters"]
 
-        assert init_params["api_type"] == HFGenerationAPIType.SERVERLESS_INFERENCE_API
-        assert init_params["api_params"] == {"model": "mistralai/Mistral-7B-v0.1"}
+        assert init_params["api_type"] == "serverless_inference_api"
+        assert init_params["api_params"] == {"model": "HuggingFaceH4/zephyr-7b-beta"}
         assert init_params["token"] == {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"}
         assert init_params["generation_kwargs"] == {"temperature": 0.6, "stop": ["stop", "words"], "max_tokens": 512}
 
     def test_from_dict(self, mock_check_valid_model):
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "mistralai/Mistral-7B-v0.1"},
+            api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
             token=Secret.from_env_var("ENV_VAR", strict=False),
             generation_kwargs={"temperature": 0.6},
             stop_words=["stop", "words"],
@@ -154,7 +160,7 @@ class TestHuggingFaceAPIGenerator:
         # now deserialize, call from_dict
         generator_2 = HuggingFaceAPIChatGenerator.from_dict(result)
         assert generator_2.api_type == HFGenerationAPIType.SERVERLESS_INFERENCE_API
-        assert generator_2.api_params == {"model": "mistralai/Mistral-7B-v0.1"}
+        assert generator_2.api_params == {"model": "HuggingFaceH4/zephyr-7b-beta"}
         assert generator_2.token == Secret.from_env_var("ENV_VAR", strict=False)
         assert generator_2.generation_kwargs == {"temperature": 0.6, "stop": ["stop", "words"], "max_tokens": 512}
         assert generator_2.streaming_callback is streaming_callback_handler
@@ -208,6 +214,10 @@ class TestHuggingFaceAPIGenerator:
                         finish_reason=None,
                     )
                 ],
+                id="some_id",
+                model="some_model",
+                object="some_object",
+                system_fingerprint="some_fingerprint",
                 created=1710498504,
             )
 
@@ -217,6 +227,10 @@ class TestHuggingFaceAPIGenerator:
                         delta=ChatCompletionStreamOutputDelta(content=None, role=None), index=0, finish_reason="length"
                     )
                 ],
+                id="some_id",
+                model="some_model",
+                object="some_object",
+                system_fingerprint="some_fingerprint",
                 created=1710498504,
             )
 
@@ -225,7 +239,6 @@ class TestHuggingFaceAPIGenerator:
 
         # Generate text response with streaming callback
         response = generator.run(chat_messages)
-        print(response)
 
         # check kwargs passed to text_generation
         _, kwargs = mock_chat_completion.call_args

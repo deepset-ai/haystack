@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import importlib
 from typing import Any, Dict, List, Optional
 
@@ -50,6 +54,7 @@ class DocumentWriter:
     def to_dict(self) -> Dict[str, Any]:
         """
         Serializes the component to a dictionary.
+
         :returns:
             Dictionary with serialized data.
         """

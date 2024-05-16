@@ -1,7 +1,11 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 from enum import Enum
 from typing import Any, Dict, List, Union
 
-from haystack.core.component import component
+from haystack import component, default_to_dict
 from haystack.dataclasses import Document
 
 
@@ -20,6 +24,9 @@ class RecallMode(Enum):
 
     @staticmethod
     def from_str(string: str) -> "RecallMode":
+        """
+        Convert a string to a RecallMode enum.
+        """
         enum_map = {e.value: e for e in RecallMode}
         mode = enum_map.get(string)
         if mode is None:
@@ -32,6 +39,7 @@ class RecallMode(Enum):
 class DocumentRecallEvaluator:
     """
     Evaluator that calculates the Recall score for a list of documents.
+
     Returns both a list of scores for each question and the average.
     There can be multiple ground truth documents and multiple predicted documents as input.
 
@@ -70,6 +78,7 @@ class DocumentRecallEvaluator:
 
         mode_functions = {RecallMode.SINGLE_HIT: self._recall_single_hit, RecallMode.MULTI_HIT: self._recall_multi_hit}
         self.mode_function = mode_functions[mode]
+        self.mode = mode
 
     def _recall_single_hit(self, ground_truth_documents: List[Document], retrieved_documents: List[Document]) -> float:
         unique_truths = {g.content for g in ground_truth_documents}
@@ -91,6 +100,7 @@ class DocumentRecallEvaluator:
     ) -> Dict[str, Any]:
         """
         Run the DocumentRecallEvaluator on the given inputs.
+
         `ground_truth_documents` and `retrieved_documents` must have the same length.
 
         :param ground_truth_documents:
@@ -112,3 +122,12 @@ class DocumentRecallEvaluator:
             scores.append(score)
 
         return {"score": sum(scores) / len(retrieved_documents), "individual_scores": scores}
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serializes the component to a dictionary.
+
+        :returns:
+            Dictionary with serialized data.
+        """
+        return default_to_dict(self, mode=str(self.mode))

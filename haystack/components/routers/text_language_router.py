@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 from typing import Dict, List, Optional
 
 from haystack import component, logging
@@ -44,6 +48,8 @@ class TextLanguageRouter:
 
     def __init__(self, languages: Optional[List[str]] = None):
         """
+        Initialize the TextLanguageRouter component.
+
         :param languages: A list of languages in ISO code, each corresponding to a different output connection.
             For supported languages, see the [`langdetect` documentation](https://github.com/Mimino666/langdetect#languages).
             If not specified, the default is `["en"]`.
@@ -57,6 +63,7 @@ class TextLanguageRouter:
     def run(self, text: str) -> Dict[str, str]:
         """
         Route the text to one of different output connections based on its language.
+
         If the text does not match any of the languages specified at initialization, it is routed to
         a connection named "unmatched".
 

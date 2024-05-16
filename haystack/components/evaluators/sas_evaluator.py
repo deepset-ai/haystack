@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 from typing import Any, Dict, List, Optional
 
 from numpy import mean as np_mean
@@ -16,6 +20,7 @@ with LazyImport(message="Run 'pip install scikit-learn \"sentence-transformers>=
 class SASEvaluator:
     """
     SASEvaluator computes the Semantic Answer Similarity (SAS) between a list of predictions and a list of ground truths.
+
     It's usually used in Retrieval Augmented Generation (RAG) pipelines to evaluate the quality of the generated answers.
 
     The SAS is computed using a pre-trained model from the Hugging Face model hub. The model can be either a
@@ -132,6 +137,8 @@ class SASEvaluator:
     @component.output_types(score=float, individual_scores=List[float])
     def run(self, ground_truth_answers: List[str], predicted_answers: List[str]) -> Dict[str, Any]:
         """
+        SASEvaluator component run method.
+
         Run the SASEvaluator to compute the Semantic Answer Similarity (SAS) between a list of predicted answers
         and a list of ground truth answers. Both must be list of strings of same length.
 
@@ -180,7 +187,7 @@ class SASEvaluator:
 
             # Compute cosine-similarities
             similarity_scores = [
-                util.cos_sim(p, l).cpu().numpy() for p, l in zip(predictions_embeddings, label_embeddings)
+                float(util.cos_sim(p, l).cpu().numpy()) for p, l in zip(predictions_embeddings, label_embeddings)
             ]
 
         sas_score = np_mean(similarity_scores)

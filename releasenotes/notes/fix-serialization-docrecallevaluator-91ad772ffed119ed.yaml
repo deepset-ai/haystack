@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Add `to_dict` method to `DocumentRecallEvaluator` to allow proper serialization of the component.

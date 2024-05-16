@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import io
 from dataclasses import asdict, dataclass, field
 from typing import Any, Dict, List, Optional, Protocol, runtime_checkable
@@ -15,11 +19,11 @@ class Answer(Protocol):
     query: str
     meta: Dict[str, Any]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, Any]:  # noqa: D102
         ...
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Answer":
+    def from_dict(cls, data: Dict[str, Any]) -> "Answer":  # noqa: D102
         ...
 
 
@@ -40,6 +44,12 @@ class ExtractedAnswer:
         end: int
 
     def to_dict(self) -> Dict[str, Any]:
+        """
+        Serialize the object to a dictionary.
+
+        :returns:
+            Serialized dictionary representation of the object.
+        """
         document = self.document.to_dict(flatten=False) if self.document is not None else None
         document_offset = asdict(self.document_offset) if self.document_offset is not None else None
         context_offset = asdict(self.context_offset) if self.context_offset is not None else None
@@ -57,6 +67,14 @@ class ExtractedAnswer:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ExtractedAnswer":
+        """
+        Deserialize the object from a dictionary.
+
+        :param data:
+            Dictionary representation of the object.
+        :returns:
+            Deserialized object.
+        """
         init_params = data.get("init_parameters", {})
         if (doc := init_params.get("document")) is not None:
             data["init_parameters"]["document"] = Document.from_dict(doc)
@@ -86,6 +104,12 @@ class ExtractedTableAnswer:
         column: int
 
     def to_dict(self) -> Dict[str, Any]:
+        """
+        Serialize the object to a dictionary.
+
+        :returns:
+            Serialized dictionary representation of the object.
+        """
         document = self.document.to_dict(flatten=False) if self.document is not None else None
         context = self.context.to_json() if self.context is not None else None
         document_cells = [asdict(c) for c in self.document_cells]
@@ -104,6 +128,15 @@ class ExtractedTableAnswer:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ExtractedTableAnswer":
+        """
+        Deserialize the object from a dictionary.
+
+        :param data:
+            Dictionary representation of the object.
+
+        :returns:
+            Deserialized object.
+        """
         init_params = data.get("init_parameters", {})
         if (doc := init_params.get("document")) is not None:
             data["init_parameters"]["document"] = Document.from_dict(doc)
@@ -127,11 +160,26 @@ class GeneratedAnswer:
     meta: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
+        """
+        Serialize the object to a dictionary.
+
+        :returns:
+            Serialized dictionary representation of the object.
+        """
         documents = [doc.to_dict(flatten=False) for doc in self.documents]
         return default_to_dict(self, data=self.data, query=self.query, documents=documents, meta=self.meta)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "GeneratedAnswer":
+        """
+        Deserialize the object from a dictionary.
+
+        :param data:
+            Dictionary representation of the object.
+
+        :returns:
+            Deserialized object.
+        """
         init_params = data.get("init_parameters", {})
         if (documents := init_params.get("documents")) is not None:
             data["init_parameters"]["documents"] = [Document.from_dict(d) for d in documents]

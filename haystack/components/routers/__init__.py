@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 from haystack.components.routers.conditional_router import ConditionalRouter
 from haystack.components.routers.file_type_router import FileTypeRouter
 from haystack.components.routers.metadata_router import MetadataRouter

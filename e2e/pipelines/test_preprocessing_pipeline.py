@@ -1,10 +1,14 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import json
 
 from haystack import Pipeline
-from haystack.components.embedders import SentenceTransformersDocumentEmbedder
-from haystack.components.converters import TextFileToDocument
-from haystack.components.preprocessors import DocumentSplitter, DocumentCleaner
 from haystack.components.classifiers import DocumentLanguageClassifier
+from haystack.components.converters import TextFileToDocument
+from haystack.components.embedders import SentenceTransformersDocumentEmbedder
+from haystack.components.preprocessors import DocumentCleaner, DocumentSplitter
 from haystack.components.routers import FileTypeRouter, MetadataRouter
 from haystack.components.writers import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore

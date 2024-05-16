@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+
 """
     Attributes:
 
@@ -93,10 +94,10 @@ _COMPONENT_PRE_INIT_CALLBACK: ContextVar[Optional[Callable]] = ContextVar("compo
 @contextmanager
 def _hook_component_init(callback: Callable):
     """
-    Context manager to set a callback that will be invoked
-    before a component's constructor is called. The callback
-    receives the component class and the init parameters (as keyword
-    arguments) and can modify the init parameters in place.
+    Context manager to set a callback that will be invoked before a component's constructor is called.
+
+    The callback receives the component class and the init parameters (as keyword arguments) and can modify the init
+    parameters in place.
 
     :param callback:
         Callback function to invoke.
@@ -149,6 +150,9 @@ class Component(Protocol):
 class ComponentMeta(type):
     @staticmethod
     def positional_to_kwargs(cls_type, args) -> Dict[str, Any]:
+        """
+        Convert positional arguments to keyword arguments based on the signature of the `__init__` method.
+        """
         init_signature = inspect.signature(cls_type.__init__)
         init_params = {name: info for name, info in init_signature.parameters.items() if name != "self"}
 
@@ -165,8 +169,7 @@ class ComponentMeta(type):
 
     def __call__(cls, *args, **kwargs):
         """
-        This method is called when clients instantiate a Component and
-        runs before __new__ and __init__.
+        This method is called when clients instantiate a Component and runs before __new__ and __init__.
         """
         # This will call __new__ then __init__, giving us back the Component instance
         pre_init_hook = _COMPONENT_PRE_INIT_CALLBACK.get()
@@ -234,6 +237,7 @@ class ComponentMeta(type):
 def _component_repr(component: Component) -> str:
     """
     All Components override their __repr__ method with this one.
+
     It prints the component name and the input/output sockets.
     """
     result = object.__repr__(component)
@@ -265,7 +269,7 @@ class _Component:
     def __init__(self):
         self.registry = {}
 
-    def set_input_type(self, instance, name: str, type: Any, default: Any = _empty):
+    def set_input_type(self, instance, name: str, type: Any, default: Any = _empty):  # noqa: A002
         """
         Add a single input socket to the component instance.
 
@@ -289,7 +293,7 @@ class _Component:
         class MyComponent:
 
             def __init__(self, value: int):
-                component.set_input_types(value_1=str, value_2=str)
+                component.set_input_types(self, value_1=str, value_2=str)
                 ...
 
             @component.output_types(output_1=int, output_2=str)
@@ -306,7 +310,7 @@ class _Component:
         class MyComponent:
 
             def __init__(self, value: int):
-                component.set_input_types(value_1=str, value_2=str)
+                component.set_input_types(self, value_1=str, value_2=str)
                 ...
 
             @component.output_types(output_1=int, output_2=str)
@@ -325,8 +329,7 @@ class _Component:
 
     def set_output_types(self, instance, **types):
         """
-        Method that specifies the output types when the 'run' method is not decorated
-        with 'component.output_types'.
+        Method that specifies the output types when the 'run' method is not decorated with 'component.output_types'.
 
         Use as:
 
@@ -335,7 +338,7 @@ class _Component:
         class MyComponent:
 
             def __init__(self, value: int):
-                component.set_output_types(output_1=int, output_2=str)
+                component.set_output_types(self, output_1=int, output_2=str)
                 ...
 
             # no decorators here
@@ -364,6 +367,8 @@ class _Component:
 
         def output_types_decorator(run_method):
             """
+            Decorator that sets the output types of the decorated method.
+
             This happens at class creation time, and since we don't have the decorated
             class available here, we temporarily store the output types as an attribute of
             the decorated method. The ComponentMeta metaclass will use this data to create
@@ -390,9 +395,9 @@ class _Component:
 
         def copy_class_namespace(namespace):
             """
-            This is the callback that `typing.new_class` will use
-            to populate the newly created class. We just copy
-            the whole namespace from the decorated class.
+            This is the callback that `typing.new_class` will use to populate the newly created class.
+
+            Simply copy the whole namespace from the decorated class.
             """
             for key, val in dict(cls.__dict__).items():
                 # __dict__ and __weakref__ are class-bound, we should let Python recreate them.

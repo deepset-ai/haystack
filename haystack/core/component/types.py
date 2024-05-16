@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 from dataclasses import dataclass, field
 from typing import Any, Iterable, List, Type, TypeVar, get_args
 
@@ -45,6 +49,7 @@ class InputSocket:
 
     @property
     def is_mandatory(self):
+        """Check if the input is mandatory."""
         return self.default_value == _empty
 
     def __post_init__(self):

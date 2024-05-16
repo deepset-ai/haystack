@@ -47,7 +47,6 @@ classifiers = [
 ]
 dependencies = [
   "pandas",
-  "haystack-bm25",
   "tqdm",
   "tenacity",
   "lazy-imports",
@@ -102,13 +101,14 @@ format-check = "black --check ."
 [tool.hatch.envs.test]
 extra-dependencies = [
   "transformers[torch,sentencepiece]==4.38.2",  # ExtractiveReader, TransformersSimilarityRanker, LocalWhisperTranscriber, HFGenerators...
-  "huggingface_hub>=0.22.0", # TGI Generators and TEI Embedders
+  "huggingface_hub>=0.23.0", # TGI Generators and TEI Embedders
   "spacy>=3.7,<3.8",  # NamedEntityExtractor
   "spacy-curated-transformers>=0.2,<=0.3",  # NamedEntityExtractor
   "en-core-web-trf @ https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.7.3/en_core_web_trf-3.7.3-py3-none-any.whl",  # NamedEntityExtractor
 
   # Converters
   "pypdf",  # PyPDFConverter
+  "pdfminer.six", # PDFMinerToDocument
   "markdown-it-py",  # MarkdownToDocument
   "mdit_plain",  # MarkdownToDocument
   "tika",  # TikaDocumentConverter
@@ -201,7 +201,7 @@ skip_magic_trailing_comma = true  # For compatibility with pydoc>=4.6, check if 
 [tool.codespell]
 ignore-words-list = "ans,astroid,nd,ned,nin,ue,rouge,ist"
 quiet-level = 3
-skip = "test/nodes/*,test/others/*,test/samples/*"
+skip = "test/nodes/*,test/others/*,test/samples/*,e2e/*"
 
 [tool.pylint.'MESSAGES CONTROL']
 max-line-length=120
@@ -296,14 +296,14 @@ ignore_missing_imports = true
 [tool.ruff]
 line-length = 301
 target-version = "py38"
+exclude= ["test"]
+
 
 [tool.ruff.lint]
 select = [
-  "AIR",    # Airflow
   "ASYNC",  # flake8-async
   "C4",     # flake8-comprehensions
   "C90",    # McCabe cyclomatic complexity
-  "DJ",     # flake8-django
   "E501",   # Long lines
   "EXE",    # flake8-executable
   "F",      # Pyflakes
@@ -316,12 +316,19 @@ select = [
   "T10",    # flake8-debugger
   "W",      # pycodestyle
   "YTT",    # flake8-2020
-  "I"       # isort
-  # "E",    # pycodestyle
-  # "NPY",  # NumPy-specific rules
-  # "PD",   # pandas-vet
-  # "PT",   # flake8-pytest-style
-  # "UP",   # pyupgrade
+  "I",       # isort
+  # built-in shadowing
+  "A001",	# builtin-variable-shadowing
+  "A002",	# builtin-argument-shadowing
+  "A003",	# builtin-attribute-shadowing
+  # docstring rules
+  "D102",   # Missing docstring in public method
+  "D103",   # Missing docstring in public function
+  "D209",   # Closing triple quotes go to new line
+  "D205",   # 1 blank line required between summary line and description
+  "D213",   # summary lines must be positioned on the second physical line of the docstring
+  "D417",   # undocumented-parameter
+  "D419",   # undocumented-returns
 ]
 
 ignore = [

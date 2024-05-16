@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 from typing import Any, Callable, Dict, Iterable, List, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
@@ -7,7 +11,7 @@ from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inp
 from haystack.utils.hf import HFGenerationAPIType, HFModelType, check_valid_model
 from haystack.utils.url_validation import is_valid_http_url
 
-with LazyImport(message="Run 'pip install \"huggingface_hub[inference]>=0.22.0\"'") as huggingface_hub_import:
+with LazyImport(message="Run 'pip install \"huggingface_hub[inference]>=0.23.0\"'") as huggingface_hub_import:
     from huggingface_hub import ChatCompletionOutput, ChatCompletionStreamOutput, InferenceClient
 
 
@@ -17,6 +21,8 @@ logger = logging.getLogger(__name__)
 @component
 class HuggingFaceAPIChatGenerator:
     """
+    A Chat Generator component that uses Hugging Face APIs to generate text.
+
     This component can be used to generate text using different Hugging Face APIs with the ChatMessage format:
     - [Free Serverless Inference API](https://huggingface.co/inference-api)
     - [Paid Inference Endpoints](https://huggingface.co/inference-endpoints)
@@ -156,7 +162,7 @@ class HuggingFaceAPIChatGenerator:
         callback_name = serialize_callable(self.streaming_callback) if self.streaming_callback else None
         return default_to_dict(
             self,
-            api_type=self.api_type,
+            api_type=str(self.api_type),
             api_params=self.api_params,
             token=self.token.to_dict() if self.token else None,
             generation_kwargs=self.generation_kwargs,

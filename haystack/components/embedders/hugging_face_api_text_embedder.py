@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import json
 from typing import Any, Dict, List, Optional, Union
 
@@ -7,7 +11,7 @@ from haystack.utils import Secret, deserialize_secrets_inplace
 from haystack.utils.hf import HFEmbeddingAPIType, HFModelType, check_valid_model
 from haystack.utils.url_validation import is_valid_http_url
 
-with LazyImport(message="Run 'pip install \"huggingface_hub>=0.22.0\"'") as huggingface_hub_import:
+with LazyImport(message="Run 'pip install \"huggingface_hub>=0.23.0\"'") as huggingface_hub_import:
     from huggingface_hub import InferenceClient
 
 logger = logging.getLogger(__name__)
@@ -16,6 +20,8 @@ logger = logging.getLogger(__name__)
 @component
 class HuggingFaceAPITextEmbedder:
     """
+    A component that embeds text using Hugging Face APIs.
+
     This component can be used to embed strings using different Hugging Face APIs:
     - [Free Serverless Inference API]((https://huggingface.co/inference-api)
     - [Paid Inference Endpoints](https://huggingface.co/inference-endpoints)
@@ -140,7 +146,7 @@ class HuggingFaceAPITextEmbedder:
         """
         return default_to_dict(
             self,
-            api_type=self.api_type,
+            api_type=str(self.api_type),
             api_params=self.api_params,
             prefix=self.prefix,
             suffix=self.suffix,

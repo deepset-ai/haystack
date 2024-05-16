@@ -1,0 +1,23 @@
+headerPath = "license-header.txt"
+
+excludes = [
+    ".github",
+    "docker",
+    "docs",
+    "examples",
+    "proposals",
+    "releasenotes",
+    "test",
+    "CITATION.cff",
+    "*.ini",
+    "*.jinja2",
+    "*.md",
+    "*.toml",
+    "*.txt",
+    "*.yaml",
+    "*.wav",
+]
+
+[properties]
+inceptionYear = 2022
+copyrightOwner = "deepset GmbH <info@deepset.ai>"

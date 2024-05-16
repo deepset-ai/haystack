@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 from typing import Any, Dict, List, Optional, Union
 
 import requests
@@ -41,6 +45,8 @@ class SearchApiWebSearch:
         search_params: Optional[Dict[str, Any]] = None,
     ):
         """
+        Initialize the SearchApiWebSearch component.
+
         :param api_key: API key for the SearchApi API
         :param top_k: Number of documents to return.
         :param allowed_domains: List of domains to limit the search to.

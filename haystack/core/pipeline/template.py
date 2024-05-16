@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
@@ -22,9 +26,10 @@ class PredefinedPipeline(Enum):
 
 class PipelineTemplate:
     """
-    The PipelineTemplate class enables the straightforward creation of flexible and configurable pipelines using Jinja2 templated YAML files.
+    The PipelineTemplate enables the creation of flexible and configurable pipelines.
 
-    Specifically designed to simplify the setup of complex data processing pipelines for
+    The PipelineTemplate class enables the straightforward creation of flexible and configurable pipelines using
+    Jinja2 templated YAML files. Specifically designed to simplify the setup of complex data processing pipelines for
     a range of NLP tasks—including question answering, retriever augmented generation (RAG), document indexing, among
     others - PipelineTemplate empowers users to dynamically generate pipeline configurations from templates and
     customize components as necessary. Its design philosophy centers on providing an accessible, yet powerful, tool
@@ -63,9 +68,9 @@ class PipelineTemplate:
         """
         Initialize a PipelineTemplate.
 
-        Besides calling the constructor directly, a set of utility methods is provided
-        for conveniently create an instance of `PipelineTemplate` from different sources. See `from_string`,
-        `from_file`, `from_predefined` and `from_url`.
+        Besides calling the constructor directly, a set of utility methods is provided to conveniently create an
+        instance of `PipelineTemplate` from different sources. See `from_string`, `from_file`, `from_predefined`
+        and `from_url`.
 
         :param template_content: The raw template source to use in the template.
         """
@@ -106,7 +111,9 @@ class PipelineTemplate:
     @classmethod
     def from_predefined(cls, predefined_pipeline: PredefinedPipeline) -> "PipelineTemplate":
         """
-        Create a PipelineTemplate from a predefined template. See `PredefinedPipeline` for available options.
+        Create a PipelineTemplate from a predefined template.
+
+        See `PredefinedPipeline` for available options.
 
         :param predefined_pipeline: The predefined pipeline to use.
         :returns: An instance of `PipelineTemplate `.

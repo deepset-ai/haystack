@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 from typing import Dict, List, Optional
 
 from haystack import Document, component, logging
@@ -50,6 +54,8 @@ class DocumentLanguageClassifier:
 
     def __init__(self, languages: Optional[List[str]] = None):
         """
+        Initialize the DocumentLanguageClassifier.
+
         :param languages: A list of languages in ISO code, each corresponding to a different output connection.
             For supported languages, see the [`langdetect` documentation](https://github.com/Mimino666/langdetect#languages).
             If not specified, the default is ["en"].
@@ -63,6 +69,7 @@ class DocumentLanguageClassifier:
     def run(self, documents: List[Document]):
         """
         This method classifies the documents' language and adds it to their metadata.
+
         If a Document's text does not match any of the languages specified at initialization,
         the metadata value "unmatched" will be stored.
 

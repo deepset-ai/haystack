@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
 import pytest
 
 from haystack.components.builders.prompt_builder import PromptBuilder
@@ -33,3 +36,13 @@ def test_run_with_missing_input():
     builder = PromptBuilder(template="This is a {{ variable }}")
     res = builder.run()
     assert res == {"prompt": "This is a "}
+
+
+def test_run_with_missing_required_input():
+    builder = PromptBuilder(template="This is a {{ foo }}, not a {{ bar }}", required_variables=["foo", "bar"])
+    with pytest.raises(ValueError, match="foo"):
+        builder.run(bar="bar")
+    with pytest.raises(ValueError, match="bar"):
+        builder.run(foo="foo")
+    with pytest.raises(ValueError, match="foo, bar"):
+        builder.run()

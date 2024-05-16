@@ -1,5 +1,9 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 from copy import deepcopy
-from typing import List, Literal
+from typing import Dict, List, Literal, Tuple
 
 from more_itertools import windowed
 
@@ -23,6 +27,8 @@ class DocumentSplitter:
         split_overlap: int = 0,
     ):
         """
+        Initialize the DocumentSplitter.
+
         :param split_by: The unit by which the document should be split. Choose from "word" for splitting by " ",
             "sentence" for splitting by ".", "page" for splitting by "\\f" or "passage" for splitting by "\\n\\n".
         :param split_length: The maximum number of units in each split.
@@ -42,6 +48,8 @@ class DocumentSplitter:
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document]):
         """
+        Split documents into smaller parts.
+
         Splits documents by the unit expressed in `split_by`, with a length of `split_length`
         and an overlap of `split_overlap`.
 
@@ -49,7 +57,7 @@ class DocumentSplitter:
 
         :returns: A dictionary with the following key:
             - `documents`: List of documents with the split texts. A metadata field "source_id" is added to each
-            document to keep track of the original document that was split. Other metadata are copied from the original
+            document to keep track of the original document that was split. Another metadata field "page_number" is added to each number to keep track of the page it belonged to in the original document. Other metadata are copied from the original
             document.
 
         :raises TypeError: if the input is not a list of Documents.
@@ -66,10 +74,12 @@ class DocumentSplitter:
                     f"DocumentSplitter only works with text documents but document.content for document ID {doc.id} is None."
                 )
             units = self._split_into_units(doc.content, self.split_by)
-            text_splits = self._concatenate_units(units, self.split_length, self.split_overlap)
+            text_splits, splits_pages = self._concatenate_units(units, self.split_length, self.split_overlap)
             metadata = deepcopy(doc.meta)
             metadata["source_id"] = doc.id
-            split_docs += [Document(content=txt, meta=metadata) for txt in text_splits]
+            split_docs += self._create_docs_from_splits(
+                text_splits=text_splits, splits_pages=splits_pages, meta=metadata
+            )
         return {"documents": split_docs}
 
     def _split_into_units(self, text: str, split_by: Literal["word", "sentence", "passage", "page"]) -> List[str]:
@@ -91,15 +101,40 @@ class DocumentSplitter:
             units[i] += split_at
         return units
 
-    def _concatenate_units(self, elements: List[str], split_length: int, split_overlap: int) -> List[str]:
+    def _concatenate_units(
+        self, elements: List[str], split_length: int, split_overlap: int
+    ) -> Tuple[List[str], List[int]]:
         """
-        Concatenates the elements into parts of split_length units.
+        Concatenates the elements into parts of split_length units keeping track of the original page number that each element belongs.
         """
         text_splits = []
+        splits_pages = []
+        cur_page = 1
         segments = windowed(elements, n=split_length, step=split_length - split_overlap)
         for seg in segments:
             current_units = [unit for unit in seg if unit is not None]
             txt = "".join(current_units)
             if len(txt) > 0:
                 text_splits.append(txt)
-        return text_splits
+                splits_pages.append(cur_page)
+                processed_units = current_units[: split_length - split_overlap]
+                if self.split_by == "page":
+                    num_page_breaks = len(processed_units)
+                else:
+                    num_page_breaks = sum(processed_unit.count("\f") for processed_unit in processed_units)
+                cur_page += num_page_breaks
+        return text_splits, splits_pages
+
+    @staticmethod
+    def _create_docs_from_splits(text_splits: List[str], splits_pages: List[int], meta: Dict) -> List[Document]:
+        """
+        Creates Document objects from text splits enriching them with page number and the metadata of the original document.
+        """
+        documents: List[Document] = []
+
+        for i, txt in enumerate(text_splits):
+            meta = deepcopy(meta)
+            doc = Document(content=txt, meta=meta)
+            doc.meta["page_number"] = splits_pages[i]
+            documents.append(doc)
+        return documents
