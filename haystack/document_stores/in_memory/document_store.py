@@ -6,7 +6,7 @@ import math
 import re
 from collections import Counter
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Literal, Optional, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Literal, Optional, Tuple, Union
 
 import numpy as np
 
@@ -49,15 +49,17 @@ class InMemoryDocumentStore:
 
     def __init__(
         self,
-        bm25_tokenization_regex: str = r"(?u)\b\w\w+\b",
+        bm25_tokenization_regex: str = r"(?u)\b\w\w+\b",  # deprecated
         bm25_algorithm: Literal["BM25Okapi", "BM25L", "BM25Plus"] = "BM25L",
         bm25_parameters: Optional[Dict] = None,
         embedding_similarity_function: Literal["dot_product", "cosine"] = "dot_product",
+        bm25_tokenize_with: Optional[Union[str, Callable[[str], List[str]]]] = None,
     ):
         """
         Initializes the DocumentStore.
 
-        :param bm25_tokenization_regex: The regular expression used to tokenize the text for BM25 retrieval.
+        :param bm25_tokenization_regex: The regular expression used to tokenize the text for BM25 retrieval. (deprecated)
+        :param bm25_tokenize_with: The regular expression used to tokenize the text for BM25 retrieval or a callable that tokenizes the text.
         :param bm25_algorithm: The BM25 algorithm to use. One of "BM25Okapi", "BM25L", or "BM25Plus".
         :param bm25_parameters: Parameters for BM25 implementation in a dictionary format.
                                 For example: {'k1':1.5, 'b':0.75, 'epsilon':0.25}
@@ -68,8 +70,18 @@ class InMemoryDocumentStore:
                                               To choose the most appropriate function, look for information about your embedding model.
         """
         self.storage: Dict[str, Document] = {}
-        self.bm25_tokenization_regex = bm25_tokenization_regex
-        self.tokenizer = re.compile(bm25_tokenization_regex).findall
+
+        if bm25_tokenize_with is None:
+            self.bm25_tokenization_regex = bm25_tokenization_regex  # deprecated
+            self.bm25_tokenize_with = None
+            self.tokenizer = re.compile(bm25_tokenization_regex).findall
+        else:
+            self.bm25_tokenization_regex = None  # deprecated
+            self.bm25_tokenize_with = bm25_tokenize_with
+            if isinstance(bm25_tokenize_with, str):
+                self.tokenizer = re.compile(bm25_tokenize_with).findall
+            else:
+                self.tokenizer = bm25_tokenize_with
 
         self.bm25_algorithm = bm25_algorithm
         self.bm25_algorithm_inst = self._dispatch_bm25()
