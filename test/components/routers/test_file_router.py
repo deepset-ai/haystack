@@ -50,7 +50,7 @@ class TestFileTypeRouter:
         byte_streams = []
         for path, mime_type in zip(file_paths, mime_types):
             stream = ByteStream(path.read_bytes())
-            stream.meta["content_type"] = mime_type
+            stream.mime_type = mime_type
             byte_streams.append(stream)
 
         # add unclassified ByteStream
@@ -81,7 +81,7 @@ class TestFileTypeRouter:
         byte_stream_sources = []
         for path, mime_type in zip(file_paths, mime_types):
             stream = ByteStream(path.read_bytes())
-            stream.meta["content_type"] = mime_type
+            stream.mime_type = mime_type
             byte_stream_sources.append(stream)
 
         mixed_sources = file_paths[:2] + byte_stream_sources[2:]
@@ -165,9 +165,12 @@ class TestFileTypeRouter:
         """
         Test if the component correctly matches mime types exactly, without regex patterns.
         """
-        txt_stream = ByteStream(io.BytesIO(b"Text file content"), meta={"content_type": "text/plain"})
-        jpg_stream = ByteStream(io.BytesIO(b"JPEG file content"), meta={"content_type": "image/jpeg"})
-        mp3_stream = ByteStream(io.BytesIO(b"MP3 file content"), meta={"content_type": "audio/mpeg"})
+        txt_stream = ByteStream(io.BytesIO(b"Text file content").read())
+        txt_stream.mime_type = "text/plain"
+        jpg_stream = ByteStream(io.BytesIO(b"JPEG file content").read())
+        jpg_stream.mime_type = "image/jpeg"
+        mp3_stream = ByteStream(io.BytesIO(b"MP3 file content").read())
+        mp3_stream.mime_type = "audio/mpeg"
 
         byte_streams = [txt_stream, jpg_stream, mp3_stream]
 
