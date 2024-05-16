@@ -121,7 +121,6 @@ class HTMLToDocument:
                 logger.warning("Could not read {source}. Skipping it. Error: {error}", source=source, error=e)
                 continue
 
-            text = None
             try:
                 text = extract(bytestream.data.decode("utf-8"), **merged_extraction_kwargs)
             except Exception as conversion_e:
