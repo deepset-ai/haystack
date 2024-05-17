@@ -20,16 +20,33 @@ class PromptBuilder:
     unless explicitly specified. If an optional template variable is not provided as an input, it will be replaced with
     an empty string in the rendered prompt. Use `variables` and `required_variables` to change the default variable behavior.
 
-    Usage example:
+    ### Usage examples
+
+    #### On its own
+
+    Below is an example of using the `PromptBuilder` to render a prompt template and fill it with `target_language` and `snippet`.
+    The PromptBuilder returns a prompt with the string "Translate the following context to spanish. Context: I can't speak spanish.; Translation:".
     ```python
+    from haystack.components.builders import PromptBuilder
+
     template = "Translate the following context to {{ target_language }}. Context: {{ snippet }}; Translation:"
     builder = PromptBuilder(template=template)
     builder.run(target_language="spanish", snippet="I can't speak spanish.")
     ```
 
-    Usage example in a pipeline with prompt engineering:
+    #### In a Pipeline
+
+    Below is an example of a RAG pipeline where we use a `PromptBuilder` to render a custom prompt template and fill it with the
+    contents of retrieved Documents and a query. The rendered prompt is then sent to a Generator.
     ```python
-    default_prompt_template = \"\"\"
+    from haystack import Pipeline, Document
+    from haystack.utils import Secret
+    from haystack.components.generators import OpenAIGenerator
+    from haystack.components.builders.prompt_builder import PromptBuilder
+
+    # in a real world use case documents could come from a retriever, web, or any other source
+    documents = [Document(content="Joe lives in Berlin"), Document(content="Joe is a software engineer")]
+    prompt_template = \"\"\"
         Given these documents, answer the question.
         Documents:
         {% for doc in documents %}
@@ -40,41 +57,80 @@ class PromptBuilder:
         Answer:
         \"\"\"
     p = Pipeline()
-    p.add_component(instance=InMemoryBM25Retriever(document_store=InMemoryDocumentStore()), name="retriever")
-    p.add_component(instance=PromptBuilder(template=default_prompt_template), name="prompt_builder")
+    p.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
     p.add_component(instance=OpenAIGenerator(api_key=Secret.from_env_var("OPENAI_API_KEY")), name="llm")
-    p.add_component(instance=AnswerBuilder(), name="answer_builder")
-    p.connect("retriever", "prompt_builder.documents")
     p.connect("prompt_builder", "llm")
-    p.connect("llm.replies", "answer_builder.replies")
-    p.connect("llm.metadata", "answer_builder.metadata")
-    p.connect("retriever", "answer_builder.documents")
 
-    # run with default template
-    p.run({"query": "What is the capital of Germany?"}, include_outputs_from={"prompt_builder"})
+    question = "Where does Joe live?"
+    result = p.run({"prompt_builder": {"documents": documents, "query": question}})
+    print(result)
+    ```
 
-    # run with overwritten template
-    overwriting_prompt_template = \"\"\"
+    #### Changing the template at runtime (Prompt Engineering)
+
+    `PromptBuilder` allows you to switch the prompt template of an existing pipeline.
+    Below's example builds on top of the existing pipeline of the previous section.
+    The existing pipeline is invoked with a new prompt template:
+    ```python
+    documents = [
+        Document(content="Joe lives in Berlin", meta={"name": "doc1"}),
+        Document(content="Joe is a software engineer", meta={"name": "doc1"}),
+    ]
+    new_template = \"\"\"
         You are a helpful assistant.
         Given these documents, answer the question.
         Documents:
         {% for doc in documents %}
-            Document {{loop.index}}:
+            Document {{ loop.index }}:
             Document name: {{ doc.meta['name'] }}
             {{ doc.content }}
         {% endfor %}
 
-        Question: {{query}}
+        Question: {{ query }}
         Answer:
         \"\"\"
     p.run({
-            "query": "What is the capital of Germany?",
-            "template": overwriting_prompt_template,
-        }, include_outputs_from={"prompt_builder"})
+        "prompt_builder": {
+            "documents": documents,
+            "query": question,
+            "template": new_template,
+        },
+    })
     ```
+    If you want to use different variables during prompt engineering than in the default template,
+    you can do so by setting `PromptBuilder`'s `variables` init parameter accordingly.
 
-    Note how in the example above, we can change the prompt template by providing a new template to the
-    run method of the pipeline.
+    #### Overwriting variables at runtime
+
+    In case you want to overwrite the values of variables, you can use `template_variables` during runtime as illustrated below:
+    ```python
+    language_template = \"\"\"
+    You are a helpful assistant.
+    Given these documents, answer the question.
+    Documents:
+    {% for doc in documents %}
+        Document {{ loop.index }}:
+        Document name: {{ doc.meta['name'] }}
+        {{ doc.content }}
+    {% endfor %}
+
+    Question: {{ query }}
+    Please provide your answer in {{ answer_language | default('English') }}
+    Answer:
+    \"\"\"
+    p.run({
+        "prompt_builder": {
+            "documents": documents,
+            "query": question,
+            "template": language_template,
+            "template_variables": {"answer_language": "German"},
+        },
+    })
+    ```
+    Note that `language_template` introduces variable `answer_language` which is not bound to any pipeline variable.
+    If not set otherwise, it would evaluate to its default value 'English'.
+    In this example we are overwriting its value to 'German'.
+    `template_variables` allows you to overwrite pipeline variables (such as documents) as well.
 
     """
 
