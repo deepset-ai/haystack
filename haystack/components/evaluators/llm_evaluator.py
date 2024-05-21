@@ -3,14 +3,19 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+import logging
 from typing import Any, Dict, List, Optional, Tuple, Type
+from warnings import warn
 
+import numpy as np
 from tqdm import tqdm
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.builders import PromptBuilder
 from haystack.components.generators import OpenAIGenerator
 from haystack.utils import Secret, deserialize_secrets_inplace
+
+logger = logging.getLogger(__name__)
 
 
 @component
@@ -302,9 +307,14 @@ class LLMEvaluator:
             )
             raise ValueError(msg)
 
-    def validate_outputs(self, expected: List[str], received: str) -> Optional[str]:
+    def validate_outputs(self, expected: List[str], received: str) -> Optional[float]:
         """
         Validate the output.
+
+        If `raise_on_failure` is True, raise a ValueError if not all expected outputs are present in the received
+        outputs or if the received outputs are not a valid JSON.
+
+        If `raise_on_failure` is False, print a warning if the received outputs are not a valid JSON and return a `nan`.
 
         :param expected:
             Names of expected outputs
@@ -319,11 +329,14 @@ class LLMEvaluator:
 
             if not all(output in parsed_output for output in expected):
                 msg = f"Expected response from LLM evaluator to be JSON with keys {expected}, got {received}."
-                raise ValueError(msg)
+                if self.raise_on_failure:
+                    raise ValueError(msg)
+                warn(msg)
+                return np.nan
 
         except json.JSONDecodeError:
+            msg = "Response from LLM evaluator is not a valid JSON."
             if self.raise_on_failure:
-                raise ValueError("Response from LLM evaluator is not a valid JSON.")
-            # ToDo: issue a warning or/and log the error
-            Warning("Response from LLM evaluator is not a valid JSON.")
-            return "{}"
+                raise ValueError(msg)
+            warn(msg)
+            return np.nan
