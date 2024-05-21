@@ -50,6 +50,7 @@ class LLMEvaluator:
         inputs: List[Tuple[str, Type[List]]],
         outputs: List[str],
         examples: List[Dict[str, Any]],
+        raises_on_failure: bool = True,
         *,
         api: str = "openai",
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
@@ -70,6 +71,8 @@ class LLMEvaluator:
              `outputs` parameters.
             Each example is a dictionary with keys "inputs" and "outputs"
             They contain the input and output as dictionaries respectively.
+        :param raises_on_failure:
+            If True, the component will raise an exception if the evaluation fails.
         :param api:
             The API to use for calling an LLM through a Generator.
             Supported APIs: "openai".
@@ -78,7 +81,7 @@ class LLMEvaluator:
 
         """
         self.validate_init_parameters(inputs, outputs, examples)
-
+        self.raise_on_failure = raises_on_failure
         self.instructions = instructions
         self.inputs = inputs
         self.outputs = outputs
@@ -293,8 +296,7 @@ class LLMEvaluator:
             )
             raise ValueError(msg)
 
-    @staticmethod
-    def validate_outputs(expected: List[str], received: str) -> None:
+    def validate_outputs(self, expected: List[str], received: str) -> None:
         """
         Validate the output.
 
@@ -306,7 +308,14 @@ class LLMEvaluator:
         :raises ValueError:
             If not all expected outputs are present in the received outputs
         """
-        parsed_output = json.loads(received)
-        if not all(output in parsed_output for output in expected):
-            msg = f"Expected response from LLM evaluator to be JSON with keys {expected}, got {received}."
-            raise ValueError(msg)
+        try:
+            parsed_output = json.loads(received)
+
+            if not all(output in parsed_output for output in expected):
+                msg = f"Expected response from LLM evaluator to be JSON with keys {expected}, got {received}."
+                raise ValueError(msg)
+
+        except json.JSONDecodeError:
+            if self.raise_on_failure:
+                raise ValueError("Response from LLM evaluator is not a valid JSON.")
+            # ToDo: issue a warning or/and log the error
