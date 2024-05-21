@@ -88,7 +88,7 @@ class LLMEvaluator:
 
         if api == "openai":
             self.generator = OpenAIGenerator(
-                api_key=api_key, generation_kwargs={"response_format": {"type": "json_object"}}
+                api_key=api_key, generation_kwargs={"response_format": {"type": "json_object"}, "seed": 42}
             )
         else:
             raise ValueError(f"Unsupported API: {api}")
@@ -98,8 +98,9 @@ class LLMEvaluator:
 
         component.set_input_types(self, **dict(inputs))
 
+    @staticmethod
     def validate_init_parameters(
-        self, inputs: List[Tuple[str, Type[List]]], outputs: List[str], examples: List[Dict[str, Any]]
+        inputs: List[Tuple[str, Type[List]]], outputs: List[str], examples: List[Dict[str, Any]]
     ):
         """
         Validate the init parameters.
