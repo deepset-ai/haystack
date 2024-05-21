@@ -3,7 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from typing import Any, Dict, List, Tuple, Type
+from typing import Any, Dict, List, Optional, Tuple, Type
+
+from tqdm import tqdm
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.builders import PromptBuilder
@@ -51,6 +53,7 @@ class LLMEvaluator:
         outputs: List[str],
         examples: List[Dict[str, Any]],
         raises_on_failure: bool = True,
+        progress_bar: bool = True,
         *,
         api: str = "openai",
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
@@ -82,6 +85,7 @@ class LLMEvaluator:
         """
         self.validate_init_parameters(inputs, outputs, examples)
         self.raise_on_failure = raises_on_failure
+        self.progress_bar = progress_bar
         self.instructions = instructions
         self.inputs = inputs
         self.outputs = outputs
@@ -176,9 +180,11 @@ class LLMEvaluator:
         list_of_input_names_to_values = [dict(zip(input_names, v)) for v in values]
 
         results = []
-        for input_names_to_values in list_of_input_names_to_values:
+        for input_names_to_values in tqdm(list_of_input_names_to_values, disable=not self.progress_bar):
             prompt = self.builder.run(**input_names_to_values)
             result = self.generator.run(prompt=prompt["prompt"])
+
+            # ToDo: how to handle too large context
 
             self.validate_outputs(expected=self.outputs, received=result["replies"][0])
             parsed_result = json.loads(result["replies"][0])
@@ -296,7 +302,7 @@ class LLMEvaluator:
             )
             raise ValueError(msg)
 
-    def validate_outputs(self, expected: List[str], received: str) -> None:
+    def validate_outputs(self, expected: List[str], received: str) -> Optional[str]:
         """
         Validate the output.
 
@@ -319,3 +325,5 @@ class LLMEvaluator:
             if self.raise_on_failure:
                 raise ValueError("Response from LLM evaluator is not a valid JSON.")
             # ToDo: issue a warning or/and log the error
+            Warning("Response from LLM evaluator is not a valid JSON.")
+            return "{}"
