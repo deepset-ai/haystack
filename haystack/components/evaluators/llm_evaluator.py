@@ -57,7 +57,7 @@ class LLMEvaluator:
         inputs: List[Tuple[str, Type[List]]],
         outputs: List[str],
         examples: List[Dict[str, Any]],
-        raises_on_failure: bool = True,
+        raise_on_failure: bool = True,
         progress_bar: bool = True,
         *,
         api: str = "openai",
@@ -89,7 +89,7 @@ class LLMEvaluator:
 
         """
         self.validate_init_parameters(inputs, outputs, examples)
-        self.raise_on_failure = raises_on_failure
+        self.raise_on_failure = raise_on_failure
         self.progress_bar = progress_bar
         self.instructions = instructions
         self.inputs = inputs

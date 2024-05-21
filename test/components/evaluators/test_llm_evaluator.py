@@ -392,7 +392,7 @@ class TestLLMEvaluator:
             examples=[
                 {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
             ],
-            raises_on_failure=False,
+            raise_on_failure=False,
         )
         result = component.validate_outputs(expected=["score"], received="some_invalid_json_output")
         assert np.isnan(result)
