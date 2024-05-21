@@ -234,13 +234,13 @@ class TestChatPromptBuilder:
         prompt_builder = ChatPromptBuilder(variables=["documents"], required_variables=["city"])
 
         # both variables are provided
-        prompt_builder._validate_template("Hello, I'm {{ name }}, and I live in {{ city }}.", {"name", "city"})
+        prompt_builder._validate_variables({"name", "city"})
 
         # provided variables are a superset of the required variables
-        prompt_builder._validate_template("Hello, I'm {{ name }}, and I live in {{ city }}.", {"name", "city", "age"})
+        prompt_builder._validate_variables({"name", "city", "age"})
 
         with pytest.raises(ValueError):
-            prompt_builder._validate_template("Hello, I'm {{ name }}, and I live in {{ city }}.", {"name"})
+            prompt_builder._validate_variables({"name"})
 
     def test_example_in_pipeline(self):
         default_template = [

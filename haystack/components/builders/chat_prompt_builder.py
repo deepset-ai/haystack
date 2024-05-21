@@ -168,11 +168,10 @@ class ChatPromptBuilder:
         template_variables = template_variables or {}
         template_variables_combined = {**kwargs, **template_variables}
 
-        if template:
-            pass
-        elif self.template:
+        if template is None:
             template = self.template
-        else:
+
+        if not template:
             raise ValueError(
                 f"The {self.__class__.__name__} requires a non-empty list of ChatMessage instances. "
                 f"Please provide a valid list of ChatMessage instances to render the prompt."
@@ -188,7 +187,8 @@ class ChatPromptBuilder:
         processed_messages = []
         for message in template:
             if message.is_from(ChatRole.USER) or message.is_from(ChatRole.SYSTEM):
-                compiled_template = self._validate_template(message.content, set(template_variables_combined.keys()))
+                self._validate_variables(set(template_variables_combined.keys()))
+                compiled_template = Template(message.content)
                 rendered_content = compiled_template.render(template_variables_combined)
                 rendered_message = (
                     ChatMessage.from_user(rendered_content)
@@ -201,19 +201,12 @@ class ChatPromptBuilder:
 
         return {"prompt": processed_messages}
 
-    def _validate_template(self, template_text: str, provided_variables: Set[str]):
+    def _validate_variables(self, provided_variables: Set[str]):
         """
-        Checks if the template is valid and all the required template variables are provided.
+        Checks if all the required template variables are provided.
 
-        If all the required template variables are provided, returns a Jinja2 template object.
-        Otherwise, raises a ValueError.
-
-        :param template_text:
-            A Jinja2 template as a string.
         :param provided_variables:
             A set of provided template variables.
-        :returns:
-            A Jinja2 template object if all the required template variables are provided.
         :raises ValueError:
             If no template is provided or if all the required template variables are not provided.
         """
@@ -224,5 +217,3 @@ class ChatPromptBuilder:
                 f"Missing required input variables in ChatPromptBuilder: {missing_vars_str}. "
                 f"Required variables: {self.required_variables}. Provided variables: {provided_variables}."
             )
-
-        return Template(template_text)
