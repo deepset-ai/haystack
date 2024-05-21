@@ -4,6 +4,7 @@
 
 import copy
 import json
+import os
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from openai import OpenAI, Stream
@@ -75,12 +76,16 @@ class OpenAIChatGenerator:
         api_base_url: Optional[str] = None,
         organization: Optional[str] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
+        timeout: Optional[float] = None,
+        max_retries: Optional[int] = None,
     ):
         """
         Initializes the OpenAIChatGenerator component.
 
         Creates an instance of OpenAIChatGenerator. Unless specified otherwise in the `model`, this is for OpenAI's
         GPT-3.5 model.
+
+        By setting the 'OPENAI_TIMEOUT' and 'OPENAI_MAX_RETRIES' you can change the timeout and max_retries parameters in the OpenAI client.
 
         :param api_key: The OpenAI API key.
         :param model: The name of the model to use.
@@ -108,6 +113,10 @@ class OpenAIChatGenerator:
                 Bigger values mean the model will be less likely to repeat the same token in the text.
             - `logit_bias`: Add a logit bias to specific tokens. The keys of the dictionary are tokens, and the
                 values are the bias to add to that token.
+        :param timeout:
+            Timeout for OpenAI Client calls, if not set it is inferred from the `OPENAI_TIMEOUT` environment variable or set to 30.
+        :param max_retries:
+            Maximum retries to stablish contact with OpenAI if it returns an internal error, if not set it is inferred from the `OPENAI_MAX_RETRIES` environment variable or set to 5.
         """
         self.api_key = api_key
         self.model = model
@@ -115,7 +124,19 @@ class OpenAIChatGenerator:
         self.streaming_callback = streaming_callback
         self.api_base_url = api_base_url
         self.organization = organization
-        self.client = OpenAI(api_key=api_key.resolve_value(), organization=organization, base_url=api_base_url)
+
+        if timeout is None:
+            timeout = float(os.environ.get("OPENAI_TIMEOUT", 30.0))
+        if max_retries is None:
+            max_retries = int(os.environ.get("OPENAI_MAX_RETRIES", 5))
+
+        self.client = OpenAI(
+            api_key=api_key.resolve_value(),
+            organization=organization,
+            base_url=api_base_url,
+            timeout=timeout,
+            max_retries=max_retries,
+        )
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """

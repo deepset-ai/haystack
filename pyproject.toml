@@ -57,7 +57,7 @@ dependencies = [
   "more-itertools",  # TextDocumentSplitter
   "networkx", # Pipeline graphs
   "typing_extensions>=4.7", # typing support for Python 3.8
-  "boilerpy3", # Fulltext extraction from HTML pages
+  "trafilatura", # Fulltext extraction from HTML pages
   "requests",
   "numpy",
   "python-dateutil",

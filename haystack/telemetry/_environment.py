@@ -12,7 +12,6 @@ from haystack.version import __version__
 
 logger = logging.getLogger(__name__)
 
-
 # This value cannot change during the lifetime of the process
 _IS_DOCKER_CACHE = None
 
