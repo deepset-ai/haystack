@@ -1,4 +1,7 @@
-# pylint: disable=global-statement
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import os
 import platform
 import sys
@@ -8,7 +11,6 @@ from haystack import logging
 from haystack.version import __version__
 
 logger = logging.getLogger(__name__)
-
 
 # This value cannot change during the lifetime of the process
 _IS_DOCKER_CACHE = None
@@ -56,7 +58,7 @@ def _is_containerized() -> Optional[bool]:
     """
     This code is based on the popular 'is-docker' package for node.js
     """
-    global _IS_DOCKER_CACHE
+    global _IS_DOCKER_CACHE  # pylint: disable=global-statement
 
     if _IS_DOCKER_CACHE is None:
         _IS_DOCKER_CACHE = _in_podman() or _has_dockerenv() or _has_docker_cgroup_v1() or _has_docker_cgroup_v2()

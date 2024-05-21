@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 from .auth import Secret, deserialize_secrets_inplace
 from .callable_serialization import deserialize_callable, serialize_callable
 from .device import ComponentDevice, Device, DeviceMap, DeviceType

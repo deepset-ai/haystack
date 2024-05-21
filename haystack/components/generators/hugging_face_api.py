@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 from dataclasses import asdict
 from typing import Any, Callable, Dict, Iterable, List, Optional, Union
 
@@ -142,7 +146,7 @@ class HuggingFaceAPIGenerator:
         callback_name = serialize_callable(self.streaming_callback) if self.streaming_callback else None
         return default_to_dict(
             self,
-            api_type=self.api_type,
+            api_type=str(self.api_type),
             api_params=self.api_params,
             token=self.token.to_dict() if self.token else None,
             generation_kwargs=self.generation_kwargs,

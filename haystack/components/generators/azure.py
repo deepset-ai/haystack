@@ -1,10 +1,14 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import os
 from typing import Any, Callable, Dict, Optional
 
 # pylint: disable=import-error
 from openai.lib.azure import AzureOpenAI
 
-from haystack import default_from_dict, default_to_dict, logging
+from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.generators import OpenAIGenerator
 from haystack.dataclasses import StreamingChunk
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
@@ -12,6 +16,7 @@ from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inp
 logger = logging.getLogger(__name__)
 
 
+@component
 class AzureOpenAIGenerator(OpenAIGenerator):
     """
     A Generator component that uses OpenAI's large language models (LLMs) on Azure to generate text.

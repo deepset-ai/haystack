@@ -1,12 +1,16 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import json
 
-from haystack import Pipeline, Document
-from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
-from haystack.components.rankers import TransformersSimilarityRanker
+from haystack import Document, Pipeline
+from haystack.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
 from haystack.components.joiners.document_joiner import DocumentJoiner
+from haystack.components.rankers import TransformersSimilarityRanker
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
-from haystack.components.retrievers.in_memory import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
 
 
 def test_hybrid_doc_search_pipeline(tmp_path):

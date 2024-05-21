@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import json
 from typing import Any, Dict, List, Tuple, Type
 
@@ -83,7 +87,9 @@ class LLMEvaluator:
         self.api_key = api_key
 
         if api == "openai":
-            self.generator = OpenAIGenerator(api_key=api_key)
+            self.generator = OpenAIGenerator(
+                api_key=api_key, generation_kwargs={"response_format": {"type": "json_object"}}
+            )
         else:
             raise ValueError(f"Unsupported API: {api}")
 

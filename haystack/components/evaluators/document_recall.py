@@ -1,7 +1,11 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 from enum import Enum
 from typing import Any, Dict, List, Union
 
-from haystack.core.component import component
+from haystack import component, default_to_dict
 from haystack.dataclasses import Document
 
 
@@ -74,6 +78,7 @@ class DocumentRecallEvaluator:
 
         mode_functions = {RecallMode.SINGLE_HIT: self._recall_single_hit, RecallMode.MULTI_HIT: self._recall_multi_hit}
         self.mode_function = mode_functions[mode]
+        self.mode = mode
 
     def _recall_single_hit(self, ground_truth_documents: List[Document], retrieved_documents: List[Document]) -> float:
         unique_truths = {g.content for g in ground_truth_documents}
@@ -117,3 +122,12 @@ class DocumentRecallEvaluator:
             scores.append(score)
 
         return {"score": sum(scores) / len(retrieved_documents), "individual_scores": scores}
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serializes the component to a dictionary.
+
+        :returns:
+            Dictionary with serialized data.
+        """
+        return default_to_dict(self, mode=str(self.mode))

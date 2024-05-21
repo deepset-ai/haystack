@@ -6,6 +6,7 @@ loaders:
         "azure",
         "html",
         "markdown",
+        "pdfminer",
         "pypdf",
         "tika",
         "txt",

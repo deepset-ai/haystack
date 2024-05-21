@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Improves/fixes type serialization of PEP 585 types (e.g. list[Document], and their nested version). This improvement enables better serialization of generics and nested types and improves/fixes matching of list[X] and List[X] types in component connections after serialization.

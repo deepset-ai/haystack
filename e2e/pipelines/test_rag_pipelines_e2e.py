@@ -1,15 +1,20 @@
-import os
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import json
+import os
+
 import pytest
 
-from haystack import Pipeline, Document
-from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.components.writers import DocumentWriter
-from haystack.components.retrievers.in_memory import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
-from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
-from haystack.components.generators import OpenAIGenerator
+from haystack import Document, Pipeline
 from haystack.components.builders.answer_builder import AnswerBuilder
 from haystack.components.builders.prompt_builder import PromptBuilder
+from haystack.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
+from haystack.components.generators import OpenAIGenerator
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
+from haystack.components.writers import DocumentWriter
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 
 @pytest.mark.skipif(
