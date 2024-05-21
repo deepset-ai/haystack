@@ -2,12 +2,16 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import os
 from typing import Any, Dict, List, Optional
 
 from openai import OpenAI
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.utils import Secret, deserialize_secrets_inplace
+
+OPENAI_TIMEOUT = float(os.environ.get("OPENAI_TIMEOUT", 30))
+OPENAI_MAX_RETRIES = int(os.environ.get("OPENAI_MAX_RETRIES", 5))
 
 
 @component
@@ -40,9 +44,13 @@ class OpenAITextEmbedder:
         organization: Optional[str] = None,
         prefix: str = "",
         suffix: str = "",
+        timeout: Optional[float] = None,
+        max_retries: Optional[int] = None,
     ):
         """
         Create an OpenAITextEmbedder component.
+
+        By setting the 'OPENAI_TIMEOUT' and 'OPENAI_MAX_RETRIES' you can change the timeout and max_retries parameters in the OpenAI client.
 
         :param api_key:
             The OpenAI API key.
@@ -60,6 +68,10 @@ class OpenAITextEmbedder:
             A string to add at the beginning of each text.
         :param suffix:
             A string to add at the end of each text.
+        :param timeout:
+            Timeout for OpenAI Client calls, if not set it is inferred from the `OPENAI_TIMEOUT` environment variable or set to 30.
+        :param max_retries:
+            Maximum retries to stablish contact with OpenAI if it returns an internal error, if not set it is inferred from the `OPENAI_MAX_RETRIES` environment variable or set to 5.
         """
         self.model = model
         self.dimensions = dimensions
@@ -69,7 +81,18 @@ class OpenAITextEmbedder:
         self.suffix = suffix
         self.api_key = api_key
 
-        self.client = OpenAI(api_key=api_key.resolve_value(), organization=organization, base_url=api_base_url)
+        if timeout is None:
+            timeout = float(os.environ.get("OPENAI_TIMEOUT", 30.0))
+        if max_retries is None:
+            max_retries = int(os.environ.get("OPENAI_MAX_RETRIES", 5))
+
+        self.client = OpenAI(
+            api_key=api_key.resolve_value(),
+            organization=organization,
+            base_url=api_base_url,
+            timeout=timeout,
+            max_retries=max_retries,
+        )
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """

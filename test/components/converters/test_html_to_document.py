@@ -23,20 +23,6 @@ class TestHTMLToDocument:
         assert "Haystack" in docs[0].content
         assert docs[0].meta["test"] == "TEST"
 
-    def test_run_different_extractors(self, test_files_path):
-        """
-        Test if the component runs correctly with different boilrepy3 extractors.
-        """
-        sources = [test_files_path / "html" / "what_is_haystack.html"]
-
-        converter_article = HTMLToDocument(extractor_type="ArticleExtractor")
-        converter_keep_everything = HTMLToDocument(extractor_type="KeepEverythingExtractor")
-
-        doc_article = converter_article.run(sources=sources)["documents"][0]
-        doc_keep_everything = converter_keep_everything.run(sources=sources)["documents"][0]
-
-        assert len(doc_keep_everything.content) > len(doc_article.content)
-
     def test_run_doc_metadata(self, test_files_path):
         """
         Test if the component runs correctly when metadata is supplied by the user.
@@ -169,26 +155,27 @@ class TestHTMLToDocument:
         """
         Test if the component runs correctly gets serialized and deserialized.
         """
-        converter = HTMLToDocument("ArticleExtractor")
+        converter = HTMLToDocument()
         serde_data = converter.to_dict()
         new_converter = HTMLToDocument.from_dict(serde_data)
-        assert new_converter.extractor_type == converter.extractor_type
-        assert new_converter.try_others == converter.try_others
+        assert new_converter.extraction_kwargs == converter.extraction_kwargs
 
-    def test_run_try_others_false(self, test_files_path, caplog):
-        converter = HTMLToDocument(try_others=False)
-        result = converter.run(sources=[Path(test_files_path / "html" / "paul_graham_superlinear.html")])
+    def test_run_difficult_html(self, test_files_path):
+        # boilerpy3's DefaultExtractor fails to extract text from this HTML file
 
-        # paul_graham_superlinear.html is a page that the DefaultExtractor cannot extract text from
-        assert len(result["documents"]) == 0
-        assert "Failed to extract text from" in caplog.text
-        assert "Skipping it" in caplog.text
-
-    def test_run_try_others_true(self, test_files_path, caplog):
-        # try_others=True is the default value
         converter = HTMLToDocument()
         result = converter.run(sources=[Path(test_files_path / "html" / "paul_graham_superlinear.html")])
 
-        # paul_graham_superlinear.html is a page that the DefaultExtractor cannot extract text from
         assert len(result["documents"]) == 1
         assert "Superlinear" in result["documents"][0].content
+
+    def test_run_with_extraction_kwargs(self, test_files_path):
+        sources = [test_files_path / "html" / "what_is_haystack.html"]
+
+        converter = HTMLToDocument()
+        precise_converter = HTMLToDocument(extraction_kwargs={"favor_precision": True})
+
+        doc = converter.run(sources=sources)["documents"][0]
+        precise_doc = precise_converter.run(sources=sources)["documents"][0]
+
+        assert len(doc.content) > len(precise_doc.content)

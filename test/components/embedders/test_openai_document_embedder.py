@@ -29,6 +29,7 @@ class TestOpenAIDocumentEmbedder:
     def test_init_default(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         embedder = OpenAIDocumentEmbedder()
+        assert embedder.api_key.resolve_value() == "fake-api-key"
         assert embedder.model == "text-embedding-ada-002"
         assert embedder.organization is None
         assert embedder.prefix == ""
@@ -37,10 +38,42 @@ class TestOpenAIDocumentEmbedder:
         assert embedder.progress_bar is True
         assert embedder.meta_fields_to_embed == []
         assert embedder.embedding_separator == "\n"
+        assert embedder.client.max_retries == 5
+        assert embedder.client.timeout == 30.0
 
-    def test_init_with_parameters(self):
+    def test_init_with_parameters(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_TIMEOUT", "100")
+        monkeypatch.setenv("OPENAI_MAX_RETRIES", "10")
         embedder = OpenAIDocumentEmbedder(
-            api_key=Secret.from_token("fake-api-key"),
+            api_key=Secret.from_token("fake-api-key-2"),
+            model="model",
+            organization="my-org",
+            prefix="prefix",
+            suffix="suffix",
+            batch_size=64,
+            progress_bar=False,
+            meta_fields_to_embed=["test_field"],
+            embedding_separator=" | ",
+            timeout=40.0,
+            max_retries=1,
+        )
+        assert embedder.api_key.resolve_value() == "fake-api-key-2"
+        assert embedder.organization == "my-org"
+        assert embedder.model == "model"
+        assert embedder.prefix == "prefix"
+        assert embedder.suffix == "suffix"
+        assert embedder.batch_size == 64
+        assert embedder.progress_bar is False
+        assert embedder.meta_fields_to_embed == ["test_field"]
+        assert embedder.embedding_separator == " | "
+        assert embedder.client.max_retries == 1
+        assert embedder.client.timeout == 40.0
+
+    def test_init_with_parameters_and_env_vars(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_TIMEOUT", "100")
+        monkeypatch.setenv("OPENAI_MAX_RETRIES", "10")
+        embedder = OpenAIDocumentEmbedder(
+            api_key=Secret.from_token("fake-api-key-2"),
             model="model",
             organization="my-org",
             prefix="prefix",
@@ -50,6 +83,7 @@ class TestOpenAIDocumentEmbedder:
             meta_fields_to_embed=["test_field"],
             embedding_separator=" | ",
         )
+        assert embedder.api_key.resolve_value() == "fake-api-key-2"
         assert embedder.organization == "my-org"
         assert embedder.model == "model"
         assert embedder.prefix == "prefix"
@@ -58,6 +92,8 @@ class TestOpenAIDocumentEmbedder:
         assert embedder.progress_bar is False
         assert embedder.meta_fields_to_embed == ["test_field"]
         assert embedder.embedding_separator == " | "
+        assert embedder.client.max_retries == 10
+        assert embedder.client.timeout == 100.0
 
     def test_init_fail_wo_api_key(self, monkeypatch):
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)

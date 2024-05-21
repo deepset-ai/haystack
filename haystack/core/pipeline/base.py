@@ -5,6 +5,7 @@
 import importlib
 import itertools
 from collections import defaultdict
+from copy import copy, deepcopy
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional, TextIO, Tuple, Type, TypeVar, Union
@@ -640,45 +641,101 @@ class PipelineBase:
                         f"Input {socket_name} for component {component_name} is already sent by {socket.senders}."
                     )
 
-    def _prepare_component_input_data(self, data: Dict[str, Any]) -> Tuple[Dict[str, Dict[str, Any]], Dict[str, Any]]:
+    def _prepare_component_input_data(self, data: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
         """
         Prepares input data for pipeline components.
 
         Organizes input data for pipeline components and identifies any inputs that are not matched to any
-        component's input slots.
+        component's input slots. Deep-copies data items to avoid sharing mutables across multiple components.
 
         This method processes a flat dictionary of input data, where each key-value pair represents an input name
         and its corresponding value. It distributes these inputs to the appropriate pipeline components based on
         their input requirements. Inputs that don't match any component's input slots are classified as unresolved.
 
         :param data:
-            A dictionary with input names as keys and input values as values.
+            A dictionary potentially having input names as keys and input values as values.
+
         :returns:
-            A tuple containing two elements:
-             1. A dictionary mapping component names to their respective matched inputs.
-             2. A dictionary of inputs that were not matched to any component, termed as unresolved keyword arguments.
+            A dictionary mapping component names to their respective matched inputs.
         """
-        pipeline_input_data: Dict[str, Dict[str, Any]] = defaultdict(dict)
-        unresolved_kwargs = {}
+        # check whether the data is a nested dictionary of component inputs where each key is a component name
+        # and each value is a dictionary of input parameters for that component
+        is_nested_component_input = all(isinstance(value, dict) for value in data.values())
+        if not is_nested_component_input:
+            # flat input, a dict where keys are input names and values are the corresponding values
+            # we need to convert it to a nested dictionary of component inputs and then run the pipeline
+            # just like in the previous case
+            pipeline_input_data: Dict[str, Dict[str, Any]] = defaultdict(dict)
+            unresolved_kwargs = {}
 
-        # Retrieve the input slots for each component in the pipeline
-        available_inputs: Dict[str, Dict[str, Any]] = self.inputs()
+            # Retrieve the input slots for each component in the pipeline
+            available_inputs: Dict[str, Dict[str, Any]] = self.inputs()
 
-        # Go through all provided to distribute them to the appropriate component inputs
-        for input_name, input_value in data.items():
-            resolved_at_least_once = False
+            # Go through all provided to distribute them to the appropriate component inputs
+            for input_name, input_value in data.items():
+                resolved_at_least_once = False
 
-            # Check each component to see if it has a slot for the current kwarg
-            for component_name, component_inputs in available_inputs.items():
-                if input_name in component_inputs:
-                    # If a match is found, add the kwarg to the component's input data
-                    pipeline_input_data[component_name][input_name] = input_value
-                    resolved_at_least_once = True
+                # Check each component to see if it has a slot for the current kwarg
+                for component_name, component_inputs in available_inputs.items():
+                    if input_name in component_inputs:
+                        # If a match is found, add the kwarg to the component's input data
+                        pipeline_input_data[component_name][input_name] = input_value
+                        resolved_at_least_once = True
 
-            if not resolved_at_least_once:
-                unresolved_kwargs[input_name] = input_value
+                if not resolved_at_least_once:
+                    unresolved_kwargs[input_name] = input_value
 
-        return pipeline_input_data, unresolved_kwargs
+            if unresolved_kwargs:
+                logger.warning(
+                    "Inputs {input_keys} were not matched to any component inputs, please check your run parameters.",
+                    input_keys=list(unresolved_kwargs.keys()),
+                )
+
+            data = dict(pipeline_input_data)
+
+        # deepcopying the inputs prevents the Pipeline run logic from being altered unexpectedly
+        # when the same input reference is passed to multiple components.
+        for component_name, component_inputs in data.items():
+            data[component_name] = {k: deepcopy(v) for k, v in component_inputs.items()}
+
+        return data
+
+    def _init_inputs_state(self, data: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+        for component_name, component_inputs in data.items():
+            if component_name not in self.graph.nodes:
+                # This is not a component name, it must be the name of one or more input sockets.
+                # Those are handled in a different way, so we skip them here.
+                continue
+            instance = self.graph.nodes[component_name]["instance"]
+            for component_input, input_value in component_inputs.items():
+                # Handle mutable input data
+                data[component_name][component_input] = copy(input_value)
+                if instance.__haystack_input__._sockets_dict[component_input].is_variadic:
+                    # Components that have variadic inputs need to receive lists as input.
+                    # We don't want to force the user to always pass lists, so we convert single values to lists here.
+                    # If it's already a list we assume the component takes a variadic input of lists, so we
+                    # convert it in any case.
+                    data[component_name][component_input] = [input_value]
+
+        return {**data}
+
+    def _init_to_run(self) -> List[Tuple[str, Component]]:
+        to_run: List[Tuple[str, Component]] = []
+        for node_name in self.graph.nodes:
+            component = self.graph.nodes[node_name]["instance"]
+
+            if len(component.__haystack_input__._sockets_dict) == 0:
+                # Component has no input, can run right away
+                to_run.append((node_name, component))
+                continue
+
+            for socket in component.__haystack_input__._sockets_dict.values():
+                if not socket.senders or socket.is_variadic:
+                    # Component has at least one input not connected or is variadic, can run right away.
+                    to_run.append((node_name, component))
+                    break
+
+        return to_run
 
     @classmethod
     def from_template(
@@ -706,6 +763,11 @@ class PipelineBase:
             msg = f"Error unmarshalling pipeline: {e}\n"
             msg += f"Source:\n{rendered}"
             raise PipelineUnmarshalError(msg)
+
+    def _init_graph(self):
+        """Resets the visits count for each component"""
+        for node in self.graph.nodes:
+            self.graph.nodes[node]["visits"] = 0
 
 
 def _connections_status(

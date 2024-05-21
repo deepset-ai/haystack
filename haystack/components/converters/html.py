@@ -2,10 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import warnings
 from pathlib import Path
-from typing import Any, ClassVar, Dict, List, Literal, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
-from boilerpy3 import extractors
+from trafilatura import extract
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
@@ -31,40 +32,35 @@ class HTMLToDocument:
     ```
     """
 
-    known_extractors: ClassVar[List[str]] = [
-        "DefaultExtractor",
-        "ArticleExtractor",
-        "ArticleSentencesExtractor",
-        "LargestContentExtractor",
-        "CanolaExtractor",
-        "KeepEverythingExtractor",
-        "NumWordsRulesExtractor",
-    ]
-
     def __init__(
         self,
-        extractor_type: Literal[
-            "DefaultExtractor",
-            "ArticleExtractor",
-            "ArticleSentencesExtractor",
-            "LargestContentExtractor",
-            "CanolaExtractor",
-            "KeepEverythingExtractor",
-            "NumWordsRulesExtractor",
-        ] = "DefaultExtractor",
-        try_others: bool = True,
+        extractor_type: Optional[str] = None,
+        try_others: Optional[bool] = None,
+        extraction_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
         Create an HTMLToDocument component.
 
-        :param
-            extractor_type: Name of the extractor class to use. Defaults to `DefaultExtractor`.
-            For more information on the different types of extractors,
-            see [boilerpy3 documentation](https://github.com/jmriebold/BoilerPy3?tab=readme-ov-file#extractors).
-        :param try_others: If `True`, the component will try other extractors if the user chosen extractor fails.
+        :param extractor_type: Ignored. This parameter is kept for compatibility with previous versions. It will be
+            removed in Haystack 2.4.0. To customize the extraction, use the `extraction_kwargs` parameter.
+        :param try_others: Ignored. This parameter is kept for compatibility with previous versions. It will be
+            removed in Haystack 2.4.0.
+        :param extraction_kwargs: A dictionary containing keyword arguments to customize the extraction process. These
+            are passed to the underlying Trafilatura `extract` function. For the full list of available arguments, see
+            the [Trafilatura documentation](https://trafilatura.readthedocs.io/en/latest/corefunctions.html#extract).
         """
-        self.extractor_type = extractor_type
-        self.try_others = try_others
+        if extractor_type is not None:
+            warnings.warn(
+                "The `extractor_type` parameter is ignored and will be removed in Haystack 2.4.0. "
+                "To customize the extraction, use the `extraction_kwargs` parameter.",
+                DeprecationWarning,
+            )
+        if try_others is not None:
+            warnings.warn(
+                "The `try_others` parameter is ignored and will be removed in Haystack 2.4.0. ", DeprecationWarning
+            )
+
+        self.extraction_kwargs = extraction_kwargs or {}
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -73,7 +69,7 @@ class HTMLToDocument:
         :returns:
             Dictionary with serialized data.
         """
-        return default_to_dict(self, extractor_type=self.extractor_type, try_others=self.try_others)
+        return default_to_dict(self, extraction_kwargs=self.extraction_kwargs)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "HTMLToDocument":
@@ -92,6 +88,7 @@ class HTMLToDocument:
         self,
         sources: List[Union[str, Path, ByteStream]],
         meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+        extraction_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
         Converts a list of HTML files to Documents.
@@ -104,25 +101,18 @@ class HTMLToDocument:
             If it's a single dictionary, its content is added to the metadata of all produced Documents.
             If it's a list, the length of the list must match the number of sources, because the two lists will be zipped.
             If `sources` contains ByteStream objects, their `meta` will be added to the output Documents.
+        :param extraction_kwargs:
+            Additional keyword arguments to customize the extraction process.
 
         :returns:
             A dictionary with the following keys:
             - `documents`: Created Documents
         """
 
+        merged_extraction_kwargs = {**self.extraction_kwargs, **(extraction_kwargs or {})}
+
         documents = []
         meta_list = normalize_metadata(meta=meta, sources_count=len(sources))
-
-        # Use all extractor types, ensuring user chosen extractor is first, preserve order, avoid duplicates
-        extractors_list = (
-            list(
-                dict.fromkeys(
-                    [self.extractor_type, *self.known_extractors]  # User chosen extractor is always tried first
-                )
-            )
-            if self.try_others
-            else [self.extractor_type]
-        )
 
         for source, metadata in zip(sources, meta_list):
             try:
@@ -131,27 +121,13 @@ class HTMLToDocument:
                 logger.warning("Could not read {source}. Skipping it. Error: {error}", source=source, error=e)
                 continue
 
-            text = None
-            for extractor_name in extractors_list:
-                extractor_class = getattr(extractors, extractor_name)
-                extractor = extractor_class(raise_on_failure=False)
-                try:
-                    text = extractor.get_content(bytestream.data.decode("utf-8"))
-                    if text:
-                        break
-                except Exception as conversion_e:
-                    if self.try_others:
-                        logger.warning(
-                            "Failed to extract text using {extractor} from {source}. Trying next extractor. Error: {error}",
-                            extractor=extractor_name,
-                            source=source,
-                            error=conversion_e,
-                        )
-            if not text:
+            try:
+                text = extract(bytestream.data.decode("utf-8"), **merged_extraction_kwargs)
+            except Exception as conversion_e:
                 logger.warning(
-                    f"Failed to extract text from {source} using extractors: {extractors_list}. Skipping it.",
+                    "Failed to extract text from {source}. Skipping it. Error: {error}",
                     source=source,
-                    extractors_list=extractors_list,
+                    error=conversion_e,
                 )
                 continue
 

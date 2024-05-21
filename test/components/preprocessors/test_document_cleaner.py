@@ -17,6 +17,7 @@ class TestDocumentCleaner:
         assert cleaner.remove_repeated_substrings is False
         assert cleaner.remove_substrings is None
         assert cleaner.remove_regex is None
+        assert cleaner.keep_id is False
 
     def test_non_text_document(self, caplog):
         with caplog.at_level(logging.WARNING):
@@ -130,3 +131,11 @@ class TestDocumentCleaner:
         for doc, cleaned_doc in zip(documents, result["documents"]):
             assert doc.meta == cleaned_doc.meta
             assert cleaned_doc.content == "Text."
+
+    def test_keep_id_does_not_alter_document_ids(self):
+        cleaner = DocumentCleaner(keep_id=True)
+        documents = [Document(content="Text. ", id="1"), Document(content="Text. ", id="2")]
+        result = cleaner.run(documents=documents)
+        assert len(result["documents"]) == 2
+        assert result["documents"][0].id == "1"
+        assert result["documents"][1].id == "2"
