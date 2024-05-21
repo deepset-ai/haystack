@@ -79,7 +79,7 @@ class LLMEvaluator:
              `outputs` parameters.
             Each example is a dictionary with keys "inputs" and "outputs"
             They contain the input and output as dictionaries respectively.
-        :param raises_on_failure:
+        :param raise_on_failure:
             If True, the component will raise an exception if the evaluation fails.
         :param api:
             The API to use for calling an LLM through a Generator.
@@ -170,6 +170,8 @@ class LLMEvaluator:
         """
         Run the LLM evaluator.
 
+        # ToDo: add more details about the behavior of this method and it's exceptions
+
         :param inputs:
             The input values to evaluate. The keys are the input names and the values are lists of input values.
         :returns:
@@ -187,13 +189,21 @@ class LLMEvaluator:
         results = []
         for input_names_to_values in tqdm(list_of_input_names_to_values, disable=not self.progress_bar):
             prompt = self.builder.run(**input_names_to_values)
-            result = self.generator.run(prompt=prompt["prompt"])
+            try:
+                result = self.generator.run(prompt=prompt["prompt"])
+            except Exception as e:
+                msg = f"Error while generating response for prompt: {prompt}. Error: {e}"
+                if self.raise_on_failure:
+                    raise ValueError(msg)
+                warn(msg)
+                results.append(np.nan)
+                continue
 
-            # ToDo: how to handle too large context
-
-            self.validate_outputs(expected=self.outputs, received=result["replies"][0])
-            parsed_result = json.loads(result["replies"][0])
-            results.append(parsed_result)
+            if self.is_valid_json(expected=self.outputs, received=result["replies"][0]):
+                parsed_result = json.loads(result["replies"][0])
+                results.append(parsed_result)
+            else:
+                results.append(np.nan)
 
         return {"results": results}
 
@@ -307,14 +317,14 @@ class LLMEvaluator:
             )
             raise ValueError(msg)
 
-    def validate_outputs(self, expected: List[str], received: str) -> Optional[float]:
+    def is_valid_json(self, expected: List[str], received: str) -> bool:
         """
-        Validate the output.
+        Output must be a valid JSON with the expected keys.
 
-        If `raise_on_failure` is True, raise a ValueError if not all expected outputs are present in the received
-        outputs or if the received outputs are not a valid JSON.
-
-        If `raise_on_failure` is False, print a warning if the received outputs are not a valid JSON and return a `nan`.
+        If the output is not a valid JSON with the expected keys:
+            - with `raise_on_failure` set to True a ValueError is raised.
+            - with `raise_on_failure` set to False a warning is issued and False is returned.
+        If the output is a valid JSON with the expected keys, True is returned.
 
         :param expected:
             Names of expected outputs
@@ -323,6 +333,9 @@ class LLMEvaluator:
 
         :raises ValueError:
             If not all expected outputs are present in the received outputs
+
+        :returns:
+            True if the received output is a valid JSON with the expected keys, False otherwise.
         """
         try:
             parsed_output = json.loads(received)
@@ -332,11 +345,13 @@ class LLMEvaluator:
                 if self.raise_on_failure:
                     raise ValueError(msg)
                 warn(msg)
-                return np.nan
+                return False
 
         except json.JSONDecodeError:
             msg = "Response from LLM evaluator is not a valid JSON."
             if self.raise_on_failure:
                 raise ValueError(msg)
             warn(msg)
-            return np.nan
+            return False
+
+        return True

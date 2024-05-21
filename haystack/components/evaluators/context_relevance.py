@@ -4,6 +4,7 @@
 
 from typing import Any, Dict, List, Optional
 
+from numpy import isnan
 from numpy import mean as np_mean
 
 from haystack import default_from_dict
@@ -141,7 +142,10 @@ class ContextRelevanceEvaluator(LLMEvaluator):
         result = super().run(questions=questions, contexts=contexts)
 
         # calculate average statement relevance score per query
-        for res in result["results"]:
+        for idx, res in enumerate(result["results"]):
+            if isinstance(res, float) and isnan(res):
+                result["results"][idx] = {"statements": [], "statement_scores": [], "score": 0}
+                continue
             if not res["statements"]:
                 res["score"] = 0
             else:
