@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    DocumentSplitter now accepts split_threshold, if when chunking one of the chunk is smaller than threshold, it will be concatenated with the previous one.
+    This avoids having too small chunks that are not meaningful.
