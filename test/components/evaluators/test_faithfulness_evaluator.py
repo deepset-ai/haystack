@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import os
+import math
 from typing import List
 
 import numpy as np
@@ -224,14 +225,16 @@ class TestFaithfulnessEvaluator:
         ]
         results = component.run(questions=questions, contexts=contexts, predicted_answers=predicted_answers)
 
-        assert results == {
-            "individual_scores": [1.0, float(nan)],
-            "results": [
-                {"statements": ["c", "d"], "statement_scores": [1, 1], "score": 1.0},
-                {"statements": [], "statement_scores": [], "score": float(nan)},
-            ],
-            "score": float(nan),
-        }
+        assert math.isnan(results["score"])
+
+        assert results["individual_scores"][0] == 1.0
+        assert math.isnan(results["individual_scores"][1])
+
+        assert results["results"][0] == {"statements": ["c", "d"], "statement_scores": [1, 1], "score": 1.0}
+
+        assert results["results"][1]["statements"] == []
+        assert results["results"][1]["statement_scores"] == []
+        assert math.isnan(results["results"][1]["score"])
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),

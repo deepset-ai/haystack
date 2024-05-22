@@ -6,8 +6,6 @@ import json
 from typing import Any, Dict, List, Tuple, Type
 from warnings import warn
 
-import numpy as np
-
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.builders import PromptBuilder
 from haystack.components.generators import OpenAIGenerator

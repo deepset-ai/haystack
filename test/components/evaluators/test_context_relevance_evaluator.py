@@ -4,6 +4,8 @@
 import os
 from typing import List
 
+import math
+
 import pytest
 
 from haystack.components.evaluators import ContextRelevanceEvaluator
@@ -186,14 +188,17 @@ class TestContextRelevanceEvaluator:
             ],
         ]
         results = component.run(questions=questions, contexts=contexts)
-        assert results == {
-            "individual_scores": [1, 0],
-            "results": [
-                {"score": 1, "statement_scores": [1, 1], "statements": ["c", "d"]},
-                {"score": 0, "statement_scores": [], "statements": []},
-            ],
-            "score": 0.5,
-        }
+
+        assert math.isnan(results["score"])
+
+        assert results["individual_scores"][0] == 1.0
+        assert math.isnan(results["individual_scores"][1])
+
+        assert results["results"][0] == {"statements": ["c", "d"], "statement_scores": [1, 1], "score": 1.0}
+
+        assert results["results"][1]["statements"] == []
+        assert results["results"][1]["statement_scores"] == []
+        assert math.isnan(results["results"][1]["score"])
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
