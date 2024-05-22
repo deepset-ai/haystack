@@ -194,7 +194,7 @@ class TestFaithfulnessEvaluator:
 
     def test_run_handles_nan(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        component = FaithfulnessEvaluator(progress_bar=False, raise_on_failure=False)
+        component = FaithfulnessEvaluator(raise_on_failure=False)
 
         def generator_run(self, *args, **kwargs):
             if "Python" in kwargs["prompt"]:

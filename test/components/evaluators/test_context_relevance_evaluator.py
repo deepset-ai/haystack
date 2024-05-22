@@ -161,7 +161,7 @@ class TestContextRelevanceEvaluator:
 
     def test_run_handles_nan(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        component = ContextRelevanceEvaluator(progress_bar=False, raise_on_failure=False)
+        component = ContextRelevanceEvaluator(raise_on_failure=False)
 
         def generator_run(self, *args, **kwargs):
             if "Python" in kwargs["prompt"]:

@@ -55,7 +55,6 @@ class LLMEvaluator:
         outputs: List[str],
         examples: List[Dict[str, Any]],
         raise_on_failure: bool = True,
-        progress_bar: bool = True,
         *,
         api: str = "openai",
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
@@ -87,7 +86,6 @@ class LLMEvaluator:
         """
         self.validate_init_parameters(inputs, outputs, examples)
         self.raise_on_failure = raise_on_failure
-        self.progress_bar = progress_bar
         self.instructions = instructions
         self.inputs = inputs
         self.outputs = outputs
@@ -189,7 +187,7 @@ class LLMEvaluator:
 
         results = []
         errors = 0
-        for input_names_to_values in tqdm(list_of_input_names_to_values, disable=not self.progress_bar):
+        for input_names_to_values in list_of_input_names_to_values:
             prompt = self.builder.run(**input_names_to_values)
             try:
                 result = self.generator.run(prompt=prompt["prompt"])
