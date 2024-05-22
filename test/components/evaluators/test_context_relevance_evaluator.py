@@ -159,6 +159,42 @@ class TestContextRelevanceEvaluator:
         with pytest.raises(TypeError, match="missing 2 required positional arguments"):
             component.run()
 
+    def test_run_handles_nan(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = ContextRelevanceEvaluator(progress_bar=False, raise_on_failure=False)
+
+        def generator_run(self, *args, **kwargs):
+            if "Python" in kwargs["prompt"]:
+                raise Exception("OpenAI API request failed.")
+            else:
+                return {"replies": ['{"statements": ["c", "d"], "statement_scores": [1, 1]}']}
+
+        monkeypatch.setattr("haystack.components.generators.openai.OpenAIGenerator.run", generator_run)
+
+        questions = ["Which is the most popular global sport?", "Who created the Python language?"]
+        contexts = [
+            [
+                "The popularity of sports can be measured in various ways, including TV viewership, social media "
+                "presence, number of participants, and economic impact. Football is undoubtedly the world's most "
+                "popular sport with major events like the FIFA World Cup and sports personalities like Ronaldo and "
+                "Messi, drawing a followership of more than 4 billion people."
+            ],
+            [
+                "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming "
+                "language. Its design philosophy emphasizes code readability, and its language constructs aim to help "
+                "programmers write clear, logical code for both small and large-scale software projects."
+            ],
+        ]
+        results = component.run(questions=questions, contexts=contexts)
+        assert results == {
+            "individual_scores": [1, 0],
+            "results": [
+                {"score": 1, "statement_scores": [1, 1], "statements": ["c", "d"]},
+                {"score": 0, "statement_scores": [], "statements": []},
+            ],
+            "score": 0.5,
+        }
+
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
