@@ -336,16 +336,15 @@ class LLMEvaluator:
         """
         try:
             parsed_output = json.loads(received)
-
-            if not all(output in parsed_output for output in expected):
-                msg = f"Expected response from LLM evaluator to be JSON with keys {expected}, got {received}."
-                if self.raise_on_failure:
-                    raise ValueError(msg)
-                warn(msg)
-                return False
-
         except json.JSONDecodeError:
             msg = "Response from LLM evaluator is not a valid JSON."
+            if self.raise_on_failure:
+                raise ValueError(msg)
+            warn(msg)
+            return False
+
+        if not all(output in parsed_output for output in expected):
+            msg = f"Expected response from LLM evaluator to be JSON with keys {expected}, got {received}."
             if self.raise_on_failure:
                 raise ValueError(msg)
             warn(msg)

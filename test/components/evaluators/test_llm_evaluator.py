@@ -378,10 +378,12 @@ class TestLLMEvaluator:
             ],
         )
         with pytest.raises(ValueError):
-            component.is_valid_json(expected=["score", "another_expected_output"], received='{"score": 1.0}')
+            component.is_valid_json_and_has_expected_keys(
+                expected=["score", "another_expected_output"], received='{"score": 1.0}'
+            )
 
         with pytest.raises(ValueError):
-            component.is_valid_json(expected=["score"], received='{"wrong_name": 1.0}')
+            component.is_valid_json_and_has_expected_keys(expected=["score"], received='{"wrong_name": 1.0}')
 
     def test_output_invalid_json_raise_on_failure_false(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -394,7 +396,10 @@ class TestLLMEvaluator:
             ],
             raise_on_failure=False,
         )
-        assert component.is_valid_json(expected=["score"], received="some_invalid_json_output") is False
+        assert (
+            component.is_valid_json_and_has_expected_keys(expected=["score"], received="some_invalid_json_output")
+            is False
+        )
 
     def test_output_invalid_json_raise_on_failure_true(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -407,7 +412,7 @@ class TestLLMEvaluator:
             ],
         )
         with pytest.raises(ValueError):
-            component.is_valid_json(expected=["score"], received="some_invalid_json_output")
+            component.is_valid_json_and_has_expected_keys(expected=["score"], received="some_invalid_json_output")
 
     def test_unsupported_api(self):
         with pytest.raises(ValueError):

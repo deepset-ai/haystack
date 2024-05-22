@@ -223,13 +223,14 @@ class TestFaithfulnessEvaluator:
             "Guido van Rossum.",
         ]
         results = component.run(questions=questions, contexts=contexts, predicted_answers=predicted_answers)
+
         assert results == {
-            "individual_scores": [1, 0],
+            "individual_scores": [1.0, float(nan)],
             "results": [
-                {"score": 1, "statement_scores": [1, 1], "statements": ["c", "d"]},
-                {"score": 0, "statement_scores": [], "statements": []},
+                {"statements": ["c", "d"], "statement_scores": [1, 1], "score": 1.0},
+                {"statements": [], "statement_scores": [], "score": float(nan)},
             ],
-            "score": 0.5,
+            "score": float(nan),
         }
 
     @pytest.mark.skipif(
