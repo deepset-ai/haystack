@@ -2,10 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from math import isnan
 from typing import Any, Dict, List, Optional
 
-import numpy as np
 from numpy import mean as np_mean
 
 from haystack import default_from_dict
