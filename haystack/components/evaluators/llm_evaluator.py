@@ -15,8 +15,6 @@ from haystack.components.builders import PromptBuilder
 from haystack.components.generators import OpenAIGenerator
 from haystack.utils import Secret, deserialize_secrets_inplace
 
-logger = logging.getLogger(__name__)
-
 
 @component
 class LLMEvaluator:
@@ -191,6 +189,7 @@ class LLMEvaluator:
         list_of_input_names_to_values = [dict(zip(input_names, v)) for v in values]
 
         results = []
+        errors = 0
         for input_names_to_values in tqdm(list_of_input_names_to_values, disable=not self.progress_bar):
             prompt = self.builder.run(**input_names_to_values)
             try:
@@ -201,6 +200,7 @@ class LLMEvaluator:
                     raise ValueError(msg)
                 warn(msg)
                 results.append(np.nan)
+                errors += 1
                 continue
 
             if self.is_valid_json(expected=self.outputs, received=result["replies"][0]):
@@ -208,6 +208,11 @@ class LLMEvaluator:
                 results.append(parsed_result)
             else:
                 results.append(np.nan)
+                errors += 1
+
+        if errors > 0:
+            msg = f"LLM evaluator failed for {errors} out of {len(list_of_input_names_to_values)} inputs."
+            warn(msg)
 
         return {"results": results}
 
