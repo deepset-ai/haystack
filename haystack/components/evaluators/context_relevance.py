@@ -2,9 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from math import isnan
 from typing import Any, Dict, List, Optional
 
-from numpy import isnan
+import numpy as np
 from numpy import mean as np_mean
 
 from haystack import default_from_dict
@@ -96,6 +97,8 @@ class ContextRelevanceEvaluator(LLMEvaluator):
             Supported APIs: "openai".
         :param api_key:
             The API key.
+        :param raise_on_failure:
+            Whether to raise an exception if the API call fails.
 
         """
         self.instructions = (
@@ -109,7 +112,6 @@ class ContextRelevanceEvaluator(LLMEvaluator):
         self.examples = examples or _DEFAULT_EXAMPLES
         self.api = api
         self.api_key = api_key
-        self.raise_on_failure = raise_on_failure
 
         super().__init__(
             instructions=self.instructions,
@@ -118,7 +120,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
             examples=self.examples,
             api=self.api,
             api_key=self.api_key,
-            raise_on_failure=self.raise_on_failure,
+            raise_on_failure=raise_on_failure,
         )
 
     @component.output_types(individual_scores=List[int], score=float, results=List[Dict[str, Any]])
@@ -140,8 +142,8 @@ class ContextRelevanceEvaluator(LLMEvaluator):
 
         # calculate average statement relevance score per query
         for idx, res in enumerate(result["results"]):
-            if isinstance(res, float) and isnan(res):
-                result["results"][idx] = {"statements": [], "statement_scores": [], "score": 0}
+            if not res:
+                result["results"][idx] = {"statements": [], "statement_scores": [], "score": float("nan")}
                 continue
             if not res["statements"]:
                 res["score"] = 0
