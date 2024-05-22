@@ -7,7 +7,6 @@ from typing import Any, Dict, List, Tuple, Type
 from warnings import warn
 
 import numpy as np
-from tqdm import tqdm
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.builders import PromptBuilder
