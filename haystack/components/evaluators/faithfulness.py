@@ -124,7 +124,6 @@ class FaithfulnessEvaluator(LLMEvaluator):
         self.examples = examples or _DEFAULT_EXAMPLES
         self.api = api
         self.api_key = api_key
-        self.progress_bar = progress_bar
 
         super().__init__(
             instructions=self.instructions,
@@ -133,7 +132,7 @@ class FaithfulnessEvaluator(LLMEvaluator):
             examples=self.examples,
             api=self.api,
             api_key=self.api_key,
-            progress_bar=self.progress_bar,
+            progress_bar=progress_bar,
         )
 
     @component.output_types(individual_scores=List[int], score=float, results=List[Dict[str, Any]])
