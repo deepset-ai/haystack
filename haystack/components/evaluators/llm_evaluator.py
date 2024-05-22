@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-import logging
 from typing import Any, Dict, List, Tuple, Type
 from warnings import warn
 
