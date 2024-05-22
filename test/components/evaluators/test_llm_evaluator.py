@@ -267,7 +267,7 @@ class TestLLMEvaluator:
                 "instructions": "test-instruction",
                 "inputs": [("predicted_answers", List[str])],
                 "outputs": ["custom_score"],
-                "progress_bar": True
+                "progress_bar": True,
                 "examples": [
                     {
                         "inputs": {"predicted_answers": "Damn, this is straight outta hell!!!"},
