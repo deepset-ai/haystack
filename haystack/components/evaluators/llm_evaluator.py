@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from typing import Any, Dict, List, Tuple, Type
+from typing import Any, Dict, List, Optional, Tuple, Type
 from warnings import warn
 
 from haystack import component, default_from_dict, default_to_dict
@@ -177,7 +177,7 @@ class LLMEvaluator:
         input_names, values = inputs.keys(), list(zip(*inputs.values()))
         list_of_input_names_to_values = [dict(zip(input_names, v)) for v in values]
 
-        results = []
+        results: List[Optional[Dict[str, Any]]] = []
         errors = 0
         for input_names_to_values in list_of_input_names_to_values:
             prompt = self.builder.run(**input_names_to_values)
