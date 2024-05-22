@@ -114,7 +114,7 @@ class DocumentSplitter:
         If the length of the current units is less than the pre-defined `split_threshold`, it does not create a new split. Instead, it concatenates the current units with the last split, preventing the creation of excessively small splits.
         """
 
-        text_splits = []  # type: List[str]
+        text_splits: List[str] = []
         splits_pages = []
         cur_page = 1
         segments = windowed(elements, n=split_length, step=split_length - split_overlap)
