@@ -206,6 +206,7 @@ class TestLLMEvaluator:
                 "instructions": "test-instruction",
                 "inputs": [("predicted_answers", List[str])],
                 "outputs": ["score"],
+                "progress_bar": True,
                 "examples": [
                     {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
                 ],
