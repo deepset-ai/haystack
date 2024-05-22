@@ -105,6 +105,8 @@ class FaithfulnessEvaluator(LLMEvaluator):
                     "statement_scores": [1, 0],
                 },
             }]
+        :param progress_bar:
+            Whether to show a progress bar during the evaluation.
         :param api:
             The API to use for calling an LLM through a Generator.
             Supported APIs: "openai".

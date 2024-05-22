@@ -73,6 +73,8 @@ class LLMEvaluator:
              `outputs` parameters.
             Each example is a dictionary with keys "inputs" and "outputs"
             They contain the input and output as dictionaries respectively.
+        :param progress_bar:
+            Whether to show a progress bar during the evaluation.
         :param api:
             The API to use for calling an LLM through a Generator.
             Supported APIs: "openai".

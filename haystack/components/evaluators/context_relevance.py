@@ -90,12 +90,13 @@ class ContextRelevanceEvaluator(LLMEvaluator):
                     "statement_scores": [1],
                 },
             }]
+        :param progress_bar:
+            Whether to show a progress bar during the evaluation.
         :param api:
             The API to use for calling an LLM through a Generator.
             Supported APIs: "openai".
         :param api_key:
             The API key.
-
         """
         self.instructions = (
             "Your task is to judge how relevant the provided context is for answering a question. "
