@@ -246,7 +246,7 @@ class LLMEvaluator:
             examples=self.examples,
             api=self.api,
             api_key=self.api_key.to_dict(),
-            progoress_bar=self.progress_bar,
+            progress_bar=self.progress_bar,
         )
 
     @classmethod
