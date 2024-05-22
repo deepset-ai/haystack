@@ -170,7 +170,11 @@ class LLMEvaluator:
         """
         Run the LLM evaluator.
 
-        # ToDo: add more details about the behavior of this method and it's exceptions
+        Running the LLM evaluator is done within a try-except block to catch any exceptions that may
+        occur during the run. If an exception occurs, the method will return a np.nan value for the result.
+
+        Likewise, if the output is not a valid JSON with the expected keys, the method will return a np.nan value
+        for the result.
 
         :param inputs:
             The input values to evaluate. The keys are the input names and the values are lists of input values.
