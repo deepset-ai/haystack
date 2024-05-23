@@ -210,6 +210,7 @@ class ExtractiveReader:
         """
         texts = []
         document_ids = []
+        document_contents = []
         for i, doc in enumerate(documents):
             if doc.content is None:
                 warnings.warn(
@@ -219,9 +220,11 @@ class ExtractiveReader:
                 continue
             texts.append(doc.content)
             document_ids.append(i)
+            document_contents.append(doc.content)
+
         encodings_pt = self.tokenizer(  # type: ignore
             queries,
-            [document.content for document in documents],
+            document_contents,
             padding=True,
             truncation=True,
             max_length=max_seq_length,
@@ -571,6 +574,9 @@ class ExtractiveReader:
         :raises ComponentError:
             If the component was not warmed up by calling 'warm_up()' before.
         """
+        if not documents:
+            return {"answers": []}
+
         queries = [query]  # Temporary solution until we have decided what batching should look like in v2
         nested_documents = [documents]
         if self.model is None:
