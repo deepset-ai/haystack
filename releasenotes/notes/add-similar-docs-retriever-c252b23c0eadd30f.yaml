@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Add a new component `SimilarDocumentsRetriever`.
+    This component retrieves similar documents for each of the given documents for each preset retrievers. So, in a way it's simply a wrapper around multiple retrievers to be run on multiple documents as queries.
