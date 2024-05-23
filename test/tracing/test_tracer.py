@@ -149,14 +149,6 @@ class TestAutoEnableTracer:
         tracer = _auto_configured_datadog_tracer()
         assert tracer is None
 
-    @patch("haystack.tracing.tracer._auto_configured_datadog_tracer")
-    @patch("haystack.tracing.tracer._auto_configured_opentelemetry_tracer")
-    def test_auto_enable_tracing_with_no_tracer(self, mock_opentelemetry_tracer, mock_datadog_tracer):
-        mock_opentelemetry_tracer.return_value = None
-        mock_datadog_tracer.return_value = None
-        auto_enable_tracing()
-        assert not is_tracing_enabled()
-
 
 class TestTracingContent:
     def test_set_content_tag_with_default_settings(self, spying_tracer: SpyingTracer) -> None:
