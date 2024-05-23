@@ -193,7 +193,7 @@ class TestFaithfulnessEvaluator:
         with pytest.raises(TypeError, match="missing 3 required positional arguments"):
             component.run()
 
-    def test_run_handles_nan(self, monkeypatch):
+    def test_run_returns_nan_raise_on_failure_false(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = FaithfulnessEvaluator(raise_on_failure=False)
 

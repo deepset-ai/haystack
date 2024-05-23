@@ -175,6 +175,9 @@ class LLMEvaluator:
             Each result is a dictionary containing the keys as defined in the `outputs` parameter of the LLMEvaluator
             and the evaluation results as the values. If an exception occurs for a particular input value, the result
             will be `None` for that entry.
+        :raises ValueError:
+            Only in the case that  `raise_on_failure` is set to True and the received inputs are not lists or have
+            different lengths, or if the output is not a valid JSON or doesn't contain the expected keys.
         """
         self.validate_input_parameters(dict(self.inputs), inputs)
 
