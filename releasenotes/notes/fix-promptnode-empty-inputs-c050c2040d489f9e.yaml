@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    When passing empty inputs (such as `query=""`) to PromptNode, the node would raise an error. This has been fixed.
