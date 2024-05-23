@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import warnings
 from typing import Any, Dict, List, Optional, Set
 
 from jinja2 import Template, meta
@@ -84,6 +85,11 @@ class DynamicChatPromptBuilder:
             pipeline execution. The values associated with variables from the pipeline runtime are then injected into
             template placeholders of a ChatMessage that is provided to the `run` method.
         """
+        warnings.warn(
+            "`DynamicChatPromptBuilder` is deprecated and will be removed in Haystack 2.3.0."
+            "Use `ChatPromptBuilder` instead.",
+            DeprecationWarning,
+        )
         runtime_variables = runtime_variables or []
 
         # setup inputs
