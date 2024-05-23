@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from typing import List
 
+import numpy as np
 import pytest
 
 from haystack.components.evaluators import LLMEvaluator
@@ -379,10 +380,41 @@ class TestLLMEvaluator:
             ],
         )
         with pytest.raises(ValueError):
-            component.validate_outputs(expected=["score", "another_expected_output"], received='{"score": 1.0}')
+            component.is_valid_json_and_has_expected_keys(
+                expected=["score", "another_expected_output"], received='{"score": 1.0}'
+            )
 
         with pytest.raises(ValueError):
-            component.validate_outputs(expected=["score"], received='{"wrong_name": 1.0}')
+            component.is_valid_json_and_has_expected_keys(expected=["score"], received='{"wrong_name": 1.0}')
+
+    def test_output_invalid_json_raise_on_failure_false(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = LLMEvaluator(
+            instructions="test-instruction",
+            inputs=[("predicted_answers", List[str])],
+            outputs=["score"],
+            examples=[
+                {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
+            ],
+            raise_on_failure=False,
+        )
+        assert (
+            component.is_valid_json_and_has_expected_keys(expected=["score"], received="some_invalid_json_output")
+            is False
+        )
+
+    def test_output_invalid_json_raise_on_failure_true(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = LLMEvaluator(
+            instructions="test-instruction",
+            inputs=[("predicted_answers", List[str])],
+            outputs=["score"],
+            examples=[
+                {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
+            ],
+        )
+        with pytest.raises(ValueError):
+            component.is_valid_json_and_has_expected_keys(expected=["score"], received="some_invalid_json_output")
 
     def test_unsupported_api(self):
         with pytest.raises(ValueError):
