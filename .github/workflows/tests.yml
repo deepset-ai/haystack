@@ -99,7 +99,7 @@ jobs:
 
       - name: Install dependencies
         # To actually install and sync the dependencies
-        run: hatch run test:pip list
+        run: hatch run +python=${{ env.PYTHON_VERSION }} test:pip list
 
       - uses: actions/cache@v4
         with:
@@ -131,7 +131,7 @@ jobs:
           key: pip-${{ runner.os }}-${{ github.run_id }}-${{ hashFiles('pyproject.toml') }}
 
       - name: Run
-        run: hatch run test:unit
+        run: hatch run +python=${{ env.PYTHON_VERSION }} test:unit
 
       - name: Coveralls
         # We upload only coverage for ubuntu as handling both os
@@ -200,7 +200,7 @@ jobs:
           key: pip-${{ runner.os }}-${{ github.run_id }}-${{ hashFiles('pyproject.toml') }}
 
       - name: Run
-        run: hatch run test:integration
+        run: hatch run +python=${{ env.PYTHON_VERSION }} test:integration
 
       - name: Calculate alert data
         id: calculator
@@ -258,7 +258,7 @@ jobs:
           key: pip-${{ runner.os }}-${{ github.run_id }}-${{ hashFiles('pyproject.toml') }}
 
       - name: Run
-        run: hatch run test:integration-mac
+        run: hatch run +python=${{ env.PYTHON_VERSION }} test:integration-mac
 
       - name: Calculate alert data
         id: calculator
@@ -309,7 +309,7 @@ jobs:
           key: pip-${{ runner.os }}-${{ github.run_id }}-${{ hashFiles('pyproject.toml') }}
 
       - name: Run
-        run: hatch run test:integration-windows
+        run: hatch run +python=${{ env.PYTHON_VERSION }} test:integration-windows
 
       - name: Calculate alert data
         id: calculator

@@ -25,34 +25,34 @@ jobs:
     timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - uses: actions/setup-python@v5
-      with:
-        python-version: "${{ env.PYTHON_VERSION }}"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "${{ env.PYTHON_VERSION }}"
 
-    - name: Install Hatch
-      run: pip install hatch==${{ env.HATCH_VERSION }}
+      - name: Install Hatch
+        run: pip install hatch==${{ env.HATCH_VERSION }}
 
-    - name: Run tests
-      run: hatch run test:e2e
+      - name: Run tests
+        run: hatch run +python=${{ env.PYTHON_VERSION }} test:e2e
 
-    - name: Send event to Datadog
-      if: failure() && github.event_name == 'schedule'
-      uses: masci/datadog@v1
-      with:
-        api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
-        api-url: https://api.datadoghq.eu
-        events: |
-          - title: "${{ github.workflow }} workflow"
-            text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
-            alert_type: "error"
-            source_type_name: "Github"
-            host: ${{ github.repository_owner }}
-            tags:
-              - "project:${{ github.repository }}"
-              - "job:${{ github.job }}"
-              - "run_id:${{ github.run_id }}"
-              - "workflow:${{ github.workflow }}"
-              - "branch:${{ github.ref_name }}"
-              - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+      - name: Send event to Datadog
+        if: failure() && github.event_name == 'schedule'
+        uses: masci/datadog@v1
+        with:
+          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
+          api-url: https://api.datadoghq.eu
+          events: |
+            - title: "${{ github.workflow }} workflow"
+              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
+              alert_type: "error"
+              source_type_name: "Github"
+              host: ${{ github.repository_owner }}
+              tags:
+                - "project:${{ github.repository }}"
+                - "job:${{ github.job }}"
+                - "run_id:${{ github.run_id }}"
+                - "workflow:${{ github.workflow }}"
+                - "branch:${{ github.ref_name }}"
+                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"

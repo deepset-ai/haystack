@@ -53,7 +53,7 @@ jobs:
         if: steps.files.outputs.any_changed == 'true'
         run: |
           mkdir .mypy_cache
-          hatch run test:types ${{ steps.files.outputs.all_changed_files }}
+          hatch run +python=${{ env.PYTHON_VERSION }} test:types ${{ steps.files.outputs.all_changed_files }}
 
   pylint:
     runs-on: ubuntu-latest
@@ -82,4 +82,4 @@ jobs:
       - name: Pylint
         if: steps.files.outputs.any_changed == 'true'
         run: |
-          hatch run test:lint ${{ steps.files.outputs.all_changed_files }}
+          hatch run +python=${{ env.PYTHON_VERSION }} test:lint ${{ steps.files.outputs.all_changed_files }}
