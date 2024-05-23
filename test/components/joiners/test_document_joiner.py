@@ -115,6 +115,14 @@ class TestDocumentJoiner:
         ]
         assert all(doc.id in expected_document_ids for doc in output["documents"])
 
+    def test_run_with_top_k_in_run_method(self):
+        joiner = DocumentJoiner()
+        documents_1 = [Document(content="a"), Document(content="b"), Document(content="c")]
+        documents_2 = [Document(content="d"), Document(content="e"), Document(content="f")]
+        top_k = 4
+        output = joiner.run([documents_1, documents_2], top_k=top_k)
+        assert len(output["documents"]) == top_k
+
     def test_sort_by_score_without_scores(self, caplog):
         joiner = DocumentJoiner()
         with caplog.at_level(logging.INFO):

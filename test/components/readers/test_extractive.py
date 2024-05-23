@@ -266,13 +266,17 @@ def test_from_dict_no_token():
     assert component.token is None
 
 
+def test_run_no_docs(mock_reader: ExtractiveReader):
+    mock_reader.warm_up()
+    assert mock_reader.run(query="hello", documents=[]) == {"answers": []}
+
+
 def test_output(mock_reader: ExtractiveReader):
-    answers = mock_reader.run(example_queries[0], example_documents[0], top_k=3)[
-        "answers"
-    ]  # [0] Uncomment and remove first two indices when batching support is reintroduced
+    answers = mock_reader.run(example_queries[0], example_documents[0], top_k=3)["answers"]
     doc_ids = set()
     no_answer_prob = 1
     for doc, answer in zip(example_documents[0], answers[:3]):
+        assert answer.document_offset is not None
         assert answer.document_offset.start == 11
         assert answer.document_offset.end == 16
         assert doc.content is not None
