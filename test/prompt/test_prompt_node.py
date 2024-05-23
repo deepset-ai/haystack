@@ -1212,3 +1212,22 @@ def test_prompt_no_truncation(mock_model, caplog):
     with caplog.at_level(logging.DEBUG):
         _ = node.prompt(PromptTemplate(prompt))
         assert prompt in caplog.text
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("prompt_model", ["hf"], indirect=True)
+def test_run_with_empty_inputs(prompt_model):
+    """
+    Tests that a pipeline with a prompt node and prompt template has the right output structure
+    """
+
+    node = PromptNode(prompt_model, default_prompt_template="question-answering")
+    result, _ = node.run(query="", documents=[])
+
+    # validate output variable present
+    assert "answers" in result
+    assert len(result["answers"]) == 1
+
+    # and that so-called invocation context contains the right keys
+    assert "invocation_context" in result
+    assert all(item in result["invocation_context"] for item in ["query", "documents", "answers", "prompts"])

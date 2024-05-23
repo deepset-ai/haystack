@@ -252,19 +252,19 @@ class PromptNode(BaseComponent):
         else:
             invocation_context = invocation_context.copy()
 
-        if query and "query" not in invocation_context:
+        if query is not None and "query" not in invocation_context:
             invocation_context["query"] = query
 
-        if file_paths and "file_paths" not in invocation_context:
+        if file_paths is not None and "file_paths" not in invocation_context:
             invocation_context["file_paths"] = file_paths
 
-        if labels and "labels" not in invocation_context:
+        if labels is not None and "labels" not in invocation_context:
             invocation_context["labels"] = labels
 
-        if documents and "documents" not in invocation_context:
+        if documents is not None and "documents" not in invocation_context:
             invocation_context["documents"] = documents
 
-        if meta and "meta" not in invocation_context:
+        if meta is not None and "meta" not in invocation_context:
             invocation_context["meta"] = meta
 
         if "prompt_template" not in invocation_context:
