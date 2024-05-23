@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+
+import json
 import os
 from unittest.mock import Mock, patch
 from haystack.utils.auth import Secret
@@ -111,6 +113,15 @@ def mock_serper_dev_search_result():
         yield mock_run
 
 
+@pytest.fixture
+def mock_serper_dev_search_result_no_snippet():
+    resp = {**EXAMPLE_SERPERDEV_RESPONSE}
+    del resp["organic"][0]["snippet"]
+    with patch("haystack.components.websearch.serper_dev.requests") as mock_run:
+        mock_run.post.return_value = Mock(status_code=200, json=lambda: resp)
+        yield mock_run
+
+
 class TestSerperDevSearchAPI:
     def test_init_fail_wo_api_key(self, monkeypatch):
         monkeypatch.delenv("SERPERDEV_API_KEY", raising=False)
@@ -141,6 +152,10 @@ class TestSerperDevSearchAPI:
         assert all(isinstance(doc, Document) for doc in documents)
         assert all(isinstance(link, str) for link in links)
         assert all(link.startswith("http") for link in links)
+
+    def test_no_snippet(self, mock_serper_dev_search_result_no_snippet):
+        ws = SerperDevWebSearch(api_key=Secret.from_token("test-api-key"), top_k=1)
+        ws.run(query="Who is the boyfriend of Olivia Wilde?")
 
     @patch("requests.post")
     def test_timeout_error(self, mock_post):

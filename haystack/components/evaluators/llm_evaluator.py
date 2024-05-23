@@ -5,6 +5,8 @@
 import json
 from typing import Any, Dict, List, Tuple, Type
 
+from tqdm import tqdm
+
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.builders import PromptBuilder
 from haystack.components.generators import OpenAIGenerator
@@ -50,6 +52,7 @@ class LLMEvaluator:
         inputs: List[Tuple[str, Type[List]]],
         outputs: List[str],
         examples: List[Dict[str, Any]],
+        progress_bar: bool = True,
         *,
         api: str = "openai",
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
@@ -70,6 +73,8 @@ class LLMEvaluator:
              `outputs` parameters.
             Each example is a dictionary with keys "inputs" and "outputs"
             They contain the input and output as dictionaries respectively.
+        :param progress_bar:
+            Whether to show a progress bar during the evaluation.
         :param api:
             The API to use for calling an LLM through a Generator.
             Supported APIs: "openai".
@@ -78,13 +83,13 @@ class LLMEvaluator:
 
         """
         self.validate_init_parameters(inputs, outputs, examples)
-
         self.instructions = instructions
         self.inputs = inputs
         self.outputs = outputs
         self.examples = examples
         self.api = api
         self.api_key = api_key
+        self.progress_bar = progress_bar
 
         if api == "openai":
             self.generator = OpenAIGenerator(
@@ -173,7 +178,7 @@ class LLMEvaluator:
         list_of_input_names_to_values = [dict(zip(input_names, v)) for v in values]
 
         results = []
-        for input_names_to_values in list_of_input_names_to_values:
+        for input_names_to_values in tqdm(list_of_input_names_to_values, disable=not self.progress_bar):
             prompt = self.builder.run(**input_names_to_values)
             result = self.generator.run(prompt=prompt["prompt"])
 
@@ -243,6 +248,7 @@ class LLMEvaluator:
             examples=self.examples,
             api=self.api,
             api_key=self.api_key.to_dict(),
+            progress_bar=self.progress_bar,
         )
 
     @classmethod
