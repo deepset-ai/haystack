@@ -67,6 +67,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
     def __init__(
         self,
         examples: Optional[List[Dict[str, Any]]] = None,
+        progress_bar: bool = True,
         api: str = "openai",
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
         raise_on_failure: bool = True,
@@ -90,6 +91,8 @@ class ContextRelevanceEvaluator(LLMEvaluator):
                     "statement_scores": [1],
                 },
             }]
+        :param progress_bar:
+            Whether to show a progress bar during the evaluation.
         :param api:
             The API to use for calling an LLM through a Generator.
             Supported APIs: "openai".
@@ -119,6 +122,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
             api=self.api,
             api_key=self.api_key,
             raise_on_failure=raise_on_failure,
+            progress_bar=progress_bar,
         )
 
     @component.output_types(individual_scores=List[int], score=float, results=List[Dict[str, Any]])
