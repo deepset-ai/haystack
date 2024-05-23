@@ -140,7 +140,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
 
         # calculate average statement relevance score per query
         for idx, res in enumerate(result["results"]):
-            if not res:
+            if res is None:
                 result["results"][idx] = {"statements": [], "statement_scores": [], "score": float("nan")}
                 continue
             if not res["statements"]:
