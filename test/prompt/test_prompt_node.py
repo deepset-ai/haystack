@@ -1212,3 +1212,19 @@ def test_prompt_no_truncation(mock_model, caplog):
     with caplog.at_level(logging.DEBUG):
         _ = node.prompt(PromptTemplate(prompt))
         assert prompt in caplog.text
+
+
+@pytest.mark.unit
+def test_run_with_empty_inputs():
+    mock_model = MagicMock(spec=PromptModel)
+    mock_model.invoke.return_value = ["mock answer"]
+    node = PromptNode(mock_model, default_prompt_template="question-answering")
+    result, _ = node.run(query="", documents=[])
+
+    # validate output variable present
+    assert "answers" in result
+    assert len(result["answers"]) == 1
+
+    # and that so-called invocation context contains the right keys
+    assert "invocation_context" in result
+    assert all(item in result["invocation_context"] for item in ["query", "documents", "answers", "prompts"])
