@@ -34,6 +34,7 @@ class DocumentSplitter:
             "sentence" for splitting by ".", "page" for splitting by "\\f" or "passage" for splitting by "\\n\\n".
         :param split_length: The maximum number of units in each split.
         :param split_overlap: The number of units that each split should overlap.
+        :param split_threshold: The minimum number of units that the split should have. If the split has fewer units than the threshold, it will be attached to the previous split.
         """
 
         self.split_by = split_by

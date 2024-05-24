@@ -84,6 +84,7 @@ class FaithfulnessEvaluator(LLMEvaluator):
         progress_bar: bool = True,
         api: str = "openai",
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
+        raise_on_failure: bool = True,
     ):
         """
         Creates an instance of FaithfulnessEvaluator.
@@ -112,6 +113,8 @@ class FaithfulnessEvaluator(LLMEvaluator):
             Supported APIs: "openai".
         :param api_key:
             The API key.
+        :param raise_on_failure:
+            Whether to raise an exception if the API call fails.
 
         """
         self.instructions = (
@@ -134,6 +137,7 @@ class FaithfulnessEvaluator(LLMEvaluator):
             examples=self.examples,
             api=self.api,
             api_key=self.api_key,
+            raise_on_failure=raise_on_failure,
             progress_bar=progress_bar,
         )
 
@@ -157,7 +161,10 @@ class FaithfulnessEvaluator(LLMEvaluator):
         result = super().run(questions=questions, contexts=contexts, predicted_answers=predicted_answers)
 
         # calculate average statement faithfulness score per query
-        for res in result["results"]:
+        for idx, res in enumerate(result["results"]):
+            if res is None:
+                result["results"][idx] = {"statements": [], "statement_scores": [], "score": float("nan")}
+                continue
             if not res["statements"]:
                 res["score"] = 0
             else:

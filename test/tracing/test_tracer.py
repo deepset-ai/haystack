@@ -1,9 +1,8 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-import builtins
 import sys
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import ddtrace
 import opentelemetry.trace
@@ -19,6 +18,8 @@ from haystack.tracing.opentelemetry import OpenTelemetryTracer
 from haystack.tracing.tracer import (
     NullTracer,
     NullSpan,
+    _auto_configured_opentelemetry_tracer,
+    _auto_configured_datadog_tracer,
     enable_tracing,
     Tracer,
     disable_tracing,
@@ -97,10 +98,6 @@ class TestAutoEnableTracer:
         opentelemetry.trace._TRACER_PROVIDER = None
         disable_tracing()
 
-    @pytest.fixture()
-    def uninstalled_ddtrace_package(self, monkeypatch: MonkeyPatch) -> None:
-        monkeypatch.setattr(ddtrace.tracer, "enabled", False)
-
     def test_skip_auto_enable_tracer_if_already_configured(self) -> None:
         my_tracker = Mock(spec=Tracer)  # anything else than `NullTracer` works for this test
         enable_tracing(my_tracker)
@@ -127,30 +124,30 @@ class TestAutoEnableTracer:
         assert isinstance(activated_tracer, OpenTelemetryTracer)
         assert is_tracing_enabled()
 
-    def test_skip_enable_opentelemetry_tracer_if_import_error(self, monkeypatch: MonkeyPatch) -> None:
-        monkeypatch.delitem(sys.modules, "opentelemetry", raising=False)
-        monkeypatch.setattr(builtins, "__import__", Mock(side_effect=ImportError))
-        auto_enable_tracing()
-
-        activated_tracer = tracer.actual_tracer
-        assert isinstance(activated_tracer, NullTracer)
-        assert not is_tracing_enabled()
-
-    def test_skip_add_datadog_tracer_if_import_error(self, monkeypatch: MonkeyPatch) -> None:
-        monkeypatch.delitem(sys.modules, "ddtrace", raising=False)
-        monkeypatch.setattr(builtins, "__import__", Mock(side_effect=ImportError))
-        auto_enable_tracing()
-
-        activated_tracer = tracer.actual_tracer
-        assert isinstance(activated_tracer, NullTracer)
-        assert not is_tracing_enabled()
-
     def test_add_datadog_tracer(self) -> None:
         auto_enable_tracing()
 
         activated_tracer = tracer.actual_tracer
         assert isinstance(activated_tracer, DatadogTracer)
         assert is_tracing_enabled()
+
+    def test__auto_configured_opentelemetry_tracer(self, configured_opentelemetry_tracing):
+        tracer = _auto_configured_opentelemetry_tracer()
+        assert isinstance(tracer, OpenTelemetryTracer)
+
+    def test__auto_configured_opentelemetry_tracer_with_failing_import(self, monkeypatch):
+        monkeypatch.delitem(sys.modules, "opentelemetry.trace", raising=False)
+        tracer = _auto_configured_opentelemetry_tracer()
+        assert tracer is None
+
+    def test__auto_configured_datadog_tracer(self):
+        tracer = _auto_configured_datadog_tracer()
+        assert isinstance(tracer, DatadogTracer)
+
+    def test__auto_configured_datadog_tracer_with_failing_import(self, monkeypatch):
+        monkeypatch.setattr(ddtrace.tracer, "enabled", False)
+        tracer = _auto_configured_datadog_tracer()
+        assert tracer is None
 
 
 class TestTracingContent:
