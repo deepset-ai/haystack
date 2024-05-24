@@ -1214,14 +1214,11 @@ def test_prompt_no_truncation(mock_model, caplog):
         assert prompt in caplog.text
 
 
-@pytest.mark.integration
-@pytest.mark.parametrize("prompt_model", ["hf"], indirect=True)
-def test_run_with_empty_inputs(prompt_model):
-    """
-    Tests that a pipeline with a prompt node and prompt template has the right output structure
-    """
-
-    node = PromptNode(prompt_model, default_prompt_template="question-answering")
+@pytest.mark.unit
+def test_run_with_empty_inputs():
+    mock_model = MagicMock(spec=PromptModel)
+    mock_model.invoke.return_value = ["mock answer"]
+    node = PromptNode(mock_model, default_prompt_template="question-answering")
     result, _ = node.run(query="", documents=[])
 
     # validate output variable present
