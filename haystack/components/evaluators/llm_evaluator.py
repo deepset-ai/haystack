@@ -101,6 +101,7 @@ class LLMEvaluator:
         self.api = api
         self.api_key = api_key
         self.api_params = api_params or {}
+        self.progress_bar = progress_bar
 
         default_generation_kwargs = {"response_format": {"type": "json_object"}, "seed": 42}
 
