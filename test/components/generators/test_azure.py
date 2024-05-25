@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import os
+
+from haystack import Pipeline
 from haystack.utils.auth import Secret
 
 import pytest
@@ -37,6 +39,7 @@ class TestAzureOpenAIGenerator:
         assert component.client.api_key == "fake-api-key"
         assert component.azure_deployment == "gpt-35-turbo"
         assert component.streaming_callback is print_streaming_chunk
+        assert component.timeout is None
         assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
 
     def test_to_dict_default(self, monkeypatch):
@@ -54,6 +57,7 @@ class TestAzureOpenAIGenerator:
                 "azure_endpoint": "some-non-existing-endpoint",
                 "organization": None,
                 "system_prompt": None,
+                "timeout": None,
                 "generation_kwargs": {},
             },
         }
@@ -64,6 +68,7 @@ class TestAzureOpenAIGenerator:
             api_key=Secret.from_env_var("ENV_VAR", strict=False),
             azure_ad_token=Secret.from_env_var("ENV_VAR1", strict=False),
             azure_endpoint="some-non-existing-endpoint",
+            timeout=3.5,
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
         )
 
@@ -79,9 +84,19 @@ class TestAzureOpenAIGenerator:
                 "azure_endpoint": "some-non-existing-endpoint",
                 "organization": None,
                 "system_prompt": None,
+                "timeout": 3.5,
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
             },
         }
+
+    def test_pipeline_serialization_deserialization(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
+        generator = AzureOpenAIGenerator(azure_endpoint="some-non-existing-endpoint")
+        p = Pipeline()
+        p.add_component(instance=generator, name="generator")
+        p_str = p.dumps()
+        q = Pipeline.loads(p_str)
+        assert p.to_dict() == q.to_dict(), "Pipeline serialization/deserialization with AzureOpenAIGenerator failed."
 
     @pytest.mark.integration
     @pytest.mark.skipif(

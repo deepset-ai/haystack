@@ -81,9 +81,11 @@ class FaithfulnessEvaluator(LLMEvaluator):
     def __init__(
         self,
         examples: Optional[List[Dict[str, Any]]] = None,
+        progress_bar: bool = True,
         api: str = "openai",
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
         api_params: Optional[Dict[str, Any]] = None,
+        raise_on_failure: bool = True,
     ):
         """
         Creates an instance of FaithfulnessEvaluator.
@@ -105,6 +107,8 @@ class FaithfulnessEvaluator(LLMEvaluator):
                     "statement_scores": [1, 0],
                 },
             }]
+        :param progress_bar:
+            Whether to show a progress bar during the evaluation.
         :param api:
             The API to use for calling an LLM through a Generator.
             Supported APIs: "openai", "llama_cpp".
@@ -114,6 +118,9 @@ class FaithfulnessEvaluator(LLMEvaluator):
             Parameters for supported api. Refer to respective generator for valid parameters:
             [OpenAIGenerator](https://docs.haystack.deepset.ai/docs/openaigenerator)
             [LlamaCppChatGenerator](https://docs.haystack.deepset.ai/docs/llamacppchatgenerator)
+        :param raise_on_failure:
+            Whether to raise an exception if the API call fails.
+
         """
         self.instructions = (
             "Your task is to judge the faithfulness or groundedness of statements based "
@@ -136,6 +143,8 @@ class FaithfulnessEvaluator(LLMEvaluator):
             api=self.api,
             api_key=self.api_key,
             api_params=api_params,
+            raise_on_failure=raise_on_failure,
+            progress_bar=progress_bar,
         )
 
     @component.output_types(individual_scores=List[int], score=float, results=List[Dict[str, Any]])
@@ -158,7 +167,10 @@ class FaithfulnessEvaluator(LLMEvaluator):
         result = super().run(questions=questions, contexts=contexts, predicted_answers=predicted_answers)
 
         # calculate average statement faithfulness score per query
-        for res in result["results"]:
+        for idx, res in enumerate(result["results"]):
+            if res is None:
+                result["results"][idx] = {"statements": [], "statement_scores": [], "score": float("nan")}
+                continue
             if not res["statements"]:
                 res["score"] = 0
             else:

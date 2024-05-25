@@ -20,8 +20,34 @@ class TestOpenAITextEmbedder:
         assert embedder.organization is None
         assert embedder.prefix == ""
         assert embedder.suffix == ""
+        assert embedder.client.timeout == 30
+        assert embedder.client.max_retries == 5
 
-    def test_init_with_parameters(self):
+    def test_init_with_parameters(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_TIMEOUT", "100")
+        monkeypatch.setenv("OPENAI_MAX_RETRIES", "10")
+        embedder = OpenAITextEmbedder(
+            api_key=Secret.from_token("fake-api-key"),
+            model="model",
+            api_base_url="https://my-custom-base-url.com",
+            organization="fake-organization",
+            prefix="prefix",
+            suffix="suffix",
+            timeout=40.0,
+            max_retries=1,
+        )
+        assert embedder.client.api_key == "fake-api-key"
+        assert embedder.model == "model"
+        assert embedder.api_base_url == "https://my-custom-base-url.com"
+        assert embedder.organization == "fake-organization"
+        assert embedder.prefix == "prefix"
+        assert embedder.suffix == "suffix"
+        assert embedder.client.timeout == 40.0
+        assert embedder.client.max_retries == 1
+
+    def test_init_with_parameters_and_env_vars(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_TIMEOUT", "100")
+        monkeypatch.setenv("OPENAI_MAX_RETRIES", "10")
         embedder = OpenAITextEmbedder(
             api_key=Secret.from_token("fake-api-key"),
             model="model",
@@ -36,6 +62,8 @@ class TestOpenAITextEmbedder:
         assert embedder.organization == "fake-organization"
         assert embedder.prefix == "prefix"
         assert embedder.suffix == "suffix"
+        assert embedder.client.timeout == 100.0
+        assert embedder.client.max_retries == 10
 
     def test_init_fail_wo_api_key(self, monkeypatch):
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)

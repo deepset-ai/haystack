@@ -6,6 +6,7 @@ import os
 import pytest
 from openai import OpenAIError
 
+from haystack import Pipeline
 from haystack.components.generators.chat import AzureOpenAIChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
 from haystack.dataclasses import ChatMessage
@@ -54,6 +55,7 @@ class TestOpenAIChatGenerator:
                 "organization": None,
                 "streaming_callback": None,
                 "generation_kwargs": {},
+                "timeout": None,
             },
         }
 
@@ -63,6 +65,7 @@ class TestOpenAIChatGenerator:
             api_key=Secret.from_env_var("ENV_VAR", strict=False),
             azure_ad_token=Secret.from_env_var("ENV_VAR1", strict=False),
             azure_endpoint="some-non-existing-endpoint",
+            timeout=2.5,
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
         )
         data = component.to_dict()
@@ -76,9 +79,19 @@ class TestOpenAIChatGenerator:
                 "azure_deployment": "gpt-35-turbo",
                 "organization": None,
                 "streaming_callback": None,
+                "timeout": 2.5,
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
             },
         }
+
+    def test_pipeline_serialization_deserialization(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
+        generator = AzureOpenAIChatGenerator(azure_endpoint="some-non-existing-endpoint")
+        p = Pipeline()
+        p.add_component(instance=generator, name="generator")
+        p_str = p.dumps()
+        q = Pipeline.loads(p_str)
+        assert p.to_dict() == q.to_dict(), "Pipeline serialization/deserialization w/ AzureOpenAIChatGenerator failed."
 
     @pytest.mark.integration
     @pytest.mark.skipif(
