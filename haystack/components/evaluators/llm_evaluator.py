@@ -3,11 +3,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from typing import Any, Dict, List, Tuple, Type
+from typing import Any, Dict, List, Optional, Tuple, Type
+
+from haystack_integrations.components.generators.llama_cpp import LlamaCppChatGenerator
 
 from haystack import component, default_from_dict, default_to_dict
-from haystack.components.builders import PromptBuilder
+from haystack.components.builders import DynamicChatPromptBuilder, PromptBuilder
 from haystack.components.generators import OpenAIGenerator
+from haystack.dataclasses import ChatMessage
 from haystack.utils import Secret, deserialize_secrets_inplace
 
 
@@ -53,6 +56,7 @@ class LLMEvaluator:
         *,
         api: str = "openai",
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
+        api_params: Optional[Dict[str, Any]] = None,
     ):
         """
         Creates an instance of LLMEvaluator.
@@ -72,10 +76,13 @@ class LLMEvaluator:
             They contain the input and output as dictionaries respectively.
         :param api:
             The API to use for calling an LLM through a Generator.
-            Supported APIs: "openai".
+            Supported APIs: "openai", "llama_cpp".
         :param api_key:
             The API key.
-
+        :param api_params:
+            Parameters for supported api. Refer to respective generator for valid parameters:
+            [OpenAIGenerator](https://docs.haystack.deepset.ai/docs/openaigenerator)
+            [LlamaCppChatGenerator](https://docs.haystack.deepset.ai/docs/llamacppchatgenerator)
         """
         self.validate_init_parameters(inputs, outputs, examples)
 
@@ -85,16 +92,24 @@ class LLMEvaluator:
         self.examples = examples
         self.api = api
         self.api_key = api_key
+        self.api_params = api_params or {}
+
+        default_generation_kwargs = {"response_format": {"type": "json_object"}}
+
+        user_generation_kwargs = self.api_params.get("generation_kwargs", {})
+        merged_generation_kwargs = {**default_generation_kwargs, **user_generation_kwargs}
+        self.api_params["generation_kwargs"] = merged_generation_kwargs
 
         if api == "openai":
-            self.generator = OpenAIGenerator(
-                api_key=api_key, generation_kwargs={"response_format": {"type": "json_object"}}
-            )
+            self.generator = OpenAIGenerator(api_key=api_key, **self.api_params)
+            template = self.prepare_template()
+            self.builder = PromptBuilder(template=template)
+        elif api == "llama_cpp":
+            self.generator = LlamaCppChatGenerator(**self.api_params)
+            self.generator.warm_up()
+            self.builder = DynamicChatPromptBuilder()
         else:
             raise ValueError(f"Unsupported API: {api}")
-
-        template = self.prepare_template()
-        self.builder = PromptBuilder(template=template)
 
         component.set_input_types(self, **dict(inputs))
 
@@ -172,13 +187,25 @@ class LLMEvaluator:
         list_of_input_names_to_values = [dict(zip(input_names, v)) for v in values]
 
         results = []
-        for input_names_to_values in list_of_input_names_to_values:
-            prompt = self.builder.run(**input_names_to_values)
-            result = self.generator.run(prompt=prompt["prompt"])
+        if self.api == "openai":
+            for input_names_to_values in list_of_input_names_to_values:
+                prompt = self.builder.run(**input_names_to_values)
+                result = self.generator.run(prompt=prompt["prompt"])
 
-            self.validate_outputs(expected=self.outputs, received=result["replies"][0])
-            parsed_result = json.loads(result["replies"][0])
-            results.append(parsed_result)
+                self.validate_outputs(expected=self.outputs, received=result["replies"][0])
+                parsed_result = json.loads(result["replies"][0])
+                results.append(parsed_result)
+        else:
+            prompt_source = self.prepare_dynamic_template()
+            extracted_prompts = []
+            for input_name_to_values in list_of_input_names_to_values:
+                prompt_result = self.builder.run(prompt_source=prompt_source, template_variables=input_name_to_values)
+                for message in prompt_result["prompt"]:
+                    extracted_prompts.append(message)
+                result = self.generator.run(messages=extracted_prompts)
+                self.validate_outputs(expected=self.outputs, received=result["replies"][0].content)
+                parsed_result = json.loads(result["replies"][0].content)
+                results.append(parsed_result)
 
         return {"results": results}
 
@@ -227,6 +254,59 @@ class LLMEvaluator:
             f"Outputs:\n"
         )
 
+    def prepare_dynamic_template(self) -> List[ChatMessage]:
+        """
+        Prepare the prompt template.
+
+        Combine instructions, inputs, outputs, and examples into one prompt template with the following format:
+        Instructions:
+        <instructions>
+
+        Generate the response in JSON format with the following keys:
+        <list of output keys>
+        Consider the instructions and the examples below to determine those values.
+
+        Examples:
+        <examples>
+
+        Inputs:
+        <inputs>
+        Outputs:
+
+        :returns:
+            Prompt template as list of ChatMessages with a System, User, and Assistant message.
+        """
+        inputs_section = (
+            "{" + ", ".join([f'"{input_socket[0]}": {{{{ {input_socket[0]} }}}}' for input_socket in self.inputs]) + "}"
+        )
+
+        examples_section = "\n".join(
+            [
+                "Inputs:\n" + json.dumps(example["inputs"]) + "\nOutputs:\n" + json.dumps(example["outputs"])
+                for example in self.examples
+            ]
+        )
+
+        system_instructions = (
+            f"Instructions:\n{self.instructions}\n\n"
+            f"Generate the response in JSON format with the following keys:\n"
+            f"{json.dumps(self.outputs)}\n"
+            f"Consider the instructions and the examples below to determine those values.\n\n"
+            f"Examples:\n{examples_section}"
+        )
+
+        user_message = f"Inputs:\n{inputs_section}\nOutputs:\n"
+
+        # Although we are passing in system_instructions, we are setting
+        # the message as a user message for now. Ideally, we want a way to
+        # make this a user or system message depending on the type of model
+        # TODO: allow user to pass in a flag in api_parms
+        system_message = ChatMessage.from_user(system_instructions)
+        user_message = ChatMessage.from_user(user_message)
+        assistant_message = ChatMessage.from_assistant("Outputs: ")
+
+        return [system_message, user_message, assistant_message]
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Serialize this component to a dictionary.
@@ -242,6 +322,7 @@ class LLMEvaluator:
             examples=self.examples,
             api=self.api,
             api_key=self.api_key.to_dict(),
+            api_params=self.api_params,
         )
 
     @classmethod

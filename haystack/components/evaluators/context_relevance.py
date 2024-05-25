@@ -69,6 +69,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
         examples: Optional[List[Dict[str, Any]]] = None,
         api: str = "openai",
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
+        api_params: Optional[Dict[str, Any]] = None,
     ):
         """
         Creates an instance of ContextRelevanceEvaluator.
@@ -91,10 +92,13 @@ class ContextRelevanceEvaluator(LLMEvaluator):
             }]
         :param api:
             The API to use for calling an LLM through a Generator.
-            Supported APIs: "openai".
+            Supported APIs: "openai", "llama_cpp".
         :param api_key:
             The API key.
-
+        :param api_params:
+            Parameters for supported api. Refer to respective generator for valid parameters:
+            [OpenAIGenerator](https://docs.haystack.deepset.ai/docs/openaigenerator)
+            [LlamaCppChatGenerator](https://docs.haystack.deepset.ai/docs/llamacppchatgenerator)
         """
         self.instructions = (
             "Your task is to judge how relevant the provided context is for answering a question. "
@@ -115,6 +119,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
             examples=self.examples,
             api=self.api,
             api_key=self.api_key,
+            api_params=api_params,
         )
 
     @component.output_types(individual_scores=List[int], score=float, results=List[Dict[str, Any]])
