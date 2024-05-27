@@ -10,7 +10,7 @@ from haystack_integrations.components.generators.llama_cpp import LlamaCppChatGe
 from tqdm import tqdm
 
 from haystack import component, default_from_dict, default_to_dict
-from haystack.components.builders import DynamicChatPromptBuilder, PromptBuilder
+from haystack.components.builders import ChatPromptBuilder, PromptBuilder
 from haystack.components.generators import OpenAIGenerator
 from haystack.dataclasses import ChatMessage
 from haystack.utils import Secret, deserialize_secrets_inplace
@@ -116,7 +116,7 @@ class LLMEvaluator:
         elif api == "llama_cpp":
             self.generator = LlamaCppChatGenerator(**self.api_params)
             self.generator.warm_up()
-            self.builder = DynamicChatPromptBuilder()
+            self.builder = ChatPromptBuilder()
         else:
             raise ValueError(f"Unsupported API: {api}")
 
@@ -225,14 +225,26 @@ class LLMEvaluator:
         else:
             prompt_source = self.prepare_dynamic_template()
             extracted_prompts = []
-            for input_name_to_values in list_of_input_names_to_values:
-                prompt_result = self.builder.run(prompt_source=prompt_source, template_variables=input_name_to_values)
+            for input_names_to_values in tqdm(list_of_input_names_to_values, disable=not self.progress_bar):
+                prompt_result = self.builder.run(template=prompt_source, template_variables=input_names_to_values)
                 for message in prompt_result["prompt"]:
                     extracted_prompts.append(message)
-                result = self.generator.run(messages=extracted_prompts)
-                self.validate_outputs(expected=self.outputs, received=result["replies"][0].content)
-                parsed_result = json.loads(result["replies"][0].content)
-                results.append(parsed_result)
+                try:
+                    result = self.generator.run(messages=extracted_prompts)
+                except Exception as e:
+                    msg = f"Error while generating response for prompt: {prompt}. Error: {e}"
+                    if self.raise_on_failure:
+                        raise ValueError(msg)
+                    warn(msg)
+                    results.append(None)
+                    errors += 1
+                    continue
+                if self.is_valid_json_and_has_expected_keys(expected=self.outputs, received=result["replies"][0].content):
+                    parsed_result = json.loads(result["replies"][0].content)
+                    results.append(parsed_result)
+                else:
+                    results.append(None)
+                    errors += 1
 
         if errors > 0:
             msg = f"LLM evaluator failed for {errors} out of {len(list_of_input_names_to_values)} inputs."
@@ -345,17 +357,29 @@ class LLMEvaluator:
         :returns:
             The serialized component as a dictionary.
         """
-        return default_to_dict(
-            self,
-            instructions=self.instructions,
-            inputs=self.inputs,
-            outputs=self.outputs,
-            examples=self.examples,
-            api=self.api,
-            api_key=self.api_key.to_dict(),
-            api_params=self.api_params,
-            progress_bar=self.progress_bar,
-        )
+        if self.api == "openai":
+            return default_to_dict(
+                self,
+                instructions=self.instructions,
+                inputs=self.inputs,
+                outputs=self.outputs,
+                examples=self.examples,
+                api=self.api,
+                api_key=self.api_key.to_dict(),
+                api_params=self.api_params,
+                progress_bar=self.progress_bar,
+            )
+        else:
+            return default_to_dict(
+                self,
+                instructions=self.instructions,
+                inputs=self.inputs,
+                outputs=self.outputs,
+                examples=self.examples,
+                api=self.api,
+                api_params=self.api_params,
+                progress_bar=self.progress_bar,
+            )
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "LLMEvaluator":
@@ -367,7 +391,8 @@ class LLMEvaluator:
         :returns:
             The deserialized component instance.
         """
-        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
+        if data["init_parameters"]["api"] == "openai":
+            deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         return default_from_dict(cls, data)
 
     @staticmethod
