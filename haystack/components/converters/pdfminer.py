@@ -116,7 +116,7 @@ class PDFMinerToDocument:
 
         return Document(content=concat)
 
-    @component.output_types(document=List[Document])
+    @component.output_types(documents=List[Document])
     def run(
         self,
         sources: List[Union[str, Path, ByteStream]],
