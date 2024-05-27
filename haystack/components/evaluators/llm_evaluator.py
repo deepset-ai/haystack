@@ -224,22 +224,22 @@ class LLMEvaluator:
                     errors += 1
         else:
             prompt_source = self.prepare_dynamic_template()
-            extracted_prompts = []
             for input_names_to_values in tqdm(list_of_input_names_to_values, disable=not self.progress_bar):
                 prompt_result = self.builder.run(template=prompt_source, template_variables=input_names_to_values)
-                for message in prompt_result["prompt"]:
-                    extracted_prompts.append(message)
+                extracted_prompts = prompt_result["prompt"]
                 try:
                     result = self.generator.run(messages=extracted_prompts)
                 except Exception as e:
-                    msg = f"Error while generating response for prompt: {prompt}. Error: {e}"
+                    msg = f"Error while generating response for prompt: {prompt_result}. Error: {e}"
                     if self.raise_on_failure:
                         raise ValueError(msg)
                     warn(msg)
                     results.append(None)
                     errors += 1
                     continue
-                if self.is_valid_json_and_has_expected_keys(expected=self.outputs, received=result["replies"][0].content):
+                if self.is_valid_json_and_has_expected_keys(
+                    expected=self.outputs, received=result["replies"][0].content
+                ):
                     parsed_result = json.loads(result["replies"][0].content)
                     results.append(parsed_result)
                 else:
