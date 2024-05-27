@@ -1,0 +1,10 @@
+---
+features:
+  - |
+    Haystack LLMEvaluator based evaluators can now select "llama_cpp" as an
+    api to use a gguf model. All parameters from the LlamaCppChatGenerator
+    are supported.
+issues:
+  - |
+    There is no current support for system prompts. As such, instructions
+    are passed in as a user messages.
