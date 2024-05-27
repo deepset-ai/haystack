@@ -9,15 +9,15 @@ from haystack.testing.factory import component_class
 scenarios("pipeline_run.feature")
 
 
-@given("a pipeline that has no components", target_fixture="pipeline")
+@given("a pipeline that has no components", target_fixture="pipeline_data")
 def pipeline_that_has_no_components():
     pipeline = Pipeline()
     inputs = {}
     expected_outputs = {}
-    return pipeline, inputs, expected_outputs
+    return pipeline, inputs, expected_outputs, []
 
 
-@given("a pipeline that is linear", target_fixture="pipeline")
+@given("a pipeline that is linear", target_fixture="pipeline_data")
 def pipeline_that_is_linear():
     pipeline = Pipeline()
     pipeline.add_component("first_addition", AddFixedValue(add=2))
@@ -26,10 +26,15 @@ def pipeline_that_is_linear():
     pipeline.connect("first_addition", "double")
     pipeline.connect("double", "second_addition")
 
-    return pipeline, {"first_addition": {"value": 1}}, {"second_addition": {"result": 7}}
+    return (
+        pipeline,
+        {"first_addition": {"value": 1}},
+        {"second_addition": {"result": 7}},
+        ["first_addition", "double", "second_addition"],
+    )
 
 
-@given("a pipeline that has an infinite loop", target_fixture="pipeline")
+@given("a pipeline that has an infinite loop", target_fixture="pipeline_data")
 def pipeline_that_has_an_infinite_loop():
     def custom_init(self):
         component.set_input_type(self, "x", int)

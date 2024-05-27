@@ -29,10 +29,10 @@ For example to add a test for a linear `Pipeline` I add a new `that is linear` k
 
 Then define a new `pipeline_that_is_linear` function in `test_run.py`.
 The function must be decorated with `@given` and return a tuple containing the `Pipeline` instance, the `Pipeline.run()` inputs and the expected output, in this exact order.
-The `@given` arguments must be the full step name, `"a pipeline that is linear"` in this case, and `target_fixture` must be set to `"pipeline"`.
+The `@given` arguments must be the full step name, `"a pipeline that is linear"` in this case, and `target_fixture` must be set to `"pipeline_data"`.
 
 ```python
-@given("a pipeline that is linear", target_fixture="pipeline")
+@given("a pipeline that is linear", target_fixture="pipeline_data")
 def pipeline_that_is_linear():
     pipeline = Pipeline()
     pipeline.add_component("first_addition", AddFixedValue(add=2))
@@ -41,7 +41,12 @@ def pipeline_that_is_linear():
     pipeline.connect("first_addition", "double")
     pipeline.connect("double", "second_addition")
 
-    return pipeline, {"first_addition": {"value": 1}}, {"second_addition": {"result": 7}}
+    return (
+        pipeline,
+        {"first_addition": {"value": 1}},
+        {"second_addition": {"result": 7}},
+        ["first_addition", "double", "second_addition"],
+    )
 ```
 
 ### Bad Pipeline
@@ -64,7 +69,7 @@ In a similar way as first case we need to defined a new `pipeline_that_has_an_in
 The only difference from the first case is the last value returned by the function, in this case we return the expected exception class.
 
 ```python
-@given("a pipeline that has an infinite loop", target_fixture="pipeline")
+@given("a pipeline that has an infinite loop", target_fixture="pipeline_data")
 def pipeline_that_has_an_infinite_loop():
     def custom_init(self):
         component.set_input_type(self, "x", int)
