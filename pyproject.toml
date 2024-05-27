@@ -70,6 +70,7 @@ dependencies = [
   "mypy",
   # Test
   "pytest",
+  "pytest-bdd",
   "pytest-cov",
   "pytest-custom_exit_code",  # used in the CI
   "pytest-asyncio",
