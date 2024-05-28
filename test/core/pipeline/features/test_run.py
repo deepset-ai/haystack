@@ -1,10 +1,13 @@
 from pytest_bdd import scenarios, given
+import pytest
 
 from haystack import Pipeline, component
 from haystack.core.errors import PipelineMaxLoops
 from haystack.testing.sample_components import AddFixedValue, Double
 from haystack.testing.factory import component_class
 
+
+pytestmark = pytest.mark.integration
 
 scenarios("pipeline_run.feature")
 

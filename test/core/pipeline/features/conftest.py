@@ -1,19 +1,6 @@
 from pytest_bdd import when, then, parsers
 
 
-def pytest_collection_modifyitems(session, config, items):
-    """
-    This function adds the `integration` marker to all tests in the `features` directory.
-    See the official pytest documentation for more information:
-    https://docs.pytest.org/en/8.2.x/reference/reference.html#pytest.hookspec.pytest_collection_modifyitems
-
-    We do this cause there's no easy way to add markers to scenario outlines in pytest-bdd, since
-    the scenarios test functions are created dynamically.
-    """
-    for i in items:
-        i.add_marker("integration")
-
-
 @when("I run the Pipeline", target_fixture="pipeline_result")
 def run_pipeline(pipeline_data, spying_tracer):
     """
