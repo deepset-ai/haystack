@@ -79,36 +79,9 @@ jobs:
                 - "branch:${{ github.ref_name }}"
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-  install-dependencies:
-    name: Install and cache ${{ matrix.os }} dependencies
-    needs: black
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-12, windows-latest]
-    runs-on: ${{ matrix.os }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "${{ env.PYTHON_VERSION }}"
-
-      - name: Install Hatch
-        run: pip install hatch==${{ env.HATCH_VERSION }}
-
-      - name: Install dependencies
-        # To actually install and sync the dependencies
-        run: hatch run test:pip list
-
-      - uses: actions/cache@v4
-        with:
-          path: ${{ env.pythonLocation }}
-          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ hashFiles('pyproject.toml') }}
-
   unit-tests:
     name: Unit / ${{ matrix.os }}
-    needs: install-dependencies
+    needs: black
     strategy:
       fail-fast: false
       matrix:
@@ -123,12 +96,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
-
-      - name: Restore Python dependencies
-        uses: actions/cache/restore@v4
-        with:
-          path: ${{ env.pythonLocation }}
-          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ hashFiles('pyproject.toml') }}
 
       - name: Run
         run: hatch run test:unit
@@ -193,12 +160,6 @@ jobs:
           sudo apt update
           sudo apt install ffmpeg  # for local Whisper tests
 
-      - name: Restore Python dependencies
-        uses: actions/cache/restore@v4
-        with:
-          path: ${{ env.pythonLocation }}
-          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ hashFiles('pyproject.toml') }}
-
       - name: Run
         run: hatch run test:integration
 
@@ -251,12 +212,6 @@ jobs:
         run: |
           brew install ffmpeg  # for local Whisper tests
 
-      - name: Restore Python dependencies
-        uses: actions/cache/restore@v4
-        with:
-          path: ${{ env.pythonLocation }}
-          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ hashFiles('pyproject.toml') }}
-
       - name: Run
         run: hatch run test:integration-mac
 
@@ -301,12 +256,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
-
-      - name: Restore Python dependencies
-        uses: actions/cache/restore@v4
-        with:
-          path: ${{ env.pythonLocation }}
-          key: pip-${{ runner.os }}-${{ github.run_id }}-${{ hashFiles('pyproject.toml') }}
 
       - name: Run
         run: hatch run test:integration-windows
