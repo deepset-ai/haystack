@@ -7,7 +7,7 @@ import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from haystack import ComponentError, Document, ExtractedAnswer, component, default_from_dict, default_to_dict, logging
+from haystack import Document, ExtractedAnswer, component, default_from_dict, default_to_dict, logging
 from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice, DeviceMap, Secret, deserialize_secrets_inplace
 from haystack.utils.hf import deserialize_hf_model_kwargs, resolve_hf_device_map, serialize_hf_model_kwargs
