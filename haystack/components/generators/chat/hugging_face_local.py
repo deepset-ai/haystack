@@ -189,10 +189,8 @@ class HuggingFaceLocalChatGenerator:
         """
         Initializes the component.
         """
-        if self.pipeline is not None:
-            return
-
-        self.pipeline = pipeline(**self.huggingface_pipeline_kwargs)
+        if self.pipeline is None:
+            self.pipeline = pipeline(**self.huggingface_pipeline_kwargs)
 
     def to_dict(self) -> Dict[str, Any]:
         """
