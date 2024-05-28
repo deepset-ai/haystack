@@ -208,7 +208,7 @@ class HuggingFaceTGIGenerator:
             - replies: A list of strings representing the generated replies.
         """
         if not self.tokenizer:
-            raise RuntimeError("Please call warm_up() before running LLM inference.")
+            raise RuntimeError("The component HuggingFaceTGIGenerator was not warmed up. Please call warm_up() before running LLM inference.")
 
         # check generation kwargs given as parameters to override the default ones
         additional_params = ["n", "stop_words"]

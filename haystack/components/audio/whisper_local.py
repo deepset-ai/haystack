@@ -113,7 +113,7 @@ class LocalWhisperTranscriber:
                 alignment data and the path to the audio file used for the transcription.
         """
         if self._model is None:
-            raise RuntimeError("The component was not warmed up. Run 'warm_up()' before calling 'run()'.")
+            raise RuntimeError("The component LocalWhisperTranscriber was not warmed up. Run 'warm_up()' before calling 'run()'.")
 
         if whisper_params is None:
             whisper_params = self.whisper_params

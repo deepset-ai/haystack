@@ -235,7 +235,7 @@ class HuggingFaceTGIChatGenerator:
         :return: A list containing the generated responses as ChatMessage instances.
         """
         if not self._warmed_up:
-            raise RuntimeError("The generation model has not been loaded. Please call warm_up() before running.")
+            raise RuntimeError("The component HuggingFaceTGIChatGenerator was not warmed up. Please call warm_up() before running.")
 
         # check generation kwargs given as parameters to override the default ones
         additional_params = ["n", "stop_words"]

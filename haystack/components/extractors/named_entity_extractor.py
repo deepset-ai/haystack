@@ -177,7 +177,7 @@ class NamedEntityExtractor:
             If the backend fails to process a document.
         """
         if not self._warmed_up:
-            msg = "The NER backend has not been initialized. Call warm_up() before running the component."
+            msg = "The component NamedEntityExtractor was not warmed up. Call warm_up() before running the component."
             raise RuntimeError(msg)
 
         texts = [doc.content if doc.content is not None else "" for doc in documents]
