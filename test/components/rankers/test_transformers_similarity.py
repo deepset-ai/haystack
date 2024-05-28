@@ -343,7 +343,7 @@ class TestSimilarityRanker:
     @pytest.mark.integration
     def test_raises_component_error_if_model_not_warmed_up(self):
         sampler = TransformersSimilarityRanker()
-        with pytest.raises(ComponentError):
+        with pytest.raises(RuntimeError):
             sampler.run(query="query", documents=[Document(content="document")])
 
     @pytest.mark.integration
