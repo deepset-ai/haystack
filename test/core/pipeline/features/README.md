@@ -28,7 +28,7 @@ For example to add a test for a linear `Pipeline` I add a new `that is linear` k
 ```
 
 Then define a new `pipeline_that_is_linear` function in `test_run.py`.
-The function must be decorated with `@given` and return a tuple containing the `Pipeline` instance, the `Pipeline.run()` inputs and the expected output, in this exact order.
+The function must be decorated with `@given` and return a tuple containing the `Pipeline` instance, the `Pipeline.run()` inputs, the expected output and the expected Components run order, in this exact order.
 The `@given` arguments must be the full step name, `"a pipeline that is linear"` in this case, and `target_fixture` must be set to `"pipeline_data"`.
 
 ```python
