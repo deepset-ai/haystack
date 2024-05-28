@@ -142,7 +142,9 @@ class HuggingFaceLocalGenerator:
 
     @property
     def _warmed_up(self) -> bool:
-        return (self.pipeline is not None) and (self.stopping_criteria_list is not None)
+        if self.stop_words:
+            return (self.pipeline is not None) and (self.stopping_criteria_list is not None)
+        return self.pipeline is not None
 
     def warm_up(self):
         """

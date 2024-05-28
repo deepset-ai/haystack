@@ -424,6 +424,7 @@ class TestHuggingFaceLocalGenerator:
             model="google/flan-t5-small", task="text2text-generation", stop_words=["world"]
         )
         generator.pipeline = Mock(return_value=[{"generated_text": "Hello world"}])
+        generator.stopping_criteria_list = Mock()
         results = generator.run(prompt="irrelevant")
         assert results == {"replies": ["Hello"]}
 
