@@ -575,7 +575,9 @@ class ExtractiveReader:
             If the component was not warmed up by calling 'warm_up()' before.
         """
         if self.model is None:
-            raise RuntimeError("The component ExtractiveReader was not warmed up. Run 'warm_up()' before calling 'run()'.")
+            raise RuntimeError(
+                "The component ExtractiveReader was not warmed up. Run 'warm_up()' before calling 'run()'."
+            )
 
         if not documents:
             return {"answers": []}

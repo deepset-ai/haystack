@@ -219,7 +219,9 @@ class HuggingFaceLocalGenerator:
             - replies: A list of strings representing the generated replies.
         """
         if not self._warmed_up:
-            raise RuntimeError("The component HuggingFaceLocalGenerator was not warmed up. Please call warm_up() before running.")
+            raise RuntimeError(
+                "The component HuggingFaceLocalGenerator was not warmed up. Please call warm_up() before running."
+            )
 
         if not prompt:
             return {"replies": []}
