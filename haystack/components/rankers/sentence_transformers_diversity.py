@@ -232,6 +232,13 @@ class SentenceTransformersDiversityRanker:
 
         :raises ValueError: If the top_k value is less than or equal to 0.
         """
+        if self.model is None:
+            error_msg = (
+                "The component SentenceTransformersDiversityRanker wasn't warmed up. "
+                "Run 'warm_up()' before calling 'run()'."
+            )
+            raise ComponentError(error_msg)
+
         if not documents:
             return {"documents": []}
 
@@ -239,13 +246,6 @@ class SentenceTransformersDiversityRanker:
             top_k = self.top_k
         elif top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
-
-        if self.model is None:
-            error_msg = (
-                "The component SentenceTransformersDiversityRanker wasn't warmed up. "
-                "Run 'warm_up()' before calling 'run()'."
-            )
-            raise ComponentError(error_msg)
 
         diversity_sorted = self._greedy_diversity_order(query=query, documents=documents)
 

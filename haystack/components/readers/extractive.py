@@ -571,17 +571,17 @@ class ExtractiveReader:
         :returns:
             List of answers sorted by (desc.) answer score.
 
-        :raises ComponentError:
+        :raises RuntimeError:
             If the component was not warmed up by calling 'warm_up()' before.
         """
+        if self.model is None:
+            raise RuntimeError("The component was not warmed up. Run 'warm_up()' before calling 'run()'.")
+
         if not documents:
             return {"answers": []}
 
         queries = [query]  # Temporary solution until we have decided what batching should look like in v2
         nested_documents = [documents]
-        if self.model is None:
-            raise ComponentError("The component was not warmed up. Run 'warm_up()' before calling 'run()'.")
-
         top_k = top_k or self.top_k
         score_threshold = score_threshold or self.score_threshold
         max_seq_length = max_seq_length or self.max_seq_length

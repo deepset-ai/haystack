@@ -131,6 +131,7 @@ class HuggingFaceLocalGenerator:
         self.pipeline = None
         self.stopping_criteria_list = None
         self.streaming_callback = streaming_callback
+        self._warmed_up: bool = False
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -144,6 +145,9 @@ class HuggingFaceLocalGenerator:
         """
         Initializes the component.
         """
+        if self._warmed_up:
+            return
+
         if self.pipeline is None:
             self.pipeline = pipeline(**self.huggingface_pipeline_kwargs)
 
@@ -152,6 +156,8 @@ class HuggingFaceLocalGenerator:
                 tokenizer=self.pipeline.tokenizer, stop_words=self.stop_words, device=self.pipeline.device
             )
             self.stopping_criteria_list = StoppingCriteriaList([stop_words_criteria])
+
+        self._warmed_up = True
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -209,7 +215,7 @@ class HuggingFaceLocalGenerator:
             A dictionary containing the generated replies.
             - replies: A list of strings representing the generated replies.
         """
-        if self.pipeline is None:
+        if not self._warmed_up:
             raise RuntimeError("The generation model has not been loaded. Please call warm_up() before running.")
 
         if not prompt:
@@ -221,12 +227,12 @@ class HuggingFaceLocalGenerator:
         if self.streaming_callback:
             num_responses = updated_generation_kwargs.get("num_return_sequences", 1)
             if num_responses > 1:
-                logger.warning(
-                    "Streaming is enabled, but the number of responses is set to %d. "
+                msg = (
+                    "Streaming is enabled, but the number of responses is set to {num_responses}. "
                     "Streaming is only supported for single response generation. "
-                    "Setting the number of responses to 1.",
-                    num_responses,
+                    "Setting the number of responses to 1."
                 )
+                logger.warning(msg, num_responses=num_responses)
                 updated_generation_kwargs["num_return_sequences"] = 1
             # streamer parameter hooks into HF streaming, HFTokenStreamingHandler is an adapter to our streaming
             updated_generation_kwargs["streamer"] = HFTokenStreamingHandler(

@@ -116,6 +116,9 @@ class SASEvaluator:
         """
         Initializes the component.
         """
+        if self._similarity_model:
+            return
+
         token = self._token.resolve_value() if self._token else None
         config = AutoConfig.from_pretrained(self._model, use_auth_token=token)
         cross_encoder_used = False

@@ -176,6 +176,7 @@ class HuggingFaceLocalChatGenerator:
         self.chat_template = chat_template
         self.streaming_callback = streaming_callback
         self.pipeline = None
+        self._warmed_up: bool = False
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -189,8 +190,11 @@ class HuggingFaceLocalChatGenerator:
         """
         Initializes the component.
         """
-        if self.pipeline is None:
-            self.pipeline = pipeline(**self.huggingface_pipeline_kwargs)
+        if self._warmed_up:
+            return
+
+        self.pipeline = pipeline(**self.huggingface_pipeline_kwargs)
+        self._warmed_up = True
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -245,7 +249,7 @@ class HuggingFaceLocalChatGenerator:
         :returns:
             A list containing the generated responses as ChatMessage instances.
         """
-        if self.pipeline is None:
+        if not self._warmed_up:
             raise RuntimeError("The generation model has not been loaded. Please call warm_up() before running.")
 
         tokenizer = self.pipeline.tokenizer
@@ -265,12 +269,12 @@ class HuggingFaceLocalChatGenerator:
         if self.streaming_callback:
             num_responses = generation_kwargs.get("num_return_sequences", 1)
             if num_responses > 1:
-                logger.warning(
-                    "Streaming is enabled, but the number of responses is set to %d. "
+                msg = (
+                    "Streaming is enabled, but the number of responses is set to {num_responses}. "
                     "Streaming is only supported for single response generation. "
-                    "Setting the number of responses to 1.",
-                    num_responses,
+                    "Setting the number of responses to 1."
                 )
+                logger.warning(msg, num_responses=num_responses)
                 generation_kwargs["num_return_sequences"] = 1
             # streamer parameter hooks into HF streaming, HFTokenStreamingHandler is an adapter to our streaming
             generation_kwargs["streamer"] = HFTokenStreamingHandler(tokenizer, self.streaming_callback, stop_words)
