@@ -224,7 +224,7 @@ class TransformersSimilarityRanker:
         # If a model path is provided but the model isn't loaded
         if self.model is None:
             raise RuntimeError(
-                f"The component TransformersSimilarityRanker wasn't warmed up. Run 'warm_up()' before calling 'run()'."
+                "The component TransformersSimilarityRanker wasn't warmed up. Run 'warm_up()' before calling 'run()'."
             )
 
         if not documents:
