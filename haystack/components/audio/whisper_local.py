@@ -158,6 +158,9 @@ class LocalWhisperTranscriber:
         return_segments = kwargs.pop("return_segments", False)
         transcriptions: Dict[Path, Any] = {}
         for source in sources:
+            if self._model is None:
+                continue
+
             if not isinstance(source, ByteStream):
                 path = Path(source)
                 source = ByteStream.from_file_path(path)
@@ -165,8 +168,8 @@ class LocalWhisperTranscriber:
             else:
                 # If we received a ByteStream instance that doesn't have the "file_path" metadata set,
                 # we dump the bytes into a temporary file.
-                path = source.meta.get("file_path")
-                if path is None:
+                path = source.meta.get("file_path", Path())
+                if path.name:
                     fp = tempfile.NamedTemporaryFile(delete=False)
                     path = Path(fp.name)
                     source.to_file(path)

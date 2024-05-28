@@ -135,13 +135,12 @@ class HuggingFaceTGIGenerator:
         self.client = InferenceClient(url or model, token=token.resolve_value() if token else None)
         self.streaming_callback = streaming_callback
         self.tokenizer = None
-        self._warmed_up: bool = False
 
     def warm_up(self) -> None:
         """
         Initializes the component.
         """
-        if self._warmed_up:
+        if self.tokenizer is not None:
             return
 
         # is this user using HF free tier inference API?
@@ -158,8 +157,6 @@ class HuggingFaceTGIGenerator:
         self.tokenizer = AutoTokenizer.from_pretrained(
             self.model, token=self.token.resolve_value() if self.token else None
         )
-
-        self._warmed_up = True
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -210,7 +207,7 @@ class HuggingFaceTGIGenerator:
             A dictionary containing the generated replies and metadata. Both are lists of length n.
             - replies: A list of strings representing the generated replies.
         """
-        if not self._warmed_up:
+        if not self.tokenizer:
             raise RuntimeError("Please call warm_up() before running LLM inference.")
 
         # check generation kwargs given as parameters to override the default ones

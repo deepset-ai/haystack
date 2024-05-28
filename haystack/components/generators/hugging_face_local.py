@@ -131,7 +131,6 @@ class HuggingFaceLocalGenerator:
         self.pipeline = None
         self.stopping_criteria_list = None
         self.streaming_callback = streaming_callback
-        self._warmed_up: bool = False
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -140,6 +139,10 @@ class HuggingFaceLocalGenerator:
         if isinstance(self.huggingface_pipeline_kwargs["model"], str):
             return {"model": self.huggingface_pipeline_kwargs["model"]}
         return {"model": f"[object of type {type(self.huggingface_pipeline_kwargs['model'])}]"}
+
+    @property
+    def _warmed_up(self) -> bool:
+        return (self.pipeline is not None) and (self.stopping_criteria_list is not None)
 
     def warm_up(self):
         """
@@ -156,8 +159,6 @@ class HuggingFaceLocalGenerator:
                 tokenizer=self.pipeline.tokenizer, stop_words=self.stop_words, device=self.pipeline.device
             )
             self.stopping_criteria_list = StoppingCriteriaList([stop_words_criteria])
-
-        self._warmed_up = True
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -236,10 +237,10 @@ class HuggingFaceLocalGenerator:
                 updated_generation_kwargs["num_return_sequences"] = 1
             # streamer parameter hooks into HF streaming, HFTokenStreamingHandler is an adapter to our streaming
             updated_generation_kwargs["streamer"] = HFTokenStreamingHandler(
-                self.pipeline.tokenizer, self.streaming_callback, self.stop_words
+                self.pipeline.tokenizer, self.streaming_callback, self.stop_words  # type: ignore
             )
 
-        output = self.pipeline(prompt, stopping_criteria=self.stopping_criteria_list, **updated_generation_kwargs)
+        output = self.pipeline(prompt, stopping_criteria=self.stopping_criteria_list, **updated_generation_kwargs)  # type: ignore
         replies = [o["generated_text"] for o in output if "generated_text" in o]
 
         if self.stop_words:

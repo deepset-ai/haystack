@@ -176,7 +176,6 @@ class HuggingFaceLocalChatGenerator:
         self.chat_template = chat_template
         self.streaming_callback = streaming_callback
         self.pipeline = None
-        self._warmed_up: bool = False
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -190,11 +189,10 @@ class HuggingFaceLocalChatGenerator:
         """
         Initializes the component.
         """
-        if self._warmed_up:
+        if self.pipeline is not None:
             return
 
         self.pipeline = pipeline(**self.huggingface_pipeline_kwargs)
-        self._warmed_up = True
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -249,7 +247,7 @@ class HuggingFaceLocalChatGenerator:
         :returns:
             A list containing the generated responses as ChatMessage instances.
         """
-        if not self._warmed_up:
+        if self.pipeline is None:
             raise RuntimeError("The generation model has not been loaded. Please call warm_up() before running.")
 
         tokenizer = self.pipeline.tokenizer
