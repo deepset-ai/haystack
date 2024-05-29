@@ -84,3 +84,13 @@ def pipeline_that_has_an_infinite_loop():
     pipe.connect("second.b", "first.y")
     return pipe, {"first": {"x": 1}}, PipelineMaxLoops
 ```
+
+## Why?
+
+As the time of writing, tests that invoke `Pipeline.run()` are scattered between different files with very little clarity on what they are intended to test - the only indicators are the name of each test itself and the name of their parent module. This makes it difficult to understand which behaviours are being tested, if they are tested redundantly or if they work correctly.
+
+The introduction of the Gherkin file allows for a single "source of truth" that enumerates (ideally, in an exhaustive manner) all the behaviours of the pipeline execution logic that we wish to test. This intermediate mapping of behaviours to actual test cases is meant to provide an overview of the latter and reduce the cognitive overhead of understanding them. When writing new tests, we now "tag" them with a specific behavioural parameter that's specified in a Gherkin scenario.
+
+While one could functionally do the same with well-defined test names and detailed comments on what is being tested, it would still lack the overview that the above approach provides. It's also extensible in that new scenarios with different behaviours can be introduced easily (e.g: for `async` pipeline execution logic).
+
+Apart from the above, the newly introduced harness ensures that all behavioural pipeline tests return a structured result, which simplifies checking of side-effects.
