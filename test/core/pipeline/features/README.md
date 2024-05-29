@@ -84,3 +84,17 @@ def pipeline_that_has_an_infinite_loop():
     pipe.connect("second.b", "first.y")
     return pipe, {"first": {"x": 1}}, PipelineMaxLoops
 ```
+
+## Why?
+
+As the time I'm writing this `Pipeline.run()` tests are scattered between different files, with close to no explanation on what they're testing, apart from the name of the test function or file.
+
+This makes it hard to know all the cases we're testing, if some are tested multiple times, and if the test actually does what it says.
+
+The Gherkin file adds some overhead as it forces us to add a sort of "tag" for every test function, that most of the times is going to be really similar to the test function name. It also creates some indirection as one needs to know all the steps to add a new test.
+
+Though it gives also some benefits. All the cases we're testing are grouped up and can be checked together. The devs are forced to write in natural language the type of Pipeline they're testing. They're also forced to properly test all "parts" of `Pipeline.run()`, its outputs and the order it runs the Components.
+
+We can do all the above with some custom `pytest` logic that generates tests from a list of functions that return `Pipeline`s. Though that requires some extra code that needs to be maintained, something that we get for free with `pytest-bdd`. Also the tests are not grouped up together, making it harder to understand and reason about the cases we support.
+
+Also in the future if we need to test new `run()` functions -- say an `async run` -- we can easily reuse the existing `given` steps that create the `Pipeline` just by adding a new scenario that test for a different type of run.
