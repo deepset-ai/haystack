@@ -10,6 +10,7 @@ Feature: Pipeline running
         | kind |
         | that has no components |
         | that is linear |
+        | that is really complex with lots of components, forks, and loops |
 
     Scenario Outline: Running a bad Pipeline
         Given a pipeline <kind>
