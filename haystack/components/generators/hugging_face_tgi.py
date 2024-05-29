@@ -140,6 +140,8 @@ class HuggingFaceTGIGenerator:
         """
         Initializes the component.
         """
+        if self.tokenizer is not None:
+            return
 
         # is this user using HF free tier inference API?
         if self.model and not self.url:
@@ -205,6 +207,11 @@ class HuggingFaceTGIGenerator:
             A dictionary containing the generated replies and metadata. Both are lists of length n.
             - replies: A list of strings representing the generated replies.
         """
+        if not self.tokenizer:
+            raise RuntimeError(
+                "The component HuggingFaceTGIGenerator was not warmed up. Please call warm_up() before running LLM inference."
+            )
+
         # check generation kwargs given as parameters to override the default ones
         additional_params = ["n", "stop_words"]
         check_generation_params(generation_kwargs, additional_params)
@@ -213,9 +220,6 @@ class HuggingFaceTGIGenerator:
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
         num_responses = generation_kwargs.pop("n", 1)
         generation_kwargs.setdefault("stop_sequences", []).extend(generation_kwargs.pop("stop_words", []))
-
-        if self.tokenizer is None:
-            raise RuntimeError("Please call warm_up() before running LLM inference.")
 
         prompt_token_count = len(self.tokenizer.encode(prompt, add_special_tokens=False))
 

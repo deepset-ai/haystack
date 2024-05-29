@@ -6,7 +6,7 @@ import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Union, get_args
 
-from haystack import ComponentError, Document, component, default_from_dict, default_to_dict, logging
+from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import ByteStream
 from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice
@@ -113,7 +113,9 @@ class LocalWhisperTranscriber:
                 alignment data and the path to the audio file used for the transcription.
         """
         if self._model is None:
-            raise ComponentError("The component was not warmed up. Run 'warm_up()' before calling 'run()'.")
+            raise RuntimeError(
+                "The component LocalWhisperTranscriber was not warmed up. Run 'warm_up()' before calling 'run()'."
+            )
 
         if whisper_params is None:
             whisper_params = self.whisper_params
@@ -156,7 +158,7 @@ class LocalWhisperTranscriber:
             A dictionary mapping 'file_path' to 'transcription'.
         """
         if self._model is None:
-            raise ComponentError("Model is not loaded, please run 'warm_up()' before calling 'run()'")
+            raise RuntimeError("Model is not loaded, please run 'warm_up()' before calling 'run()'")
 
         return_segments = kwargs.pop("return_segments", False)
         transcriptions: Dict[Path, Any] = {}

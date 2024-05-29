@@ -140,10 +140,19 @@ class HuggingFaceLocalGenerator:
             return {"model": self.huggingface_pipeline_kwargs["model"]}
         return {"model": f"[object of type {type(self.huggingface_pipeline_kwargs['model'])}]"}
 
+    @property
+    def _warmed_up(self) -> bool:
+        if self.stop_words:
+            return (self.pipeline is not None) and (self.stopping_criteria_list is not None)
+        return self.pipeline is not None
+
     def warm_up(self):
         """
         Initializes the component.
         """
+        if self._warmed_up:
+            return
+
         if self.pipeline is None:
             self.pipeline = pipeline(**self.huggingface_pipeline_kwargs)
 
@@ -209,8 +218,10 @@ class HuggingFaceLocalGenerator:
             A dictionary containing the generated replies.
             - replies: A list of strings representing the generated replies.
         """
-        if self.pipeline is None:
-            raise RuntimeError("The generation model has not been loaded. Please call warm_up() before running.")
+        if not self._warmed_up:
+            raise RuntimeError(
+                "The component HuggingFaceLocalGenerator was not warmed up. Please call warm_up() before running."
+            )
 
         if not prompt:
             return {"replies": []}
@@ -221,19 +232,19 @@ class HuggingFaceLocalGenerator:
         if self.streaming_callback:
             num_responses = updated_generation_kwargs.get("num_return_sequences", 1)
             if num_responses > 1:
-                logger.warning(
-                    "Streaming is enabled, but the number of responses is set to %d. "
+                msg = (
+                    "Streaming is enabled, but the number of responses is set to {num_responses}. "
                     "Streaming is only supported for single response generation. "
-                    "Setting the number of responses to 1.",
-                    num_responses,
+                    "Setting the number of responses to 1."
                 )
+                logger.warning(msg, num_responses=num_responses)
                 updated_generation_kwargs["num_return_sequences"] = 1
             # streamer parameter hooks into HF streaming, HFTokenStreamingHandler is an adapter to our streaming
             updated_generation_kwargs["streamer"] = HFTokenStreamingHandler(
-                self.pipeline.tokenizer, self.streaming_callback, self.stop_words
+                self.pipeline.tokenizer, self.streaming_callback, self.stop_words  # type: ignore
             )
 
-        output = self.pipeline(prompt, stopping_criteria=self.stopping_criteria_list, **updated_generation_kwargs)
+        output = self.pipeline(prompt, stopping_criteria=self.stopping_criteria_list, **updated_generation_kwargs)  # type: ignore
         replies = [o["generated_text"] for o in output if "generated_text" in o]
 
         if self.stop_words:
