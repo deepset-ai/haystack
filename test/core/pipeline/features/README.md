@@ -87,14 +87,10 @@ def pipeline_that_has_an_infinite_loop():
 
 ## Why?
 
-As the time I'm writing this `Pipeline.run()` tests are scattered between different files, with close to no explanation on what they're testing, apart from the name of the test function or file.
+As the time of writing, tests that invoke `Pipeline.run()` are scattered between different files with very little clarity on what they are intended to test - the only indicators are the name of each test itself and the name of their parent module. This makes it difficult to understand which behaviours are being tested, if they are tested redundantly or if the they work correctly.
 
-This makes it hard to know all the cases we're testing, if some are tested multiple times, and if the test actually does what it says.
+The introduction of the Gherkin file allows for a single "source of truth" that enumerates (ideally, in an exhaustive manner) all the behaviours of the pipeline execution logic that we wish to test. This intermediate mapping of behaviours to actual test cases is meant to provide an overview of the latter and reduce the cognitive overhead of understanding them. When writing new tests, we now "tag" them with a specific behavioural parameter that's specified in a Gherkin scenario.
 
-The Gherkin file adds some overhead as it forces us to add a sort of "tag" for every test function, that most of the times is going to be really similar to the test function name. It also creates some indirection as one needs to know all the steps to add a new test.
+While one could functionally do the same with well-defined test names and detailed comments on what is being tested, it would still lack the overview that the above approach provides. It also extensible in that new scenarios with different behaviours can be introduced easily (e.g: for `async` pipeline execution logic).
 
-Though it gives also some benefits. All the cases we're testing are grouped up and can be checked together. The devs are forced to write in natural language the type of Pipeline they're testing. They're also forced to properly test all "parts" of `Pipeline.run()`, its outputs and the order it runs the Components.
-
-We can do all the above with some custom `pytest` logic that generates tests from a list of functions that return `Pipeline`s. Though that requires some extra code that needs to be maintained, something that we get for free with `pytest-bdd`. Also the tests are not grouped up together, making it harder to understand and reason about the cases we support.
-
-Also in the future if we need to test new `run()` functions -- say an `async run` -- we can easily reuse the existing `given` steps that create the `Pipeline` just by adding a new scenario that test for a different type of run.
+Apart from the above, the newly introduced harness ensures that all behavioural pipeline tests return a structured result, which simplifies checking of side-effects.
