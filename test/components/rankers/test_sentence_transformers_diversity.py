@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, call, patch
 import pytest
 import torch
 
-from haystack import ComponentError, Document
+from haystack import Document
 from haystack.components.rankers import SentenceTransformersDiversityRanker
 from haystack.utils import ComponentDevice
 from haystack.utils.auth import Secret
@@ -228,7 +228,7 @@ class TestSentenceTransformersDiversityRanker:
         documents = [Document(content="doc1"), Document(content="doc2")]
 
         error_msg = "The component SentenceTransformersDiversityRanker wasn't warmed up."
-        with pytest.raises(ComponentError, match=error_msg):
+        with pytest.raises(RuntimeError, match=error_msg):
             ranker.run(query="test query", documents=documents)
 
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])

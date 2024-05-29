@@ -134,6 +134,7 @@ class NamedEntityExtractor:
             backend = NamedEntityExtractorBackend.from_str(backend)
 
         self._backend: _NerBackend
+        self._warmed_up: bool = False
         device = ComponentDevice.resolve_device(device)
 
         if backend == NamedEntityExtractorBackend.HUGGING_FACE:
@@ -150,8 +151,12 @@ class NamedEntityExtractor:
         :raises ComponentError:
             If the backend fails to initialize successfully.
         """
+        if self._warmed_up:
+            return
+
         try:
             self._backend.initialize()
+            self._warmed_up = True
         except Exception as e:
             raise ComponentError(
                 f"Named entity extractor with backend '{self._backend.type} failed to initialize."
@@ -171,6 +176,10 @@ class NamedEntityExtractor:
         :raises ComponentError:
             If the backend fails to process a document.
         """
+        if not self._warmed_up:
+            msg = "The component NamedEntityExtractor was not warmed up. Call warm_up() before running the component."
+            raise RuntimeError(msg)
+
         texts = [doc.content if doc.content is not None else "" for doc in documents]
         annotations = self._backend.annotate(texts, batch_size=batch_size)
 

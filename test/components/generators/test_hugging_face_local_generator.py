@@ -385,7 +385,7 @@ class TestHuggingFaceLocalGenerator:
             model="google/flan-t5-base", task="text2text-generation", generation_kwargs={"max_new_tokens": 100}
         )
 
-        with pytest.raises(RuntimeError, match="The generation model has not been loaded."):
+        with pytest.raises(RuntimeError, match="The component HuggingFaceLocalGenerator was not warmed up"):
             generator.run(prompt="irrelevant")
 
     def test_stop_words_criteria_with_a_mocked_tokenizer(self):
@@ -424,6 +424,7 @@ class TestHuggingFaceLocalGenerator:
             model="google/flan-t5-small", task="text2text-generation", stop_words=["world"]
         )
         generator.pipeline = Mock(return_value=[{"generated_text": "Hello world"}])
+        generator.stopping_criteria_list = Mock()
         results = generator.run(prompt="irrelevant")
         assert results == {"replies": ["Hello"]}
 
