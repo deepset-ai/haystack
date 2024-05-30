@@ -852,3 +852,29 @@ def pipeline_that_has_multiple_branches_that_merge_into_a_component_with_a_singl
         [{"sum": {"total": 14}}, {"sum": {"total": 17}}],
         [["add_one", "parity", "add_ten", "sum"], ["add_one", "parity", "double", "add_four", "add_one_again", "sum"]],
     )
+
+
+@given(
+    "a pipeline that has multiple branches of different lengths that merge into a component with a single variadic input",
+    target_fixture="pipeline_data",
+)
+def pipeline_that_has_multiple_branches_of_different_lengths_that_merge_into_a_component_with_a_single_variadic_input():
+    pipeline = Pipeline()
+    pipeline.add_component("first_addition", AddFixedValue(add=2))
+    pipeline.add_component("second_addition", AddFixedValue(add=2))
+    pipeline.add_component("third_addition", AddFixedValue(add=2))
+    pipeline.add_component("sum", Sum())
+    pipeline.add_component("fourth_addition", AddFixedValue(add=1))
+
+    pipeline.connect("first_addition.result", "second_addition.value")
+    pipeline.connect("first_addition.result", "sum.values")
+    pipeline.connect("second_addition.result", "sum.values")
+    pipeline.connect("third_addition.result", "sum.values")
+    pipeline.connect("sum.total", "fourth_addition.value")
+
+    return (
+        pipeline,
+        {"first_addition": {"value": 1}, "third_addition": {"value": 1}},
+        {"fourth_addition": {"result": 12}},
+        ["first_addition", "second_addition", "third_addition", "sum", "fourth_addition"],
+    )

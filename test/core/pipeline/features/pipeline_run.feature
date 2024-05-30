@@ -30,6 +30,7 @@ Feature: Pipeline running
         | that has only a single component that sends one of its outputs to itself |
         | that has a component that sends one of its outputs to itself |
         | that has multiple branches that merge into a component with a single variadic input |
+        | that has multiple branches of different lengths that merge into a component with a single variadic input |
 
     Scenario Outline: Running a bad Pipeline
         Given a pipeline <kind>
