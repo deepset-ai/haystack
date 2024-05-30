@@ -12,6 +12,8 @@ Feature: Pipeline running
         | that is linear |
         | that is really complex with lots of components, forks, and loops |
         | that has a single component with a default input |
+        | that has two loops of identical lengths |
+        | that has two loops of different lengths |
 
     Scenario Outline: Running a bad Pipeline
         Given a pipeline <kind>

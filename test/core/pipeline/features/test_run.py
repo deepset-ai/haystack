@@ -14,6 +14,7 @@ from haystack.testing.sample_components import (
     Subtract,
     Sum,
     Threshold,
+    Remainder,
 )
 from haystack.testing.factory import component_class
 
@@ -170,4 +171,86 @@ def pipeline_that_has_a_single_component_with_a_default_input():
         [{"with_defaults": {"a": 40, "b": 30}}, {"with_defaults": {"a": 40}}],
         [{"with_defaults": {"c": 70}}, {"with_defaults": {"c": 42}}],
         [["with_defaults"], ["with_defaults"]],
+    )
+
+
+@given("a pipeline that has two loops of identical lengths", target_fixture="pipeline_data")
+def pipeline_that_has_two_loops_of_identical_lengths():
+    pipeline = Pipeline(max_loops_allowed=10)
+    pipeline.add_component("multiplexer", Multiplexer(type_=int))
+    pipeline.add_component("remainder", Remainder(divisor=3))
+    pipeline.add_component("add_one", AddFixedValue(add=1))
+    pipeline.add_component("add_two", AddFixedValue(add=2))
+
+    pipeline.connect("multiplexer.value", "remainder.value")
+    pipeline.connect("remainder.remainder_is_1", "add_two.value")
+    pipeline.connect("remainder.remainder_is_2", "add_one.value")
+    pipeline.connect("add_two", "multiplexer.value")
+    pipeline.connect("add_one", "multiplexer.value")
+
+    return (
+        pipeline,
+        [
+            {"multiplexer": {"value": 0}},
+            {"multiplexer": {"value": 3}},
+            {"multiplexer": {"value": 4}},
+            {"multiplexer": {"value": 5}},
+            {"multiplexer": {"value": 6}},
+        ],
+        [
+            {"remainder": {"remainder_is_0": 0}},
+            {"remainder": {"remainder_is_0": 3}},
+            {"remainder": {"remainder_is_0": 6}},
+            {"remainder": {"remainder_is_0": 6}},
+            {"remainder": {"remainder_is_0": 6}},
+        ],
+        [
+            ["multiplexer", "remainder"],
+            ["multiplexer", "remainder"],
+            ["multiplexer", "remainder", "add_two", "multiplexer", "remainder"],
+            ["multiplexer", "remainder", "add_one", "multiplexer", "remainder"],
+            ["multiplexer", "remainder"],
+        ],
+    )
+
+
+@given("a pipeline that has two loops of different lengths", target_fixture="pipeline_data")
+def pipeline_that_has_two_loops_of_different_lengths():
+    pipeline = Pipeline(max_loops_allowed=10)
+    pipeline.add_component("multiplexer", Multiplexer(type_=int))
+    pipeline.add_component("remainder", Remainder(divisor=3))
+    pipeline.add_component("add_one", AddFixedValue(add=1))
+    pipeline.add_component("add_two_1", AddFixedValue(add=1))
+    pipeline.add_component("add_two_2", AddFixedValue(add=1))
+
+    pipeline.connect("multiplexer.value", "remainder.value")
+    pipeline.connect("remainder.remainder_is_1", "add_two_1.value")
+    pipeline.connect("add_two_1", "add_two_2.value")
+    pipeline.connect("add_two_2", "multiplexer")
+    pipeline.connect("remainder.remainder_is_2", "add_one.value")
+    pipeline.connect("add_one", "multiplexer")
+
+    return (
+        pipeline,
+        [
+            {"multiplexer": {"value": 0}},
+            {"multiplexer": {"value": 3}},
+            {"multiplexer": {"value": 4}},
+            {"multiplexer": {"value": 5}},
+            {"multiplexer": {"value": 6}},
+        ],
+        [
+            {"remainder": {"remainder_is_0": 0}},
+            {"remainder": {"remainder_is_0": 3}},
+            {"remainder": {"remainder_is_0": 6}},
+            {"remainder": {"remainder_is_0": 6}},
+            {"remainder": {"remainder_is_0": 6}},
+        ],
+        [
+            ["multiplexer", "remainder"],
+            ["multiplexer", "remainder"],
+            ["multiplexer", "remainder", "add_two_1", "add_two_2", "multiplexer", "remainder"],
+            ["multiplexer", "remainder", "add_one", "multiplexer", "remainder"],
+            ["multiplexer", "remainder"],
+        ],
     )
