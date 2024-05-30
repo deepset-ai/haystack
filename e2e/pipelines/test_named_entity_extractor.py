@@ -4,7 +4,7 @@
 
 import pytest
 
-from haystack import ComponentError, Document, Pipeline
+from haystack import Document, Pipeline
 from haystack.components.extractors import NamedEntityAnnotation, NamedEntityExtractor, NamedEntityExtractorBackend
 
 
@@ -49,7 +49,7 @@ def spacy_annotations():
 def test_ner_extractor_init():
     extractor = NamedEntityExtractor(backend=NamedEntityExtractorBackend.HUGGING_FACE, model="dslim/bert-base-NER")
 
-    with pytest.raises(ComponentError, match=r"not initialized"):
+    with pytest.raises(RuntimeError, match=r"not warmed up"):
         extractor.run(documents=[])
 
     assert not extractor.initialized
