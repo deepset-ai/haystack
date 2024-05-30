@@ -344,3 +344,24 @@ def pipeline_that_has_two_branches_that_dont_merge():
         [{"add_three": {"result": 15}}, {"double": {"value": 6}}],
         [["add_one", "parity", "add_ten", "add_three"], ["add_one", "parity", "double"]],
     )
+
+
+@given("a pipeline that has two branches that merge", target_fixture="pipeline_data")
+def pipeline_that_has_two_branches_that_merge():
+    pipeline = Pipeline()
+    pipeline.add_component("first_addition", AddFixedValue(add=2))
+    pipeline.add_component("second_addition", AddFixedValue(add=2))
+    pipeline.add_component("third_addition", AddFixedValue(add=2))
+    pipeline.add_component("diff", Subtract())
+    pipeline.add_component("fourth_addition", AddFixedValue(add=1))
+
+    pipeline.connect("first_addition.result", "second_addition.value")
+    pipeline.connect("second_addition.result", "diff.first_value")
+    pipeline.connect("third_addition.result", "diff.second_value")
+    pipeline.connect("diff", "fourth_addition.value")
+    return (
+        pipeline,
+        {"first_addition": {"value": 1}, "third_addition": {"value": 1}},
+        {"fourth_addition": {"result": 3}},
+        ["first_addition", "second_addition", "third_addition", "diff", "fourth_addition"],
+    )
