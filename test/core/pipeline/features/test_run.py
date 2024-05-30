@@ -15,6 +15,7 @@ from haystack.testing.sample_components import (
     Sum,
     Threshold,
     Remainder,
+    Accumulate,
 )
 from haystack.testing.factory import component_class
 
@@ -252,5 +253,49 @@ def pipeline_that_has_two_loops_of_different_lengths():
             ["multiplexer", "remainder", "add_two_1", "add_two_2", "multiplexer", "remainder"],
             ["multiplexer", "remainder", "add_one", "multiplexer", "remainder"],
             ["multiplexer", "remainder"],
+        ],
+    )
+
+
+@given("a pipeline that has a single loop with two conditional branches", target_fixture="pipeline_data")
+def pipeline_that_has_a_single_loop_with_two_conditional_branches():
+    accumulator = Accumulate()
+    pipeline = Pipeline(max_loops_allowed=10)
+
+    pipeline.add_component("add_one", AddFixedValue(add=1))
+    pipeline.add_component("multiplexer", Multiplexer(type_=int))
+    pipeline.add_component("below_10", Threshold(threshold=10))
+    pipeline.add_component("below_5", Threshold(threshold=5))
+    pipeline.add_component("add_three", AddFixedValue(add=3))
+    pipeline.add_component("accumulator", accumulator)
+    pipeline.add_component("add_two", AddFixedValue(add=2))
+
+    pipeline.connect("add_one.result", "multiplexer")
+    pipeline.connect("multiplexer.value", "below_10.value")
+    pipeline.connect("below_10.below", "accumulator.value")
+    pipeline.connect("accumulator.value", "below_5.value")
+    pipeline.connect("below_5.above", "add_three.value")
+    pipeline.connect("below_5.below", "multiplexer")
+    pipeline.connect("add_three.result", "multiplexer")
+    pipeline.connect("below_10.above", "add_two.value")
+
+    return (
+        pipeline,
+        {"add_one": {"value": 3}},
+        {"add_two": {"result": 13}},
+        [
+            "add_one",
+            "multiplexer",
+            "below_10",
+            "accumulator",
+            "below_5",
+            "multiplexer",
+            "below_10",
+            "accumulator",
+            "below_5",
+            "add_three",
+            "multiplexer",
+            "below_10",
+            "add_two",
         ],
     )

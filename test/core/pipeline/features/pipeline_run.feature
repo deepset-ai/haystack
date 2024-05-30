@@ -14,6 +14,7 @@ Feature: Pipeline running
         | that has a single component with a default input |
         | that has two loops of identical lengths |
         | that has two loops of different lengths |
+        | that has a single loop with two conditional branches |
 
     Scenario Outline: Running a bad Pipeline
         Given a pipeline <kind>
