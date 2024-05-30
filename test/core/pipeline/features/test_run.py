@@ -365,3 +365,40 @@ def pipeline_that_has_two_branches_that_merge():
         {"fourth_addition": {"result": 3}},
         ["first_addition", "second_addition", "third_addition", "diff", "fourth_addition"],
     )
+
+
+@given(
+    "a pipeline that has different combinations of branches that merge and do not merge", target_fixture="pipeline_data"
+)
+def pipeline_that_has_different_combinations_of_branches_that_merge_and_do_not_merge():
+    pipeline = Pipeline()
+    pipeline.add_component("add_one", AddFixedValue())
+    pipeline.add_component("parity", Parity())
+    pipeline.add_component("add_ten", AddFixedValue(add=10))
+    pipeline.add_component("double", Double())
+    pipeline.add_component("add_four", AddFixedValue(add=4))
+    pipeline.add_component("add_two", AddFixedValue())
+    pipeline.add_component("add_two_as_well", AddFixedValue())
+    pipeline.add_component("diff", Subtract())
+
+    pipeline.connect("add_one.result", "parity.value")
+    pipeline.connect("parity.even", "add_four.value")
+    pipeline.connect("parity.odd", "double.value")
+    pipeline.connect("add_ten.result", "diff.first_value")
+    pipeline.connect("double.value", "diff.second_value")
+    pipeline.connect("parity.odd", "add_ten.value")
+    pipeline.connect("add_four.result", "add_two.value")
+    pipeline.connect("add_four.result", "add_two_as_well.value")
+
+    return (
+        pipeline,
+        [
+            {"add_one": {"value": 1}, "add_two": {"add": 2}, "add_two_as_well": {"add": 2}},
+            {"add_one": {"value": 2}, "add_two": {"add": 2}, "add_two_as_well": {"add": 2}},
+        ],
+        [{"add_two": {"result": 8}, "add_two_as_well": {"result": 8}}, {"diff": {"difference": 7}}],
+        [
+            ["add_one", "parity", "add_four", "add_two", "add_two_as_well"],
+            ["add_one", "parity", "double", "add_ten", "diff"],
+        ],
+    )

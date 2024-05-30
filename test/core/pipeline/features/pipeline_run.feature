@@ -18,6 +18,7 @@ Feature: Pipeline running
         | that has a component with dynamic inputs defined in init |
         | that has two branches that don't merge |
         | that has two branches that merge |
+        | that has different combinations of branches that merge and do not merge |
 
     Scenario Outline: Running a bad Pipeline
         Given a pipeline <kind>
