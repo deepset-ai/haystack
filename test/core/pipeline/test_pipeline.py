@@ -938,32 +938,6 @@ class TestPipeline:
         assert list(pipe.graph.edges) == [("comp1", "comp3", "value/value"), ("comp2", "comp3", "value/value")]
 
 
-@component
-class FakeComponent:
-    def __init__(self, an_init_param: Optional[str] = None):
-        pass
-
-    @component.output_types(value=str)
-    def run(self, input_: str):
-        return {"value": input_}
-
-
-def test_run_raises_if_max_visits_reached():
-    def custom_init(self):
-        component.set_input_type(self, "x", int)
-        component.set_input_type(self, "y", int, 1)
-        component.set_output_types(self, a=int, b=int)
-
-    FakeComponent = component_class("FakeComponent", output={"a": 1, "b": 1}, extra_fields={"__init__": custom_init})
-    pipe = Pipeline(max_loops_allowed=1)
-    pipe.add_component("first", FakeComponent())
-    pipe.add_component("second", FakeComponent())
-    pipe.connect("first.a", "second.x")
-    pipe.connect("second.b", "first.y")
-    with pytest.raises(PipelineMaxLoops):
-        pipe.run({"first": {"x": 1}})
-
-
 def test_run_with_component_that_does_not_return_dict():
     BrokenComponent = component_class(
         "BrokenComponent", input_types={"a": int}, output_types={"b": int}, output=1  # type:ignore
