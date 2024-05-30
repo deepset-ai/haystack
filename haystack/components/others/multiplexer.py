@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import sys
+import warnings
 from typing import Any, Dict
 
 from haystack import component, default_from_dict, default_to_dict, logging
@@ -103,6 +104,10 @@ class Multiplexer:
         :param type_: The type of data that the `Multiplexer` will receive from the upstream connected components and
                         distribute to the downstream connected components.
         """
+        warnings.warn(
+            "`Multiplexer` is deprecated and will be removed in Haystack 2.4.0. Use `joiners.BranchJoiner` instead.",
+            DeprecationWarning,
+        )
         self.type_ = type_
         component.set_input_types(self, value=Variadic[type_])
         component.set_output_types(self, value=type_)
