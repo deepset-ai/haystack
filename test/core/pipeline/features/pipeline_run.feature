@@ -24,6 +24,7 @@ Feature: Pipeline running
         | that has a component with mutable input |
         | that has a component with mutable output sent to multiple inputs |
         | that has a greedy and variadic component after a component with default input |
+        | that has components added in a different order from the order of execution |
 
     Scenario Outline: Running a bad Pipeline
         Given a pipeline <kind>
