@@ -1,3 +1,5 @@
+from typing import List
+
 from pytest_bdd import scenarios, given
 import pytest
 
@@ -15,10 +17,10 @@ from haystack.testing.sample_components import (
     Sum,
     Threshold,
     Remainder,
-    Accumulate,
     FString,
     Hello,
     TextSplitter,
+    StringListJoiner,
 )
 from haystack.testing.factory import component_class
 
@@ -442,4 +444,31 @@ def pipeline_that_has_two_branches_one_of_which_loops_back():
             "add_two",
             "sum",
         ],
+    )
+
+
+@given("a pipeline that has a component with mutable input", target_fixture="pipeline_data")
+def pipeline_that_has_a_component_with_mutable_input():
+    @component
+    class InputMangler:
+        @component.output_types(mangled_list=List[str])
+        def run(self, input_list: List[str]):
+            input_list.append("extra_item")
+            return {"mangled_list": input_list}
+
+    pipe = Pipeline()
+    pipe.add_component("mangler1", InputMangler())
+    pipe.add_component("mangler2", InputMangler())
+    pipe.add_component("concat1", StringListJoiner())
+    pipe.add_component("concat2", StringListJoiner())
+    pipe.connect("mangler1", "concat1")
+    pipe.connect("mangler2", "concat2")
+
+    input_list = ["foo", "bar"]
+
+    return (
+        pipe,
+        {"mangler1": {"input_list": input_list}, "mangler2": {"input_list": input_list}},
+        {"concat1": {"output": ["foo", "bar", "extra_item"]}, "concat2": {"output": ["foo", "bar", "extra_item"]}},
+        ["mangler1", "mangler2", "concat1", "concat2"],
     )
