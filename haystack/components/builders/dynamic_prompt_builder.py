@@ -86,7 +86,7 @@ class DynamicPromptBuilder:
             template placeholders of a prompt text template that is provided to the `run` method.
         """
         warnings.warn(
-            "`DynamicPromptBuilder` is deprecated and will be removed in Haystack 2.3.0."
+            "`DynamicPromptBuilder` is deprecated and will be removed in Haystack 2.4.0."
             "Use `PromptBuilder` instead.",
             DeprecationWarning,
         )
