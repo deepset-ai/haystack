@@ -820,3 +820,35 @@ def pipeline_that_has_a_component_that_sends_one_of_its_outputs_to_itself():
         {"add_2": {"result": 1}},
         ["add_1", "self_loop", "self_loop", "self_loop", "self_loop", "self_loop", "self_loop", "add_2"],
     )
+
+
+@given(
+    "a pipeline that has multiple branches that merge into a component with a single variadic input",
+    target_fixture="pipeline_data",
+)
+def pipeline_that_has_multiple_branches_that_merge_into_a_component_with_a_single_variadic_input():
+    pipeline = Pipeline()
+    pipeline.add_component("add_one", AddFixedValue())
+    pipeline.add_component("parity", Remainder(divisor=2))
+    pipeline.add_component("add_ten", AddFixedValue(add=10))
+    pipeline.add_component("double", Double())
+    pipeline.add_component("add_four", AddFixedValue(add=4))
+    pipeline.add_component("add_one_again", AddFixedValue())
+    pipeline.add_component("sum", Sum())
+
+    pipeline.connect("add_one.result", "parity.value")
+    pipeline.connect("parity.remainder_is_0", "add_ten.value")
+    pipeline.connect("parity.remainder_is_1", "double.value")
+    pipeline.connect("add_one.result", "sum.values")
+    pipeline.connect("add_ten.result", "sum.values")
+    pipeline.connect("double.value", "sum.values")
+    pipeline.connect("parity.remainder_is_1", "add_four.value")
+    pipeline.connect("add_four.result", "add_one_again.value")
+    pipeline.connect("add_one_again.result", "sum.values")
+
+    return (
+        pipeline,
+        [{"add_one": {"value": 1}}, {"add_one": {"value": 2}}],
+        [{"sum": {"total": 14}}, {"sum": {"total": 17}}],
+        [["add_one", "parity", "add_ten", "sum"], ["add_one", "parity", "double", "add_four", "add_one_again", "sum"]],
+    )
