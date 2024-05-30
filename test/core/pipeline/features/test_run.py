@@ -16,6 +16,9 @@ from haystack.testing.sample_components import (
     Threshold,
     Remainder,
     Accumulate,
+    FString,
+    Hello,
+    TextSplitter,
 )
 from haystack.testing.factory import component_class
 
@@ -298,4 +301,24 @@ def pipeline_that_has_a_single_loop_with_two_conditional_branches():
             "below_10",
             "add_two",
         ],
+    )
+
+
+@given("a pipeline that has a component with dynamic inputs defined in init", target_fixture="pipeline_data")
+def pipeline_that_has_a_component_with_dynamic_inputs_defined_in_init():
+    pipeline = Pipeline()
+    pipeline.add_component("hello", Hello())
+    pipeline.add_component("fstring", FString(template="This is the greeting: {greeting}!", variables=["greeting"]))
+    pipeline.add_component("splitter", TextSplitter())
+    pipeline.connect("hello.output", "fstring.greeting")
+    pipeline.connect("fstring.string", "splitter.sentence")
+
+    return (
+        pipeline,
+        [{"hello": {"word": "Alice"}}, {"hello": {"word": "Alice"}, "fstring": {"template": "Received: {greeting}"}}],
+        [
+            {"splitter": {"output": ["This", "is", "the", "greeting:", "Hello,", "Alice!!"]}},
+            {"splitter": {"output": ["Received:", "Hello,", "Alice!"]}},
+        ],
+        [["hello", "fstring", "splitter"], ["hello", "fstring", "splitter"]],
     )
