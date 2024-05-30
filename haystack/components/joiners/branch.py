@@ -10,9 +10,9 @@ from haystack.core.component.types import Variadic
 from haystack.utils import deserialize_type, serialize_type
 
 if sys.version_info < (3, 10):
-    from typing_extensions import TypeAlias
+    from typing_extensions import Type
 else:
-    from typing import TypeAlias
+    from typing import Type
 
 
 logger = logging.getLogger(__name__)
@@ -68,15 +68,15 @@ class BranchJoiner:
     pipe = Pipeline()
 
     # Add components to the pipeline
-    pipe.add_component('mx', BranchJoiner(List[ChatMessage]))
+    pipe.add_component('joiner', BranchJoiner(List[ChatMessage]))
     pipe.add_component('fc_llm', OpenAIChatGenerator(model="gpt-3.5-turbo-0125"))
     pipe.add_component('validator', JsonSchemaValidator(json_schema=person_schema))
     pipe.add_component('adapter', OutputAdapter("{{chat_message}}", List[ChatMessage])),
     # And connect them
-    pipe.connect("adapter", "mx")
-    pipe.connect("mx", "fc_llm")
+    pipe.connect("adapter", "joiner")
+    pipe.connect("joiner", "fc_llm")
     pipe.connect("fc_llm.replies", "validator.messages")
-    pipe.connect("validator.validation_error", "mx")
+    pipe.connect("validator.validation_error", "joiner")
 
     result = pipe.run(data={"fc_llm": {"generation_kwargs": {"response_format": {"type": "json_object"}}},
                             "adapter": {"chat_message": [ChatMessage.from_user("Create json object from Peter Parker")]}})
@@ -98,7 +98,7 @@ class BranchJoiner:
     have more than one downstream component.
     """
 
-    def __init__(self, type_: TypeAlias):
+    def __init__(self, type_: Type):
         """
         Create a `BranchJoiner` component.
 

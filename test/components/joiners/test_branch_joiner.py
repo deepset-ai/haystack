@@ -6,7 +6,7 @@ import pytest
 from haystack.components.joiners import BranchJoiner
 
 
-class TestMultiplexer:
+class TestBranchJoiner:
     def test_one_value(self):
         joiner = BranchJoiner(int)
         output = joiner.run(value=[2])
