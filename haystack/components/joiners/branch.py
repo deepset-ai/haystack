@@ -90,7 +90,7 @@ class BranchJoiner:
 
     Note that `BranchJoiner` can manage only one data type at the time. In this case, `BranchJoiner` is created passing
     `List[ChatMessage]`. This determines the type of data that `BranchJoiner` will receive from the upstream connected
-    components and also the type of data that `BranchJoiner` will distribute to the downstream connected components.
+    components and also the type of data that `BranchJoiner` will send through its output.
 
     In the code example, `BranchJoiner` receives a looped back `List[ChatMessage]` from the `JsonSchemaValidator` and
     sends it down to the `OpenAIChatGenerator` for re-generation. We can have multiple loop back connections in the
