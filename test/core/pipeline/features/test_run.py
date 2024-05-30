@@ -26,6 +26,7 @@ from haystack.testing.sample_components import (
     Hello,
     TextSplitter,
     StringListJoiner,
+    SelfLoop,
 )
 from haystack.testing.factory import component_class
 
@@ -783,4 +784,39 @@ def pipeline_that_has_a_component_with_only_default_inputs_as_first_to_run():
         {"prompt_builder": {"query": "What is the capital of Italy?"}},
         {"router": {"correct_replies": ["Rome"]}},
         ["prompt_builder", "generator", "router", "prompt_builder", "generator", "router"],
+    )
+
+
+@given(
+    "a pipeline that has only a single component that sends one of its outputs to itself",
+    target_fixture="pipeline_data",
+)
+def pipeline_that_has_a_single_component_that_send_one_of_outputs_to_itself():
+    pipeline = Pipeline(max_loops_allowed=10)
+    pipeline.add_component("self_loop", SelfLoop())
+    pipeline.connect("self_loop.current_value", "self_loop.values")
+
+    return (
+        pipeline,
+        {"self_loop": {"values": 5}},
+        {"self_loop": {"final_result": 0}},
+        ["self_loop", "self_loop", "self_loop", "self_loop", "self_loop"],
+    )
+
+
+@given("a pipeline that has a component that sends one of its outputs to itself", target_fixture="pipeline_data")
+def pipeline_that_has_a_component_that_sends_one_of_its_outputs_to_itself():
+    pipeline = Pipeline(max_loops_allowed=10)
+    pipeline.add_component("add_1", AddFixedValue())
+    pipeline.add_component("self_loop", SelfLoop())
+    pipeline.add_component("add_2", AddFixedValue())
+    pipeline.connect("add_1", "self_loop.values")
+    pipeline.connect("self_loop.current_value", "self_loop.values")
+    pipeline.connect("self_loop.final_result", "add_2.value")
+
+    return (
+        pipeline,
+        {"add_1": {"value": 5}},
+        {"add_2": {"result": 1}},
+        ["add_1", "self_loop", "self_loop", "self_loop", "self_loop", "self_loop", "self_loop", "add_2"],
     )

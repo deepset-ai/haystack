@@ -27,6 +27,8 @@ Feature: Pipeline running
         | that has components added in a different order from the order of execution |
         | that has a component with only default inputs |
         | that has a component with only default inputs as first to run |
+        | that has only a single component that sends one of its outputs to itself |
+        | that has a component that sends one of its outputs to itself |
 
     Scenario Outline: Running a bad Pipeline
         Given a pipeline <kind>
