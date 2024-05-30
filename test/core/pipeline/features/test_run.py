@@ -3,8 +3,11 @@ from typing import List
 from pytest_bdd import scenarios, given
 import pytest
 
-from haystack import Pipeline, component
+from haystack import Pipeline, Document, component
 from haystack.dataclasses import ChatMessage
+from haystack.components.builders import PromptBuilder
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.others import Multiplexer
 from haystack.core.errors import PipelineMaxLoops
 from haystack.testing.sample_components import (
@@ -552,4 +555,41 @@ def pipeline_that_has_a_component_with_mutable_output_sent_to_multiple_inputs():
             "mm2": {"merged_message": "Fake message"},
         },
         ["prompt_builder", "mm1", "llm", "mm2"],
+    )
+
+
+@given(
+    "a pipeline that has a greedy and variadic component after a component with default input",
+    target_fixture="pipeline_data",
+)
+def pipeline_that_has_a_greedy_and_variadic_component_after_a_component_with_default_input():
+    """
+    This test verifies that `Pipeline.run()` executes the components in the correct order when
+    there's a greedy Component with variadic input right before a Component with at least one default input.
+
+    We use the `spying_tracer` fixture to simplify the code to verify the order of execution.
+    This creates some coupling between this test and how we trace the Pipeline execution.
+    A worthy tradeoff in my opinion, we will notice right away if we change either the run logic or
+    the tracing logic.
+    """
+    document_store = InMemoryDocumentStore()
+    document_store.write_documents([Document(content="This is a simple document")])
+
+    pipeline = Pipeline()
+    template = "Given this documents: {{ documents|join(', ', attribute='content') }} Answer this question: {{ query }}"
+    pipeline.add_component("retriever", InMemoryBM25Retriever(document_store=document_store))
+    pipeline.add_component("prompt_builder", PromptBuilder(template=template))
+    pipeline.add_component("multiplexer", Multiplexer(List[Document]))
+
+    pipeline.connect("retriever", "multiplexer")
+    pipeline.connect("multiplexer", "prompt_builder.documents")
+    return (
+        pipeline,
+        {"query": "This is my question"},
+        {
+            "prompt_builder": {
+                "prompt": "Given this documents: This is a simple document Answer this question: This is my question"
+            }
+        },
+        ["retriever", "multiplexer", "prompt_builder"],
     )

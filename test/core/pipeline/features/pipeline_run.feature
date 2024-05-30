@@ -23,6 +23,7 @@ Feature: Pipeline running
         | that has two branches, one of which loops back |
         | that has a component with mutable input |
         | that has a component with mutable output sent to multiple inputs |
+        | that has a greedy and variadic component after a component with default input |
 
     Scenario Outline: Running a bad Pipeline
         Given a pipeline <kind>
