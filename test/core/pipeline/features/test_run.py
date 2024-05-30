@@ -4,6 +4,7 @@ from pytest_bdd import scenarios, given
 import pytest
 
 from haystack import Pipeline, component
+from haystack.dataclasses import ChatMessage
 from haystack.components.others import Multiplexer
 from haystack.core.errors import PipelineMaxLoops
 from haystack.testing.sample_components import (
@@ -495,4 +496,60 @@ def pipeline_that_has_a_component_with_mutable_input():
         {"mangler1": {"input_list": input_list}, "mangler2": {"input_list": input_list}},
         {"concat1": {"output": ["foo", "bar", "extra_item"]}, "concat2": {"output": ["foo", "bar", "extra_item"]}},
         ["mangler1", "mangler2", "concat1", "concat2"],
+    )
+
+
+@given("a pipeline that has a component with mutable output sent to multiple inputs", target_fixture="pipeline_data")
+def pipeline_that_has_a_component_with_mutable_output_sent_to_multiple_inputs():
+    @component
+    class PassThroughPromptBuilder:
+        # This is a pass-through component that returns the same input
+        @component.output_types(prompt=List[ChatMessage])
+        def run(self, prompt_source: List[ChatMessage]):
+            return {"prompt": prompt_source}
+
+    @component
+    class MessageMerger:
+        @component.output_types(merged_message=str)
+        def run(self, messages: List[ChatMessage], metadata: dict = None):
+            return {"merged_message": "\n".join(t.content for t in messages)}
+
+    @component
+    class FakeGenerator:
+        # This component is a fake generator that always returns the same message
+        @component.output_types(replies=List[ChatMessage])
+        def run(self, messages: List[ChatMessage]):
+            return {"replies": [ChatMessage.from_assistant("Fake message")]}
+
+    prompt_builder = PassThroughPromptBuilder()
+    llm = FakeGenerator()
+    mm1 = MessageMerger()
+    mm2 = MessageMerger()
+
+    pipe = Pipeline()
+    pipe.add_component("prompt_builder", prompt_builder)
+    pipe.add_component("llm", llm)
+    pipe.add_component("mm1", mm1)
+    pipe.add_component("mm2", mm2)
+
+    pipe.connect("prompt_builder.prompt", "llm.messages")
+    pipe.connect("prompt_builder.prompt", "mm1")
+    pipe.connect("llm.replies", "mm2")
+
+    messages = [
+        ChatMessage.from_system("Always respond in English even if some input data is in other languages."),
+        ChatMessage.from_user("Tell me about Berlin"),
+    ]
+    params = {"metadata": {"metadata_key": "metadata_value", "meta2": "value2"}}
+
+    return (
+        pipe,
+        {"prompt_builder": {"prompt_source": messages}, "mm1": params, "mm2": params},
+        {
+            "mm1": {
+                "merged_message": "Always respond in English even if some input data is in other languages.\nTell me about Berlin"
+            },
+            "mm2": {"merged_message": "Fake message"},
+        },
+        ["prompt_builder", "mm1", "llm", "mm2"],
     )
