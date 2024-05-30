@@ -49,6 +49,28 @@ def pipeline_that_is_linear():
     )
 ```
 
+Some kind of `Pipeline`s requires multiple runs to correctly verify their correct working, e.g those with multiple branches.
+Because of this we also support functions that return lists of inputs, expected outputs and expected run orders.
+If we would have needed to run the above `Pipeline` multiple times we could do something like this:
+
+```python
+@given("a pipeline that is linear", target_fixture="pipeline_data")
+def pipeline_that_is_linear():
+    pipeline = Pipeline()
+    pipeline.add_component("first_addition", AddFixedValue(add=2))
+    pipeline.add_component("second_addition", AddFixedValue())
+    pipeline.add_component("double", Double())
+    pipeline.connect("first_addition", "double")
+    pipeline.connect("double", "second_addition")
+
+    return (
+        pipeline,
+        [{"first_addition": {"value": 1}}, {"first_addition": {"value": 100}}],
+        [{"second_addition": {"result": 7}}, {"first_addition": {"value": 206}}],
+        [["first_addition", "double", "second_addition"], ["first_addition", "double", "second_addition"]],
+    )
+```
+
 ### Bad Pipeline
 
 The second case is similar to the first one, but we can also specify the expected exception.
