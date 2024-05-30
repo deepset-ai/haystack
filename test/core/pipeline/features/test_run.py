@@ -4,8 +4,8 @@ from pytest_bdd import scenarios, given
 import pytest
 
 from haystack import Pipeline, Document, component
-from haystack.dataclasses import ChatMessage
-from haystack.components.builders import PromptBuilder
+from haystack.dataclasses import ChatMessage, GeneratedAnswer
+from haystack.components.builders import PromptBuilder, AnswerBuilder
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.others import Multiplexer
@@ -653,4 +653,63 @@ def pipeline_that_has_components_added_in_a_different_order_from_the_order_of_ex
             }
         },
         ["retriever", "prompt_builder"],
+    )
+
+
+@given("a pipeline that has a component with only default inputs", target_fixture="pipeline_data")
+def pipeline_that_has_a_component_with_only_default_inputs():
+    FakeGenerator = component_class(
+        "FakeGenerator", input_types={"prompt": str}, output_types={"replies": List[str]}, output={"replies": ["Paris"]}
+    )
+    docs = [Document(content="Rome is the capital of Italy"), Document(content="Paris is the capital of France")]
+    doc_store = InMemoryDocumentStore()
+    doc_store.write_documents(docs)
+    template = (
+        "Given the following information, answer the question.\n"
+        "Context:\n"
+        "{% for document in documents %}"
+        "    {{ document.content }}\n"
+        "{% endfor %}"
+        "Question: {{ query }}"
+    )
+
+    pipe = Pipeline()
+
+    pipe.add_component("retriever", InMemoryBM25Retriever(document_store=doc_store))
+    pipe.add_component("prompt_builder", PromptBuilder(template=template))
+    pipe.add_component("generator", FakeGenerator())
+    pipe.add_component("answer_builder", AnswerBuilder())
+
+    pipe.connect("retriever", "prompt_builder.documents")
+    pipe.connect("prompt_builder.prompt", "generator.prompt")
+    pipe.connect("generator.replies", "answer_builder.replies")
+    pipe.connect("retriever.documents", "answer_builder.documents")
+
+    return (
+        pipe,
+        {"query": "What is the capital of France?"},
+        {
+            "answer_builder": {
+                "answers": [
+                    GeneratedAnswer(
+                        data="Paris",
+                        query="What is the capital of France?",
+                        documents=[
+                            Document(
+                                id="413dccdf51a54cca75b7ed2eddac04e6e58560bd2f0caf4106a3efc023fe3651",
+                                content="Paris is the capital of France",
+                                score=1.600237583702734,
+                            ),
+                            Document(
+                                id="a4a874fc2ef75015da7924d709fbdd2430e46a8e94add6e0f26cd32c1c03435d",
+                                content="Rome is the capital of Italy",
+                                score=1.2536639934227616,
+                            ),
+                        ],
+                        meta={},
+                    )
+                ]
+            }
+        },
+        ["retriever", "prompt_builder", "generator", "answer_builder"],
     )
