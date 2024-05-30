@@ -16,17 +16,17 @@ class BranchJoiner:
     """
     A component to join different branches of a pipeline into one single output.
 
-    `BranchJoiner` receives multiple data connections of the same type from other components, and passes the first
+    `BranchJoiner` receives multiple data connections of the same type from other components and passes the first
     value coming to its single output, possibly distributing it to various other components.
 
-    `BranchJoiner` is fundamental to close loops in a pipeline, where the two branches it joins are the one
-    coming from the previous component, and the one coming back from a loop. For example, `BranchJoiner` could be used
+    `BranchJoiner` is fundamental to close loops in a pipeline, where the two branches it joins are the ones
+    coming from the previous component and one coming back from a loop. For example, `BranchJoiner` could be used
     to send data to a component evaluating errors. `BranchJoiner` would receive two connections, one to get the
-    original data, and another one to get modified data in case there was an error. In both cases, `BranchJoiner`
+    original data and another one to get modified data in case there was an error. In both cases, `BranchJoiner`
     would send (or re-send in case of a loop) data to the component evaluating errors. See "Usage example" below.
 
-    Another use case where there's the need of `BranchJoiner` is to reconcile multiple branches coming out of a decision
-    or classifier component. For example, in a RAG pipeline there might be a "query language classifier" component
+    Another use case with a need for `BranchJoiner` is to reconcile multiple branches coming out of a decision
+    or Classifier component. For example, in a RAG pipeline, there might be a "query language classifier" component
     sending the query to different retrievers, selecting one specifically according to the detected language. After the
     retrieval step the pipeline would ideally continue with a `PromptBuilder`, and since we don't know in advance the
     language of the query, all the retrievers should be ideally connected to the single `PromptBuilder`. Since the
@@ -81,13 +81,13 @@ class BranchJoiner:
     >> 'Superhero', 'age': 23, 'location': 'New York City'}
     ```
 
-    Note that `BranchJoiner` can manage only one data type at the time. In this case, `BranchJoiner` is created passing
+    Note that `BranchJoiner` can manage only one data type at a time. In this case, `BranchJoiner` is created for passing
     `List[ChatMessage]`. This determines the type of data that `BranchJoiner` will receive from the upstream connected
     components and also the type of data that `BranchJoiner` will send through its output.
 
     In the code example, `BranchJoiner` receives a looped back `List[ChatMessage]` from the `JsonSchemaValidator` and
-    sends it down to the `OpenAIChatGenerator` for re-generation. We can have multiple loop back connections in the
-    pipeline. In this instance, the downstream component is only one (the `OpenAIChatGenerator`) but the pipeline might
+    sends it down to the `OpenAIChatGenerator` for re-generation. We can have multiple loopback connections in the
+    pipeline. In this instance, the downstream component is only one (the `OpenAIChatGenerator`), but the pipeline might
     have more than one downstream component.
     """
 
