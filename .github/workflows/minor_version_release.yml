@@ -52,6 +52,10 @@ jobs:
 
           git checkout "${{ steps.branch.outputs.name }}"
 
+          # Create the release branch from the current unstable
+          git checkout -b v${{ steps.versions.outputs.current_release_minor }}.x
+          git push -u origin v${{ steps.versions.outputs.current_release_minor }}.x
+
           # Tag the base with X.Y.Z-rc0.
           # At this point VERSION.txt still contains the previous version and not
           # the one specified by the tag.
