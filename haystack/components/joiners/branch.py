@@ -30,7 +30,7 @@ class BranchJoiner:
     coming from the previous component, and the one coming back from a loop. For example, `BranchJoiner` could be used
     to send data to a component evaluating errors. `BranchJoiner` would receive two connections, one to get the
     original data, and another one to get modified data in case there was an error. In both cases, `BranchJoiner`
-    would send (or re-send in case of a loop) data to the component evaluating errors.
+    would send (or re-send in case of a loop) data to the component evaluating errors. See "Usage example" below.
 
     Another use case where there's the need of `BranchJoiner` is to reconcile multiple branches coming out of a decision
     or classifier component. For example, in a RAG pipeline there might be a "query language classifier" component
