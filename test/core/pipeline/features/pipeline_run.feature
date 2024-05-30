@@ -26,6 +26,7 @@ Feature: Pipeline running
         | that has a greedy and variadic component after a component with default input |
         | that has components added in a different order from the order of execution |
         | that has a component with only default inputs |
+        | that has a component with only default inputs as first to run |
 
     Scenario Outline: Running a bad Pipeline
         Given a pipeline <kind>

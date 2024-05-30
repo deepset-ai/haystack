@@ -2,14 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import logging
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 from unittest.mock import patch
 
 import pytest
 
 from haystack.components.builders import PromptBuilder
 from haystack.components.others import Multiplexer
-from haystack.components.routers import ConditionalRouter
 from haystack.core.component import component
 from haystack.core.component.types import InputSocket, OutputSocket, Variadic
 from haystack.core.errors import PipelineConnectError, PipelineDrawingError, PipelineError
@@ -926,69 +925,3 @@ class TestPipeline:
         assert comp2.__haystack_output__.value.receivers == ["comp3"]
         assert comp3.__haystack_input__.value.senders == ["comp1", "comp2"]
         assert list(pipe.graph.edges) == [("comp1", "comp3", "value/value"), ("comp2", "comp3", "value/value")]
-
-
-def test_pipeline_is_not_stuck_with_components_with_only_defaults_as_first_components():
-    """
-    This tests verifies that a Pipeline doesn't get stuck running in a loop if
-    it has all the following characterics:
-    - The first Component has all defaults for its inputs
-    - The first Component receives one input from the user
-    - The first Component receives one input from a loop in the Pipeline
-    - The second Component has at least one default input
-    """
-
-    def fake_generator_run(self, prompt: str, generation_kwargs: Optional[Dict[str, Any]] = None):
-        # Simple hack to simulate a model returning a different reply after the
-        # the first time it's called
-        if getattr(fake_generator_run, "called", False):
-            return {"replies": ["Rome"]}
-        fake_generator_run.called = True
-        return {"replies": ["Paris"]}
-
-    FakeGenerator = component_class(
-        "FakeGenerator",
-        input_types={"prompt": str, "generation_kwargs": Optional[Dict[str, Any]]},
-        output_types={"replies": List[str]},
-        extra_fields={"run": fake_generator_run},
-    )
-    template = (
-        "Answer the following question.\n"
-        "{% if previous_replies %}\n"
-        "Previously you replied incorrectly this:\n"
-        "{% for reply in previous_replies %}\n"
-        " - {{ reply }}\n"
-        "{% endfor %}\n"
-        "{% endif %}\n"
-        "Question: {{ query }}"
-    )
-    router = ConditionalRouter(
-        routes=[
-            {
-                "condition": "{{ replies == ['Rome'] }}",
-                "output": "{{ replies }}",
-                "output_name": "correct_replies",
-                "output_type": List[int],
-            },
-            {
-                "condition": "{{ replies == ['Paris'] }}",
-                "output": "{{ replies }}",
-                "output_name": "incorrect_replies",
-                "output_type": List[int],
-            },
-        ]
-    )
-
-    pipe = Pipeline()
-
-    pipe.add_component("prompt_builder", PromptBuilder(template=template))
-    pipe.add_component("generator", FakeGenerator())
-    pipe.add_component("router", router)
-
-    pipe.connect("prompt_builder.prompt", "generator.prompt")
-    pipe.connect("generator.replies", "router.replies")
-    pipe.connect("router.incorrect_replies", "prompt_builder.previous_replies")
-
-    res = pipe.run({"prompt_builder": {"query": "What is the capital of Italy?"}})
-
-    assert res == {"router": {"correct_replies": ["Rome"]}}

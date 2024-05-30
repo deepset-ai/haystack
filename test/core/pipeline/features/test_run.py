@@ -1,10 +1,11 @@
-from typing import List
+from typing import List, Optional, Dict, Any
 
 from pytest_bdd import scenarios, given
 import pytest
 
 from haystack import Pipeline, Document, component
 from haystack.dataclasses import ChatMessage, GeneratedAnswer
+from haystack.components.routers import ConditionalRouter
 from haystack.components.builders import PromptBuilder, AnswerBuilder
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -712,4 +713,74 @@ def pipeline_that_has_a_component_with_only_default_inputs():
             }
         },
         ["retriever", "prompt_builder", "generator", "answer_builder"],
+    )
+
+
+@given("a pipeline that has a component with only default inputs as first to run", target_fixture="pipeline_data")
+def pipeline_that_has_a_component_with_only_default_inputs_as_first_to_run():
+    """
+    This tests verifies that a Pipeline doesn't get stuck running in a loop if
+    it has all the following characterics:
+    - The first Component has all defaults for its inputs
+    - The first Component receives one input from the user
+    - The first Component receives one input from a loop in the Pipeline
+    - The second Component has at least one default input
+    """
+
+    def fake_generator_run(self, prompt: str, generation_kwargs: Optional[Dict[str, Any]] = None):
+        # Simple hack to simulate a model returning a different reply after the
+        # the first time it's called
+        if getattr(fake_generator_run, "called", False):
+            return {"replies": ["Rome"]}
+        fake_generator_run.called = True
+        return {"replies": ["Paris"]}
+
+    FakeGenerator = component_class(
+        "FakeGenerator",
+        input_types={"prompt": str, "generation_kwargs": Optional[Dict[str, Any]]},
+        output_types={"replies": List[str]},
+        extra_fields={"run": fake_generator_run},
+    )
+    template = (
+        "Answer the following question.\n"
+        "{% if previous_replies %}\n"
+        "Previously you replied incorrectly this:\n"
+        "{% for reply in previous_replies %}\n"
+        " - {{ reply }}\n"
+        "{% endfor %}\n"
+        "{% endif %}\n"
+        "Question: {{ query }}"
+    )
+    router = ConditionalRouter(
+        routes=[
+            {
+                "condition": "{{ replies == ['Rome'] }}",
+                "output": "{{ replies }}",
+                "output_name": "correct_replies",
+                "output_type": List[int],
+            },
+            {
+                "condition": "{{ replies == ['Paris'] }}",
+                "output": "{{ replies }}",
+                "output_name": "incorrect_replies",
+                "output_type": List[int],
+            },
+        ]
+    )
+
+    pipe = Pipeline()
+
+    pipe.add_component("prompt_builder", PromptBuilder(template=template))
+    pipe.add_component("generator", FakeGenerator())
+    pipe.add_component("router", router)
+
+    pipe.connect("prompt_builder.prompt", "generator.prompt")
+    pipe.connect("generator.replies", "router.replies")
+    pipe.connect("router.incorrect_replies", "prompt_builder.previous_replies")
+
+    return (
+        pipe,
+        {"prompt_builder": {"query": "What is the capital of Italy?"}},
+        {"router": {"correct_replies": ["Rome"]}},
+        ["prompt_builder", "generator", "router", "prompt_builder", "generator", "router"],
     )
