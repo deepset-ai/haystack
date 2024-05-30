@@ -47,6 +47,9 @@ jobs:
           # trigger required workflows and can be merged by anyone
           GITHUB_TOKEN: ${{ secrets.HAYSTACK_BOT_TOKEN }}
         run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
           git checkout "${{ steps.branch.outputs.name }}"
 
           # Tag the base with X.Y.Z-rc0.
