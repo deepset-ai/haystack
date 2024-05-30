@@ -19,6 +19,7 @@ Feature: Pipeline running
         | that has two branches that don't merge |
         | that has two branches that merge |
         | that has different combinations of branches that merge and do not merge |
+        | that has two branches, one of which loops back |
 
     Scenario Outline: Running a bad Pipeline
         Given a pipeline <kind>

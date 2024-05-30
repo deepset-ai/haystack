@@ -402,3 +402,44 @@ def pipeline_that_has_different_combinations_of_branches_that_merge_and_do_not_m
             ["add_one", "parity", "double", "add_ten", "diff"],
         ],
     )
+
+
+@given("a pipeline that has two branches, one of which loops back", target_fixture="pipeline_data")
+def pipeline_that_has_two_branches_one_of_which_loops_back():
+    pipeline = Pipeline(max_loops_allowed=10)
+    pipeline.add_component("add_zero", AddFixedValue(add=0))
+    pipeline.add_component("multiplexer", Multiplexer(type_=int))
+    pipeline.add_component("sum", Sum())
+    pipeline.add_component("below_10", Threshold(threshold=10))
+    pipeline.add_component("add_one", AddFixedValue(add=1))
+    pipeline.add_component("counter", Accumulate())
+    pipeline.add_component("add_two", AddFixedValue(add=2))
+
+    pipeline.connect("add_zero", "multiplexer.value")
+    pipeline.connect("multiplexer", "below_10.value")
+    pipeline.connect("below_10.below", "add_one.value")
+    pipeline.connect("add_one.result", "counter.value")
+    pipeline.connect("counter.value", "multiplexer.value")
+    pipeline.connect("below_10.above", "add_two.value")
+    pipeline.connect("add_two.result", "sum.values")
+
+    return (
+        pipeline,
+        {"add_zero": {"value": 8}, "sum": {"values": 2}},
+        {"sum": {"total": 23}},
+        [
+            "add_zero",
+            "multiplexer",
+            "below_10",
+            "add_one",
+            "counter",
+            "multiplexer",
+            "below_10",
+            "add_one",
+            "counter",
+            "multiplexer",
+            "below_10",
+            "add_two",
+            "sum",
+        ],
+    )
