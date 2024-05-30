@@ -65,7 +65,7 @@ def pipeline_that_has_an_infinite_loop():
 
 
 @given("a pipeline that is really complex with lots of components, forks, and loops", target_fixture="pipeline_data")
-def pipeline_complexX():
+def pipeline_complex():
     pipeline = Pipeline(max_loops_allowed=2)
     pipeline.add_component("greet_first", Greet(message="Hello, the value is {value}."))
     pipeline.add_component("accumulate_1", Accumulate())
@@ -151,4 +151,23 @@ def pipeline_complexX():
             "add_four",
             "accumulate_3",
         ],
+    )
+
+
+@given("a pipeline that has a single component with a default input", target_fixture="pipeline_data")
+def pipeline_that_has_a_single_component_with_a_default_input():
+    @component
+    class WithDefault:
+        @component.output_types(b=int)
+        def run(self, a: int, b: int = 2):
+            return {"c": a + b}
+
+    pipeline = Pipeline()
+    pipeline.add_component("with_defaults", WithDefault())
+
+    return (
+        pipeline,
+        [{"with_defaults": {"a": 40, "b": 30}}, {"with_defaults": {"a": 40}}],
+        [{"with_defaults": {"c": 70}}, {"with_defaults": {"c": 42}}],
+        [["with_defaults"], ["with_defaults"]],
     )
