@@ -2,18 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import sys
-from typing import Any, Dict
+from typing import Any, Dict, Type
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.core.component.types import Variadic
 from haystack.utils import deserialize_type, serialize_type
-
-if sys.version_info < (3, 10):
-    from typing_extensions import Type
-else:
-    from typing import Type
-
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +99,8 @@ class BranchJoiner:
                         distribute to the downstream connected components.
         """
         self.type_ = type_
-        component.set_input_types(self, value=Variadic[type_])
+        # type_'s type can't be determined statically
+        component.set_input_types(self, value=Variadic[type_])  # type: ignore
         component.set_output_types(self, value=type_)
 
     def to_dict(self):
