@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import sys
-import warnings
 from typing import Any, Dict
 
 from haystack import component, default_from_dict, default_to_dict, logging
@@ -20,22 +19,27 @@ logger = logging.getLogger(__name__)
 
 
 @component(is_greedy=True)
-class Multiplexer:
+class BranchJoiner:
     """
-    A component which receives data connections from multiple components and distributes them to multiple components.
+    A component to join different branches of a pipeline into one single output.
 
-    `Multiplexer` offers the ability to both receive data connections from multiple other
-    components and to distribute it to various other components, enhancing the functionality of complex data
-    processing pipelines.
+    `BranchJoiner` receives multiple data connections of the same type from other components, and passes the first
+    value coming to its single output, possibly distributing it to various other components.
 
-    `Multiplexer` is important for spreading outputs from a single source like a Large Language Model (LLM) across
-    different branches of a pipeline. It is especially valuable in error correction loops by rerouting data for
-    reevaluation if errors are detected. For instance, in an example pipeline below, `Multiplexer` helps create
-    a schema valid JSON object (given a person's data) with the help of an `OpenAIChatGenerator` and a `JsonSchemaValidator`.
-    In case the generated JSON object fails schema validation, `JsonSchemaValidator` starts a correction loop, sending
-    the data back through the `Multiplexer` to the `OpenAIChatGenerator` until it passes schema validation. If we didn't
-    have `Multiplexer`, we wouldn't be able to loop back the data to `OpenAIChatGenerator` for re-generation, as components
-    accept only one input connection for the declared run method parameters.
+    `BranchJoiner` is fundamental to close loops in a pipeline, where the two branches it joins are the one
+    coming from the previous component, and the one coming back from a loop. For example, `BranchJoiner` could be used
+    to send data to a component evaluating errors. `BranchJoiner` would receive two connections, one to get the
+    original data, and another one to get modified data in case there was an error. In both cases, `BranchJoiner`
+    would send (or re-send in case of a loop) data to the component evaluating errors.
+
+    Another use case where there's the need of `BranchJoiner` is to reconcile multiple branches coming out of a decision
+    or classifier component. For example, in a RAG pipeline there might be a "query language classifier" component
+    sending the query to different retrievers, selecting one specifically according to the detected language. After the
+    retrieval step the pipeline would ideally continue with a `PromptBuilder`, and since we don't know in advance the
+    language of the query, all the retrievers should be ideally connected to the single `PromptBuilder`. Since the
+    `PromptBuilder` won't accept more than one connection in input, we would connect all the retrievers to a
+    `BranchJoiner` component and reconcile them in a single output that can be connected to the `PromptBuilder`
+    downstream.
 
     Usage example:
 
@@ -46,7 +50,7 @@ class Multiplexer:
     from haystack import Pipeline
     from haystack.components.converters import OutputAdapter
     from haystack.components.generators.chat import OpenAIChatGenerator
-    from haystack.components.others import Multiplexer
+    from haystack.components.joiners import BranchJoiner
     from haystack.components.validators import JsonSchemaValidator
     from haystack.dataclasses import ChatMessage
 
@@ -64,7 +68,7 @@ class Multiplexer:
     pipe = Pipeline()
 
     # Add components to the pipeline
-    pipe.add_component('mx', Multiplexer(List[ChatMessage]))
+    pipe.add_component('mx', BranchJoiner(List[ChatMessage]))
     pipe.add_component('fc_llm', OpenAIChatGenerator(model="gpt-3.5-turbo-0125"))
     pipe.add_component('validator', JsonSchemaValidator(json_schema=person_schema))
     pipe.add_component('adapter', OutputAdapter("{{chat_message}}", List[ChatMessage])),
@@ -84,30 +88,23 @@ class Multiplexer:
     >> 'Superhero', 'age': 23, 'location': 'New York City'}
     ```
 
-    Note that `Multiplexer` is created with a single type parameter. This determines the
-    type of data that `Multiplexer` will receive from the upstream connected components and also the
-    type of data that `Multiplexer` will distribute to the downstream connected components. In the example
-    above, the `Multiplexer` is created with the type `List[ChatMessage]`. This means `Multiplexer` will receive
-    a list of `ChatMessage` objects from the upstream connected components and also distribute a list of `ChatMessage`
-    objects to the downstream connected components.
+    Note that `BranchJoiner` can manage only one data type at the time. In this case, `BranchJoiner` is created passing
+    `List[ChatMessage]`. This determines the type of data that `BranchJoiner` will receive from the upstream connected
+    components and also the type of data that `BranchJoiner` will distribute to the downstream connected components.
 
-    In the code example, `Multiplexer` receives a looped back `List[ChatMessage]` from the `JsonSchemaValidator` and
+    In the code example, `BranchJoiner` receives a looped back `List[ChatMessage]` from the `JsonSchemaValidator` and
     sends it down to the `OpenAIChatGenerator` for re-generation. We can have multiple loop back connections in the
-    pipeline. In this instance, the downstream component is only one – the `OpenAIChatGenerator` – but the pipeline can have more
-    than one downstream component.
+    pipeline. In this instance, the downstream component is only one (the `OpenAIChatGenerator`) but the pipeline might
+    have more than one downstream component.
     """
 
     def __init__(self, type_: TypeAlias):
         """
-        Create a `Multiplexer` component.
+        Create a `BranchJoiner` component.
 
-        :param type_: The type of data that the `Multiplexer` will receive from the upstream connected components and
+        :param type_: The type of data that the `BranchJoiner` will receive from the upstream connected components and
                         distribute to the downstream connected components.
         """
-        warnings.warn(
-            "`Multiplexer` is deprecated and will be removed in Haystack 2.4.0. Use `joiners.BranchJoiner` instead.",
-            DeprecationWarning,
-        )
         self.type_ = type_
         component.set_input_types(self, value=Variadic[type_])
         component.set_output_types(self, value=type_)
@@ -122,7 +119,7 @@ class Multiplexer:
         return default_to_dict(self, type_=serialize_type(self.type_))
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Multiplexer":
+    def from_dict(cls, data: Dict[str, Any]) -> "BranchJoiner":
         """
         Deserializes the component from a dictionary.
 
@@ -136,7 +133,7 @@ class Multiplexer:
 
     def run(self, **kwargs):
         """
-        The run method of the `Multiplexer` component.
+        The run method of the `BranchJoiner` component.
 
         Multiplexes the input data from the upstream connected components and distributes it to the downstream connected
         components.
@@ -146,5 +143,5 @@ class Multiplexer:
             - `value`: The input data.
         """
         if (inputs_count := len(kwargs["value"])) != 1:
-            raise ValueError(f"Multiplexer expects only one input, but {inputs_count} were received.")
+            raise ValueError(f"BranchJoiner expects only one input, but {inputs_count} were received.")
         return {"value": kwargs["value"][0]}
