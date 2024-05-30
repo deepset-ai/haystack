@@ -86,7 +86,7 @@ class DynamicChatPromptBuilder:
             template placeholders of a ChatMessage that is provided to the `run` method.
         """
         warnings.warn(
-            "`DynamicChatPromptBuilder` is deprecated and will be removed in Haystack 2.3.0."
+            "`DynamicChatPromptBuilder` is deprecated and will be removed in Haystack 2.4.0."
             "Use `ChatPromptBuilder` instead.",
             DeprecationWarning,
         )
