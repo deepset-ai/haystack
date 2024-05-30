@@ -16,6 +16,7 @@ Feature: Pipeline running
         | that has two loops of different lengths |
         | that has a single loop with two conditional branches |
         | that has a component with dynamic inputs defined in init |
+        | that has two branches that don't merge |
 
     Scenario Outline: Running a bad Pipeline
         Given a pipeline <kind>

@@ -322,3 +322,25 @@ def pipeline_that_has_a_component_with_dynamic_inputs_defined_in_init():
         ],
         [["hello", "fstring", "splitter"], ["hello", "fstring", "splitter"]],
     )
+
+
+@given("a pipeline that has two branches that don't merge", target_fixture="pipeline_data")
+def pipeline_that_has_two_branches_that_dont_merge():
+    pipeline = Pipeline()
+    pipeline.add_component("add_one", AddFixedValue(add=1))
+    pipeline.add_component("parity", Parity())
+    pipeline.add_component("add_ten", AddFixedValue(add=10))
+    pipeline.add_component("double", Double())
+    pipeline.add_component("add_three", AddFixedValue(add=3))
+
+    pipeline.connect("add_one.result", "parity.value")
+    pipeline.connect("parity.even", "add_ten.value")
+    pipeline.connect("parity.odd", "double.value")
+    pipeline.connect("add_ten.result", "add_three.value")
+
+    return (
+        pipeline,
+        [{"add_one": {"value": 1}}, {"add_one": {"value": 2}}],
+        [{"add_three": {"result": 15}}, {"double": {"value": 6}}],
+        [["add_one", "parity", "add_ten", "add_three"], ["add_one", "parity", "double"]],
+    )
