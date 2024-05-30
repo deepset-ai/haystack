@@ -9,7 +9,7 @@ from haystack.components.builders import PromptBuilder
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.others import Multiplexer
-from haystack.core.errors import PipelineMaxLoops
+from haystack.core.errors import PipelineMaxLoops, PipelineRuntimeError
 from haystack.testing.sample_components import (
     Accumulate,
     AddFixedValue,
@@ -593,3 +593,14 @@ def pipeline_that_has_a_greedy_and_variadic_component_after_a_component_with_def
         },
         ["retriever", "multiplexer", "prompt_builder"],
     )
+
+
+@given("a pipeline that has a component that doesn't return a dictionary", target_fixture="pipeline_data")
+def pipeline_that_has_a_component_that_doesnt_return_a_dictionary():
+    BrokenComponent = component_class(
+        "BrokenComponent", input_types={"a": int}, output_types={"b": int}, output=1  # type:ignore
+    )
+
+    pipe = Pipeline(max_loops_allowed=10)
+    pipe.add_component("comp", BrokenComponent())
+    return pipe, {"comp": {"a": 1}}, PipelineRuntimeError

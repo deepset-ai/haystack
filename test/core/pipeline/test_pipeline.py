@@ -15,13 +15,7 @@ from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.components.routers import ConditionalRouter
 from haystack.core.component import component
 from haystack.core.component.types import InputSocket, OutputSocket, Variadic
-from haystack.core.errors import (
-    PipelineConnectError,
-    PipelineDrawingError,
-    PipelineError,
-    PipelineMaxLoops,
-    PipelineRuntimeError,
-)
+from haystack.core.errors import PipelineConnectError, PipelineDrawingError, PipelineError
 from haystack.core.pipeline import Pipeline, PredefinedPipeline
 from haystack.core.serialization import DeserializationCallbacks
 from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -936,17 +930,6 @@ class TestPipeline:
         assert comp2.__haystack_output__.value.receivers == ["comp3"]
         assert comp3.__haystack_input__.value.senders == ["comp1", "comp2"]
         assert list(pipe.graph.edges) == [("comp1", "comp3", "value/value"), ("comp2", "comp3", "value/value")]
-
-
-def test_run_with_component_that_does_not_return_dict():
-    BrokenComponent = component_class(
-        "BrokenComponent", input_types={"a": int}, output_types={"b": int}, output=1  # type:ignore
-    )
-
-    pipe = Pipeline(max_loops_allowed=10)
-    pipe.add_component("comp", BrokenComponent())
-    with pytest.raises(PipelineRuntimeError):
-        pipe.run({"comp": {"a": 1}})
 
 
 def test_correct_execution_order_of_components_with_only_defaults(spying_tracer):
