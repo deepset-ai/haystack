@@ -348,6 +348,30 @@ def pipeline_that_has_two_branches_that_dont_merge():
     )
 
 
+@given("a pipeline that has three branches that don't merge", target_fixture="pipeline_data")
+def pipeline_that_has_three_branches_that_dont_merge():
+    pipeline = Pipeline()
+    pipeline.add_component("add_one", AddFixedValue(add=1))
+    pipeline.add_component("repeat", Repeat(outputs=["first", "second"]))
+    pipeline.add_component("add_ten", AddFixedValue(add=10))
+    pipeline.add_component("double", Double())
+    pipeline.add_component("add_three", AddFixedValue(add=3))
+    pipeline.add_component("add_one_again", AddFixedValue(add=1))
+
+    pipeline.connect("add_one.result", "repeat.value")
+    pipeline.connect("repeat.first", "add_ten.value")
+    pipeline.connect("repeat.second", "double.value")
+    pipeline.connect("repeat.second", "add_three.value")
+    pipeline.connect("add_three.result", "add_one_again.value")
+
+    return (
+        pipeline,
+        {"add_one": {"value": 1}},
+        {"add_one_again": {"result": 6}, "add_ten": {"result": 12}, "double": {"value": 4}},
+        ["add_one", "repeat", "double", "add_ten", "add_three", "add_one_again"],
+    )
+
+
 @given("a pipeline that has two branches that merge", target_fixture="pipeline_data")
 def pipeline_that_has_two_branches_that_merge():
     pipeline = Pipeline()

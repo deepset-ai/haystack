@@ -17,6 +17,7 @@ Feature: Pipeline running
         | that has a single loop with two conditional branches |
         | that has a component with dynamic inputs defined in init |
         | that has two branches that don't merge |
+        | that has three branches that don't merge |
         | that has two branches that merge |
         | that has different combinations of branches that merge and do not merge |
         | that has two branches, one of which loops back |
