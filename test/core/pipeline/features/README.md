@@ -49,9 +49,9 @@ def pipeline_that_is_linear():
     )
 ```
 
-Some kind of `Pipeline`s requires multiple runs to correctly verify their correct working, e.g those with multiple branches.
-Because of this we also support functions that return lists of inputs, expected outputs and expected run orders.
-If we would have needed to run the above `Pipeline` multiple times we could do something like this:
+Some kinds of `Pipeline`s require multiple runs to verify they work correctly, for example those with multiple branches.
+For this reason we also support functions returning a "list of inputs", a "list of expected outputs" and a "list of expected run orders" (all the lists have the same size).
+For example, we could test two different runs of the same pipeline like this:
 
 ```python
 @given("a pipeline that is linear", target_fixture="pipeline_data")
