@@ -2,33 +2,32 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import logging
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 from unittest.mock import patch
 
 import pytest
 
-from haystack import Document
 from haystack.components.builders import PromptBuilder
-from haystack.components.builders.answer_builder import AnswerBuilder
 from haystack.components.others import Multiplexer
-from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
-from haystack.components.routers import ConditionalRouter
 from haystack.core.component import component
 from haystack.core.component.types import InputSocket, OutputSocket, Variadic
-from haystack.core.errors import (
-    PipelineConnectError,
-    PipelineDrawingError,
-    PipelineError,
-    PipelineMaxLoops,
-    PipelineRuntimeError,
-)
+from haystack.core.errors import PipelineConnectError, PipelineDrawingError, PipelineError
 from haystack.core.pipeline import Pipeline, PredefinedPipeline
 from haystack.core.serialization import DeserializationCallbacks
-from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.testing.factory import component_class
 from haystack.testing.sample_components import AddFixedValue, Double, Greet
 
 logging.basicConfig(level=logging.DEBUG)
+
+
+@component
+class FakeComponent:
+    def __init__(self, an_init_param: Optional[str] = None):
+        pass
+
+    @component.output_types(value=str)
+    def run(self, input_: str):
+        return {"value": input_}
 
 
 class TestPipeline:
@@ -936,232 +935,3 @@ class TestPipeline:
         assert comp2.__haystack_output__.value.receivers == ["comp3"]
         assert comp3.__haystack_input__.value.senders == ["comp1", "comp2"]
         assert list(pipe.graph.edges) == [("comp1", "comp3", "value/value"), ("comp2", "comp3", "value/value")]
-
-
-@component
-class FakeComponent:
-    def __init__(self, an_init_param: Optional[str] = None):
-        pass
-
-    @component.output_types(value=str)
-    def run(self, input_: str):
-        return {"value": input_}
-
-
-def test_run_with_greedy_variadic_after_component_with_default_input_simple(spying_tracer):
-    """
-    This test verifies that `Pipeline.run()` executes the components in the correct order when
-    there's a greedy Component with variadic input right before a Component with at least one default input.
-
-    We use the `spying_tracer` fixture to simplify the code to verify the order of execution.
-    This creates some coupling between this test and how we trace the Pipeline execution.
-    A worthy tradeoff in my opinion, we will notice right away if we change either the run logic or
-    the tracing logic.
-    """
-    document_store = InMemoryDocumentStore()
-    document_store.write_documents([Document(content="This is a simple document")])
-
-    pipeline = Pipeline()
-    template = "Given this documents: {{ documents|join(', ', attribute='content') }} Answer this question: {{ query }}"
-    pipeline.add_component("retriever", InMemoryBM25Retriever(document_store=document_store))
-    pipeline.add_component("prompt_builder", PromptBuilder(template=template))
-    pipeline.add_component("multiplexer", Multiplexer(List[Document]))
-
-    pipeline.connect("retriever", "multiplexer")
-    pipeline.connect("multiplexer", "prompt_builder.documents")
-    res = pipeline.run({"query": "This is my question"})
-
-    assert res == {
-        "prompt_builder": {
-            "prompt": "Given this documents: This is a simple document Answer this question: This is my question"
-        }
-    }
-
-    assert len(spying_tracer.spans) == 4
-    assert spying_tracer.spans[0].operation_name == "haystack.pipeline.run"
-    assert spying_tracer.spans[1].operation_name == "haystack.component.run"
-    assert spying_tracer.spans[1].tags["haystack.component.name"] == "retriever"
-    assert spying_tracer.spans[2].operation_name == "haystack.component.run"
-    assert spying_tracer.spans[2].tags["haystack.component.name"] == "multiplexer"
-    assert spying_tracer.spans[3].operation_name == "haystack.component.run"
-    assert spying_tracer.spans[3].tags["haystack.component.name"] == "prompt_builder"
-
-
-def test_run_raises_if_max_visits_reached():
-    def custom_init(self):
-        component.set_input_type(self, "x", int)
-        component.set_input_type(self, "y", int, 1)
-        component.set_output_types(self, a=int, b=int)
-
-    FakeComponent = component_class("FakeComponent", output={"a": 1, "b": 1}, extra_fields={"__init__": custom_init})
-    pipe = Pipeline(max_loops_allowed=1)
-    pipe.add_component("first", FakeComponent())
-    pipe.add_component("second", FakeComponent())
-    pipe.connect("first.a", "second.x")
-    pipe.connect("second.b", "first.y")
-    with pytest.raises(PipelineMaxLoops):
-        pipe.run({"first": {"x": 1}})
-
-
-def test_run_with_component_that_does_not_return_dict():
-    BrokenComponent = component_class(
-        "BrokenComponent", input_types={"a": int}, output_types={"b": int}, output=1  # type:ignore
-    )
-
-    pipe = Pipeline(max_loops_allowed=10)
-    pipe.add_component("comp", BrokenComponent())
-    with pytest.raises(PipelineRuntimeError):
-        pipe.run({"comp": {"a": 1}})
-
-
-def test_correct_execution_order_of_components_with_only_defaults(spying_tracer):
-    """
-    We enqueue the Components in internal `to_run` data structure at the start of `Pipeline.run()` using the order
-    they are added in the Pipeline with `Pipeline.add_component()`.
-    If a Component A with defaults is added before a Component B that has no defaults, but in the Pipeline
-    logic A must be executed after B it could run instead before.
-
-    This test verifies that the order of execution is correct.
-    """
-    docs = [Document(content="Rome is the capital of Italy"), Document(content="Paris is the capital of France")]
-    doc_store = InMemoryDocumentStore()
-    doc_store.write_documents(docs)
-    template = (
-        "Given the following information, answer the question.\n"
-        "Context:\n"
-        "{% for document in documents %}"
-        "    {{ document.content }}\n"
-        "{% endfor %}"
-        "Question: {{ query }}"
-    )
-
-    pipe = Pipeline()
-
-    # The order of this addition is important for the test
-    # Do not edit them.
-    pipe.add_component("prompt_builder", PromptBuilder(template=template))
-    pipe.add_component("retriever", InMemoryBM25Retriever(document_store=doc_store))
-    pipe.connect("retriever", "prompt_builder.documents")
-
-    query = "What is the capital of France?"
-    res = pipe.run({"prompt_builder": {"query": query}, "retriever": {"query": query}})
-
-    assert len(spying_tracer.spans) == 3
-    assert spying_tracer.spans[0].operation_name == "haystack.pipeline.run"
-    assert spying_tracer.spans[1].operation_name == "haystack.component.run"
-    assert spying_tracer.spans[1].tags["haystack.component.name"] == "retriever"
-    assert spying_tracer.spans[2].operation_name == "haystack.component.run"
-    assert spying_tracer.spans[2].tags["haystack.component.name"] == "prompt_builder"
-
-    print(res["prompt_builder"]["prompt"])
-    assert res == {
-        "prompt_builder": {
-            "prompt": "Given the following information, answer the question.\n"
-            "Context:\n"
-            "    Paris is the capital of France\n"
-            "    Rome is the capital of Italy\n"
-            "Question: What is the capital of France?"
-        }
-    }
-
-
-def test_pipeline_is_not_stuck_with_components_with_only_defaults():
-    FakeGenerator = component_class(
-        "FakeGenerator", input_types={"prompt": str}, output_types={"replies": List[str]}, output={"replies": ["Paris"]}
-    )
-    docs = [Document(content="Rome is the capital of Italy"), Document(content="Paris is the capital of France")]
-    doc_store = InMemoryDocumentStore()
-    doc_store.write_documents(docs)
-    template = (
-        "Given the following information, answer the question.\n"
-        "Context:\n"
-        "{% for document in documents %}"
-        "    {{ document.content }}\n"
-        "{% endfor %}"
-        "Question: {{ query }}"
-    )
-
-    pipe = Pipeline()
-
-    pipe.add_component("retriever", InMemoryBM25Retriever(document_store=doc_store))
-    pipe.add_component("prompt_builder", PromptBuilder(template=template))
-    pipe.add_component("generator", FakeGenerator())
-    pipe.add_component("answer_builder", AnswerBuilder())
-
-    pipe.connect("retriever", "prompt_builder.documents")
-    pipe.connect("prompt_builder.prompt", "generator.prompt")
-    pipe.connect("generator.replies", "answer_builder.replies")
-    pipe.connect("retriever.documents", "answer_builder.documents")
-
-    query = "What is the capital of France?"
-    res = pipe.run({"query": query})
-    assert len(res) == 1
-    answers = res["answer_builder"]["answers"]
-    assert len(answers) == 1
-    assert answers[0].data == "Paris"
-
-
-def test_pipeline_is_not_stuck_with_components_with_only_defaults_as_first_components():
-    """
-    This tests verifies that a Pipeline doesn't get stuck running in a loop if
-    it has all the following characterics:
-    - The first Component has all defaults for its inputs
-    - The first Component receives one input from the user
-    - The first Component receives one input from a loop in the Pipeline
-    - The second Component has at least one default input
-    """
-
-    def fake_generator_run(self, prompt: str, generation_kwargs: Optional[Dict[str, Any]] = None):
-        # Simple hack to simulate a model returning a different reply after the
-        # the first time it's called
-        if getattr(fake_generator_run, "called", False):
-            return {"replies": ["Rome"]}
-        fake_generator_run.called = True
-        return {"replies": ["Paris"]}
-
-    FakeGenerator = component_class(
-        "FakeGenerator",
-        input_types={"prompt": str, "generation_kwargs": Optional[Dict[str, Any]]},
-        output_types={"replies": List[str]},
-        extra_fields={"run": fake_generator_run},
-    )
-    template = (
-        "Answer the following question.\n"
-        "{% if previous_replies %}\n"
-        "Previously you replied incorrectly this:\n"
-        "{% for reply in previous_replies %}\n"
-        " - {{ reply }}\n"
-        "{% endfor %}\n"
-        "{% endif %}\n"
-        "Question: {{ query }}"
-    )
-    router = ConditionalRouter(
-        routes=[
-            {
-                "condition": "{{ replies == ['Rome'] }}",
-                "output": "{{ replies }}",
-                "output_name": "correct_replies",
-                "output_type": List[int],
-            },
-            {
-                "condition": "{{ replies == ['Paris'] }}",
-                "output": "{{ replies }}",
-                "output_name": "incorrect_replies",
-                "output_type": List[int],
-            },
-        ]
-    )
-
-    pipe = Pipeline()
-
-    pipe.add_component("prompt_builder", PromptBuilder(template=template))
-    pipe.add_component("generator", FakeGenerator())
-    pipe.add_component("router", router)
-
-    pipe.connect("prompt_builder.prompt", "generator.prompt")
-    pipe.connect("generator.replies", "router.replies")
-    pipe.connect("router.incorrect_replies", "prompt_builder.previous_replies")
-
-    res = pipe.run({"prompt_builder": {"query": "What is the capital of Italy?"}})
-
-    assert res == {"router": {"correct_replies": ["Rome"]}}
