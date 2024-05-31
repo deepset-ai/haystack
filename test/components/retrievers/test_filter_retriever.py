@@ -63,10 +63,13 @@ class TestFilterRetriever:
         }
 
     def test_to_dict_with_custom_init_parameters(self):
-        ds = InMemoryDocumentStore()
+        ds = InMemoryDocumentStore(index="test_to_dict_with_custom_init_parameters")
         serialized_ds = ds.to_dict()
 
-        component = FilterRetriever(document_store=InMemoryDocumentStore(), filters={"lang": "en"})
+        component = FilterRetriever(
+            document_store=InMemoryDocumentStore(index="test_to_dict_with_custom_init_parameters"),
+            filters={"lang": "en"},
+        )
         data = component.to_dict()
         assert data == {
             "type": "haystack.components.retrievers.filter_retriever.FilterRetriever",

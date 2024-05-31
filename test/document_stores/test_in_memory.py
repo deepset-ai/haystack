@@ -32,6 +32,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
                 "bm25_algorithm": "BM25L",
                 "bm25_parameters": {},
                 "embedding_similarity_function": "dot_product",
+                "index": store.index,
             },
         }
 
@@ -41,6 +42,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
             bm25_algorithm="BM25Plus",
             bm25_parameters={"key": "value"},
             embedding_similarity_function="cosine",
+            index="my_cool_index",
         )
         data = store.to_dict()
         assert data == {
@@ -50,6 +52,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
                 "bm25_algorithm": "BM25Plus",
                 "bm25_parameters": {"key": "value"},
                 "embedding_similarity_function": "cosine",
+                "index": "my_cool_index",
             },
         }
 
@@ -61,6 +64,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
                 "bm25_tokenization_regex": "custom_regex",
                 "bm25_algorithm": "BM25Plus",
                 "bm25_parameters": {"key": "value"},
+                "index": "my_cool_index",
             },
         }
         store = InMemoryDocumentStore.from_dict(data)
@@ -68,6 +72,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         assert store.tokenizer
         assert store.bm25_algorithm == "BM25Plus"
         assert store.bm25_parameters == {"key": "value"}
+        assert store.index == "my_cool_index"
 
     def test_invalid_bm25_algorithm(self):
         with pytest.raises(ValueError, match="BM25 algorithm 'invalid' is not supported"):
@@ -414,3 +419,28 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
             embedding=[0.1, 0.1, 0.1, 0.1], documents=docs, scale_score=False
         )
         assert scores == [0.1, 0.4]
+
+    def test_multiple_document_stores_using_same_index(self):
+        index = "test_multiple_document_stores_using_same_index"
+        document_store_1 = InMemoryDocumentStore(index=index)
+        document_store_2 = InMemoryDocumentStore(index=index)
+
+        assert document_store_1.count_documents() == document_store_2.count_documents() == 0
+
+        doc_1 = Document(content="Hello world")
+        document_store_1.write_documents([doc_1])
+        assert document_store_1.count_documents() == document_store_2.count_documents() == 1
+
+        assert document_store_1.filter_documents() == document_store_2.filter_documents() == [doc_1]
+
+        doc_2 = Document(content="Hello another world")
+        document_store_2.write_documents([doc_2])
+        assert document_store_1.count_documents() == document_store_2.count_documents() == 2
+
+        assert document_store_1.filter_documents() == document_store_2.filter_documents() == [doc_1, doc_2]
+
+        document_store_1.delete_documents([doc_2.id])
+        assert document_store_1.count_documents() == document_store_2.count_documents() == 1
+
+        document_store_2.delete_documents([doc_1.id])
+        assert document_store_1.count_documents() == document_store_2.count_documents() == 0
