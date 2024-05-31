@@ -10,6 +10,27 @@ Feature: Pipeline running
         | kind |
         | that has no components |
         | that is linear |
+        | that is really complex with lots of components, forks, and loops |
+        | that has a single component with a default input |
+        | that has two loops of identical lengths |
+        | that has two loops of different lengths |
+        | that has a single loop with two conditional branches |
+        | that has a component with dynamic inputs defined in init |
+        | that has two branches that don't merge |
+        | that has three branches that don't merge |
+        | that has two branches that merge |
+        | that has different combinations of branches that merge and do not merge |
+        | that has two branches, one of which loops back |
+        | that has a component with mutable input |
+        | that has a component with mutable output sent to multiple inputs |
+        | that has a greedy and variadic component after a component with default input |
+        | that has components added in a different order from the order of execution |
+        | that has a component with only default inputs |
+        | that has a component with only default inputs as first to run |
+        | that has only a single component that sends one of its outputs to itself |
+        | that has a component that sends one of its outputs to itself |
+        | that has multiple branches that merge into a component with a single variadic input |
+        | that has multiple branches of different lengths that merge into a component with a single variadic input |
 
     Scenario Outline: Running a bad Pipeline
         Given a pipeline <kind>
@@ -19,3 +40,4 @@ Feature: Pipeline running
         Examples:
         | kind | exception |
         | that has an infinite loop | PipelineMaxLoops |
+        | that has a component that doesn't return a dictionary | PipelineRuntimeError |
