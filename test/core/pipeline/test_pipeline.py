@@ -20,6 +20,16 @@ from haystack.testing.sample_components import AddFixedValue, Double, Greet
 logging.basicConfig(level=logging.DEBUG)
 
 
+@component
+class FakeComponent:
+    def __init__(self, an_init_param: Optional[str] = None):
+        pass
+
+    @component.output_types(value=str)
+    def run(self, input_: str):
+        return {"value": input_}
+
+
 class TestPipeline:
     """
     This class contains only unit tests for the Pipeline class.
