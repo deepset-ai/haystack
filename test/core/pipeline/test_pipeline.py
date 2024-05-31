@@ -595,9 +595,8 @@ class TestPipeline:
 
     def test_from_template(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake_key")
-        with patch("haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore"):
-            pipe = Pipeline.from_template(PredefinedPipeline.INDEXING)
-            assert pipe.get_component("cleaner")
+        pipe = Pipeline.from_template(PredefinedPipeline.INDEXING)
+        assert pipe.get_component("cleaner")
 
     def test_walk_pipeline_with_no_cycles(self):
         """
