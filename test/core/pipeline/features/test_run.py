@@ -29,7 +29,7 @@ from haystack.testing.sample_components import (
 )
 from haystack.testing.factory import component_class
 
-from .conftest import PipelineRunData
+from test.core.pipeline.features.conftest import PipelineRunData
 
 pytestmark = pytest.mark.integration
 
