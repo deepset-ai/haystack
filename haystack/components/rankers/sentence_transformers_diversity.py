@@ -4,7 +4,7 @@
 
 from typing import Any, Dict, List, Literal, Optional
 
-from haystack import ComponentError, Document, component, default_from_dict, default_to_dict, logging
+from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
 
@@ -231,7 +231,15 @@ class SentenceTransformersDiversityRanker:
             - `documents`: List of Document objects that have been selected based on the diversity ranking.
 
         :raises ValueError: If the top_k value is less than or equal to 0.
+        :raises RuntimeError: If the component has not been warmed up.
         """
+        if self.model is None:
+            error_msg = (
+                "The component SentenceTransformersDiversityRanker wasn't warmed up. "
+                "Run 'warm_up()' before calling 'run()'."
+            )
+            raise RuntimeError(error_msg)
+
         if not documents:
             return {"documents": []}
 
@@ -239,13 +247,6 @@ class SentenceTransformersDiversityRanker:
             top_k = self.top_k
         elif top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
-
-        if self.model is None:
-            error_msg = (
-                "The component SentenceTransformersDiversityRanker wasn't warmed up. "
-                "Run 'warm_up()' before calling 'run()'."
-            )
-            raise ComponentError(error_msg)
 
         diversity_sorted = self._greedy_diversity_order(query=query, documents=documents)
 

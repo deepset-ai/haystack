@@ -50,6 +50,21 @@ class TestDocumentSplitter:
         assert result["documents"][0].content == "This is a text with some words. There is a "
         assert result["documents"][1].content == "second sentence. And there is a third sentence."
 
+    def test_split_by_word_with_threshold(self):
+        splitter = DocumentSplitter(split_by="word", split_length=15, split_threshold=10)
+        result = splitter.run(
+            documents=[
+                Document(
+                    content="This is a text with some words. There is a second sentence. And there is a third sentence."
+                )
+            ]
+        )
+        assert len(result["documents"]) == 1
+        assert (
+            result["documents"][0].content
+            == "This is a text with some words. There is a second sentence. And there is a third sentence."
+        )
+
     def test_split_by_word_multiple_input_docs(self):
         splitter = DocumentSplitter(split_by="word", split_length=10)
         result = splitter.run(

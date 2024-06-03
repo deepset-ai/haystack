@@ -39,6 +39,7 @@ class TestAzureOpenAIGenerator:
         assert component.client.api_key == "fake-api-key"
         assert component.azure_deployment == "gpt-35-turbo"
         assert component.streaming_callback is print_streaming_chunk
+        assert component.timeout is None
         assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
 
     def test_to_dict_default(self, monkeypatch):
@@ -56,6 +57,7 @@ class TestAzureOpenAIGenerator:
                 "azure_endpoint": "some-non-existing-endpoint",
                 "organization": None,
                 "system_prompt": None,
+                "timeout": None,
                 "generation_kwargs": {},
             },
         }
@@ -66,6 +68,7 @@ class TestAzureOpenAIGenerator:
             api_key=Secret.from_env_var("ENV_VAR", strict=False),
             azure_ad_token=Secret.from_env_var("ENV_VAR1", strict=False),
             azure_endpoint="some-non-existing-endpoint",
+            timeout=3.5,
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
         )
 
@@ -81,6 +84,7 @@ class TestAzureOpenAIGenerator:
                 "azure_endpoint": "some-non-existing-endpoint",
                 "organization": None,
                 "system_prompt": None,
+                "timeout": 3.5,
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
             },
         }

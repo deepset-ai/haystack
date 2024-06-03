@@ -1,0 +1,5 @@
+---
+
+enhancements:
+  - |
+     The `DocumentJoiner` component's `run` method now accepts a `top_k` parameter, allowing users to specify the maximum number of documents to return at query time. This fixes issue #7702.

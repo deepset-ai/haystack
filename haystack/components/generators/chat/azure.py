@@ -80,6 +80,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         azure_ad_token: Optional[Secret] = Secret.from_env_var("AZURE_OPENAI_AD_TOKEN", strict=False),
         organization: Optional[str] = None,
         streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
+        timeout: Optional[float] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
@@ -139,6 +140,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         self.azure_deployment = azure_deployment
         self.organization = organization
         self.model = azure_deployment or "gpt-35-turbo"
+        self.timeout = timeout
 
         self.client = AzureOpenAI(
             api_version=api_version,
@@ -165,6 +167,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
             api_version=self.api_version,
             streaming_callback=callback_name,
             generation_kwargs=self.generation_kwargs,
+            timeout=self.timeout,
             api_key=self.api_key.to_dict() if self.api_key is not None else None,
             azure_ad_token=self.azure_ad_token.to_dict() if self.azure_ad_token is not None else None,
         )

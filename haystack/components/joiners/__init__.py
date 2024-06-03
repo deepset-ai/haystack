@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from haystack.components.joiners.document_joiner import DocumentJoiner
+from .branch import BranchJoiner
+from .document_joiner import DocumentJoiner
 
-__all__ = ["DocumentJoiner"]
+__all__ = ["DocumentJoiner", "BranchJoiner"]

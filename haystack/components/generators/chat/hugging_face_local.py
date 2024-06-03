@@ -265,12 +265,12 @@ class HuggingFaceLocalChatGenerator:
         if self.streaming_callback:
             num_responses = generation_kwargs.get("num_return_sequences", 1)
             if num_responses > 1:
-                logger.warning(
-                    "Streaming is enabled, but the number of responses is set to %d. "
+                msg = (
+                    "Streaming is enabled, but the number of responses is set to {num_responses}. "
                     "Streaming is only supported for single response generation. "
-                    "Setting the number of responses to 1.",
-                    num_responses,
+                    "Setting the number of responses to 1."
                 )
+                logger.warning(msg, num_responses=num_responses)
                 generation_kwargs["num_return_sequences"] = 1
             # streamer parameter hooks into HF streaming, HFTokenStreamingHandler is an adapter to our streaming
             generation_kwargs["streamer"] = HFTokenStreamingHandler(tokenizer, self.streaming_callback, stop_words)
