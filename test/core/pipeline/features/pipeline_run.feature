@@ -31,6 +31,9 @@ Feature: Pipeline running
         | that has a component that sends one of its outputs to itself |
         | that has multiple branches that merge into a component with a single variadic input |
         | that has multiple branches of different lengths that merge into a component with a single variadic input |
+        | that is linear and returns intermediate outputs |
+        | that has a loop and returns intermediate outputs from it |
+        | that is linear and returns intermediate outputs from multiple sockets |
 
     Scenario Outline: Running a bad Pipeline
         Given a pipeline <kind>
