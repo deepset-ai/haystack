@@ -1,0 +1,19 @@
+---
+features:
+  - |
+    Add memory sharing between different instances of InMemoryDocumentStore.
+    Setting the same `index` argument as another instance will make sure that the memory is shared.
+    e.g.
+    ```python
+    index = "my_personal_index"
+    document_store_1 = InMemoryDocumentStore(index=index)
+    document_store_2 = InMemoryDocumentStore(index=index)
+
+    assert document_store_1.count_documents() == 0
+    assert document_store_2.count_documents() == 0
+
+    document_store_1.write_documents([Document(content="Hello world")])
+
+    assert document_store_1.count_documents() == 1
+    assert document_store_2.count_documents() == 1
+    ```

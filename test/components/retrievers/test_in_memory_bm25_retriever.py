@@ -60,11 +60,14 @@ class TestMemoryBM25Retriever:
         }
 
     def test_to_dict_with_custom_init_parameters(self):
-        ds = InMemoryDocumentStore()
+        ds = InMemoryDocumentStore(index="test_to_dict_with_custom_init_parameters")
         serialized_ds = ds.to_dict()
 
         component = InMemoryBM25Retriever(
-            document_store=InMemoryDocumentStore(), filters={"name": "test.txt"}, top_k=5, scale_score=True
+            document_store=InMemoryDocumentStore(index="test_to_dict_with_custom_init_parameters"),
+            filters={"name": "test.txt"},
+            top_k=5,
+            scale_score=True,
         )
         data = component.to_dict()
         assert data == {
