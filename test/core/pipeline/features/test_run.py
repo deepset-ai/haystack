@@ -10,7 +10,6 @@ from haystack.components.builders import PromptBuilder, AnswerBuilder
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.others import Multiplexer
-from haystack.core.errors import PipelineMaxLoops, PipelineRuntimeError
 from haystack.testing.sample_components import (
     Accumulate,
     AddFixedValue,
@@ -30,6 +29,7 @@ from haystack.testing.sample_components import (
 )
 from haystack.testing.factory import component_class
 
+from test.core.pipeline.features.conftest import PipelineRunData
 
 pytestmark = pytest.mark.integration
 
@@ -41,7 +41,7 @@ def pipeline_that_has_no_components():
     pipeline = Pipeline()
     inputs = {}
     expected_outputs = {}
-    return pipeline, inputs, expected_outputs, []
+    return pipeline, [PipelineRunData(inputs=inputs, expected_outputs=expected_outputs)]
 
 
 @given("a pipeline that is linear", target_fixture="pipeline_data")
@@ -55,9 +55,13 @@ def pipeline_that_is_linear():
 
     return (
         pipeline,
-        {"first_addition": {"value": 1}},
-        {"second_addition": {"result": 7}},
-        ["first_addition", "double", "second_addition"],
+        [
+            PipelineRunData(
+                inputs={"first_addition": {"value": 1}},
+                expected_outputs={"second_addition": {"result": 7}},
+                expected_run_order=["first_addition", "double", "second_addition"],
+            )
+        ],
     )
 
 
@@ -74,7 +78,7 @@ def pipeline_that_has_an_infinite_loop():
     pipe.add_component("second", FakeComponent())
     pipe.connect("first.a", "second.x")
     pipe.connect("second.b", "first.y")
-    return pipe, {"first": {"x": 1}}, PipelineMaxLoops
+    return pipe, [PipelineRunData({"first": {"x": 1}})]
 
 
 @given("a pipeline that is really complex with lots of components, forks, and loops", target_fixture="pipeline_data")
@@ -136,33 +140,37 @@ def pipeline_complex():
 
     return (
         pipeline,
-        {"greet_first": {"value": 1}, "greet_enumerator": {"value": 1}},
-        {"accumulate_3": {"value": -7}, "add_five": {"result": -6}},
         [
-            "greet_first",
-            "accumulate_1",
-            "add_two",
-            "parity",
-            "add_one",
-            "multiplexer",
-            "below_10",
-            "double",
-            "multiplexer",
-            "below_10",
-            "double",
-            "multiplexer",
-            "below_10",
-            "accumulate_2",
-            "greet_enumerator",
-            "enumerate",
-            "add_three",
-            "sum",
-            "diff",
-            "greet_one_last_time",
-            "replicate",
-            "add_five",
-            "add_four",
-            "accumulate_3",
+            PipelineRunData(
+                inputs={"greet_first": {"value": 1}, "greet_enumerator": {"value": 1}},
+                expected_outputs={"accumulate_3": {"value": -7}, "add_five": {"result": -6}},
+                expected_run_order=[
+                    "greet_first",
+                    "accumulate_1",
+                    "add_two",
+                    "parity",
+                    "add_one",
+                    "multiplexer",
+                    "below_10",
+                    "double",
+                    "multiplexer",
+                    "below_10",
+                    "double",
+                    "multiplexer",
+                    "below_10",
+                    "accumulate_2",
+                    "greet_enumerator",
+                    "enumerate",
+                    "add_three",
+                    "sum",
+                    "diff",
+                    "greet_one_last_time",
+                    "replicate",
+                    "add_five",
+                    "add_four",
+                    "accumulate_3",
+                ],
+            )
         ],
     )
 
@@ -180,9 +188,18 @@ def pipeline_that_has_a_single_component_with_a_default_input():
 
     return (
         pipeline,
-        [{"with_defaults": {"a": 40, "b": 30}}, {"with_defaults": {"a": 40}}],
-        [{"with_defaults": {"c": 70}}, {"with_defaults": {"c": 42}}],
-        [["with_defaults"], ["with_defaults"]],
+        [
+            PipelineRunData(
+                inputs={"with_defaults": {"a": 40, "b": 30}},
+                expected_outputs={"with_defaults": {"c": 70}},
+                expected_run_order=["with_defaults"],
+            ),
+            PipelineRunData(
+                inputs={"with_defaults": {"a": 40}},
+                expected_outputs={"with_defaults": {"c": 42}},
+                expected_run_order=["with_defaults"],
+            ),
+        ],
     )
 
 
@@ -199,29 +216,34 @@ def pipeline_that_has_two_loops_of_identical_lengths():
     pipeline.connect("remainder.remainder_is_2", "add_one.value")
     pipeline.connect("add_two", "multiplexer.value")
     pipeline.connect("add_one", "multiplexer.value")
-
     return (
         pipeline,
         [
-            {"multiplexer": {"value": 0}},
-            {"multiplexer": {"value": 3}},
-            {"multiplexer": {"value": 4}},
-            {"multiplexer": {"value": 5}},
-            {"multiplexer": {"value": 6}},
-        ],
-        [
-            {"remainder": {"remainder_is_0": 0}},
-            {"remainder": {"remainder_is_0": 3}},
-            {"remainder": {"remainder_is_0": 6}},
-            {"remainder": {"remainder_is_0": 6}},
-            {"remainder": {"remainder_is_0": 6}},
-        ],
-        [
-            ["multiplexer", "remainder"],
-            ["multiplexer", "remainder"],
-            ["multiplexer", "remainder", "add_two", "multiplexer", "remainder"],
-            ["multiplexer", "remainder", "add_one", "multiplexer", "remainder"],
-            ["multiplexer", "remainder"],
+            PipelineRunData(
+                inputs={"multiplexer": {"value": 0}},
+                expected_outputs={"remainder": {"remainder_is_0": 0}},
+                expected_run_order=["multiplexer", "remainder"],
+            ),
+            PipelineRunData(
+                inputs={"multiplexer": {"value": 3}},
+                expected_outputs={"remainder": {"remainder_is_0": 3}},
+                expected_run_order=["multiplexer", "remainder"],
+            ),
+            PipelineRunData(
+                inputs={"multiplexer": {"value": 4}},
+                expected_outputs={"remainder": {"remainder_is_0": 6}},
+                expected_run_order=["multiplexer", "remainder", "add_two", "multiplexer", "remainder"],
+            ),
+            PipelineRunData(
+                inputs={"multiplexer": {"value": 5}},
+                expected_outputs={"remainder": {"remainder_is_0": 6}},
+                expected_run_order=["multiplexer", "remainder", "add_one", "multiplexer", "remainder"],
+            ),
+            PipelineRunData(
+                inputs={"multiplexer": {"value": 6}},
+                expected_outputs={"remainder": {"remainder_is_0": 6}},
+                expected_run_order=["multiplexer", "remainder"],
+            ),
         ],
     )
 
@@ -245,25 +267,31 @@ def pipeline_that_has_two_loops_of_different_lengths():
     return (
         pipeline,
         [
-            {"multiplexer": {"value": 0}},
-            {"multiplexer": {"value": 3}},
-            {"multiplexer": {"value": 4}},
-            {"multiplexer": {"value": 5}},
-            {"multiplexer": {"value": 6}},
-        ],
-        [
-            {"remainder": {"remainder_is_0": 0}},
-            {"remainder": {"remainder_is_0": 3}},
-            {"remainder": {"remainder_is_0": 6}},
-            {"remainder": {"remainder_is_0": 6}},
-            {"remainder": {"remainder_is_0": 6}},
-        ],
-        [
-            ["multiplexer", "remainder"],
-            ["multiplexer", "remainder"],
-            ["multiplexer", "remainder", "add_two_1", "add_two_2", "multiplexer", "remainder"],
-            ["multiplexer", "remainder", "add_one", "multiplexer", "remainder"],
-            ["multiplexer", "remainder"],
+            PipelineRunData(
+                inputs={"multiplexer": {"value": 0}},
+                expected_outputs={"remainder": {"remainder_is_0": 0}},
+                expected_run_order=["multiplexer", "remainder"],
+            ),
+            PipelineRunData(
+                inputs={"multiplexer": {"value": 3}},
+                expected_outputs={"remainder": {"remainder_is_0": 3}},
+                expected_run_order=["multiplexer", "remainder"],
+            ),
+            PipelineRunData(
+                inputs={"multiplexer": {"value": 4}},
+                expected_outputs={"remainder": {"remainder_is_0": 6}},
+                expected_run_order=["multiplexer", "remainder", "add_two_1", "add_two_2", "multiplexer", "remainder"],
+            ),
+            PipelineRunData(
+                inputs={"multiplexer": {"value": 5}},
+                expected_outputs={"remainder": {"remainder_is_0": 6}},
+                expected_run_order=["multiplexer", "remainder", "add_one", "multiplexer", "remainder"],
+            ),
+            PipelineRunData(
+                inputs={"multiplexer": {"value": 6}},
+                expected_outputs={"remainder": {"remainder_is_0": 6}},
+                expected_run_order=["multiplexer", "remainder"],
+            ),
         ],
     )
 
@@ -292,22 +320,26 @@ def pipeline_that_has_a_single_loop_with_two_conditional_branches():
 
     return (
         pipeline,
-        {"add_one": {"value": 3}},
-        {"add_two": {"result": 13}},
         [
-            "add_one",
-            "multiplexer",
-            "below_10",
-            "accumulator",
-            "below_5",
-            "multiplexer",
-            "below_10",
-            "accumulator",
-            "below_5",
-            "add_three",
-            "multiplexer",
-            "below_10",
-            "add_two",
+            PipelineRunData(
+                inputs={"add_one": {"value": 3}},
+                expected_outputs={"add_two": {"result": 13}},
+                expected_run_order=[
+                    "add_one",
+                    "multiplexer",
+                    "below_10",
+                    "accumulator",
+                    "below_5",
+                    "multiplexer",
+                    "below_10",
+                    "accumulator",
+                    "below_5",
+                    "add_three",
+                    "multiplexer",
+                    "below_10",
+                    "add_two",
+                ],
+            )
         ],
     )
 
@@ -323,12 +355,18 @@ def pipeline_that_has_a_component_with_dynamic_inputs_defined_in_init():
 
     return (
         pipeline,
-        [{"hello": {"word": "Alice"}}, {"hello": {"word": "Alice"}, "fstring": {"template": "Received: {greeting}"}}],
         [
-            {"splitter": {"output": ["This", "is", "the", "greeting:", "Hello,", "Alice!!"]}},
-            {"splitter": {"output": ["Received:", "Hello,", "Alice!"]}},
+            PipelineRunData(
+                inputs={"hello": {"word": "Alice"}},
+                expected_outputs={"splitter": {"output": ["This", "is", "the", "greeting:", "Hello,", "Alice!!"]}},
+                expected_run_order=["hello", "fstring", "splitter"],
+            ),
+            PipelineRunData(
+                inputs={"hello": {"word": "Alice"}, "fstring": {"template": "Received: {greeting}"}},
+                expected_outputs={"splitter": {"output": ["Received:", "Hello,", "Alice!"]}},
+                expected_run_order=["hello", "fstring", "splitter"],
+            ),
         ],
-        [["hello", "fstring", "splitter"], ["hello", "fstring", "splitter"]],
     )
 
 
@@ -348,9 +386,18 @@ def pipeline_that_has_two_branches_that_dont_merge():
 
     return (
         pipeline,
-        [{"add_one": {"value": 1}}, {"add_one": {"value": 2}}],
-        [{"add_three": {"result": 15}}, {"double": {"value": 6}}],
-        [["add_one", "parity", "add_ten", "add_three"], ["add_one", "parity", "double"]],
+        [
+            PipelineRunData(
+                inputs={"add_one": {"value": 1}},
+                expected_outputs={"add_three": {"result": 15}},
+                expected_run_order=["add_one", "parity", "add_ten", "add_three"],
+            ),
+            PipelineRunData(
+                inputs={"add_one": {"value": 2}},
+                expected_outputs={"double": {"value": 6}},
+                expected_run_order=["add_one", "parity", "double"],
+            ),
+        ],
     )
 
 
@@ -372,9 +419,13 @@ def pipeline_that_has_three_branches_that_dont_merge():
 
     return (
         pipeline,
-        {"add_one": {"value": 1}},
-        {"add_one_again": {"result": 6}, "add_ten": {"result": 12}, "double": {"value": 4}},
-        ["add_one", "repeat", "double", "add_ten", "add_three", "add_one_again"],
+        [
+            PipelineRunData(
+                inputs={"add_one": {"value": 1}},
+                expected_outputs={"add_one_again": {"result": 6}, "add_ten": {"result": 12}, "double": {"value": 4}},
+                expected_run_order=["add_one", "repeat", "double", "add_ten", "add_three", "add_one_again"],
+            )
+        ],
     )
 
 
@@ -393,9 +444,13 @@ def pipeline_that_has_two_branches_that_merge():
     pipeline.connect("diff", "fourth_addition.value")
     return (
         pipeline,
-        {"first_addition": {"value": 1}, "third_addition": {"value": 1}},
-        {"fourth_addition": {"result": 3}},
-        ["first_addition", "second_addition", "third_addition", "diff", "fourth_addition"],
+        [
+            PipelineRunData(
+                inputs={"first_addition": {"value": 1}, "third_addition": {"value": 1}},
+                expected_outputs={"fourth_addition": {"result": 3}},
+                expected_run_order=["first_addition", "second_addition", "third_addition", "diff", "fourth_addition"],
+            )
+        ],
     )
 
 
@@ -425,13 +480,16 @@ def pipeline_that_has_different_combinations_of_branches_that_merge_and_do_not_m
     return (
         pipeline,
         [
-            {"add_one": {"value": 1}, "add_two": {"add": 2}, "add_two_as_well": {"add": 2}},
-            {"add_one": {"value": 2}, "add_two": {"add": 2}, "add_two_as_well": {"add": 2}},
-        ],
-        [{"add_two": {"result": 8}, "add_two_as_well": {"result": 8}}, {"diff": {"difference": 7}}],
-        [
-            ["add_one", "parity", "add_four", "add_two", "add_two_as_well"],
-            ["add_one", "parity", "double", "add_ten", "diff"],
+            PipelineRunData(
+                inputs={"add_one": {"value": 1}, "add_two": {"add": 2}, "add_two_as_well": {"add": 2}},
+                expected_outputs={"add_two": {"result": 8}, "add_two_as_well": {"result": 8}},
+                expected_run_order=["add_one", "parity", "add_four", "add_two", "add_two_as_well"],
+            ),
+            PipelineRunData(
+                inputs={"add_one": {"value": 2}, "add_two": {"add": 2}, "add_two_as_well": {"add": 2}},
+                expected_outputs={"diff": {"difference": 7}},
+                expected_run_order=["add_one", "parity", "double", "add_ten", "diff"],
+            ),
         ],
     )
 
@@ -457,22 +515,26 @@ def pipeline_that_has_two_branches_one_of_which_loops_back():
 
     return (
         pipeline,
-        {"add_zero": {"value": 8}, "sum": {"values": 2}},
-        {"sum": {"total": 23}},
         [
-            "add_zero",
-            "multiplexer",
-            "below_10",
-            "add_one",
-            "counter",
-            "multiplexer",
-            "below_10",
-            "add_one",
-            "counter",
-            "multiplexer",
-            "below_10",
-            "add_two",
-            "sum",
+            PipelineRunData(
+                inputs={"add_zero": {"value": 8}, "sum": {"values": 2}},
+                expected_outputs={"sum": {"total": 23}},
+                expected_run_order=[
+                    "add_zero",
+                    "multiplexer",
+                    "below_10",
+                    "add_one",
+                    "counter",
+                    "multiplexer",
+                    "below_10",
+                    "add_one",
+                    "counter",
+                    "multiplexer",
+                    "below_10",
+                    "add_two",
+                    "sum",
+                ],
+            )
         ],
     )
 
@@ -498,9 +560,16 @@ def pipeline_that_has_a_component_with_mutable_input():
 
     return (
         pipe,
-        {"mangler1": {"input_list": input_list}, "mangler2": {"input_list": input_list}},
-        {"concat1": {"output": ["foo", "bar", "extra_item"]}, "concat2": {"output": ["foo", "bar", "extra_item"]}},
-        ["mangler1", "mangler2", "concat1", "concat2"],
+        [
+            PipelineRunData(
+                inputs={"mangler1": {"input_list": input_list}, "mangler2": {"input_list": input_list}},
+                expected_outputs={
+                    "concat1": {"output": ["foo", "bar", "extra_item"]},
+                    "concat2": {"output": ["foo", "bar", "extra_item"]},
+                },
+                expected_run_order=["mangler1", "mangler2", "concat1", "concat2"],
+            )
+        ],
     )
 
 
@@ -549,14 +618,24 @@ def pipeline_that_has_a_component_with_mutable_output_sent_to_multiple_inputs():
 
     return (
         pipe,
-        {"prompt_builder": {"prompt_source": messages}, "mm1": params, "mm2": params},
-        {
-            "mm1": {
-                "merged_message": "Always respond in English even if some input data is in other languages.\nTell me about Berlin"
-            },
-            "mm2": {"merged_message": "Fake message"},
-        },
-        ["prompt_builder", "mm1", "llm", "mm2"],
+        [
+            PipelineRunData(
+                inputs={"mm1": params, "mm2": params, "prompt_builder": {"prompt_source": messages}},
+                expected_outputs={
+                    "mm1": {
+                        "merged_message": "Always respond "
+                        "in English even "
+                        "if some input "
+                        "data is in other "
+                        "languages.\n"
+                        "Tell me about "
+                        "Berlin"
+                    },
+                    "mm2": {"merged_message": "Fake message"},
+                },
+                expected_run_order=["prompt_builder", "mm1", "llm", "mm2"],
+            )
+        ],
     )
 
 
@@ -587,13 +666,25 @@ def pipeline_that_has_a_greedy_and_variadic_component_after_a_component_with_def
     pipeline.connect("multiplexer", "prompt_builder.documents")
     return (
         pipeline,
-        {"query": "This is my question"},
-        {
-            "prompt_builder": {
-                "prompt": "Given this documents: This is a simple document Answer this question: This is my question"
-            }
-        },
-        ["retriever", "multiplexer", "prompt_builder"],
+        [
+            PipelineRunData(
+                inputs={"query": "This is my question"},
+                expected_outputs={
+                    "prompt_builder": {
+                        "prompt": "Given this "
+                        "documents: "
+                        "This is a "
+                        "simple "
+                        "document "
+                        "Answer this "
+                        "question: "
+                        "This is my "
+                        "question"
+                    }
+                },
+                expected_run_order=["retriever", "multiplexer", "prompt_builder"],
+            )
+        ],
     )
 
 
@@ -605,7 +696,7 @@ def pipeline_that_has_a_component_that_doesnt_return_a_dictionary():
 
     pipe = Pipeline(max_loops_allowed=10)
     pipe.add_component("comp", BrokenComponent())
-    return pipe, {"comp": {"a": 1}}, PipelineRuntimeError
+    return pipe, [PipelineRunData({"comp": {"a": 1}})]
 
 
 @given(
@@ -644,17 +735,32 @@ def pipeline_that_has_components_added_in_a_different_order_from_the_order_of_ex
     query = "What is the capital of France?"
     return (
         pipe,
-        {"prompt_builder": {"query": query}, "retriever": {"query": query}},
-        {
-            "prompt_builder": {
-                "prompt": "Given the following information, answer the question.\n"
-                "Context:\n"
-                "    Paris is the capital of France\n"
-                "    Rome is the capital of Italy\n"
-                "Question: What is the capital of France?"
-            }
-        },
-        ["retriever", "prompt_builder"],
+        [
+            PipelineRunData(
+                inputs={"prompt_builder": {"query": query}, "retriever": {"query": query}},
+                expected_outputs={
+                    "prompt_builder": {
+                        "prompt": "Given the "
+                        "following "
+                        "information, "
+                        "answer the "
+                        "question.\n"
+                        "Context:\n"
+                        "    Paris is "
+                        "the capital "
+                        "of France\n"
+                        "    Rome is "
+                        "the capital "
+                        "of Italy\n"
+                        "Question: "
+                        "What is the "
+                        "capital of "
+                        "France?"
+                    }
+                },
+                expected_run_order=["retriever", "prompt_builder"],
+            )
+        ],
     )
 
 
@@ -689,31 +795,35 @@ def pipeline_that_has_a_component_with_only_default_inputs():
 
     return (
         pipe,
-        {"query": "What is the capital of France?"},
-        {
-            "answer_builder": {
-                "answers": [
-                    GeneratedAnswer(
-                        data="Paris",
-                        query="What is the capital of France?",
-                        documents=[
-                            Document(
-                                id="413dccdf51a54cca75b7ed2eddac04e6e58560bd2f0caf4106a3efc023fe3651",
-                                content="Paris is the capital of France",
-                                score=1.600237583702734,
-                            ),
-                            Document(
-                                id="a4a874fc2ef75015da7924d709fbdd2430e46a8e94add6e0f26cd32c1c03435d",
-                                content="Rome is the capital of Italy",
-                                score=1.2536639934227616,
-                            ),
-                        ],
-                        meta={},
-                    )
-                ]
-            }
-        },
-        ["retriever", "prompt_builder", "generator", "answer_builder"],
+        [
+            PipelineRunData(
+                inputs={"query": "What is the capital of France?"},
+                expected_outputs={
+                    "answer_builder": {
+                        "answers": [
+                            GeneratedAnswer(
+                                data="Paris",
+                                query="What " "is " "the " "capital " "of " "France?",
+                                documents=[
+                                    Document(
+                                        id="413dccdf51a54cca75b7ed2eddac04e6e58560bd2f0caf4106a3efc023fe3651",
+                                        content="Paris is the capital of France",
+                                        score=1.600237583702734,
+                                    ),
+                                    Document(
+                                        id="a4a874fc2ef75015da7924d709fbdd2430e46a8e94add6e0f26cd32c1c03435d",
+                                        content="Rome is the capital of Italy",
+                                        score=1.2536639934227616,
+                                    ),
+                                ],
+                                meta={},
+                            )
+                        ]
+                    }
+                },
+                expected_run_order=["retriever", "prompt_builder", "generator", "answer_builder"],
+            )
+        ],
     )
 
 
@@ -781,9 +891,13 @@ def pipeline_that_has_a_component_with_only_default_inputs_as_first_to_run():
 
     return (
         pipe,
-        {"prompt_builder": {"query": "What is the capital of Italy?"}},
-        {"router": {"correct_replies": ["Rome"]}},
-        ["prompt_builder", "generator", "router", "prompt_builder", "generator", "router"],
+        [
+            PipelineRunData(
+                inputs={"prompt_builder": {"query": "What is the capital of " "Italy?"}},
+                expected_outputs={"router": {"correct_replies": ["Rome"]}},
+                expected_run_order=["prompt_builder", "generator", "router", "prompt_builder", "generator", "router"],
+            )
+        ],
     )
 
 
@@ -798,9 +912,13 @@ def pipeline_that_has_a_single_component_that_send_one_of_outputs_to_itself():
 
     return (
         pipeline,
-        {"self_loop": {"values": 5}},
-        {"self_loop": {"final_result": 0}},
-        ["self_loop", "self_loop", "self_loop", "self_loop", "self_loop"],
+        [
+            PipelineRunData(
+                inputs={"self_loop": {"values": 5}},
+                expected_outputs={"self_loop": {"final_result": 0}},
+                expected_run_order=["self_loop", "self_loop", "self_loop", "self_loop", "self_loop"],
+            )
+        ],
     )
 
 
@@ -816,9 +934,22 @@ def pipeline_that_has_a_component_that_sends_one_of_its_outputs_to_itself():
 
     return (
         pipeline,
-        {"add_1": {"value": 5}},
-        {"add_2": {"result": 1}},
-        ["add_1", "self_loop", "self_loop", "self_loop", "self_loop", "self_loop", "self_loop", "add_2"],
+        [
+            PipelineRunData(
+                inputs={"add_1": {"value": 5}},
+                expected_outputs={"add_2": {"result": 1}},
+                expected_run_order=[
+                    "add_1",
+                    "self_loop",
+                    "self_loop",
+                    "self_loop",
+                    "self_loop",
+                    "self_loop",
+                    "self_loop",
+                    "add_2",
+                ],
+            )
+        ],
     )
 
 
@@ -848,9 +979,18 @@ def pipeline_that_has_multiple_branches_that_merge_into_a_component_with_a_singl
 
     return (
         pipeline,
-        [{"add_one": {"value": 1}}, {"add_one": {"value": 2}}],
-        [{"sum": {"total": 14}}, {"sum": {"total": 17}}],
-        [["add_one", "parity", "add_ten", "sum"], ["add_one", "parity", "double", "add_four", "add_one_again", "sum"]],
+        [
+            PipelineRunData(
+                inputs={"add_one": {"value": 1}},
+                expected_outputs={"sum": {"total": 14}},
+                expected_run_order=["add_one", "parity", "add_ten", "sum"],
+            ),
+            PipelineRunData(
+                inputs={"add_one": {"value": 2}},
+                expected_outputs={"sum": {"total": 17}},
+                expected_run_order=["add_one", "parity", "double", "add_four", "add_one_again", "sum"],
+            ),
+        ],
     )
 
 
@@ -874,9 +1014,13 @@ def pipeline_that_has_multiple_branches_of_different_lengths_that_merge_into_a_c
 
     return (
         pipeline,
-        {"first_addition": {"value": 1}, "third_addition": {"value": 1}},
-        {"fourth_addition": {"result": 12}},
-        ["first_addition", "second_addition", "third_addition", "sum", "fourth_addition"],
+        [
+            PipelineRunData(
+                inputs={"first_addition": {"value": 1}, "third_addition": {"value": 1}},
+                expected_outputs={"fourth_addition": {"result": 12}},
+                expected_run_order=["first_addition", "second_addition", "third_addition", "sum", "fourth_addition"],
+            )
+        ],
     )
 
 
@@ -892,14 +1036,23 @@ def pipeline_that_is_linear_and_returns_intermediate_outputs():
     return (
         pipeline,
         [
-            ({"first_addition": {"value": 1}}, {"first_addition", "second_addition", "double"}),
-            ({"first_addition": {"value": 1}}, {"double"}),
+            PipelineRunData(
+                inputs={"first_addition": {"value": 1}},
+                include_outputs_from={"second_addition", "double", "first_addition"},
+                expected_outputs={
+                    "double": {"value": 6},
+                    "first_addition": {"result": 3},
+                    "second_addition": {"result": 7},
+                },
+                expected_run_order=["first_addition", "double", "second_addition"],
+            ),
+            PipelineRunData(
+                inputs={"first_addition": {"value": 1}},
+                include_outputs_from={"double"},
+                expected_outputs={"double": {"value": 6}, "second_addition": {"result": 7}},
+                expected_run_order=["first_addition", "double", "second_addition"],
+            ),
         ],
-        [
-            {"second_addition": {"result": 7}, "first_addition": {"result": 3}, "double": {"value": 6}},
-            {"second_addition": {"result": 7}, "double": {"value": 6}},
-        ],
-        [["first_addition", "double", "second_addition"], ["first_addition", "double", "second_addition"]],
     )
 
 
@@ -925,33 +1078,43 @@ def pipeline_that_has_a_loop_and_returns_intermediate_outputs_from_it():
 
     return (
         pipeline,
-        (
-            {"add_one": {"value": 3}},
-            {"add_two", "add_one", "multiplexer", "below_10", "accumulator", "below_5", "add_three"},
-        ),
-        {
-            "add_two": {"result": 13},
-            "add_one": {"result": 4},
-            "multiplexer": {"value": 11},
-            "below_10": {"above": 11},
-            "accumulator": {"value": 8},
-            "below_5": {"above": 8},
-            "add_three": {"result": 11},
-        },
         [
-            "add_one",
-            "multiplexer",
-            "below_10",
-            "accumulator",
-            "below_5",
-            "multiplexer",
-            "below_10",
-            "accumulator",
-            "below_5",
-            "add_three",
-            "multiplexer",
-            "below_10",
-            "add_two",
+            PipelineRunData(
+                inputs={"add_one": {"value": 3}},
+                include_outputs_from={
+                    "add_two",
+                    "add_one",
+                    "multiplexer",
+                    "below_10",
+                    "accumulator",
+                    "below_5",
+                    "add_three",
+                },
+                expected_outputs={
+                    "add_two": {"result": 13},
+                    "add_one": {"result": 4},
+                    "multiplexer": {"value": 11},
+                    "below_10": {"above": 11},
+                    "accumulator": {"value": 8},
+                    "below_5": {"above": 8},
+                    "add_three": {"result": 11},
+                },
+                expected_run_order=[
+                    "add_one",
+                    "multiplexer",
+                    "below_10",
+                    "accumulator",
+                    "below_5",
+                    "multiplexer",
+                    "below_10",
+                    "accumulator",
+                    "below_5",
+                    "add_three",
+                    "multiplexer",
+                    "below_10",
+                    "add_two",
+                ],
+            )
         ],
     )
 
@@ -980,12 +1143,21 @@ def pipeline_that_is_linear_and_returns_intermediate_outputs_from_multiple_socke
     return (
         pipeline,
         [
-            ({"first_addition": {"value": 1}}, {"first_addition", "second_addition", "double"}),
-            ({"first_addition": {"value": 1}}, {"double"}),
+            PipelineRunData(
+                inputs={"first_addition": {"value": 1}},
+                include_outputs_from={"second_addition", "double", "first_addition"},
+                expected_outputs={
+                    "double": {"original": 3, "value": 6},
+                    "first_addition": {"result": 3},
+                    "second_addition": {"result": 7},
+                },
+                expected_run_order=["first_addition", "double", "second_addition"],
+            ),
+            PipelineRunData(
+                inputs={"first_addition": {"value": 1}},
+                include_outputs_from={"double"},
+                expected_outputs={"double": {"original": 3, "value": 6}, "second_addition": {"result": 7}},
+                expected_run_order=["first_addition", "double", "second_addition"],
+            ),
         ],
-        [
-            {"second_addition": {"result": 7}, "first_addition": {"result": 3}, "double": {"value": 6, "original": 3}},
-            {"second_addition": {"result": 7}, "double": {"value": 6, "original": 3}},
-        ],
-        [["first_addition", "double", "second_addition"], ["first_addition", "double", "second_addition"]],
     )
