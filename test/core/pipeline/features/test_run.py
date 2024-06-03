@@ -878,3 +878,114 @@ def pipeline_that_has_multiple_branches_of_different_lengths_that_merge_into_a_c
         {"fourth_addition": {"result": 12}},
         ["first_addition", "second_addition", "third_addition", "sum", "fourth_addition"],
     )
+
+
+@given("a pipeline that is linear and returns intermediate outputs", target_fixture="pipeline_data")
+def pipeline_that_is_linear_and_returns_intermediate_outputs():
+    pipeline = Pipeline()
+    pipeline.add_component("first_addition", AddFixedValue(add=2))
+    pipeline.add_component("second_addition", AddFixedValue())
+    pipeline.add_component("double", Double())
+    pipeline.connect("first_addition", "double")
+    pipeline.connect("double", "second_addition")
+
+    return (
+        pipeline,
+        [
+            ({"first_addition": {"value": 1}}, {"first_addition", "second_addition", "double"}),
+            ({"first_addition": {"value": 1}}, {"double"}),
+        ],
+        [
+            {"second_addition": {"result": 7}, "first_addition": {"result": 3}, "double": {"value": 6}},
+            {"second_addition": {"result": 7}, "double": {"value": 6}},
+        ],
+        [["first_addition", "double", "second_addition"], ["first_addition", "double", "second_addition"]],
+    )
+
+
+@given("a pipeline that has a loop and returns intermediate outputs from it", target_fixture="pipeline_data")
+def pipeline_that_has_a_loop_and_returns_intermediate_outputs_from_it():
+    pipeline = Pipeline(max_loops_allowed=10)
+    pipeline.add_component("add_one", AddFixedValue(add=1))
+    pipeline.add_component("multiplexer", Multiplexer(type_=int))
+    pipeline.add_component("below_10", Threshold(threshold=10))
+    pipeline.add_component("below_5", Threshold(threshold=5))
+    pipeline.add_component("add_three", AddFixedValue(add=3))
+    pipeline.add_component("accumulator", Accumulate())
+    pipeline.add_component("add_two", AddFixedValue(add=2))
+
+    pipeline.connect("add_one.result", "multiplexer")
+    pipeline.connect("multiplexer.value", "below_10.value")
+    pipeline.connect("below_10.below", "accumulator.value")
+    pipeline.connect("accumulator.value", "below_5.value")
+    pipeline.connect("below_5.above", "add_three.value")
+    pipeline.connect("below_5.below", "multiplexer")
+    pipeline.connect("add_three.result", "multiplexer")
+    pipeline.connect("below_10.above", "add_two.value")
+
+    return (
+        pipeline,
+        (
+            {"add_one": {"value": 3}},
+            {"add_two", "add_one", "multiplexer", "below_10", "accumulator", "below_5", "add_three"},
+        ),
+        {
+            "add_two": {"result": 13},
+            "add_one": {"result": 4},
+            "multiplexer": {"value": 11},
+            "below_10": {"above": 11},
+            "accumulator": {"value": 8},
+            "below_5": {"above": 8},
+            "add_three": {"result": 11},
+        },
+        [
+            "add_one",
+            "multiplexer",
+            "below_10",
+            "accumulator",
+            "below_5",
+            "multiplexer",
+            "below_10",
+            "accumulator",
+            "below_5",
+            "add_three",
+            "multiplexer",
+            "below_10",
+            "add_two",
+        ],
+    )
+
+
+@given(
+    "a pipeline that is linear and returns intermediate outputs from multiple sockets", target_fixture="pipeline_data"
+)
+def pipeline_that_is_linear_and_returns_intermediate_outputs_from_multiple_sockets():
+    @component
+    class DoubleWithOriginal:
+        """
+        Doubles the input value and returns the original value as well.
+        """
+
+        @component.output_types(value=int, original=int)
+        def run(self, value: int):
+            return {"value": value * 2, "original": value}
+
+    pipeline = Pipeline()
+    pipeline.add_component("first_addition", AddFixedValue(add=2))
+    pipeline.add_component("second_addition", AddFixedValue())
+    pipeline.add_component("double", DoubleWithOriginal())
+    pipeline.connect("first_addition", "double")
+    pipeline.connect("double.value", "second_addition")
+
+    return (
+        pipeline,
+        [
+            ({"first_addition": {"value": 1}}, {"first_addition", "second_addition", "double"}),
+            ({"first_addition": {"value": 1}}, {"double"}),
+        ],
+        [
+            {"second_addition": {"result": 7}, "first_addition": {"result": 3}, "double": {"value": 6, "original": 3}},
+            {"second_addition": {"result": 7}, "double": {"value": 6, "original": 3}},
+        ],
+        [["first_addition", "double", "second_addition"], ["first_addition", "double", "second_addition"]],
+    )
