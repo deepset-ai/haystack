@@ -1,11 +1,11 @@
-from typing import Tuple, List, Dict, Any
+from typing import Tuple, List, Dict, Any, Set
 
 from pytest_bdd import when, then, parsers
 
 from haystack import Pipeline
 
 
-PipelineData = Tuple[Pipeline, List[Dict[str, Any]], List[Dict[str, Any]], List[List[str]]]
+PipelineData = Tuple[Pipeline, List[Tuple[Dict[str, Any], Set[str]]], List[Dict[str, Any]], List[List[str]]]
 PipelineResult = Tuple[List[Dict[str, Any]], List[Dict[str, Any]], List[List[str]], List[List[str]]]
 
 
@@ -15,7 +15,7 @@ def run_pipeline(pipeline_data: PipelineData, spying_tracer):
     Attempts to run a pipeline with the given inputs.
     `pipeline_data` is a tuple that must contain:
     * A Pipeline instance
-    * The Pipeline inputs
+    * The Pipeline inputs, and optionally <include_outputs_from> components
     * The expected outputs
 
     Optionally it can contain:
@@ -39,7 +39,10 @@ def run_pipeline(pipeline_data: PipelineData, spying_tracer):
 
     for i in inputs:
         try:
-            res = pipeline.run(i)
+            if isinstance(i, tuple):
+                res = pipeline.run(data=i[0], include_outputs_from=i[1])
+            else:
+                res = pipeline.run(i)
             run_order = [
                 span.tags["haystack.component.name"]
                 for span in spying_tracer.spans
