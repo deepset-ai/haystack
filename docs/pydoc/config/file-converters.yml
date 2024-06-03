@@ -10,7 +10,7 @@ loaders:
         "json",
         "markdown",
         "parsr",
-        "pdf",
+        "pdf_xpdf",
         "pptx",
         "tika",
         "txt"
