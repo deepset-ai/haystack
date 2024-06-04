@@ -38,8 +38,9 @@ class ContextRelevanceEvaluator(LLMEvaluator):
     """
     Evaluator that checks if a provided context is relevant to the question.
 
-    An LLM separates the answer into multiple statements and checks whether the statement can be inferred from the
-    context or not. The final score for the full answer is a number from 0.0 to 1.0. It represents the proportion of
+    An LLM breaks up the context into multiple statements and checks whether each statement
+    is relevant for answering a question.
+    The final score for the context relevance is a number from 0.0 to 1.0. It represents the proportion of
     statements that can be inferred from the provided contexts.
 
     Usage example:
