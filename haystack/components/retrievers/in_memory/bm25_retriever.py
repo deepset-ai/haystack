@@ -2,10 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Optional
 
 from haystack import DeserializationError, Document, component, default_from_dict, default_to_dict
 from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.document_stores.types.filter_policy import FilterPolicy
 
 
 @component
@@ -40,7 +41,7 @@ class InMemoryBM25Retriever:
         filters: Optional[Dict[str, Any]] = None,
         top_k: int = 10,
         scale_score: bool = False,
-        filter_policy: Literal["replace", "merge"] = "replace",
+        filter_policy: FilterPolicy = FilterPolicy.REPLACE,
     ):
         """
         Create the InMemoryBM25Retriever component.
@@ -53,10 +54,7 @@ class InMemoryBM25Retriever:
             The maximum number of documents to retrieve.
         :param scale_score:
             Scales the BM25 score to a unit interval in the range of 0 to 1, where 1 means extremely relevant. If set to `False`, uses raw similarity scores.
-        :param filter_policy: Policy to determine how filters are applied. Defaults to "replace".
-             - `replace`: Runtime filters replace init filters.
-             - `merge`: Runtime filters are merged with init filters, with runtime filters overwriting init values.
-
+        :param filter_policy: The filter policy to apply during retrieval.
         :raises ValueError:
             If the specified `top_k` is not > 0.
         """
@@ -93,7 +91,7 @@ class InMemoryBM25Retriever:
             filters=self.filters,
             top_k=self.top_k,
             scale_score=self.scale_score,
-            filter_policy=self.filter_policy,
+            filter_policy=self.filter_policy.value,
         )
 
     @classmethod
@@ -111,6 +109,8 @@ class InMemoryBM25Retriever:
             raise DeserializationError("Missing 'document_store' in serialization data")
         if "type" not in init_params["document_store"]:
             raise DeserializationError("Missing 'type' in document store's serialization data")
+        if "filter_policy" in init_params:
+            init_params["filter_policy"] = FilterPolicy.from_str(init_params["filter_policy"])
         data["init_parameters"]["document_store"] = InMemoryDocumentStore.from_dict(
             data["init_parameters"]["document_store"]
         )
@@ -142,7 +142,7 @@ class InMemoryBM25Retriever:
         :raises ValueError:
             If the specified DocumentStore is not found or is not a InMemoryDocumentStore instance.
         """
-        if self.filter_policy == "merge" and filters:
+        if self.filter_policy == FilterPolicy.MERGE and filters:
             filters = {**(self.filters or {}), **filters}
         else:
             filters = filters or self.filters

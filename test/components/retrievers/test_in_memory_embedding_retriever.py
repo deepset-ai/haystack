@@ -7,6 +7,7 @@ import pytest
 import numpy as np
 
 from haystack import Pipeline, DeserializationError
+from haystack.document_stores.types import FilterPolicy
 from haystack.testing.factory import document_store_class
 from haystack.components.retrievers.in_memory.embedding_retriever import InMemoryEmbeddingRetriever
 from haystack.dataclasses import Document
@@ -85,6 +86,7 @@ class TestMemoryEmbeddingRetriever:
                 },
                 "filters": {"name": "test.txt"},
                 "top_k": 5,
+                "filter_policy": "merge",
             },
         }
         component = InMemoryEmbeddingRetriever.from_dict(data)
@@ -92,6 +94,7 @@ class TestMemoryEmbeddingRetriever:
         assert component.filters == {"name": "test.txt"}
         assert component.top_k == 5
         assert component.scale_score is False
+        assert component.filter_policy == FilterPolicy.MERGE
 
     def test_from_dict_without_docstore(self):
         data = {
