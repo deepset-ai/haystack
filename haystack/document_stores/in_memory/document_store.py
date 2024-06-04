@@ -46,6 +46,8 @@ class BM25DocumentStats:
 # Global storage for all InMemoryDocumentStore instances, indexed by the index name.
 _STORAGES: Dict[str, Dict[str, Document]] = {}
 _BM25_STATS_STORAGES: Dict[str, Dict[str, BM25DocumentStats]] = {}
+_AVERAGE_DOC_LEN_STORAGES: Dict[str, float] = {}
+_FREQ_VOCAB_FOR_IDF_STORAGES: Dict[str, Counter] = {}
 
 
 class InMemoryDocumentStore:
@@ -91,13 +93,15 @@ class InMemoryDocumentStore:
         self.bm25_parameters = bm25_parameters or {}
         self.embedding_similarity_function = embedding_similarity_function
 
-        # Global BM25 statistics
-        self._avg_doc_len: float = 0.0
-        self._freq_vocab_for_idf: Counter = Counter()
-
         # Per-document statistics
         if self.index not in _BM25_STATS_STORAGES:
             _BM25_STATS_STORAGES[self.index] = {}
+
+        if self.index not in _AVERAGE_DOC_LEN_STORAGES:
+            _AVERAGE_DOC_LEN_STORAGES[self.index] = 0.0
+
+        if self.index not in _FREQ_VOCAB_FOR_IDF_STORAGES:
+            _FREQ_VOCAB_FOR_IDF_STORAGES[self.index] = Counter()
 
     @property
     def storage(self) -> Dict[str, Document]:
@@ -109,6 +113,18 @@ class InMemoryDocumentStore:
     @property
     def _bm25_attr(self) -> Dict[str, BM25DocumentStats]:
         return _BM25_STATS_STORAGES.get(self.index, {})
+
+    @property
+    def _avg_doc_len(self) -> float:
+        return _AVERAGE_DOC_LEN_STORAGES.get(self.index, 0.0)
+
+    @_avg_doc_len.setter
+    def _avg_doc_len(self, value: float):
+        _AVERAGE_DOC_LEN_STORAGES[self.index] = value
+
+    @property
+    def _freq_vocab_for_idf(self) -> Counter:
+        return _FREQ_VOCAB_FOR_IDF_STORAGES.get(self.index, Counter())
 
     def _dispatch_bm25(self):
         """
