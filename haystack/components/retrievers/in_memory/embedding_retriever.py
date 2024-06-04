@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Literal, Optional
 
 from haystack import DeserializationError, Document, component, default_from_dict, default_to_dict
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.document_stores.types.filter_policy import FilterPolicy
+from haystack.document_stores.types import FilterPolicy
 
 
 @component
