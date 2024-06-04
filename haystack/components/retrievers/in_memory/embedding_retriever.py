@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional
 
 from haystack import DeserializationError, Document, component, default_from_dict, default_to_dict
 from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.document_stores.types import FilterPolicy
 
 
 @component
@@ -50,6 +51,7 @@ class InMemoryEmbeddingRetriever:
         top_k: int = 10,
         scale_score: bool = False,
         return_embedding: bool = False,
+        filter_policy: FilterPolicy = FilterPolicy.REPLACE,
     ):
         """
         Create the InMemoryEmbeddingRetriever component.
@@ -64,7 +66,7 @@ class InMemoryEmbeddingRetriever:
             Scales the BM25 score to a unit interval in the range of 0 to 1, where 1 means extremely relevant. If set to `False`, uses raw similarity scores.
         :param return_embedding:
             Whether to return the embedding of the retrieved Documents.
-
+        :param filter_policy: The filter policy to apply during retrieval.
         :raises ValueError:
             If the specified top_k is not > 0.
         """
@@ -80,6 +82,7 @@ class InMemoryEmbeddingRetriever:
         self.top_k = top_k
         self.scale_score = scale_score
         self.return_embedding = return_embedding
+        self.filter_policy = filter_policy
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -102,6 +105,7 @@ class InMemoryEmbeddingRetriever:
             top_k=self.top_k,
             scale_score=self.scale_score,
             return_embedding=self.return_embedding,
+            filter_policy=self.filter_policy.value,
         )
 
     @classmethod
@@ -119,6 +123,8 @@ class InMemoryEmbeddingRetriever:
             raise DeserializationError("Missing 'document_store' in serialization data")
         if "type" not in init_params["document_store"]:
             raise DeserializationError("Missing 'type' in document store's serialization data")
+        if "filter_policy" in init_params:
+            init_params["filter_policy"] = FilterPolicy.from_str(init_params["filter_policy"])
         data["init_parameters"]["document_store"] = InMemoryDocumentStore.from_dict(
             data["init_parameters"]["document_store"]
         )
@@ -153,8 +159,10 @@ class InMemoryEmbeddingRetriever:
         :raises ValueError:
             If the specified DocumentStore is not found or is not an InMemoryDocumentStore instance.
         """
-        if filters is None:
-            filters = self.filters
+        if self.filter_policy == FilterPolicy.MERGE and filters:
+            filters = {**(self.filters or {}), **filters}
+        else:
+            filters = filters or self.filters
         if top_k is None:
             top_k = self.top_k
         if scale_score is None:
