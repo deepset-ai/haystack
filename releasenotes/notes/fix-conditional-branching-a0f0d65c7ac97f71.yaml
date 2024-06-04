@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fix some bugs running a Pipeline that has Components with conditional outputs.
+    Some branches that were expected not to run would run anyway, even if they received no inputs.
