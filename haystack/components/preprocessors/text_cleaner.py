@@ -18,6 +18,16 @@ class TextCleaner:
     and remove numbers.
 
     This is useful to clean up text data before evaluation.
+
+    Usage example:
+    ```python
+    from haystack.components.preprocessors import TextCleaner
+
+    text_to_clean = "1Moonlight shimmered softly, 300 Wolves howled nearby, Night enveloped everything."
+
+    cleaner = TextCleaner(convert_to_lowercase=True, remove_punctuation=False, remove_numbers=True)
+    result = cleaner.run(texts=[text_to_clean])
+    ```
     """
 
     def __init__(

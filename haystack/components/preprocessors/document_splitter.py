@@ -18,6 +18,17 @@ class DocumentSplitter:
     Splitting documents with long texts is a common preprocessing step during indexing.
     This allows Embedders to create significant semantic representations
     and avoids exceeding the maximum context length of language models.
+
+    Usage example:
+    ```python
+    from haystack import Document
+    from haystack.components.preprocessors import DocumentSplitter
+
+    doc = Document(content="Moonlight shimmered softly, wolves howled nearby, night enveloped everything.")
+
+    splitter = DocumentSplitter(split_by="word", split_length=3, split_overlap=0)
+    result = splitter.run(documents=[doc])
+    ```
     """
 
     def __init__(
