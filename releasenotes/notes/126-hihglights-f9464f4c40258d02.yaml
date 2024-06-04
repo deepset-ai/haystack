@@ -1,0 +1,6 @@
+---
+prelude: >
+    We are announcing that Haystack 1.26 is the final minor release for Haystack 1.x.
+    Although we will continue to release bug fixes for this version, we will neither
+    be adding nor removing any functionalities. Instead, we will focus our efforts on
+    Haystack 2.x. Haystack 1.26 will reach its end-of-life on March 11, 2025.
