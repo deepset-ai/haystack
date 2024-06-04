@@ -143,7 +143,7 @@ class InMemoryBM25Retriever:
             If the specified DocumentStore is not found or is not a InMemoryDocumentStore instance.
         """
         if self.filter_policy == "merge" and filters:
-            filters = {**self.filters, **filters}
+            filters = {**(self.filters or {}), **filters}
         else:
             filters = filters or self.filters
         if top_k is None:
