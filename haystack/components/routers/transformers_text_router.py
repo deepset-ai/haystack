@@ -29,8 +29,8 @@ class TransformersTextRouter:
     This is useful for routing queries to different models in a pipeline depending on their categorization.
     The set of labels to be used for categorization are provided by the selected model.
 
-    Example usage in a retrieval pipeline that passes question-like queries to a text embedder optimized for
-    query-passage retrieval and passage-like queries to a text embedder optimized for passage-passage retrieval.
+    Example usage in a query pipeline that routes english queries to a text generator optimized for english text and
+    german queries to a text generator optimized for german text.
 
     ```python
     from haystack.core.pipeline import Pipeline
