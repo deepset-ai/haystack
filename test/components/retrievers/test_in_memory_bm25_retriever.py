@@ -56,6 +56,7 @@ class TestMemoryBM25Retriever:
                 "filters": None,
                 "top_k": 10,
                 "scale_score": False,
+                "filter_policy": "replace",
             },
         }
 
@@ -77,6 +78,7 @@ class TestMemoryBM25Retriever:
                 "filters": {"name": "test.txt"},
                 "top_k": 5,
                 "scale_score": True,
+                "filter_policy": "replace",
             },
         }
 

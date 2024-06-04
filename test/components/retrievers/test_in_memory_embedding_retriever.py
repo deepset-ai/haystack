@@ -47,6 +47,7 @@ class TestMemoryEmbeddingRetriever:
                 "top_k": 10,
                 "scale_score": False,
                 "return_embedding": False,
+                "filter_policy": "replace",
             },
         }
 
@@ -70,6 +71,7 @@ class TestMemoryEmbeddingRetriever:
                 "top_k": 5,
                 "scale_score": True,
                 "return_embedding": True,
+                "filter_policy": "replace",
             },
         }
 
