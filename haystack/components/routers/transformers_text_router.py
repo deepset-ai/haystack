@@ -110,8 +110,8 @@ class TransformersTextRouter:
         config = AutoConfig.from_pretrained(
             huggingface_pipeline_kwargs["model"], token=huggingface_pipeline_kwargs["token"]
         )
-        labels = list(config.label2id.keys())
-        component.set_output_types(self, **{label: str for label in labels})
+        self.labels = list(config.label2id.keys())
+        component.set_output_types(self, **{label: str for label in self.labels})
 
         self.pipeline = None
 
@@ -139,7 +139,7 @@ class TransformersTextRouter:
         """
         serialization_dict = default_to_dict(
             self,
-            labels=self.labels,
+            model=self.huggingface_pipeline_kwargs["model"],
             huggingface_pipeline_kwargs=self.huggingface_pipeline_kwargs,
             token=self.token.to_dict() if self.token else None,
         )

@@ -9,13 +9,22 @@ from haystack.components.routers.transformers_text_router import TransformersTex
 from haystack.utils import ComponentDevice, Secret
 
 
-class TestTransformersZeroShotTextRouter:
-    def test_to_dict(self):
+class MockConfig:
+    def __init__(self, label2id):
+        self.label2id = label2id
+
+
+class TestTransformersTextRouter:
+    @patch("haystack.components.routers.transformers_text_router.AutoConfig.from_pretrained")
+    def test_to_dict(self, mock_auto_config_from_pretrained):
+        mock_auto_config_from_pretrained.return_value = MockConfig({"en": 0, "de": 1})
+        # mock_auto_config_from_pretrained.return_value = {"label2id": {"en": 0, "de": 1}}
         router = TransformersTextRouter(model="papluca/xlm-roberta-base-language-detection")
         router_dict = router.to_dict()
         assert router_dict == {
             "type": "haystack.components.routers.transformers_text_router.TransformersTextRouter",
             "init_parameters": {
+                "model": "papluca/xlm-roberta-base-language-detection",
                 "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
                 "huggingface_pipeline_kwargs": {
                     "model": "papluca/xlm-roberta-base-language-detection",
@@ -25,12 +34,14 @@ class TestTransformersZeroShotTextRouter:
             },
         }
 
-    def test_from_dict(self, monkeypatch):
+    @patch("haystack.components.routers.transformers_text_router.AutoConfig.from_pretrained")
+    def test_from_dict(self, mock_auto_config_from_pretrained, monkeypatch):
+        mock_auto_config_from_pretrained.return_value = MockConfig({"en": 0, "de": 1})
         monkeypatch.delenv("HF_API_TOKEN", raising=False)
         data = {
             "type": "haystack.components.routers.transformers_text_router.TransformersTextRouter",
             "init_parameters": {
-                "labels": ["query", "passage"],
+                "model": "papluca/xlm-roberta-base-language-detection",
                 "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
                 "huggingface_pipeline_kwargs": {
                     "model": "papluca/xlm-roberta-base-language-detection",
@@ -51,30 +62,36 @@ class TestTransformersZeroShotTextRouter:
             "token": None,
         }
 
+    @patch("haystack.components.routers.transformers_text_router.AutoConfig.from_pretrained")
     @patch("haystack.components.routers.transformers_text_router.pipeline")
-    def test_warm_up(self, hf_pipeline_mock):
+    def test_warm_up(self, hf_pipeline_mock, mock_auto_config_from_pretrained):
+        mock_auto_config_from_pretrained.return_value = MockConfig({"en": 0, "de": 1})
         router = TransformersTextRouter(model="papluca/xlm-roberta-base-language-detection")
         router.warm_up()
         assert router.pipeline is not None
 
-    def test_run_error(self):
+    @patch("haystack.components.routers.transformers_text_router.AutoConfig.from_pretrained")
+    def test_run_error(self, mock_auto_config_from_pretrained):
+        mock_auto_config_from_pretrained.return_value = MockConfig({"en": 0, "de": 1})
         router = TransformersTextRouter(model="papluca/xlm-roberta-base-language-detection")
         with pytest.raises(RuntimeError):
             router.run(text="test")
 
+    @patch("haystack.components.routers.transformers_text_router.AutoConfig.from_pretrained")
     @patch("haystack.components.routers.transformers_text_router.pipeline")
-    def test_run_not_str_error(self, hf_pipeline_mock):
+    def test_run_not_str_error(self, hf_pipeline_mock, mock_auto_config_from_pretrained):
+        mock_auto_config_from_pretrained.return_value = MockConfig({"en": 0, "de": 1})
         hf_pipeline_mock.return_value = " "
         router = TransformersTextRouter(model="papluca/xlm-roberta-base-language-detection")
         router.warm_up()
         with pytest.raises(TypeError):
             router.run(text=["wrong_input"])
 
+    @patch("haystack.components.routers.transformers_text_router.AutoConfig.from_pretrained")
     @patch("haystack.components.routers.transformers_text_router.pipeline")
-    def test_run_unit(self, hf_pipeline_mock):
-        hf_pipeline_mock.return_value = [
-            {"sequence": "What is the color of the sky?", "labels": ["query", "passage"], "scores": [0.9, 0.1]}
-        ]
+    def test_run_unit(self, hf_pipeline_mock, mock_auto_config_from_pretrained):
+        mock_auto_config_from_pretrained.return_value = MockConfig({"en": 0, "de": 1})
+        hf_pipeline_mock.return_value = [{"label": "en", "score": 0.9}]
         router = TransformersTextRouter(model="papluca/xlm-roberta-base-language-detection")
         router.pipeline = hf_pipeline_mock
         out = router.run("What is the color of the sky?")
@@ -86,5 +103,27 @@ class TestTransformersZeroShotTextRouter:
         router = TransformersTextRouter(model="papluca/xlm-roberta-base-language-detection")
         router.warm_up()
         out = router.run("What is the color of the sky?")
+        assert set(router.labels) == {
+            "ar",
+            "bg",
+            "de",
+            "el",
+            "en",
+            "es",
+            "fr",
+            "hi",
+            "it",
+            "ja",
+            "nl",
+            "pl",
+            "pt",
+            "ru",
+            "sw",
+            "th",
+            "tr",
+            "ur",
+            "vi",
+            "zh",
+        }
         assert router.pipeline is not None
         assert out == {"en": "What is the color of the sky?"}
