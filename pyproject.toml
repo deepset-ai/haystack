@@ -57,7 +57,6 @@ dependencies = [
   "more-itertools",  # TextDocumentSplitter
   "networkx", # Pipeline graphs
   "typing_extensions>=4.7", # typing support for Python 3.8
-  "trafilatura", # Fulltext extraction from HTML pages
   "requests",
   "numpy",
   "python-dateutil",
@@ -118,6 +117,7 @@ extra-dependencies = [
   "sentence-transformers>=2.2.0",  # SentenceTransformersTextEmbedder and SentenceTransformersDocumentEmbedder
   "openai-whisper>=20231106",  # LocalWhisperTranscriber
   "chroma-haystack",  # pipeline predefined templates
+  "trafilatura", # Fulltext extraction from HTML pages
 
   # OpenAPI
   "jsonref",  # OpenAPIServiceConnector, OpenAPIServiceToFunctions
