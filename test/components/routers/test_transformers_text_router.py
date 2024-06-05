@@ -30,6 +30,27 @@ class TestTransformersTextRouter:
         }
 
     @patch("haystack.components.routers.transformers_text_router.AutoConfig.from_pretrained")
+    def test_to_dict_with_cpu_device(self, mock_auto_config_from_pretrained):
+        mock_auto_config_from_pretrained.return_value = MagicMock(label2id={"en": 0, "de": 1})
+        router = TransformersTextRouter(
+            model="papluca/xlm-roberta-base-language-detection", device=ComponentDevice.from_str("cpu")
+        )
+        router_dict = router.to_dict()
+        assert router_dict == {
+            "type": "haystack.components.routers.transformers_text_router.TransformersTextRouter",
+            "init_parameters": {
+                "labels": ["en", "de"],
+                "model": "papluca/xlm-roberta-base-language-detection",
+                "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
+                "huggingface_pipeline_kwargs": {
+                    "model": "papluca/xlm-roberta-base-language-detection",
+                    "device": ComponentDevice.from_str("cpu").to_hf(),
+                    "task": "text-classification",
+                },
+            },
+        }
+
+    @patch("haystack.components.routers.transformers_text_router.AutoConfig.from_pretrained")
     def test_from_dict(self, mock_auto_config_from_pretrained, monkeypatch):
         mock_auto_config_from_pretrained.return_value = MagicMock(label2id={"en": 0, "de": 1})
         monkeypatch.delenv("HF_API_TOKEN", raising=False)
@@ -53,6 +74,34 @@ class TestTransformersTextRouter:
         assert component.huggingface_pipeline_kwargs == {
             "model": "papluca/xlm-roberta-base-language-detection",
             "device": ComponentDevice.resolve_device(None).to_hf(),
+            "task": "text-classification",
+            "token": None,
+        }
+
+    @patch("haystack.components.routers.transformers_text_router.AutoConfig.from_pretrained")
+    def test_from_dict_with_cpu_device(self, mock_auto_config_from_pretrained, monkeypatch):
+        mock_auto_config_from_pretrained.return_value = MagicMock(label2id={"en": 0, "de": 1})
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)
+        data = {
+            "type": "haystack.components.routers.transformers_text_router.TransformersTextRouter",
+            "init_parameters": {
+                "model": "papluca/xlm-roberta-base-language-detection",
+                "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
+                "huggingface_pipeline_kwargs": {
+                    "model": "papluca/xlm-roberta-base-language-detection",
+                    "device": ComponentDevice.from_str("cpu").to_hf(),
+                    "task": "zero-shot-classification",
+                },
+            },
+        }
+
+        component = TransformersTextRouter.from_dict(data)
+        assert component.labels == ["en", "de"]
+        assert component.pipeline is None
+        assert component.token == Secret.from_dict({"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"})
+        assert component.huggingface_pipeline_kwargs == {
+            "model": "papluca/xlm-roberta-base-language-detection",
+            "device": ComponentDevice.from_str("cpu").to_hf(),
             "task": "text-classification",
             "token": None,
         }
