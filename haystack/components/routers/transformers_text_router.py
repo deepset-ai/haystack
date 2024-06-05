@@ -57,7 +57,7 @@ class TransformersTextRouter:
         name="german_llm"
     )
     p.add_component(
-        instance=HuggingFaceLocalGenerator(model="google/gemma-1.1-7b-it"),
+        instance=HuggingFaceLocalGenerator(model="microsoft/Phi-3-mini-4k-instruct"),
         name="english_llm"
     )
 
@@ -92,7 +92,7 @@ class TransformersTextRouter:
         :param device: The device on which the model is loaded. If `None`, the default device is automatically
             selected. If a device/device map is specified in `huggingface_pipeline_kwargs`, it overrides this parameter.
         :param token: The API token used to download private models from Hugging Face.
-            If this parameter is set to `True`, the token generated when running
+            If `token` is set to `True`, the token generated when running
             `transformers-cli login` (stored in ~/.huggingface) is used.
         :param huggingface_pipeline_kwargs: Dictionary containing keyword arguments used to initialize the
             Hugging Face pipeline for text classification.
@@ -194,11 +194,11 @@ class TransformersTextRouter:
         :raises TypeError:
             If the input is not a str.
         :raises RuntimeError:
-            If the pipeline has not been loaded.
+            If the pipeline has not been loaded because warm_up() was not called before.
         """
         if self.pipeline is None:
             raise RuntimeError(
-                "The text classification pipeline has not been loaded. Please call warm_up() before running."
+                "The component TextTransformersRouter wasn't warmed up. Run 'warm_up()' before calling 'run()'."
             )
 
         if not isinstance(text, str):

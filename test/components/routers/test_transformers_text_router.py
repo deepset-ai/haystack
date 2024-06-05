@@ -67,7 +67,7 @@ class TestTransformersTextRouter:
         assert router.pipeline is not None
 
     @patch("haystack.components.routers.transformers_text_router.AutoConfig.from_pretrained")
-    def test_run_error(self, mock_auto_config_from_pretrained):
+    def test_run_fails_without_warm_up(self, mock_auto_config_from_pretrained):
         mock_auto_config_from_pretrained.return_value = MagicMock(label2id={"en": 0, "de": 1})
         router = TransformersTextRouter(model="papluca/xlm-roberta-base-language-detection")
         with pytest.raises(RuntimeError):
@@ -75,7 +75,7 @@ class TestTransformersTextRouter:
 
     @patch("haystack.components.routers.transformers_text_router.AutoConfig.from_pretrained")
     @patch("haystack.components.routers.transformers_text_router.pipeline")
-    def test_run_not_str_error(self, hf_pipeline_mock, mock_auto_config_from_pretrained):
+    def test_run_fails_with_non_string_input(self, hf_pipeline_mock, mock_auto_config_from_pretrained):
         mock_auto_config_from_pretrained.return_value = MagicMock(label2id={"en": 0, "de": 1})
         hf_pipeline_mock.return_value = MagicMock(model=MagicMock(config=MagicMock(label2id={"en": 0, "de": 1})))
         router = TransformersTextRouter(model="papluca/xlm-roberta-base-language-detection")
