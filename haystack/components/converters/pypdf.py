@@ -153,7 +153,7 @@ class PyPDFToDocument:
         Converts PDF files to Documents.
 
         :param sources:
-            List of HTML file paths or ByteStream objects.
+            List of file paths or ByteStream objects.
         :param meta:
             Optional metadata to attach to the Documents.
             This value can be either a list of dictionaries or a single dictionary.
