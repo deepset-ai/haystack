@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.lazy_imports import LazyImport
@@ -77,6 +77,7 @@ class TransformersTextRouter:
     def __init__(
         self,
         model: str,
+        labels: Optional[List[str]] = None,
         device: Optional[ComponentDevice] = None,
         token: Optional[Secret] = Secret.from_env_var("HF_API_TOKEN", strict=False),
         huggingface_pipeline_kwargs: Optional[Dict[str, Any]] = None,
@@ -85,6 +86,9 @@ class TransformersTextRouter:
         Initializes the TransformersTextRouter.
 
         :param model: The name or path of a Hugging Face model for text classification.
+        :param labels: The list of labels that the model has been trained to predict. If not provided, the labels
+            are fetched from the model configuration file hosted on the HuggingFace Hub using
+            `transformers.AutoConfig.from_pretrained`.
         :param device: The device on which the model is loaded. If `None`, the default device is automatically
             selected. If a device/device map is specified in `huggingface_pipeline_kwargs`, it overrides this parameter.
         :param token: The API token used to download private models from Hugging Face.
@@ -107,10 +111,13 @@ class TransformersTextRouter:
         )
         self.huggingface_pipeline_kwargs = huggingface_pipeline_kwargs
 
-        config = AutoConfig.from_pretrained(
-            huggingface_pipeline_kwargs["model"], token=huggingface_pipeline_kwargs["token"]
-        )
-        self.labels = list(config.label2id.keys())
+        if labels is not None:
+            config = AutoConfig.from_pretrained(
+                huggingface_pipeline_kwargs["model"], token=huggingface_pipeline_kwargs["token"]
+            )
+            self.labels = list(config.label2id.keys())
+        else:
+            self.labels = labels
         component.set_output_types(self, **{label: str for label in self.labels})
 
         self.pipeline = None
