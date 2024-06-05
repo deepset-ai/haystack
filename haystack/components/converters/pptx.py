@@ -41,28 +41,6 @@ class PPTXToDocument:
         """
         pptx_import.check()
 
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Serializes the component to a dictionary.
-
-        :returns:
-            Dictionary with serialized data.
-        """
-        return default_to_dict(self)
-
-    @classmethod
-    def from_dict(cls, data: Dict) -> "PPTXToDocument":
-        """
-        Deserializes the component from a dictionary.
-
-        :param data:
-            Dictionary with serialized data.
-
-        :returns:
-            Deserialized component.
-        """
-        return default_from_dict(cls, data)
-
     def _convert(self, file_content: io.BytesIO) -> str:
         pptx_presentation = Presentation(file_content)
         text_all_slides = []
