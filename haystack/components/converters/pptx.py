@@ -42,6 +42,9 @@ class PPTXToDocument:
         pptx_import.check()
 
     def _convert(self, file_content: io.BytesIO) -> str:
+        """
+        Converts the PPTX file to text.
+        """
         pptx_presentation = Presentation(file_content)
         text_all_slides = []
         for slide in pptx_presentation.slides:
