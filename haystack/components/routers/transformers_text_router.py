@@ -137,6 +137,14 @@ class TransformersTextRouter:
         if self.pipeline is None:
             self.pipeline = pipeline(**self.huggingface_pipeline_kwargs)
 
+        # Verify labels from the model configuration file match provided labels
+        labels = set(self.pipeline.model.config.label2id.keys())
+        if set(self.labels) != labels:
+            raise ValueError(
+                f"The provided labels do not match the labels in the model configuration file. "
+                f"Provided labels: {self.labels}. Model labels: {labels}"
+            )
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Serializes the component to a dictionary.
