@@ -27,11 +27,11 @@ class PPTXToDocument:
     ```python
     from haystack.components.converters.pptx import PPTXToDocument
 
-    converter = PyPDFToDocument()
-    results = converter.run(sources=["sample.pdf"], meta={"date_added": datetime.now().isoformat()})
+    converter = PPTXToDocument()
+    results = converter.run(sources=["sample.pptx"], meta={"date_added": datetime.now().isoformat()})
     documents = results["documents"]
     print(documents[0].content)
-    # 'This is a text from the PDF file.'
+    # 'This is the text from the PPTX file.'
     ```
     """
 
