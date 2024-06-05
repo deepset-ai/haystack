@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Add previously removed `fetch_archive_from_http` util function to fetch zip and gzip archives from url
