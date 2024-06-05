@@ -32,15 +32,20 @@ class TestPPTXToDocument:
         assert docs[0].meta["file_path"] == str(files[0])
         assert docs[1].meta == bytestream.meta
 
-    def test_run_error_handling(self, caplog):
-        """
-        Test if the component correctly handles errors.
-        """
+    def test_run_error_non_existent_file(self, caplog):
         sources = ["non_existing_file.pptx"]
         converter = PPTXToDocument()
         with caplog.at_level(logging.WARNING):
             results = converter.run(sources=sources)
-            assert "non_existing_file.pptx" in caplog.text
+            assert "Could not read non_existing_file.pptx" in caplog.text
+            assert results["documents"] == []
+
+    def test_run_error_wrong_file_type(self, caplog, test_files_path):
+        sources = [str(test_files_path / "txt" / "doc_1.txt")]
+        converter = PPTXToDocument()
+        with caplog.at_level(logging.WARNING):
+            results = converter.run(sources=sources)
+            assert "doc_1.txt and convert it" in caplog.text
             assert results["documents"] == []
 
     def test_run_with_meta(self, test_files_path):
