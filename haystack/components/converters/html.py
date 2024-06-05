@@ -6,13 +6,15 @@ import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-from trafilatura import extract
-
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
 from haystack.dataclasses import ByteStream
+from haystack.lazy_imports import LazyImport
 
 logger = logging.getLogger(__name__)
+
+with LazyImport("Run 'pip install trafilatura'") as trafilatura_import:
+    from trafilatura import extract
 
 
 @component
@@ -49,6 +51,7 @@ class HTMLToDocument:
             are passed to the underlying Trafilatura `extract` function. For the full list of available arguments, see
             the [Trafilatura documentation](https://trafilatura.readthedocs.io/en/latest/corefunctions.html#extract).
         """
+        trafilatura_import.check()
         if extractor_type is not None:
             warnings.warn(
                 "The `extractor_type` parameter is ignored and will be removed in Haystack 2.4.0. "
