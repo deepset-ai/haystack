@@ -154,6 +154,7 @@ class TransformersTextRouter:
         """
         serialization_dict = default_to_dict(
             self,
+            labels=self.labels,
             model=self.huggingface_pipeline_kwargs["model"],
             huggingface_pipeline_kwargs=self.huggingface_pipeline_kwargs,
             token=self.token.to_dict() if self.token else None,

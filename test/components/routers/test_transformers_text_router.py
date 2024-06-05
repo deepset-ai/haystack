@@ -18,6 +18,7 @@ class TestTransformersTextRouter:
         assert router_dict == {
             "type": "haystack.components.routers.transformers_text_router.TransformersTextRouter",
             "init_parameters": {
+                "labels": ["en", "de"],
                 "model": "papluca/xlm-roberta-base-language-detection",
                 "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
                 "huggingface_pipeline_kwargs": {
