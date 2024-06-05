@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fix bug causing latest version of sentence transformer model always being downloaded, even if specific version
+    is given.

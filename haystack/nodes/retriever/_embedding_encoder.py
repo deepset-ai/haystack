@@ -135,7 +135,10 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
         # e.g. 'roberta-base-nli-stsb-mean-tokens'
         torch_and_transformers_import.check()
         self.embedding_model = SentenceTransformer(
-            retriever.embedding_model, device=str(retriever.devices[0]), use_auth_token=retriever.use_auth_token
+            retriever.embedding_model,
+            device=str(retriever.devices[0]),
+            use_auth_token=retriever.use_auth_token,
+            revision=retriever.model_version,
         )
         self.batch_size = retriever.batch_size
         self.embedding_model.max_seq_length = retriever.max_seq_len
