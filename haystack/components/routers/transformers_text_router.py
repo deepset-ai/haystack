@@ -111,7 +111,7 @@ class TransformersTextRouter:
         )
         self.huggingface_pipeline_kwargs = huggingface_pipeline_kwargs
 
-        if labels is not None:
+        if labels is None:
             config = AutoConfig.from_pretrained(
                 huggingface_pipeline_kwargs["model"], token=huggingface_pipeline_kwargs["token"]
             )
