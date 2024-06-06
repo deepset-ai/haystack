@@ -694,19 +694,23 @@ class TestPipeline:
         pipe.add_component("with_no_inputs", ComponentWithNoInputs())
         pipe.add_component("with_single_input", ComponentWithSingleInput())
         pipe.add_component("another_with_single_input", ComponentWithSingleInput())
+        pipe.add_component("yet_another_with_single_input", ComponentWithSingleInput())
         pipe.add_component("with_multiple_inputs", ComponentWithMultipleInputs())
 
+        pipe.connect("yet_another_with_single_input.out", "with_variadic.in")
         pipe.connect("with_no_inputs.out", "with_variadic.in")
         pipe.connect("with_single_input.out", "another_with_single_input.in")
         pipe.connect("another_with_single_input.out", "with_multiple_inputs.in1")
         pipe.connect("with_multiple_inputs.out", "with_variadic.in")
 
-        to_run = pipe._init_to_run()
-        assert len(to_run) == 4
+        data = {"yet_another_with_single_input": {"in": 1}}
+        to_run = pipe._init_to_run(data)
+        assert len(to_run) == 5
         assert to_run[0][0] == "with_variadic"
         assert to_run[1][0] == "with_no_inputs"
         assert to_run[2][0] == "with_single_input"
-        assert to_run[3][0] == "with_multiple_inputs"
+        assert to_run[3][0] == "yet_another_with_single_input"
+        assert to_run[4][0] == "with_multiple_inputs"
 
     def test__init_inputs_state(self):
         pipe = Pipeline()
