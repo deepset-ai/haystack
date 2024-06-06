@@ -97,7 +97,9 @@ class EvaluationRunResult(BaseEvaluationRunResult):
 
     def score_report(self) -> DataFrame:  # noqa: D102
         results = {k: v["score"] for k, v in self.results.items()}
-        return DataFrame.from_dict(results, orient="index", columns=["score"])
+        df = DataFrame.from_dict(results, orient="index", columns=["score"]).reset_index()
+        df.columns = ["metrics", "score"]
+        return df
 
     def to_pandas(self) -> DataFrame:  # noqa: D102
         inputs_columns = list(self.inputs.keys())
