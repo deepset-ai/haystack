@@ -34,6 +34,9 @@ Feature: Pipeline running
         | that is linear and returns intermediate outputs |
         | that has a loop and returns intermediate outputs from it |
         | that is linear and returns intermediate outputs from multiple sockets |
+        | that has a component with default inputs that doesn't receive anything from its sender |
+        | that has a component with default inputs that doesn't receive anything from its sender but receives input from user |
+        | that has a loop and a component with default inputs that doesn't receive anything from its sender but receives input from user |
 
     Scenario Outline: Running a bad Pipeline
         Given a pipeline <kind>

@@ -1161,3 +1161,215 @@ def pipeline_that_is_linear_and_returns_intermediate_outputs_from_multiple_socke
             ),
         ],
     )
+
+
+@given(
+    "a pipeline that has a component with default inputs that doesn't receive anything from its sender",
+    target_fixture="pipeline_data",
+)
+def pipeline_that_has_a_component_with_default_inputs_that_doesnt_receive_anything_from_its_sender():
+    routes = [
+        {"condition": "{{'reisen' in sentence}}", "output": "German", "output_name": "language_1", "output_type": str},
+        {"condition": "{{'viajar' in sentence}}", "output": "Spanish", "output_name": "language_2", "output_type": str},
+    ]
+    router = ConditionalRouter(routes)
+
+    pipeline = Pipeline()
+    pipeline.add_component("router", router)
+    pipeline.add_component("pb", PromptBuilder(template="Ok, I know, that's {{language}}"))
+    pipeline.connect("router.language_2", "pb.language")
+
+    return (
+        pipeline,
+        [
+            PipelineRunData(
+                inputs={"router": {"sentence": "Wir mussen reisen"}},
+                expected_outputs={"router": {"language_1": "German"}},
+                expected_run_order=["router"],
+            ),
+            PipelineRunData(
+                inputs={"router": {"sentence": "Yo tengo que viajar"}},
+                expected_outputs={"pb": {"prompt": "Ok, I know, that's Spanish"}},
+                expected_run_order=["router", "pb"],
+            ),
+        ],
+    )
+
+
+@given(
+    "a pipeline that has a component with default inputs that doesn't receive anything from its sender but receives input from user",
+    target_fixture="pipeline_data",
+)
+def pipeline_that_has_a_component_with_default_inputs_that_doesnt_receive_anything_from_its_sender_but_receives_input_from_user():
+    prompt = PromptBuilder(
+        template="""Please generate an SQL query. The query should answer the following Question: {{ question }};
+            If the question cannot be answered given the provided table and columns, return 'no_answer'
+            The query is to be answered for the table is called 'absenteeism' with the following
+            Columns: {{ columns }};
+            Answer:"""
+    )
+
+    @component
+    class FakeGenerator:
+        @component.output_types(replies=List[str])
+        def run(self, prompt: str):
+            if "no_answer" in prompt:
+                return {"replies": ["There's simply no_answer to this question"]}
+            return {"replies": ["Some SQL query"]}
+
+    @component
+    class FakeSQLQuerier:
+        @component.output_types(results=str)
+        def run(self, query: str):
+            return {"results": "This is the query result", "query": query}
+
+    llm = FakeGenerator()
+    sql_querier = FakeSQLQuerier()
+
+    routes = [
+        {
+            "condition": "{{'no_answer' not in replies[0]}}",
+            "output": "{{replies[0]}}",
+            "output_name": "sql",
+            "output_type": str,
+        },
+        {
+            "condition": "{{'no_answer' in replies[0]}}",
+            "output": "{{question}}",
+            "output_name": "go_to_fallback",
+            "output_type": str,
+        },
+    ]
+
+    router = ConditionalRouter(routes)
+
+    fallback_prompt = PromptBuilder(
+        template="""User entered a query that cannot be answered with the given table.
+                    The query was: {{ question }} and the table had columns: {{ columns }}.
+                    Let the user know why the question cannot be answered"""
+    )
+    fallback_llm = FakeGenerator()
+
+    pipeline = Pipeline()
+    pipeline.add_component("prompt", prompt)
+    pipeline.add_component("llm", llm)
+    pipeline.add_component("router", router)
+    pipeline.add_component("fallback_prompt", fallback_prompt)
+    pipeline.add_component("fallback_llm", fallback_llm)
+    pipeline.add_component("sql_querier", sql_querier)
+
+    pipeline.connect("prompt", "llm")
+    pipeline.connect("llm.replies", "router.replies")
+    pipeline.connect("router.sql", "sql_querier.query")
+    pipeline.connect("router.go_to_fallback", "fallback_prompt.question")
+    pipeline.connect("fallback_prompt", "fallback_llm")
+
+    columns = "Age, Absenteeism_time_in_hours, Days, Disciplinary_failure"
+    return (
+        pipeline,
+        [
+            PipelineRunData(
+                inputs={
+                    "prompt": {"question": "This is a question with no_answer", "columns": columns},
+                    "router": {"question": "This is a question with no_answer"},
+                },
+                expected_outputs={"fallback_llm": {"replies": ["There's simply no_answer to this question"]}},
+                expected_run_order=["prompt", "llm", "router", "fallback_prompt", "fallback_llm"],
+            )
+        ],
+        [
+            PipelineRunData(
+                inputs={
+                    "prompt": {"question": "This is a question that has an answer", "columns": columns},
+                    "router": {"question": "This is a question that has an answer"},
+                },
+                expected_outputs={"sql_querier": {"results": "This is the query result", "query": "Some SQL query"}},
+                expected_run_order=["prompt", "llm", "router", "sql_querier"],
+            )
+        ],
+    )
+
+
+@given(
+    "a pipeline that has a loop and a component with default inputs that doesn't receive anything from its sender but receives input from user",
+    target_fixture="pipeline_data",
+)
+def pipeline_that_has_a_loop_and_a_component_with_default_inputs_that_doesnt_receive_anything_from_its_sender_but_receives_input_from_user():
+    template = """
+    You are an experienced and accurate Turkish CX speacialist that classifies customer comments into pre-defined categories below:\n
+    Negative experience labels:
+    - Late delivery
+    - Rotten/spoilt item
+    - Bad Courier behavior
+
+    Positive experience labels:
+    - Good courier behavior
+    - Thanks & appreciation
+    - Love message to courier
+    - Fast delivery
+    - Quality of products
+
+    Create a JSON object as a response. The fields are: 'positive_experience', 'negative_experience'.
+    Assign at least one of the pre-defined labels to the given customer comment under positive and negative experience fields.
+    If the comment has a positive experience, list the label under 'positive_experience' field.
+    If the comments has a negative_experience, list it under the 'negative_experience' field.
+    Here is the comment:\n{{ comment }}\n. Just return the category names in the list. If there aren't any, return an empty list.
+
+    {% if invalid_replies and error_message %}
+    You already created the following output in a previous attempt: {{ invalid_replies }}
+    However, this doesn't comply with the format requirements from above and triggered this Python exception: {{ error_message }}
+    Correct the output and try again. Just return the corrected output without any extra explanations.
+    {% endif %}
+    """
+    prompt_builder = PromptBuilder(template=template)
+
+    @component
+    class FakeOutputValidator:
+        @component.output_types(
+            valid_replies=List[str], invalid_replies=Optional[List[str]], error_message=Optional[str]
+        )
+        def run(self, replies: List[str]):
+            if not getattr(self, "called", False):
+                self.called = True
+                return {"invalid_replies": ["This is an invalid reply"], "error_message": "this is an error message"}
+            return {"valid_replies": replies}
+
+    @component
+    class FakeGenerator:
+        @component.output_types(replies=List[str])
+        def run(self, prompt: str):
+            return {"replies": ["This is a valid reply"]}
+
+    llm = FakeGenerator()
+    validator = FakeOutputValidator()
+
+    pipeline = Pipeline()
+    pipeline.add_component("prompt_builder", prompt_builder)
+
+    pipeline.add_component("llm", llm)
+    pipeline.add_component("output_validator", validator)
+
+    pipeline.connect("prompt_builder.prompt", "llm.prompt")
+    pipeline.connect("llm.replies", "output_validator.replies")
+    pipeline.connect("output_validator.invalid_replies", "prompt_builder.invalid_replies")
+
+    pipeline.connect("output_validator.error_message", "prompt_builder.error_message")
+
+    comment = "I loved the quality of the meal but the courier was rude"
+    return (
+        pipeline,
+        [
+            PipelineRunData(
+                inputs={"prompt_builder": {"template_variables": {"comment": comment}}},
+                expected_outputs={"output_validator": {"valid_replies": ["This is a valid reply"]}},
+                expected_run_order=[
+                    "prompt_builder",
+                    "llm",
+                    "output_validator",
+                    "prompt_builder",
+                    "llm",
+                    "output_validator",
+                ],
+            )
+        ],
+    )
