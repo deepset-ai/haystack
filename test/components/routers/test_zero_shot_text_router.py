@@ -58,13 +58,13 @@ class TestTransformersZeroShotTextRouter:
         router.warm_up()
         assert router.pipeline is not None
 
-    def test_run_error(self):
+    def test_run_fails_without_warm_up(self):
         router = TransformersZeroShotTextRouter(labels=["query", "passage"])
         with pytest.raises(RuntimeError):
             router.run(text="test")
 
     @patch("haystack.components.routers.zero_shot_text_router.pipeline")
-    def test_run_not_str_error(self, hf_pipeline_mock):
+    def test_run_fails_with_non_string_input(self, hf_pipeline_mock):
         hf_pipeline_mock.return_value = " "
         router = TransformersZeroShotTextRouter(labels=["query", "passage"])
         router.warm_up()

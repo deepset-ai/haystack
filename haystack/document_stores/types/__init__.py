@@ -2,7 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from .filter_policy import FilterPolicy
 from .policy import DuplicatePolicy
 from .protocol import DocumentStore
 
-__all__ = ["DocumentStore", "DuplicatePolicy"]
+__all__ = ["DocumentStore", "DuplicatePolicy", "FilterPolicy"]

@@ -1,0 +1,7 @@
+---
+upgrade:
+  - |
+    `trafilatura` must now be manually installed with `pip install trafilatura` to use the `HTMLToDocument` Component.
+enhancements:
+  - |
+    Remove `trafilatura` as direct dependency and make it a lazily imported one

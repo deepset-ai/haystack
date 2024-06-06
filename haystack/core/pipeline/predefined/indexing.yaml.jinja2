@@ -45,10 +45,12 @@ components:
     init_parameters:
       document_store:
         init_parameters:
-          collection_name: documents
-          embedding_function: default
-          persist_path: .
-        type: haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore
+          bm25_tokenization_regex: (?u)\b\w\w+\b
+          bm25_algorithm: BM25L
+          bm25_parameters: {}
+          embedding_similarity_function: dot_product
+          index: documents
+        type: haystack.document_stores.in_memory.document_store.InMemoryDocumentStore
       policy: NONE
     type: haystack.components.writers.document_writer.DocumentWriter
 
