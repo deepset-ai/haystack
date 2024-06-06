@@ -312,6 +312,9 @@ class PipelineBase:
         """
         Remove a component from the pipeline.
 
+        Remove an existing component from the pipeline by providing its name.
+        All edges that connect to the component will also be deleted.
+
         :param name:
             The name of the component to remove.
 
