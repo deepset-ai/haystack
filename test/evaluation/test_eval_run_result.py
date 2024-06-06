@@ -88,10 +88,11 @@ def test_score_report():
 
     result = EvaluationRunResult("testing_pipeline_1", inputs=data["inputs"], results=data["metrics"])
     report = result.score_report().to_json()
+
     assert report == (
-        '{"score":{"reciprocal_rank":0.476932,"single_hit":0.75,"multi_hit":0.46428375,'
-        '"context_relevance":0.58177975,"faithfulness":0.40585375,'
-        '"semantic_answer_similarity":0.53757075}}'
+        '{"metrics":{"0":"reciprocal_rank","1":"single_hit","2":"multi_hit","3":"context_relevance",'
+        '"4":"faithfulness","5":"semantic_answer_similarity"},'
+        '"score":{"0":0.476932,"1":0.75,"2":0.46428375,"3":0.58177975,"4":0.40585375,"5":0.53757075}}'
     )
 
 
