@@ -719,7 +719,7 @@ class PipelineBase:
 
         return {**data}
 
-    def _init_to_run(self, data: Dict[str, Any]) -> List[Tuple[str, Component]]:
+    def _init_to_run(self, pipeline_inputs: Dict[str, Any]) -> List[Tuple[str, Component]]:
         to_run: List[Tuple[str, Component]] = []
         for node_name in self.graph.nodes:
             component = self.graph.nodes[node_name]["instance"]
@@ -729,7 +729,7 @@ class PipelineBase:
                 to_run.append((node_name, component))
                 continue
 
-            if node_name in data:
+            if node_name in pipeline_inputs:
                 # This component is in the input data, if it has enough inputs it can run right away
                 to_run.append((node_name, component))
                 continue
