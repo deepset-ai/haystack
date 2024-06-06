@@ -87,7 +87,7 @@ dependencies = [
 [project.optional-dependencies]
 inference = [
   "transformers[torch,sentencepiece]==4.39.3",
-  "sentence-transformers>=2.2.0",  # See haystack/nodes/retriever/_embedding_encoder.py, _SentenceTransformersEmbeddingEncoder
+  "sentence-transformers>=2.3.1",  # See haystack/nodes/retriever/_embedding_encoder.py, _SentenceTransformersEmbeddingEncoder
   "huggingface-hub>=0.5.0",
 ]
 elasticsearch = [
