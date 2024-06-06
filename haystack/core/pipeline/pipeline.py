@@ -112,9 +112,12 @@ class Pipeline(PipelineBase):
         # Initialize the inputs state
         last_inputs: Dict[str, Dict[str, Any]] = self._init_inputs_state(data)
 
-        # Take all components that have at least 1 input not connected or is variadic,
-        # and all components that have no inputs at all
-        to_run: List[Tuple[str, Component]] = self._init_to_run()
+        # Take all components that:
+        # - have no inputs
+        # - receive input from the user
+        # - have at least one input not connected
+        # - have at least one input that is variadic
+        to_run: List[Tuple[str, Component]] = self._init_to_run(data)
 
         # These variables are used to detect when we're stuck in a loop.
         # Stuck loops can happen when one or more components are waiting for input but
@@ -232,8 +235,15 @@ class Pipeline(PipelineBase):
                         if name != sender_component_name:
                             continue
 
+                        pair = (receiver_component_name, self.graph.nodes[receiver_component_name]["instance"])
                         if edge_data["from_socket"].name not in res:
-                            # This output has not been produced by the component, skip it
+                            # The component didn't produce any output for this socket.
+                            # We can't run the receiver, let's remove it from the list of components to run
+                            # or we risk running it if it's in those lists.
+                            if pair in to_run:
+                                to_run.remove(pair)
+                            if pair in waiting_for_input:
+                                waiting_for_input.remove(pair)
                             continue
 
                         if receiver_component_name not in last_inputs:
@@ -249,7 +259,6 @@ class Pipeline(PipelineBase):
                         else:
                             last_inputs[receiver_component_name][edge_data["to_socket"].name] = value
 
-                        pair = (receiver_component_name, self.graph.nodes[receiver_component_name]["instance"])
                         is_greedy = pair[1].__haystack_is_greedy__
                         is_variadic = edge_data["to_socket"].is_variadic
                         if is_variadic and is_greedy:
