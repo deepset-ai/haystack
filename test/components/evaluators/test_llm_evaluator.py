@@ -282,7 +282,8 @@ class TestLLMEvaluator:
             },
         }
 
-    def test_serde(self):
+    def test_serde(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         pipeline = Pipeline()
         component = LLMEvaluator(
             instructions="test-instruction",
