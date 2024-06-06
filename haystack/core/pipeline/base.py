@@ -308,6 +308,27 @@ class PipelineBase:
             visits=0,
         )
 
+    def remove_component(self, name) -> None:
+        """
+        Remove a component from the pipeline.
+
+        :param name:
+            The name of the component to remove.
+
+        :raises ValueError:
+            If there is no component with that name already in the Pipeline.
+        """
+
+        # Check that a component with that name is in the Pipeline
+        if name not in self.graph.nodes:
+            raise ValueError(
+                f"There is no component named '{name}' in the pipeline. The valid component names are: ",
+                ", ".join(n for n in self.graph.nodes),
+            )
+
+        # Delete component from the graph, deleting all its connections
+        self.graph.remove_node(name)
+
     def connect(self, sender: str, receiver: str) -> "PipelineBase":
         """
         Connects two components together.

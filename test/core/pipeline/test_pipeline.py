@@ -120,6 +120,38 @@ class TestPipeline:
             second_pipe.add_component("some", some_component)
 
     # UNIT
+    def test_remove_component_raises_if_invalid_component_name(self):
+        pipe = Pipeline()
+        component = component_class("Some")()
+
+        pipe.add_component("1", component)
+
+        with pytest.raises(ValueError):
+            pipe.remove_component("2")
+
+    # UNIT
+    def test_remove_component_removes_component_and_its_edges(self):
+        pipe = Pipeline()
+        component_1 = component_class("Type1")()
+        component_2 = component_class("Type2")()
+        component_3 = component_class("Type3")()
+        component_4 = component_class("Type4")()
+
+        pipe.add_component("1", component_1)
+        pipe.add_component("2", component_2)
+        pipe.add_component("3", component_3)
+        pipe.add_component("4", component_4)
+
+        pipe.connect("1", "2")
+        pipe.connect("2", "3")
+        pipe.connect("3", "4")
+
+        pipe.remove_component("2")
+
+        assert ["1", "3", "4"] == sorted(pipe.graph.nodes)
+        assert [("3", "4")] == sorted([(u, v) for (u, v) in pipe.graph.edges()])
+
+    # UNIT
     def test_get_component_name(self):
         pipe = Pipeline()
         some_component = component_class("Some")()
