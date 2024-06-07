@@ -308,7 +308,7 @@ class PipelineBase:
             visits=0,
         )
 
-    def remove_component(self, name) -> None:
+    def remove_component(self, name: str) -> None:
         """
         Remove a component from the pipeline.
 
