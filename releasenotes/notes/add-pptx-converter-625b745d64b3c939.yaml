@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Add a PPTX to Document converter using the python-pptx library. Extracts all text from each slide. Each slide is separated with a page break "\f"
+    so a Document Splitter could split by slide.

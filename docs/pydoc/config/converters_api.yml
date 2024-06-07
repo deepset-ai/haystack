@@ -8,6 +8,7 @@ loaders:
         "markdown",
         "pdfminer",
         "pypdf",
+        "pptx",
         "tika",
         "txt",
         "output_adapter",
