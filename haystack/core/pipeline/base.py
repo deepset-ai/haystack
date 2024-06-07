@@ -323,14 +323,19 @@ class PipelineBase:
         """
 
         # Check that a component with that name is in the Pipeline
-        if name not in self.graph.nodes:
+        try:
+            instance = self.get_component(name)
+        except ValueError as exc:
             raise ValueError(
                 f"There is no component named '{name}' in the pipeline. The valid component names are: ",
                 ", ".join(n for n in self.graph.nodes),
-            )
+            ) from exc
 
         # Delete component from the graph, deleting all its connections
         self.graph.remove_node(name)
+
+        # Clean instance '__haystack_added_to_pipeline__' flag to allow the component in other pipelines.
+        setattr(instance, "__haystack_added_to_pipeline__", None)
 
     def connect(self, sender: str, receiver: str) -> "PipelineBase":
         """

@@ -151,6 +151,19 @@ class TestPipeline:
         assert ["1", "3", "4"] == sorted(pipe.graph.nodes)
         assert [("3", "4")] == sorted([(u, v) for (u, v) in pipe.graph.edges()])
 
+    def test_remove_component_allows_you_to_reuse_the_component(self):
+        pipe = Pipeline()
+        component = component_class("Some")()
+
+        pipe.add_component("some", component)
+        pipe.remove_component("some")
+
+        pipe2 = Pipeline()
+        pipe2.add_component("some", component)
+
+        instance = pipe2.get_component("some")
+        assert instance == component
+
     # UNIT
     def test_get_component_name(self):
         pipe = Pipeline()
