@@ -259,26 +259,25 @@ class MetaFieldRanker:
             return {"documents": documents[:top_k]}
 
         if len(docs_missing_meta_field) > 0:
+            warning_start = (
+                f"The parameter <meta_field> is currently set to '{self.meta_field}' but the Documents "
+                f"with IDs {','.join([doc.id for doc in docs_missing_meta_field])} don't have this meta key.\n"
+            )
+
             if missing_meta == "bottom":
                 logger.warning(
-                    "The parameter <meta_field> is currently set to '{meta_field}' but the Documents with IDs {document_ids} don't have this meta key.\n"
-                    "Because the parameter <missing_meta> is set to 'bottom', these Documents will be placed at the end of the sorting order.",
-                    meta_field=self.meta_field,
-                    document_ids=",".join([doc.id for doc in docs_missing_meta_field]),
+                    "{warning_start}Because the parameter <missing_meta> is set to 'bottom', these Documents will be placed at the end of the sorting order.",
+                    warning_start=warning_start,
                 )
             elif missing_meta == "top":
                 logger.warning(
-                    "The parameter <meta_field> is currently set to '{meta_field}' but the Documents with IDs {document_ids} don't have this meta key.\n"
-                    "Because the parameter <missing_meta> is set to 'top', these Documents will be placed at the top of the sorting order.",
-                    meta_field=self.meta_field,
-                    document_ids=",".join([doc.id for doc in docs_missing_meta_field]),
+                    "{warning_start}Because the parameter <missing_meta> is set to 'top', these Documents will be placed at the top of the sorting order.",
+                    warning_start=warning_start,
                 )
             else:
                 logger.warning(
-                    "The parameter <meta_field> is currently set to '{meta_field}' but the Documents with IDs {document_ids} don't have this meta key.\n"
-                    "Because the parameter <missing_meta> is set to 'drop', these Documents will be removed from the list of retrieved Documents.",
-                    meta_field=self.meta_field,
-                    document_ids=",".join([doc.id for doc in docs_missing_meta_field]),
+                    "{warning_start}Because the parameter <missing_meta> is set to 'drop', these Documents will be removed from the list of retrieved Documents.",
+                    warning_start=warning_start,
                 )
 
         # If meta_value_type is provided try to parse the meta values
