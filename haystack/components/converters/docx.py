@@ -10,8 +10,7 @@ from haystack.lazy_imports import LazyImport
 
 logger = logging.getLogger(__name__)
 
-# TODO: complete this lazy import and add 'python_docx' to pyptoject.toml
-with LazyImport("Run 'pip install haystack-ai[]' or 'pip install docx'") as docx_import:
+with LazyImport("Run 'pip install docx'") as docx_import:
     import docx
 
 
