@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
+from haystack import Document
 from haystack.components.builders import PromptBuilder
 from haystack.components.others import Multiplexer
 from haystack.core.component import component
@@ -1003,3 +1004,41 @@ class TestPipeline:
         assert comp2.__haystack_output__.value.receivers == ["comp3"]
         assert comp3.__haystack_input__.value.senders == ["comp1", "comp2"]
         assert list(pipe.graph.edges) == [("comp1", "comp3", "value/value"), ("comp2", "comp3", "value/value")]
+
+    def test__run_component(self, spying_tracer, caplog):
+        caplog.set_level(logging.INFO)
+        sentence_builder = component_class(
+            "SentenceBuilder", input_types={"words": List[str]}, output={"text": "some words"}
+        )()
+        document_builder = component_class(
+            "DocumentBuilder", input_types={"text": str}, output={"doc": Document(content="some words")}
+        )()
+        document_cleaner = component_class(
+            "DocumentCleaner",
+            input_types={"doc": Document},
+            output={"cleaned_doc": Document(content="some cleaner words")},
+        )()
+
+        pipe = Pipeline()
+        pipe.add_component("sentence_builder", sentence_builder)
+        pipe.add_component("document_builder", document_builder)
+        pipe.add_component("document_cleaner", document_cleaner)
+        pipe.connect("sentence_builder.text", "document_builder.text")
+        pipe.connect("document_builder.doc", "document_cleaner.doc")
+        assert spying_tracer.spans == []
+        res = pipe._run_component("document_builder", {"text": "whatever"})
+        assert res == {"doc": Document(content="some words")}
+
+        assert len(spying_tracer.spans) == 1
+        span = spying_tracer.spans[0]
+        assert span.operation_name == "haystack.component.run"
+        assert span.tags == {
+            "haystack.component.name": "document_builder",
+            "haystack.component.type": "DocumentBuilder",
+            "haystack.component.input_types": {"text": "str"},
+            "haystack.component.input_spec": {"text": {"type": "str", "senders": ["sentence_builder"]}},
+            "haystack.component.output_spec": {"doc": {"type": "Document", "receivers": ["document_cleaner"]}},
+            "haystack.component.visits": 1,
+        }
+
+        assert caplog.messages == ["Running component document_builder"]

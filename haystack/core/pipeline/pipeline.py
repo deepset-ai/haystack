@@ -22,6 +22,54 @@ class Pipeline(PipelineBase):
     Orchestrates component execution according to the execution graph, one after the other.
     """
 
+    def _run_component(self, name: str, inputs: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Runs a Component with the given inputs.
+
+        :param name: Name of the Component as defined in the Pipeline.
+        :param inputs: Inputs for the Component.
+        :raises PipelineRuntimeError: If Component doesn't return a dictionary.
+        :return: The output of the Component.
+        """
+        instance: Component = self.graph.nodes[name]["instance"]
+
+        with tracing.tracer.trace(
+            "haystack.component.run",
+            tags={
+                "haystack.component.name": name,
+                "haystack.component.type": instance.__class__.__name__,
+                "haystack.component.input_types": {k: type(v).__name__ for k, v in inputs.items()},
+                "haystack.component.input_spec": {
+                    key: {
+                        "type": value.type.__name__ if isinstance(value.type, type) else str(value.type),
+                        "senders": value.senders,
+                    }
+                    for key, value in instance.__haystack_input__._sockets_dict.items()  # type: ignore
+                },
+                "haystack.component.output_spec": {
+                    key: {
+                        "type": value.type.__name__ if isinstance(value.type, type) else str(value.type),
+                        "receivers": value.receivers,
+                    }
+                    for key, value in instance.__haystack_output__._sockets_dict.items()  # type: ignore
+                },
+            },
+        ) as span:
+            span.set_content_tag("haystack.component.input", inputs)
+            logger.info("Running component {component_name}", component_name=name)
+            res: Dict[str, Any] = instance.run(**inputs)
+            self.graph.nodes[name]["visits"] += 1
+
+            if not isinstance(res, Mapping):
+                raise PipelineRuntimeError(
+                    f"Component '{name}' didn't return a dictionary. "
+                    "Components must always return dictionaries: check the the documentation."
+                )
+            span.set_tag("haystack.component.visits", self.graph.nodes[name]["visits"])
+            span.set_content_tag("haystack.component.output", res)
+
+            return res
+
     # TODO: We're ignoring these linting rules for the time being, after we properly optimize this function we'll remove the noqa
     def run(  # noqa: C901, PLR0912, PLR0915 pylint: disable=too-many-branches,too-many-locals
         self, data: Dict[str, Any], debug: bool = False, include_outputs_from: Optional[Set[str]] = None
@@ -170,49 +218,13 @@ class Pipeline(PipelineBase):
                     if self.graph.nodes[name]["visits"] > self.max_loops_allowed:
                         msg = f"Maximum loops count ({self.max_loops_allowed}) exceeded for component '{name}'"
                         raise PipelineMaxLoops(msg)
-                    # This component has all the inputs it needs to run
-                    with tracing.tracer.trace(
-                        "haystack.component.run",
-                        tags={
-                            "haystack.component.name": name,
-                            "haystack.component.type": comp.__class__.__name__,
-                            "haystack.component.input_types": {
-                                k: type(v).__name__ for k, v in last_inputs[name].items()
-                            },
-                            "haystack.component.input_spec": {
-                                key: {
-                                    "type": value.type.__name__ if isinstance(value.type, type) else str(value.type),
-                                    "senders": value.senders,
-                                }
-                                for key, value in comp.__haystack_input__._sockets_dict.items()  # type: ignore
-                            },
-                            "haystack.component.output_spec": {
-                                key: {
-                                    "type": value.type.__name__ if isinstance(value.type, type) else str(value.type),
-                                    "senders": value.receivers,
-                                }
-                                for key, value in comp.__haystack_output__._sockets_dict.items()  # type: ignore
-                            },
-                        },
-                    ) as span:
-                        span.set_content_tag("haystack.component.input", last_inputs[name])
-                        logger.info("Running component {component_name}", component_name=name)
-                        res = comp.run(**last_inputs[name])
-                        self.graph.nodes[name]["visits"] += 1
 
-                        if not isinstance(res, Mapping):
-                            raise PipelineRuntimeError(
-                                f"Component '{name}' didn't return a dictionary. "
-                                "Components must always return dictionaries: check the the documentation."
-                            )
+                    res: Dict[str, Any] = self._run_component(name, last_inputs[name])
 
-                        span.set_tags(tags={"haystack.component.visits": self.graph.nodes[name]["visits"]})
-                        span.set_content_tag("haystack.component.output", res)
-
-                        if name in include_outputs_from:
-                            # Deepcopy the outputs to prevent downstream nodes from modifying them
-                            # We don't care about loops - Always store the last output.
-                            extra_outputs[name] = deepcopy(res)
+                    if name in include_outputs_from:
+                        # Deepcopy the outputs to prevent downstream nodes from modifying them
+                        # We don't care about loops - Always store the last output.
+                        extra_outputs[name] = deepcopy(res)
 
                     # Reset the waiting for input previous states, we managed to run a component
                     before_last_waiting_for_input = None
