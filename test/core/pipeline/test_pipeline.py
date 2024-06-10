@@ -119,6 +119,71 @@ class TestPipeline:
         with pytest.raises(PipelineError):
             second_pipe.add_component("some", some_component)
 
+    def test_remove_component_raises_if_invalid_component_name(self):
+        pipe = Pipeline()
+        component = component_class("Some")()
+
+        pipe.add_component("1", component)
+
+        with pytest.raises(ValueError):
+            pipe.remove_component("2")
+
+    def test_remove_component_removes_component_and_its_edges(self):
+        pipe = Pipeline()
+        component_1 = component_class("Type1")()
+        component_2 = component_class("Type2")()
+        component_3 = component_class("Type3")()
+        component_4 = component_class("Type4")()
+
+        pipe.add_component("1", component_1)
+        pipe.add_component("2", component_2)
+        pipe.add_component("3", component_3)
+        pipe.add_component("4", component_4)
+
+        pipe.connect("1", "2")
+        pipe.connect("2", "3")
+        pipe.connect("3", "4")
+
+        pipe.remove_component("2")
+
+        assert ["1", "3", "4"] == sorted(pipe.graph.nodes)
+        assert [("3", "4")] == sorted([(u, v) for (u, v) in pipe.graph.edges()])
+
+    def test_remove_component_allows_you_to_reuse_the_component(self):
+        pipe = Pipeline()
+        Some = component_class("Some", input_types={"in": int}, output_types={"out": int})
+
+        pipe.add_component("component_1", Some())
+        pipe.add_component("component_2", Some())
+        pipe.add_component("component_3", Some())
+        pipe.connect("component_1", "component_2")
+        pipe.connect("component_2", "component_3")
+        component_2 = pipe.remove_component("component_2")
+
+        assert component_2.__haystack_added_to_pipeline__ is None
+        assert component_2.__haystack_input__._sockets_dict == {"in": InputSocket(name="in", type=int, senders=[])}
+        assert component_2.__haystack_output__._sockets_dict == {
+            "out": OutputSocket(name="out", type=int, receivers=[])
+        }
+
+        pipe2 = Pipeline()
+        pipe2.add_component("component_4", Some())
+        pipe2.add_component("component_2", component_2)
+        pipe2.add_component("component_5", Some())
+
+        pipe2.connect("component_4", "component_2")
+        pipe2.connect("component_2", "component_5")
+        assert component_2.__haystack_added_to_pipeline__ is pipe2
+        assert component_2.__haystack_input__._sockets_dict == {
+            "in": InputSocket(name="in", type=int, senders=["component_4"])
+        }
+        assert component_2.__haystack_output__._sockets_dict == {
+            "out": OutputSocket(name="out", type=int, receivers=["component_5"])
+        }
+
+        # instance = pipe2.get_component("some")
+        # assert instance == component
+
     # UNIT
     def test_get_component_name(self):
         pipe = Pipeline()
