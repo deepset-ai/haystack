@@ -337,11 +337,11 @@ class PipelineBase:
         self.graph.remove_node(name)
 
         # Reset the Component sockets' senders and receivers
-        input_sockets = instance.__haystack_input__._sockets_dict
+        input_sockets = instance.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
         for socket in input_sockets.values():
             socket.senders = []
 
-        output_sockets = instance.__haystack_output__._sockets_dict
+        output_sockets = instance.__haystack_output__._sockets_dict  # type: ignore[attr-defined]
         for socket in output_sockets.values():
             socket.receivers = []
 
