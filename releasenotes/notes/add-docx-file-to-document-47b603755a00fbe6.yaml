@@ -1,0 +1,6 @@
+---
+highlights: >
+    Adding the `DocxFileToDocument` component to convert Docx files to Documents.
+features:
+  - |
+    Adding the `DocxFileToDocument` component inside the `converters` category. It uses the `python-docx` library to convert Docx files to haystack Documents.
