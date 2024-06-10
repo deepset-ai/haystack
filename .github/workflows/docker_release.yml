@@ -15,6 +15,7 @@ jobs:
   build-and-push:
     name: Build base image
     runs-on: ubuntu-latest
+    if: github.repository_owner == 'deepset-ai'
 
     steps:
       - name: Checkout

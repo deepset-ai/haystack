@@ -223,8 +223,8 @@ def test_evaluation_pipeline(samples_path):
 
     # assert the score report has all the metrics
     assert len(df_score_report) == 7
-    assert list(df_score_report.columns) == ["score"]
-    assert list(df_score_report.index) == [
+    assert list(df_score_report.columns) == ["metrics", "score"]
+    assert list(df_score_report.metrics) == [
         "Mean Reciprocal Rank",
         "Semantic Answer Similarity",
         "Faithfulness",
