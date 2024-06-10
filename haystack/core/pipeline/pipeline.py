@@ -57,7 +57,7 @@ class Pipeline(PipelineBase):
         ) as span:
             span.set_content_tag("haystack.component.input", inputs)
             logger.info("Running component {component_name}", component_name=name)
-            res = instance.run(**inputs)
+            res: Dict[str, Any] = instance.run(**inputs)
             self.graph.nodes[name]["visits"] += 1
 
             if not isinstance(res, Mapping):
