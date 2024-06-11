@@ -1042,3 +1042,16 @@ class TestPipeline:
         }
 
         assert caplog.messages == ["Running component document_builder"]
+
+    def test__component_has_enough_inputs_to_run(self):
+        sentence_builder = component_class("SentenceBuilder", input_types={"words": List[str]})()
+        pipe = Pipeline()
+        pipe.add_component("sentence_builder", sentence_builder)
+
+        assert not pipe._component_has_enough_inputs_to_run("sentence_builder", {})
+        assert not pipe._component_has_enough_inputs_to_run(
+            "sentence_builder", {"sentence_builder": {"wrong_input_name": "blah blah"}}
+        )
+        assert pipe._component_has_enough_inputs_to_run(
+            "sentence_builder", {"sentence_builder": {"words": ["blah blah"]}}
+        )

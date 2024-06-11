@@ -22,6 +22,24 @@ class Pipeline(PipelineBase):
     Orchestrates component execution according to the execution graph, one after the other.
     """
 
+    def _component_has_enough_inputs_to_run(self, name: str, inputs: Dict[str, Dict[str, Any]]) -> bool:
+        """
+        Returns True if the Component has all the inputs it needs to run.
+
+        :param name: Name of the Component as defined in the Pipeline.
+        :param inputs: The current state of the inputs divided by Component name.
+
+        :return: Whether the Component can run or not.
+        """
+        instance: Component = self.graph.nodes[name]["instance"]
+        if name not in inputs:
+            return False
+        expected_inputs = instance.__haystack_input__._sockets_dict.keys()  # type: ignore
+        current_inputs = inputs[name].keys()
+        if expected_inputs != current_inputs:
+            return False
+        return True
+
     def _run_component(self, name: str, inputs: Dict[str, Any]) -> Dict[str, Any]:
         """
         Runs a Component with the given inputs.
@@ -214,7 +232,7 @@ class Pipeline(PipelineBase):
                             waiting_for_input.append((name, comp))
                         continue
 
-                if name in last_inputs and len(comp.__haystack_input__._sockets_dict) == len(last_inputs[name]):  # type: ignore
+                if self._component_has_enough_inputs_to_run(name, last_inputs):
                     if self.graph.nodes[name]["visits"] > self.max_loops_allowed:
                         msg = f"Maximum loops count ({self.max_loops_allowed}) exceeded for component '{name}'"
                         raise PipelineMaxLoops(msg)
