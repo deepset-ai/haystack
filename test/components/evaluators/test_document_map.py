@@ -62,7 +62,17 @@ def test_run_with_complex_data():
             ],
         ],
     )
-    assert result == {"individual_scores": [1.0, 0.8333333333333333, 1.0, 0.5, 0.0, 1.0], "score": 0.7222222222222222}
+    assert result == {
+        "individual_scores": [
+            1.0,
+            pytest.approx(0.8333333333333333),
+            1.0,
+            pytest.approx(0.5833333333333333),
+            0.0,
+            pytest.approx(0.8055555555555555),
+        ],
+        "score": pytest.approx(0.7037037037037037),
+    }
 
 
 def test_run_with_different_lengths():
