@@ -86,7 +86,7 @@ class DocxToDocument:
                 paragraphs = [para.text for para in file.paragraphs]
                 text = "\n".join(paragraphs)
             except Exception as e:
-                logger.warning(f"Could not convert {source} to a Document, skipping it. Error: {e}")
+                logger.warning("Could not convert {source} to a Document, skipping it. Error: {error}", source=source, error=e)
                 continue
 
             merged_metadata = {**bytestream.meta, **metadata}
