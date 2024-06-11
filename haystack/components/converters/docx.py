@@ -91,7 +91,7 @@ class DocxToDocument:
 
             # Load the Metadata
             try:
-                docx_meta = self._get_docx_metadata(file=file)
+                docx_meta = self._get_docx_metadata(document=file)
             except Exception as e:
                 logger.warning(
                     "Could not load the metadata from {source}, skipping. Error: {error}", source=source, error=e
