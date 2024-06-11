@@ -22,20 +22,20 @@ class Pipeline(PipelineBase):
     Orchestrates component execution according to the execution graph, one after the other.
     """
 
-    def _component_has_enough_inputs_to_run(self, name: str, last_inputs: Dict[str, Dict[str, Any]]) -> bool:
+    def _component_has_enough_inputs_to_run(self, name: str, inputs: Dict[str, Dict[str, Any]]) -> bool:
         """
         Returns True if the Component has all the inputs it needs to run.
 
         :param name: Name of the Component as defined in the Pipeline.
-        :param last_inputs: The current state of the inputs divided by Component name.
+        :param inputs: The current state of the inputs divided by Component name.
 
         :return: Whether the Component can run or not.
         """
         instance: Component = self.graph.nodes[name]["instance"]
-        if name not in last_inputs:
+        if name not in inputs:
             return False
         expected_inputs = instance.__haystack_input__._sockets_dict.keys()  # type: ignore
-        current_inputs = last_inputs[name].keys()
+        current_inputs = inputs[name].keys()
         if expected_inputs != current_inputs:
             return False
         return True
