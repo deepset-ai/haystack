@@ -308,6 +308,48 @@ class PipelineBase:
             visits=0,
         )
 
+    def remove_component(self, name: str) -> Component:
+        """
+        Remove and returns component from the pipeline.
+
+        Remove an existing component from the pipeline by providing its name.
+        All edges that connect to the component will also be deleted.
+
+        :param name:
+            The name of the component to remove.
+        :returns:
+            The removed Component instance.
+
+        :raises ValueError:
+            If there is no component with that name already in the Pipeline.
+        """
+
+        # Check that a component with that name is in the Pipeline
+        try:
+            instance = self.get_component(name)
+        except ValueError as exc:
+            raise ValueError(
+                f"There is no component named '{name}' in the pipeline. The valid component names are: ",
+                ", ".join(n for n in self.graph.nodes),
+            ) from exc
+
+        # Delete component from the graph, deleting all its connections
+        self.graph.remove_node(name)
+
+        # Reset the Component sockets' senders and receivers
+        input_sockets = instance.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
+        for socket in input_sockets.values():
+            socket.senders = []
+
+        output_sockets = instance.__haystack_output__._sockets_dict  # type: ignore[attr-defined]
+        for socket in output_sockets.values():
+            socket.receivers = []
+
+        # Reset the Component's pipeline reference
+        setattr(instance, "__haystack_added_to_pipeline__", None)
+
+        return instance
+
     def connect(self, sender: str, receiver: str) -> "PipelineBase":
         """
         Connects two components together.
