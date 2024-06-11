@@ -79,7 +79,7 @@ class DocxToDocument:
             try:
                 file = docx.Document(io.BytesIO(bytestream.data))
             except Exception as e:
-                logger.warning(f"Could not read {source} and convert it to a Docx Document, skipping. Error: {e}")
+                logger.warning("Could not read {source} and convert it to a Docx Document, skipping. Error: {error}", source=source, error=e)
                 continue
 
             try:
