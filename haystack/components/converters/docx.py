@@ -4,8 +4,11 @@
 
 import io
 import logging
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
+
+import docx.document
 
 from haystack import Document, component
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
@@ -90,7 +93,7 @@ class DocxToDocument:
 
             # Load the Metadata
             try:
-                docx_meta = file.core_properties.__dict__
+                docx_meta = self._get_docx_metadata(file=file)
             except Exception as e:
                 logger.warning(
                     "Could not load the metadata from {source}, skipping. Error: {error}", source=source, error=e
@@ -112,3 +115,31 @@ class DocxToDocument:
             documents.append(document)
 
         return {"documents": documents}
+
+    def _get_docx_metadata(self, document: docx.document.Document) -> Dict[str, Union[str, int, datetime]]:
+        """
+        Get all relevant data from the 'core_properties' attribute from a Dox Document.
+
+        :param document:
+            The Docx Document you want to extract metadata from
+
+        :returns:
+            A dictionary containing all the relevant fields from the 'core_properties'
+        """
+        return {
+            "author": document.core_properties.author,
+            "category": document.core_properties.category,
+            "comments": document.core_properties.comments,
+            "content_status": document.core_properties.content_status,
+            "created": document.core_properties.created,
+            "identifier": document.core_properties.identifier,
+            "keywords": document.core_properties.keywords,
+            "language": document.core_properties.language,
+            "last_modified_by": document.core_properties.last_modified_by,
+            "last_printed": document.core_properties.last_printed,
+            "modified": document.core_properties.modified,
+            "revision": document.core_properties.revision,
+            "subject": document.core_properties.subject,
+            "title": document.core_properties.title,
+            "version": document.core_properties.version,
+        }
