@@ -24,6 +24,7 @@ class DocxToDocument:
     Converts Docx files to Documents.
 
     Uses `python-docx` library to convert the Docx file to a document.
+    This component does not preserve page brakes in the original document.
 
     Usage example:
     ```python
