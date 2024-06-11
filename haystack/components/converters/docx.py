@@ -73,20 +73,26 @@ class DocxToDocument:
             try:
                 bytestream = get_bytestream_from_source(source)
             except Exception as e:
-                logger.warning(f"Could not read {source}. Skipping it. Error: {error}", source=source, error=e)
+                logger.warning("Could not read {source}. Skipping it. Error: {error}", source=source, error=e)
                 continue
 
             try:
                 file = docx.Document(io.BytesIO(bytestream.data))
             except Exception as e:
-                logger.warning("Could not read {source} and convert it to a Docx Document, skipping. Error: {error}", source=source, error=e)
+                logger.warning(
+                    "Could not read {source} and convert it to a Docx Document, skipping. Error: {error}",
+                    source=source,
+                    error=e,
+                )
                 continue
 
             try:
                 paragraphs = [para.text for para in file.paragraphs]
                 text = "\n".join(paragraphs)
             except Exception as e:
-                logger.warning("Could not convert {source} to a Document, skipping it. Error: {error}", source=source, error=e)
+                logger.warning(
+                    "Could not convert {source} to a Document, skipping it. Error: {error}", source=source, error=e
+                )
                 continue
 
             merged_metadata = {**bytestream.meta, **metadata}
