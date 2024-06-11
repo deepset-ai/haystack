@@ -4,17 +4,17 @@ from unittest.mock import patch
 import pytest
 
 from haystack.dataclasses import ByteStream
-from haystack.components.converters import DocxFileToDocument
+from haystack.components.converters import DocxToDocument
 
 
 @pytest.fixture
 def docx_converter():
-    return DocxFileToDocument()
+    return DocxToDocument()
 
 
-class TestDocxFileToDocument:
+class TestDocxToDocument:
     def test_init(self, docx_converter):
-        assert isinstance(docx_converter, DocxFileToDocument)
+        assert isinstance(docx_converter, DocxToDocument)
 
     @pytest.mark.integration
     def test_run(self, test_files_path, docx_converter):
@@ -36,7 +36,7 @@ class TestDocxFileToDocument:
         assert docs[0].content.count("\f") == 3
 
     def test_run_with_meta(self, test_files_path, docx_converter):
-        with patch("haystack.components.converters.docx.DocxFileToDocument"):
+        with patch("haystack.components.converters.docx.DocxToDocument"):
             output = docx_converter.run(
                 sources=[test_files_path / "docx" / "sample_docx_1.docx"],
                 meta={"language": "it", "author": "test_author"},

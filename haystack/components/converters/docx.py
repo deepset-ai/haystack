@@ -15,7 +15,7 @@ with LazyImport("Run 'pip install docx'") as docx_import:
 
 
 @component
-class DocxFileToDocument:
+class DocxToDocument:
     """
     Converts Docx files to Documents.
 
@@ -23,9 +23,9 @@ class DocxFileToDocument:
 
     Usage example:
     ```python
-    from haystack.components.converters.docx import DocxFileToDocument
+    from haystack.components.converters.docx import DocxToDocument
 
-    converter = DocxFileToDocument()
+    converter = DocxToDocument()
     results = converter.run(sources=["sample.docx"], meta={"date_added": datetime.now().isoformat()})
     documents = results["documents"]
     print(documents[0].content)
@@ -35,7 +35,7 @@ class DocxFileToDocument:
 
     def __init__(self):
         """
-        Create a DocxFileToDocument component.
+        Create a DocxToDocument component.
         """
         docx_import.check()
 
