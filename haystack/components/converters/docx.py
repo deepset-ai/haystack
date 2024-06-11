@@ -70,12 +70,14 @@ class DocxToDocument:
         meta_list = normalize_metadata(meta=meta, sources_count=len(sources))
 
         for source, metadata in zip(sources, meta_list):
+            # Load source ByteStream
             try:
                 bytestream = get_bytestream_from_source(source)
             except Exception as e:
                 logger.warning("Could not read {source}. Skipping it. Error: {error}", source=source, error=e)
                 continue
 
+            # Load the Docx Document
             try:
                 file = docx.Document(io.BytesIO(bytestream.data))
             except Exception as e:
@@ -86,6 +88,15 @@ class DocxToDocument:
                 )
                 continue
 
+            # Load the Metadata
+            try:
+                docx_meta = file.core_properties.__dict__
+            except Exception as e:
+                logger.warning(
+                    "Could not load the metadata from {source}, skipping. Error: {error}", source=source, error=e
+                )
+
+            # Load the content
             try:
                 paragraphs = [para.text for para in file.paragraphs]
                 text = "\n".join(paragraphs)
@@ -95,7 +106,7 @@ class DocxToDocument:
                 )
                 continue
 
-            merged_metadata = {**bytestream.meta, **metadata}
+            merged_metadata = {**bytestream.meta, **docx_meta, **metadata}
             document = Document(content=text, meta=merged_metadata)
 
             documents.append(document)
