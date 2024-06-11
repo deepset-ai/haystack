@@ -3,14 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import io
-import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-import docx.document
-
-from haystack import Document, component
+from haystack import Document, component, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
 from haystack.dataclasses import ByteStream
 from haystack.lazy_imports import LazyImport
@@ -19,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 with LazyImport("Run 'pip install python-docx'") as docx_import:
     import docx
+    from docx.document import Document as DocxDocument
 
 
 @component
@@ -116,7 +114,7 @@ class DocxToDocument:
 
         return {"documents": documents}
 
-    def _get_docx_metadata(self, document: docx.document.Document) -> Dict[str, Union[str, int, datetime]]:
+    def _get_docx_metadata(self, document: DocxDocument) -> Dict[str, Union[str, int, datetime]]:
         """
         Get all relevant data from the 'core_properties' attribute from a Dox Document.
 
