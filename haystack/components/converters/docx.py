@@ -14,7 +14,7 @@ from haystack.lazy_imports import LazyImport
 
 logger = logging.getLogger(__name__)
 
-with LazyImport("Run 'pip install docx'") as docx_import:
+with LazyImport("Run 'pip install python-docx'") as docx_import:
     import docx
 
 
