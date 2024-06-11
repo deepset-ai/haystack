@@ -79,16 +79,10 @@ class Pipeline(PipelineBase):
         # we're sure all components that need this output have received it.
         to_remove_from_res = set()
 
-        for sender_name, receiver_name, connection in self.graph.edges(data=True):
-            receiver_socket: InputSocket = connection["to_socket"]
-            if receiver_name == name and receiver_socket.is_variadic:
-                # Delete variadic inputs that were already consumed
-                inputs[name][receiver_socket.name] = []
-
-            if sender_name != name:
-                continue
-
+        for _, receiver_name, connection in self.graph.edges(nbunch=name, data=True):
             sender_socket: OutputSocket = connection["from_socket"]
+            receiver_socket: InputSocket = connection["to_socket"]
+
             if sender_socket.name not in res:
                 # This output wasn't created by the sender, nothing we can do
                 continue
@@ -185,6 +179,13 @@ class Pipeline(PipelineBase):
             logger.info("Running component {component_name}", component_name=name)
             res: Dict[str, Any] = instance.run(**inputs)
             self.graph.nodes[name]["visits"] += 1
+
+            # After a Component that has variadic inputs is run, we need to reset the variadic inputs that were consumed
+            for socket in instance.__haystack_input__._sockets_dict.values():  # type: ignore
+                if socket.name not in inputs:
+                    continue
+                if socket.is_variadic:
+                    inputs[socket.name] = []
 
             if not isinstance(res, Mapping):
                 raise PipelineRuntimeError(

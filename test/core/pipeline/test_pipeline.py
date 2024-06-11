@@ -1043,6 +1043,15 @@ class TestPipeline:
 
         assert caplog.messages == ["Running component document_builder"]
 
+    def test__run_component_with_variadic_input(self):
+        document_joiner = component_class("DocumentJoiner", input_types={"docs": Variadic[Document]})()
+
+        pipe = Pipeline()
+        pipe.add_component("document_joiner", document_joiner)
+        inputs = {"docs": [Document(content="doc1"), Document(content="doc2")]}
+        pipe._run_component("document_joiner", inputs)
+        assert inputs == {"docs": []}
+
     def test__component_has_enough_inputs_to_run(self):
         sentence_builder = component_class("SentenceBuilder", input_types={"words": List[str]})()
         pipe = Pipeline()
