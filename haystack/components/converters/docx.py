@@ -73,7 +73,7 @@ class DocxToDocument:
             try:
                 bytestream = get_bytestream_from_source(source)
             except Exception as e:
-                logger.warning(f"Could not read {source}. Skipping it. Error: {e}")
+                logger.warning(f"Could not read {source}. Skipping it. Error: {error}", source=source, error=e)
                 continue
 
             try:
