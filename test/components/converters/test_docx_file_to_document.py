@@ -57,7 +57,7 @@ class TestDocxToDocument:
             assert "Could not read non_existing_file.docx" in caplog.text
 
     @pytest.mark.integration
-    def test_mixed_sources_run(sefl, test_files_path, docx_converter):
+    def test_mixed_sources_run(self, test_files_path, docx_converter):
         """
         Test if the component runs correctly when mixed sources are provided.
         """
