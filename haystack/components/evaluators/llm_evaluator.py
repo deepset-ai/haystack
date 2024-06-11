@@ -11,7 +11,7 @@ from tqdm import tqdm
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.builders import PromptBuilder
 from haystack.components.generators import OpenAIGenerator
-from haystack.utils import Secret, deserialize_secrets_inplace
+from haystack.utils import Secret, deserialize_secrets_inplace, deserialize_type, serialize_type
 
 
 @component
@@ -266,10 +266,12 @@ class LLMEvaluator:
         :returns:
             The serialized component as a dictionary.
         """
+        # Since we cannot currently serialize tuples, convert the inputs to a list.
+        inputs = [[name, serialize_type(type_)] for name, type_ in self.inputs]
         return default_to_dict(
             self,
             instructions=self.instructions,
-            inputs=self.inputs,
+            inputs=inputs,
             outputs=self.outputs,
             examples=self.examples,
             api=self.api,
@@ -287,6 +289,10 @@ class LLMEvaluator:
         :returns:
             The deserialized component instance.
         """
+        data["init_parameters"]["inputs"] = [
+            (name, deserialize_type(type_)) for name, type_ in data["init_parameters"]["inputs"]
+        ]
+
         deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         return default_from_dict(cls, data)
 
