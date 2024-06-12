@@ -4,7 +4,9 @@ import datetime
 import pytest
 
 from haystack.dataclasses import ByteStream
+from haystack import Document
 from haystack.components.converters.docx import DocxToDocument, DocxMetadata
+from haystack.core.serialization import component_from_dict, component_to_dict
 
 
 @pytest.fixture
@@ -103,3 +105,52 @@ class TestDocxToDocument:
         assert len(docs) == 2
         assert "History and standardization" in docs[0].content
         assert "History and standardization" in docs[1].content
+
+    def test_document_with_docx_metadata_to_dict(self):
+        docx_metadata = DocxMetadata(
+            author="Microsoft Office User",
+            category="category",
+            comments="comments",
+            content_status="",
+            created=datetime.datetime(2024, 6, 9, 21, 17, tzinfo=datetime.timezone.utc),
+            identifier="",
+            keywords="",
+            language="",
+            last_modified_by="Carlos Fernández Lorán",
+            last_printed=None,
+            modified=datetime.datetime(2024, 6, 9, 21, 27, tzinfo=datetime.timezone.utc),
+            revision=2,
+            subject="",
+            title="",
+            version="",
+        )
+        doc = Document(content="content", meta={"test": 1, "docx": docx_metadata}, id="1")
+        assert doc.to_dict(flatten=False) == {
+            "blob": None,
+            "dataframe": None,
+            "content": "content",
+            "id": "1",
+            "score": None,
+            "embedding": None,
+            "sparse_embedding": None,
+            "meta": {
+                "test": 1,
+                "docx": {
+                    "author": "Microsoft Office User",
+                    "category": "category",
+                    "comments": "comments",
+                    "content_status": "",
+                    "created": datetime.datetime(2024, 6, 9, 21, 17, tzinfo=datetime.timezone.utc),
+                    "identifier": "",
+                    "keywords": "",
+                    "language": "",
+                    "last_modified_by": "Carlos Fernández Lorán",
+                    "last_printed": None,
+                    "modified": datetime.datetime(2024, 6, 9, 21, 27, tzinfo=datetime.timezone.utc),
+                    "revision": 2,
+                    "subject": "",
+                    "title": "",
+                    "version": "",
+                },
+            },
+        }
