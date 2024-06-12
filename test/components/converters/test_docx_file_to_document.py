@@ -85,7 +85,14 @@ class TestDocxToDocument:
             "author": "test_author",  # This overwrites the author from the docx metadata
         }
 
-    def test_run_error_handling(self, test_files_path, docx_converter, caplog):
+    def test_run_error_wrong_file_type(self, caplog, test_files_path, docx_converter):
+        sources = [str(test_files_path / "txt" / "doc_1.txt")]
+        with caplog.at_level(logging.WARNING):
+            results = docx_converter.run(sources=sources)
+            assert "doc_1.txt and convert it" in caplog.text
+            assert results["documents"] == []
+
+    def test_run_error_non_existent_file(self, test_files_path, docx_converter, caplog):
         """
         Test if the component correctly handles errors.
         """
