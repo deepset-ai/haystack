@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from enum import Enum
 from typing import Any, Dict, Optional
 
@@ -99,3 +99,54 @@ class ChatMessage:
         :returns: A new ChatMessage instance.
         """
         return cls(content, ChatRole.FUNCTION, name)
+
+    def to_dict(self, flatten: bool = True) -> Dict[str, Any]:
+        """
+        Converts ChatMessage into a dictionary.
+
+        :returns:
+            Serialized version of the object.
+        """
+        data = asdict(self)
+        data["role"] = data.get("role").value
+
+        if flatten:
+            meta = data.pop("meta")
+            return {**data, **meta}
+
+        return data
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ChatMessage":
+        """
+        Creates a new ChatMessage object from a dictionary.
+
+        :param data:
+            The dictionary to build the ChatMessage object.
+        :returns:
+            The created object.
+        """
+        data["role"] = ChatRole(data["role"])
+
+        # Store metadata for a moment while we try un-flattening allegedly flatten metadata.
+        # We don't expect both a `meta=` keyword and flatten metadata keys so we'll raise a
+        # ValueError later if this is the case.
+        meta = data.pop("meta", {})
+        # Unflatten metadata if it was flattened. We assume any keyword argument that's not
+        # a document field is a metadata key. We treat legacy fields as document fields
+        # for backward compatibility.
+        flatten_meta = {}
+        document_fields = [f.name for f in fields(cls)]
+        for key in list(data.keys()):
+            if key not in document_fields:
+                flatten_meta[key] = data.pop(key)
+
+        # We don't support passing both flatten keys and the `meta` keyword parameter
+        if meta and flatten_meta:
+            raise ValueError(
+                "You can pass either the 'meta' parameter or flattened metadata keys as keyword arguments, "
+                "but currently you're passing both. Pass either the 'meta' parameter or flattened metadata keys."
+            )
+
+        # Finally put back all the metadata
+        return cls(**data, meta={**meta, **flatten_meta})
