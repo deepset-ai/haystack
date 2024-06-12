@@ -112,20 +112,57 @@ class DocxToDocument:
         :returns:
             A dictionary containing all the relevant fields from the 'core_properties'
         """
+
         return {
-            "author": document.core_properties.author,
-            "category": document.core_properties.category,
-            "comments": document.core_properties.comments,
-            "content_status": document.core_properties.content_status,
-            "created": document.core_properties.created,
-            "identifier": document.core_properties.identifier,
-            "keywords": document.core_properties.keywords,
-            "language": document.core_properties.language,
-            "last_modified_by": document.core_properties.last_modified_by,
-            "last_printed": document.core_properties.last_printed,
-            "modified": document.core_properties.modified,
-            "revision": document.core_properties.revision,
-            "subject": document.core_properties.subject,
-            "title": document.core_properties.title,
-            "version": document.core_properties.version,
+            "docx_author": document.core_properties.author,  # Always a string
+            "docx_category": document.core_properties.category,  # Always a string
+            "docx_comments": document.core_properties.comments,  # Always a string
+            "docx_content_status": document.core_properties.content_status,  # Always a string
+            "docx_created": document.core_properties.created,  # dt.datetime | None
+            "docx_identifier": document.core_properties.identifier,  # Always a string
+            "docx_keywords": document.core_properties.keywords,  # Always a string
+            "docx_language": document.core_properties.language,  # Always a string
+            "docx_last_modified_by": document.core_properties.last_modified_by,  # dt.datetime | None
+            "docx_last_printed": document.core_properties.last_printed,  # dt.datetime | None
+            "docx_modified": document.core_properties.modified,  # dt.datetime | None
+            "docx_revision": document.core_properties.revision,  # Always an int
+            "docx_subject": document.core_properties.subject,  # Always a string
+            "docx_title": document.core_properties.title,  # Always a string
+            "docx_version": document.core_properties.version,  # Always a string
         }
+
+    def _get_docx_metadata(self, document: DocxDocument) -> Dict[str, Union[str, int, datetime]]:
+        """
+        Get all relevant data from the 'core_properties' attribute from a Docx Document.
+
+        Only add metadata fields that are not None or not empty strings.
+
+        :param document:
+            The Docx Document you want to extract metadata from
+
+        :returns:
+            A dictionary containing all the relevant fields from the 'core_properties'
+        """
+        docx_meta = {}
+        props = [
+            "author",
+            "category",
+            "comments",
+            "content_status",
+            "created",
+            "identifier",
+            "keywords",
+            "language",
+            "last_modified_by",
+            "last_printed",
+            "modified",
+            "revision",
+            "subject",
+            "title",
+            "version",
+        ]
+        for prop in props:
+            value = getattr(document.core_properties, prop)
+            if value is not None and value != "":
+                docx_meta[f"docx_{prop}"] = value
+        return docx_meta
