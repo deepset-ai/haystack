@@ -96,6 +96,7 @@ class DocxToDocument:
                 logger.warning(
                     "Could not load the metadata from {source}, skipping. Error: {error}", source=source, error=e
                 )
+                docx_meta = {}
 
             # Load the content
             try:
