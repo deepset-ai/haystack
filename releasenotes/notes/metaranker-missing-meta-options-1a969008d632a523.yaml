@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Add a new `missing_meta` param to `MetaFieldRanker`, which determines what to do with
+    documents that lack the ranked meta field. Supported values are `"bottom"` (which
+    puts documents with missing meta at the bottom of the sorted list), `"top"` (which puts them
+    at the top), and `"drop"` (which removes them from the results entirely).
