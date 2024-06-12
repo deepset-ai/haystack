@@ -62,14 +62,28 @@ class TestDocxToDocument:
             "version": "",
         }
 
-    def test_run_with_meta(self, test_files_path, docx_converter):
-        output = docx_converter.run(
-            sources=[test_files_path / "docx" / "sample_docx_1.docx"], meta={"language": "it", "author": "test_author"}
-        )
-
-        # check that the metadata from the bytestream is merged with that from the meta parameter
-        assert output["documents"][0].meta["author"] == "test_author"
-        assert output["documents"][0].meta["language"] == "it"
+    def test_run_with_meta_overwrites(self, test_files_path, docx_converter):
+        paths = [test_files_path / "docx" / "sample_docx_1.docx"]
+        output = docx_converter.run(sources=paths, meta={"language": "it", "author": "test_author"})
+        doc = output["documents"][0]
+        assert doc.meta == {
+            "file_path": str(paths[0]),
+            "category": "",
+            "comments": "",
+            "content_status": "",
+            "created": datetime.datetime(2024, 6, 9, 21, 17, tzinfo=datetime.timezone.utc),
+            "identifier": "",
+            "keywords": "",
+            "last_modified_by": "Carlos Fernández Lorán",
+            "last_printed": None,
+            "modified": datetime.datetime(2024, 6, 9, 21, 27, tzinfo=datetime.timezone.utc),
+            "revision": 2,
+            "subject": "",
+            "title": "",
+            "version": "",
+            "language": "it",  # This overwrites the language from the docx metadata
+            "author": "test_author",  # This overwrites the author from the docx metadata
+        }
 
     def test_run_error_handling(self, test_files_path, docx_converter, caplog):
         """
