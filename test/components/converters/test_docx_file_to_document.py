@@ -27,62 +27,33 @@ class TestDocxToDocument:
         assert "History" in docs[0].content
         assert docs[0].meta.keys() == {
             "file_path",
-            "author",
-            "category",
-            "comments",
-            "content_status",
-            "created",
-            "identifier",
-            "keywords",
-            "language",
-            "last_modified_by",
-            "last_printed",
-            "modified",
-            "revision",
-            "subject",
-            "title",
-            "version",
+            "docx_author",
+            "docx_created",
+            "docx_last_modified_by",
+            "docx_modified",
+            "docx_revision",
         }
         assert docs[0].meta == {
             "file_path": str(paths[0]),
-            "author": "Microsoft Office User",
-            "category": "",
-            "comments": "",
-            "content_status": "",
-            "created": datetime.datetime(2024, 6, 9, 21, 17, tzinfo=datetime.timezone.utc),
-            "identifier": "",
-            "keywords": "",
-            "language": "",
-            "last_modified_by": "Carlos Fernández Lorán",
-            "last_printed": None,
-            "modified": datetime.datetime(2024, 6, 9, 21, 27, tzinfo=datetime.timezone.utc),
-            "revision": 2,
-            "subject": "",
-            "title": "",
-            "version": "",
+            "docx_author": "Microsoft Office User",
+            "docx_created": datetime.datetime(2024, 6, 9, 21, 17, tzinfo=datetime.timezone.utc),
+            "docx_last_modified_by": "Carlos Fernández Lorán",
+            "docx_modified": datetime.datetime(2024, 6, 9, 21, 27, tzinfo=datetime.timezone.utc),
+            "docx_revision": 2,
         }
 
     def test_run_with_meta_overwrites(self, test_files_path, docx_converter):
         paths = [test_files_path / "docx" / "sample_docx_1.docx"]
-        output = docx_converter.run(sources=paths, meta={"language": "it", "author": "test_author"})
+        output = docx_converter.run(sources=paths, meta={"docx_language": "it", "docx_author": "test_author"})
         doc = output["documents"][0]
         assert doc.meta == {
             "file_path": str(paths[0]),
-            "category": "",
-            "comments": "",
-            "content_status": "",
-            "created": datetime.datetime(2024, 6, 9, 21, 17, tzinfo=datetime.timezone.utc),
-            "identifier": "",
-            "keywords": "",
-            "last_modified_by": "Carlos Fernández Lorán",
-            "last_printed": None,
-            "modified": datetime.datetime(2024, 6, 9, 21, 27, tzinfo=datetime.timezone.utc),
-            "revision": 2,
-            "subject": "",
-            "title": "",
-            "version": "",
-            "language": "it",  # This overwrites the language from the docx metadata
-            "author": "test_author",  # This overwrites the author from the docx metadata
+            "docx_created": datetime.datetime(2024, 6, 9, 21, 17, tzinfo=datetime.timezone.utc),
+            "docx_last_modified_by": "Carlos Fernández Lorán",
+            "docx_modified": datetime.datetime(2024, 6, 9, 21, 27, tzinfo=datetime.timezone.utc),
+            "docx_revision": 2,
+            "docx_language": "it",  # This overwrites the language from the docx metadata
+            "docx_author": "test_author",  # This overwrites the author from the docx metadata
         }
 
     def test_run_error_wrong_file_type(self, caplog, test_files_path, docx_converter):

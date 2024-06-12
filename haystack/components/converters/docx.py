@@ -102,35 +102,6 @@ class DocxToDocument:
 
         return {"documents": documents}
 
-    def _get_docx_metadata(self, document: DocxDocument) -> Dict[str, Union[str, int, datetime, None]]:
-        """
-        Get all relevant data from the 'core_properties' attribute from a Docx Document.
-
-        :param document:
-            The Docx Document you want to extract metadata from
-
-        :returns:
-            A dictionary containing all the relevant fields from the 'core_properties'
-        """
-
-        return {
-            "docx_author": document.core_properties.author,  # Always a string
-            "docx_category": document.core_properties.category,  # Always a string
-            "docx_comments": document.core_properties.comments,  # Always a string
-            "docx_content_status": document.core_properties.content_status,  # Always a string
-            "docx_created": document.core_properties.created,  # dt.datetime | None
-            "docx_identifier": document.core_properties.identifier,  # Always a string
-            "docx_keywords": document.core_properties.keywords,  # Always a string
-            "docx_language": document.core_properties.language,  # Always a string
-            "docx_last_modified_by": document.core_properties.last_modified_by,  # dt.datetime | None
-            "docx_last_printed": document.core_properties.last_printed,  # dt.datetime | None
-            "docx_modified": document.core_properties.modified,  # dt.datetime | None
-            "docx_revision": document.core_properties.revision,  # Always an int
-            "docx_subject": document.core_properties.subject,  # Always a string
-            "docx_title": document.core_properties.title,  # Always a string
-            "docx_version": document.core_properties.version,  # Always a string
-        }
-
     def _get_docx_metadata(self, document: DocxDocument) -> Dict[str, Union[str, int, datetime]]:
         """
         Get all relevant data from the 'core_properties' attribute from a Docx Document.
