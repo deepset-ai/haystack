@@ -27,15 +27,6 @@ class TestDocxToDocument:
         assert len(docs) == 1
         assert "History" in docs[0].content
 
-    @pytest.mark.skip("For now, DocxToDocument does not preserve page brakes.")
-    @pytest.mark.integration
-    def test_page_breaks_added(self, test_files_path, docx_converter):
-        paths = [test_files_path / "docx" / "sample_docx_1.docx"]
-        output = docx_converter.run(sources=paths)
-        docs = output["documents"]
-        assert len(docs) == 1
-        assert docs[0].content.count("\f") == 3
-
     def test_run_with_meta(self, test_files_path, docx_converter):
         with patch("haystack.components.converters.docx.DocxToDocument"):
             output = docx_converter.run(
