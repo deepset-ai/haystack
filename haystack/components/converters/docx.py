@@ -88,14 +88,7 @@ class DocxToDocument:
                 )
                 continue
 
-            try:
-                docx_meta = self._get_docx_metadata(document=file)
-            except Exception as e:
-                logger.warning(
-                    "Could not load the metadata from {source}, skipping. Error: {error}", source=source, error=e
-                )
-                docx_meta = {}
-
+            docx_meta = self._get_docx_metadata(document=file)
             merged_metadata = {**bytestream.meta, **docx_meta, **metadata}
             document = Document(content=text, meta=merged_metadata)
             documents.append(document)
@@ -133,7 +126,8 @@ class DocxToDocument:
             "version",
         ]
         for prop in props:
-            value = getattr(document.core_properties, prop)
-            if value is not None and value != "":
-                docx_meta[f"docx_{prop}"] = value
+            if hasattr(document.core_properties, prop):
+                value = getattr(document.core_properties, prop)
+                if value is not None and value != "":
+                    docx_meta[f"docx_{prop}"] = value
         return docx_meta
