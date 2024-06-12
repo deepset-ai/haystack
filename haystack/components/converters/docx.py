@@ -117,7 +117,7 @@ class DocxToDocument:
 
     def _get_docx_metadata(self, document: DocxDocument) -> Dict[str, Union[str, int, datetime]]:
         """
-        Get all relevant data from the 'core_properties' attribute from a Dox Document.
+        Get all relevant data from the 'core_properties' attribute from a Docx Document.
 
         :param document:
             The Docx Document you want to extract metadata from
