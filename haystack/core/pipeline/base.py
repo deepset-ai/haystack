@@ -816,10 +816,10 @@ class PipelineBase:
         for node in self.graph.nodes:
             self.graph.nodes[node]["visits"] = 0
 
-    def _remove_components_that_received_no_input(
+    def _dequeue_components_that_received_no_input(
         self,
-        name: str,
-        res: Dict[str, Any],
+        component_name: str,
+        component_result: Dict[str, Any],
         to_run: List[Tuple[str, Component]],
         waiting_for_input: List[Tuple[str, Component]],
     ):
@@ -829,14 +829,14 @@ class PipelineBase:
         We can't run those Components if they didn't receive any input, even if it's optional.
         This is mainly useful for Components that have conditional outputs.
 
-        :param name: Name of the Component that created the output
-        :param res: The output of the Component
+        :param component_name: Name of the Component that created the output
+        :param component_result: The output of the Component
         :param to_run: Queue of Components to run
         :param waiting_for_input: Queue of Components waiting for input
         """
-        instance: Component = self.graph.nodes[name]["instance"]
+        instance: Component = self.graph.nodes[component_name]["instance"]
         for socket_name, socket in instance.__haystack_output__._sockets_dict.items():  # type: ignore
-            if socket_name in res:
+            if socket_name in component_result:
                 continue
             for receiver in socket.receivers:
                 receiver_instance: Component = self.graph.nodes[receiver]["instance"]
@@ -848,9 +848,9 @@ class PipelineBase:
 
     def _distribute_output(
         self,
-        name: str,
-        res: Dict[str, Any],
-        inputs: Dict[str, Dict[str, Any]],
+        component_name: str,
+        component_result: Dict[str, Any],
+        inputs_by_component: Dict[str, Dict[str, Any]],
         to_run: List[Tuple[str, Component]],
         waiting_for_input: List[Tuple[str, Component]],
     ):
@@ -859,9 +859,9 @@ class PipelineBase:
 
         This also updates the queues that keep track of which Components are ready to run and which are waiting for input.
 
-        :param name: Name of the Component that created the output
-        :param res: The output of the Component
-        :paramt inputs: The current state of the inputs divided by Component name
+        :param component_name: Name of the Component that created the output
+        :param component_result: The output of the Component
+        :paramt inputs_by_component: The current state of the inputs divided by Component name
         :param to_run: Queue of Components to run
         :param waiting_for_input: Queue of Components waiting for input
 
@@ -872,30 +872,30 @@ class PipelineBase:
         # we're sure all components that need this output have received it.
         to_remove_from_res = set()
 
-        for _, receiver_name, connection in self.graph.edges(nbunch=name, data=True):
+        for _, receiver_name, connection in self.graph.edges(nbunch=component_name, data=True):
             sender_socket: OutputSocket = connection["from_socket"]
             receiver_socket: InputSocket = connection["to_socket"]
 
-            if sender_socket.name not in res:
+            if sender_socket.name not in component_result:
                 # This output wasn't created by the sender, nothing we can do
                 continue
 
-            if receiver_name not in inputs:
-                inputs[receiver_name] = {}
+            if receiver_name not in inputs_by_component:
+                inputs_by_component[receiver_name] = {}
 
             # We'll remove this key from the output at the end of the loop
             to_remove_from_res.add(sender_socket.name)
 
-            value = res[sender_socket.name]
+            value = component_result[sender_socket.name]
 
             if receiver_socket.is_variadic:
                 # Variadic inputs are always lists
-                if receiver_socket.name not in inputs[receiver_name]:
+                if receiver_socket.name not in inputs_by_component[receiver_name]:
                     # Create the list if it doesn't exist
-                    inputs[receiver_name][receiver_socket.name] = []
-                inputs[receiver_name][receiver_socket.name].append(value)
+                    inputs_by_component[receiver_name][receiver_socket.name] = []
+                inputs_by_component[receiver_name][receiver_socket.name].append(value)
             else:
-                inputs[receiver_name][receiver_socket.name] = value
+                inputs_by_component[receiver_name][receiver_socket.name] = value
 
             receiver = self.graph.nodes[receiver_name]["instance"]
             pair = (receiver_name, receiver)
@@ -915,7 +915,7 @@ class PipelineBase:
                 to_run.append(pair)
 
         # Returns the output without the keys that were distributed to other Components
-        return {k: v for k, v in res.items() if k not in to_remove_from_res}
+        return {k: v for k, v in component_result.items() if k not in to_remove_from_res}
 
 
 def _connections_status(

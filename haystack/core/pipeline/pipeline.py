@@ -260,7 +260,7 @@ class Pipeline(PipelineBase):
                         # This happens when a component was put in the waiting list but we reached it from another edge.
                         waiting_for_input.remove((name, comp))
 
-                    self._remove_components_that_received_no_input(name, res, to_run, waiting_for_input)
+                    self._dequeue_components_that_received_no_input(name, res, to_run, waiting_for_input)
                     res = self._distribute_output(name, res, last_inputs, to_run, waiting_for_input)
 
                     if len(res) > 0:

@@ -1065,7 +1065,7 @@ class TestPipeline:
             "sentence_builder", {"sentence_builder": {"words": ["blah blah"]}}
         )
 
-    def test__remove_components_that_received_no_input(self):
+    def test__dequeue_components_that_received_no_input(self):
         sentence_builder = component_class(
             "SentenceBuilder", input_types={"words": List[str]}, output={"text": "some words"}
         )()
@@ -1080,7 +1080,7 @@ class TestPipeline:
 
         to_run = [("document_builder", document_builder)]
         waiting_for_input = [("document_builder", document_builder)]
-        pipe._remove_components_that_received_no_input("sentence_builder", {}, to_run, waiting_for_input)
+        pipe._dequeue_components_that_received_no_input("sentence_builder", {}, to_run, waiting_for_input)
         assert to_run == []
         assert waiting_for_input == []
 
