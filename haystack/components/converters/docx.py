@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import io
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
@@ -17,6 +18,45 @@ logger = logging.getLogger(__name__)
 with LazyImport("Run 'pip install python-docx'") as docx_import:
     import docx
     from docx.document import Document as DocxDocument
+
+
+@dataclass
+class DocxMetadata:
+    """
+    Describes the metadata of Docx file.
+
+    :param author: The author of the document.
+    :param category: The category of the document.
+    :param comments: The comments of the document.
+    :param content_status: The content status of the document.
+    :param created: The creation date of the document.
+    :param identifier: The identifier of the document.
+    :param keywords: The keywords of the document.
+    :param language: The language of the document.
+    :param last_modified_by: The last modified by user of the document.
+    :param last_printed: The last printed date of the document.
+    :param modified: The last modification date of the document.
+    :param revision: The revision number of the document.
+    :param subject: The subject of the document.
+    :param title: The title of the document.
+    :param version: The version of the document.
+    """
+
+    author: str
+    category: str
+    comments: str
+    content_status: str
+    created: datetime | None
+    identifier: str
+    keywords: str
+    language: str
+    last_modified_by: str
+    last_printed: datetime | None
+    modified: datetime | None
+    revision: int
+    subject: str
+    title: str
+    version: str
 
 
 @component
@@ -88,46 +128,37 @@ class DocxToDocument:
                 )
                 continue
 
-            docx_meta = self._get_docx_metadata(document=file)
-            merged_metadata = {**bytestream.meta, **docx_meta, **metadata}
+            docx_metadata = self._get_docx_metadata(document=file)
+            merged_metadata = {**bytestream.meta, **metadata, "docx": docx_metadata}
             document = Document(content=text, meta=merged_metadata)
             documents.append(document)
 
         return {"documents": documents}
 
-    def _get_docx_metadata(self, document: DocxDocument) -> Dict[str, Union[str, int, datetime]]:
+    def _get_docx_metadata(self, document: DocxDocument) -> DocxMetadata:
         """
         Get all relevant data from the 'core_properties' attribute from a Docx Document.
-
-        Only add metadata fields that are not None or not empty strings.
 
         :param document:
             The Docx Document you want to extract metadata from
 
         :returns:
-            A dictionary containing all the relevant fields from the 'core_properties'
+            A `DocxMetadata` dataclass all the relevant fields from the 'core_properties'
         """
-        docx_meta = {}
-        props = [
-            "author",
-            "category",
-            "comments",
-            "content_status",
-            "created",
-            "identifier",
-            "keywords",
-            "language",
-            "last_modified_by",
-            "last_printed",
-            "modified",
-            "revision",
-            "subject",
-            "title",
-            "version",
-        ]
-        for prop in props:
-            if hasattr(document.core_properties, prop):
-                value = getattr(document.core_properties, prop)
-                if value is not None and value != "":
-                    docx_meta[f"docx_{prop}"] = value
-        return docx_meta
+        return DocxMetadata(
+            author=document.core_properties.author,
+            category=document.core_properties.category,
+            comments=document.core_properties.comments,
+            content_status=document.core_properties.content_status,
+            created=document.core_properties.created,
+            identifier=document.core_properties.identifier,
+            keywords=document.core_properties.keywords,
+            language=document.core_properties.language,
+            last_modified_by=document.core_properties.last_modified_by,
+            last_printed=document.core_properties.last_printed,
+            modified=document.core_properties.modified,
+            revision=document.core_properties.revision,
+            subject=document.core_properties.subject,
+            title=document.core_properties.title,
+            version=document.core_properties.version,
+        )
