@@ -71,16 +71,15 @@ class DocxToDocument:
         meta_list = normalize_metadata(meta=meta, sources_count=len(sources))
 
         for source, metadata in zip(sources, meta_list):
-            # Load source ByteStream
             try:
                 bytestream = get_bytestream_from_source(source)
             except Exception as e:
                 logger.warning("Could not read {source}. Skipping it. Error: {error}", source=source, error=e)
                 continue
-
-            # Load the Docx Document
             try:
                 file = docx.Document(io.BytesIO(bytestream.data))
+                paragraphs = [para.text for para in file.paragraphs]
+                text = "\n".join(paragraphs)
             except Exception as e:
                 logger.warning(
                     "Could not read {source} and convert it to a Docx Document, skipping. Error: {error}",
@@ -89,7 +88,6 @@ class DocxToDocument:
                 )
                 continue
 
-            # Load the Metadata
             try:
                 docx_meta = self._get_docx_metadata(document=file)
             except Exception as e:
@@ -98,24 +96,13 @@ class DocxToDocument:
                 )
                 docx_meta = {}
 
-            # Load the content
-            try:
-                paragraphs = [para.text for para in file.paragraphs]
-                text = "\n".join(paragraphs)
-            except Exception as e:
-                logger.warning(
-                    "Could not convert {source} to a Document, skipping it. Error: {error}", source=source, error=e
-                )
-                continue
-
             merged_metadata = {**bytestream.meta, **docx_meta, **metadata}
             document = Document(content=text, meta=merged_metadata)
-
             documents.append(document)
 
         return {"documents": documents}
 
-    def _get_docx_metadata(self, document: DocxDocument) -> Dict[str, Union[str, int, datetime]]:
+    def _get_docx_metadata(self, document: DocxDocument) -> Dict[str, Union[str, int, datetime, None]]:
         """
         Get all relevant data from the 'core_properties' attribute from a Docx Document.
 

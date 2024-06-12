@@ -1,5 +1,5 @@
 import logging
-from unittest.mock import patch
+import datetime
 
 import pytest
 
@@ -16,7 +16,6 @@ class TestDocxToDocument:
     def test_init(self, docx_converter):
         assert isinstance(docx_converter, DocxToDocument)
 
-    @pytest.mark.integration
     def test_run(self, test_files_path, docx_converter):
         """
         Test if the component runs correctly
@@ -26,13 +25,47 @@ class TestDocxToDocument:
         docs = output["documents"]
         assert len(docs) == 1
         assert "History" in docs[0].content
+        assert docs[0].meta.keys() == {
+            "file_path",
+            "author",
+            "category",
+            "comments",
+            "content_status",
+            "created",
+            "identifier",
+            "keywords",
+            "language",
+            "last_modified_by",
+            "last_printed",
+            "modified",
+            "revision",
+            "subject",
+            "title",
+            "version",
+        }
+        assert docs[0].meta == {
+            "file_path": str(paths[0]),
+            "author": "Microsoft Office User",
+            "category": "",
+            "comments": "",
+            "content_status": "",
+            "created": datetime.datetime(2024, 6, 9, 21, 17, tzinfo=datetime.timezone.utc),
+            "identifier": "",
+            "keywords": "",
+            "language": "",
+            "last_modified_by": "Carlos Fernández Lorán",
+            "last_printed": None,
+            "modified": datetime.datetime(2024, 6, 9, 21, 27, tzinfo=datetime.timezone.utc),
+            "revision": 2,
+            "subject": "",
+            "title": "",
+            "version": "",
+        }
 
     def test_run_with_meta(self, test_files_path, docx_converter):
-        with patch("haystack.components.converters.docx.DocxToDocument"):
-            output = docx_converter.run(
-                sources=[test_files_path / "docx" / "sample_docx_1.docx"],
-                meta={"language": "it", "author": "test_author"},
-            )
+        output = docx_converter.run(
+            sources=[test_files_path / "docx" / "sample_docx_1.docx"], meta={"language": "it", "author": "test_author"}
+        )
 
         # check that the metadata from the bytestream is merged with that from the meta parameter
         assert output["documents"][0].meta["author"] == "test_author"
@@ -47,7 +80,6 @@ class TestDocxToDocument:
             docx_converter.run(sources=paths)
             assert "Could not read non_existing_file.docx" in caplog.text
 
-    @pytest.mark.integration
     def test_mixed_sources_run(self, test_files_path, docx_converter):
         """
         Test if the component runs correctly when mixed sources are provided.
