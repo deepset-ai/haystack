@@ -6,7 +6,6 @@ import pytest
 from haystack.dataclasses import ByteStream
 from haystack import Document
 from haystack.components.converters.docx import DocxToDocument, DocxMetadata
-from haystack.core.serialization import component_from_dict, component_to_dict
 
 
 @pytest.fixture
