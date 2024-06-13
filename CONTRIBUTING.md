@@ -8,7 +8,7 @@ the relevant section before making your contribution. It will make it a lot easi
 and smooth out the experience for all involved. The community looks forward to your contributions!
 
 > [!TIP]
-> If you like Haystack, but just don't have time to contribute, that's fine. There are other easy ways to support the
+> If you like Haystack but just don't have time to contribute, that's fine. There are other easy ways to support the
 > project and show your appreciation, which we would also be very happy about:
 > - Star this repository
 > - Tweet about it
@@ -55,14 +55,14 @@ found a suitable issue and still need clarification, you can write your question
 search the internet for answers first.
 
 If you then still feel the need to ask a question and need clarification, you can use one of our
-[Community Channels](https://haystack.deepset.ai/community), Discord in particular is often very helpful.
+[Community Channels](https://haystack.deepset.ai/community), Discord, in particular, is often very helpful.
 
 ## Reporting Bugs
 
 ### Before Submitting a Bug Report
 
 A good bug report shouldn't leave others needing to chase you up for more information. Therefore, we ask you to
-investigate carefully, collect information and describe the issue in detail in your report. Please complete the
+investigate carefully, collect information, and describe the issue in detail in your report. Please complete the
 following steps in advance to help us fix any potential bug as fast as possible.
 
 - Make sure that you are using the latest version.
@@ -82,8 +82,8 @@ following steps in advance to help us fix any potential bug as fast as possible.
 ### How Do I Submit a Good Bug Report?
 
 > [!IMPORTANT]
-> You must never report security related issues, vulnerabilities or bugs including sensitive information to the issue
-> tracker, or elsewhere in public. Instead sensitive bugs must be reported using [this link](https://github.com/deepset-ai/haystack/security/advisories/new).
+> You must never report security-related issues, vulnerabilities, or bugs, including sensitive information to the issue
+> tracker, or elsewhere in public. Instead, sensitive bugs must be reported using [this link](https://github.com/deepset-ai/haystack/security/advisories/new).
 >
 
 We use GitHub issues to track bugs and errors. If you run into an issue with the project:
@@ -91,7 +91,7 @@ We use GitHub issues to track bugs and errors. If you run into an issue with the
 - Open an [Issue of type Bug Report](/issues/new?assignees=&labels=bug&projects=&template=bug_report.md&title=).
 - Explain the behavior you would expect and the actual behavior.
 - Please provide as much context as possible and describe the *reproduction steps* that someone else can follow to
-  recreate the issue on their own. This usually includes your code. For good bug reports you should isolate the problem
+  recreate the issue on their own. This usually includes your code. For good bug reports, you should isolate the problem
   and create a reduced test case.
 - Provide the information you collected in the previous section.
 
@@ -100,7 +100,7 @@ Once it's filed:
 - The project team will label the issue accordingly.
 - A team member will try to reproduce the issue with your provided steps. If there are no reproduction steps or no
   obvious way to reproduce the issue, the team will ask you for those steps.
-- If the team is able to reproduce the issue, the issue will scheduled for a fix, or left to be
+- If the team is able to reproduce the issue, the issue will scheduled for a fix or left to be
   [implemented by someone](#your-first-code-contribution).
 
 ## Suggesting Enhancements
@@ -139,16 +139,16 @@ Enhancement suggestions are tracked as GitHub issues of type [Feature request fo
 If this is your first contribution, a good starting point is looking for an open issue that's marked with the label
 ["good first issue"](https://github.com/deepset-ai/haystack/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22).
 The core contributors periodically mark certain issues as good for first-time contributors. Those issues are usually
-limited in scope, easy fixable and low priority, so there is absolutely no reason why you should not try fixing them,
+limited in scope, easily fixable and low priority, so there is absolutely no reason why you should not try fixing them,
 it's a good excuse to start looking into the project and a safe space for experimenting failure: if you don't get the
 grasp of something, pick another one!
 
 ### Setting up your development environment
 
 Haystack makes heavy use of [Hatch](https://hatch.pypa.io/latest/), a Python project manager that we use to set up the
-virtual environments, build the project and publish packages. As you can imagine, the first step towards becoming a
-Haystack contributor is installing Hatch. There are a variety of install methods depending on your operating system
-platform, version and personal taste: please have a look at [this page](https://hatch.pypa.io/latest/install/#installation)
+virtual environments, build the project, and publish packages. As you can imagine, the first step towards becoming a
+Haystack contributor is installing Hatch. There are a variety of installation methods depending on your operating system
+platform, version, and personal taste: please have a look at [this page](https://hatch.pypa.io/latest/install/#installation)
 and keep reading once you can run from your terminal:
 
 ```console
@@ -213,7 +213,7 @@ hatch run test:unit
 ```
 
 Hatch will create a dedicated virtual environment, sync the required dependencies and run all the unit tests from the
-project. If you want to run a subset of the tests, or even one test in particular, `hatch` will accept all the
+project. If you want to run a subset of the tests or even one test in particular, `hatch` will accept all the
 options you would normally pass to `pytest`, for example:
 
 ```sh
@@ -221,7 +221,7 @@ options you would normally pass to `pytest`, for example:
 hatch run test:unit test/test_logging.py::TestSkipLoggingConfiguration::test_skip_logging_configuration
 ```
 
-We also use tools to ensure consistent code style, quality and static type checking. The quality of your code will be
+We also use tools to ensure consistent code style, quality, and static type checking. The quality of your code will be
 tested by the CI, but once again, running the checks locally will speed up the review cycle. To check your code you
 can run:
 
@@ -259,8 +259,8 @@ Created new notes file in releasenotes/notes/bump-transformers-to-4-31-a645334d5
 `reno` will create the file appending a unique id to the name of the release note you provided (in this case,
 `bump-transformers-to-4-31`). You don't need to worry about duplicated entries, but be sure to use meaningful names
 so it's easier to find the file later. You can now edit the file to add the release note. In the file, you will find
-multiple sections along with an explanation of what they're for. Normally, you only need to fill one section; in this
-case, you would fill the `enhancements` section to describe the change:
+multiple sections along with an explanation of what they're for. Normally, you only need to fill in one section; in this
+case, you would fill in the `enhancements` section to describe the change:
 
 ```yaml
 enhancements:
@@ -272,7 +272,7 @@ code you changed.
 
 ## CI (Continuous Integration)
 
-We use GitHub Action for our Continuous Integration tasks. This means that, as soon as you open a PR, GitHub will start
+We use GitHub Action for our Continuous Integration tasks. This means that as soon as you open a PR, GitHub will start
 executing some workflows on your changes, like automated tests, linting, formatting, api docs generation, etc.
 
 If all goes well, at the bottom of your PR page you should see something like this, where all checks are green.
@@ -288,7 +288,7 @@ For example, in the case above, the CI will give you instructions on how to fix 
 
 ![Logs of failed CI, with instructions for fixing the failure](docs/img/ci-failure-example-instructions.png)
 
-## Working from Github forks
+## Working from GitHub forks
 
 In order for maintainers to be able to help you, we usually ask contributors to give us push access to their fork.
 
@@ -338,15 +338,15 @@ We formally define three scopes for tests in Haystack with different requirement
 ## Contributor Licence Agreement (CLA)
 
 Significant contributions to Haystack require a Contributor License Agreement (CLA). If the contribution requires a CLA,
-we will get in contact with you. CLAs are quite common among company backed open-source frameworks and our CLA’s wording
+we will get in contact with you. CLAs are quite common among company-backed open-source frameworks, and our CLA’s wording
 is similar to other popular projects, like [Rasa](https://cla-assistant.io/RasaHQ/rasa) or
 [Google's Tensorflow](https://cla.developers.google.com/clas/new?domain=DOMAIN_GOOGLE&kind=KIND_INDIVIDUAL)
 (retrieved 4th November 2021).
 
-The agreement's main purpose is to protect the continued open use of Haystack. At the same time it also helps in
+The agreement's main purpose is to protect the continued open use of Haystack. At the same time, it also helps in
 \protecting you as a contributor. Contributions under this agreement will ensure that your code will continue to be
-open to everyone in the future (“You hereby grant to Deepset **and anyone** [...]”) as well as removing liabilities on
+open to everyone in the future (“You hereby grant to Deepset **and anyone** [...]”) as well as remove liabilities on
 your end (“you provide your Contributions on an AS IS basis, without warranties or conditions of any kind [...]”). You
 can find the Contributor Licence Agreement [here](https://cla-assistant.io/deepset-ai/haystack).
 
-If you have further questions about the licensing feel free to reach out to contributors@deepset.ai.
+If you have further questions about the licensing, feel free to reach out to contributors@deepset.ai.
