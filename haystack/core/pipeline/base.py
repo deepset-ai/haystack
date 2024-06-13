@@ -870,7 +870,7 @@ class PipelineBase:
         # We keep track of which keys to remove from component_result at the end of the loop.
         # This is done after the output has been distributed to the next components, so that
         # we're sure all components that need this output have received it.
-        to_remove_from_res = set()
+        to_remove_from_component_result = set()
 
         for _, receiver_name, connection in self.graph.edges(nbunch=component_name, data=True):
             sender_socket: OutputSocket = connection["from_socket"]
@@ -890,8 +890,9 @@ class PipelineBase:
             if receiver_name not in inputs_by_component:
                 inputs_by_component[receiver_name] = {}
 
-            # We'll remove this key from the output at the end of the loop
-            to_remove_from_res.add(sender_socket.name)
+            # We keep track of the keys that were distributed to other Components.
+            # This key will be removed from component_result at the end of the loop.
+            to_remove_from_component_result.add(sender_socket.name)
 
             value = component_result[sender_socket.name]
 
@@ -928,7 +929,7 @@ class PipelineBase:
                 to_run.append(pair)
 
         # Returns the output without the keys that were distributed to other Components
-        return {k: v for k, v in component_result.items() if k not in to_remove_from_res}
+        return {k: v for k, v in component_result.items() if k not in to_remove_from_component_result}
 
 
 def _connections_status(
