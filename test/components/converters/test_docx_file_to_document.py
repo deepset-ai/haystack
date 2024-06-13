@@ -27,12 +27,11 @@ class TestDocxToDocument:
         assert len(docs) == 1
         assert "History" in docs[0].content
 
+    @pytest.mark.integration
     def test_run_with_meta(self, test_files_path, docx_converter):
-        with patch("haystack.components.converters.docx.DocxToDocument"):
-            output = docx_converter.run(
-                sources=[test_files_path / "docx" / "sample_docx_1.docx"],
-                meta={"language": "it", "author": "test_author"},
-            )
+        output = docx_converter.run(
+            sources=[test_files_path / "docx" / "sample_docx_1.docx"], meta={"language": "it", "author": "test_author"}
+        )
 
         # check that the metadata from the bytestream is merged with that from the meta parameter
         assert output["documents"][0].meta["author"] == "test_author"
