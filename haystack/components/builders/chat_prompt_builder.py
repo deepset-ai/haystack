@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional, Set
 from jinja2 import Template, meta
 
 from haystack import component, logging
+from haystack.core.serialization import default_from_dict, default_to_dict
 from haystack.dataclasses.chat_message import ChatMessage, ChatRole
 
 logger = logging.getLogger(__name__)
@@ -221,3 +222,28 @@ class ChatPromptBuilder:
                 f"Missing required input variables in ChatPromptBuilder: {missing_vars_str}. "
                 f"Required variables: {self.required_variables}. Provided variables: {provided_variables}."
             )
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serializes the component to a dictionary.
+
+        :returns:
+            Dictionary with serialized data.
+        """
+        template = [message.__dict__ for message in self.template]
+        return default_to_dict(self, template=template)
+
+    @classmethod
+    def from_dict(cls, data) -> "ChatPromptBuilder":
+        """
+        Deserializes the component from a dictionary.
+
+        :param data:
+            The dictionary to deserialize from.
+        :returns:
+            The deserialized component.
+        """
+        data["init_parameters"]["template"] = [
+            ChatMessage(**message_dict) for message_dict in data["init_parameters"]["template"]
+        ]
+        return default_from_dict(cls, data)
