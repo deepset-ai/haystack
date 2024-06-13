@@ -896,10 +896,16 @@ class PipelineBase:
             value = component_result[sender_socket.name]
 
             if receiver_socket.is_variadic:
-                # Variadic inputs are always lists
+                # Usually Component inputs can only be received from one sender, the Variadic type allows
+                # instead to receive inputs from multiple senders.
+                #
+                # To keep track of all the inputs received internally we always store them in a list.
                 if receiver_socket.name not in inputs_by_component[receiver_name]:
                     # Create the list if it doesn't exist
                     inputs_by_component[receiver_name][receiver_socket.name] = []
+                else:
+                    # Check if the value is actually a list
+                    assert isinstance(inputs_by_component[receiver_name][receiver_socket.name], list)
                 inputs_by_component[receiver_name][receiver_socket.name].append(value)
             else:
                 inputs_by_component[receiver_name][receiver_socket.name] = value
