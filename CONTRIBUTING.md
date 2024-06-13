@@ -83,7 +83,7 @@ following steps in advance to help us fix any potential bug as fast as possible.
 
 > [!IMPORTANT]
 > You must never report security related issues, vulnerabilities or bugs including sensitive information to the issue
-> tracker, or elsewhere in public. Instead sensitive bugs must be reported using [this link](https://github.com/deepset-ai/haystack-core-integrations/security/advisories/new).
+> tracker, or elsewhere in public. Instead sensitive bugs must be reported using [this link](https://github.com/deepset-ai/haystack/security/advisories/new).
 >
 
 We use GitHub issues to track bugs and errors. If you run into an issue with the project:
@@ -137,7 +137,7 @@ Enhancement suggestions are tracked as GitHub issues of type [Feature request fo
 ### Where to start
 
 If this is your first contribution, a good starting point is looking for an open issue that's marked with the label
-["good first issue"](https://github.com/deepset-ai/haystack-core-integrations/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22).
+["good first issue"](https://github.com/deepset-ai/haystack/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22).
 The core contributors periodically mark certain issues as good for first-time contributors. Those issues are usually
 limited in scope, easy fixable and low priority, so there is absolutely no reason why you should not try fixing them,
 it's a good excuse to start looking into the project and a safe space for experimenting failure: if you don't get the
@@ -162,15 +162,15 @@ You won't be able to make changes directly to this repo, so the first step is to
 Once your fork is ready, you can clone a local copy with:
 
 ```console
-$ git clone https://github.com/YOUR-USERNAME/haystack-core-integrations
+$ git clone https://github.com/YOUR-USERNAME/haystack
 ```
 
 If everything worked, you should be able to do something like this (the output might be different):
 
 ```console
-$ cd haystack-core-integrations/integrations/chroma
+$ cd haystack
 $ hatch version
-0.13.1.dev30+g9fe18d23
+2.3.0-rc0
 ```
 
 Last, install the pre-commit hooks with:
