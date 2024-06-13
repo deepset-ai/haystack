@@ -923,7 +923,8 @@ class PipelineBase:
                 if pair in waiting_for_input:
                     waiting_for_input.remove(pair)
                 to_run.append(pair)
-            elif pair not in waiting_for_input and pair not in to_run:
+
+            if pair not in waiting_for_input and pair not in to_run:
                 # Queue up the Component that received this input to run, only if it's not already waiting
                 # for input or already ready to run.
                 to_run.append(pair)
