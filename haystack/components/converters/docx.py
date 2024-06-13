@@ -25,7 +25,7 @@ class DocxToDocument:
     Converts Docx files to Documents.
 
     Uses `python-docx` library to convert the Docx file to a document.
-    This component does not preserve page brakes in the original document.
+    This component does not preserve page breaks in the original document.
 
     Usage example:
     ```python
@@ -115,7 +115,7 @@ class DocxToDocument:
 
         return {"documents": documents}
 
-    def _get_docx_metadata(self, document: DocxDocument) -> Dict[str, Union[str, int, datetime]]:
+    def _get_docx_metadata(self, document: "DocxDocument") -> Dict[str, Union[str, int, datetime]]:
         """
         Get all relevant data from the 'core_properties' attribute from a Docx Document.
 
