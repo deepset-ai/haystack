@@ -867,7 +867,7 @@ class PipelineBase:
 
         :return: The updated output of the Component without the keys that were distributed to other Components
         """
-        # We keep track of which keys to remove from res at the end of the loop.
+        # We keep track of which keys to remove from component_result at the end of the loop.
         # This is done after the output has been distributed to the next components, so that
         # we're sure all components that need this output have received it.
         to_remove_from_res = set()
