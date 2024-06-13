@@ -877,7 +877,14 @@ class PipelineBase:
             receiver_socket: InputSocket = connection["to_socket"]
 
             if sender_socket.name not in component_result:
-                # This output wasn't created by the sender, nothing we can do
+                # This output wasn't created by the sender, nothing we can do.
+                #
+                # Some Components might have conditional outputs, so we need to check if they actually returned
+                # some output while iterating over their output sockets.
+                #
+                # A perfect example of this would be the ConditionalRouter, which will have an output for each
+                # condition it has been initialized with.
+                # Though it will return only one output at a time.
                 continue
 
             if receiver_name not in inputs_by_component:
