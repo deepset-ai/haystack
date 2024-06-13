@@ -108,7 +108,7 @@ class ChatMessage:
             Serialized version of the object.
         """
         data = asdict(self)
-        data["role"] = data.get("role").value
+        data["role"] = self.role.value
 
         if flatten:
             meta = data.pop("meta")
