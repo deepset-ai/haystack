@@ -853,7 +853,7 @@ class PipelineBase:
         inputs_by_component: Dict[str, Dict[str, Any]],
         to_run: List[Tuple[str, Component]],
         waiting_for_input: List[Tuple[str, Component]],
-    ):
+    ) -> Dict[str, Any]:
         """
         Distributes the output of a Component to the next Components that need it.
 
