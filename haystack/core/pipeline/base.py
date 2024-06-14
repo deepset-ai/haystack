@@ -916,7 +916,7 @@ class PipelineBase:
 
             is_greedy = getattr(receiver, "__haystack_is_greedy__", False)
             if receiver_socket.is_variadic and is_greedy:
-                # If the receiver is greedy, we can run it right away.
+                # If the receiver is greedy, we can run it as soon as possible.
                 # First we remove it from the status lists it's in if it's there or we risk running it multiple times.
                 if pair in to_run:
                     to_run.remove(pair)
