@@ -26,5 +26,3 @@ __all__ = [
     "GeneratedAnswer",
     "ExtractedAnswer",
 ]
-
-# FIXME: remove this line
