@@ -45,8 +45,80 @@ jobs:
       - name: Install Hatch
         run: pip install hatch==${{ env.HATCH_VERSION }}
 
-      - name: Check status
+      - name: Check file format
         run: hatch run format
+
+      - name: Check presence of license header
+        run: docker run --rm -v "$(pwd):/github/workspace" ghcr.io/korandoru/hawkeye check
+
+      - name: Calculate alert data
+        id: calculator
+        shell: bash
+        if: (success() || failure()) && github.ref_name == 'main'
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "alert_type=success" >> "$GITHUB_OUTPUT";
+          else
+            echo "alert_type=error" >> "$GITHUB_OUTPUT";
+          fi
+
+      - name: Send event to Datadog
+        if: (success() || failure()) && github.ref_name == 'main'
+        uses: masci/datadog@v1
+        with:
+          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
+          api-url: https://api.datadoghq.eu
+          events: |
+            - title: "${{ github.workflow }} workflow"
+              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
+              alert_type: "${{ steps.calculator.outputs.alert_type }}"
+              source_type_name: "Github"
+              host: ${{ github.repository_owner }}
+              tags:
+                - "project:${{ github.repository }}"
+                - "job:${{ github.job }}"
+                - "run_id:${{ github.run_id }}"
+                - "workflow:${{ github.workflow }}"
+                - "branch:${{ github.ref_name }}"
+                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+  lint:
+    needs: format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # With the default value of 1, there are corner cases where tj-actions/changed-files
+          # fails with a `no merge base` error
+          fetch-depth: 0
+
+      - name: Get changed files
+        id: files
+        uses: tj-actions/changed-files@v44
+        with:
+          files: |
+            **/*.py
+          files_ignore: |
+            test/**
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "${{ env.PYTHON_VERSION }}"
+
+      - name: Install Hatch
+        run: pip install hatch==${{ env.HATCH_VERSION }}
+
+      - name: Mypy
+        if: steps.files.outputs.any_changed == 'true'
+        run: |
+          mkdir .mypy_cache
+          hatch run test:types ${{ steps.files.outputs.all_changed_files }}
+
+      - name: Pylint
+        if: steps.files.outputs.any_changed == 'true'
+        run: |
+          hatch run test:lint ${{ steps.files.outputs.all_changed_files }}
 
       - name: Calculate alert data
         id: calculator
@@ -81,7 +153,7 @@ jobs:
 
   unit-tests:
     name: Unit / ${{ matrix.os }}
-    needs: format
+    needs: lint
     strategy:
       fail-fast: false
       matrix:
