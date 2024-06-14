@@ -67,7 +67,6 @@ class DocumentMRREvaluator:
 
         for ground_truth, retrieved in zip(ground_truth_documents, retrieved_documents):
             score = 0.0
-            flag = False
             ground_truth_content = []
 
             for ground_document in ground_truth:
@@ -76,13 +75,10 @@ class DocumentMRREvaluator:
                 ground_truth_content.append(ground_document.content)
 
             for rank, retrieved_document in enumerate(retrieved):
-                if flag:
-                    break
                 if retrieved_document.content is None:
                     continue
                 if retrieved_document.content in ground_truth_content:
                     score = 1 / (rank + 1)
-                    flag = True
                     break
             individual_scores.append(score)
 
