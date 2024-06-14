@@ -134,6 +134,7 @@ extra-dependencies = [
   "psutil",
   "mypy",
   "pylint",
+  "ipython",
 ]
 
 [tool.hatch.envs.test.scripts]
