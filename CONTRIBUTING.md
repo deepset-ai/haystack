@@ -196,7 +196,6 @@ fix end of files.........................................................Passed
 mixed line ending........................................................Passed
 don't commit to branch...................................................Passed
 trim trailing whitespace.................................................Passed
-black-jupyter............................................................Passed
 ruff.....................................................................Passed
 codespell................................................................Passed
 Lint GitHub Actions workflow files...................(no files to check)Skipped
@@ -246,31 +245,31 @@ To ease the review process, please follow the instructions in this paragraph whe
 
 ### Release notes
 
-Each PR should include a file under the `releasenotes/notes` path created with `reno`, unless the PR doesn't have any
-impact on Haystack behavior, for example: tests and documentation updates, changes in code comments or docstrings,
-changes to the CI/CD systems. PRs that don't require a release note file must be labeled with `ignore-for-release-notes`
-by a maintainer in order to bypass the CI check.
+Each PR must include a release notes file under the `releasenotes/notes` path created with `reno`, and a CI check will
+fail if that's not the case. Pull requests with changes limited to tests, code comments or docstrings, and changes to
+the CI/CD systems can be labeled with `ignore-for-release-notes` by a maintainer in order to bypass the CI check.
 
-Say your PR is for bumping the `transformers` version in the `pyproject.toml` file. To create the corresponding release
-note, from the root of the repo run:
+For example, if your PR is bumping the `transformers` version in the `pyproject.toml` file, that's something that
+requires release notes. To create the corresponding file, from the root of the repo run:
+
 ```
-$ reno new bump-transformers-to-4-31
-loaded configuration file ./releasenotes/config.yaml
-Created new notes file in releasenotes/notes/bump-transformers-to-4-31-a645334d57eab673.yaml
+$ hatch run release-note bump-transformers-to-4-31
 ```
-`reno` will create the file appending a unique id to the name of the release note you provided (in this case,
-`bump-transformers-to-4-31`). You don't need to worry about duplicated entries, but be sure to use meaningful names
-so it's easier to find the file later. You can now edit the file to add the release note. In the file, you will find
-multiple sections along with an explanation of what they're for. Normally, you only need to fill in one section; in this
-case, you would fill in the `enhancements` section to describe the change:
+
+A release notes file in YAML format will be created in the appropriate folder, appending a unique id to the name of the
+release note you provided (in this case, `bump-transformers-to-4-31`). To add the actual content of the release notes,
+you must edit the file that's just been created. In the file, you will find multiple sections along with an explanation
+of what they're for. You have to remove all the sections that don't fit your release notes, in this case for example
+you would fill in the `enhancements` section to describe the change:
 
 ```yaml
 enhancements:
   - |
     Upgrade transformers to the latest version 4.31.0 so that Haystack can support the new LLama2 models.
 ```
-You can now add the file to the git repo and commit your changes. Your release note will be reviewed along with the
-code you changed.
+
+You can now add the file to the same branch containing the code changes. Your release note will be part of your pull
+request and reviewed along with any code you changed.
 
 ## CI (Continuous Integration)
 

@@ -33,7 +33,7 @@ env:
   HATCH_VERSION: "1.9.3"
 
 jobs:
-  black:
+  format:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -46,7 +46,7 @@ jobs:
         run: pip install hatch==${{ env.HATCH_VERSION }}
 
       - name: Check status
-        run: hatch run default:format-check
+        run: hatch run format
 
       - name: Calculate alert data
         id: calculator
@@ -81,7 +81,7 @@ jobs:
 
   unit-tests:
     name: Unit / ${{ matrix.os }}
-    needs: black
+    needs: format
     strategy:
       fail-fast: false
       matrix:

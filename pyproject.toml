@@ -65,38 +65,18 @@ dependencies = [
 [tool.hatch.envs.default]
 dependencies = [
   "pre-commit",
-  # Type check
-  "mypy",
-  # Test
-  "pytest",
-  "pytest-bdd",
-  "pytest-cov",
-  "pytest-custom_exit_code",  # used in the CI
-  "pytest-asyncio",
-  "pytest-rerunfailures",
-  "responses",
-  "tox",
-  "coverage",
-  "python-multipart",
-  "psutil",
-  # Linting
-  "pylint",
   "ruff",
-  # Documentation
   "toml",
   "reno",
   # dulwich is a reno dependency, they pin it at >=0.15.0 so pip takes ton of time to resolve the dependency tree.
   # We pin it here to avoid taking too much time.
   # https://opendev.org/openstack/reno/src/branch/master/requirements.txt#L7
   "dulwich>=0.21.0,<1.0.0",
-  # Version specified following Black stability policy:
-  # https://black.readthedocs.io/en/stable/the_black_code_style/index.html#stability-policy
-  "black[jupyter]~=23.0",
 ]
 
 [tool.hatch.envs.default.scripts]
-format = "black ."
-format-check = "black --check ."
+release-note = "reno new {args}"
+format = "ruff check {args:haystack} --fix"
 
 [tool.hatch.envs.test]
 extra-dependencies = [
@@ -139,6 +119,22 @@ extra-dependencies = [
   # Looking for missing imports
   "isort",
   "pyproject-parser",
+
+  # Test
+  "pytest",
+  "pytest-bdd",
+  "pytest-cov",
+  "pytest-custom_exit_code",  # used in the CI
+  "pytest-asyncio",
+  "pytest-rerunfailures",
+  "responses",
+  "tox",
+  "coverage",
+  "python-multipart",
+  "psutil",
+  "mypy",
+  "pylint",
+  "ipython",
 ]
 
 [tool.hatch.envs.test.scripts]
@@ -148,14 +144,7 @@ integration = 'pytest --maxfail=5 -m "integration" {args:test}'
 integration-mac = 'pytest --maxfail=5 -m "integration" -k "not tika" {args:test}'
 integration-windows = 'pytest --maxfail=5 -m "integration" -k "not tika" {args:test}'
 types = "mypy --install-types --non-interactive --cache-dir=.mypy_cache/ {args:haystack}"
-lint = [
-  "ruff check {args:haystack}",
-  "pylint -ry -j 0 {args:haystack}"
-]
-lint-fix = [
-  "black .",
-  "ruff check {args:haystack} --fix",
-]
+lint = "pylint -ry -j 0 {args:haystack}"
 
 [tool.hatch.envs.readme]
 detached = true  # To avoid installing the dependencies from the default environment
@@ -166,12 +155,6 @@ dependencies = [
 [tool.hatch.envs.readme.scripts]
 sync = "./.github/utils/pydoc-markdown.sh"
 delete-outdated = "python ./.github/utils/delete_outdated_docs.py {args}"
-
-[tool.hatch.envs.snippets]
-extra-dependencies = [
-  "torch",
-  "pydantic",
-]
 
 [project.urls]
 "CI: GitHub" = "https://github.com/deepset-ai/haystack/actions"
@@ -197,10 +180,6 @@ include = [
 packages = [
   "haystack",
 ]
-
-[tool.black]
-line-length = 120
-skip_magic_trailing_comma = true  # For compatibility with pydoc>=4.6, check if still needed.
 
 [tool.codespell]
 ignore-words-list = "ans,astroid,nd,ned,nin,ue,rouge,ist"
