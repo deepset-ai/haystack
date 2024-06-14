@@ -82,8 +82,39 @@ jobs:
                 - "branch:${{ github.ref_name }}"
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-  lint:
+  build-env:
+    name: Build env / ${{ matrix.os }}
     needs: format
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-12
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "${{ env.PYTHON_VERSION }}"
+
+      - name: Install Hatch
+        id: hatch
+        run: |
+          pip install hatch==${{ env.HATCH_VERSION }}
+          hatch shell test
+          echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache/save@v3
+        id: cache
+        with:
+          path: ${{ steps.hatch.outputs.env }}
+          key: ${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+
+  lint:
+    needs: build-env
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -107,7 +138,16 @@ jobs:
           python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Install Hatch
-        run: pip install hatch==${{ env.HATCH_VERSION }}
+        id: hatch
+        run: |
+          pip install hatch==${{ env.HATCH_VERSION }}
+          echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache/restore@v3
+        id: cache
+        with:
+          path: ${{ steps.hatch.outputs.env }}
+          key: ${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
 
       - name: Mypy
         if: steps.files.outputs.any_changed == 'true'
@@ -153,7 +193,7 @@ jobs:
 
   unit-tests:
     name: Unit / ${{ matrix.os }}
-    needs: lint
+    needs: build-env
     strategy:
       fail-fast: false
       matrix:
@@ -170,7 +210,16 @@ jobs:
           python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Install Hatch
-        run: pip install hatch==${{ env.HATCH_VERSION }}
+        id: hatch
+        run: |
+          pip install hatch==${{ env.HATCH_VERSION }}
+          echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache/restore@v3
+        id: cache
+        with:
+          path: ${{ steps.hatch.outputs.env }}
+          key: ${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
 
       - name: Run
         run: hatch run test:unit
@@ -231,7 +280,16 @@ jobs:
           python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Install Hatch
-        run: pip install hatch==${{ env.HATCH_VERSION }}
+        id: hatch
+        run: |
+          pip install hatch==${{ env.HATCH_VERSION }}
+          echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache/restore@v3
+        id: cache
+        with:
+          path: ${{ steps.hatch.outputs.env }}
+          key: ${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
 
       - name: Install dependencies
         run: |
@@ -287,7 +345,16 @@ jobs:
           python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Install Hatch
-        run: pip install hatch==${{ env.HATCH_VERSION }}
+        id: hatch
+        run: |
+          pip install hatch==${{ env.HATCH_VERSION }}
+          echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache/restore@v3
+        id: cache
+        with:
+          path: ${{ steps.hatch.outputs.env }}
+          key: ${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
 
       - name: Install dependencies
         run: |
@@ -339,7 +406,16 @@ jobs:
           python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Install Hatch
-        run: pip install hatch==${{ env.HATCH_VERSION }}
+        id: hatch
+        run: |
+          pip install hatch==${{ env.HATCH_VERSION }}
+          echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache/restore@v3
+        id: cache
+        with:
+          path: ${{ steps.hatch.outputs.env }}
+          key: ${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
 
       - name: Run
         run: hatch run test:integration-windows
