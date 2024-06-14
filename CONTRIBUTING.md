@@ -48,7 +48,7 @@ By participating, you are expected to uphold this code. Please report unacceptab
 ## I Have a Question
 
 > [!TIP]
-> If you want to ask a question, we assume that you have read the available [Documentation](https://docs.haystack.deepset.ai/v2.0/docs/intro).
+> If you want to ask a question, we assume that you have read the available [Documentation](https://docs.haystack.deepset.ai/docs/intro).
 
 Before you ask a question, it is best to search for existing [Issues](/issues) that might help you. In case you have
 found a suitable issue and still need clarification, you can write your question in this issue. It is also advisable to
@@ -67,7 +67,7 @@ following steps in advance to help us fix any potential bug as fast as possible.
 
 - Make sure that you are using the latest version.
 - Determine if your bug is really a bug and not an error on your side, for example using incompatible versions.
-  Make sure that you have read the [documentation](https://docs.haystack.deepset.ai/v2.0/docs/intro). If you are looking
+  Make sure that you have read the [documentation](https://docs.haystack.deepset.ai/docs/intro). If you are looking
   for support, you might want to check [this section](#i-have-a-question).
 - To see if other users have experienced (and potentially already solved) the same issue you are having, check if there
   is not already a bug report existing for your bug or error in the [bug tracker](/issues).
@@ -112,7 +112,7 @@ find related suggestions.
 ### Before Submitting an Enhancement
 
 - Make sure that you are using the latest version.
-- Read the [documentation](https://docs.haystack.deepset.ai/v2.0/docs/intro) carefully and find out if the functionality
+- Read the [documentation](https://docs.haystack.deepset.ai/docs/intro) carefully and find out if the functionality
   is already covered, maybe by an individual configuration.
 - Perform a [search](/issues) to see if the enhancement has already been suggested. If it has, add a comment to the
   existing issue instead of opening a new one.
