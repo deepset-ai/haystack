@@ -104,7 +104,7 @@ jobs:
         id: hatch
         run: |
           pip install hatch==${{ env.HATCH_VERSION }}
-          hatch shell test
+          hatch env create test
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
       - uses: actions/cache/save@v3
