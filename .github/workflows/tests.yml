@@ -46,7 +46,7 @@ jobs:
         run: pip install hatch==${{ env.HATCH_VERSION }}
 
       - name: Check status
-        run: hatch run default:format-check
+        run: hatch run test:lint
 
       - name: Calculate alert data
         id: calculator
