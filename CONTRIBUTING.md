@@ -33,7 +33,7 @@ and smooth out the experience for all involved. The community looks forward to y
   - [Requirements for Pull Requests](#requirements-for-pull-requests)
     - [Release notes](#release-notes)
   - [CI (Continuous Integration)](#ci-continuous-integration)
-  - [Working from Github forks](#working-from-github-forks)
+  - [Working from GitHub forks](#working-from-github-forks)
   - [Writing tests](#writing-tests)
     - [Unit test](#unit-test)
     - [Integration test](#integration-test)
@@ -141,7 +141,9 @@ If this is your first contribution, a good starting point is looking for an open
 The core contributors periodically mark certain issues as good for first-time contributors. Those issues are usually
 limited in scope, easily fixable and low priority, so there is absolutely no reason why you should not try fixing them,
 it's a good excuse to start looking into the project and a safe space for experimenting failure: if you don't get the
-grasp of something, pick another one!
+grasp of something, pick another one! Once you become comfortable contributing to Haystack, you can have a look at the
+list of issues marked as [contributions wanted](https://github.com/orgs/deepset-ai/projects/14/views/1) to look for your
+next contribution!
 
 ### Setting up your development environment
 
