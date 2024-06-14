@@ -112,7 +112,7 @@ jobs:
         id: cache
         with:
           path: ${{ steps.hatch.outputs.env }}
-          key: ${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+          key: ${{ runner.os }}-${{ github.sha }}
 
   lint:
     needs: build-env
@@ -148,7 +148,7 @@ jobs:
         id: cache
         with:
           path: ${{ steps.hatch.outputs.env }}
-          key: ${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+          key: ${{ runner.os }}-${{ github.sha }}
 
       - name: Mypy
         if: steps.files.outputs.any_changed == 'true'
@@ -221,7 +221,7 @@ jobs:
         id: cache
         with:
           path: ${{ steps.hatch.outputs.env }}
-          key: ${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+          key: ${{ runner.os }}-${{ github.sha }}
 
       - name: Run
         run: hatch run test:unit
@@ -292,7 +292,7 @@ jobs:
         id: cache
         with:
           path: ${{ steps.hatch.outputs.env }}
-          key: ${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+          key: ${{ runner.os }}-${{ github.sha }}
 
       - name: Install dependencies
         run: |
@@ -358,7 +358,7 @@ jobs:
         id: cache
         with:
           path: ${{ steps.hatch.outputs.env }}
-          key: ${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+          key: ${{ runner.os }}-${{ github.sha }}
 
       - name: Install dependencies
         run: |
@@ -420,7 +420,7 @@ jobs:
         id: cache
         with:
           path: ${{ steps.hatch.outputs.env }}
-          key: ${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+          key: ${{ runner.os }}-${{ github.sha }}
 
       - name: Run
         run: hatch run test:integration-windows
