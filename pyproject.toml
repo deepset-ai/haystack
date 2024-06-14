@@ -181,10 +181,6 @@ packages = [
   "haystack",
 ]
 
-[tool.black]
-line-length = 120
-skip_magic_trailing_comma = true  # For compatibility with pydoc>=4.6, check if still needed.
-
 [tool.codespell]
 ignore-words-list = "ans,astroid,nd,ned,nin,ue,rouge,ist"
 quiet-level = 3

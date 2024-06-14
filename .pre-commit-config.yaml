@@ -10,16 +10,11 @@ repos:
     - id: check-shebang-scripts-are-executable  # checks all shell scripts have executable permissions
     - id: check-toml  # checks TOML syntax
     - id: check-yaml  # checks YAML syntax
-    - id: end-of-file-fixer  # checks there is a newline at the end of the file  # FIXME: pydoc-markdown conflicts with this
+    - id: end-of-file-fixer  # checks there is a newline at the end of the file
     - id: mixed-line-ending  # normalizes line endings
     - id: no-commit-to-branch  # prevents committing to main
     - id: trailing-whitespace  # trims trailing whitespace
       args: [--markdown-linebreak-ext=md]
-
-- repo: https://github.com/psf/black
-  rev: 23.9.1
-  hooks:
-  - id: black-jupyter
 
 - repo: https://github.com/astral-sh/ruff-pre-commit
   rev: v0.3.0
@@ -39,5 +34,3 @@ repos:
   hooks:
   - id: actionlint-docker
     args: ["-ignore", "SC2102"]
-
-# TODO we can make pylint run at this stage too, once their execution gets normalized
