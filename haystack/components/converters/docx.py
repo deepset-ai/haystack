@@ -46,13 +46,13 @@ class DocxMetadata:
     category: str
     comments: str
     content_status: str
-    created: datetime | None
+    created: Optional[datetime]
     identifier: str
     keywords: str
     language: str
     last_modified_by: str
-    last_printed: datetime | None
-    modified: datetime | None
+    last_printed: Optional[datetime]
+    modified: Optional[datetime]
     revision: int
     subject: str
     title: str
