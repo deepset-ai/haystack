@@ -229,7 +229,10 @@ class ChatPromptBuilder:
         :returns:
             Serialized dictionary representation of the component.
         """
-        template = [m.to_dict() for m in self.template]
+        if self.template is not None:
+            template = [m.to_dict() for m in self.template]
+        else:
+            template = None
 
         return default_to_dict(
             self, template=template, variables=self._variables, required_variables=self._required_variables
