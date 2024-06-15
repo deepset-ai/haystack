@@ -78,6 +78,13 @@ class Pipeline(PipelineBase):
             res: Dict[str, Any] = instance.run(**inputs)
             self.graph.nodes[name]["visits"] += 1
 
+            # After a Component that has variadic inputs is run, we need to reset the variadic inputs that were consumed
+            for socket in instance.__haystack_input__._sockets_dict.values():  # type: ignore
+                if socket.name not in inputs:
+                    continue
+                if socket.is_variadic:
+                    inputs[socket.name] = []
+
             if not isinstance(res, Mapping):
                 raise PipelineRuntimeError(
                     f"Component '{name}' didn't return a dictionary. "
@@ -253,57 +260,8 @@ class Pipeline(PipelineBase):
                         # This happens when a component was put in the waiting list but we reached it from another edge.
                         waiting_for_input.remove((name, comp))
 
-                    # We keep track of which keys to remove from res at the end of the loop.
-                    # This is done after the output has been distributed to the next components, so that
-                    # we're sure all components that need this output have received it.
-                    to_remove_from_res = set()
-                    for sender_component_name, receiver_component_name, edge_data in self.graph.edges(data=True):
-                        if receiver_component_name == name and edge_data["to_socket"].is_variadic:
-                            # Delete variadic inputs that were already consumed
-                            last_inputs[name][edge_data["to_socket"].name] = []
-
-                        if name != sender_component_name:
-                            continue
-
-                        pair = (receiver_component_name, self.graph.nodes[receiver_component_name]["instance"])
-                        if edge_data["from_socket"].name not in res:
-                            # The component didn't produce any output for this socket.
-                            # We can't run the receiver, let's remove it from the list of components to run
-                            # or we risk running it if it's in those lists.
-                            if pair in to_run:
-                                to_run.remove(pair)
-                            if pair in waiting_for_input:
-                                waiting_for_input.remove(pair)
-                            continue
-
-                        if receiver_component_name not in last_inputs:
-                            last_inputs[receiver_component_name] = {}
-                        to_remove_from_res.add(edge_data["from_socket"].name)
-                        value = res[edge_data["from_socket"].name]
-
-                        if edge_data["to_socket"].is_variadic:
-                            if edge_data["to_socket"].name not in last_inputs[receiver_component_name]:
-                                last_inputs[receiver_component_name][edge_data["to_socket"].name] = []
-                            # Add to the list of variadic inputs
-                            last_inputs[receiver_component_name][edge_data["to_socket"].name].append(value)
-                        else:
-                            last_inputs[receiver_component_name][edge_data["to_socket"].name] = value
-
-                        is_greedy = pair[1].__haystack_is_greedy__
-                        is_variadic = edge_data["to_socket"].is_variadic
-                        if is_variadic and is_greedy:
-                            # If the receiver is greedy, we can run it right away.
-                            # First we remove it from the lists it's in if it's there or we risk running it multiple times.
-                            if pair in to_run:
-                                to_run.remove(pair)
-                            if pair in waiting_for_input:
-                                waiting_for_input.remove(pair)
-                            to_run.append(pair)
-
-                        if pair not in waiting_for_input and pair not in to_run:
-                            to_run.append(pair)
-
-                    res = {k: v for k, v in res.items() if k not in to_remove_from_res}
+                    self._dequeue_components_that_received_no_input(name, res, to_run, waiting_for_input)
+                    res = self._distribute_output(name, res, last_inputs, to_run, waiting_for_input)
 
                     if len(res) > 0:
                         final_outputs[name] = res

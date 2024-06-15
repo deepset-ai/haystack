@@ -816,6 +816,122 @@ class PipelineBase:
         for node in self.graph.nodes:
             self.graph.nodes[node]["visits"] = 0
 
+    def _dequeue_components_that_received_no_input(
+        self,
+        component_name: str,
+        component_result: Dict[str, Any],
+        to_run: List[Tuple[str, Component]],
+        waiting_for_input: List[Tuple[str, Component]],
+    ):
+        """
+        Removes Components that didn't receive any input from the list of Components to run.
+
+        We can't run those Components if they didn't receive any input, even if it's optional.
+        This is mainly useful for Components that have conditional outputs.
+
+        :param component_name: Name of the Component that created the output
+        :param component_result: The output of the Component
+        :param to_run: Queue of Components to run
+        :param waiting_for_input: Queue of Components waiting for input
+        """
+        instance: Component = self.graph.nodes[component_name]["instance"]
+        for socket_name, socket in instance.__haystack_output__._sockets_dict.items():  # type: ignore
+            if socket_name in component_result:
+                continue
+            for receiver in socket.receivers:
+                receiver_instance: Component = self.graph.nodes[receiver]["instance"]
+                pair = (receiver, receiver_instance)
+                if pair in to_run:
+                    to_run.remove(pair)
+                if pair in waiting_for_input:
+                    waiting_for_input.remove(pair)
+
+    def _distribute_output(
+        self,
+        component_name: str,
+        component_result: Dict[str, Any],
+        inputs_by_component: Dict[str, Dict[str, Any]],
+        to_run: List[Tuple[str, Component]],
+        waiting_for_input: List[Tuple[str, Component]],
+    ) -> Dict[str, Any]:
+        """
+        Distributes the output of a Component to the next Components that need it.
+
+        This also updates the queues that keep track of which Components are ready to run and which are waiting for input.
+
+        :param component_name: Name of the Component that created the output
+        :param component_result: The output of the Component
+        :paramt inputs_by_component: The current state of the inputs divided by Component name
+        :param to_run: Queue of Components to run
+        :param waiting_for_input: Queue of Components waiting for input
+
+        :return: The updated output of the Component without the keys that were distributed to other Components
+        """
+        # We keep track of which keys to remove from component_result at the end of the loop.
+        # This is done after the output has been distributed to the next components, so that
+        # we're sure all components that need this output have received it.
+        to_remove_from_component_result = set()
+
+        for _, receiver_name, connection in self.graph.edges(nbunch=component_name, data=True):
+            sender_socket: OutputSocket = connection["from_socket"]
+            receiver_socket: InputSocket = connection["to_socket"]
+
+            if sender_socket.name not in component_result:
+                # This output wasn't created by the sender, nothing we can do.
+                #
+                # Some Components might have conditional outputs, so we need to check if they actually returned
+                # some output while iterating over their output sockets.
+                #
+                # A perfect example of this would be the ConditionalRouter, which will have an output for each
+                # condition it has been initialized with.
+                # Though it will return only one output at a time.
+                continue
+
+            if receiver_name not in inputs_by_component:
+                inputs_by_component[receiver_name] = {}
+
+            # We keep track of the keys that were distributed to other Components.
+            # This key will be removed from component_result at the end of the loop.
+            to_remove_from_component_result.add(sender_socket.name)
+
+            value = component_result[sender_socket.name]
+
+            if receiver_socket.is_variadic:
+                # Usually Component inputs can only be received from one sender, the Variadic type allows
+                # instead to receive inputs from multiple senders.
+                #
+                # To keep track of all the inputs received internally we always store them in a list.
+                if receiver_socket.name not in inputs_by_component[receiver_name]:
+                    # Create the list if it doesn't exist
+                    inputs_by_component[receiver_name][receiver_socket.name] = []
+                else:
+                    # Check if the value is actually a list
+                    assert isinstance(inputs_by_component[receiver_name][receiver_socket.name], list)
+                inputs_by_component[receiver_name][receiver_socket.name].append(value)
+            else:
+                inputs_by_component[receiver_name][receiver_socket.name] = value
+
+            receiver = self.graph.nodes[receiver_name]["instance"]
+            pair = (receiver_name, receiver)
+
+            is_greedy = getattr(receiver, "__haystack_is_greedy__", False)
+            if receiver_socket.is_variadic and is_greedy:
+                # If the receiver is greedy, we can run it as soon as possible.
+                # First we remove it from the status lists it's in if it's there or we risk running it multiple times.
+                if pair in to_run:
+                    to_run.remove(pair)
+                if pair in waiting_for_input:
+                    waiting_for_input.remove(pair)
+                to_run.append(pair)
+
+            if pair not in waiting_for_input and pair not in to_run:
+                # Queue up the Component that received this input to run, only if it's not already waiting
+                # for input or already ready to run.
+                to_run.append(pair)
+
+        # Returns the output without the keys that were distributed to other Components
+        return {k: v for k, v in component_result.items() if k not in to_remove_from_component_result}
+
 
 def _connections_status(
     sender_node: str, receiver_node: str, sender_sockets: List[OutputSocket], receiver_sockets: List[InputSocket]

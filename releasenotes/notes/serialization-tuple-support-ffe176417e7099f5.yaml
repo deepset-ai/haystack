@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Pipeline serialization to YAML now supports tuples as field values.
