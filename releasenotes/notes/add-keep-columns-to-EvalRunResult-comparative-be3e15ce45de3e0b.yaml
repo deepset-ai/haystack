@@ -1,0 +1,5 @@
+---
+
+enhancements:
+  - |
+    The `comparative_individual_scores_report()` from `EvaluationRunResult` as a parameter to specify columns to keep in the comparative Dataframe
