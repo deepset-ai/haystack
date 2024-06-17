@@ -86,10 +86,7 @@ class Pipeline(PipelineBase):
                     inputs[socket.name] = []
 
             if not isinstance(res, Mapping):
-                raise PipelineRuntimeError(
-                    f"Component '{name}' didn't return a dictionary. "
-                    "Components must always return dictionaries: check the the documentation."
-                )
+                raise PipelineRuntimeError(f"Component '{name}' didn't return a dictionary. " "Components must always return dictionaries: check the the documentation.")
             span.set_tag("haystack.component.visits", self.graph.nodes[name]["visits"])
             span.set_content_tag("haystack.component.output", res)
 
@@ -274,18 +271,15 @@ class Pipeline(PipelineBase):
                     # Check if we're stuck in a loop.
                     # It's important to check whether previous waitings are None as it could be that no
                     # Component has actually been run yet.
-                    if (
-                        before_last_waiting_for_input is not None
-                        and last_waiting_for_input is not None
-                        and before_last_waiting_for_input == last_waiting_for_input
-                    ):
+                    if before_last_waiting_for_input is not None and last_waiting_for_input is not None and before_last_waiting_for_input == last_waiting_for_input:
                         # Are we actually stuck or there's a lazy variadic or a component with has only default inputs waiting for input?
                         # This is our last resort, if there's no lazy variadic or component with only default inputs waiting for input
                         # we're stuck for real and we can't make any progress.
                         for name, comp in waiting_for_input:
                             is_variadic = any(socket.is_variadic for socket in comp.__haystack_input__._sockets_dict.values())  # type: ignore
                             has_only_defaults = all(
-                                not socket.is_mandatory for socket in comp.__haystack_input__._sockets_dict.values()  # type: ignore
+                                not socket.is_mandatory
+                                for socket in comp.__haystack_input__._sockets_dict.values()  # type: ignore
                             )
                             if is_variadic and not comp.__haystack_is_greedy__ or has_only_defaults:  # type: ignore[attr-defined]
                                 break
@@ -315,9 +309,7 @@ class Pipeline(PipelineBase):
 
                         continue
 
-                    before_last_waiting_for_input = (
-                        last_waiting_for_input.copy() if last_waiting_for_input is not None else None
-                    )
+                    before_last_waiting_for_input = last_waiting_for_input.copy() if last_waiting_for_input is not None else None
                     last_waiting_for_input = {item[0] for item in waiting_for_input}
 
                     # Remove from waiting only if there is actually enough input to run
@@ -334,7 +326,8 @@ class Pipeline(PipelineBase):
                                     continue
                                 there_are_only_lazy_variadics &= (
                                     any(
-                                        socket.is_variadic for socket in other_comp.__haystack_input__._sockets_dict.values()  # type: ignore
+                                        socket.is_variadic
+                                        for socket in other_comp.__haystack_input__._sockets_dict.values()  # type: ignore
                                     )
                                     and not other_comp.__haystack_is_greedy__  # type: ignore[attr-defined]
                                 )
@@ -349,7 +342,8 @@ class Pipeline(PipelineBase):
                         # If a Component A with defaults is added before a Component B that has no defaults, but in the Pipeline
                         # logic A must be executed after B it could run instead before if we don't do this check.
                         has_only_defaults = all(
-                            not socket.is_mandatory for socket in comp.__haystack_input__._sockets_dict.values()  # type: ignore
+                            not socket.is_mandatory
+                            for socket in comp.__haystack_input__._sockets_dict.values()  # type: ignore
                         )
                         if has_only_defaults:
                             there_are_only_components_with_defaults = True
@@ -357,7 +351,8 @@ class Pipeline(PipelineBase):
                                 if name == other_name:
                                     continue
                                 there_are_only_components_with_defaults &= all(
-                                    not s.is_mandatory for s in other_comp.__haystack_input__._sockets_dict.values()  # type: ignore
+                                    not s.is_mandatory
+                                    for s in other_comp.__haystack_input__._sockets_dict.values()  # type: ignore
                                 )
                             if not there_are_only_components_with_defaults:
                                 continue
