@@ -2,4 +2,4 @@
 
 enhancements:
   - |
-    The `comparative_individual_scores_report()` from `EvaluationRunResult` as a parameter to specify columns to keep in the comparative Dataframe
+    Added a new parameter to `EvaluationRunResult.comparative_individual_scores_report()` to specify columns to keep in the comparative DataFrame.
