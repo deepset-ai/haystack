@@ -49,7 +49,7 @@ class Sockets:
     >>>   - documents: Any
 
     inputs.question
-    >>> InputSocket(name='question', type=typing.Any, default_value=<class 'haystack.core.component.types._empty'>, is_variadic=False, senders=[])
+    >>> InputSocket(name='question', type=typing.Any, default_value=<class 'haystack.core.component.types._empty'>, ...
     ```
     """
 

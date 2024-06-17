@@ -3,69 +3,69 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-    Attributes:
+Attributes:
 
-        component: Marks a class as a component. Any class decorated with `@component` can be used by a Pipeline.
+    component: Marks a class as a component. Any class decorated with `@component` can be used by a Pipeline.
 
-    All components must follow the contract below. This docstring is the source of truth for components contract.
+All components must follow the contract below. This docstring is the source of truth for components contract.
 
-    <hr>
+<hr>
 
-    `@component` decorator
+`@component` decorator
 
-    All component classes must be decorated with the `@component` decorator. This allows Canals to discover them.
+All component classes must be decorated with the `@component` decorator. This allows Canals to discover them.
 
-    <hr>
+<hr>
 
-    `__init__(self, **kwargs)`
+`__init__(self, **kwargs)`
 
-    Optional method.
+Optional method.
 
-    Components may have an `__init__` method where they define:
+Components may have an `__init__` method where they define:
 
-    - `self.init_parameters = {same parameters that the __init__ method received}`:
-        In this dictionary you can store any state the components wish to be persisted when they are saved.
-        These values will be given to the `__init__` method of a new instance when the pipeline is loaded.
-        Note that by default the `@component` decorator saves the arguments automatically.
-        However, if a component sets their own `init_parameters` manually in `__init__()`, that will be used instead.
-        Note: all of the values contained here **must be JSON serializable**. Serialize them manually if needed.
+- `self.init_parameters = {same parameters that the __init__ method received}`:
+    In this dictionary you can store any state the components wish to be persisted when they are saved.
+    These values will be given to the `__init__` method of a new instance when the pipeline is loaded.
+    Note that by default the `@component` decorator saves the arguments automatically.
+    However, if a component sets their own `init_parameters` manually in `__init__()`, that will be used instead.
+    Note: all of the values contained here **must be JSON serializable**. Serialize them manually if needed.
 
-    Components should take only "basic" Python types as parameters of their `__init__` function, or iterables and
-    dictionaries containing only such values. Anything else (objects, functions, etc) will raise an exception at init
-    time. If there's the need for such values, consider serializing them to a string.
+Components should take only "basic" Python types as parameters of their `__init__` function, or iterables and
+dictionaries containing only such values. Anything else (objects, functions, etc) will raise an exception at init
+time. If there's the need for such values, consider serializing them to a string.
 
-    _(TODO explain how to use classes and functions in init. In the meantime see `test/components/test_accumulate.py`)_
+_(TODO explain how to use classes and functions in init. In the meantime see `test/components/test_accumulate.py`)_
 
-    The `__init__` must be extremely lightweight, because it's a frequent operation during the construction and
-    validation of the pipeline. If a component has some heavy state to initialize (models, backends, etc...) refer to
-    the `warm_up()` method.
+The `__init__` must be extremely lightweight, because it's a frequent operation during the construction and
+validation of the pipeline. If a component has some heavy state to initialize (models, backends, etc...) refer to
+the `warm_up()` method.
 
-    <hr>
+<hr>
 
-    `warm_up(self)`
+`warm_up(self)`
 
-    Optional method.
+Optional method.
 
-    This method is called by Pipeline before the graph execution. Make sure to avoid double-initializations,
-    because Pipeline will not keep track of which components it called `warm_up()` on.
+This method is called by Pipeline before the graph execution. Make sure to avoid double-initializations,
+because Pipeline will not keep track of which components it called `warm_up()` on.
 
-    <hr>
+<hr>
 
-    `run(self, data)`
+`run(self, data)`
 
-    Mandatory method.
+Mandatory method.
 
-    This is the method where the main functionality of the component should be carried out. It's called by
-    `Pipeline.run()`.
+This is the method where the main functionality of the component should be carried out. It's called by
+`Pipeline.run()`.
 
-    When the component should run, Pipeline will call this method with an instance of the dataclass returned by the
-    method decorated with `@component.input`. This dataclass contains:
+When the component should run, Pipeline will call this method with an instance of the dataclass returned by the
+method decorated with `@component.input`. This dataclass contains:
 
-    - all the input values coming from other components connected to it,
-    - if any is missing, the corresponding value defined in `self.defaults`, if it exists.
+- all the input values coming from other components connected to it,
+- if any is missing, the corresponding value defined in `self.defaults`, if it exists.
 
-    `run()` must return a single instance of the dataclass declared through the method decorated with
-    `@component.output`.
+`run()` must return a single instance of the dataclass declared through the method decorated with
+`@component.output`.
 
 """
 
@@ -416,7 +416,8 @@ class _Component:
         if class_path in self.registry:
             # Corner case, but it may occur easily in notebooks when re-running cells.
             logger.debug(
-                "Component {component} is already registered. Previous imported from '{module_name}', new imported from '{new_module_name}'",
+                "Component {component} is already registered. Previous imported from '{module_name}', \
+                new imported from '{new_module_name}'",
                 component=class_path,
                 module_name=self.registry[class_path],
                 new_module_name=cls,

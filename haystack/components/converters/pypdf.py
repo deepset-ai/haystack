@@ -104,7 +104,8 @@ class PyPDFToDocument:
                 converter = CONVERTERS_REGISTRY[converter_name]
             except KeyError:
                 msg = (
-                    f"Invalid converter_name: {converter_name}.\n Available converters: {list(CONVERTERS_REGISTRY.keys())}"
+                    f"Invalid converter_name: {converter_name}.\n "
+                    f"Available converters: {list(CONVERTERS_REGISTRY.keys())}"
                     f"To specify a custom converter, it is recommended to use the `converter` parameter."
                 )
                 raise ValueError(msg) from KeyError
@@ -158,7 +159,8 @@ class PyPDFToDocument:
             Optional metadata to attach to the Documents.
             This value can be either a list of dictionaries or a single dictionary.
             If it's a single dictionary, its content is added to the metadata of all produced Documents.
-            If it's a list, the length of the list must match the number of sources, because the two lists will be zipped.
+            If it's a list, the length of the list must match the number of sources, because the two lists will
+            be zipped.
             If `sources` contains ByteStream objects, their `meta` will be added to the output Documents.
 
         :returns:

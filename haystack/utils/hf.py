@@ -136,7 +136,7 @@ def deserialize_hf_model_kwargs(kwargs: Dict[str, Any]):
 
 def resolve_hf_device_map(device: Optional[ComponentDevice], model_kwargs: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     """
-    Update `model_kwargs` to include the keyword argument `device_map` based on `device` if `device_map` is not already present in `model_kwargs`.
+    Update `model_kwargs` to include the keyword argument `device_map`.
 
     This method is useful you want to force loading a transformers model when using `AutoModel.from_pretrained` to
     use `device_map`.
@@ -260,6 +260,9 @@ def check_valid_model(model_id: str, model_type: HFModelType, token: Optional[Se
     elif model_type == HFModelType.GENERATION:
         allowed_model = model_info.pipeline_tag in ["text-generation", "text2text-generation"]
         error_msg = f"Model {model_id} is not a text generation model. Please provide a text generation model."
+    else:
+        allowed_model = False
+        error_msg = f"Unknown model type for {model_id}"
 
     if not allowed_model:
         raise ValueError(error_msg)

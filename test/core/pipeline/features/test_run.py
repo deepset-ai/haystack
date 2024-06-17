@@ -691,7 +691,10 @@ def pipeline_that_has_a_greedy_and_variadic_component_after_a_component_with_def
 @given("a pipeline that has a component that doesn't return a dictionary", target_fixture="pipeline_data")
 def pipeline_that_has_a_component_that_doesnt_return_a_dictionary():
     BrokenComponent = component_class(
-        "BrokenComponent", input_types={"a": int}, output_types={"b": int}, output=1  # type:ignore
+        "BrokenComponent",
+        input_types={"a": int},
+        output_types={"b": int},
+        output=1,  # type:ignore
     )
 
     pipe = Pipeline(max_loops_allowed=10)

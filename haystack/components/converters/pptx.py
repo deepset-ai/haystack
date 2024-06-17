@@ -71,7 +71,8 @@ class PPTXToDocument:
             Optional metadata to attach to the Documents.
             This value can be either a list of dictionaries or a single dictionary.
             If it's a single dictionary, its content is added to the metadata of all produced Documents.
-            If it's a list, the length of the list must match the number of sources, because the two lists will be zipped.
+            If it's a list, the length of the list must match the number of sources, because the two lists will
+            be zipped.
             If `sources` contains ByteStream objects, their `meta` will be added to the output Documents.
 
         :returns:

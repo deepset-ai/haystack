@@ -26,4 +26,6 @@ class Concatenate:
             res = first + [second]
         elif isinstance(first, str) and isinstance(second, list):
             res = [first] + second
+        else:
+            res = None
         return {"value": res}
