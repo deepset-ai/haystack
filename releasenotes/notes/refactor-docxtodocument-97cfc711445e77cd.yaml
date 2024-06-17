@@ -1,4 +1,0 @@
----
-enhancements:
-  - |
-    Nest the docx metadata under the metadata key 'docx' and save the metadata in a dataclass object called DocxMetadata.
