@@ -196,3 +196,66 @@ def test_comparative_individual_scores_report():
         '"testing_pipeline_2_faithfulness":{"0":0.135581,"1":0.695974},'
         '"testing_pipeline_2_semantic_answer_similarity":{"0":0.971241,"1":0.15932}}'
     )
+
+
+def test_comparative_individual_scores_report_keep_truth_answer_in_df():
+    data_1 = {
+        "inputs": {
+            "query_id": ["53c3b3e6", "225f87f7"],
+            "question": ["What is the capital of France?", "What is the capital of Spain?"],
+            "contexts": ["wiki_France", "wiki_Spain"],
+            "answer": ["Paris", "Madrid"],
+            "predicted_answer": ["Paris", "Madrid"],
+        },
+        "metrics": {
+            "reciprocal_rank": {"individual_scores": [0.378064, 0.534964], "score": 0.476932},
+            "single_hit": {"individual_scores": [1, 1], "score": 0.75},
+            "multi_hit": {"individual_scores": [0.706125, 0.454976], "score": 0.46428375},
+            "context_relevance": {"individual_scores": [0.805466, 0.410251], "score": 0.58177975},
+            "faithfulness": {"individual_scores": [0.135581, 0.695974], "score": 0.40585375},
+            "semantic_answer_similarity": {"individual_scores": [0.971241, 0.159320], "score": 0.53757075},
+        },
+    }
+
+    data_2 = {
+        "inputs": {
+            "query_id": ["53c3b3e6", "225f87f7"],
+            "question": ["What is the capital of France?", "What is the capital of Spain?"],
+            "contexts": ["wiki_France", "wiki_Spain"],
+            "answer": ["Paris", "Madrid"],
+            "predicted_answer": ["Paris", "Madrid"],
+        },
+        "metrics": {
+            "reciprocal_rank": {"individual_scores": [0.378064, 0.534964], "score": 0.476932},
+            "single_hit": {"individual_scores": [1, 1], "score": 0.75},
+            "multi_hit": {"individual_scores": [0.706125, 0.454976], "score": 0.46428375},
+            "context_relevance": {"individual_scores": [0.805466, 0.410251], "score": 0.58177975},
+            "faithfulness": {"individual_scores": [0.135581, 0.695974], "score": 0.40585375},
+            "semantic_answer_similarity": {"individual_scores": [0.971241, 0.159320], "score": 0.53757075},
+        },
+    }
+
+    result1 = EvaluationRunResult("testing_pipeline_1", inputs=data_1["inputs"], results=data_1["metrics"])
+    result2 = EvaluationRunResult("testing_pipeline_2", inputs=data_2["inputs"], results=data_2["metrics"])
+    results = result1.comparative_individual_scores_report(result2, keep_columns=["predicted_answer"])
+
+    assert list(results.columns) == [
+        "query_id",
+        "question",
+        "contexts",
+        "answer",
+        "testing_pipeline_1_predicted_answer",
+        "testing_pipeline_1_reciprocal_rank",
+        "testing_pipeline_1_single_hit",
+        "testing_pipeline_1_multi_hit",
+        "testing_pipeline_1_context_relevance",
+        "testing_pipeline_1_faithfulness",
+        "testing_pipeline_1_semantic_answer_similarity",
+        "testing_pipeline_2_predicted_answer",
+        "testing_pipeline_2_reciprocal_rank",
+        "testing_pipeline_2_single_hit",
+        "testing_pipeline_2_multi_hit",
+        "testing_pipeline_2_context_relevance",
+        "testing_pipeline_2_faithfulness",
+        "testing_pipeline_2_semantic_answer_similarity",
+    ]
