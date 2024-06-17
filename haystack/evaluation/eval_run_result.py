@@ -4,7 +4,7 @@
 
 from abc import ABC, abstractmethod
 from copy import deepcopy
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from warnings import warn
 
 from pandas import DataFrame
@@ -35,7 +35,9 @@ class BaseEvaluationRunResult(ABC):
         """
 
     @abstractmethod
-    def comparative_individual_scores_report(self, other: "BaseEvaluationRunResult") -> "DataFrame":
+    def comparative_individual_scores_report(
+        self, other: "BaseEvaluationRunResult", keep_columns: Optional[List[str]] = None
+    ) -> "DataFrame":
         """
         Creates a Pandas DataFrame with the scores for each metric in the results of two different evaluation runs.
 
@@ -43,6 +45,8 @@ class BaseEvaluationRunResult(ABC):
 
         :param other:
             Results of another evaluation run to compare with.
+        :param keep_columns:
+            List of common column names to keep from the inputs of the evaluation runs to compare.
         :returns:
             Pandas DataFrame with the score comparison.
         """
@@ -114,7 +118,9 @@ class EvaluationRunResult(BaseEvaluationRunResult):
 
         return df_inputs.join(df_scores)
 
-    def comparative_individual_scores_report(self, other: "BaseEvaluationRunResult") -> DataFrame:  # noqa: D102
+    def comparative_individual_scores_report(  # noqa: D102
+        self, other: "BaseEvaluationRunResult", keep_columns: Optional[List[str]] = None
+    ) -> DataFrame:
         if not isinstance(other, EvaluationRunResult):
             raise ValueError("Comparative scores can only be computed between EvaluationRunResults.")
 
@@ -131,7 +137,11 @@ class EvaluationRunResult(BaseEvaluationRunResult):
         pipe_a_df = self.to_pandas()
         pipe_b_df = other.to_pandas()
 
-        ignore = list(self.inputs.keys())
+        if keep_columns is None:
+            ignore = list(self.inputs.keys())
+        else:
+            ignore = [col for col in list(self.inputs.keys()) if col not in keep_columns]
+
         pipe_b_df.drop(columns=ignore, inplace=True, errors="ignore")
         pipe_b_df.columns = [f"{other_name}_{column}" for column in pipe_b_df.columns]  # type: ignore
         pipe_a_df.columns = [
