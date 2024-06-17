@@ -36,7 +36,7 @@ class BaseEvaluationRunResult(ABC):
 
     @abstractmethod
     def comparative_individual_scores_report(
-        self, other: "BaseEvaluationRunResult", keep_columns: Optional[List[str]]
+        self, other: "BaseEvaluationRunResult", keep_columns: Optional[List[str]] = None
     ) -> "DataFrame":
         """
         Creates a Pandas DataFrame with the scores for each metric in the results of two different evaluation runs.
