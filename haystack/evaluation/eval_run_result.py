@@ -120,7 +120,7 @@ class EvaluationRunResult(BaseEvaluationRunResult):
 
     def comparative_individual_scores_report(  # noqa: D102
         self, other: "BaseEvaluationRunResult", keep_columns: List[str]  # noqa: D102
-    ) -> DataFrame:  # noqa: D102
+    ) -> DataFrame:
         if not isinstance(other, EvaluationRunResult):
             raise ValueError("Comparative scores can only be computed between EvaluationRunResults.")
 
