@@ -50,7 +50,7 @@ class AzureOpenAIDocumentEmbedder:
         embedding_separator: str = "\n",
     ):
         """
-        Create an AzureOpenAITextEmbedder component.
+        Create an AzureOpenAIDocumentEmbedder component.
 
         :param azure_endpoint:
             The endpoint of the deployed model.
