@@ -25,21 +25,21 @@ class DocxMetadata:
     """
     Describes the metadata of Docx file.
 
-    :param author: The author of the docx document.
-    :param category: The category of the docx document.
-    :param comments: The comments from the docx document.
-    :param content_status: The content status of the docx document.
-    :param created: The creation date of the docx document.
-    :param identifier: The identifier of the docx document.
-    :param keywords: The keywords from the docx document.
-    :param language: The language of the docx document.
-    :param last_modified_by: The last modified by user of the docx document.
-    :param last_printed: The last printed date of the docx document.
-    :param modified: The last modification date of the docx document.
-    :param revision: The revision number of the docx document.
-    :param subject: The subject of the docx document.
-    :param title: The title of the dox document.
-    :param version: The version of the docx document.
+    :param author: The author
+    :param category: The category
+    :param comments: The comments
+    :param content_status: The content status
+    :param created: The creation date
+    :param identifier: The identifier
+    :param keywords: Available keywords
+    :param language: The language of the document
+    :param last_modified_by: The last modified by user date
+    :param last_printed: The last printed date
+    :param modified: The last modification date
+    :param revision: The revision number
+    :param subject: The subject
+    :param title: The title
+    :param version: The version
     """
 
     author: str
