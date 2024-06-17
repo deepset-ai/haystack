@@ -48,7 +48,7 @@ classifiers = [
 dependencies = [
   "pandas",
   "tqdm",
-  "tenacity",
+  "tenacity!=8.4.0",
   "lazy-imports",
   "openai>=1.1.0",
   "Jinja2",
@@ -58,7 +58,7 @@ dependencies = [
   "networkx", # Pipeline graphs
   "typing_extensions>=4.7", # typing support for Python 3.8
   "requests",
-  "numpy",
+  "numpy<2",
   "python-dateutil",
 ]
 
