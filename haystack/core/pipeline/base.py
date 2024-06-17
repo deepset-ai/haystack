@@ -889,6 +889,80 @@ class PipelineBase:
         # Returns the output without the keys that were distributed to other Components
         return {k: v for k, v in component_result.items() if k not in to_remove_from_component_result}
 
+    def _enqueue_next_runnable_component(
+        self,
+        inputs_by_component: Dict[str, Dict[str, Any]],
+        to_run: List[Tuple[str, Component]],
+        waiting_for_input: List[Tuple[str, Component]],
+    ):
+        """
+        Finds the next Component that can be run and adds it to the queue of Components to run.
+
+        :param inputs_by_component: The current state of the inputs divided by Component name
+        :param to_run: Queue of Components to run
+        :param waiting_for_input: Queue of Components waiting for input
+        """
+        for name, comp in waiting_for_input:
+            if name not in inputs_by_component:
+                inputs_by_component[name] = {}
+
+            # Lazy variadics must be removed only if there's nothing else to run at this stage
+            is_variadic = any(socket.is_variadic for socket in comp.__haystack_input__._sockets_dict.values())  # type: ignore
+            if is_variadic and not comp.__haystack_is_greedy__:  # type: ignore[attr-defined]
+                there_are_only_lazy_variadics = True
+                for other_name, other_comp in waiting_for_input:
+                    if name == other_name:
+                        continue
+                    there_are_only_lazy_variadics &= (
+                        any(
+                            socket.is_variadic
+                            for socket in other_comp.__haystack_input__._sockets_dict.values()  # type: ignore
+                        )
+                        and not other_comp.__haystack_is_greedy__  # type: ignore[attr-defined]
+                    )
+
+                if not there_are_only_lazy_variadics:
+                    continue
+
+            # Components that have defaults for all their inputs must be treated the same identical way as we treat
+            # lazy variadic components. If there are only components with defaults we can run them.
+            # If we don't do this the order of execution of the Pipeline's Components will be affected cause we
+            # enqueue the Components in `to_run` at the start using the order they are added in the Pipeline.
+            # If a Component A with defaults is added before a Component B that has no defaults, but in the Pipeline
+            # logic A must be executed after B it could run instead before if we don't do this check.
+            has_only_defaults = all(
+                not socket.is_mandatory
+                for socket in comp.__haystack_input__._sockets_dict.values()  # type: ignore
+            )
+            if has_only_defaults:
+                there_are_only_components_with_defaults = True
+                for other_name, other_comp in waiting_for_input:
+                    if name == other_name:
+                        continue
+                    there_are_only_components_with_defaults &= all(
+                        not s.is_mandatory
+                        for s in other_comp.__haystack_input__._sockets_dict.values()  # type: ignore
+                    )
+                if not there_are_only_components_with_defaults:
+                    continue
+
+            # Find the first component that has all the inputs it needs to run
+            has_enough_inputs = True
+            for input_socket in comp.__haystack_input__._sockets_dict.values():  # type: ignore
+                if input_socket.is_mandatory and input_socket.name not in inputs_by_component[name]:
+                    has_enough_inputs = False
+                    break
+                if input_socket.is_mandatory:
+                    continue
+
+                if input_socket.name not in inputs_by_component[name]:
+                    inputs_by_component[name][input_socket.name] = input_socket.default_value
+            if has_enough_inputs:
+                break
+
+        waiting_for_input.remove((name, comp))
+        to_run.append((name, comp))
+
 
 def _connections_status(sender_node: str, receiver_node: str, sender_sockets: List[OutputSocket], receiver_sockets: List[InputSocket]):
     """
