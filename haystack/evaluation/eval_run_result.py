@@ -46,7 +46,7 @@ class BaseEvaluationRunResult(ABC):
         :param other:
             Results of another evaluation run to compare with.
         :param keep_columns:
-            List of columns to keep from the inputs.
+            List of common column names to keep from the inputs of the evaluation runs to compare.
         :returns:
             Pandas DataFrame with the score comparison.
         """
