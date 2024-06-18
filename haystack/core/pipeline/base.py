@@ -906,7 +906,8 @@ class PipelineBase:
             if name not in inputs_by_component:
                 inputs_by_component[name] = {}
 
-            # Lazy variadics must be removed only if there's nothing else to run at this stage
+            # Components with variadic inputs that are not greedy must be removed only if there's nothing else to run at this stage.
+            # We need to wait as long as possible to run them, so we can collect as most inputs as we can.
             is_variadic = any(socket.is_variadic for socket in comp.__haystack_input__._sockets_dict.values())  # type: ignore
             if is_variadic and not comp.__haystack_is_greedy__:  # type: ignore[attr-defined]
                 there_are_only_lazy_variadics = True
