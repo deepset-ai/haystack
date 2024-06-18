@@ -49,7 +49,7 @@ jobs:
         run: hatch run format-check
 
       - name: Check linting
-        run: hatch run lint
+        run: hatch run check
 
       - name: Check presence of license header
         run: docker run --rm -v "$(pwd):/github/workspace" ghcr.io/korandoru/hawkeye check
