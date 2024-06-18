@@ -45,7 +45,8 @@ class DocumentSplitter:
             "sentence" for splitting by ".", "page" for splitting by "\\f" or "passage" for splitting by "\\n\\n".
         :param split_length: The maximum number of units in each split.
         :param split_overlap: The number of units that each split should overlap.
-        :param split_threshold: The minimum number of units that the split should have. If the split has fewer units than the threshold, it will be attached to the previous split.
+        :param split_threshold: The minimum number of units that the split should have. If the split has fewer units
+            than the threshold, it will be attached to the previous split.
         """
 
         self.split_by = split_by
@@ -71,8 +72,9 @@ class DocumentSplitter:
 
         :returns: A dictionary with the following key:
             - `documents`: List of documents with the split texts. A metadata field "source_id" is added to each
-            document to keep track of the original document that was split. Another metadata field "page_number" is added to each number to keep track of the page it belonged to in the original document. Other metadata are copied from the original
-            document.
+            document to keep track of the original document that was split. Another metadata field "page_number"
+            is added to each number to keep track of the page it belonged to in the original document. Other metadata
+            are copied from the original document.
 
         :raises TypeError: if the input is not a list of Documents.
         :raises ValueError: if the content of a document is None.
@@ -85,7 +87,7 @@ class DocumentSplitter:
         for doc in documents:
             if doc.content is None:
                 raise ValueError(
-                    f"DocumentSplitter only works with text documents but document.content for document ID {doc.id} is None."
+                    f"DocumentSplitter only works with text documents but content for document ID {doc.id} is None."
                 )
             units = self._split_into_units(doc.content, self.split_by)
             text_splits, splits_pages = self._concatenate_units(
@@ -121,9 +123,11 @@ class DocumentSplitter:
         self, elements: List[str], split_length: int, split_overlap: int, split_threshold: int
     ) -> Tuple[List[str], List[int]]:
         """
-        Concatenates the elements into parts of split_length units keeping track of the original page number that each element belongs.
+        Concatenates the elements into parts of split_length units.
 
-        If the length of the current units is less than the pre-defined `split_threshold`, it does not create a new split. Instead, it concatenates the current units with the last split, preventing the creation of excessively small splits.
+        Keeps track of the original page number that each element belongs. If the length of the current units is less
+        than the pre-defined `split_threshold`, it does not create a new split. Instead, it concatenates the current
+        units with the last split, preventing the creation of excessively small splits.
         """
 
         text_splits: List[str] = []
@@ -151,7 +155,7 @@ class DocumentSplitter:
     @staticmethod
     def _create_docs_from_splits(text_splits: List[str], splits_pages: List[int], meta: Dict) -> List[Document]:
         """
-        Creates Document objects from text splits enriching them with page number and the metadata of the original document.
+        Creates Document objects from splits enriching them with page number and the metadata of the original document.
         """
         documents: List[Document] = []
 

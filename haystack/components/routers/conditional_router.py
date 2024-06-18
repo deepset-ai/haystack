@@ -111,8 +111,8 @@ class ConditionalRouter:
             - `condition`: A Jinja2 string expression that determines if the route is selected.
             - `output`: A Jinja2 expression defining the route's output value.
             - `output_type`: The type of the output data (e.g., str, List[int]).
-            - `output_name`: The name under which the `output` value of the route is published. This name is used to connect
-            the router to other components in the pipeline.
+            - `output_name`: The name under which the `output` value of the route is published. This name is used to
+                connect the router to other components in the pipeline.
         """
         self._validate_routes(routes)
         self.routes: List[dict] = routes
@@ -169,8 +169,9 @@ class ConditionalRouter:
         """
         Executes the routing logic.
 
-        Executes the routing logic by evaluating the specified boolean condition expressions for each route in the order they are listed.
-        The method directs the flow of data to the output specified in the first route whose `condition` is True.
+        Executes the routing logic by evaluating the specified boolean condition expressions for each route in the
+        order they are listed. The method directs the flow of data to the output specified in the first route whose
+        `condition` is True.
 
         :param kwargs: All variables used in the `condition` expressed in the routes. When the component is used in a
             pipeline, these variables are passed from the previous component's output.
@@ -179,7 +180,8 @@ class ConditionalRouter:
             of the selected route.
 
         :raises NoRouteSelectedException: If no `condition' in the routes is `True`.
-        :raises RouteConditionException: If there is an error parsing or evaluating the `condition` expression in the routes.
+        :raises RouteConditionException: If there is an error parsing or evaluating the `condition` expression in the
+            routes.
         """
         # Create a Jinja native environment to evaluate the condition templates as Python expressions
         env = NativeEnvironment()

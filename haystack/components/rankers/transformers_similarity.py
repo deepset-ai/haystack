@@ -251,9 +251,7 @@ class TransformersSimilarityRanker:
             text_to_embed = self.embedding_separator.join(meta_values_to_embed + [doc.content or ""])
             query_doc_pairs.append([self.query_prefix + query, self.document_prefix + text_to_embed])
 
-        features = self.tokenizer(
-            query_doc_pairs, padding=True, truncation=True, return_tensors="pt"
-        ).to(  # type: ignore
+        features = self.tokenizer(query_doc_pairs, padding=True, truncation=True, return_tensors="pt").to(  # type: ignore
             self.device.first_device.to_torch()
         )
         with torch.inference_mode():

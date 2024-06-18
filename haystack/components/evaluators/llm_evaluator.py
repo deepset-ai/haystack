@@ -318,7 +318,10 @@ class LLMEvaluator:
 
         # Validate that all received inputs are lists
         if not all(isinstance(_input, list) for _input in received.values()):
-            msg = f"LLM evaluator expects all input values to be lists but received {[type(_input) for _input in received.values()]}."
+            msg = (
+                "LLM evaluator expects all input values to be lists but received "
+                f"{[type(_input) for _input in received.values()]}."
+            )
             raise ValueError(msg)
 
         # Validate that all received inputs are of the same length

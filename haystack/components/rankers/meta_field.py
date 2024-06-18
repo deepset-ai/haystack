@@ -250,7 +250,8 @@ class MetaFieldRanker:
         # If all docs are missing self.meta_field return original documents
         if len(docs_with_meta_field) == 0:
             logger.warning(
-                "The parameter <meta_field> is currently set to '{meta_field}', but none of the provided Documents with IDs {document_ids} have this meta key.\n"
+                "The parameter <meta_field> is currently set to '{meta_field}', but none of the provided "
+                "Documents with IDs {document_ids} have this meta key.\n"
                 "Set <meta_field> to the name of a field that is present within the provided Documents.\n"
                 "Returning the <top_k> of the original Documents since there are no values to rank.",
                 meta_field=self.meta_field,
@@ -266,17 +267,20 @@ class MetaFieldRanker:
 
             if missing_meta == "bottom":
                 logger.warning(
-                    "{warning_start}Because the parameter <missing_meta> is set to 'bottom', these Documents will be placed at the end of the sorting order.",
+                    "{warning_start}Because the parameter <missing_meta> is set to 'bottom', these Documents will be "
+                    "placed at the end of the sorting order.",
                     warning_start=warning_start,
                 )
             elif missing_meta == "top":
                 logger.warning(
-                    "{warning_start}Because the parameter <missing_meta> is set to 'top', these Documents will be placed at the top of the sorting order.",
+                    "{warning_start}Because the parameter <missing_meta> is set to 'top', these Documents will be "
+                    "placed at the top of the sorting order.",
                     warning_start=warning_start,
                 )
             else:
                 logger.warning(
-                    "{warning_start}Because the parameter <missing_meta> is set to 'drop', these Documents will be removed from the list of retrieved Documents.",
+                    "{warning_start}Because the parameter <missing_meta> is set to 'drop', these Documents will be "
+                    "removed from the list of retrieved Documents.",
                     warning_start=warning_start,
                 )
 
@@ -345,7 +349,8 @@ class MetaFieldRanker:
             meta_values = [parse_fn(d.meta[self.meta_field]) for d in docs_with_meta_field]
         except ValueError as error:
             logger.warning(
-                "Tried to parse the meta values of Documents with IDs {document_ids}, but got ValueError with the message: {error}\n"
+                "Tried to parse the meta values of Documents with IDs {document_ids}, but got ValueError with the "
+                "message: {error}\n"
                 "Skipping parsing of the meta values.",
                 document_ids=",".join([doc.id for doc in docs_with_meta_field]),
                 error=error,

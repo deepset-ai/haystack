@@ -48,8 +48,8 @@ class OpenAIChatGenerator:
     ```
     {'replies':
         [ChatMessage(content='Natural Language Processing (NLP) is a branch of artificial intelligence
-                              that focuses on enabling computers to understand, interpret, and generate human language in
-                              a way that is meaningful and useful.',
+            that focuses on enabling computers to understand, interpret, and generate human language in
+            a way that is meaningful and useful.',
          role=<ChatRole.ASSISTANT: 'assistant'>, name=None,
          meta={'model': 'gpt-3.5-turbo-0613', 'index': 0, 'finish_reason': 'stop',
          'usage': {'prompt_tokens': 15, 'completion_tokens': 36, 'total_tokens': 51}})
@@ -58,7 +58,8 @@ class OpenAIChatGenerator:
     ```
 
      Key Features and Compatibility:
-      - Primary Compatibility: designed to work seamlessly with the OpenAI API Chat Completion endpoint and `gpt-4` and `gpt-3.5-turbo` family of models.
+      - Primary Compatibility: designed to work seamlessly with the OpenAI API Chat Completion endpoint and `gpt-4`
+        and `gpt-3.5-turbo` family of models.
       - Streaming Support: supports streaming responses from the OpenAI API Chat Completion endpoint.
       - Customizability: supports all parameters supported by the OpenAI API Chat Completion endpoint.
 
@@ -85,7 +86,8 @@ class OpenAIChatGenerator:
         Creates an instance of OpenAIChatGenerator. Unless specified otherwise in the `model`, this is for OpenAI's
         GPT-3.5 model.
 
-        By setting the 'OPENAI_TIMEOUT' and 'OPENAI_MAX_RETRIES' you can change the timeout and max_retries parameters in the OpenAI client.
+        By setting the 'OPENAI_TIMEOUT' and 'OPENAI_MAX_RETRIES' you can change the timeout and max_retries parameters
+        in the OpenAI client.
 
         :param api_key: The OpenAI API key.
         :param model: The name of the model to use.
@@ -114,9 +116,11 @@ class OpenAIChatGenerator:
             - `logit_bias`: Add a logit bias to specific tokens. The keys of the dictionary are tokens, and the
                 values are the bias to add to that token.
         :param timeout:
-            Timeout for OpenAI Client calls, if not set it is inferred from the `OPENAI_TIMEOUT` environment variable or set to 30.
+            Timeout for OpenAI Client calls, if not set it is inferred from the `OPENAI_TIMEOUT` environment variable
+            or set to 30.
         :param max_retries:
-            Maximum retries to stablish contact with OpenAI if it returns an internal error, if not set it is inferred from the `OPENAI_MAX_RETRIES` environment variable or set to 5.
+            Maximum retries to stablish contact with OpenAI if it returns an internal error, if not set it is inferred
+            from the `OPENAI_MAX_RETRIES` environment variable or set to 5.
         """
         self.api_key = api_key
         self.model = model

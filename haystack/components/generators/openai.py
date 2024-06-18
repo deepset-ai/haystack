@@ -65,18 +65,17 @@ class OpenAIGenerator:
         max_retries: Optional[int] = None,
     ):
         """
-        Creates an instance of OpenAIGenerator. Unless specified otherwise in the `model`, this is for OpenAI's GPT-3.5 model.
+        Creates an instance of OpenAIGenerator. Unless specified otherwise in the `model`, OpenAI's GPT-3.5 is used.
 
-        By setting the 'OPENAI_TIMEOUT' and 'OPENAI_MAX_RETRIES' you can change the timeout and max_retries parameters in the OpenAI client.
-
+        By setting the 'OPENAI_TIMEOUT' and 'OPENAI_MAX_RETRIES' you can change the timeout and max_retries parameters
+        in the OpenAI client.
 
         :param api_key: The OpenAI API key.
         :param model: The name of the model to use.
         :param streaming_callback: A callback function that is called when a new token is received from the stream.
             The callback function accepts StreamingChunk as an argument.
         :param api_base_url: An optional base URL.
-        :param organization: The Organization ID, defaults to `None`. See
-        [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization).
+        :param organization: The Organization ID, defaults to `None`.
         :param system_prompt: The system prompt to use for text generation. If not provided, the system prompt is
         omitted, and the default system prompt of the model is used.
         :param generation_kwargs: Other parameters to use for the model. These parameters are all sent directly to
@@ -99,9 +98,11 @@ class OpenAIGenerator:
             - `logit_bias`: Add a logit bias to specific tokens. The keys of the dictionary are tokens, and the
                 values are the bias to add to that token.
         :param timeout:
-            Timeout for OpenAI Client calls, if not set it is inferred from the `OPENAI_TIMEOUT` environment variable or set to 30.
+            Timeout for OpenAI Client calls, if not set it is inferred from the `OPENAI_TIMEOUT` environment variable
+            or set to 30.
         :param max_retries:
-            Maximum retries to establish contact with OpenAI if it returns an internal error, if not set it is inferred from the `OPENAI_MAX_RETRIES` environment variable or set to 5.
+            Maximum retries to establish contact with OpenAI if it returns an internal error, if not set it is inferred
+            from the `OPENAI_MAX_RETRIES` environment variable or set to 5.
 
         """
         self.api_key = api_key
@@ -176,8 +177,8 @@ class OpenAIGenerator:
             The string prompt to use for text generation.
         :param generation_kwargs:
             Additional keyword arguments for text generation. These parameters will potentially override the parameters
-            passed in the `__init__` method. For more details on the parameters supported by the OpenAI API, refer to the
-            OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat/create).
+            passed in the `__init__` method. For more details on the parameters supported by the OpenAI API, refer to
+            the OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat/create).
         :returns:
             A list of strings containing the generated responses and a list of dictionaries containing the metadata
         for each response.

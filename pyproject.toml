@@ -1,21 +1,15 @@
 [build-system]
-requires = [
-  "hatchling>=1.8.0",
-]
+requires = ["hatchling>=1.8.0"]
 build-backend = "hatchling.build"
 
 [project]
 name = "haystack-ai"
-dynamic = [
-  "version",
-]
+dynamic = ["version"]
 description = "LLM framework to build customizable, production-ready LLM applications. Connect components (models, vector DBs, file converters) to pipelines or agents that can interact with your data."
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.8"
-authors = [
-  { name = "deepset.ai", email = "malte.pietsch@deepset.ai" },
-]
+authors = [{ name = "deepset.ai", email = "malte.pietsch@deepset.ai" }]
 keywords = [
   "BERT",
   "QA",
@@ -52,10 +46,10 @@ dependencies = [
   "lazy-imports",
   "openai>=1.1.0",
   "Jinja2",
-  "posthog",  # telemetry
+  "posthog",                # telemetry
   "pyyaml",
-  "more-itertools",  # TextDocumentSplitter
-  "networkx", # Pipeline graphs
+  "more-itertools",         # TextDocumentSplitter
+  "networkx",               # Pipeline graphs
   "typing_extensions>=4.7", # typing support for Python 3.8
   "requests",
   "numpy<2",
@@ -76,15 +70,18 @@ dependencies = [
 
 [tool.hatch.envs.default.scripts]
 release-note = "reno new {args}"
-format = "ruff check {args:haystack} --fix"
+check = "ruff check {args}"
+fix = "ruff check --fix"
+format = "ruff format {args}"
+format-check = "ruff format --check {args}"
 
 [tool.hatch.envs.test]
 extra-dependencies = [
-  "transformers[torch,sentencepiece]==4.41.2",  # ExtractiveReader, TransformersSimilarityRanker, LocalWhisperTranscriber, HFGenerators...
-  "huggingface_hub>=0.23.0", # Hugging Face API Generators and Embedders
-  "sentence-transformers>=2.2.0",  # SentenceTransformersTextEmbedder and SentenceTransformersDocumentEmbedder
-  "langdetect",  # TextLanguageRouter and DocumentLanguageClassifier
-  "openai-whisper>=20231106",  # LocalWhisperTranscriber
+  "transformers[torch,sentencepiece]==4.41.2", # ExtractiveReader, TransformersSimilarityRanker, LocalWhisperTranscriber, HFGenerators...
+  "huggingface_hub>=0.23.0",                   # Hugging Face API Generators and Embedders
+  "sentence-transformers>=2.2.0",              # SentenceTransformersTextEmbedder and SentenceTransformersDocumentEmbedder
+  "langdetect",                                # TextLanguageRouter and DocumentLanguageClassifier
+  "openai-whisper>=20231106",                  # LocalWhisperTranscriber
 
   # NamedEntityExtractor
   "spacy>=3.7,<3.8",
@@ -92,15 +89,15 @@ extra-dependencies = [
   "en-core-web-trf @ https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.7.3/en_core_web_trf-3.7.3-py3-none-any.whl",
 
   # Converters
-  "pypdf",  # PyPDFToDocument
-  "pdfminer.six", # PDFMinerToDocument
-  "markdown-it-py",  # MarkdownToDocument
-  "mdit_plain",  # MarkdownToDocument
-  "tika",  # TikaDocumentConverter
-  "azure-ai-formrecognizer>=3.2.0b2",  # AzureOCRDocumentConverter
-  "trafilatura", # HTMLToDocument
-  "python-pptx",  # PPTXToDocument
-  "python-docx", # DocxToDocument
+  "pypdf",                            # PyPDFToDocument
+  "pdfminer.six",                     # PDFMinerToDocument
+  "markdown-it-py",                   # MarkdownToDocument
+  "mdit_plain",                       # MarkdownToDocument
+  "tika",                             # TikaDocumentConverter
+  "azure-ai-formrecognizer>=3.2.0b2", # AzureOCRDocumentConverter
+  "trafilatura",                      # HTMLToDocument
+  "python-pptx",                      # PPTXToDocument
+  "python-docx",                      # DocxToDocument
 
   # OpenAPI
   "jsonref",  # OpenAPIServiceConnector, OpenAPIServiceToFunctions
@@ -124,7 +121,7 @@ extra-dependencies = [
   "pytest",
   "pytest-bdd",
   "pytest-cov",
-  "pytest-custom_exit_code",  # used in the CI
+  "pytest-custom_exit_code", # used in the CI
   "pytest-asyncio",
   "pytest-rerunfailures",
   "responses",
@@ -147,10 +144,8 @@ types = "mypy --install-types --non-interactive --cache-dir=.mypy_cache/ {args:h
 lint = "pylint -ry -j 0 {args:haystack}"
 
 [tool.hatch.envs.readme]
-detached = true  # To avoid installing the dependencies from the default environment
-dependencies = [
-  "haystack-pydoc-tools",
-]
+detached = true                         # To avoid installing the dependencies from the default environment
+dependencies = ["haystack-pydoc-tools"]
 
 [tool.hatch.envs.readme.scripts]
 sync = "./.github/utils/pydoc-markdown.sh"
@@ -171,15 +166,10 @@ pattern = "(?P<version>.+)"
 allow-direct-references = true
 
 [tool.hatch.build.targets.sdist]
-include = [
-  "/haystack",
-  "/VERSION.txt",
-]
+include = ["/haystack", "/VERSION.txt"]
 
 [tool.hatch.build.targets.wheel]
-packages = [
-  "haystack",
-]
+packages = ["haystack"]
 
 [tool.codespell]
 ignore-words-list = "ans,astroid,nd,ned,nin,ue,rouge,ist"
@@ -187,7 +177,7 @@ quiet-level = 3
 skip = "test/nodes/*,test/others/*,test/samples/*,e2e/*"
 
 [tool.pylint.'MESSAGES CONTROL']
-max-line-length=120
+max-line-length = 120
 disable = [
 
   # To keep
@@ -237,15 +227,15 @@ disable = [
   "deprecated-method",
 ]
 [tool.pylint.'DESIGN']
-max-args = 38  # Default is 5
-max-attributes = 28  # Default is 7
-max-branches = 34  # Default is 12
-max-locals = 45  # Default is 15
-max-module-lines = 2468  # Default is 1000
-max-nested-blocks = 9  # Default is 5
-max-statements = 206  # Default is 50
+max-args = 38           # Default is 5
+max-attributes = 28     # Default is 7
+max-branches = 34       # Default is 12
+max-locals = 45         # Default is 15
+max-module-lines = 2468 # Default is 1000
+max-nested-blocks = 9   # Default is 5
+max-statements = 206    # Default is 50
 [tool.pylint.'SIMILARITIES']
-min-similarity-lines=6
+min-similarity-lines = 6
 
 [tool.pytest.ini_options]
 minversion = "6.0"
@@ -277,55 +267,59 @@ warn_unused_configs = true
 ignore_missing_imports = true
 
 [tool.ruff]
-line-length = 301
+line-length = 120
 target-version = "py38"
-exclude= ["test"]
+exclude = [".github", "proposals"]
 
+[tool.ruff.format]
+skip-magic-trailing-comma = true
 
 [tool.ruff.lint]
+isort.split-on-trailing-comma = false
+exclude = ["test/**", "e2e/**"]
 select = [
-  "ASYNC",  # flake8-async
-  "C4",     # flake8-comprehensions
-  "C90",    # McCabe cyclomatic complexity
-  "E501",   # Long lines
-  "EXE",    # flake8-executable
-  "F",      # Pyflakes
-  "INT",    # flake8-gettext
-  "PERF",   # Perflint
-  "PL",     # Pylint
-  "Q",      # flake8-quotes
-  "SIM",    # flake8-simplify
-  "SLOT",   # flake8-slots
-  "T10",    # flake8-debugger
-  "W",      # pycodestyle
-  "YTT",    # flake8-2020
-  "I",       # isort
+  "ASYNC", # flake8-async
+  "C4",    # flake8-comprehensions
+  "C90",   # McCabe cyclomatic complexity
+  "E501",  # Long lines
+  "EXE",   # flake8-executable
+  "F",     # Pyflakes
+  "INT",   # flake8-gettext
+  "PERF",  # Perflint
+  "PL",    # Pylint
+  "Q",     # flake8-quotes
+  "SIM",   # flake8-simplify
+  "SLOT",  # flake8-slots
+  "T10",   # flake8-debugger
+  "W",     # pycodestyle
+  "YTT",   # flake8-2020
+  "I",     # isort
   # built-in shadowing
-  "A001",	# builtin-variable-shadowing
-  "A002",	# builtin-argument-shadowing
-  "A003",	# builtin-attribute-shadowing
+  "A001", # builtin-variable-shadowing
+  "A002", # builtin-argument-shadowing
+  "A003", # builtin-attribute-shadowing
   # docstring rules
-  "D102",   # Missing docstring in public method
-  "D103",   # Missing docstring in public function
-  "D209",   # Closing triple quotes go to new line
-  "D205",   # 1 blank line required between summary line and description
-  "D213",   # summary lines must be positioned on the second physical line of the docstring
-  "D417",   # undocumented-parameter
-  "D419",   # undocumented-returns
+  "D102", # Missing docstring in public method
+  "D103", # Missing docstring in public function
+  "D209", # Closing triple quotes go to new line
+  "D205", # 1 blank line required between summary line and description
+  "D213", # summary lines must be positioned on the second physical line of the docstring
+  "D417", # undocumented-parameter
+  "D419", # undocumented-returns
 ]
 
 ignore = [
-  "F401",     # unused-import
-  "PERF203",	# `try`-`except` within a loop incurs performance overhead
-  "PERF401",	# Use a list comprehension to create a transformed list
-  "PLR1714",  # repeated-equality-comparison
-  "PLR5501",  # collapsible-else-if
-  "PLW0603",  # global-statement
-  "PLW1510",  # subprocess-run-without-check
-  "PLW2901",  # redefined-loop-name
-  "SIM108",   # if-else-block-instead-of-if-exp
-  "SIM115",   # open-file-with-context-handler
-  "SIM118",   # in-dict-keys
+  "F401",    # unused-import
+  "PERF203", # `try`-`except` within a loop incurs performance overhead
+  "PERF401", # Use a list comprehension to create a transformed list
+  "PLR1714", # repeated-equality-comparison
+  "PLR5501", # collapsible-else-if
+  "PLW0603", # global-statement
+  "PLW1510", # subprocess-run-without-check
+  "PLW2901", # redefined-loop-name
+  "SIM108",  # if-else-block-instead-of-if-exp
+  "SIM115",  # open-file-with-context-handler
+  "SIM118",  # in-dict-keys
 ]
 
 [tool.ruff.lint.mccabe]
@@ -338,13 +332,11 @@ max-complexity = 28
 
 [tool.ruff.lint.pylint]
 allow-magic-value-types = ["float", "int", "str"]
-max-args = 14  # Default is 5
-max-branches = 21  # Default is 12
-max-public-methods = 20  # Default is 20
-max-returns = 7  # Default is 6
-max-statements = 60  # Default is 50
+max-args = 14                                     # Default is 5
+max-branches = 21                                 # Default is 12
+max-public-methods = 20                           # Default is 20
+max-returns = 7                                   # Default is 6
+max-statements = 60                               # Default is 50
 
 [tool.coverage.run]
-omit = [
-    "haystack/testing/*",
-]
+omit = ["haystack/testing/*"]

@@ -53,7 +53,8 @@ class InMemoryBM25Retriever:
         :param top_k:
             The maximum number of documents to retrieve.
         :param scale_score:
-            Scales the BM25 score to a unit interval in the range of 0 to 1, where 1 means extremely relevant. If set to `False`, uses raw similarity scores.
+            Scales the BM25 score to a unit interval in the range of 0 to 1, where 1 means extremely relevant.
+            If set to `False`, uses raw similarity scores.
         :param filter_policy: The filter policy to apply during retrieval.
         :raises ValueError:
             If the specified `top_k` is not > 0.
@@ -134,8 +135,9 @@ class InMemoryBM25Retriever:
         :param top_k:
             The maximum number of documents to return.
         :param scale_score:
-            Scales the BM25 score to a unit interval in the range of 0 to 1, where 1 means extremely relevant. If set to `False`, uses raw similarity scores.
-            If not specified, the value provided at initialization is used.
+            Scales the BM25 score to a unit interval in the range of 0 to 1, where 1 means extremely relevant.
+            If set to `False`, uses raw similarity scores. If not specified, the value provided at initialization
+            is used.
         :returns:
             The retrieved documents.
 
