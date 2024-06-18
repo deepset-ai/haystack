@@ -133,9 +133,7 @@ class PipelineBase:
         }
 
     @classmethod
-    def from_dict(
-        cls: Type[T], data: Dict[str, Any], callbacks: Optional[DeserializationCallbacks] = None, **kwargs
-    ) -> T:
+    def from_dict(cls: Type[T], data: Dict[str, Any], callbacks: Optional[DeserializationCallbacks] = None, **kwargs) -> T:
         """
         Deserializes the pipeline from a dictionary.
 
@@ -169,10 +167,7 @@ class PipelineBase:
                         importlib.import_module(module)
                         # ...then try again
                         if component_data["type"] not in component.registry:
-                            raise PipelineError(
-                                f"Successfully imported module {module} but can't find it in the component registry."
-                                "This is unexpected and most likely a bug."
-                            )
+                            raise PipelineError(f"Successfully imported module {module} but can't find it in the component registry." "This is unexpected and most likely a bug.")
                     except (ImportError, PipelineError) as e:
                         raise PipelineError(f"Component '{component_data['type']}' not imported.") from e
 
@@ -284,15 +279,10 @@ class PipelineBase:
 
         # Component instances must be components
         if not isinstance(instance, Component):
-            raise PipelineValidationError(
-                f"'{type(instance)}' doesn't seem to be a component. Is this class decorated with @component?"
-            )
+            raise PipelineValidationError(f"'{type(instance)}' doesn't seem to be a component. Is this class decorated with @component?")
 
         if getattr(instance, "__haystack_added_to_pipeline__", None):
-            msg = (
-                "Component has already been added in another Pipeline. "
-                "Components can't be shared between Pipelines. Create a new instance instead."
-            )
+            msg = "Component has already been added in another Pipeline. Components can't be shared between Pipelines. Create a new instance instead."
             raise PipelineError(msg)
 
         setattr(instance, "__haystack_added_to_pipeline__", self)
@@ -390,35 +380,21 @@ class PipelineBase:
         if sender_socket_name:
             sender_socket = from_sockets.get(sender_socket_name)
             if not sender_socket:
-                raise PipelineConnectError(
-                    f"'{sender} does not exist. "
-                    f"Output connections of {sender_component_name} are: "
-                    + ", ".join([f"{name} (type {_type_name(socket.type)})" for name, socket in from_sockets.items()])
-                )
+                raise PipelineConnectError(f"'{sender} does not exist. " f"Output connections of {sender_component_name} are: " + ", ".join([f"{name} (type {_type_name(socket.type)})" for name, socket in from_sockets.items()]))
 
         receiver_socket: Optional[InputSocket] = None
         if receiver_socket_name:
             receiver_socket = to_sockets.get(receiver_socket_name)
             if not receiver_socket:
-                raise PipelineConnectError(
-                    f"'{receiver} does not exist. "
-                    f"Input connections of {receiver_component_name} are: "
-                    + ", ".join([f"{name} (type {_type_name(socket.type)})" for name, socket in to_sockets.items()])
-                )
+                raise PipelineConnectError(f"'{receiver} does not exist. " f"Input connections of {receiver_component_name} are: " + ", ".join([f"{name} (type {_type_name(socket.type)})" for name, socket in to_sockets.items()]))
 
         # Look for a matching connection among the possible ones.
         # Note that if there is more than one possible connection but two sockets match by name, they're paired.
         sender_socket_candidates: List[OutputSocket] = [sender_socket] if sender_socket else list(from_sockets.values())
-        receiver_socket_candidates: List[InputSocket] = (
-            [receiver_socket] if receiver_socket else list(to_sockets.values())
-        )
+        receiver_socket_candidates: List[InputSocket] = [receiver_socket] if receiver_socket else list(to_sockets.values())
 
         # Find all possible connections between these two components
-        possible_connections = [
-            (sender_sock, receiver_sock)
-            for sender_sock, receiver_sock in itertools.product(sender_socket_candidates, receiver_socket_candidates)
-            if _types_are_compatible(sender_sock.type, receiver_sock.type)
-        ]
+        possible_connections = [(sender_sock, receiver_sock) for sender_sock, receiver_sock in itertools.product(sender_socket_candidates, receiver_socket_candidates) if _types_are_compatible(sender_sock.type, receiver_sock.type)]
 
         # We need this status for error messages, since we might need it in multiple places we calculate it here
         status = _connections_status(
@@ -431,15 +407,9 @@ class PipelineBase:
         if not possible_connections:
             # There's no possible connection between these two components
             if len(sender_socket_candidates) == len(receiver_socket_candidates) == 1:
-                msg = (
-                    f"Cannot connect '{sender_component_name}.{sender_socket_candidates[0].name}' with '{receiver_component_name}.{receiver_socket_candidates[0].name}': "
-                    f"their declared input and output types do not match.\n{status}"
-                )
+                msg = f"Cannot connect '{sender_component_name}.{sender_socket_candidates[0].name}' with '{receiver_component_name}.{receiver_socket_candidates[0].name}': " f"their declared input and output types do not match.\n{status}"
             else:
-                msg = (
-                    f"Cannot connect '{sender_component_name}' with '{receiver_component_name}': "
-                    f"no matching connections available.\n{status}"
-                )
+                msg = f"Cannot connect '{sender_component_name}' with '{receiver_component_name}': " f"no matching connections available.\n{status}"
             raise PipelineConnectError(msg)
 
         if len(possible_connections) == 1:
@@ -449,9 +419,7 @@ class PipelineBase:
 
         if len(possible_connections) > 1:
             # There are multiple possible connection, let's try to match them by name
-            name_matches = [
-                (out_sock, in_sock) for out_sock, in_sock in possible_connections if in_sock.name == out_sock.name
-            ]
+            name_matches = [(out_sock, in_sock) for out_sock, in_sock in possible_connections if in_sock.name == out_sock.name]
             if len(name_matches) != 1:
                 # There's are either no matches or more than one, we can't pick one reliably
                 msg = (
@@ -494,10 +462,7 @@ class PipelineBase:
 
         if receiver_socket.senders and not receiver_socket.is_variadic:
             # Only variadic input sockets can receive from multiple senders
-            msg = (
-                f"Cannot connect '{sender_component_name}.{sender_socket.name}' with '{receiver_component_name}.{receiver_socket.name}': "
-                f"{receiver_component_name}.{receiver_socket.name} is already connected to {receiver_socket.senders}.\n"
-            )
+            msg = f"Cannot connect '{sender_component_name}.{sender_socket.name}' with '{receiver_component_name}.{receiver_socket.name}': " f"{receiver_component_name}.{receiver_socket.name} is already connected to {receiver_socket.senders}.\n"
             raise PipelineConnectError(msg)
 
         # Update the sockets with the new connection
@@ -587,11 +552,7 @@ class PipelineBase:
             A dictionary where each key is a pipeline component name and each value is a dictionary of
             output sockets of that component.
         """
-        outputs = {
-            comp: {socket.name: {"type": socket.type} for socket in data}
-            for comp, data in find_pipeline_outputs(self.graph, include_components_with_connected_outputs).items()
-            if data
-        }
+        outputs = {comp: {socket.name: {"type": socket.type} for socket in data} for comp, data in find_pipeline_outputs(self.graph, include_components_with_connected_outputs).items() if data}
         return outputs
 
     def show(self) -> None:
@@ -679,9 +640,7 @@ class PipelineBase:
                 if socket.senders == [] and socket.is_mandatory and socket_name not in component_inputs:
                     raise ValueError(f"Missing input for component {component_name}: {socket_name}")
                 if socket.senders and socket_name in component_inputs and not socket.is_variadic:
-                    raise ValueError(
-                        f"Input {socket_name} for component {component_name} is already sent by {socket.senders}."
-                    )
+                    raise ValueError(f"Input {socket_name} for component {component_name} is already sent by {socket.senders}.")
 
     def _prepare_component_input_data(self, data: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
         """
@@ -785,9 +744,7 @@ class PipelineBase:
         return to_run
 
     @classmethod
-    def from_template(
-        cls, predefined_pipeline: PredefinedPipeline, template_params: Optional[Dict[str, Any]] = None
-    ) -> "PipelineBase":
+    def from_template(cls, predefined_pipeline: PredefinedPipeline, template_params: Optional[Dict[str, Any]] = None) -> "PipelineBase":
         """
         Create a Pipeline from a predefined template. See `PredefinedPipeline` for available options.
 
@@ -932,10 +889,99 @@ class PipelineBase:
         # Returns the output without the keys that were distributed to other Components
         return {k: v for k, v in component_result.items() if k not in to_remove_from_component_result}
 
+    def _enqueue_next_runnable_component(
+        self,
+        inputs_by_component: Dict[str, Dict[str, Any]],
+        to_run: List[Tuple[str, Component]],
+        waiting_for_input: List[Tuple[str, Component]],
+    ):
+        """
+        Finds the next Component that can be run and adds it to the queue of Components to run.
 
-def _connections_status(
-    sender_node: str, receiver_node: str, sender_sockets: List[OutputSocket], receiver_sockets: List[InputSocket]
-):
+        :param inputs_by_component: The current state of the inputs divided by Component name
+        :param to_run: Queue of Components to run
+        :param waiting_for_input: Queue of Components waiting for input
+        """
+        for name, comp in waiting_for_input:
+            if name not in inputs_by_component:
+                inputs_by_component[name] = {}
+
+        # Small utility function to check if a Component has a Variadic input that is not greedy.
+        def is_lazy_variadic(c: Component) -> bool:
+            is_variadic = any(
+                socket.is_variadic
+                for socket in c.__haystack_input__._sockets_dict.values()  # type: ignore
+            )
+            if not is_variadic:
+                return False
+            return not getattr(c, "__haystack_is_greedy__", False)
+
+        # Small utility function to check if a Component has all inputs with defaults.
+        def has_all_inputs_with_defaults(c: Component) -> bool:
+            return all(
+                not socket.is_mandatory
+                for socket in c.__haystack_input__._sockets_dict.values()  # type: ignore
+            )
+
+        # Updates the inputs with the default values for the inputs that are missing
+        def add_missing_input_defaults(name: str, comp: Component, inputs_by_component: Dict[str, Dict[str, Any]]):
+            for input_socket in comp.__haystack_input__._sockets_dict.values():  # type: ignore
+                if input_socket.name not in inputs_by_component[name]:
+                    inputs_by_component[name][input_socket.name] = input_socket.default_value
+
+        all_lazy_variadic = True
+        all_with_default_inputs = True
+
+        filtered_waiting_for_input = []
+
+        for name, comp in waiting_for_input:
+            if not is_lazy_variadic(comp):
+                # Components with variadic inputs that are not greedy must be removed only if there's nothing else to run at this stage.
+                # We need to wait as long as possible to run them, so we can collect as most inputs as we can.
+                all_lazy_variadic = False
+
+            if not has_all_inputs_with_defaults(comp):
+                # Components that have defaults for all their inputs must be treated the same identical way as we treat
+                # lazy variadic components. If there are only components with defaults we can run them.
+                # If we don't do this the order of execution of the Pipeline's Components will be affected cause we
+                # enqueue the Components in `to_run` at the start using the order they are added in the Pipeline.
+                # If a Component A with defaults is added before a Component B that has no defaults, but in the Pipeline
+                # logic A must be executed after B it could run instead before if we don't do this check.
+                all_with_default_inputs = False
+
+            if not is_lazy_variadic(comp) and not has_all_inputs_with_defaults(comp):
+                # Keep track of the Components that are not lazy variadic and don't have all inputs with defaults.
+                # We'll handle these later if necessary.
+                filtered_waiting_for_input.append((name, comp))
+
+        # If all Components are lazy variadic or all Components have all inputs with defaults we can get one to run
+        if all_lazy_variadic or all_with_default_inputs:
+            pair = waiting_for_input.pop(0)
+            to_run.append(pair)
+            # Add missing input defaults if needed, this is a no-op for Components with Variadic inputs
+            add_missing_input_defaults(name, comp, inputs_by_component)
+            return
+
+        for name, comp in filtered_waiting_for_input:
+            # Find the first component that has all the inputs it needs to run
+            has_enough_inputs = True
+            for input_socket in comp.__haystack_input__._sockets_dict.values():  # type: ignore
+                if input_socket.name not in inputs_by_component[name]:
+                    if input_socket.is_mandatory:
+                        has_enough_inputs = False
+                        break
+
+                    if input_socket.name not in inputs_by_component[name]:
+                        inputs_by_component[name][input_socket.name] = input_socket.default_value
+
+            if has_enough_inputs:
+                break
+
+        waiting_for_input.remove((name, comp))
+        to_run.append((name, comp))
+
+
+def _connections_status(sender_node: str, receiver_node: str, sender_sockets: List[OutputSocket], receiver_sockets: List[InputSocket]):
     """
     Lists the status of the sockets, for error messages.
     """
@@ -950,9 +996,7 @@ def _connections_status(
             sender_status = f"sent by {','.join(receiver_socket.senders)}"
         else:
             sender_status = "available"
-        receiver_sockets_entries.append(
-            f" - {receiver_socket.name}: {_type_name(receiver_socket.type)} ({sender_status})"
-        )
+        receiver_sockets_entries.append(f" - {receiver_socket.name}: {_type_name(receiver_socket.type)} ({sender_status})")
     receiver_sockets_list = "\n".join(receiver_sockets_entries)
 
     return f"'{sender_node}':\n{sender_sockets_list}\n'{receiver_node}':\n{receiver_sockets_list}"
