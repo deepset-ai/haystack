@@ -83,18 +83,6 @@ def test_apply_custom_chat_templating_on_chat_message():
     assert tokenized_messages == "You are good assistant\nHuman: I have a question\nAssistant:"
 
 
-def test_to_dict_without_flattening():
-    message = ChatMessage.from_user("content")
-    message.meta["some"] = "some"
-
-    assert message.to_dict(flatten=False) == {
-        "content": "content",
-        "role": "user",
-        "name": None,
-        "meta": {"some": "some"},
-    }
-
-
 def test_to_dict_with_flattening():
     message = ChatMessage.from_user("content")
     message.meta["some"] = "some"

@@ -100,7 +100,7 @@ class ChatMessage:
         """
         return cls(content, ChatRole.FUNCTION, name)
 
-    def to_dict(self, flatten: bool = True) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, Any]:
         """
         Converts ChatMessage into a dictionary.
 
@@ -110,11 +110,8 @@ class ChatMessage:
         data = asdict(self)
         data["role"] = self.role.value
 
-        if flatten:
-            meta = data.pop("meta")
-            return {**data, **meta}
-
-        return data
+        meta = data.pop("meta")
+        return {**data, **meta}
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ChatMessage":
