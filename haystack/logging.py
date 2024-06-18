@@ -298,6 +298,7 @@ def configure_logging(use_json: Optional[bool] = None) -> None:
 
     try:
         import structlog
+        import structlog.contextvars
         from structlog.processors import ExceptionRenderer
         from structlog.tracebacks import ExceptionDictTransformer
 
@@ -330,6 +331,7 @@ def configure_logging(use_json: Optional[bool] = None) -> None:
         structlog.stdlib.add_log_level,
         # Adds the current timestamp in ISO format to logs
         structlog.processors.TimeStamper(fmt="iso"),
+        structlog.contextvars.merge_contextvars,
         add_line_and_file,
     ]
 
