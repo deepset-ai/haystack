@@ -364,12 +364,16 @@ class InMemoryDocumentStore:
             try:
                 with open(path, "r") as f:
                     data = json.load(f)
-                documents = data.pop("documents")
-                cls_object = default_from_dict(cls, data)
-                cls_object.write_documents(documents=[Document(**doc) for doc in documents])
-                return cls_object
             except Exception as e:
                 raise Exception(f"Error loading InMemoryDocumentStore from disk. error: {e}")
+
+            documents = data.pop("documents")
+            cls_object = default_from_dict(cls, data)
+            cls_object.write_documents(
+                documents=[Document(**doc) for doc in documents], policy=DuplicatePolicy.OVERWRITE
+            )
+            return cls_object
+
         else:
             raise FileNotFoundError(f"File {path} not found.")
 
