@@ -1154,8 +1154,8 @@ class TestPipeline:
         waiting_for_input = [("prompt_builder", prompt_builder), ("document_builder", document_builder), ("document_joiner", document_joiner)]
         pipe._enqueue_next_runnable_component(inputs_by_component, to_run, waiting_for_input)
 
-        assert to_run == [("document_joiner", document_joiner)]
+        assert to_run == [("document_builder", document_builder)]
         assert waiting_for_input == [
             ("prompt_builder", prompt_builder),
-            ("document_builder", document_builder),
+            ("document_joiner", document_joiner),
         ]
