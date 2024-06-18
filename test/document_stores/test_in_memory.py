@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 import pandas as pd
 import pytest
+import tempfile
 
 from haystack import Document
 from haystack.document_stores.errors import DocumentStoreError, DuplicateDocumentError
@@ -73,6 +74,20 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         assert store.bm25_algorithm == "BM25Plus"
         assert store.bm25_parameters == {"key": "value"}
         assert store.index == "my_cool_index"
+
+    def test_save_to_disk_and_load_from_disk(self, document_store: InMemoryDocumentStore):
+        docs = [Document(content="Hello world"), Document(content="Haystack supports multiple languages")]
+        document_store = InMemoryDocumentStore()
+        document_store.write_documents(docs)
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_dir = tmp_dir + "/tmp.json"
+            document_store.save_to_disk(tmp_dir)
+            document_store_loaded = InMemoryDocumentStore.load_from_disk(tmp_dir)
+
+        assert document_store_loaded.count_documents() == 2
+        assert document_store_loaded.storage.values() == docs
+        assert document_store_loaded.to_dict() == document_store.to_dict()
 
     def test_invalid_bm25_algorithm(self):
         with pytest.raises(ValueError, match="BM25 algorithm 'invalid' is not supported"):
