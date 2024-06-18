@@ -372,7 +372,7 @@ class InMemoryDocumentStore:
             or isinstance(documents, str)
             or any(not isinstance(doc, Document) for doc in documents)
         ):
-            raise ValueError("Please provide a list of Documents. ")
+            raise ValueError("Please provide a list of Documents.")
 
         if policy == DuplicatePolicy.NONE:
             policy = DuplicatePolicy.FAIL
