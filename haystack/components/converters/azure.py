@@ -32,8 +32,8 @@ class AzureOCRDocumentConverter:
     Supported file formats are: PDF, JPEG, PNG, BMP, TIFF, DOCX, XLSX, PPTX, and HTML.
 
     In order to be able to use this component, you need an active Azure account
-    and a Document Intelligence or Cognitive Services resource. Follow the steps described in the
-    [Azure documentation](https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/quickstarts/get-started-sdks-rest-api)
+    and a Document Intelligence or Cognitive Services resource. Follow the steps described in the [Azure documentation]
+    (https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/quickstarts/get-started-sdks-rest-api)
     to set up your resource.
 
     Usage example:
@@ -42,7 +42,7 @@ class AzureOCRDocumentConverter:
     from haystack.utils import Secret
 
     converter = AzureOCRDocumentConverter(endpoint="<url>", api_key=Secret.from_token("<your-api-key>"))
-    results = converter.run(sources=["path/to/document_with_images.pdf"], meta={"date_added": datetime.now().isoformat()})
+    results = converter.run(sources=["path/to/doc_with_images.pdf"], meta={"date_added": datetime.now().isoformat()})
     documents = results["documents"]
     print(documents[0].content)
     # 'This is a text from the PDF file.'
@@ -68,10 +68,10 @@ class AzureOCRDocumentConverter:
         :param api_key:
             The key of your Azure resource.
         :param model_id:
-            The model ID of the model you want to use. Please refer to
-            [Azure documentation](https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/choose-model-feature)
+            The model ID of the model you want to use. Please refer to [Azure documentation]
+            (https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/choose-model-feature)
             for a list of available models. Default: `"prebuilt-read"`.
-                :param preceding_context_len: Number of lines before a table to extract as preceding context
+        :param preceding_context_len: Number of lines before a table to extract as preceding context
             (will be returned as part of metadata).
         :param following_context_len: Number of lines after a table to extract as subsequent context (
             will be returned as part of metadata).
@@ -88,7 +88,9 @@ class AzureOCRDocumentConverter:
         """
         azure_import.check()
 
-        self.document_analysis_client = DocumentAnalysisClient(endpoint=endpoint, credential=AzureKeyCredential(api_key.resolve_value()))  # type: ignore
+        self.document_analysis_client = DocumentAnalysisClient(
+            endpoint=endpoint, credential=AzureKeyCredential(api_key.resolve_value() or "")
+        )  # type: ignore
         self.endpoint = endpoint
         self.model_id = model_id
         self.api_key = api_key
@@ -111,8 +113,8 @@ class AzureOCRDocumentConverter:
             Optional metadata to attach to the Documents.
             This value can be either a list of dictionaries or a single dictionary.
             If it's a single dictionary, its content is added to the metadata of all produced Documents.
-            If it's a list, the length of the list must match the number of sources, because the two lists will be zipped.
-            If `sources` contains ByteStream objects, their `meta` will be added to the output Documents.
+            If it's a list, the length of the list must match the number of sources, because the two lists will be
+            zipped. If `sources` contains ByteStream objects, their `meta` will be added to the output Documents.
 
         :returns:
             A dictionary with the following keys:

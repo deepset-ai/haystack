@@ -10,7 +10,7 @@ from haystack.components.preprocessors import DocumentSplitter
 class TestDocumentSplitter:
     def test_non_text_document(self):
         with pytest.raises(
-            ValueError, match="DocumentSplitter only works with text documents but document.content for document ID"
+            ValueError, match="DocumentSplitter only works with text documents but content for document ID"
         ):
             splitter = DocumentSplitter()
             splitter.run(documents=[Document()])

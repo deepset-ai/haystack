@@ -106,7 +106,8 @@ class HuggingFaceAPIDocumentEmbedder:
         :param api_params:
             A dictionary containing the following keys:
             - `model`: model ID on the Hugging Face Hub. Required when `api_type` is `SERVERLESS_INFERENCE_API`.
-            - `url`: URL of the inference endpoint. Required when `api_type` is `INFERENCE_ENDPOINTS` or `TEXT_EMBEDDINGS_INFERENCE`.
+            - `url`: URL of the inference endpoint. Required when `api_type` is `INFERENCE_ENDPOINTS` or
+                `TEXT_EMBEDDINGS_INFERENCE`.
         :param token: The HuggingFace token to use as HTTP bearer authorization.
             You can find your HF token in your [account settings](https://huggingface.co/settings/tokens).
         :param prefix:
@@ -116,13 +117,15 @@ class HuggingFaceAPIDocumentEmbedder:
         :param truncate:
             Truncate input text from the end to the maximum length supported by the model.
             This parameter takes effect when the `api_type` is `TEXT_EMBEDDINGS_INFERENCE`.
-            It also takes effect when the `api_type` is `INFERENCE_ENDPOINTS` and the backend is based on Text Embeddings Inference.
-            This parameter is ignored when the `api_type` is `SERVERLESS_INFERENCE_API` (it is always set to `True` and cannot be changed).
+            It also takes effect when the `api_type` is `INFERENCE_ENDPOINTS` and the backend is based on Text
+            Embeddings Inference. This parameter is ignored when the `api_type` is `SERVERLESS_INFERENCE_API`
+            (it is always set to `True` and cannot be changed).
         :param normalize:
             Normalize the embeddings to unit length.
             This parameter takes effect when the `api_type` is `TEXT_EMBEDDINGS_INFERENCE`.
-            It also takes effect when the `api_type` is `INFERENCE_ENDPOINTS` and the backend is based on Text Embeddings Inference.
-            This parameter is ignored when the `api_type` is `SERVERLESS_INFERENCE_API` (it is always set to `False` and cannot be changed).
+            It also takes effect when the `api_type` is `INFERENCE_ENDPOINTS` and the backend is based on Text
+            Embeddings Inference. This parameter is ignored when the `api_type` is `SERVERLESS_INFERENCE_API`
+            (it is always set to `False` and cannot be changed).
         :param batch_size:
             Number of Documents to process at once.
         :param progress_bar:
@@ -150,12 +153,17 @@ class HuggingFaceAPIDocumentEmbedder:
         elif api_type in [HFEmbeddingAPIType.INFERENCE_ENDPOINTS, HFEmbeddingAPIType.TEXT_EMBEDDINGS_INFERENCE]:
             url = api_params.get("url")
             if url is None:
-                raise ValueError(
-                    "To use Text Embeddings Inference or Inference Endpoints, you need to specify the `url` parameter in `api_params`."
+                msg = (
+                    "To use Text Embeddings Inference or Inference Endpoints, you need to specify the `url` "
+                    "parameter in `api_params`."
                 )
+                raise ValueError(msg)
             if not is_valid_http_url(url):
                 raise ValueError(f"Invalid URL: {url}")
             model_or_url = url
+        else:
+            msg = f"Unknown api_type {api_type}"
+            raise ValueError(api_type)
 
         self.api_type = api_type
         self.api_params = api_params

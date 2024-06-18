@@ -60,11 +60,15 @@ class FaithfulnessEvaluator(LLMEvaluator):
 
     questions = ["Who created the Python language?"]
     contexts = [
-        [
-            "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming language. Its design philosophy emphasizes code readability, and its language constructs aim to help programmers write clear, logical code for both small and large-scale software projects."
-        ],
+        [(
+            "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming "
+            "language. Its design philosophy emphasizes code readability, and its language constructs aim to help "
+            "programmers write clear, logical code for both small and large-scale software projects."
+        )],
     ]
-    predicted_answers = ["Python is a high-level general-purpose programming language that was created by George Lucas."]
+    predicted_answers = [
+        "Python is a high-level general-purpose programming language that was created by George Lucas."
+    ]
     evaluator = FaithfulnessEvaluator()
     result = evaluator.run(questions=questions, contexts=contexts, predicted_answers=predicted_answers)
 

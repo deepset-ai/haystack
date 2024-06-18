@@ -109,8 +109,8 @@ class DocumentRecallEvaluator:
             A list of retrieved documents for each question.
         A dictionary with the following outputs:
             - `score` - The average of calculated scores.
-            - `invididual_scores` - A list of numbers from 0.0 to 1.0 that represents the proportion of matching documents retrieved.
-                                    If the mode is `single_hit`, the individual scores are 0 or 1.
+            - `invididual_scores` - A list of numbers from 0.0 to 1.0 that represents the proportion of matching
+                documents retrieved. If the mode is `single_hit`, the individual scores are 0 or 1.
         """
         if len(ground_truth_documents) != len(retrieved_documents):
             msg = "The length of ground_truth_documents and retrieved_documents must be the same."

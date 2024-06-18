@@ -52,7 +52,8 @@ class OpenAIDocumentEmbedder:
         """
         Create a OpenAIDocumentEmbedder component.
 
-        By setting the 'OPENAI_TIMEOUT' and 'OPENAI_MAX_RETRIES' you can change the timeout and max_retries parameters in the OpenAI client.
+        By setting the 'OPENAI_TIMEOUT' and 'OPENAI_MAX_RETRIES' you can change the timeout and max_retries parameters
+        in the OpenAI client.
 
 
         :param api_key:
@@ -60,7 +61,8 @@ class OpenAIDocumentEmbedder:
         :param model:
             The name of the model to use.
         :param dimensions:
-            The number of dimensions the resulting output embeddings should have. Only supported in `text-embedding-3` and later models.
+            The number of dimensions the resulting output embeddings should have. Only supported in `text-embedding-3`
+            and later models.
         :param api_base_url:
             Overrides default base url for all HTTP requests.
         :param organization:
@@ -80,9 +82,11 @@ class OpenAIDocumentEmbedder:
         :param embedding_separator:
             Separator used to concatenate the meta fields to the Document text.
         :param timeout:
-            Timeout for OpenAI Client calls, if not set it is inferred from the `OPENAI_TIMEOUT` environment variable or set to 30.
+            Timeout for OpenAI Client calls, if not set it is inferred from the `OPENAI_TIMEOUT` environment variable
+            or set to 30.
         :param max_retries:
-            Maximum retries to stablish contact with OpenAI if it returns an internal error, if not set it is inferred from the `OPENAI_MAX_RETRIES` environment variable or set to 5.
+            Maximum retries to stablish contact with OpenAI if it returns an internal error, if not set it is inferred
+            from the `OPENAI_MAX_RETRIES` environment variable or set to 5.
         """
         self.api_key = api_key
         self.model = model
