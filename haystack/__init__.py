@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import haystack.logging
+import haystack.tracing
 from haystack.core.component import component
 from haystack.core.errors import ComponentError, DeserializationError
 from haystack.core.pipeline import Pipeline, PredefinedPipeline
@@ -12,6 +13,9 @@ from haystack.dataclasses import Answer, Document, ExtractedAnswer, GeneratedAns
 # Initialize the logging configuration
 # This is a no-op unless `structlog` is installed
 haystack.logging.configure_logging()
+
+# Same for tracing (no op if `opentelemetry` or `ddtrace` is not installed)
+haystack.tracing.auto_enable_tracing()
 
 __all__ = [
     "component",
