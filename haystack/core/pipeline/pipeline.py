@@ -232,8 +232,9 @@ class Pipeline(PipelineBase):
                     there_are_non_variadics = False
                     for _, other_comp in to_run:
                         if not any(
-                            socket.is_variadic for socket in other_comp.__haystack_input__._sockets_dict.values()
-                        ):  # type: ignore
+                            socket.is_variadic
+                            for socket in other_comp.__haystack_input__._sockets_dict.values()  # type: ignore
+                        ):
                             there_are_non_variadics = True
                             break
 
@@ -288,8 +289,9 @@ class Pipeline(PipelineBase):
                         # waiting for input we're stuck for real and we can't make any progress.
                         for name, comp in waiting_for_input:
                             is_variadic = any(
-                                socket.is_variadic for socket in comp.__haystack_input__._sockets_dict.values()
-                            )  # type: ignore
+                                socket.is_variadic
+                                for socket in comp.__haystack_input__._sockets_dict.values()  # type: ignore
+                            )
                             has_only_defaults = all(
                                 not socket.is_mandatory
                                 for socket in comp.__haystack_input__._sockets_dict.values()  # type: ignore
