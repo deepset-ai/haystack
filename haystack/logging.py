@@ -298,7 +298,6 @@ def configure_logging(use_json: Optional[bool] = None) -> None:
 
     try:
         import structlog
-        import structlog.contextvars
         from structlog.processors import ExceptionRenderer
         from structlog.tracebacks import ExceptionDictTransformer
 
