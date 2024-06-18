@@ -371,7 +371,7 @@ class InMemoryDocumentStore:
             except Exception as e:
                 raise Exception(f"Error loading InMemoryDocumentStore from disk. error: {e}")
         else:
-            return cls()
+            raise FileNotFoundError(f"File {path} not found.")
 
     def count_documents(self) -> int:
         """
