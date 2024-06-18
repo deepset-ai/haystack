@@ -82,43 +82,47 @@ jobs:
                 - "branch:${{ github.ref_name }}"
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-  lint:
+  unit-tests:
+    name: Unit / ${{ matrix.os }}
     needs: format
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-12
+    runs-on: ${{ matrix.os }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          # With the default value of 1, there are corner cases where tj-actions/changed-files
-          # fails with a `no merge base` error
-          fetch-depth: 0
-
-      - name: Get changed files
-        id: files
-        uses: tj-actions/changed-files@v44
-        with:
-          files: |
-            **/*.py
-          files_ignore: |
-            test/**
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Install Hatch
-        run: pip install hatch==${{ env.HATCH_VERSION }}
-
-      - name: Mypy
-        if: steps.files.outputs.any_changed == 'true'
+        id: hatch
+        shell: bash
         run: |
-          mkdir .mypy_cache
-          hatch run test:types ${{ steps.files.outputs.all_changed_files }}
+          pip install hatch==${{ env.HATCH_VERSION }}
+          echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
-      - name: Pylint
-        if: steps.files.outputs.any_changed == 'true'
-        run: |
-          hatch run test:lint ${{ steps.files.outputs.all_changed_files }}
+      - name: Run
+        run: hatch run test:unit
+
+      - uses: actions/cache/save@v4
+        id: cache
+        with:
+          path: ${{ steps.hatch.outputs.env }}
+          key: ${{ runner.os }}-${{ github.sha }}
+
+      - name: Coveralls
+        # We upload only coverage for ubuntu as handling both os
+        # complicates the workflow too much for little to no gain
+        if: matrix.os == 'ubuntu-latest'
+        uses: coverallsapp/github-action@v2
+        with:
+          path-to-lcov: coverage.xml
 
       - name: Calculate alert data
         id: calculator
@@ -151,37 +155,52 @@ jobs:
                 - "branch:${{ github.ref_name }}"
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-  unit-tests:
-    name: Unit / ${{ matrix.os }}
-    needs: lint
-    strategy:
-      fail-fast: false
-      matrix:
-        os:
-          - ubuntu-latest
-          - windows-latest
-          - macos-12
-    runs-on: ${{ matrix.os }}
+  lint:
+    needs: unit-tests
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # With the default value of 1, there are corner cases where tj-actions/changed-files
+          # fails with a `no merge base` error
+          fetch-depth: 0
+
+      - name: Get changed files
+        id: files
+        uses: tj-actions/changed-files@v44
+        with:
+          files: |
+            **/*.py
+          files_ignore: |
+            test/**
 
       - uses: actions/setup-python@v5
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Install Hatch
-        run: pip install hatch==${{ env.HATCH_VERSION }}
+        id: hatch
+        run: |
+          pip install hatch==${{ env.HATCH_VERSION }}
+          echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
-      - name: Run
-        run: hatch run test:unit
-
-      - name: Coveralls
-        # We upload only coverage for ubuntu as handling both os
-        # complicates the workflow too much for little to no gain
-        if: matrix.os == 'ubuntu-latest'
-        uses: coverallsapp/github-action@v2
+      - uses: actions/cache/restore@v4
+        id: cache
         with:
-          path-to-lcov: coverage.xml
+          path: ${{ steps.hatch.outputs.env }}
+          key: ${{ runner.os }}-${{ github.sha }}
+
+      - name: Mypy
+        if: steps.files.outputs.any_changed == 'true'
+        run: |
+          mkdir .mypy_cache
+          hatch run test:types ${{ steps.files.outputs.all_changed_files }}
+
+      - name: Pylint
+        if: steps.files.outputs.any_changed == 'true'
+        run: |
+          hatch run test:lint ${{ steps.files.outputs.all_changed_files }}
 
       - name: Calculate alert data
         id: calculator
@@ -231,7 +250,17 @@ jobs:
           python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Install Hatch
-        run: pip install hatch==${{ env.HATCH_VERSION }}
+        id: hatch
+        shell: bash
+        run: |
+          pip install hatch==${{ env.HATCH_VERSION }}
+          echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache/restore@v4
+        id: cache
+        with:
+          path: ${{ steps.hatch.outputs.env }}
+          key: ${{ runner.os }}-${{ github.sha }}
 
       - name: Install dependencies
         run: |
@@ -287,7 +316,17 @@ jobs:
           python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Install Hatch
-        run: pip install hatch==${{ env.HATCH_VERSION }}
+        id: hatch
+        shell: bash
+        run: |
+          pip install hatch==${{ env.HATCH_VERSION }}
+          echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache/restore@v4
+        id: cache
+        with:
+          path: ${{ steps.hatch.outputs.env }}
+          key: ${{ runner.os }}-${{ github.sha }}
 
       - name: Install dependencies
         run: |
@@ -339,7 +378,17 @@ jobs:
           python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Install Hatch
-        run: pip install hatch==${{ env.HATCH_VERSION }}
+        id: hatch
+        shell: bash
+        run: |
+          pip install hatch==${{ env.HATCH_VERSION }}
+          echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache/restore@v4
+        id: cache
+        with:
+          path: ${{ steps.hatch.outputs.env }}
+          key: ${{ runner.os }}-${{ github.sha }}
 
       - name: Run
         run: hatch run test:integration-windows
