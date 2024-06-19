@@ -506,8 +506,8 @@ class TestChatPromptBuilderDynamic:
             "type": "haystack.components.builders.chat_prompt_builder.ChatPromptBuilder",
             "init_parameters": {
                 "template": [
-                    {"content": "text and {var}", "role": "user", "name": None},
-                    {"content": "content {required_var}", "role": "assistant", "name": None},
+                    {"content": "text and {var}", "role": "user", "name": None, "meta": {}},
+                    {"content": "content {required_var}", "role": "assistant", "name": None, "meta": {}},
                 ],
                 "variables": ["var", "required_var"],
                 "required_variables": ["required_var"],
@@ -520,8 +520,8 @@ class TestChatPromptBuilderDynamic:
                 "type": "haystack.components.builders.chat_prompt_builder.ChatPromptBuilder",
                 "init_parameters": {
                     "template": [
-                        {"content": "text and {var}", "role": "user", "name": None},
-                        {"content": "content {required_var}", "role": "assistant", "name": None},
+                        {"content": "text and {var}", "role": "user", "name": None, "meta": {}},
+                        {"content": "content {required_var}", "role": "assistant", "name": None, "meta": {}},
                     ],
                     "variables": ["var", "required_var"],
                     "required_variables": ["required_var"],
