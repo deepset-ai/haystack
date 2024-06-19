@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from .eval_run_result import BaseEvaluationRunResult, EvaluationRunResult
+from .base import BaseEvaluationRunResult
+from .eval_run_result import EvaluationRunResult
 
 __all__ = ["BaseEvaluationRunResult", "EvaluationRunResult"]

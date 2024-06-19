@@ -56,11 +56,18 @@ class JsonSchemaValidator:
     p.connect("llm.replies", "schema_validator.messages")
     p.connect("schema_validator.validation_error", "mx_for_llm")
 
-    result = p.run(
-        data={"message_producer": {"messages":[ChatMessage.from_user("Generate JSON for person with name 'John' and age 30")]},
-              "schema_validator": {"json_schema": {"type": "object",
-                                                   "properties": {"name": {"type": "string"},
-                                                                  "age": {"type": "integer"}}}}})
+    result = p.run(data={
+        "message_producer": {
+            "messages":[ChatMessage.from_user("Generate JSON for person with name 'John' and age 30")]},
+            "schema_validator": {
+                "json_schema": {
+                    "type": "object",
+                    "properties": {"name": {"type": "string"},
+                    "age": {"type": "integer"}
+                }
+            }
+        }
+    })
     print(result)
     >> {'schema_validator': {'validated': [ChatMessage(content='\\n{\\n  "name": "John",\\n  "age": 30\\n}',
     role=<ChatRole.ASSISTANT: 'assistant'>, name=None, meta={'model': 'gpt-4-1106-preview', 'index': 0,

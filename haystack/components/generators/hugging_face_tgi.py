@@ -37,19 +37,23 @@ class HuggingFaceTGIGenerator:
 
     Key Features and Compatibility:
      - Primary Compatibility: designed to work seamlessly with any non-based model deployed using the TGI
-       framework. For more information on TGI, visit [text-generation-inference](https://github.com/huggingface/text-generation-inference)
+       framework. For more information on TGI, visit
+       [text-generation-inference](https://github.com/huggingface/text-generation-inference)
 
     - Hugging Face Inference Endpoints: Supports inference of TGI chat LLMs deployed on Hugging Face
-       inference endpoints. For more details, refer to [inference-endpoints](https://huggingface.co/inference-endpoints)
+       inference endpoints. For more details, refer to
+       [inference-endpoints](https://huggingface.co/inference-endpoints)
 
     - Inference API Support: supports inference of TGI LLMs hosted on the rate-limited Inference
       API tier. Learn more about the Inference API at [inference-api](https://huggingface.co/inference-api).
-      Discover available chat models using the following command: `wget -qO- https://api-inference.huggingface.co/framework/text-generation-inference | grep chat`
+      Discover available chat models using the following command:
+      `wget -qO- https://api-inference.huggingface.co/framework/text-generation-inference | grep chat`
       and simply use the model ID as the model parameter for this component. You'll also need to provide a valid
       Hugging Face API token as the token parameter.
 
     - Custom TGI Endpoints: supports inference of TGI chat LLMs deployed on custom TGI endpoints. Anyone can
-      deploy their own TGI endpoint using the TGI framework. For more details, refer to [inference-endpoints](https://huggingface.co/inference-endpoints)
+      deploy their own TGI endpoint using the TGI framework. For more details, refer to
+      [inference-endpoints](https://huggingface.co/inference-endpoints)
 
      Input and Output Format:
       - String Format: This component uses the str format for structuring both input and output,
@@ -101,7 +105,8 @@ class HuggingFaceTGIGenerator:
         :param generation_kwargs:
             A dictionary containing keyword arguments to customize text generation.
                 Some examples: `max_new_tokens`, `temperature`, `top_k`, `top_p`,...
-                See Hugging Face's documentation for more information at: [TextGenerationParameters](https://huggingface.co/docs/huggingface_hub/v0.18.0.rc0/en/package_reference/inference_client#huggingface_hub.inference._text_generation.TextGenerationParameters
+                See Hugging Face's documentation for more information at:
+                [TextGenerationParameters](https://huggingface.co/docs/huggingface_hub/v0.18.0.rc0/en/package_reference/inference_client#huggingface_hub.inference._text_generation.TextGenerationParameters
         :param stop_words: An optional list of strings representing the stop words.
         :param streaming_callback: An optional callable for handling streaming responses.
         """
@@ -208,9 +213,11 @@ class HuggingFaceTGIGenerator:
             - replies: A list of strings representing the generated replies.
         """
         if not self.tokenizer:
-            raise RuntimeError(
-                "The component HuggingFaceTGIGenerator was not warmed up. Please call warm_up() before running LLM inference."
+            msg = (
+                "The component HuggingFaceTGIGenerator was not warmed up. Please call warm_up() before "
+                "running LLM inference."
             )
+            raise RuntimeError(msg)
 
         # check generation kwargs given as parameters to override the default ones
         additional_params = ["n", "stop_words"]

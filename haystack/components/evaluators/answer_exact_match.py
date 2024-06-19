@@ -48,7 +48,8 @@ class AnswerExactMatchEvaluator:
             A list of predicted answers.
         :returns:
             A dictionary with the following outputs:
-            - `individual_scores` - A list of 0s and 1s, where 1 means that the predicted answer matched one of the ground truth.
+            - `individual_scores` - A list of 0s and 1s, where 1 means that the predicted answer matched one of the
+                ground truth.
             - `score` - A number from 0.0 to 1.0 that represents the proportion of questions where any predicted
                          answer matched one of the ground truth answers.
         """

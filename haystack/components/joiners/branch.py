@@ -72,7 +72,7 @@ class BranchJoiner:
     pipe.connect("validator.validation_error", "joiner")
 
     result = pipe.run(data={"fc_llm": {"generation_kwargs": {"response_format": {"type": "json_object"}}},
-                            "adapter": {"chat_message": [ChatMessage.from_user("Create json object from Peter Parker")]}})
+                            "adapter": {"chat_message": [ChatMessage.from_user("Create json from Peter Parker")]}})
 
     print(json.loads(result["validator"]["validated"][0].content))
 
@@ -81,9 +81,9 @@ class BranchJoiner:
     >> 'Superhero', 'age': 23, 'location': 'New York City'}
     ```
 
-    Note that `BranchJoiner` can manage only one data type at a time. In this case, `BranchJoiner` is created for passing
-    `List[ChatMessage]`. This determines the type of data that `BranchJoiner` will receive from the upstream connected
-    components and also the type of data that `BranchJoiner` will send through its output.
+    Note that `BranchJoiner` can manage only one data type at a time. In this case, `BranchJoiner` is created for
+    passing `List[ChatMessage]`. This determines the type of data that `BranchJoiner` will receive from the upstream
+    connected components and also the type of data that `BranchJoiner` will send through its output.
 
     In the code example, `BranchJoiner` receives a looped back `List[ChatMessage]` from the `JsonSchemaValidator` and
     sends it down to the `OpenAIChatGenerator` for re-generation. We can have multiple loopback connections in the

@@ -23,9 +23,9 @@ def _prepare_for_drawing(graph: networkx.MultiDiGraph) -> networkx.MultiDiGraph:
     """
     # Label the edges
     for inp, outp, key, data in graph.edges(keys=True, data=True):
-        data[
-            "label"
-        ] = f"{data['from_socket'].name} -> {data['to_socket'].name}{' (opt.)' if not data['mandatory'] else ''}"
+        data["label"] = (
+            f"{data['from_socket'].name} -> {data['to_socket'].name}{' (opt.)' if not data['mandatory'] else ''}"
+        )
         graph.add_edge(inp, outp, key=key, **data)
 
     # Add inputs fake node
@@ -124,7 +124,7 @@ def _to_mermaid_text(graph: networkx.MultiDiGraph) -> str:
     }
 
     states = {
-        comp: f"{comp}[\"<b>{comp}</b><br><small><i>{type(data['instance']).__name__}{optional_inputs[comp]}</i></small>\"]:::component"
+        comp: f"{comp}[\"<b>{comp}</b><br><small><i>{type(data['instance']).__name__}{optional_inputs[comp]}</i></small>\"]:::component"  # noqa
         for comp, data in graph.nodes(data=True)
         if comp not in ["input", "output"]
     }

@@ -114,7 +114,7 @@ class DocumentJoiner:
 
     def _concatenate(self, document_lists):
         """
-        Concatenate multiple lists of Documents and return only the Document with the highest score for duplicate Documents.
+        Concatenate multiple lists of Documents and return only the Document with the highest score for duplicates.
         """
         output = []
         docs_per_id = defaultdict(list)

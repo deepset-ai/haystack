@@ -23,9 +23,10 @@ logger = logging.getLogger(__name__)
 # document scores are essentially unbounded and will be scaled to values between 0 and 1 if scale_score is set to
 # True (default). Scaling uses the expit function (inverse of the logit function) after applying a scaling factor
 # (e.g., BM25_SCALING_FACTOR for the bm25_retrieval method).
-# Larger scaling factor decreases scaled scores. For example, an input of 10 is scaled to 0.99 with BM25_SCALING_FACTOR=2
-# but to 0.78 with BM25_SCALING_FACTOR=8 (default). The defaults were chosen empirically. Increase the default if most
-# unscaled scores are larger than expected (>30) and otherwise would incorrectly all be mapped to scores ~1.
+# Larger scaling factor decreases scaled scores. For example, an input of 10 is scaled to 0.99 with
+# BM25_SCALING_FACTOR=2 but to 0.78 with BM25_SCALING_FACTOR=8 (default). The defaults were chosen empirically.
+# Increase the default if most unscaled scores are larger than expected (>30) and otherwise would incorrectly all be
+# mapped to scores ~1.
 BM25_SCALING_FACTOR = 8
 DOT_PRODUCT_SCALING_FACTOR = 100
 
@@ -69,14 +70,13 @@ class InMemoryDocumentStore:
         :param bm25_tokenization_regex: The regular expression used to tokenize the text for BM25 retrieval.
         :param bm25_algorithm: The BM25 algorithm to use. One of "BM25Okapi", "BM25L", or "BM25Plus".
         :param bm25_parameters: Parameters for BM25 implementation in a dictionary format.
-                                For example: {'k1':1.5, 'b':0.75, 'epsilon':0.25}
-                                You can learn more about these parameters by visiting https://github.com/dorianbrown/rank_bm25.
-                                By default, no parameters are set.
+            For example: {'k1':1.5, 'b':0.75, 'epsilon':0.25}
+            You can learn more about these parameters by visiting https://github.com/dorianbrown/rank_bm25.
         :param embedding_similarity_function: The similarity function used to compare Documents embeddings.
-                                              One of "dot_product" (default) or "cosine".
-                                              To choose the most appropriate function, look for information about your embedding model.
-        :param index: If specified uses a specific index to store the documents. If not specified, a random UUID is used.
-                      Using the same index allows you to store documents across multiple InMemoryDocumentStore instances.
+            One of "dot_product" (default) or "cosine". To choose the most appropriate function, look for information
+            about your embedding model.
+        :param index: A specific index to store the documents. If not specified, a random UUID is used.
+            Using the same index allows you to store documents across multiple InMemoryDocumentStore instances.
         """
         self.bm25_tokenization_regex = bm25_tokenization_regex
         self.tokenizer = re.compile(bm25_tokenization_regex).findall
@@ -349,7 +349,8 @@ class InMemoryDocumentStore:
         """
         Returns the documents that match the filters provided.
 
-        For a detailed specification of the filters, refer to the DocumentStore.filter_documents() protocol documentation.
+        For a detailed specification of the filters, refer to the DocumentStore.filter_documents() protocol
+        documentation.
 
         :param filters: The filters to apply to the document list.
         :returns: A list of Documents that match the given filters.

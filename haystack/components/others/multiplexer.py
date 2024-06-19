@@ -31,11 +31,12 @@ class Multiplexer:
     `Multiplexer` is important for spreading outputs from a single source like a Large Language Model (LLM) across
     different branches of a pipeline. It is especially valuable in error correction loops by rerouting data for
     reevaluation if errors are detected. For instance, in an example pipeline below, `Multiplexer` helps create
-    a schema valid JSON object (given a person's data) with the help of an `OpenAIChatGenerator` and a `JsonSchemaValidator`.
+    a schema valid JSON object (given a person's data) with the help of an `OpenAIChatGenerator` and a
+    `JsonSchemaValidator`.
     In case the generated JSON object fails schema validation, `JsonSchemaValidator` starts a correction loop, sending
     the data back through the `Multiplexer` to the `OpenAIChatGenerator` until it passes schema validation. If we didn't
-    have `Multiplexer`, we wouldn't be able to loop back the data to `OpenAIChatGenerator` for re-generation, as components
-    accept only one input connection for the declared run method parameters.
+    have `Multiplexer`, we wouldn't be able to loop back the data to `OpenAIChatGenerator` for re-generation, as
+    components accept only one input connection for the declared run method parameters.
 
     Usage example:
 
@@ -75,7 +76,7 @@ class Multiplexer:
     pipe.connect("validator.validation_error", "mx")
 
     result = pipe.run(data={"fc_llm": {"generation_kwargs": {"response_format": {"type": "json_object"}}},
-                            "adapter": {"chat_message": [ChatMessage.from_user("Create json object from Peter Parker")]}})
+                            "adapter": {"chat_message": [ChatMessage.from_user("Create json from Peter Parker")]}})
 
     print(json.loads(result["validator"]["validated"][0].content))
 
@@ -93,8 +94,8 @@ class Multiplexer:
 
     In the code example, `Multiplexer` receives a looped back `List[ChatMessage]` from the `JsonSchemaValidator` and
     sends it down to the `OpenAIChatGenerator` for re-generation. We can have multiple loop back connections in the
-    pipeline. In this instance, the downstream component is only one – the `OpenAIChatGenerator` – but the pipeline can have more
-    than one downstream component.
+    pipeline. In this instance, the downstream component is only one – the `OpenAIChatGenerator` – but the pipeline can
+    have more than one downstream component.
     """
 
     def __init__(self, type_: TypeAlias):
