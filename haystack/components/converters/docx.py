@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import io
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
@@ -17,6 +18,45 @@ logger = logging.getLogger(__name__)
 with LazyImport("Run 'pip install python-docx'") as docx_import:
     import docx
     from docx.document import Document as DocxDocument
+
+
+@dataclass
+class DocxMetadata:
+    """
+    Describes the metadata of Docx file.
+
+    :param author: The author
+    :param category: The category
+    :param comments: The comments
+    :param content_status: The content status
+    :param created: The creation date
+    :param identifier: The identifier
+    :param keywords: Available keywords
+    :param language: The language of the document
+    :param last_modified_by: The last modified by user date
+    :param last_printed: The last printed date
+    :param modified: The last modification date
+    :param revision: The revision number
+    :param subject: The subject
+    :param title: The title
+    :param version: The version
+    """
+
+    author: str
+    category: str
+    comments: str
+    content_status: str
+    created: Optional[datetime]
+    identifier: str
+    keywords: str
+    language: str
+    last_modified_by: str
+    last_printed: Optional[datetime]
+    modified: Optional[datetime]
+    revision: int
+    subject: str
+    title: str
+    version: str
 
 
 @component
@@ -72,16 +112,15 @@ class DocxToDocument:
         meta_list = normalize_metadata(meta=meta, sources_count=len(sources))
 
         for source, metadata in zip(sources, meta_list):
-            # Load source ByteStream
             try:
                 bytestream = get_bytestream_from_source(source)
             except Exception as e:
                 logger.warning("Could not read {source}. Skipping it. Error: {error}", source=source, error=e)
                 continue
-
-            # Load the Docx Document
             try:
                 file = docx.Document(io.BytesIO(bytestream.data))
+                paragraphs = [para.text for para in file.paragraphs]
+                text = "\n".join(paragraphs)
             except Exception as e:
                 logger.warning(
                     "Could not read {source} and convert it to a Docx Document, skipping. Error: {error}",
@@ -90,33 +129,14 @@ class DocxToDocument:
                 )
                 continue
 
-            # Load the Metadata
-            try:
-                docx_meta = self._get_docx_metadata(document=file)
-            except Exception as e:
-                logger.warning(
-                    "Could not load the metadata from {source}, skipping. Error: {error}", source=source, error=e
-                )
-                docx_meta = {}
-
-            # Load the content
-            try:
-                paragraphs = [para.text for para in file.paragraphs]
-                text = "\n".join(paragraphs)
-            except Exception as e:
-                logger.warning(
-                    "Could not convert {source} to a Document, skipping it. Error: {error}", source=source, error=e
-                )
-                continue
-
-            merged_metadata = {**bytestream.meta, **docx_meta, **metadata}
+            docx_metadata = self._get_docx_metadata(document=file)
+            merged_metadata = {**bytestream.meta, **metadata, "docx": docx_metadata}
             document = Document(content=text, meta=merged_metadata)
-
             documents.append(document)
 
         return {"documents": documents}
 
-    def _get_docx_metadata(self, document: "DocxDocument") -> Dict[str, Union[str, int, datetime]]:
+    def _get_docx_metadata(self, document: "DocxDocument") -> DocxMetadata:
         """
         Get all relevant data from the 'core_properties' attribute from a Docx Document.
 
@@ -124,22 +144,22 @@ class DocxToDocument:
             The Docx Document you want to extract metadata from
 
         :returns:
-            A dictionary containing all the relevant fields from the 'core_properties'
+            A `DocxMetadata` dataclass all the relevant fields from the 'core_properties'
         """
-        return {
-            "author": document.core_properties.author,
-            "category": document.core_properties.category,
-            "comments": document.core_properties.comments,
-            "content_status": document.core_properties.content_status,
-            "created": document.core_properties.created,
-            "identifier": document.core_properties.identifier,
-            "keywords": document.core_properties.keywords,
-            "language": document.core_properties.language,
-            "last_modified_by": document.core_properties.last_modified_by,
-            "last_printed": document.core_properties.last_printed,
-            "modified": document.core_properties.modified,
-            "revision": document.core_properties.revision,
-            "subject": document.core_properties.subject,
-            "title": document.core_properties.title,
-            "version": document.core_properties.version,
-        }
+        return DocxMetadata(
+            author=document.core_properties.author,
+            category=document.core_properties.category,
+            comments=document.core_properties.comments,
+            content_status=document.core_properties.content_status,
+            created=document.core_properties.created,
+            identifier=document.core_properties.identifier,
+            keywords=document.core_properties.keywords,
+            language=document.core_properties.language,
+            last_modified_by=document.core_properties.last_modified_by,
+            last_printed=document.core_properties.last_printed,
+            modified=document.core_properties.modified,
+            revision=document.core_properties.revision,
+            subject=document.core_properties.subject,
+            title=document.core_properties.title,
+            version=document.core_properties.version,
+        )
