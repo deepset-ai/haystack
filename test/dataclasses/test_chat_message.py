@@ -87,7 +87,14 @@ def test_to_dict():
     message = ChatMessage.from_user("content")
     message.meta["some"] = "some"
 
-    assert message.to_dict() == {"content": "content", "role": "user", "name": None, "meta": {"some": "some"}}
+    assert message.to_dict() == {
+        "content": "content",
+        "role": "user",
+        "name": None,
+        "meta": {
+            "some": "some"
+            }
+        }
 
 
 def test_from_dict():
