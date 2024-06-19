@@ -31,6 +31,17 @@ class FakeComponent:
         return {"value": input_}
 
 
+@component
+class FakeComponentSquared:
+    def __init__(self, an_init_param: Optional[str] = None):
+        self.an_init_param = an_init_param
+        self.inner = FakeComponent()
+
+    @component.output_types(value=str)
+    def run(self, input_: str):
+        return {"value": input_}
+
+
 class TestPipeline:
     """
     This class contains only unit tests for the Pipeline class.
@@ -413,6 +424,19 @@ class TestPipeline:
         greet = pipe.graph.nodes["greet"]["instance"]
         assert greet.message == "modified test"
         assert greet.log_level == "DEBUG"
+
+        # Test with a component that internally instantiates another component
+        def component_pre_init_callback_check_class(name, component_cls, init_params):
+            assert name == "fake_component_squared"
+            assert component_cls == FakeComponentSquared
+
+        pipe = Pipeline()
+        pipe.add_component("fake_component_squared", FakeComponentSquared())
+        pipe = Pipeline.from_dict(
+            pipe.to_dict(),
+            callbacks=DeserializationCallbacks(component_pre_init=component_pre_init_callback_check_class),
+        )
+        assert type(pipe.graph.nodes["fake_component_squared"]["instance"].inner) == FakeComponent
 
     # UNIT
     def test_from_dict_with_empty_dict(self):
