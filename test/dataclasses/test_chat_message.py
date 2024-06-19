@@ -83,11 +83,11 @@ def test_apply_custom_chat_templating_on_chat_message():
     assert tokenized_messages == "You are good assistant\nHuman: I have a question\nAssistant:"
 
 
-def test_to_dict_with_flattening():
+def test_to_dict():
     message = ChatMessage.from_user("content")
     message.meta["some"] = "some"
 
-    assert message.to_dict() == {"content": "content", "role": "user", "name": None, "some": "some"}
+    assert message.to_dict() == {"content": "content", "role": "user", "name": None, "meta": {"some": "some"}}
 
 
 def test_from_dict():
@@ -95,21 +95,7 @@ def test_from_dict():
         content="text", role=ChatRole("user"), name=None, meta={}
     )
 
-
-def test_from_dict_with_flat_meta():
-    assert ChatMessage.from_dict(
-        data={"content": "text", "role": "user", "name": None, "something": "something"}
-    ) == ChatMessage(content="text", role=ChatRole("user"), name=None, meta={"something": "something"})
-
-
-def test_from_dict_with_non_flat_meta():
+def test_from_dict_with_meta():
     assert ChatMessage.from_dict(
         data={"content": "text", "role": "user", "name": None, "meta": {"something": "something"}}
     ) == ChatMessage(content="text", role=ChatRole("user"), name=None, meta={"something": "something"})
-
-
-def test_from_dict_with_flat_and_non_flat_meta():
-    with pytest.raises(ValueError):
-        ChatMessage.from_dict(
-            data={"content": "content", "role": "user", "name": None, "meta": {"field": "something"}, "more": "fields"}
-        )
