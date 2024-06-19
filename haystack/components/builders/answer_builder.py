@@ -3,9 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from haystack import Document, GeneratedAnswer, component, logging
+from haystack.dataclasses.chat_message import ChatMessage
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +57,7 @@ class AnswerBuilder:
     def run(
         self,
         query: str,
-        replies: List[str],
+        replies: Union[List[str], List[ChatMessage]],
         meta: Optional[List[Dict[str, Any]]] = None,
         documents: Optional[List[Document]] = None,
         pattern: Optional[str] = None,
@@ -68,7 +69,7 @@ class AnswerBuilder:
         :param query:
             The query used in the prompts for the Generator.
         :param replies:
-            The output of the Generator.
+            The output of the Generator. Can be a list of strings or a list of ChatMessage objects.
         :param meta:
             The metadata returned by the Generator. If not specified, the generated answer will contain no metadata.
         :param documents:
@@ -102,6 +103,10 @@ class AnswerBuilder:
 
         pattern = pattern or self.pattern
         reference_pattern = reference_pattern or self.reference_pattern
+
+        # Extract content from ChatMessage objects if replies is a list of ChatMessages
+        if isinstance(replies[0], ChatMessage):
+            replies = [msg.content for msg in replies]
 
         all_answers = []
         for reply, metadata in zip(replies, meta):
