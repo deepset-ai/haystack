@@ -8,6 +8,10 @@ import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Generator
+
+import structlog
+
 from test.tracing.utils import SpyingTracer
 from unittest.mock import ANY
 
@@ -26,6 +30,15 @@ def reset_logging_config() -> None:
     yield
     # Reset the logging configuration after each test to avoid impacting other tests
     logging.root.handlers = old_handlers
+
+
+@pytest.fixture()
+def set_context_var_key() -> Generator[str, None, None]:
+    structlog.contextvars.bind_contextvars(context_var="value")
+
+    yield "context_var"
+
+    structlog.contextvars.unbind_contextvars("context_var")
 
 
 class TestSkipLoggingConfiguration:
@@ -173,6 +186,17 @@ class TestStructuredLoggingConsoleRendering:
 
         assert "An error happened" in output
 
+    def test_logging_of_contextvars(self, capfd: CaptureFixture, set_context_var_key: str) -> None:
+        haystack_logging.configure_logging()
+
+        logger = logging.getLogger(__name__)
+        logger.warning("Hello, structured logging!", extra={"key1": "value1", "key2": "value2"})
+
+        # Use `capfd` to capture the output of the final structlog rendering result
+        output = capfd.readouterr().err
+
+        assert set_context_var_key in output
+
 
 class TestStructuredLoggingJSONRendering:
     def test_logging_as_json_if_not_atty(self, capfd: CaptureFixture, monkeypatch: MonkeyPatch) -> None:
@@ -231,6 +255,30 @@ class TestStructuredLoggingJSONRendering:
             "event": "Hello, structured logging!",
             "key1": "value1",
             "key2": "value2",
+            "level": "warning",
+            "timestamp": ANY,
+            "lineno": ANY,
+            "module": "test.test_logging",
+        }
+
+    def test_logging_of_contextvars(
+        self, capfd: CaptureFixture, monkeypatch: MonkeyPatch, set_context_var_key: str
+    ) -> None:
+        monkeypatch.setenv("HAYSTACK_LOGGING_USE_JSON", "true")
+        haystack_logging.configure_logging()
+
+        logger = logging.getLogger(__name__)
+        logger.warning("Hello, structured logging!", extra={"key1": "value1", "key2": "value2"})
+
+        # Use `capfd` to capture the output of the final structlog rendering result
+        output = capfd.readouterr().err
+        parsed_output = json.loads(output)  # should not raise an error
+
+        assert parsed_output == {
+            "event": "Hello, structured logging!",
+            "key1": "value1",
+            "key2": "value2",
+            set_context_var_key: "value",
             "level": "warning",
             "timestamp": ANY,
             "lineno": ANY,

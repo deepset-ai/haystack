@@ -3,9 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 from typing import List
 
-import numpy as np
 import pytest
 
+from haystack import Pipeline
 from haystack.components.evaluators import LLMEvaluator
 from haystack.utils.auth import Secret
 
@@ -205,7 +205,7 @@ class TestLLMEvaluator:
                 "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
                 "api": "openai",
                 "instructions": "test-instruction",
-                "inputs": [("predicted_answers", List[str])],
+                "inputs": [["predicted_answers", "typing.List[str]"]],
                 "outputs": ["score"],
                 "progress_bar": True,
                 "examples": [
@@ -223,7 +223,7 @@ class TestLLMEvaluator:
                 "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
                 "api": "openai",
                 "instructions": "test-instruction",
-                "inputs": [("predicted_answers", List[str])],
+                "inputs": [["predicted_answers", "typing.List[str]"]],
                 "outputs": ["score"],
                 "examples": [
                     {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
@@ -266,7 +266,7 @@ class TestLLMEvaluator:
                 "api_key": {"env_vars": ["ENV_VAR"], "strict": True, "type": "env_var"},
                 "api": "openai",
                 "instructions": "test-instruction",
-                "inputs": [("predicted_answers", List[str])],
+                "inputs": [["predicted_answers", "typing.List[str]"]],
                 "outputs": ["custom_score"],
                 "progress_bar": True,
                 "examples": [
@@ -281,6 +281,21 @@ class TestLLMEvaluator:
                 ],
             },
         }
+
+    def test_serde(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        pipeline = Pipeline()
+        component = LLMEvaluator(
+            instructions="test-instruction",
+            inputs=[("questions", List[str]), ("predicted_answers", List[List[str]])],
+            outputs=["score"],
+            examples=[
+                {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
+            ],
+        )
+        pipeline.add_component("evaluator", component)
+        serialized_pipeline = pipeline.dumps()
+        deserialized_pipeline = Pipeline.loads(serialized_pipeline)
 
     def test_run_with_different_lengths(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")

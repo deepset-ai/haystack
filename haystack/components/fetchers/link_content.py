@@ -163,8 +163,8 @@ class LinkContentFetcher:
         :param url: The URL to fetch content from.
         :return: A tuple containing the ByteStream metadata dict and the corresponding ByteStream.
              ByteStream metadata contains the URL and the content type of the fetched content.
-             The content type is a string indicating the type of content fetched (for example, "text/html", "application/pdf").
-             The ByteStream object contains the fetched content as binary data.
+             The content type is a string indicating the type of content fetched (for example, "text/html",
+             "application/pdf"). The ByteStream object contains the fetched content as binary data.
 
         :raises: If an error occurs during content retrieval and `raise_on_failure` is set to True, this method will
         raise an exception. Otherwise, all fetching errors are logged, and an empty ByteStream is returned.

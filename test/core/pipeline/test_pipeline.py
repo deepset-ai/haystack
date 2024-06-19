@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
+from haystack import Document
 from haystack.components.builders import PromptBuilder
 from haystack.components.others import Multiplexer
 from haystack.core.component import component
@@ -118,6 +119,71 @@ class TestPipeline:
 
         with pytest.raises(PipelineError):
             second_pipe.add_component("some", some_component)
+
+    def test_remove_component_raises_if_invalid_component_name(self):
+        pipe = Pipeline()
+        component = component_class("Some")()
+
+        pipe.add_component("1", component)
+
+        with pytest.raises(ValueError):
+            pipe.remove_component("2")
+
+    def test_remove_component_removes_component_and_its_edges(self):
+        pipe = Pipeline()
+        component_1 = component_class("Type1")()
+        component_2 = component_class("Type2")()
+        component_3 = component_class("Type3")()
+        component_4 = component_class("Type4")()
+
+        pipe.add_component("1", component_1)
+        pipe.add_component("2", component_2)
+        pipe.add_component("3", component_3)
+        pipe.add_component("4", component_4)
+
+        pipe.connect("1", "2")
+        pipe.connect("2", "3")
+        pipe.connect("3", "4")
+
+        pipe.remove_component("2")
+
+        assert ["1", "3", "4"] == sorted(pipe.graph.nodes)
+        assert [("3", "4")] == sorted([(u, v) for (u, v) in pipe.graph.edges()])
+
+    def test_remove_component_allows_you_to_reuse_the_component(self):
+        pipe = Pipeline()
+        Some = component_class("Some", input_types={"in": int}, output_types={"out": int})
+
+        pipe.add_component("component_1", Some())
+        pipe.add_component("component_2", Some())
+        pipe.add_component("component_3", Some())
+        pipe.connect("component_1", "component_2")
+        pipe.connect("component_2", "component_3")
+        component_2 = pipe.remove_component("component_2")
+
+        assert component_2.__haystack_added_to_pipeline__ is None
+        assert component_2.__haystack_input__._sockets_dict == {"in": InputSocket(name="in", type=int, senders=[])}
+        assert component_2.__haystack_output__._sockets_dict == {
+            "out": OutputSocket(name="out", type=int, receivers=[])
+        }
+
+        pipe2 = Pipeline()
+        pipe2.add_component("component_4", Some())
+        pipe2.add_component("component_2", component_2)
+        pipe2.add_component("component_5", Some())
+
+        pipe2.connect("component_4", "component_2")
+        pipe2.connect("component_2", "component_5")
+        assert component_2.__haystack_added_to_pipeline__ is pipe2
+        assert component_2.__haystack_input__._sockets_dict == {
+            "in": InputSocket(name="in", type=int, senders=["component_4"])
+        }
+        assert component_2.__haystack_output__._sockets_dict == {
+            "out": OutputSocket(name="out", type=int, receivers=["component_5"])
+        }
+
+        # instance = pipe2.get_component("some")
+        # assert instance == component
 
     # UNIT
     def test_get_component_name(self):
@@ -938,3 +1004,221 @@ class TestPipeline:
         assert comp2.__haystack_output__.value.receivers == ["comp3"]
         assert comp3.__haystack_input__.value.senders == ["comp1", "comp2"]
         assert list(pipe.graph.edges) == [("comp1", "comp3", "value/value"), ("comp2", "comp3", "value/value")]
+
+    def test__run_component(self, spying_tracer, caplog):
+        caplog.set_level(logging.INFO)
+        sentence_builder = component_class(
+            "SentenceBuilder", input_types={"words": List[str]}, output={"text": "some words"}
+        )()
+        document_builder = component_class(
+            "DocumentBuilder", input_types={"text": str}, output={"doc": Document(content="some words")}
+        )()
+        document_cleaner = component_class(
+            "DocumentCleaner",
+            input_types={"doc": Document},
+            output={"cleaned_doc": Document(content="some cleaner words")},
+        )()
+
+        pipe = Pipeline()
+        pipe.add_component("sentence_builder", sentence_builder)
+        pipe.add_component("document_builder", document_builder)
+        pipe.add_component("document_cleaner", document_cleaner)
+        pipe.connect("sentence_builder.text", "document_builder.text")
+        pipe.connect("document_builder.doc", "document_cleaner.doc")
+        assert spying_tracer.spans == []
+        res = pipe._run_component("document_builder", {"text": "whatever"})
+        assert res == {"doc": Document(content="some words")}
+
+        assert len(spying_tracer.spans) == 1
+        span = spying_tracer.spans[0]
+        assert span.operation_name == "haystack.component.run"
+        assert span.tags == {
+            "haystack.component.name": "document_builder",
+            "haystack.component.type": "DocumentBuilder",
+            "haystack.component.input_types": {"text": "str"},
+            "haystack.component.input_spec": {"text": {"type": "str", "senders": ["sentence_builder"]}},
+            "haystack.component.output_spec": {"doc": {"type": "Document", "receivers": ["document_cleaner"]}},
+            "haystack.component.visits": 1,
+        }
+
+        assert caplog.messages == ["Running component document_builder"]
+
+    def test__run_component_with_variadic_input(self):
+        document_joiner = component_class("DocumentJoiner", input_types={"docs": Variadic[Document]})()
+
+        pipe = Pipeline()
+        pipe.add_component("document_joiner", document_joiner)
+        inputs = {"docs": [Document(content="doc1"), Document(content="doc2")]}
+        pipe._run_component("document_joiner", inputs)
+        assert inputs == {"docs": []}
+
+    def test__component_has_enough_inputs_to_run(self):
+        sentence_builder = component_class("SentenceBuilder", input_types={"words": List[str]})()
+        pipe = Pipeline()
+        pipe.add_component("sentence_builder", sentence_builder)
+
+        assert not pipe._component_has_enough_inputs_to_run("sentence_builder", {})
+        assert not pipe._component_has_enough_inputs_to_run(
+            "sentence_builder", {"sentence_builder": {"wrong_input_name": "blah blah"}}
+        )
+        assert pipe._component_has_enough_inputs_to_run(
+            "sentence_builder", {"sentence_builder": {"words": ["blah blah"]}}
+        )
+
+    def test__dequeue_components_that_received_no_input(self):
+        sentence_builder = component_class(
+            "SentenceBuilder", input_types={"words": List[str]}, output={"text": "some words"}
+        )()
+        document_builder = component_class(
+            "DocumentBuilder", input_types={"text": str}, output={"doc": Document(content="some words")}
+        )()
+
+        pipe = Pipeline()
+        pipe.add_component("sentence_builder", sentence_builder)
+        pipe.add_component("document_builder", document_builder)
+        pipe.connect("sentence_builder.text", "document_builder.text")
+
+        to_run = [("document_builder", document_builder)]
+        waiting_for_input = [("document_builder", document_builder)]
+        pipe._dequeue_components_that_received_no_input("sentence_builder", {}, to_run, waiting_for_input)
+        assert to_run == []
+        assert waiting_for_input == []
+
+    def test__distribute_output(self):
+        document_builder = component_class(
+            "DocumentBuilder", input_types={"text": str}, output_types={"doc": Document, "another_doc": Document}
+        )()
+        document_cleaner = component_class(
+            "DocumentCleaner", input_types={"doc": Document}, output_types={"cleaned_doc": Document}
+        )()
+        document_joiner = component_class("DocumentJoiner", input_types={"docs": Variadic[Document]})()
+
+        pipe = Pipeline()
+        pipe.add_component("document_builder", document_builder)
+        pipe.add_component("document_cleaner", document_cleaner)
+        pipe.add_component("document_joiner", document_joiner)
+        pipe.connect("document_builder.doc", "document_cleaner.doc")
+        pipe.connect("document_builder.another_doc", "document_joiner.docs")
+
+        inputs = {"document_builder": {"text": "some text"}}
+        to_run = []
+        waiting_for_input = [("document_joiner", document_joiner)]
+        res = pipe._distribute_output(
+            "document_builder",
+            {"doc": Document("some text"), "another_doc": Document()},
+            inputs,
+            to_run,
+            waiting_for_input,
+        )
+
+        assert res == {}
+        assert inputs == {
+            "document_builder": {"text": "some text"},
+            "document_cleaner": {"doc": Document("some text")},
+            "document_joiner": {"docs": [Document()]},
+        }
+        assert to_run == [("document_cleaner", document_cleaner)]
+        assert waiting_for_input == [("document_joiner", document_joiner)]
+
+    def test__enqueue_next_runnable_component(self):
+        document_builder = component_class(
+            "DocumentBuilder", input_types={"text": str}, output_types={"doc": Document}
+        )()
+        pipe = Pipeline()
+        inputs_by_component = {"document_builder": {"text": "some text"}}
+        to_run = []
+        waiting_for_input = [("document_builder", document_builder)]
+        pipe._enqueue_next_runnable_component(inputs_by_component, to_run, waiting_for_input)
+
+        assert to_run == [("document_builder", document_builder)]
+        assert waiting_for_input == []
+
+    def test__enqueue_next_runnable_component_without_component_inputs(self):
+        document_builder = component_class(
+            "DocumentBuilder", input_types={"text": str}, output_types={"doc": Document}
+        )()
+        pipe = Pipeline()
+        inputs_by_component = {}
+        to_run = []
+        waiting_for_input = [("document_builder", document_builder)]
+        pipe._enqueue_next_runnable_component(inputs_by_component, to_run, waiting_for_input)
+
+        assert to_run == [("document_builder", document_builder)]
+        assert waiting_for_input == []
+
+    def test__enqueue_next_runnable_component_with_component_with_only_variadic_non_greedy_input(self):
+        document_joiner = component_class("DocumentJoiner", input_types={"docs": Variadic[Document]})()
+
+        pipe = Pipeline()
+        inputs_by_component = {}
+        to_run = []
+        waiting_for_input = [("document_joiner", document_joiner)]
+        pipe._enqueue_next_runnable_component(inputs_by_component, to_run, waiting_for_input)
+
+        assert to_run == [("document_joiner", document_joiner)]
+        assert waiting_for_input == []
+
+    def test__enqueue_next_runnable_component_with_component_with_only_default_input(self):
+        prompt_builder = PromptBuilder(template="{{ questions | join('\n') }}")
+
+        pipe = Pipeline()
+        inputs_by_component = {}
+        to_run = []
+        waiting_for_input = [("prompt_builder", prompt_builder)]
+        pipe._enqueue_next_runnable_component(inputs_by_component, to_run, waiting_for_input)
+
+        assert to_run == [("prompt_builder", prompt_builder)]
+        assert waiting_for_input == []
+
+    def test__enqueue_next_runnable_component_with_component_with_variadic_non_greedy_and_default_input(self):
+        document_joiner = component_class("DocumentJoiner", input_types={"docs": Variadic[Document]})()
+        prompt_builder = PromptBuilder(template="{{ questions | join('\n') }}")
+
+        pipe = Pipeline()
+        inputs_by_component = {}
+        to_run = []
+        waiting_for_input = [("prompt_builder", prompt_builder), ("document_joiner", document_joiner)]
+        pipe._enqueue_next_runnable_component(inputs_by_component, to_run, waiting_for_input)
+
+        assert to_run == [("document_joiner", document_joiner)]
+        assert waiting_for_input == [("prompt_builder", prompt_builder)]
+
+    def test__enqueue_next_runnable_component_with_different_components_inputs(self):
+        document_builder = component_class(
+            "DocumentBuilder", input_types={"text": str}, output_types={"doc": Document}
+        )()
+        document_joiner = component_class("DocumentJoiner", input_types={"docs": Variadic[Document]})()
+        prompt_builder = PromptBuilder(template="{{ questions | join('\n') }}")
+
+        pipe = Pipeline()
+        inputs_by_component = {"document_builder": {"text": "some text"}}
+        to_run = []
+        waiting_for_input = [
+            ("prompt_builder", prompt_builder),
+            ("document_builder", document_builder),
+            ("document_joiner", document_joiner),
+        ]
+        pipe._enqueue_next_runnable_component(inputs_by_component, to_run, waiting_for_input)
+
+        assert to_run == [("document_builder", document_builder)]
+        assert waiting_for_input == [("prompt_builder", prompt_builder), ("document_joiner", document_joiner)]
+
+    def test__enqueue_next_runnable_component_with_different_components_without_any_input(self):
+        document_builder = component_class(
+            "DocumentBuilder", input_types={"text": str}, output_types={"doc": Document}
+        )()
+        document_joiner = component_class("DocumentJoiner", input_types={"docs": Variadic[Document]})()
+        prompt_builder = PromptBuilder(template="{{ questions | join('\n') }}")
+
+        pipe = Pipeline()
+        inputs_by_component = {}
+        to_run = []
+        waiting_for_input = [
+            ("prompt_builder", prompt_builder),
+            ("document_builder", document_builder),
+            ("document_joiner", document_joiner),
+        ]
+        pipe._enqueue_next_runnable_component(inputs_by_component, to_run, waiting_for_input)
+
+        assert to_run == [("document_builder", document_builder)]
+        assert waiting_for_input == [("prompt_builder", prompt_builder), ("document_joiner", document_joiner)]

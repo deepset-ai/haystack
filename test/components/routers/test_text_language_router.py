@@ -11,12 +11,12 @@ from haystack.components.routers import TextLanguageRouter
 
 class TestTextLanguageRouter:
     def test_non_string_input(self):
-        with pytest.raises(TypeError, match="TextLanguageRouter expects a str as input."):
+        with pytest.raises(TypeError, match="TextLanguageRouter expects a string as input."):
             classifier = TextLanguageRouter()
             classifier.run(text=Document(content="This is an english sentence."))
 
     def test_list_of_string(self):
-        with pytest.raises(TypeError, match="TextLanguageRouter expects a str as input."):
+        with pytest.raises(TypeError, match="TextLanguageRouter expects a string as input."):
             classifier = TextLanguageRouter()
             classifier.run(text=["This is an english sentence."])
 

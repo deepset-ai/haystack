@@ -2,7 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, cast
+
+import numpy as np
 
 from haystack.lazy_imports import LazyImport
 from haystack.utils.auth import Secret
@@ -54,5 +56,5 @@ class _SentenceTransformersEmbeddingBackend:
         )
 
     def embed(self, data: List[str], **kwargs) -> List[List[float]]:
-        embeddings = self.model.encode(data, **kwargs).tolist()
+        embeddings = cast(np.ndarray, self.model.encode(data, **kwargs)).tolist()
         return embeddings

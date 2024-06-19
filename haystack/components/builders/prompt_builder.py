@@ -14,18 +14,21 @@ class PromptBuilder:
     """
     PromptBuilder is a component that renders a prompt from a template string using Jinja2 templates.
 
-    For prompt engineering, users can switch the template at runtime by providing a template for each pipeline run invocation.
+    For prompt engineering, users can switch the template at runtime by providing a template for each pipeline run
+    invocation.
 
-    The template variables found in the default template string are used as input types for the component and are all optional,
-    unless explicitly specified. If an optional template variable is not provided as an input, it will be replaced with
-    an empty string in the rendered prompt. Use `variables` and `required_variables` to change the default variable behavior.
+    The template variables found in the default template string are used as input types for the component and are all
+    optional, unless explicitly specified. If an optional template variable is not provided as an input, it will be
+    replaced with an empty string in the rendered prompt. Use `variables` and `required_variables` to change the
+    default variable behavior.
 
     ### Usage examples
 
     #### On its own
 
-    Below is an example of using the `PromptBuilder` to render a prompt template and fill it with `target_language` and `snippet`.
-    The PromptBuilder returns a prompt with the string "Translate the following context to spanish. Context: I can't speak spanish.; Translation:".
+    Below is an example of using the `PromptBuilder` to render a prompt template and fill it with `target_language`
+    and `snippet`. The PromptBuilder returns a prompt with the string "Translate the following context to spanish.
+    Context: I can't speak spanish.; Translation:".
     ```python
     from haystack.components.builders import PromptBuilder
 
@@ -36,8 +39,8 @@ class PromptBuilder:
 
     #### In a Pipeline
 
-    Below is an example of a RAG pipeline where we use a `PromptBuilder` to render a custom prompt template and fill it with the
-    contents of retrieved Documents and a query. The rendered prompt is then sent to a Generator.
+    Below is an example of a RAG pipeline where we use a `PromptBuilder` to render a custom prompt template and fill it
+    with the contents of retrieved Documents and a query. The rendered prompt is then sent to a Generator.
     ```python
     from haystack import Pipeline, Document
     from haystack.utils import Secret
@@ -102,7 +105,8 @@ class PromptBuilder:
 
     #### Overwriting variables at runtime
 
-    In case you want to overwrite the values of variables, you can use `template_variables` during runtime as illustrated below:
+    In case you want to overwrite the values of variables, you can use `template_variables` during runtime as
+    illustrated below:
     ```python
     language_template = \"\"\"
     You are a helpful assistant.
@@ -146,9 +150,9 @@ class PromptBuilder:
         :param required_variables: An optional list of input variables that must be provided at runtime.
             If a required variable is not provided at runtime, an exception will be raised.
         :param variables:
-            An optional list of input variables to be used in prompt templates instead of the ones inferred from `template`.
-            For example, if you want to use more variables during prompt engineering than the ones present in the default
-            template, you can provide them here.
+            An optional list of input variables to be used in prompt templates instead of the ones inferred from
+            `template`. For example, if you want to use more variables during prompt engineering than the ones present
+            in the default template, you can provide them here.
         """
         self._template_string = template
         self._variables = variables

@@ -6,9 +6,8 @@ from typing import Any, Dict, List, Optional
 
 from numpy import mean as np_mean
 
-from haystack import default_from_dict
+from haystack import component, default_from_dict, default_to_dict
 from haystack.components.evaluators.llm_evaluator import LLMEvaluator
-from haystack.core.component import component
 from haystack.utils import Secret, deserialize_secrets_inplace
 
 # Private global variable for default examples to include in the prompt if the user does not provide any examples
@@ -34,6 +33,7 @@ _DEFAULT_EXAMPLES = [
 ]
 
 
+@component
 class ContextRelevanceEvaluator(LLMEvaluator):
     """
     Evaluator that checks if a provided context is relevant to the question.
@@ -49,9 +49,11 @@ class ContextRelevanceEvaluator(LLMEvaluator):
 
     questions = ["Who created the Python language?"]
     contexts = [
-        [
-            "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming language. Its design philosophy emphasizes code readability, and its language constructs aim to help programmers write clear, logical code for both small and large-scale software projects."
-        ],
+        [(
+            "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming "
+            "language. Its design philosophy emphasizes code readability, and its language constructs aim to help "
+            "programmers write clear, logical code for both small and large-scale software projects."
+        )],
     ]
 
     evaluator = ContextRelevanceEvaluator()
@@ -61,7 +63,11 @@ class ContextRelevanceEvaluator(LLMEvaluator):
     print(result["individual_scores"])
     # [1.0]
     print(result["results"])
-    # [{'statements': ['Python, created by Guido van Rossum in the late 1980s.'], 'statement_scores': [1], 'score': 1.0}]
+    # [{
+    #   'statements': ['Python, created by Guido van Rossum in the late 1980s.'],
+    #   'statement_scores': [1],
+    #   'score': 1.0
+    # }]
     ```
     """
 
@@ -115,7 +121,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
         self.api = api
         self.api_key = api_key
 
-        super().__init__(
+        super(ContextRelevanceEvaluator, self).__init__(
             instructions=self.instructions,
             inputs=self.inputs,
             outputs=self.outputs,
@@ -141,7 +147,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
                 - `individual_scores`: A list of context relevance scores for each input question.
                 - `results`: A list of dictionaries with `statements` and `statement_scores` for each input context.
         """
-        result = super().run(questions=questions, contexts=contexts)
+        result = super(ContextRelevanceEvaluator, self).run(questions=questions, contexts=contexts)
 
         # calculate average statement relevance score per query
         for idx, res in enumerate(result["results"]):
@@ -158,6 +164,22 @@ class ContextRelevanceEvaluator(LLMEvaluator):
         result["individual_scores"] = [res["score"] for res in result["results"]]
 
         return result
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serialize this component to a dictionary.
+
+        :returns:
+            A dictionary with serialized data.
+        """
+        return default_to_dict(
+            self,
+            api=self.api,
+            api_key=self.api_key.to_dict() if self.api_key else None,
+            examples=self.examples,
+            progress_bar=self.progress_bar,
+            raise_on_failure=self.raise_on_failure,
+        )
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ContextRelevanceEvaluator":

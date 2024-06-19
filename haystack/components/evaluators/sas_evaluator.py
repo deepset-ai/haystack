@@ -19,11 +19,10 @@ with LazyImport(message="Run 'pip install scikit-learn \"sentence-transformers>=
 @component
 class SASEvaluator:
     """
-    SASEvaluator computes the Semantic Answer Similarity (SAS) between a list of predictions and a list of ground truths.
+    SASEvaluator computes the Semantic Answer Similarity (SAS) between a list of predictions and a one of ground truths.
 
-    It's usually used in Retrieval Augmented Generation (RAG) pipelines to evaluate the quality of the generated answers.
-
-    The SAS is computed using a pre-trained model from the Hugging Face model hub. The model can be either a
+    It's usually used in Retrieval Augmented Generation (RAG) pipelines to evaluate the quality of the generated
+    answers. The SAS is computed using a pre-trained model from the Hugging Face model hub. The model can be either a
     Bi-Encoder or a Cross-Encoder. The choice of the model is based on the `model` parameter.
 
     Usage example:
@@ -65,7 +64,8 @@ class SASEvaluator:
         Creates a new instance of SASEvaluator.
 
         :param model:
-            SentenceTransformers semantic textual similarity model, should be path or string pointing to a downloadable model.
+            SentenceTransformers semantic textual similarity model, should be path or string pointing to a downloadable
+            model.
         :param batch_size:
             Number of prediction-label pairs to encode at once.
         :param device:

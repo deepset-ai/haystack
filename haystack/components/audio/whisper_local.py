@@ -108,8 +108,8 @@ class LocalWhisperTranscriber:
             A list of paths or binary streams to transcribe.
 
         :returns: A dictionary with the following keys:
-            - `documents`: A list of Documents, one for each file. The content of the document is the transcription text,
-                while the document's metadata contains the values returned by the Whisper model, such as the
+            - `documents`: A list of Documents, one for each file. The content of the document is the transcription
+                text, while the document's metadata contains the values returned by the Whisper model, such as the
                 alignment data and the path to the audio file used for the transcription.
         """
         if self._model is None:
