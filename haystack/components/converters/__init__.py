@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from haystack.components.converters.azure import AzureOCRDocumentConverter
-from haystack.components.converters.docx import DocxToDocument
+from haystack.components.converters.docx import DocxMetadata, DocxToDocument
 from haystack.components.converters.html import HTMLToDocument
 from haystack.components.converters.markdown import MarkdownToDocument
 from haystack.components.converters.openapi_functions import OpenAPIServiceToFunctions
@@ -24,4 +24,5 @@ __all__ = [
     "OpenAPIServiceToFunctions",
     "OutputAdapter",
     "DocxToDocument",
+    "DocxMetadata",
 ]
