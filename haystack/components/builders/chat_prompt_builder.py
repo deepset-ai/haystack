@@ -20,10 +20,10 @@ class ChatPromptBuilder:
     It is designed to construct prompts for the pipeline using static or dynamic templates: Users can change
     the prompt template at runtime by providing a new template for each pipeline run invocation if needed.
 
-    The template variables found in the init template string are used as input types for the component and are all optional,
-    unless explicitly specified. If an optional template variable is not provided as an input, it will be replaced with
-    an empty string in the rendered prompt. Use `variable` and `required_variables` to specify the input types and
-    required variables.
+    The template variables found in the init template string are used as input types for the component and are all
+    optional, unless explicitly specified. If an optional template variable is not provided as an input, it will be
+    replaced with an empty string in the rendered prompt. Use `variable` and `required_variables` to specify the input
+    types and required variables.
 
     Usage example with static prompt template:
     ```python
@@ -38,7 +38,8 @@ class ChatPromptBuilder:
     builder = ChatPromptBuilder(template=template)
     builder.run(target_language="spanish", snippet="I can't speak spanish.")
 
-    summary_template = [ChatMessage.from_user("Translate to {{ target_language }} and summarize. Context: {{ snippet }}; Summary:")]
+    msg = "Translate to {{ target_language }} and summarize. Context: {{ snippet }}; Summary:"
+    summary_template = [ChatMessage.from_user(msg)]
     builder.run(target_language="spanish", snippet="I can't speak spanish.", template=summary_template)
     ```
 
@@ -155,13 +156,14 @@ class ChatPromptBuilder:
         set directly to this method. On collision, the variables provided directly to this method take precedence.
 
         :param template:
-            An optional list of ChatMessages to overwrite ChatPromptBuilder's default template. If None, the default template
-            provided at initialization is used.
+            An optional list of ChatMessages to overwrite ChatPromptBuilder's default template. If None, the default
+            template provided at initialization is used.
         :param template_variables:
             An optional dictionary of template variables. These are additional variables users can provide directly
             to this method in contrast to pipeline variables.
         :param kwargs:
-            Pipeline variables (typically resolved from a pipeline) which are merged with the provided template variables.
+            Pipeline variables (typically resolved from a pipeline) which are merged with the provided template
+            variables.
 
         :returns: A dictionary with the following keys:
             - `prompt`: The updated list of `ChatMessage` instances after rendering the found templates.

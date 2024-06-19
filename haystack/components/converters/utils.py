@@ -12,8 +12,10 @@ def get_bytestream_from_source(source: Union[str, Path, ByteStream]) -> ByteStre
     """
     Creates a ByteStream object from a source.
 
-    :param source: A source to convert to a ByteStream. Can be a string (path to a file), a Path object, or a ByteStream.
-    :return: A ByteStream object.
+    :param source:
+        A source to convert to a ByteStream. Can be a string (path to a file), a Path object, or a ByteStream.
+    :return:
+        A ByteStream object.
     """
 
     if isinstance(source, ByteStream):

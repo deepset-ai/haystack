@@ -2,50 +2,14 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from abc import ABC, abstractmethod
 from copy import deepcopy
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from warnings import warn
 
 from pandas import DataFrame
 from pandas import concat as pd_concat
 
-
-class BaseEvaluationRunResult(ABC):
-    """
-    Represents the results of an evaluation run.
-    """
-
-    @abstractmethod
-    def to_pandas(self) -> "DataFrame":
-        """
-        Creates a Pandas DataFrame containing the scores of each metric for every input sample.
-
-        :returns:
-            Pandas DataFrame with the scores.
-        """
-
-    @abstractmethod
-    def score_report(self) -> "DataFrame":
-        """
-        Transforms the results into a Pandas DataFrame with the aggregated scores for each metric.
-
-        :returns:
-            Pandas DataFrame with the aggregated scores.
-        """
-
-    @abstractmethod
-    def comparative_individual_scores_report(self, other: "BaseEvaluationRunResult") -> "DataFrame":
-        """
-        Creates a Pandas DataFrame with the scores for each metric in the results of two different evaluation runs.
-
-        The inputs to both evaluation runs is assumed to be the same.
-
-        :param other:
-            Results of another evaluation run to compare with.
-        :returns:
-            Pandas DataFrame with the score comparison.
-        """
+from .base import BaseEvaluationRunResult
 
 
 class EvaluationRunResult(BaseEvaluationRunResult):
@@ -95,13 +59,25 @@ class EvaluationRunResult(BaseEvaluationRunResult):
                     f"Got {len(outputs['individual_scores'])} but expected {expected_len}."
                 )
 
-    def score_report(self) -> DataFrame:  # noqa: D102
+    def score_report(self) -> DataFrame:
+        """
+        Transforms the results into a Pandas DataFrame with the aggregated scores for each metric.
+
+        :returns:
+            Pandas DataFrame with the aggregated scores.
+        """
         results = {k: v["score"] for k, v in self.results.items()}
         df = DataFrame.from_dict(results, orient="index", columns=["score"]).reset_index()
         df.columns = ["metrics", "score"]
         return df
 
-    def to_pandas(self) -> DataFrame:  # noqa: D102
+    def to_pandas(self) -> DataFrame:
+        """
+        Creates a Pandas DataFrame containing the scores of each metric for every input sample.
+
+        :returns:
+            Pandas DataFrame with the scores.
+        """
         inputs_columns = list(self.inputs.keys())
         inputs_values = list(self.inputs.values())
         inputs_values = list(map(list, zip(*inputs_values)))  # transpose the values
@@ -114,7 +90,21 @@ class EvaluationRunResult(BaseEvaluationRunResult):
 
         return df_inputs.join(df_scores)
 
-    def comparative_individual_scores_report(self, other: "BaseEvaluationRunResult") -> DataFrame:  # noqa: D102
+    def comparative_individual_scores_report(
+        self, other: "BaseEvaluationRunResult", keep_columns: Optional[List[str]] = None
+    ) -> DataFrame:
+        """
+        Creates a Pandas DataFrame with the scores for each metric in the results of two different evaluation runs.
+
+        The inputs to both evaluation runs is assumed to be the same.
+
+        :param other:
+            Results of another evaluation run to compare with.
+        :param keep_columns:
+            List of common column names to keep from the inputs of the evaluation runs to compare.
+        :returns:
+            Pandas DataFrame with the score comparison.
+        """
         if not isinstance(other, EvaluationRunResult):
             raise ValueError("Comparative scores can only be computed between EvaluationRunResults.")
 
@@ -131,12 +121,14 @@ class EvaluationRunResult(BaseEvaluationRunResult):
         pipe_a_df = self.to_pandas()
         pipe_b_df = other.to_pandas()
 
-        ignore = list(self.inputs.keys())
+        if keep_columns is None:
+            ignore = list(self.inputs.keys())
+        else:
+            ignore = [col for col in list(self.inputs.keys()) if col not in keep_columns]
+
         pipe_b_df.drop(columns=ignore, inplace=True, errors="ignore")
         pipe_b_df.columns = [f"{other_name}_{column}" for column in pipe_b_df.columns]  # type: ignore
-        pipe_a_df.columns = [
-            f"{this_name}_{col}" if col not in ignore else col for col in pipe_a_df.columns
-        ]  # type: ignore
+        pipe_a_df.columns = [f"{this_name}_{col}" if col not in ignore else col for col in pipe_a_df.columns]  # type: ignore
 
         results_df = pd_concat([pipe_a_df, pipe_b_df], axis=1)
         return results_df

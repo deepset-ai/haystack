@@ -26,7 +26,7 @@ class MetadataRouter:
     print(router.run(documents=docs))
 
     # {'en': [Document(id=..., content: 'Paris is the capital of France.', meta: {'language': 'en'})],
-    #  'unmatched': [Document(id=..., content: 'Berlin ist die Haupststadt von Deutschland.', meta: {'language': 'de'})]}
+    # 'unmatched': [Document(id=..., content: 'Berlin ist die Haupststadt von Deutschland.', meta: {'language': 'de'})]}
     ```
     """
 
@@ -34,9 +34,10 @@ class MetadataRouter:
         """
         Initialize the MetadataRouter.
 
-        :param rules: A dictionary of rules that specify which output connection to route a document to based on its metadata.
-            The keys of the dictionary are the names of the output connections, and the values are dictionaries that
-            follow the [format of filtering expressions in Haystack](https://docs.haystack.deepset.ai/v2.0/docs/metadata-filtering).
+        :param rules: A dictionary of rules that specify which output connection to route a document to based on its
+            metadata. The keys of the dictionary are the names of the output connections, and the values are
+            dictionaries that follow the format of
+            [filtering expressions in Haystack](https://docs.haystack.deepset.ai/v2.0/docs/metadata-filtering).
             For example:
             ```python
             {
@@ -78,8 +79,8 @@ class MetadataRouter:
         """
         Route the documents.
 
-        Route the documents to different edges based on their fields content and the rules specified during initialization.
-        If a document does not match any of the rules, it is routed to a connection named "unmatched".
+        Route the documents to different edges based on their fields content and the rules specified during
+        initialization. If a document does not match any of the rules, it is routed to a connection named "unmatched".
 
         :param documents: A list of documents to route to different edges.
 

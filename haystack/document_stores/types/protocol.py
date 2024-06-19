@@ -122,7 +122,8 @@ class DocumentStore(Protocol):
             - `DuplicatePolicy.SKIP`: If a Document with the same id already exists, it is skipped and not written.
             - `DuplicatePolicy.OVERWRITE`: If a Document with the same id already exists, it is overwritten.
             - `DuplicatePolicy.FAIL`: If a Document with the same id already exists, an error is raised.
-        :raises DuplicateError: If `policy` is set to `DuplicatePolicy.FAIL` and a Document with the same id already exists.
+        :raises DuplicateError: If `policy` is set to `DuplicatePolicy.FAIL` and a Document with the same id already
+            exists.
         :returns: The number of Documents written.
             If `DuplicatePolicy.OVERWRITE` is used, this number is always equal to the number of documents in input.
             If `DuplicatePolicy.SKIP` is used, this number can be lower than the number of documents in the input list.

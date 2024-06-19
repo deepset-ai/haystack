@@ -80,7 +80,8 @@ class Telemetry:
                 "Haystack sends anonymous usage data to understand the actual usage and steer dev efforts "
                 "towards features that are most meaningful to users. You can opt-out at anytime by manually "
                 "setting the environment variable HAYSTACK_TELEMETRY_ENABLED as described for different "
-                "operating systems in the [documentation page](https://docs.haystack.deepset.ai/docs/telemetry#how-can-i-opt-out). "
+                "operating systems in the "
+                "[documentation page](https://docs.haystack.deepset.ai/docs/telemetry#how-can-i-opt-out). "
                 "More information at [Telemetry](https://docs.haystack.deepset.ai/docs/telemetry)."
             )
             CONFIG_PATH.parents[0].mkdir(parents=True, exist_ok=True)

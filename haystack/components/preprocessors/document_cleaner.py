@@ -83,7 +83,8 @@ class DocumentCleaner:
         for doc in documents:
             if doc.content is None:
                 logger.warning(
-                    "DocumentCleaner only cleans text documents but document.content for document ID %{document_id} is None.",
+                    "DocumentCleaner only cleans text documents but document.content for document ID"
+                    " %{document_id} is None.",
                     document_id=doc.id,
                 )
                 cleaned_docs.append(doc)
@@ -171,7 +172,8 @@ class DocumentCleaner:
          but won't detect "Page 3 of 4" or similar.
 
         :param n_chars: The number of first/last characters where the header/footer shall be searched in.
-        :param n_first_pages_to_ignore: The number of first pages to ignore (e.g. TOCs often don't contain footer/header).
+        :param n_first_pages_to_ignore: The number of first pages to ignore
+            (e.g. TOCs often don't contain footer/header).
         :param n_last_pages_to_ignore: The number of last pages to ignore.
         :returns: The text without the found headers and footers.
         """

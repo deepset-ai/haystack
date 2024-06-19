@@ -16,8 +16,7 @@ logger = logging.getLogger(__name__)
 SERPERDEV_BASE_URL = "https://google.serper.dev/search"
 
 
-class SerperDevError(ComponentError):
-    ...
+class SerperDevError(ComponentError): ...
 
 
 @component

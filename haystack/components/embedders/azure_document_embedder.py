@@ -50,7 +50,7 @@ class AzureOpenAIDocumentEmbedder:
         embedding_separator: str = "\n",
     ):
         """
-        Create an AzureOpenAITextEmbedder component.
+        Create an AzureOpenAIDocumentEmbedder component.
 
         :param azure_endpoint:
             The endpoint of the deployed model.
@@ -59,7 +59,8 @@ class AzureOpenAIDocumentEmbedder:
         :param azure_deployment:
             The deployment of the model, usually matches the model name.
         :param dimensions:
-            The number of dimensions the resulting output embeddings should have. Only supported in text-embedding-3 and later models.
+            The number of dimensions the resulting output embeddings should have. Only supported in text-embedding-3
+            and later models.
         :param api_key:
             The API key used for authentication.
         :param azure_ad_token:
