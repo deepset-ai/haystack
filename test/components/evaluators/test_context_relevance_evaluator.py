@@ -256,6 +256,11 @@ class TestContextRelevanceEvaluator:
         nested_required_fields = {"score", "statement_scores", "statements"}
         assert all(field in result["results"][0] for field in nested_required_fields)
 
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
     def test_all_statements_are_scored(self):
         from haystack.components.evaluators import ContextRelevanceEvaluator
 
