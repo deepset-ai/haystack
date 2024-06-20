@@ -1,0 +1,5 @@
+---
+upgrade:
+  - |
+    Deprecated `HuggingFaceTEITextEmbedder` and `HuggingFaceTEIDocumentEmbedder` have been removed.
+    Use `HuggingFaceAPITextEmbedder` and `HuggingFaceAPIDocumentEmbedder` instead.
