@@ -4,6 +4,7 @@
 
 from copy import deepcopy
 from typing import Any, Dict, List, Mapping, Optional, Set, Tuple
+from warnings import warn
 
 from haystack import logging, tracing
 from haystack.core.component import Component
@@ -283,6 +284,11 @@ class Pipeline(PipelineBase):
                     ):
                         if self._is_stuck_in_a_loop(waiting_for_input):
                             # We're stuck! We can't make any progress.
+                            msg = (
+                                "Pipeline is stuck running in a loop. Partial outputs will be returned. "
+                                "Check the Pipeline graph for possible issues."
+                            )
+                            warn(RuntimeWarning(msg))
                             break
 
                         for name, comp in waiting_for_input:
