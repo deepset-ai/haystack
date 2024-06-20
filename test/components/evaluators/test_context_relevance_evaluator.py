@@ -267,8 +267,12 @@ class TestContextRelevanceEvaluator:
         questions = ["Who created the Python language?"]
         contexts = [
             [
-                "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming language. Its design philosophy emphasizes code readability, and its language constructs aim to help programmers write clear, logical code for both small and large-scale software projects.",
-                "Java is a high-level, class-based, object-oriented programming language. It allows you to write once, run anywhere, meaning that compiled Java code can run on all platforms that support Java without the need for recompilation.",
+                "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming "
+                "language. Its design philosophy emphasizes code readability, and its language constructs aim to help "
+                "programmers write clear, logical code for both small and large-scale software projects.",
+                "Java is a high-level, class-based, object-oriented programming language. It allows you to write once, "
+                "run anywhere, meaning that compiled Java code can run on all platforms that support Java without the "
+                "need for recompilation.",
                 "Scala is a high-level, statically typed programming language.",
             ]
         ]
