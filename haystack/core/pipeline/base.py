@@ -1016,10 +1016,13 @@ class PipelineBase:
         # waiting for input?
         # This is our last resort, if there's no lazy variadic or component with only default inputs
         # waiting for input we're stuck for real and we can't make any progress.
+        component_found = False
         for _, comp in waiting_for_input:
             if _is_lazy_variadic(comp) or _has_all_inputs_with_defaults(comp):
+                component_found = True
                 break
-        else:
+
+        if not component_found:
             # We're stuck in a loop for real, we can't make any progress.
             # BAIL!
             return True
