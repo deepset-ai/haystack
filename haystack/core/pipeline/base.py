@@ -1011,6 +1011,8 @@ class PipelineBase:
         Checks if the Pipeline is stuck in a loop.
 
         :param waiting_for_input: Queue of Components waiting for input
+
+        :return: True if the Pipeline is stuck in a loop, False otherwise
         """
         # Are we actually stuck or there's a lazy variadic or a component with has only default inputs
         # waiting for input?
