@@ -341,3 +341,24 @@ class Pipeline(PipelineBase):
                                 inner[k] = v
 
             return final_outputs
+
+
+def _enqueue_component(
+    component_pair: Tuple[str, Component],
+    to_run: List[Tuple[str, Component]],
+    waiting_for_input: List[Tuple[str, Component]],
+):
+    """
+    Append a Component in the queue of Components to run if not already in it.
+
+    Remove it from the waiting list if it's there.
+
+    :param component_pair: Tuple of Component name and instance
+    :param to_run: Queue of Components to run
+    :param waiting_for_input: Queue of Components waiting for input
+    """
+    if component_pair in waiting_for_input:
+        waiting_for_input.remove(component_pair)
+
+    if component_pair not in to_run:
+        to_run.append(component_pair)

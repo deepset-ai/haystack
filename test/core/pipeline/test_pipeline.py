@@ -14,6 +14,7 @@ from haystack.core.component import component
 from haystack.core.component.types import InputSocket, OutputSocket, Variadic
 from haystack.core.errors import PipelineConnectError, PipelineDrawingError, PipelineError
 from haystack.core.pipeline import Pipeline, PredefinedPipeline
+from haystack.core.pipeline.pipeline import _enqueue_component
 from haystack.core.serialization import DeserializationCallbacks
 from haystack.testing.factory import component_class
 from haystack.testing.sample_components import AddFixedValue, Double, Greet
@@ -1249,3 +1250,39 @@ class TestPipeline:
 
         waiting_for_input = [("document_builder", document_joiner), ("document_joiner", document_joiner)]
         assert not pipe._is_stuck_in_a_loop(waiting_for_input)
+
+    def test__enqueue_component(self):
+        document_builder = component_class(
+            "DocumentBuilder", input_types={"text": str}, output_types={"doc": Document}
+        )()
+        document_joiner = component_class("DocumentJoiner", input_types={"docs": Variadic[Document]})()
+
+        to_run = []
+        waiting_for_input = []
+        _enqueue_component(("document_builder", document_builder), to_run, waiting_for_input)
+        assert to_run == [("document_builder", document_builder)]
+        assert waiting_for_input == []
+
+        to_run = [("document_builder", document_builder)]
+        waiting_for_input = []
+        _enqueue_component(("document_builder", document_builder), to_run, waiting_for_input)
+        assert to_run == [("document_builder", document_builder)]
+        assert waiting_for_input == []
+
+        to_run = []
+        waiting_for_input = [("document_builder", document_builder)]
+        _enqueue_component(("document_builder", document_builder), to_run, waiting_for_input)
+        assert to_run == [("document_builder", document_builder)]
+        assert waiting_for_input == []
+
+        to_run = []
+        waiting_for_input = [("document_joiner", document_joiner)]
+        _enqueue_component(("document_builder", document_builder), to_run, waiting_for_input)
+        assert to_run == [("document_builder", document_builder)]
+        assert waiting_for_input == [("document_joiner", document_joiner)]
+
+        to_run = [("document_joiner", document_joiner)]
+        waiting_for_input = []
+        _enqueue_component(("document_builder", document_builder), to_run, waiting_for_input)
+        assert to_run == [("document_joiner", document_joiner), ("document_builder", document_builder)]
+        assert waiting_for_input == []
