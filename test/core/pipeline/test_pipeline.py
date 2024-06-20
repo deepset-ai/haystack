@@ -1246,3 +1246,30 @@ class TestPipeline:
 
         assert to_run == [("document_builder", document_builder)]
         assert waiting_for_input == [("prompt_builder", prompt_builder), ("document_joiner", document_joiner)]
+
+    def test__is_stuck_in_a_loop(self):
+        document_builder = component_class(
+            "DocumentBuilder", input_types={"text": str}, output_types={"doc": Document}
+        )()
+        document_joiner = component_class("DocumentJoiner", input_types={"docs": Variadic[Document]})()
+        prompt_builder = PromptBuilder(template="{{ questions | join('\n') }}")
+
+        pipe = Pipeline()
+
+        waiting_for_input = [("document_builder", document_builder)]
+        assert pipe._is_stuck_in_a_loop(waiting_for_input)
+
+        waiting_for_input = [("document_joiner", document_joiner)]
+        assert pipe._is_stuck_in_a_loop(waiting_for_input)
+
+        waiting_for_input = [("prompt_builder", prompt_builder)]
+        assert pipe._is_stuck_in_a_loop(waiting_for_input)
+
+        waiting_for_input = [("document_joiner", document_joiner), ("prompt_builder", prompt_builder)]
+        assert not pipe._is_stuck_in_a_loop(waiting_for_input)
+
+        waiting_for_input = [("document_builder", document_joiner), ("prompt_builder", prompt_builder)]
+        assert not pipe._is_stuck_in_a_loop(waiting_for_input)
+
+        waiting_for_input = [("document_builder", document_joiner), ("document_joiner", document_joiner)]
+        assert not pipe._is_stuck_in_a_loop(waiting_for_input)
