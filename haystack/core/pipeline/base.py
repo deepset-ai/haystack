@@ -1006,6 +1006,33 @@ class PipelineBase:
         waiting_for_input.remove((name, comp))
         to_run.append((name, comp))
 
+    def _is_stuck_in_a_loop(self, waiting_for_input: List[Tuple[str, Component]]) -> bool:
+        """
+        Checks if the Pipeline is stuck in a loop.
+
+        :param waiting_for_input: Queue of Components waiting for input
+        """
+        # Are we actually stuck or there's a lazy variadic or a component with has only default inputs
+        # waiting for input?
+        # This is our last resort, if there's no lazy variadic or component with only default inputs
+        # waiting for input we're stuck for real and we can't make any progress.
+        for _, comp in waiting_for_input:
+            if _is_lazy_variadic(comp) or _has_all_inputs_with_defaults(comp):
+                break
+        else:
+            # We're stuck in a loop for real, we can't make any progress.
+            # BAIL!
+            return True
+
+        if len(waiting_for_input) == 1:
+            # We have a single component with no variadic input or only default inputs waiting for input.
+            # If we're at this point it means it has been waiting for input for at least 2 iterations.
+            # This will never run.
+            # BAIL!
+            return True
+
+        return False
+
 
 def _connections_status(
     sender_node: str, receiver_node: str, sender_sockets: List[OutputSocket], receiver_sockets: List[InputSocket]
