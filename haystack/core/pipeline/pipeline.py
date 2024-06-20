@@ -281,10 +281,10 @@ class Pipeline(PipelineBase):
                         and last_waiting_for_input is not None
                         and before_last_waiting_for_input == last_waiting_for_input
                     ):
-                        # Are we actually stuck or there's a lazy variadic or a component with has only default inputs
-                        # waiting for input?
-                        # This is our last resort, if there's no lazy variadic or component with only default inputs
-                        # waiting for input we're stuck for real and we can't make any progress.
+                        if self._is_stuck_in_a_loop(waiting_for_input):
+                            # We're stuck! We can't make any progress.
+                            break
+
                         for name, comp in waiting_for_input:
                             is_variadic = any(
                                 socket.is_variadic
@@ -296,17 +296,6 @@ class Pipeline(PipelineBase):
                             )
                             if is_variadic and not comp.__haystack_is_greedy__ or has_only_defaults:  # type: ignore[attr-defined]
                                 break
-                        else:
-                            # We're stuck in a loop for real, we can't make any progress.
-                            # BAIL!
-                            break
-
-                        if len(waiting_for_input) == 1:
-                            # We have a single component with variadic input or only default inputs waiting for input.
-                            # If we're at this point it means it has been waiting for input for at least 2 iterations.
-                            # This will never run.
-                            # BAIL!
-                            break
 
                         # There was a lazy variadic or a component with only default waiting for input, we can run it
                         waiting_for_input.remove((name, comp))
