@@ -23,7 +23,8 @@ class TestContextRelevanceEvaluator:
             "Your task is to judge how relevant the provided context is for answering a question. "
             "First, please extract statements from the provided context. "
             "Second, calculate a relevance score for each statement in the context. "
-            "The score is 1 if the statement is relevant to answer the question or 0 if it is not relevant."
+            "The score is 1 if the statement is relevant to answer the question or 0 if it is not relevant. "
+            "Each statement should be scored individually."
         )
         assert component.inputs == [("questions", List[str]), ("contexts", List[List[str]])]
         assert component.outputs == ["statements", "statement_scores"]
@@ -41,9 +42,21 @@ class TestContextRelevanceEvaluator:
             {
                 "inputs": {
                     "questions": "What is the capital of France?",
-                    "contexts": ["Berlin is the capital of Germany."],
+                    "contexts": [
+                        "Berlin is the capital of Germany and was founded in 1244.",
+                        "Europe is a continent with 44 countries.",
+                        "Madrid is the capital of Spain.",
+                    ],
                 },
-                "outputs": {"statements": ["Berlin is the capital of Germany."], "statement_scores": [0]},
+                "outputs": {
+                    "statements": [
+                        "Berlin is the capital of Germany.",
+                        "Berlin was founded in 1244.",
+                        "Europe is a continent with 44 countries.",
+                        "Madrid is the capital of Spain.",
+                    ],
+                    "statement_scores": [0, 0, 0, 0],
+                },
             },
             {
                 "inputs": {"questions": "What is the capital of Italy?", "contexts": ["Rome is the capital of Italy."]},
@@ -183,7 +196,7 @@ class TestContextRelevanceEvaluator:
 
     def test_run_missing_parameters(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        component = ContextRelevanceEvaluator()
+        component = ContextRelevanceEvaluator(progress_bar=False)
         with pytest.raises(TypeError, match="missing 2 required positional arguments"):
             component.run()
 
@@ -235,10 +248,28 @@ class TestContextRelevanceEvaluator:
         questions = ["Who created the Python language?"]
         contexts = [["Python, created by Guido van Rossum, is a high-level general-purpose programming language."]]
 
-        evaluator = ContextRelevanceEvaluator()
+        evaluator = ContextRelevanceEvaluator(progress_bar=False)
         result = evaluator.run(questions=questions, contexts=contexts)
 
         required_fields = {"individual_scores", "results", "score"}
         assert all(field in result for field in required_fields)
         nested_required_fields = {"score", "statement_scores", "statements"}
         assert all(field in result["results"][0] for field in nested_required_fields)
+
+    def test_all_statements_are_scored(self):
+        from haystack.components.evaluators import ContextRelevanceEvaluator
+
+        questions = ["Who created the Python language?"]
+        contexts = [
+            [
+                "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming language. Its design philosophy emphasizes code readability, and its language constructs aim to help programmers write clear, logical code for both small and large-scale software projects.",
+                "Java is a high-level, class-based, object-oriented programming language. It allows you to write once, run anywhere, meaning that compiled Java code can run on all platforms that support Java without the need for recompilation.",
+                "Scala is a high-level, statically typed programming language.",
+            ]
+        ]
+
+        evaluator = ContextRelevanceEvaluator(progress_bar=False)
+        result = evaluator.run(questions=questions, contexts=contexts)
+
+        assert len(result["results"][0]["statements"]) == 5
+        assert len(result["results"][0]["statement_scores"]) == 5

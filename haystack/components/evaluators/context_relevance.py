@@ -23,8 +23,23 @@ _DEFAULT_EXAMPLES = [
         },
     },
     {
-        "inputs": {"questions": "What is the capital of France?", "contexts": ["Berlin is the capital of Germany."]},
-        "outputs": {"statements": ["Berlin is the capital of Germany."], "statement_scores": [0]},
+        "inputs": {
+            "questions": "What is the capital of France?",
+            "contexts": [
+                "Berlin is the capital of Germany and was founded in 1244.",
+                "Europe is a continent with 44 countries.",
+                "Madrid is the capital of Spain.",
+            ],
+        },
+        "outputs": {
+            "statements": [
+                "Berlin is the capital of Germany.",
+                "Berlin was founded in 1244.",
+                "Europe is a continent with 44 countries.",
+                "Madrid is the capital of Spain.",
+            ],
+            "statement_scores": [0, 0, 0, 0],
+        },
     },
     {
         "inputs": {"questions": "What is the capital of Italy?", "contexts": ["Rome is the capital of Italy."]},
@@ -113,7 +128,8 @@ class ContextRelevanceEvaluator(LLMEvaluator):
             "Your task is to judge how relevant the provided context is for answering a question. "
             "First, please extract statements from the provided context. "
             "Second, calculate a relevance score for each statement in the context. "
-            "The score is 1 if the statement is relevant to answer the question or 0 if it is not relevant."
+            "The score is 1 if the statement is relevant to answer the question or 0 if it is not relevant. "
+            "Each statement should be scored individually."
         )
         self.inputs = [("questions", List[str]), ("contexts", List[List[str]])]
         self.outputs = ["statements", "statement_scores"]
