@@ -67,13 +67,8 @@ class DocumentMRREvaluator:
 
         for ground_truth, retrieved in zip(ground_truth_documents, retrieved_documents):
             score = 0.0
-            ground_truth_content = []
 
-            for ground_document in ground_truth:
-                if ground_document.content is None:
-                    continue
-                ground_truth_content.append(ground_document.content)
-
+            ground_truth_content = [doc.content for doc in ground_truth if doc.content is not None]
             for rank, retrieved_document in enumerate(retrieved):
                 if retrieved_document.content is None:
                     continue
