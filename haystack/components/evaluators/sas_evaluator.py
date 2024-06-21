@@ -157,6 +157,9 @@ class SASEvaluator:
         if len(ground_truth_answers) != len(predicted_answers):
             raise ValueError("The number of predictions and labels must be the same.")
 
+        if any(answer is None for answer in predicted_answers):
+            raise ValueError("Predicted answers must not contain None values.")
+
         if len(predicted_answers) == 0:
             return {"score": 0.0, "individual_scores": [0.0]}
 
