@@ -147,6 +147,7 @@ class JsonSchemaValidator:
                     ChatMessage.from_user(
                         f"The message '{last_message.content}' is not a valid JSON object. "
                         f"Please provide only a valid JSON object in string format."
+                        f"Don't use any markdown and don't add any comment."
                     )
                 ]
             }
