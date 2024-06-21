@@ -4,11 +4,10 @@
 import json
 from typing import List
 
-from haystack import component, Pipeline
-from haystack.components.validators import JsonSchemaValidator
-
 import pytest
 
+from haystack import Pipeline, component
+from haystack.components.validators import JsonSchemaValidator
 from haystack.dataclasses import ChatMessage
 
 
@@ -110,10 +109,9 @@ class TestJsonSchemaValidator:
         ]
 
         result = validator.run(messages, json_schema_github_compare)
-
         assert "validated" in result
-        assert len(result["validated"]) == 2
-        assert result["validated"] == messages
+        assert len(result["validated"]) == 1
+        assert result["validated"][0] == messages[1]
 
     #  Validates a message against an OpenAI function calling schema successfully.
     def test_validates_message_against_openai_function_calling_schema(
@@ -142,8 +140,8 @@ class TestJsonSchemaValidator:
         result = validator.run(messages, json_schema_github_compare_openai)
 
         assert "validated" in result
-        assert len(result["validated"]) == 2
-        assert result["validated"] == messages
+        assert len(result["validated"]) == 1
+        assert result["validated"][0] == messages[1]
 
     #  Constructs a custom error recovery message when validation fails.
     def test_construct_custom_error_recovery_message(self):
@@ -155,10 +153,11 @@ class TestJsonSchemaValidator:
             "- Schema Path: {error_schema_path}\n"
             "Please match the following schema:\n"
             "{json_schema}\n"
+            "Failing Json: {failing_json}\n"
         )
 
         recovery_message = validator._construct_error_recovery_message(
-            new_error_template, "Error message", "Error path", "Error schema path", {"type": "object"}
+            new_error_template, "Error message", "Error path", "Error schema path", {"type": "object"}, "Failing Json"
         )
 
         expected_recovery_message = (
@@ -167,6 +166,7 @@ class TestJsonSchemaValidator:
             "- Schema Path: Error schema path\n"
             "Please match the following schema:\n"
             "{'type': 'object'}\n"
+            "Failing Json: Failing Json\n"
         )
         assert recovery_message == expected_recovery_message
 
@@ -201,5 +201,5 @@ class TestJsonSchemaValidator:
         pipe.connect("message_producer", "schema_validator")
         result = pipe.run(data={"schema_validator": {"json_schema": json_schema_github_compare}})
         assert "validation_error" in result["schema_validator"]
-        assert len(result["schema_validator"]["validation_error"]) > 1
+        assert len(result["schema_validator"]["validation_error"]) == 1
         assert "Error details" in result["schema_validator"]["validation_error"][0].content
