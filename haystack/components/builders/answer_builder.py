@@ -107,6 +107,7 @@ class AnswerBuilder:
 
         # Extract content from ChatMessage objects if replies is a list of ChatMessages
         if isinstance(replies[0], ChatMessage):
+            meta = [msg.meta for msg in replies]
             replies = [msg.content for msg in replies]
 
         all_answers = []
