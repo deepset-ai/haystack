@@ -75,6 +75,7 @@ from collections.abc import Callable
 from contextlib import contextmanager
 from contextvars import ContextVar
 from copy import deepcopy
+from dataclasses import dataclass
 from types import new_class
 from typing import Any, Dict, Optional, Protocol, runtime_checkable
 
@@ -87,8 +88,24 @@ from .types import InputSocket, OutputSocket, _empty
 logger = logging.getLogger(__name__)
 
 
-# Callback inputs: component class (Type) and init parameters (as keyword arguments) (Dict[str, Any]).
-_COMPONENT_PRE_INIT_CALLBACK: ContextVar[Optional[Callable]] = ContextVar("component_pre_init_callback", default=None)
+@dataclass
+class PreInitHookPayload:
+    """
+    Payload for the hook called before a component instance is initialized.
+
+    :param callback:
+        Receives the following inputs: component class and init parameter keyword args.
+    :param in_progress:
+        Flag to indicate if the hook is currently being executed.
+        Used to prevent it from being called recursively (if the component's constructor
+        instantiates another component).
+    """
+
+    callback: Callable
+    in_progress: bool = False
+
+
+_COMPONENT_PRE_INIT_HOOK: ContextVar[Optional[PreInitHookPayload]] = ContextVar("component_pre_init_hook", default=None)
 
 
 @contextmanager
@@ -102,11 +119,11 @@ def _hook_component_init(callback: Callable):
     :param callback:
         Callback function to invoke.
     """
-    token = _COMPONENT_PRE_INIT_CALLBACK.set(callback)
+    token = _COMPONENT_PRE_INIT_HOOK.set(PreInitHookPayload(callback))
     try:
         yield
     finally:
-        _COMPONENT_PRE_INIT_CALLBACK.reset(token)
+        _COMPONENT_PRE_INIT_HOOK.reset(token)
 
 
 @runtime_checkable
@@ -172,17 +189,21 @@ class ComponentMeta(type):
         This method is called when clients instantiate a Component and runs before __new__ and __init__.
         """
         # This will call __new__ then __init__, giving us back the Component instance
-        pre_init_hook = _COMPONENT_PRE_INIT_CALLBACK.get()
-        if pre_init_hook is None:
+        pre_init_hook = _COMPONENT_PRE_INIT_HOOK.get()
+        if pre_init_hook is None or pre_init_hook.in_progress:
             instance = super().__call__(*args, **kwargs)
         else:
-            named_positional_args = ComponentMeta.positional_to_kwargs(cls, args)
-            assert (
-                set(named_positional_args.keys()).intersection(kwargs.keys()) == set()
-            ), "positional and keyword arguments overlap"
-            kwargs.update(named_positional_args)
-            pre_init_hook(cls, kwargs)
-            instance = super().__call__(**kwargs)
+            try:
+                pre_init_hook.in_progress = True
+                named_positional_args = ComponentMeta.positional_to_kwargs(cls, args)
+                assert (
+                    set(named_positional_args.keys()).intersection(kwargs.keys()) == set()
+                ), "positional and keyword arguments overlap"
+                kwargs.update(named_positional_args)
+                pre_init_hook.callback(cls, kwargs)
+                instance = super().__call__(**kwargs)
+            finally:
+                pre_init_hook.in_progress = False
 
         # Before returning, we have the chance to modify the newly created
         # Component instance, so we take the chance and set up the I/O sockets
