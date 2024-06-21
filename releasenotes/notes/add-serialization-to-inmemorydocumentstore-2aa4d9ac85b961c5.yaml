@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Added serialization methods save_to_disk and write_to_disk to InMemoryDocumentStore.
