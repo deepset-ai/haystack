@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import io
-import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Protocol, Union
 
@@ -56,12 +55,6 @@ class DefaultConverter:
         return default_from_dict(cls, data)
 
 
-# This registry is used to store converters names and instances.
-# It can be used to register custom converters.
-# It is now deprecated and will be removed in Haystack 2.3.0.
-CONVERTERS_REGISTRY: Dict[str, PyPDFConverter] = {"default": DefaultConverter()}
-
-
 @component
 class PyPDFToDocument:
     """
@@ -82,40 +75,16 @@ class PyPDFToDocument:
     ```
     """
 
-    def __init__(self, converter_name: Optional[str] = None, converter: Optional[PyPDFConverter] = None):
+    def __init__(self, converter: Optional[PyPDFConverter] = None):
         """
         Create an PyPDFToDocument component.
 
-        :param converter_name:
-            The name of a PyPDFConverter instance stored in the CONVERTERS_REGISTRY. Deprecated.
         :param converter:
             An instance of a PyPDFConverter compatible class.
         """
         pypdf_import.check()
 
-        self.converter_name = converter_name
-        if converter_name:
-            warnings.warn(
-                "The `converter_name` parameter is deprecated and will be removed in Haystack 2.3.0. "
-                "Please use the `converter` parameter instead.",
-                DeprecationWarning,
-            )
-            try:
-                converter = CONVERTERS_REGISTRY[converter_name]
-            except KeyError:
-                msg = (
-                    f"Invalid converter_name: {converter_name}.\n "
-                    f"Available converters: {list(CONVERTERS_REGISTRY.keys())}"
-                    f"To specify a custom converter, it is recommended to use the `converter` parameter."
-                )
-                raise ValueError(msg) from KeyError
-
-            self.converter = converter
-
-        elif converter:
-            self.converter = converter
-        else:
-            self.converter = DefaultConverter()
+        self.converter = converter or DefaultConverter()
 
     def to_dict(self):
         """
@@ -124,7 +93,7 @@ class PyPDFToDocument:
         :returns:
             Dictionary with serialized data.
         """
-        return default_to_dict(self, converter_name=self.converter_name, converter=self.converter.to_dict())
+        return default_to_dict(self, converter=self.converter.to_dict())
 
     @classmethod
     def from_dict(cls, data):
@@ -137,9 +106,6 @@ class PyPDFToDocument:
         :returns:
             Deserialized component.
         """
-        if data["init_parameters"].get("converter_name"):
-            return default_from_dict(cls, data)
-
         converter_class = deserialize_type(data["init_parameters"]["converter"]["type"])
         data["init_parameters"]["converter"] = converter_class.from_dict(data["init_parameters"]["converter"])
         return default_from_dict(cls, data)
