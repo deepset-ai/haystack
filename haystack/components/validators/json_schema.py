@@ -13,6 +13,20 @@ with LazyImport(message="Run 'pip install jsonschema'") as jsonschema_import:
     from jsonschema import ValidationError, validate
 
 
+def is_valid_json(s: str) -> bool:
+    """
+    Check if the provided string is a valid JSON.
+
+    :param s: The string to be checked.
+    :returns: `True` if the string is a valid JSON; otherwise, `False`.
+    """
+    try:
+        json.loads(s)
+    except ValueError:
+        return False
+    return True
+
+
 @component
 class JsonSchemaValidator:
     """
@@ -77,13 +91,15 @@ class JsonSchemaValidator:
 
     # Default error description template
     default_error_template = (
-        "The JSON content in the next message does not conform to the provided schema.\n"
+        "The following generated JSON does not conform to the provided schema.\n"
+        "Generated JSON: {failing_json}\n"
         "Error details:\n- Message: {error_message}\n"
         "- Error Path in JSON: {error_path}\n"
         "- Schema Path: {error_schema_path}\n"
         "Please match the following schema:\n"
         "{json_schema}\n"
-        "and provide the corrected JSON content ONLY."
+        "and provide the corrected JSON content ONLY. Please do not output anything else than the raw corrected "
+        "JSON string, this is the most important part of the task. Don't use any markdown and don't add any comment."
     )
 
     def __init__(self, json_schema: Optional[Dict[str, Any]] = None, error_template: Optional[str] = None):
@@ -125,14 +141,23 @@ class JsonSchemaValidator:
             dictionaries.
         """
         last_message = messages[-1]
-        last_message_content = json.loads(last_message.content)
+        if not is_valid_json(last_message.content):
+            return {
+                "validation_error": [
+                    ChatMessage.from_user(
+                        f"The message '{last_message.content}' is not a valid JSON object. "
+                        f"Please provide only a valid JSON object in string format."
+                        f"Don't use any markdown and don't add any comment."
+                    )
+                ]
+            }
 
+        last_message_content = json.loads(last_message.content)
         json_schema = json_schema or self.json_schema
         error_template = error_template or self.error_template or self.default_error_template
 
         if not json_schema:
             raise ValueError("Provide a JSON schema for validation either in the run method or in the component init.")
-
         # fc payload is json object but subtree `parameters` is string - we need to convert to json object
         # we need complete json to validate it against schema
         last_message_json = self._recursive_json_to_object(last_message_content)
@@ -149,7 +174,7 @@ class JsonSchemaValidator:
                 else:
                     validate(instance=content, schema=validation_schema)
 
-            return {"validated": messages}
+            return {"validated": [last_message]}
         except ValidationError as e:
             error_path = " -> ".join(map(str, e.absolute_path)) if e.absolute_path else "N/A"
             error_schema_path = " -> ".join(map(str, e.absolute_schema_path)) if e.absolute_schema_path else "N/A"
@@ -157,10 +182,14 @@ class JsonSchemaValidator:
             error_template = error_template or self.default_error_template
 
             recovery_prompt = self._construct_error_recovery_message(
-                error_template, str(e), error_path, error_schema_path, validation_schema
+                error_template,
+                str(e),
+                error_path,
+                error_schema_path,
+                validation_schema,
+                failing_json=last_message.content,
             )
-            complete_message_list = [ChatMessage.from_user(recovery_prompt)] + messages
-            return {"validation_error": complete_message_list}
+            return {"validation_error": [ChatMessage.from_user(recovery_prompt)]}
 
     def _construct_error_recovery_message(
         self,
@@ -169,6 +198,7 @@ class JsonSchemaValidator:
         error_path: str,
         error_schema_path: str,
         json_schema: Dict[str, Any],
+        failing_json: str,
     ) -> str:
         """
         Constructs an error recovery message using a specified template or the default one if none is provided.
@@ -178,6 +208,7 @@ class JsonSchemaValidator:
         :param error_path: The path in the JSON content where the error occurred.
         :param error_schema_path: The path in the JSON schema where the error occurred.
         :param json_schema: The JSON schema against which the content is validated.
+        :param failing_json: The generated invalid JSON string.
         """
         error_template = error_template or self.default_error_template
 
@@ -186,6 +217,7 @@ class JsonSchemaValidator:
             error_path=error_path,
             error_schema_path=error_schema_path,
             json_schema=json_schema,
+            failing_json=failing_json,
         )
 
     def _is_openai_function_calling_schema(self, json_schema: Dict[str, Any]) -> bool:
@@ -215,11 +247,10 @@ class JsonSchemaValidator:
                 if isinstance(value, str):
                     try:
                         json_value = json.loads(value)
-                        new_dict[key] = (
-                            self._recursive_json_to_object(json_value)
-                            if isinstance(json_value, (dict, list))
-                            else json_value
-                        )
+                        if isinstance(json_value, (dict, list)):
+                            new_dict[key] = self._recursive_json_to_object(json_value)
+                        else:
+                            new_dict[key] = value  # Preserve the original string value
                     except json.JSONDecodeError:
                         new_dict[key] = value
                 elif isinstance(value, dict):

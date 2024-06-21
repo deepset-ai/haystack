@@ -7,6 +7,7 @@ from haystack import Document, DeserializationError
 from haystack.testing.factory import document_store_class
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.caching.cache_checker import CacheChecker
+from unittest.mock import MagicMock
 
 
 class TestCacheChecker:
@@ -82,3 +83,11 @@ class TestCacheChecker:
         checker = CacheChecker(docstore, cache_field="url")
         results = checker.run(items=["https://example.com/1", "https://example.com/5"])
         assert results == {"hits": [documents[0], documents[2]], "misses": ["https://example.com/5"]}
+
+    def test_filters_syntax(self):
+        mocked_docstore_class = document_store_class("MockedDocumentStore")
+        mocked_docstore_class.filter_documents = MagicMock()
+        checker = CacheChecker(document_store=mocked_docstore_class(), cache_field="url")
+        checker.run(items=["https://example.com/1"])
+        valid_filters_syntax = {"field": "url", "operator": "==", "value": "https://example.com/1"}
+        mocked_docstore_class.filter_documents.assert_any_call(filters=valid_filters_syntax)

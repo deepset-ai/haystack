@@ -7,8 +7,6 @@ import inspect
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Union
 
-import requests
-
 from haystack import logging
 from haystack.dataclasses import StreamingChunk
 from haystack.lazy_imports import LazyImport
@@ -210,27 +208,6 @@ def resolve_hf_pipeline_kwargs(
         raise ValueError(f"Task '{task}' is not supported. " f"The supported tasks are: {', '.join(supported_tasks)}.")
     huggingface_pipeline_kwargs["task"] = task
     return huggingface_pipeline_kwargs
-
-
-def list_inference_deployed_models(headers: Optional[Dict] = None) -> List[str]:
-    """
-    List all currently deployed models on HF TGI free tier
-
-    :param headers: Optional dictionary of headers to include in the request
-    :return: list of all currently deployed models
-    :raises Exception: If the request to the TGI API fails
-
-    """
-    resp = requests.get(
-        "https://api-inference.huggingface.co/framework/text-generation-inference", headers=headers, timeout=10
-    )
-
-    payload = resp.json()
-    if resp.status_code != 200:
-        message = payload.get("error", "Unknown TGI error")
-        error_type = payload.get("error_type", "Unknown TGI error type")
-        raise Exception(f"Failed to fetch TGI deployed models: {message}. Error type: {error_type}")
-    return [model["model_id"] for model in payload]
 
 
 def check_valid_model(model_id: str, model_type: HFModelType, token: Optional[Secret]) -> None:
