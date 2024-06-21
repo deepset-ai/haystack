@@ -7,13 +7,6 @@ from haystack.components.generators.openai import (  # noqa: I001 (otherwise we 
 )
 from haystack.components.generators.azure import AzureOpenAIGenerator
 from haystack.components.generators.hugging_face_local import HuggingFaceLocalGenerator
-from haystack.components.generators.hugging_face_tgi import HuggingFaceTGIGenerator
 from haystack.components.generators.hugging_face_api import HuggingFaceAPIGenerator
 
-__all__ = [
-    "HuggingFaceLocalGenerator",
-    "HuggingFaceTGIGenerator",
-    "HuggingFaceAPIGenerator",
-    "OpenAIGenerator",
-    "AzureOpenAIGenerator",
-]
+__all__ = ["HuggingFaceLocalGenerator", "HuggingFaceAPIGenerator", "OpenAIGenerator", "AzureOpenAIGenerator"]
