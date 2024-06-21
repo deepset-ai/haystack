@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Raise ValueError if None value is passed as predicted_answers input

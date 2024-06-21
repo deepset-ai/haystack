@@ -73,6 +73,21 @@ class TestSASEvaluator:
         with pytest.raises(ValueError):
             evaluator.run(ground_truth_answers=ground_truths, predicted_answers=predictions)
 
+    def test_run_with_none_in_predictions(self):
+        evaluator = SASEvaluator()
+        ground_truths = [
+            "A construction budget of US $2.3 billion",
+            "The Eiffel Tower, completed in 1889, symbolizes Paris's cultural magnificence.",
+            "The Meiji Restoration in 1868 transformed Japan into a modernized world power.",
+        ]
+        predictions = [
+            "A construction budget of US $2.3 billion",
+            None,
+            "The Meiji Restoration in 1868 transformed Japan into a modernized world power.",
+        ]
+        with pytest.raises(ValueError):
+            evaluator.run(ground_truth_answers=ground_truths, predicted_answers=predictions)
+
     def test_run_not_warmed_up(self):
         evaluator = SASEvaluator()
         ground_truths = [
