@@ -3,11 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from collections import defaultdict
-from typing import Any, Callable, Dict, List, Literal, Optional
+from typing import Any, Callable, Dict, List, Literal, Optional, Union
 
 from dateutil.parser import parse as date_parse
 
 from haystack import Document, component, logging
+from haystack.utils.meta_field_ranker import MetaRankerMissingMeta
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +44,7 @@ class MetaFieldRanker:
         top_k: Optional[int] = None,
         ranking_mode: Literal["reciprocal_rank_fusion", "linear_score"] = "reciprocal_rank_fusion",
         sort_order: Literal["ascending", "descending"] = "descending",
-        missing_meta: Literal["drop", "top", "bottom"] = "bottom",
+        missing_meta: Union[MetaRankerMissingMeta, str] = MetaRankerMissingMeta.BOTTOM,
         meta_value_type: Optional[Literal["float", "int", "date"]] = None,
     ):
         """
@@ -68,12 +69,6 @@ class MetaFieldRanker:
             Possible values are `descending` (default) and `ascending`.
         :param missing_meta:
             What to do with documents that are missing the sorting metadata field.
-            Possible values are:
-            - 'drop' will drop the documents entirely.
-            - 'top' will place the documents at the top of the metadata-sorted list
-                (regardless of 'ascending' or 'descending').
-            - 'bottom' will place the documents at the bottom of metadata-sorted list
-                (regardless of 'ascending' or 'descending').
         :param meta_value_type:
             Parse the meta value into the data type specified before sorting.
             This will only work if all meta values stored under `meta_field` in the provided documents are strings.
@@ -86,6 +81,9 @@ class MetaFieldRanker:
             - 'None' (default) will do no parsing.
         """
 
+        if isinstance(missing_meta, str):
+            missing_meta = MetaRankerMissingMeta.from_str(missing_meta)
+
         self.meta_field = meta_field
         self.weight = weight
         self.top_k = top_k
@@ -97,7 +95,6 @@ class MetaFieldRanker:
             top_k=self.top_k,
             ranking_mode=self.ranking_mode,
             sort_order=self.sort_order,
-            missing_meta=self.missing_meta,
             meta_value_type=meta_value_type,
         )
         self.meta_value_type = meta_value_type
@@ -108,7 +105,6 @@ class MetaFieldRanker:
         top_k: Optional[int],
         ranking_mode: Literal["reciprocal_rank_fusion", "linear_score"],
         sort_order: Literal["ascending", "descending"],
-        missing_meta: Literal["drop", "top", "bottom"],
         meta_value_type: Optional[Literal["float", "int", "date"]],
     ):
         if top_k is not None and top_k <= 0:
@@ -137,14 +133,6 @@ class MetaFieldRanker:
                 "MetaFieldRanker." % sort_order
             )
 
-        if missing_meta not in ["drop", "top", "bottom"]:
-            raise ValueError(
-                "The value of parameter <missing_meta> must be 'drop', 'top', or 'bottom', "
-                "but is currently set to '%s'.\n"
-                "Change the <missing_meta> value to 'drop', 'top', or 'bottom' when initializing the "
-                "MetaFieldRanker." % missing_meta
-            )
-
         if meta_value_type not in ["float", "int", "date", None]:
             raise ValueError(
                 "The value of parameter <meta_value_type> must be 'float', 'int', 'date' or None but is "
@@ -161,7 +149,7 @@ class MetaFieldRanker:
         weight: Optional[float] = None,
         ranking_mode: Optional[Literal["reciprocal_rank_fusion", "linear_score"]] = None,
         sort_order: Optional[Literal["ascending", "descending"]] = None,
-        missing_meta: Optional[Literal["drop", "top", "bottom"]] = None,
+        missing_meta: Optional[Union[MetaRankerMissingMeta, str]] = None,
         meta_value_type: Optional[Literal["float", "int", "date"]] = None,
     ):
         """
@@ -194,12 +182,6 @@ class MetaFieldRanker:
             If not provided, the sort_order provided at initialization time is used.
         :param missing_meta:
             What to do with documents that are missing the sorting metadata field.
-            Possible values are:
-            - 'drop' will drop the documents entirely.
-            - 'top' will place the documents at the top of the metadata-sorted list
-                (regardless of 'ascending' or 'descending').
-            - 'bottom' will place the documents at the bottom of metadata-sorted list
-                (regardless of 'ascending' or 'descending').
             If not provided, the missing_meta provided at initialization time is used.
         :param meta_value_type:
             Parse the meta value into the data type specified before sorting.
@@ -222,6 +204,10 @@ class MetaFieldRanker:
             If `sort_order` is not 'ascending' or 'descending'.
             If `meta_value_type` is not 'float', 'int', 'date' or `None`.
         """
+
+        if isinstance(missing_meta, str):
+            missing_meta = MetaRankerMissingMeta.from_str(missing_meta)
+
         if not documents:
             return {"documents": []}
 
@@ -236,7 +222,6 @@ class MetaFieldRanker:
             top_k=top_k,
             ranking_mode=ranking_mode,
             sort_order=sort_order,
-            missing_meta=missing_meta,
             meta_value_type=meta_value_type,
         )
 
@@ -264,12 +249,12 @@ class MetaFieldRanker:
                 f"with IDs {','.join([doc.id for doc in docs_missing_meta_field])} don't have this meta key.\n"
             )
 
-            if missing_meta == "bottom":
+            if missing_meta == MetaRankerMissingMeta.BOTTOM:
                 logger.warning(
                     "{warning_start}Because the parameter <missing_meta> is set to 'bottom', these Documents will be placed at the end of the sorting order.",
                     warning_start=warning_start,
                 )
-            elif missing_meta == "top":
+            elif missing_meta == MetaRankerMissingMeta.TOP:
                 logger.warning(
                     "{warning_start}Because the parameter <missing_meta> is set to 'top', these Documents will be placed at the top of the sorting order.",
                     warning_start=warning_start,
@@ -300,10 +285,10 @@ class MetaFieldRanker:
 
         # Merge rankings and handle missing meta fields as specified in the missing_meta parameter
         sorted_by_meta = [doc for meta, doc in tuple_sorted_by_meta]
-        if missing_meta == "bottom":
+        if missing_meta == MetaRankerMissingMeta.BOTTOM:
             sorted_documents = sorted_by_meta + docs_missing_meta_field
             sorted_documents = self._merge_rankings(documents, sorted_documents, weight, ranking_mode)
-        elif missing_meta == "top":
+        elif missing_meta == MetaRankerMissingMeta.TOP:
             sorted_documents = docs_missing_meta_field + sorted_by_meta
             sorted_documents = self._merge_rankings(documents, sorted_documents, weight, ranking_mode)
         else:
