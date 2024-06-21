@@ -5,8 +5,6 @@ loaders:
       [
         "azure_document_embedder",
         "azure_text_embedder",
-        "hugging_face_tei_document_embedder",
-        "hugging_face_tei_text_embedder",
         "hugging_face_api_document_embedder",
         "hugging_face_api_text_embedder",
         "openai_document_embedder",
