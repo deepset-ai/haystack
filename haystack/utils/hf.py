@@ -7,8 +7,6 @@ import inspect
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Union
 
-import requests
-
 from haystack import logging
 from haystack.dataclasses import StreamingChunk
 from haystack.lazy_imports import LazyImport
