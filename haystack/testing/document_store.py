@@ -137,7 +137,8 @@ class DeleteDocumentsTest:
     Utility class to test a Document Store `delete_documents` method.
 
     To use it create a custom test class and override the `document_store` fixture to return your Document Store.
-    The Document Store `write_documents` and `count_documents` methods must be implemented for this tests to work correctly.
+    The Document Store `write_documents` and `count_documents` methods must be implemented for this tests to work
+    correctly.
     Example usage:
 
     ```python
@@ -689,7 +690,7 @@ class LegacyFilterDocumentsLessThanEqualTest(AssertDocumentsEqualMixin, Filterab
 
 class LegacyFilterDocumentsSimpleLogicalTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin):
     """
-    Utility class to test a Document Store `filter_documents` method using logical '$and', '$or' and '$not' legacy filters
+    Utility class to test a Document Store `filter_documents` method using '$and', '$or' and '$not' legacy filters
 
     To use it create a custom test class and override the `document_store` fixture to return your Document Store.
     Example usage:
@@ -761,7 +762,7 @@ class LegacyFilterDocumentsSimpleLogicalTest(AssertDocumentsEqualMixin, Filterab
 
 class LegacyFilterDocumentsNestedLogicalTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin):
     """
-    Utility class to test a Document Store `filter_documents` method using multiple nested logical '$and', '$or' and '$not' legacy filters
+    Utility class to test `filter_documents` using multiple nested logical '$and', '$or' and '$not' legacy filters
 
     To use it create a custom test class and override the `document_store` fixture to return your Document Store.
     Example usage:

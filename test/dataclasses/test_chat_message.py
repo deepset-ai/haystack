@@ -81,3 +81,22 @@ def test_apply_custom_chat_templating_on_chat_message():
         formatted_messages, chat_template=anthropic_template, tokenize=False
     )
     assert tokenized_messages == "You are good assistant\nHuman: I have a question\nAssistant:"
+
+
+def test_to_dict():
+    message = ChatMessage.from_user("content")
+    message.meta["some"] = "some"
+
+    assert message.to_dict() == {"content": "content", "role": "user", "name": None, "meta": {"some": "some"}}
+
+
+def test_from_dict():
+    assert ChatMessage.from_dict(data={"content": "text", "role": "user", "name": None}) == ChatMessage(
+        content="text", role=ChatRole("user"), name=None, meta={}
+    )
+
+
+def test_from_dict_with_meta():
+    assert ChatMessage.from_dict(
+        data={"content": "text", "role": "user", "name": None, "meta": {"something": "something"}}
+    ) == ChatMessage(content="text", role=ChatRole("user"), name=None, meta={"something": "something"})

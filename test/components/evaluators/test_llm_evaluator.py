@@ -5,6 +5,7 @@ from typing import List
 
 import pytest
 
+from haystack import Pipeline
 from haystack.components.evaluators import LLMEvaluator
 from haystack.utils.auth import Secret
 
@@ -204,8 +205,9 @@ class TestLLMEvaluator:
                 "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
                 "api": "openai",
                 "instructions": "test-instruction",
-                "inputs": [("predicted_answers", List[str])],
+                "inputs": [["predicted_answers", "typing.List[str]"]],
                 "outputs": ["score"],
+                "progress_bar": True,
                 "examples": [
                     {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
                 ],
@@ -221,7 +223,7 @@ class TestLLMEvaluator:
                 "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
                 "api": "openai",
                 "instructions": "test-instruction",
-                "inputs": [("predicted_answers", List[str])],
+                "inputs": [["predicted_answers", "typing.List[str]"]],
                 "outputs": ["score"],
                 "examples": [
                     {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
@@ -264,8 +266,9 @@ class TestLLMEvaluator:
                 "api_key": {"env_vars": ["ENV_VAR"], "strict": True, "type": "env_var"},
                 "api": "openai",
                 "instructions": "test-instruction",
-                "inputs": [("predicted_answers", List[str])],
+                "inputs": [["predicted_answers", "typing.List[str]"]],
                 "outputs": ["custom_score"],
+                "progress_bar": True,
                 "examples": [
                     {
                         "inputs": {"predicted_answers": "Damn, this is straight outta hell!!!"},
@@ -278,6 +281,21 @@ class TestLLMEvaluator:
                 ],
             },
         }
+
+    def test_serde(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        pipeline = Pipeline()
+        component = LLMEvaluator(
+            instructions="test-instruction",
+            inputs=[("questions", List[str]), ("predicted_answers", List[List[str]])],
+            outputs=["score"],
+            examples=[
+                {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
+            ],
+        )
+        pipeline.add_component("evaluator", component)
+        serialized_pipeline = pipeline.dumps()
+        deserialized_pipeline = Pipeline.loads(serialized_pipeline)
 
     def test_run_with_different_lengths(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -377,10 +395,41 @@ class TestLLMEvaluator:
             ],
         )
         with pytest.raises(ValueError):
-            component.validate_outputs(expected=["score", "another_expected_output"], received='{"score": 1.0}')
+            component.is_valid_json_and_has_expected_keys(
+                expected=["score", "another_expected_output"], received='{"score": 1.0}'
+            )
 
         with pytest.raises(ValueError):
-            component.validate_outputs(expected=["score"], received='{"wrong_name": 1.0}')
+            component.is_valid_json_and_has_expected_keys(expected=["score"], received='{"wrong_name": 1.0}')
+
+    def test_output_invalid_json_raise_on_failure_false(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = LLMEvaluator(
+            instructions="test-instruction",
+            inputs=[("predicted_answers", List[str])],
+            outputs=["score"],
+            examples=[
+                {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
+            ],
+            raise_on_failure=False,
+        )
+        assert (
+            component.is_valid_json_and_has_expected_keys(expected=["score"], received="some_invalid_json_output")
+            is False
+        )
+
+    def test_output_invalid_json_raise_on_failure_true(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = LLMEvaluator(
+            instructions="test-instruction",
+            inputs=[("predicted_answers", List[str])],
+            outputs=["score"],
+            examples=[
+                {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
+            ],
+        )
+        with pytest.raises(ValueError):
+            component.is_valid_json_and_has_expected_keys(expected=["score"], received="some_invalid_json_output")
 
     def test_unsupported_api(self):
         with pytest.raises(ValueError):

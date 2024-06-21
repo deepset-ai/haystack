@@ -23,8 +23,8 @@ class FileTypeRouter:
     for flexible routing of files to different components based on their content type. It supports both exact MIME type
     matching and pattern matching using regular expressions.
 
-    For file paths, MIME types are inferred from their extensions, while for byte streams, MIME types are determined from
-    the provided metadata. This enables the router to classify a diverse collection of files and data streams for
+    For file paths, MIME types are inferred from their extensions, while for byte streams, MIME types are determined
+    from the provided metadata. This enables the router to classify a diverse collection of files and data streams for
     specialized processing.
 
     The router's flexibility is enhanced by the support for regex patterns in the `mime_types` parameter, allowing users
@@ -47,8 +47,12 @@ class FileTypeRouter:
     print(router_with_regex.run(sources=sources))
 
     # Expected output:
-    # {'text/plain': [PosixPath('file.txt')], 'application/pdf': [PosixPath('document.pdf')], 'unclassified': [PosixPath('song.mp3')]}
-    # {'audio/.*': [PosixPath('song.mp3')], 'text/plain': [PosixPath('file.txt')], 'unclassified': [PosixPath('document.pdf')]}
+    # {'text/plain': [
+    #   PosixPath('file.txt')], 'application/pdf': [PosixPath('document.pdf')], 'unclassified': [PosixPath('song.mp3')
+    # ]}
+    # {'audio/.*': [
+    #   PosixPath('song.mp3')], 'text/plain': [PosixPath('file.txt')], 'unclassified': [PosixPath('document.pdf')
+    # ]}
     ```
 
     :param mime_types: A list of MIME types or regex patterns to classify the incoming files or data streams.
@@ -80,7 +84,8 @@ class FileTypeRouter:
 
         :param sources: A list of file paths or byte streams to categorize.
 
-        :returns: A dictionary where the keys are MIME types (or `"unclassified"`) and the values are lists of data sources.
+        :returns: A dictionary where the keys are MIME types (or `"unclassified"`) and the values are lists of data
+            sources.
         """
 
         mime_types = defaultdict(list)

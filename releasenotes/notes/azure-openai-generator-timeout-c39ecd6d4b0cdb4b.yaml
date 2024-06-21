@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    `AzureOpenAIGenerator` and `AzureOpenAIChatGenerator` can now be configured passing a timeout for the underlying `AzureOpenAI` client.

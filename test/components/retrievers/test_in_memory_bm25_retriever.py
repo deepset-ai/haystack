@@ -6,6 +6,7 @@ from typing import Dict, Any
 import pytest
 
 from haystack import Pipeline, DeserializationError
+from haystack.document_stores.types import FilterPolicy
 from haystack.testing.factory import document_store_class
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.dataclasses import Document
@@ -56,15 +57,19 @@ class TestMemoryBM25Retriever:
                 "filters": None,
                 "top_k": 10,
                 "scale_score": False,
+                "filter_policy": "replace",
             },
         }
 
     def test_to_dict_with_custom_init_parameters(self):
-        ds = InMemoryDocumentStore()
+        ds = InMemoryDocumentStore(index="test_to_dict_with_custom_init_parameters")
         serialized_ds = ds.to_dict()
 
         component = InMemoryBM25Retriever(
-            document_store=InMemoryDocumentStore(), filters={"name": "test.txt"}, top_k=5, scale_score=True
+            document_store=InMemoryDocumentStore(index="test_to_dict_with_custom_init_parameters"),
+            filters={"name": "test.txt"},
+            top_k=5,
+            scale_score=True,
         )
         data = component.to_dict()
         assert data == {
@@ -74,6 +79,7 @@ class TestMemoryBM25Retriever:
                 "filters": {"name": "test.txt"},
                 "top_k": 5,
                 "scale_score": True,
+                "filter_policy": "replace",
             },
         }
 
@@ -96,6 +102,7 @@ class TestMemoryBM25Retriever:
         assert component.filters == {"name": "test.txt"}
         assert component.top_k == 5
         assert component.scale_score is False
+        assert component.filter_policy == FilterPolicy.REPLACE
 
     def test_from_dict_without_docstore(self):
         data = {"type": "InMemoryBM25Retriever", "init_parameters": {}}

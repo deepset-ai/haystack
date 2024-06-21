@@ -55,6 +55,7 @@ class TestOpenAIChatGenerator:
                 "organization": None,
                 "streaming_callback": None,
                 "generation_kwargs": {},
+                "timeout": None,
             },
         }
 
@@ -64,6 +65,7 @@ class TestOpenAIChatGenerator:
             api_key=Secret.from_env_var("ENV_VAR", strict=False),
             azure_ad_token=Secret.from_env_var("ENV_VAR1", strict=False),
             azure_endpoint="some-non-existing-endpoint",
+            timeout=2.5,
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
         )
         data = component.to_dict()
@@ -77,6 +79,7 @@ class TestOpenAIChatGenerator:
                 "azure_deployment": "gpt-35-turbo",
                 "organization": None,
                 "streaming_callback": None,
+                "timeout": 2.5,
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
             },
         }

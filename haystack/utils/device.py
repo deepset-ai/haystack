@@ -13,7 +13,8 @@ from haystack.lazy_imports import LazyImport
 logger = logging.getLogger(__name__)
 
 with LazyImport(
-    message="PyTorch must be installed to use torch.device or use GPU support in HuggingFace transformers. Run 'pip install transformers[torch]'"
+    message="PyTorch must be installed to use torch.device or use GPU support in HuggingFace transformers. "
+    "Run 'pip install transformers[torch]'"
 ) as torch_import:
     import torch
 

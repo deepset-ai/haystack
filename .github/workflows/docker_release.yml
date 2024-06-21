@@ -15,6 +15,7 @@ jobs:
   build-and-push:
     name: Build base image
     runs-on: ubuntu-latest
+    if: github.repository_owner == 'deepset-ai'
 
     steps:
       - name: Checkout
@@ -39,7 +40,7 @@ jobs:
           images: $DOCKER_REPO_NAME
 
       - name: Build base images
-        uses: docker/bake-action@v4
+        uses: docker/bake-action@v5
         env:
           IMAGE_TAG_SUFFIX: ${{ steps.meta.outputs.version }}
           HAYSTACK_VERSION: ${{ steps.meta.outputs.version }}

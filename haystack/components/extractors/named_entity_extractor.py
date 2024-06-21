@@ -5,7 +5,7 @@
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from dataclasses import dataclass
-from enum import Enum, EnumMeta
+from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
 from haystack import ComponentError, DeserializationError, Document, component, default_from_dict, default_to_dict
@@ -21,28 +21,7 @@ with LazyImport(message="Run 'pip install spacy'") as spacy_import:
     from spacy import Language as SpacyPipeline
 
 
-class _BackendEnumMeta(EnumMeta):
-    """
-    Metaclass for fine-grained error handling of backend enums.
-    """
-
-    def __call__(cls, value, names=None, *, module=None, qualname=None, type=None, start=1):  # noqa: A002
-        if names is None:
-            try:
-                return EnumMeta.__call__(cls, value, names, module=module, qualname=qualname, type=type, start=start)
-            except ValueError:
-                supported_backends = ", ".join(sorted(v.value for v in cls))  # pylint: disable=not-an-iterable
-                raise ComponentError(
-                    f"Invalid backend `{value}` for named entity extractor. "
-                    f"Supported backends: {supported_backends}"
-                )
-        else:
-            return EnumMeta.__call__(  # pylint: disable=too-many-function-args
-                cls, value, names, module, qualname, type, start
-            )
-
-
-class NamedEntityExtractorBackend(Enum, metaclass=_BackendEnumMeta):
+class NamedEntityExtractorBackend(Enum):
     """
     NLP backend to use for Named Entity Recognition.
     """
@@ -52,6 +31,24 @@ class NamedEntityExtractorBackend(Enum, metaclass=_BackendEnumMeta):
 
     #: Uses a spaCy model and pipeline.
     SPACY = "spacy"
+
+    def __str__(self):
+        return self.value
+
+    @staticmethod
+    def from_str(string: str) -> "NamedEntityExtractorBackend":
+        """
+        Convert a string to a NamedEntityExtractorBackend enum.
+        """
+        enum_map = {e.value: e for e in NamedEntityExtractorBackend}
+        mode = enum_map.get(string)
+        if mode is None:
+            msg = (
+                f"Invalid backend '{string}' for named entity extractor. "
+                f"Supported backends are: {list(enum_map.keys())}"
+            )
+            raise ComponentError(msg)
+        return mode
 
 
 @dataclass
@@ -134,9 +131,10 @@ class NamedEntityExtractor:
         """
 
         if isinstance(backend, str):
-            backend = NamedEntityExtractorBackend(backend)
+            backend = NamedEntityExtractorBackend.from_str(backend)
 
         self._backend: _NerBackend
+        self._warmed_up: bool = False
         device = ComponentDevice.resolve_device(device)
 
         if backend == NamedEntityExtractorBackend.HUGGING_FACE:
@@ -153,8 +151,12 @@ class NamedEntityExtractor:
         :raises ComponentError:
             If the backend fails to initialize successfully.
         """
+        if self._warmed_up:
+            return
+
         try:
             self._backend.initialize()
+            self._warmed_up = True
         except Exception as e:
             raise ComponentError(
                 f"Named entity extractor with backend '{self._backend.type} failed to initialize."
@@ -174,6 +176,10 @@ class NamedEntityExtractor:
         :raises ComponentError:
             If the backend fails to process a document.
         """
+        if not self._warmed_up:
+            msg = "The component NamedEntityExtractor was not warmed up. Call warm_up() before running the component."
+            raise RuntimeError(msg)
+
         texts = [doc.content if doc.content is not None else "" for doc in documents]
         annotations = self._backend.annotate(texts, batch_size=batch_size)
 

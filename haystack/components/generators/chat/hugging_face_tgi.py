@@ -37,14 +37,16 @@ class HuggingFaceTGIChatGenerator:
     Inference API tier.
 
     Key Features and Compatibility:
-     - Primary Compatibility: designed to work seamlessly with any chat-based model deployed using the TGI
+    - Primary Compatibility: designed to work seamlessly with any chat-based model deployed using the TGI
        framework. For more information on TGI, visit [text-generation-inference](https://github.com/huggingface/text-generation-inference)
+
     - Hugging Face Inference Endpoints: Supports inference of TGI chat LLMs deployed on Hugging Face
        inference endpoints. For more details, refer to [inference-endpoints](https://huggingface.co/inference-endpoints)
 
     - Inference API Support: supports inference of TGI chat LLMs hosted on the rate-limited Inference
       API tier. Learn more about the Inference API at [inference-api](https://huggingface.co/inference-api).
-      Discover available chat models using the following command: `wget -qO- https://api-inference.huggingface.co/framework/text-generation-inference | grep chat`
+      Discover available chat models using the following command:
+      `wget -qO- https://api-inference.huggingface.co/framework/text-generation-inference | grep chat`
       and simply use the model ID as the model parameter for this component. You'll also need to provide a valid
       Hugging Face API token as the token parameter.
 
@@ -66,7 +68,7 @@ class HuggingFaceTGIChatGenerator:
                 ChatMessage.from_user("What's Natural Language Processing?")]
 
 
-    client = HuggingFaceTGIChatGenerator(model="HuggingFaceH4/zephyr-7b-beta", token=Secret.from_token("<your-api-key>"))
+    client = HuggingFaceTGIChatGenerator(model="HuggingFaceH4/zephyr-7b-beta", token=Secret.from_token("<api-key>"))
     client.warm_up()
     response = client.run(messages, generation_kwargs={"max_new_tokens": 120})
     print(response)
@@ -150,6 +152,7 @@ class HuggingFaceTGIChatGenerator:
         self.client = InferenceClient(url or model, token=token.resolve_value() if token else None)
         self.streaming_callback = streaming_callback
         self.tokenizer = None
+        self._warmed_up: bool = False
 
     def warm_up(self) -> None:
         """
@@ -158,6 +161,8 @@ class HuggingFaceTGIChatGenerator:
         If the url is not provided, check if the model is deployed on the free tier of the HF inference API.
         Load the tokenizer
         """
+        if self._warmed_up:
+            return
 
         # is this user using HF free tier inference API?
         if self.model and not self.url:
@@ -183,6 +188,8 @@ class HuggingFaceTGIChatGenerator:
                 "format, potentially leading to unexpected behavior.",
                 model=self.model,
             )
+
+        self._warmed_up = True
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -229,6 +236,10 @@ class HuggingFaceTGIChatGenerator:
         :param generation_kwargs: Additional keyword arguments for text generation.
         :return: A list containing the generated responses as ChatMessage instances.
         """
+        if not self._warmed_up:
+            raise RuntimeError(
+                "The component HuggingFaceTGIChatGenerator was not warmed up. Please call warm_up() before running."
+            )
 
         # check generation kwargs given as parameters to override the default ones
         additional_params = ["n", "stop_words"]

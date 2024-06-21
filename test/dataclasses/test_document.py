@@ -75,7 +75,11 @@ def test_init_with_parameters():
 
 def test_init_with_legacy_fields():
     doc = Document(
-        content="test text", content_type="text", id_hash_keys=["content"], score=0.812, embedding=[0.1, 0.2, 0.3]  # type: ignore
+        content="test text",
+        content_type="text",
+        id_hash_keys=["content"],
+        score=0.812,
+        embedding=[0.1, 0.2, 0.3],  # type: ignore
     )
     assert doc.id == "18fc2c114825872321cf5009827ca162f54d3be50ab9e9ffa027824b6ec223af"
     assert doc.content == "test text"
@@ -233,7 +237,11 @@ def test_from_dict_with_legacy_fields():
             "embedding": [0.1, 0.2, 0.3],
         }
     ) == Document(
-        content="test text", content_type="text", id_hash_keys=["content"], score=0.812, embedding=[0.1, 0.2, 0.3]  # type: ignore
+        content="test text",
+        content_type="text",
+        id_hash_keys=["content"],
+        score=0.812,
+        embedding=[0.1, 0.2, 0.3],  # type: ignore
     )
 
 

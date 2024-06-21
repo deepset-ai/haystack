@@ -74,12 +74,14 @@ class DocumentJoiner:
         self.sort_by_score = sort_by_score
 
     @component.output_types(documents=List[Document])
-    def run(self, documents: Variadic[List[Document]]):
+    def run(self, documents: Variadic[List[Document]], top_k: Optional[int] = None):
         """
         Joins multiple lists of Documents into a single list depending on the `join_mode` parameter.
 
         :param documents:
             List of list of Documents to be merged.
+        :param top_k:
+            The maximum number of Documents to return. Overrides the instance's `top_k` if provided.
 
         :returns:
             A dictionary with the following keys:
@@ -103,13 +105,16 @@ class DocumentJoiner:
                     "score, so those with score=None were sorted as if they had a score of -infinity."
                 )
 
-        if self.top_k:
+        if top_k:
+            output_documents = output_documents[:top_k]
+        elif self.top_k:
             output_documents = output_documents[: self.top_k]
+
         return {"documents": output_documents}
 
     def _concatenate(self, document_lists):
         """
-        Concatenate multiple lists of Documents and return only the Document with the highest score for duplicate Documents.
+        Concatenate multiple lists of Documents and return only the Document with the highest score for duplicates.
         """
         output = []
         docs_per_id = defaultdict(list)

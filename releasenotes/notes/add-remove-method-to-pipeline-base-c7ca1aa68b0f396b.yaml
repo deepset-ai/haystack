@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Added the 'remove_component' method in 'PipelineBase' to delete components and its connections.

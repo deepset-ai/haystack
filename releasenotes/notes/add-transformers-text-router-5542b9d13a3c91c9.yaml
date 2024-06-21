@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Introduces the TransformersTextRouter! This component uses a transformers text classification pipeline to route text inputs onto different output connections based on the labels of the chosen text classification model.

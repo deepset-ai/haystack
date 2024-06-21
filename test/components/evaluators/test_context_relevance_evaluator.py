@@ -4,8 +4,11 @@
 import os
 from typing import List
 
+import math
+
 import pytest
 
+from haystack import Pipeline
 from haystack.components.evaluators import ContextRelevanceEvaluator
 from haystack.utils.auth import Secret
 
@@ -69,6 +72,27 @@ class TestContextRelevanceEvaluator:
             {"inputs": {"questions": "Football is the most popular sport."}, "outputs": {"custom_score": 0}},
         ]
 
+    def test_to_dict_with_parameters(self, monkeypatch):
+        monkeypatch.setenv("ENV_VAR", "test-api-key")
+        component = ContextRelevanceEvaluator(
+            api="openai",
+            api_key=Secret.from_env_var("ENV_VAR"),
+            examples=[{"inputs": {"questions": "What is football?"}, "outputs": {"score": 0}}],
+            raise_on_failure=False,
+            progress_bar=False,
+        )
+        data = component.to_dict()
+        assert data == {
+            "type": "haystack.components.evaluators.context_relevance.ContextRelevanceEvaluator",
+            "init_parameters": {
+                "api_key": {"env_vars": ["ENV_VAR"], "strict": True, "type": "env_var"},
+                "api": "openai",
+                "examples": [{"inputs": {"questions": "What is football?"}, "outputs": {"score": 0}}],
+                "progress_bar": False,
+                "raise_on_failure": False,
+            },
+        }
+
     def test_from_dict(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
 
@@ -84,6 +108,10 @@ class TestContextRelevanceEvaluator:
         assert component.api == "openai"
         assert component.generator.client.api_key == "test-api-key"
         assert component.examples == [{"inputs": {"questions": "What is football?"}, "outputs": {"score": 0}}]
+
+        pipeline = Pipeline()
+        pipeline.add_component("evaluator", component)
+        assert pipeline.loads(pipeline.dumps())
 
     def test_run_calculates_mean_score(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -158,6 +186,45 @@ class TestContextRelevanceEvaluator:
         component = ContextRelevanceEvaluator()
         with pytest.raises(TypeError, match="missing 2 required positional arguments"):
             component.run()
+
+    def test_run_returns_nan_raise_on_failure_false(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = ContextRelevanceEvaluator(raise_on_failure=False)
+
+        def generator_run(self, *args, **kwargs):
+            if "Python" in kwargs["prompt"]:
+                raise Exception("OpenAI API request failed.")
+            else:
+                return {"replies": ['{"statements": ["c", "d"], "statement_scores": [1, 1]}']}
+
+        monkeypatch.setattr("haystack.components.generators.openai.OpenAIGenerator.run", generator_run)
+
+        questions = ["Which is the most popular global sport?", "Who created the Python language?"]
+        contexts = [
+            [
+                "The popularity of sports can be measured in various ways, including TV viewership, social media "
+                "presence, number of participants, and economic impact. Football is undoubtedly the world's most "
+                "popular sport with major events like the FIFA World Cup and sports personalities like Ronaldo and "
+                "Messi, drawing a followership of more than 4 billion people."
+            ],
+            [
+                "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming "
+                "language. Its design philosophy emphasizes code readability, and its language constructs aim to help "
+                "programmers write clear, logical code for both small and large-scale software projects."
+            ],
+        ]
+        results = component.run(questions=questions, contexts=contexts)
+
+        assert math.isnan(results["score"])
+
+        assert results["individual_scores"][0] == 1.0
+        assert math.isnan(results["individual_scores"][1])
+
+        assert results["results"][0] == {"statements": ["c", "d"], "statement_scores": [1, 1], "score": 1.0}
+
+        assert results["results"][1]["statements"] == []
+        assert results["results"][1]["statement_scores"] == []
+        assert math.isnan(results["results"][1]["score"])
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),

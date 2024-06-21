@@ -5,7 +5,7 @@
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-from haystack import ComponentError, Document, component, default_from_dict, default_to_dict, logging
+from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice, DeviceMap, Secret, deserialize_secrets_inplace
 from haystack.utils.hf import deserialize_hf_model_kwargs, resolve_hf_device_map, serialize_hf_model_kwargs
@@ -218,9 +218,15 @@ class TransformersSimilarityRanker:
         :raises ValueError:
             If `top_k` is not > 0.
             If `scale_score` is True and `calibration_factor` is not provided.
-        :raises ComponentError:
+        :raises RuntimeError:
             If the model is not loaded because `warm_up()` was not called before.
         """
+        # If a model path is provided but the model isn't loaded
+        if self.model is None:
+            raise RuntimeError(
+                "The component TransformersSimilarityRanker wasn't warmed up. Run 'warm_up()' before calling 'run()'."
+            )
+
         if not documents:
             return {"documents": []}
 
@@ -237,12 +243,6 @@ class TransformersSimilarityRanker:
                 f"scale_score is True so calibration_factor must be provided, but got {calibration_factor}"
             )
 
-        # If a model path is provided but the model isn't loaded
-        if self.model is None:
-            raise ComponentError(
-                f"The component {self.__class__.__name__} wasn't warmed up. Run 'warm_up()' before calling 'run()'."
-            )
-
         query_doc_pairs = []
         for doc in documents:
             meta_values_to_embed = [
@@ -251,9 +251,7 @@ class TransformersSimilarityRanker:
             text_to_embed = self.embedding_separator.join(meta_values_to_embed + [doc.content or ""])
             query_doc_pairs.append([self.query_prefix + query, self.document_prefix + text_to_embed])
 
-        features = self.tokenizer(
-            query_doc_pairs, padding=True, truncation=True, return_tensors="pt"
-        ).to(  # type: ignore
+        features = self.tokenizer(query_doc_pairs, padding=True, truncation=True, return_tensors="pt").to(  # type: ignore
             self.device.first_device.to_torch()
         )
         with torch.inference_mode():

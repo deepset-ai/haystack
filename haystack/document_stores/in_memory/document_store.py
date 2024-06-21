@@ -4,6 +4,7 @@
 
 import math
 import re
+import uuid
 from collections import Counter
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Literal, Optional, Tuple
@@ -22,9 +23,10 @@ logger = logging.getLogger(__name__)
 # document scores are essentially unbounded and will be scaled to values between 0 and 1 if scale_score is set to
 # True (default). Scaling uses the expit function (inverse of the logit function) after applying a scaling factor
 # (e.g., BM25_SCALING_FACTOR for the bm25_retrieval method).
-# Larger scaling factor decreases scaled scores. For example, an input of 10 is scaled to 0.99 with BM25_SCALING_FACTOR=2
-# but to 0.78 with BM25_SCALING_FACTOR=8 (default). The defaults were chosen empirically. Increase the default if most
-# unscaled scores are larger than expected (>30) and otherwise would incorrectly all be mapped to scores ~1.
+# Larger scaling factor decreases scaled scores. For example, an input of 10 is scaled to 0.99 with
+# BM25_SCALING_FACTOR=2 but to 0.78 with BM25_SCALING_FACTOR=8 (default). The defaults were chosen empirically.
+# Increase the default if most unscaled scores are larger than expected (>30) and otherwise would incorrectly all be
+# mapped to scores ~1.
 BM25_SCALING_FACTOR = 8
 DOT_PRODUCT_SCALING_FACTOR = 100
 
@@ -42,6 +44,13 @@ class BM25DocumentStats:
     doc_len: int
 
 
+# Global storage for all InMemoryDocumentStore instances, indexed by the index name.
+_STORAGES: Dict[str, Dict[str, Document]] = {}
+_BM25_STATS_STORAGES: Dict[str, Dict[str, BM25DocumentStats]] = {}
+_AVERAGE_DOC_LEN_STORAGES: Dict[str, float] = {}
+_FREQ_VOCAB_FOR_IDF_STORAGES: Dict[str, Counter] = {}
+
+
 class InMemoryDocumentStore:
     """
     Stores data in-memory. It's ephemeral and cannot be saved to disk.
@@ -53,6 +62,7 @@ class InMemoryDocumentStore:
         bm25_algorithm: Literal["BM25Okapi", "BM25L", "BM25Plus"] = "BM25L",
         bm25_parameters: Optional[Dict] = None,
         embedding_similarity_function: Literal["dot_product", "cosine"] = "dot_product",
+        index: Optional[str] = None,
     ):
         """
         Initializes the DocumentStore.
@@ -60,28 +70,61 @@ class InMemoryDocumentStore:
         :param bm25_tokenization_regex: The regular expression used to tokenize the text for BM25 retrieval.
         :param bm25_algorithm: The BM25 algorithm to use. One of "BM25Okapi", "BM25L", or "BM25Plus".
         :param bm25_parameters: Parameters for BM25 implementation in a dictionary format.
-                                For example: {'k1':1.5, 'b':0.75, 'epsilon':0.25}
-                                You can learn more about these parameters by visiting https://github.com/dorianbrown/rank_bm25.
-                                By default, no parameters are set.
+            For example: {'k1':1.5, 'b':0.75, 'epsilon':0.25}
+            You can learn more about these parameters by visiting https://github.com/dorianbrown/rank_bm25.
         :param embedding_similarity_function: The similarity function used to compare Documents embeddings.
-                                              One of "dot_product" (default) or "cosine".
-                                              To choose the most appropriate function, look for information about your embedding model.
+            One of "dot_product" (default) or "cosine". To choose the most appropriate function, look for information
+            about your embedding model.
+        :param index: A specific index to store the documents. If not specified, a random UUID is used.
+            Using the same index allows you to store documents across multiple InMemoryDocumentStore instances.
         """
-        self.storage: Dict[str, Document] = {}
         self.bm25_tokenization_regex = bm25_tokenization_regex
         self.tokenizer = re.compile(bm25_tokenization_regex).findall
+
+        if index is None:
+            index = str(uuid.uuid4())
+
+        self.index = index
+        if self.index not in _STORAGES:
+            _STORAGES[self.index] = {}
 
         self.bm25_algorithm = bm25_algorithm
         self.bm25_algorithm_inst = self._dispatch_bm25()
         self.bm25_parameters = bm25_parameters or {}
         self.embedding_similarity_function = embedding_similarity_function
 
-        # Global BM25 statistics
-        self._avg_doc_len: float = 0.0
-        self._freq_vocab_for_idf: Counter = Counter()
-
         # Per-document statistics
-        self._bm25_attr: Dict[str, BM25DocumentStats] = {}
+        if self.index not in _BM25_STATS_STORAGES:
+            _BM25_STATS_STORAGES[self.index] = {}
+
+        if self.index not in _AVERAGE_DOC_LEN_STORAGES:
+            _AVERAGE_DOC_LEN_STORAGES[self.index] = 0.0
+
+        if self.index not in _FREQ_VOCAB_FOR_IDF_STORAGES:
+            _FREQ_VOCAB_FOR_IDF_STORAGES[self.index] = Counter()
+
+    @property
+    def storage(self) -> Dict[str, Document]:
+        """
+        Utility property that returns the storage used by this instance of InMemoryDocumentStore.
+        """
+        return _STORAGES.get(self.index, {})
+
+    @property
+    def _bm25_attr(self) -> Dict[str, BM25DocumentStats]:
+        return _BM25_STATS_STORAGES.get(self.index, {})
+
+    @property
+    def _avg_doc_len(self) -> float:
+        return _AVERAGE_DOC_LEN_STORAGES.get(self.index, 0.0)
+
+    @_avg_doc_len.setter
+    def _avg_doc_len(self, value: float):
+        _AVERAGE_DOC_LEN_STORAGES[self.index] = value
+
+    @property
+    def _freq_vocab_for_idf(self) -> Counter:
+        return _FREQ_VOCAB_FOR_IDF_STORAGES.get(self.index, Counter())
 
     def _dispatch_bm25(self):
         """
@@ -281,6 +324,7 @@ class InMemoryDocumentStore:
             bm25_algorithm=self.bm25_algorithm,
             bm25_parameters=self.bm25_parameters,
             embedding_similarity_function=self.embedding_similarity_function,
+            index=self.index,
         )
 
     @classmethod
@@ -305,7 +349,8 @@ class InMemoryDocumentStore:
         """
         Returns the documents that match the filters provided.
 
-        For a detailed specification of the filters, refer to the DocumentStore.filter_documents() protocol documentation.
+        For a detailed specification of the filters, refer to the DocumentStore.filter_documents() protocol
+        documentation.
 
         :param filters: The filters to apply to the document list.
         :returns: A list of Documents that match the given filters.

@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Auto enable tracing upon import if `ddtrace` or `opentelemetry` is installed.

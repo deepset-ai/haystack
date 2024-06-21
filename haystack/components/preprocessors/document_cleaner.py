@@ -40,6 +40,7 @@ class DocumentCleaner:
         remove_empty_lines: bool = True,
         remove_extra_whitespaces: bool = True,
         remove_repeated_substrings: bool = False,
+        keep_id: bool = False,
         remove_substrings: Optional[List[str]] = None,
         remove_regex: Optional[str] = None,
     ):
@@ -53,6 +54,7 @@ class DocumentCleaner:
             which is supported by `TextFileToDocument` and `AzureOCRDocumentConverter`.
         :param remove_substrings: List of substrings to remove from the text.
         :param remove_regex: Regex to match and replace substrings by "".
+        :param keep_id: keep the ids of the original documents
         """
 
         self.remove_empty_lines = remove_empty_lines
@@ -60,6 +62,7 @@ class DocumentCleaner:
         self.remove_repeated_substrings = remove_repeated_substrings
         self.remove_substrings = remove_substrings
         self.remove_regex = remove_regex
+        self.keep_id = keep_id
 
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document]):
@@ -80,7 +83,8 @@ class DocumentCleaner:
         for doc in documents:
             if doc.content is None:
                 logger.warning(
-                    "DocumentCleaner only cleans text documents but document.content for document ID %{document_id} is None.",
+                    "DocumentCleaner only cleans text documents but document.content for document ID"
+                    " %{document_id} is None.",
                     document_id=doc.id,
                 )
                 cleaned_docs.append(doc)
@@ -98,7 +102,7 @@ class DocumentCleaner:
             if self.remove_repeated_substrings:
                 text = self._remove_repeated_substrings(text)
 
-            cleaned_docs.append(Document(content=text, meta=deepcopy(doc.meta)))
+            cleaned_docs.append(Document(content=text, meta=deepcopy(doc.meta), id=doc.id if self.keep_id else ""))
 
         return {"documents": cleaned_docs}
 
@@ -168,7 +172,8 @@ class DocumentCleaner:
          but won't detect "Page 3 of 4" or similar.
 
         :param n_chars: The number of first/last characters where the header/footer shall be searched in.
-        :param n_first_pages_to_ignore: The number of first pages to ignore (e.g. TOCs often don't contain footer/header).
+        :param n_first_pages_to_ignore: The number of first pages to ignore
+            (e.g. TOCs often don't contain footer/header).
         :param n_last_pages_to_ignore: The number of last pages to ignore.
         :returns: The text without the found headers and footers.
         """

@@ -175,6 +175,10 @@ class TestMetaFieldRanker:
         with pytest.raises(ValueError):
             MetaFieldRanker(meta_field="rating", sort_order="wrong_order")
 
+    def test_raises_value_error_if_wrong_missing_meta(self):
+        with pytest.raises(ValueError):
+            MetaFieldRanker(meta_field="rating", missing_meta="wrong_missing_meta")
+
     def test_raises_value_error_if_wrong_meta_value_type(self):
         with pytest.raises(ValueError):
             MetaFieldRanker(meta_field="rating", meta_value_type="wrong_type")
@@ -239,3 +243,39 @@ class TestMetaFieldRanker:
         output = ranker.run(documents=docs_before, ranking_mode="reciprocal_rank_fusion")
         docs_after = output["documents"]
         assert docs_after[0].score == pytest.approx(0.016261, abs=1e-5)
+
+    def test_missing_meta_bottom(self):
+        ranker = MetaFieldRanker(meta_field="rating", ranking_mode="linear_score", weight=0.5, missing_meta="bottom")
+        docs_before = [
+            Document(id="1", content="abc", meta={"rating": 1.3}, score=0.6),
+            Document(id="2", content="abc", meta={}, score=0.4),
+            Document(id="3", content="abc", meta={"rating": 2.1}, score=0.39),
+        ]
+        output = ranker.run(documents=docs_before)
+        docs_after = output["documents"]
+        assert len(docs_after) == 3
+        assert docs_after[2].id == "2"
+
+    def test_missing_meta_top(self):
+        ranker = MetaFieldRanker(meta_field="rating", ranking_mode="linear_score", weight=0.5, missing_meta="top")
+        docs_before = [
+            Document(id="1", content="abc", meta={"rating": 1.3}, score=0.6),
+            Document(id="2", content="abc", meta={}, score=0.59),
+            Document(id="3", content="abc", meta={"rating": 2.1}, score=0.4),
+        ]
+        output = ranker.run(documents=docs_before)
+        docs_after = output["documents"]
+        assert len(docs_after) == 3
+        assert docs_after[0].id == "2"
+
+    def test_missing_meta_drop(self):
+        ranker = MetaFieldRanker(meta_field="rating", ranking_mode="linear_score", weight=0.5, missing_meta="drop")
+        docs_before = [
+            Document(id="1", content="abc", meta={"rating": 1.3}, score=0.6),
+            Document(id="2", content="abc", meta={}, score=0.59),
+            Document(id="3", content="abc", meta={"rating": 2.1}, score=0.4),
+        ]
+        output = ranker.run(documents=docs_before)
+        docs_after = output["documents"]
+        assert len(docs_after) == 2
+        assert "2" not in [doc.id for doc in docs_after]

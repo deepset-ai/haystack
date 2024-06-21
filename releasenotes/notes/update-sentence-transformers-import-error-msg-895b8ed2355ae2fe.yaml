@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Update the error message when the `sentence-transformers` library is not installed
+    and the used component requires it.

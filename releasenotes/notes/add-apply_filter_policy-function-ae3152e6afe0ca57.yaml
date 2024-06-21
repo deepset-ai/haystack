@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Added the apply_filter_policy function to standardize the application of filter policies across all document store-specific retrievers, allowing for consistent handling of initial and runtime filters based on the chosen policy (replace or merge).

@@ -15,8 +15,7 @@ logger = logging.getLogger(__name__)
 SEARCHAPI_BASE_URL = "https://www.searchapi.io/api/v1/search"
 
 
-class SearchApiError(ComponentError):
-    ...
+class SearchApiError(ComponentError): ...
 
 
 @component

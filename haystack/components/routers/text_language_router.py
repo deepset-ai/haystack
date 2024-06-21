@@ -51,7 +51,8 @@ class TextLanguageRouter:
         Initialize the TextLanguageRouter component.
 
         :param languages: A list of languages in ISO code, each corresponding to a different output connection.
-            For supported languages, see the [`langdetect` documentation](https://github.com/Mimino666/langdetect#languages).
+            For supported languages, see the
+            [`langdetect` documentation](https://github.com/Mimino666/langdetect#languages).
             If not specified, the default is `["en"]`.
         """
         langdetect_import.check()
@@ -75,9 +76,11 @@ class TextLanguageRouter:
         :raises TypeError: If the input is not a string.
         """
         if not isinstance(text, str):
-            raise TypeError(
-                "TextLanguageRouter expects a str as input. In case you want to classify a document, please use the DocumentLanguageClassifier and MetaDataRouter."
+            msg = (
+                "TextLanguageRouter expects a string as input. In case you want to classify a document, please use "
+                "the DocumentLanguageClassifier and MetaDataRouter."
             )
+            raise TypeError(msg)
 
         output: Dict[str, str] = {}
 

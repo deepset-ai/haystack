@@ -16,8 +16,7 @@ logger = logging.getLogger(__name__)
 SERPERDEV_BASE_URL = "https://google.serper.dev/search"
 
 
-class SerperDevError(ComponentError):
-    ...
+class SerperDevError(ComponentError): ...
 
 
 @component
@@ -124,7 +123,7 @@ class SerperDevWebSearch:
 
         # we get the snippet from the json result and put it in the content field of the document
         organic = [
-            Document(meta={k: v for k, v in d.items() if k != "snippet"}, content=d["snippet"])
+            Document(meta={k: v for k, v in d.items() if k != "snippet"}, content=d.get("snippet"))
             for d in json_result["organic"]
         ]
 

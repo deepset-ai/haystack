@@ -21,8 +21,8 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
     """
     A Chat Generator component that uses the Azure OpenAI API to generate text.
 
-    Enables text generation using OpenAI's large language models (LLMs) on Azure. It supports `gpt-4` and `gpt-3.5-turbo`
-    family of models accessed through the chat completions API endpoint.
+    Enables text generation using OpenAI's large language models (LLMs) on Azure. It supports `gpt-4` and
+    `gpt-3.5-turbo` family of models accessed through the chat completions API endpoint.
 
     Users can pass any text generation parameters valid for the `openai.ChatCompletion.create` method
     directly to this component via the `generation_kwargs` parameter in `__init__` or the `generation_kwargs`
@@ -62,7 +62,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
     ```
     {'replies':
         [ChatMessage(content='Natural Language Processing (NLP) is a branch of artificial intelligence that focuses on
-         enabling computers to understand, interpret, and generate human language in a way that is meaningful and useful.',
+         enabling computers to understand, interpret, and generate human language in a way that is useful.',
          role=<ChatRole.ASSISTANT: 'assistant'>, name=None,
          meta={'model': 'gpt-3.5-turbo-0613', 'index': 0, 'finish_reason': 'stop',
          'usage': {'prompt_tokens': 15, 'completion_tokens': 36, 'total_tokens': 51}})]
@@ -80,6 +80,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         azure_ad_token: Optional[Secret] = Secret.from_env_var("AZURE_OPENAI_AD_TOKEN", strict=False),
         organization: Optional[str] = None,
         streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
+        timeout: Optional[float] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
@@ -139,6 +140,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         self.azure_deployment = azure_deployment
         self.organization = organization
         self.model = azure_deployment or "gpt-35-turbo"
+        self.timeout = timeout
 
         self.client = AzureOpenAI(
             api_version=api_version,
@@ -165,6 +167,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
             api_version=self.api_version,
             streaming_callback=callback_name,
             generation_kwargs=self.generation_kwargs,
+            timeout=self.timeout,
             api_key=self.api_key.to_dict() if self.api_key is not None else None,
             azure_ad_token=self.azure_ad_token.to_dict() if self.azure_ad_token is not None else None,
         )

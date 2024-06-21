@@ -11,7 +11,7 @@ from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice, expit
 from haystack.utils.auth import Secret, deserialize_secrets_inplace
 
-with LazyImport(message="Run 'pip install scikit-learn \"sentence-transformers>=2.2.0\"'") as sas_import:
+with LazyImport(message="Run 'pip install \"sentence-transformers>=2.3.0\"'") as sas_import:
     from sentence_transformers import CrossEncoder, SentenceTransformer, util
     from transformers import AutoConfig
 
@@ -19,11 +19,10 @@ with LazyImport(message="Run 'pip install scikit-learn \"sentence-transformers>=
 @component
 class SASEvaluator:
     """
-    SASEvaluator computes the Semantic Answer Similarity (SAS) between a list of predictions and a list of ground truths.
+    SASEvaluator computes the Semantic Answer Similarity (SAS) between a list of predictions and a one of ground truths.
 
-    It's usually used in Retrieval Augmented Generation (RAG) pipelines to evaluate the quality of the generated answers.
-
-    The SAS is computed using a pre-trained model from the Hugging Face model hub. The model can be either a
+    It's usually used in Retrieval Augmented Generation (RAG) pipelines to evaluate the quality of the generated
+    answers. The SAS is computed using a pre-trained model from the Hugging Face model hub. The model can be either a
     Bi-Encoder or a Cross-Encoder. The choice of the model is based on the `model` parameter.
 
     Usage example:
@@ -65,7 +64,8 @@ class SASEvaluator:
         Creates a new instance of SASEvaluator.
 
         :param model:
-            SentenceTransformers semantic textual similarity model, should be path or string pointing to a downloadable model.
+            SentenceTransformers semantic textual similarity model, should be path or string pointing to a downloadable
+            model.
         :param batch_size:
             Number of prediction-label pairs to encode at once.
         :param device:
@@ -116,6 +116,9 @@ class SASEvaluator:
         """
         Initializes the component.
         """
+        if self._similarity_model:
+            return
+
         token = self._token.resolve_value() if self._token else None
         config = AutoConfig.from_pretrained(self._model, use_auth_token=token)
         cross_encoder_used = False

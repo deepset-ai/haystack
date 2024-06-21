@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Pin numpy<2 to avoid breaking changes that cause several core integrations to fail.
+    Pin tenacity too (8.4.0 is broken).
