@@ -13,6 +13,20 @@ with LazyImport(message="Run 'pip install jsonschema'") as jsonschema_import:
     from jsonschema import ValidationError, validate
 
 
+def is_valid_json(s: str) -> bool:
+    """
+    Check if the provided string is a valid JSON.
+
+    :param s: The string to be checked.
+    :returns: `True` if the string is a valid JSON; otherwise, `False`.
+    """
+    try:
+        json.loads(s)
+    except ValueError:
+        return False
+    return True
+
+
 @component
 class JsonSchemaValidator:
     """
@@ -84,7 +98,8 @@ class JsonSchemaValidator:
         "- Schema Path: {error_schema_path}\n"
         "Please match the following schema:\n"
         "{json_schema}\n"
-        "and provide the corrected JSON content ONLY. Please do not output anything else than the raw corrected JSON string, this is the most important part of the task. Don't use any markdown and don't add any comment."
+        "and provide the corrected JSON content ONLY. Please do not output anything else than the raw corrected "
+        "JSON string, this is the most important part of the task. Don't use any markdown and don't add any comment."
     )
 
     def __init__(self, json_schema: Optional[Dict[str, Any]] = None, error_template: Optional[str] = None):
@@ -126,14 +141,22 @@ class JsonSchemaValidator:
             dictionaries.
         """
         last_message = messages[-1]
-        last_message_content = json.loads(last_message.content)
+        if not is_valid_json(last_message.content):
+            return {
+                "validation_error": [
+                    ChatMessage.from_user(
+                        f"The message '{last_message.content}' is not a valid JSON object. "
+                        f"Please provide only a valid JSON object in string format."
+                    )
+                ]
+            }
 
+        last_message_content = json.loads(last_message.content)
         json_schema = json_schema or self.json_schema
         error_template = error_template or self.error_template or self.default_error_template
 
         if not json_schema:
             raise ValueError("Provide a JSON schema for validation either in the run method or in the component init.")
-
         # fc payload is json object but subtree `parameters` is string - we need to convert to json object
         # we need complete json to validate it against schema
         last_message_json = self._recursive_json_to_object(last_message_content)
