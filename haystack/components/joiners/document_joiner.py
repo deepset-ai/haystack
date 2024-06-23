@@ -67,7 +67,9 @@ class DocumentJoiner:
             If a Document has no score, it is handled as if its score is -infinity.
         """
         if join_mode not in ["concatenate", "merge", "reciprocal_rank_fusion"]:
-            raise ValueError(f"DocumentJoiner component does not support '{join_mode}' join_mode.")
+            raise ValueError(
+                f"DocumentJoiner component does not support '{join_mode}' join_mode."
+            )
         self.join_mode = join_mode
         self.weights = [float(i) / sum(weights) for i in weights] if weights else None
         self.top_k = top_k
@@ -94,10 +96,14 @@ class DocumentJoiner:
             output_documents = self._merge(documents)
         elif self.join_mode == "reciprocal_rank_fusion":
             output_documents = self._reciprocal_rank_fusion(documents)
+        elif self.join_mode == "distribution_based_rank_fusion":
+            output_documents = self._ditribution_based_rank_fusion(documents)
 
         if self.sort_by_score:
             output_documents = sorted(
-                output_documents, key=lambda doc: doc.score if doc.score is not None else -inf, reverse=True
+                output_documents,
+                key=lambda doc: doc.score if doc.score is not None else -inf,
+                reverse=True,
             )
             if any(doc.score is None for doc in output_documents):
                 logger.info(
@@ -121,7 +127,9 @@ class DocumentJoiner:
         for doc in itertools.chain.from_iterable(document_lists):
             docs_per_id[doc.id].append(doc)
         for docs in docs_per_id.values():
-            doc_with_best_score = max(docs, key=lambda doc: doc.score if doc.score else -inf)
+            doc_with_best_score = max(
+                docs, key=lambda doc: doc.score if doc.score else -inf
+            )
             output.append(doc_with_best_score)
         return output
 
@@ -131,7 +139,11 @@ class DocumentJoiner:
         """
         scores_map = defaultdict(int)
         documents_map = {}
-        weights = self.weights if self.weights else [1 / len(document_lists)] * len(document_lists)
+        weights = (
+            self.weights
+            if self.weights
+            else [1 / len(document_lists)] * len(document_lists)
+        )
 
         for documents, weight in zip(document_lists, weights):
             for doc in documents:
@@ -154,7 +166,11 @@ class DocumentJoiner:
 
         scores_map = defaultdict(int)
         documents_map = {}
-        weights = self.weights if self.weights else [1 / len(document_lists)] * len(document_lists)
+        weights = (
+            self.weights
+            if self.weights
+            else [1 / len(document_lists)] * len(document_lists)
+        )
 
         # Calculate weighted reciprocal rank fusion score
         for documents, weight in zip(document_lists, weights):
@@ -171,3 +187,29 @@ class DocumentJoiner:
             doc.score = scores_map[doc.id]
 
         return documents_map.values()
+
+    def _ditribution_based_rank_fusion(self, document_lists):
+        """Merge multiple lists of Documents and assign scores based on Distribution-Based Score Fusion.
+        (https://medium.com/plain-simple-software/distribution-based-score-fusion-dbsf-a-new-approach-to-vector-search-ranking-f87c37488b18)
+
+        If a Document is in more than one retriever, the sone with the highest score is used.
+        """
+        for documents in document_lists:
+            scores_list = []
+
+            for doc in documents:
+                scores_list.append(doc.score)
+
+            mean_score = sum(scores_list) / len(scores_list)
+            std_dev = (
+                sum((x - mean_score) ** 2 for x in scores_list) / len(scores_list)
+            ) ** 0.5
+            min_score = mean_score - 3 * std_dev
+            max_score = mean_score + 3 * std_dev
+
+            for doc in documents:
+                doc.score = (doc.score - min_score) / (max_score - min_score)
+
+        output = self._concatenate(document_lists=document_lists)
+
+        return output
