@@ -66,7 +66,7 @@ class DocumentJoiner:
             If True sorts the Documents by score in descending order.
             If a Document has no score, it is handled as if its score is -infinity.
         """
-        if join_mode not in ["concatenate", "merge", "reciprocal_rank_fusion"]:
+        if join_mode not in ["concatenate", "merge", "reciprocal_rank_fusion", "distribution_based_rank_fusion"]:
             raise ValueError(
                 f"DocumentJoiner component does not support '{join_mode}' join_mode."
             )
@@ -97,7 +97,7 @@ class DocumentJoiner:
         elif self.join_mode == "reciprocal_rank_fusion":
             output_documents = self._reciprocal_rank_fusion(documents)
         elif self.join_mode == "distribution_based_rank_fusion":
-            output_documents = self._ditribution_based_rank_fusion(documents)
+            output_documents = self._distribution_based_rank_fusion(documents)
 
         if self.sort_by_score:
             output_documents = sorted(
@@ -188,7 +188,7 @@ class DocumentJoiner:
 
         return documents_map.values()
 
-    def _ditribution_based_rank_fusion(self, document_lists):
+    def _distribution_based_rank_fusion(self, document_lists):
         """
         Merge multiple lists of Documents and assign scores based on Distribution-Based Score Fusion.
         (https://medium.com/plain-simple-software/distribution-based-score-fusion-dbsf-a-new-approach-to-vector-search-ranking-f87c37488b18)
