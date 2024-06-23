@@ -45,6 +45,9 @@ def test_to_string():
     b = ByteStream.from_string(test_string)
     assert b.to_string() == test_string
 
+    b = ByteStream(test_string)
+    assert b.to_string() == test_string
+
 
 def test_to_from_string_encoding():
     test_string = "Hello Baščaršija!"

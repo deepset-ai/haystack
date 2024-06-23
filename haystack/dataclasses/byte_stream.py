@@ -62,4 +62,6 @@ class ByteStream:
         :returns: The string representation of the ByteStream.
         :raises: UnicodeDecodeError: If the ByteStream data cannot be decoded with the specified encoding.
         """
+        if isinstance(self.data, str):
+            return self.data
         return self.data.decode(encoding)
