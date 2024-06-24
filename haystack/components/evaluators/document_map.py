@@ -10,7 +10,7 @@ from haystack import Document, component
 @component
 class DocumentMAPEvaluator:
     """
-    A Mean Average Precision (MAP) evaluator for documents.
+    A Mean Average Precision (MAP) evaluator for documents. For details, please refer to the [resource](https://www.pinecone.io/learn/offline-evaluation/).
 
     Evaluator that calculates the mean average precision of the retrieved documents, a metric
     that measures how high retrieved documents are ranked.
@@ -68,22 +68,21 @@ class DocumentMAPEvaluator:
         individual_scores = []
 
         for ground_truth, retrieved in zip(ground_truth_documents, retrieved_documents):
-            score = 0.0
-            average_precision = 0.0
+            average_precision = 0
+            average_precision_numerator = 0.0
             relevant_documents = 0
 
-            ground_truth_content = [doc.content for doc in ground_truth if doc.content is not None]
+            ground_truth_contents = [doc.content for doc in ground_truth if doc.content is not None]
             for rank, retrieved_document in enumerate(retrieved):
                 if retrieved_document.content is None:
                     continue
 
-                if retrieved_document.content in ground_truth_content:
+                if retrieved_document.content in ground_truth_contents:
                     relevant_documents += 1
-                    average_precision += relevant_documents / (rank + 1)
+                    average_precision_numerator += relevant_documents / (rank + 1)
             if relevant_documents > 0:
-                score = average_precision / relevant_documents
-            individual_scores.append(score)
+                average_precision = average_precision_numerator / relevant_documents
+            individual_scores.append(average_precision)
 
         score = sum(individual_scores) / len(ground_truth_documents)
-
         return {"score": score, "individual_scores": individual_scores}
