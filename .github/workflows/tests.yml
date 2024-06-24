@@ -106,7 +106,7 @@ jobs:
       - name: Set up pip cache
         uses: actions/cache@v4
         with:
-          path: ~/.cache/pip
+          path: ${{ env.pythonLocation }}
           key: ${{ matrix.os }}-pip-${{ hashFiles('pyproject.toml') }}
           restore-keys: ${{ matrix.os }}-pip-
 
