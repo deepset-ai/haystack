@@ -8,7 +8,7 @@ from typing import Any, Callable, Dict, List, Literal, Optional, Union
 from dateutil.parser import parse as date_parse
 
 from haystack import Document, component, logging
-from haystack.utils.meta_field_ranker import MetaRankerMissingMeta
+from haystack.utils.meta_field_ranker import MetaRankerMetaValueType, MetaRankerMissingMeta, MetaRankerRankingMode, MetaRankerSortOrder
 
 logger = logging.getLogger(__name__)
 
@@ -42,10 +42,10 @@ class MetaFieldRanker:
         meta_field: str,
         weight: float = 1.0,
         top_k: Optional[int] = None,
-        ranking_mode: Literal["reciprocal_rank_fusion", "linear_score"] = "reciprocal_rank_fusion",
-        sort_order: Literal["ascending", "descending"] = "descending",
+        ranking_mode: Union[MetaRankerRankingMode, str] = MetaRankerRankingMode.RECIPROCAL_RANK_FUSION,
+        sort_order: Union[MetaRankerSortOrder, str] = MetaRankerSortOrder.DESCENDING,
         missing_meta: Union[MetaRankerMissingMeta, str] = MetaRankerMissingMeta.BOTTOM,
-        meta_value_type: Optional[Literal["float", "int", "date"]] = None,
+        meta_value_type: Optional[Union[MetaRankerMetaValueType, str]] = None,
     ):
         """
         Creates an instance of MetaFieldRanker.
@@ -62,8 +62,6 @@ class MetaFieldRanker:
             If not provided, the Ranker returns all documents it receives in the new ranking order.
         :param ranking_mode:
             The mode used to combine the Retriever's and Ranker's scores.
-            Possible values are 'reciprocal_rank_fusion' (default) and 'linear_score'.
-            Use the 'linear_score' mode only with Retrievers or Rankers that return a score in range [0,1].
         :param sort_order:
             Whether to sort the meta field by ascending or descending order.
             Possible values are `descending` (default) and `ascending`.
@@ -71,18 +69,17 @@ class MetaFieldRanker:
             What to do with documents that are missing the sorting metadata field.
         :param meta_value_type:
             Parse the meta value into the data type specified before sorting.
-            This will only work if all meta values stored under `meta_field` in the provided documents are strings.
-            For example, if we specified `meta_value_type="date"` then for the meta value `"date": "2015-02-01"`
-            we would parse the string into a datetime object and then sort the documents by date.
-            The available options are:
-            - 'float' will parse the meta values into floats.
-            - 'int' will parse the meta values into integers.
-            - 'date' will parse the meta values into datetime objects.
-            - 'None' (default) will do no parsing.
         """
 
+        # Get Enum values from strings, if necessary:
         if isinstance(missing_meta, str):
             missing_meta = MetaRankerMissingMeta.from_str(missing_meta)
+        if isinstance(ranking_mode, str):
+            ranking_mode = MetaRankerRankingMode.from_str(ranking_mode)
+        if isinstance(sort_order, str):
+            sort_order = MetaRankerSortOrder.from_str(sort_order)
+        if isinstance(meta_value_type, str):
+            meta_value_type = MetaRankerMetaValueType.from_str(meta_value_type)
 
         self.meta_field = meta_field
         self.weight = weight
@@ -93,9 +90,6 @@ class MetaFieldRanker:
         self._validate_params(
             weight=self.weight,
             top_k=self.top_k,
-            ranking_mode=self.ranking_mode,
-            sort_order=self.sort_order,
-            meta_value_type=meta_value_type,
         )
         self.meta_value_type = meta_value_type
 
@@ -103,9 +97,6 @@ class MetaFieldRanker:
         self,
         weight: float,
         top_k: Optional[int],
-        ranking_mode: Literal["reciprocal_rank_fusion", "linear_score"],
-        sort_order: Literal["ascending", "descending"],
-        meta_value_type: Optional[Literal["float", "int", "date"]],
     ):
         if top_k is not None and top_k <= 0:
             raise ValueError("top_k must be > 0, but got %s" % top_k)
@@ -118,39 +109,16 @@ class MetaFieldRanker:
                 "initializing the MetaFieldRanker." % weight
             )
 
-        if ranking_mode not in ["reciprocal_rank_fusion", "linear_score"]:
-            raise ValueError(
-                "The value of parameter <ranking_mode> must be 'reciprocal_rank_fusion' or 'linear_score', but is "
-                "currently set to '%s'.\nChange the <ranking_mode> value to 'reciprocal_rank_fusion' or "
-                "'linear_score' when initializing the MetaFieldRanker." % ranking_mode
-            )
-
-        if sort_order not in ["ascending", "descending"]:
-            raise ValueError(
-                "The value of parameter <sort_order> must be 'ascending' or 'descending', "
-                "but is currently set to '%s'.\n"
-                "Change the <sort_order> value to 'ascending' or 'descending' when initializing the "
-                "MetaFieldRanker." % sort_order
-            )
-
-        if meta_value_type not in ["float", "int", "date", None]:
-            raise ValueError(
-                "The value of parameter <meta_value_type> must be 'float', 'int', 'date' or None but is "
-                "currently set to '%s'.\n"
-                "Change the <meta_value_type> value to 'float', 'int', 'date' or None when initializing the "
-                "MetaFieldRanker." % meta_value_type
-            )
-
     @component.output_types(documents=List[Document])
     def run(
         self,
         documents: List[Document],
         top_k: Optional[int] = None,
         weight: Optional[float] = None,
-        ranking_mode: Optional[Literal["reciprocal_rank_fusion", "linear_score"]] = None,
-        sort_order: Optional[Literal["ascending", "descending"]] = None,
+        ranking_mode: Optional[Union[MetaRankerRankingMode, str]] = None,
+        sort_order: Optional[Union[MetaRankerSortOrder, str]] = None,
         missing_meta: Optional[Union[MetaRankerMissingMeta, str]] = None,
-        meta_value_type: Optional[Literal["float", "int", "date"]] = None,
+        meta_value_type: Optional[Union[MetaRankerMetaValueType, str]] = None,
     ):
         """
         Ranks a list of Documents based on the selected meta field by:
@@ -172,27 +140,17 @@ class MetaFieldRanker:
             1 ranking by a meta field only.
             If not provided, the weight provided at initialization time is used.
         :param ranking_mode:
-            (optional) The mode used to combine the Retriever's and Ranker's scores.
-            Possible values are 'reciprocal_rank_fusion' (default) and 'linear_score'.
-            Use the 'score' mode only with Retrievers or Rankers that return a score in range [0,1].
+            The mode used to combine the Retriever's and Ranker's scores.
             If not provided, the ranking_mode provided at initialization time is used.
         :param sort_order:
             Whether to sort the meta field by ascending or descending order.
-            Possible values are `descending` (default) and `ascending`.
             If not provided, the sort_order provided at initialization time is used.
         :param missing_meta:
             What to do with documents that are missing the sorting metadata field.
             If not provided, the missing_meta provided at initialization time is used.
         :param meta_value_type:
             Parse the meta value into the data type specified before sorting.
-            This will only work if all meta values stored under `meta_field` in the provided documents are strings.
-            For example, if we specified `meta_value_type="date"` then for the meta value `"date": "2015-02-01"`
-            we would parse the string into a datetime object and then sort the documents by date.
-            The available options are:
-            -'float' will parse the meta values into floats.
-            -'int' will parse the meta values into integers.
-            -'date' will parse the meta values into datetime objects.
-            -'None' (default) will do no parsing.
+            If not provided, the meta_value_type provided at initialization time is used.
         :returns:
             A dictionary with the following keys:
             - `documents`: List of Documents sorted by the specified meta field.
@@ -200,13 +158,17 @@ class MetaFieldRanker:
         :raises ValueError:
             If `top_k` is not > 0.
             If `weight` is not in range [0,1].
-            If `ranking_mode` is not 'reciprocal_rank_fusion' or 'linear_score'.
-            If `sort_order` is not 'ascending' or 'descending'.
             If `meta_value_type` is not 'float', 'int', 'date' or `None`.
         """
 
         if isinstance(missing_meta, str):
             missing_meta = MetaRankerMissingMeta.from_str(missing_meta)
+        if isinstance(ranking_mode, str):
+            ranking_mode = MetaRankerRankingMode.from_str(ranking_mode)
+        if isinstance(sort_order, str):
+            sort_order = MetaRankerSortOrder.from_str(sort_order)
+        if isinstance(meta_value_type, str):
+            meta_value_type = MetaRankerMetaValueType.from_str(meta_value_type)
 
         if not documents:
             return {"documents": []}
@@ -220,9 +182,6 @@ class MetaFieldRanker:
         self._validate_params(
             weight=weight,
             top_k=top_k,
-            ranking_mode=ranking_mode,
-            sort_order=sort_order,
-            meta_value_type=meta_value_type,
         )
 
         # If the weight is 0 then ranking by meta field is disabled and the original documents should be returned
@@ -270,7 +229,7 @@ class MetaFieldRanker:
         tuple_parsed_meta_and_docs = list(zip(parsed_meta, docs_with_meta_field))
 
         # Sort the documents by self.meta_field
-        reverse = sort_order == "descending"
+        reverse = sort_order == MetaRankerSortOrder.DESCENDING
         try:
             tuple_sorted_by_meta = sorted(tuple_parsed_meta_and_docs, key=lambda x: x[0], reverse=reverse)
         except TypeError as error:
@@ -298,7 +257,9 @@ class MetaFieldRanker:
         return {"documents": sorted_documents[:top_k]}
 
     def _parse_meta(
-        self, docs_with_meta_field: List[Document], meta_value_type: Optional[Literal["float", "int", "date"]]
+        self,
+        docs_with_meta_field: List[Document],
+        meta_value_type: Optional[MetaRankerMetaValueType]
     ) -> List[Any]:
         """
         Parse the meta values stored under `self.meta_field` for the Documents provided in `docs_with_meta_field`.
@@ -319,9 +280,9 @@ class MetaFieldRanker:
             return [d.meta[self.meta_field] for d in docs_with_meta_field]
 
         parse_fn: Callable
-        if meta_value_type == "float":
+        if meta_value_type == MetaRankerMetaValueType.FLOAT:
             parse_fn = float
-        elif meta_value_type == "int":
+        elif meta_value_type == MetaRankerMetaValueType.INT:
             parse_fn = int
         else:
             parse_fn = date_parse
@@ -344,18 +305,18 @@ class MetaFieldRanker:
         documents: List[Document],
         sorted_documents: List[Document],
         weight: float,
-        ranking_mode: Literal["reciprocal_rank_fusion", "linear_score"],
+        ranking_mode: MetaRankerRankingMode,
     ) -> List[Document]:
         """
         Merge the two different rankings for Documents sorted both by their content and by their meta field.
         """
         scores_map: Dict = defaultdict(int)
 
-        if ranking_mode == "reciprocal_rank_fusion":
+        if ranking_mode == MetaRankerRankingMode.RECIPROCAL_RANK_FUSION:
             for i, (document, sorted_doc) in enumerate(zip(documents, sorted_documents)):
                 scores_map[document.id] += self._calculate_rrf(rank=i) * (1 - weight)
                 scores_map[sorted_doc.id] += self._calculate_rrf(rank=i) * weight
-        elif ranking_mode == "linear_score":
+        elif ranking_mode == MetaRankerRankingMode.LINEAR_SCORE:
             for i, (document, sorted_doc) in enumerate(zip(documents, sorted_documents)):
                 score = float(0)
                 if document.score is None:
