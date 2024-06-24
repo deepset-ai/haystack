@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from enum import Enum
 from typing import Any, Dict, Optional
 
@@ -99,3 +99,29 @@ class ChatMessage:
         :returns: A new ChatMessage instance.
         """
         return cls(content, ChatRole.FUNCTION, name)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Converts ChatMessage into a dictionary.
+
+        :returns:
+            Serialized version of the object.
+        """
+        data = asdict(self)
+        data["role"] = self.role.value
+
+        return data
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ChatMessage":
+        """
+        Creates a new ChatMessage object from a dictionary.
+
+        :param data:
+            The dictionary to build the ChatMessage object.
+        :returns:
+            The created object.
+        """
+        data["role"] = ChatRole(data["role"])
+
+        return cls(**data)

@@ -8,6 +8,7 @@ import math
 
 import pytest
 
+from haystack import Pipeline
 from haystack.components.evaluators import ContextRelevanceEvaluator
 from haystack.utils.auth import Secret
 
@@ -71,6 +72,27 @@ class TestContextRelevanceEvaluator:
             {"inputs": {"questions": "Football is the most popular sport."}, "outputs": {"custom_score": 0}},
         ]
 
+    def test_to_dict_with_parameters(self, monkeypatch):
+        monkeypatch.setenv("ENV_VAR", "test-api-key")
+        component = ContextRelevanceEvaluator(
+            api="openai",
+            api_key=Secret.from_env_var("ENV_VAR"),
+            examples=[{"inputs": {"questions": "What is football?"}, "outputs": {"score": 0}}],
+            raise_on_failure=False,
+            progress_bar=False,
+        )
+        data = component.to_dict()
+        assert data == {
+            "type": "haystack.components.evaluators.context_relevance.ContextRelevanceEvaluator",
+            "init_parameters": {
+                "api_key": {"env_vars": ["ENV_VAR"], "strict": True, "type": "env_var"},
+                "api": "openai",
+                "examples": [{"inputs": {"questions": "What is football?"}, "outputs": {"score": 0}}],
+                "progress_bar": False,
+                "raise_on_failure": False,
+            },
+        }
+
     def test_from_dict(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
 
@@ -86,6 +108,10 @@ class TestContextRelevanceEvaluator:
         assert component.api == "openai"
         assert component.generator.client.api_key == "test-api-key"
         assert component.examples == [{"inputs": {"questions": "What is football?"}, "outputs": {"score": 0}}]
+
+        pipeline = Pipeline()
+        pipeline.add_component("evaluator", component)
+        assert pipeline.loads(pipeline.dumps())
 
     def test_run_calculates_mean_score(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")

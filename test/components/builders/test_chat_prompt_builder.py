@@ -494,3 +494,44 @@ class TestChatPromptBuilderDynamic:
                 ]
             }
         }
+
+    def test_to_dict(self):
+        component = ChatPromptBuilder(
+            template=[ChatMessage.from_user("text and {var}"), ChatMessage.from_assistant("content {required_var}")],
+            variables=["var", "required_var"],
+            required_variables=["required_var"],
+        )
+
+        assert component.to_dict() == {
+            "type": "haystack.components.builders.chat_prompt_builder.ChatPromptBuilder",
+            "init_parameters": {
+                "template": [
+                    {"content": "text and {var}", "role": "user", "name": None, "meta": {}},
+                    {"content": "content {required_var}", "role": "assistant", "name": None, "meta": {}},
+                ],
+                "variables": ["var", "required_var"],
+                "required_variables": ["required_var"],
+            },
+        }
+
+    def test_from_dict(self):
+        component = ChatPromptBuilder.from_dict(
+            data={
+                "type": "haystack.components.builders.chat_prompt_builder.ChatPromptBuilder",
+                "init_parameters": {
+                    "template": [
+                        {"content": "text and {var}", "role": "user", "name": None, "meta": {}},
+                        {"content": "content {required_var}", "role": "assistant", "name": None, "meta": {}},
+                    ],
+                    "variables": ["var", "required_var"],
+                    "required_variables": ["required_var"],
+                },
+            }
+        )
+
+        assert component.template == [
+            ChatMessage.from_user("text and {var}"),
+            ChatMessage.from_assistant("content {required_var}"),
+        ]
+        assert component._variables == ["var", "required_var"]
+        assert component._required_variables == ["required_var"]
