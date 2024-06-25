@@ -22,6 +22,7 @@ class DocumentJoiner:
     - concatenate: Keeps the highest scored Document in case of duplicates.
     - merge: Merge a calculate a weighted sum of the scores of duplicate Documents.
     - reciprocal_rank_fusion: Merge and assign scores based on reciprocal rank fusion.
+    - distribution_based_rank_fusion: Merge and assign scores based on scores distribution in each retriever
 
     Usage example:
     ```python
@@ -60,7 +61,7 @@ class DocumentJoiner:
             - `distribution_based_rank_fusion`
         :param weights:
             Weight for each list of Documents received, must have the same length as the number of inputs.
-            If `join_mode` is `concatenate` this parameter is ignored.
+            If `join_mode` is `concatenate` or `distribution_based_rank_fusion` this parameter is ignored.
         :param top_k:
             The maximum number of Documents to return.
         :param sort_by_score:
