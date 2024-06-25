@@ -8,13 +8,14 @@ from unittest.mock import patch
 import pytest
 
 from haystack import Document
-from haystack.components.builders import PromptBuilder
+from haystack.components.builders import PromptBuilder, AnswerBuilder
+from haystack.components.joiners import BranchJoiner
 from haystack.components.others import Multiplexer
 from haystack.core.component import component
 from haystack.core.component.types import InputSocket, OutputSocket, Variadic
 from haystack.core.errors import PipelineConnectError, PipelineDrawingError, PipelineError
 from haystack.core.pipeline import Pipeline, PredefinedPipeline
-from haystack.core.pipeline.pipeline import _enqueue_component
+from haystack.core.pipeline.pipeline import _enqueue_component, _add_missing_input_defaults
 from haystack.core.serialization import DeserializationCallbacks
 from haystack.testing.factory import component_class
 from haystack.testing.sample_components import AddFixedValue, Double, Greet
@@ -1396,3 +1397,26 @@ class TestPipeline:
         _enqueue_component(("document_builder", document_builder), to_run, waiting_for_input)
         assert to_run == [("document_joiner", document_joiner), ("document_builder", document_builder)]
         assert waiting_for_input == []
+
+    def test__add_missing_input_defaults(self):
+        name = "prompt_builder"
+        prompt_builder = PromptBuilder(template="{{ questions | join('\n') }}")
+        inputs_by_component = {}
+        _add_missing_input_defaults(name, prompt_builder, inputs_by_component)
+        assert inputs_by_component == {
+            "prompt_builder": {"questions": "", "template": None, "template_variables": None}
+        }
+
+        name = "answer_builder"
+        answer_builder = AnswerBuilder()
+        inputs_by_component = {"answer_builder": {"query": "What is the answer?"}}
+        _add_missing_input_defaults(name, answer_builder, inputs_by_component)
+        assert inputs_by_component == {
+            "answer_builder": {
+                "query": "What is the answer?",
+                "meta": None,
+                "documents": None,
+                "pattern": None,
+                "reference_pattern": None,
+            }
+        }
