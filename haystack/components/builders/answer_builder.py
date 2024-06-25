@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import re
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, cast
 
 from haystack import Document, GeneratedAnswer, component, logging
 from haystack.dataclasses.chat_message import ChatMessage
@@ -107,8 +107,9 @@ class AnswerBuilder:
 
         # Extract content from ChatMessage objects if replies is a list of ChatMessages
         if isinstance(replies[0], ChatMessage):
-            meta = [msg.meta for msg in replies]
-            replies = [msg.content for msg in replies]
+            messages = cast(List[ChatMessage], replies)
+            meta = [msg.meta for msg in messages]
+            replies = [msg.content for msg in messages]
 
         all_answers = []
         for reply, metadata in zip(replies, meta):
@@ -116,7 +117,7 @@ class AnswerBuilder:
             if documents:
                 reference_idxs = []
                 if reference_pattern:
-                    reference_idxs = AnswerBuilder._extract_reference_idxs(reply, reference_pattern)
+                    reference_idxs = AnswerBuilder._extract_reference_idxs(str(reply), reference_pattern)
                 else:
                     reference_idxs = [doc_idx for doc_idx, _ in enumerate(documents)]
 
@@ -128,7 +129,7 @@ class AnswerBuilder:
                             "Document index '{index}' referenced in Generator output is out of range. ", index=idx + 1
                         )
 
-            answer_string = AnswerBuilder._extract_answer_string(reply, pattern)
+            answer_string = AnswerBuilder._extract_answer_string(str(reply), pattern)
             answer = GeneratedAnswer(data=answer_string, query=query, documents=referenced_docs, meta=metadata)
             all_answers.append(answer)
 

@@ -1,4 +1,4 @@
 ---
 enhancements:
   - |
-    You can now directly connect a ChatGenerator to an AnswerBuilder
+    AnswerBuilder can now accept ChatMessages as input in addition to strings. When using ChatMessages, metadata will be automatically added to the answer.
