@@ -1,0 +1,10 @@
+---
+upgrade:
+  - |
+    The deprecated `converter_name` parameter has been removed from `PyPDFToDocument`.
+
+    To specify a custom converter for `PyPDFToDocument`, use the `converter` initialization parameter and
+    pass an instance of a class that implements the `PyPDFConverter` protocol.
+
+    The `PyPDFConverter` protocol defines the methods `convert`, `to_dict` and `from_dict`.
+    A default implementation of `PyPDFConverter` is provided in the `DefaultConverter` class.
