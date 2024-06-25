@@ -870,7 +870,7 @@ class PipelineBase:
         :param to_run: Queue of Components to run
         :param waiting_for_input: Queue of Components waiting for input
 
-        :return: The updated output of the Component without the keys that were distributed to other Components
+        :returns: The updated output of the Component without the keys that were distributed to other Components
         """
         # We keep track of which keys to remove from component_result at the end of the loop.
         # This is done after the output has been distributed to the next components, so that
@@ -1005,6 +1005,63 @@ class PipelineBase:
 
         waiting_for_input.remove((name, comp))
         to_run.append((name, comp))
+
+    def _find_next_runnable_component(
+        self, inputs_by_component: Dict[str, Dict[str, Any]], waiting_for_input: List[Tuple[str, Component]]
+    ) -> Tuple[str, Component]:
+        """
+        Finds the next Component that can be run and returns it.
+
+        :param inputs_by_component: The current state of the inputs divided by Component name
+        :param waiting_for_input: Queue of Components waiting for input
+
+        :returns: The name and the instance of the next Component that can be run
+        """
+        all_lazy_variadic = True
+        all_with_default_inputs = True
+
+        filtered_waiting_for_input = []
+
+        for name, comp in waiting_for_input:
+            if not _is_lazy_variadic(comp):
+                # Components with variadic inputs that are not greedy must be removed only if there's nothing else to
+                # run at this stage.
+                # We need to wait as long as possible to run them, so we can collect as most inputs as we can.
+                all_lazy_variadic = False
+
+            if not _has_all_inputs_with_defaults(comp):
+                # Components that have defaults for all their inputs must be treated the same identical way as we treat
+                # lazy variadic components. If there are only components with defaults we can run them.
+                # If we don't do this the order of execution of the Pipeline's Components will be affected cause we
+                # enqueue the Components in `to_run` at the start using the order they are added in the Pipeline.
+                # If a Component A with defaults is added before a Component B that has no defaults, but in the Pipeline
+                # logic A must be executed after B it could run instead before if we don't do this check.
+                all_with_default_inputs = False
+
+            if not _is_lazy_variadic(comp) and not _has_all_inputs_with_defaults(comp):
+                # Keep track of the Components that are not lazy variadic and don't have all inputs with defaults.
+                # We'll handle these later if necessary.
+                filtered_waiting_for_input.append((name, comp))
+
+        # If all Components are lazy variadic or all Components have all inputs with defaults we can get one to run
+        if all_lazy_variadic or all_with_default_inputs:
+            return waiting_for_input[0]
+
+        for name, comp in filtered_waiting_for_input:
+            # Find the first component that has all the inputs it needs to run
+            has_enough_inputs = True
+            for input_socket in comp.__haystack_input__._sockets_dict.values():  # type: ignore
+                if input_socket.name not in inputs_by_component.get(name, {}) and input_socket.is_mandatory:
+                    has_enough_inputs = False
+
+            if has_enough_inputs:
+                return name, comp
+
+        # If we reach this point it means that we found no Component that has enough inputs to run.
+        # Ideally we should never reach this point, though we can't raise an exception either as
+        # existing use cases rely on this behavior.
+        # So we return the last Component, that could be the last from waiting_for_input or filtered_waiting_for_input.
+        return name, comp
 
     def _is_stuck_in_a_loop(self, waiting_for_input: List[Tuple[str, Component]]) -> bool:
         """
