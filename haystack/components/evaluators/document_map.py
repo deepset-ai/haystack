@@ -68,7 +68,7 @@ class DocumentMAPEvaluator:
         individual_scores = []
 
         for ground_truth, retrieved in zip(ground_truth_documents, retrieved_documents):
-            average_precision = 0
+            average_precision = 0.0
             average_precision_numerator = 0.0
             relevant_documents = 0
 
