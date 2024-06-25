@@ -1248,6 +1248,92 @@ class TestPipeline:
         assert to_run == [("document_builder", document_builder)]
         assert waiting_for_input == [("prompt_builder", prompt_builder), ("document_joiner", document_joiner)]
 
+    def test__find_next_runnable_component(self):
+        document_builder = component_class(
+            "DocumentBuilder", input_types={"text": str}, output_types={"doc": Document}
+        )()
+        pipe = Pipeline()
+        inputs_by_component = {"document_builder": {"text": "some text"}}
+        waiting_for_input = [("document_builder", document_builder)]
+        pair = pipe._find_next_runnable_component(inputs_by_component, waiting_for_input)
+        assert pair == ("document_builder", document_builder)
+
+    def test__find_next_runnable_component_without_component_inputs(self):
+        document_builder = component_class(
+            "DocumentBuilder", input_types={"text": str}, output_types={"doc": Document}
+        )()
+        pipe = Pipeline()
+        inputs_by_component = {}
+        waiting_for_input = [("document_builder", document_builder)]
+        pair = pipe._find_next_runnable_component(inputs_by_component, waiting_for_input)
+        assert pair == ("document_builder", document_builder)
+
+    def test__find_next_runnable_component_with_component_with_only_variadic_non_greedy_input(self):
+        document_joiner = component_class("DocumentJoiner", input_types={"docs": Variadic[Document]})()
+
+        pipe = Pipeline()
+        inputs_by_component = {}
+        waiting_for_input = [("document_joiner", document_joiner)]
+        pair = pipe._find_next_runnable_component(inputs_by_component, waiting_for_input)
+        assert pair == ("document_joiner", document_joiner)
+
+    def test__find_next_runnable_component_with_component_with_only_default_input(self):
+        prompt_builder = PromptBuilder(template="{{ questions | join('\n') }}")
+
+        pipe = Pipeline()
+        inputs_by_component = {}
+        waiting_for_input = [("prompt_builder", prompt_builder)]
+        pair = pipe._find_next_runnable_component(inputs_by_component, waiting_for_input)
+
+        assert pair == ("prompt_builder", prompt_builder)
+
+    def test__find_next_runnable_component_with_component_with_variadic_non_greedy_and_default_input(self):
+        document_joiner = component_class("DocumentJoiner", input_types={"docs": Variadic[Document]})()
+        prompt_builder = PromptBuilder(template="{{ questions | join('\n') }}")
+
+        pipe = Pipeline()
+        inputs_by_component = {}
+        waiting_for_input = [("prompt_builder", prompt_builder), ("document_joiner", document_joiner)]
+        pair = pipe._find_next_runnable_component(inputs_by_component, waiting_for_input)
+
+        assert pair == ("document_joiner", document_joiner)
+
+    def test__find_next_runnable_component_with_different_components_inputs(self):
+        document_builder = component_class(
+            "DocumentBuilder", input_types={"text": str}, output_types={"doc": Document}
+        )()
+        document_joiner = component_class("DocumentJoiner", input_types={"docs": Variadic[Document]})()
+        prompt_builder = PromptBuilder(template="{{ questions | join('\n') }}")
+
+        pipe = Pipeline()
+        inputs_by_component = {"document_builder": {"text": "some text"}}
+        waiting_for_input = [
+            ("prompt_builder", prompt_builder),
+            ("document_builder", document_builder),
+            ("document_joiner", document_joiner),
+        ]
+        pair = pipe._find_next_runnable_component(inputs_by_component, waiting_for_input)
+
+        assert pair == ("document_builder", document_builder)
+
+    def test__find_next_runnable_component_with_different_components_without_any_input(self):
+        document_builder = component_class(
+            "DocumentBuilder", input_types={"text": str}, output_types={"doc": Document}
+        )()
+        document_joiner = component_class("DocumentJoiner", input_types={"docs": Variadic[Document]})()
+        prompt_builder = PromptBuilder(template="{{ questions | join('\n') }}")
+
+        pipe = Pipeline()
+        inputs_by_component = {}
+        waiting_for_input = [
+            ("prompt_builder", prompt_builder),
+            ("document_builder", document_builder),
+            ("document_joiner", document_joiner),
+        ]
+        pair = pipe._find_next_runnable_component(inputs_by_component, waiting_for_input)
+
+        assert pair == ("document_builder", document_builder)
+
     def test__is_stuck_in_a_loop(self):
         document_builder = component_class(
             "DocumentBuilder", input_types={"text": str}, output_types={"doc": Document}
