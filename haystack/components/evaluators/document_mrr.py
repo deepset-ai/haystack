@@ -10,7 +10,7 @@ from haystack import Document, component
 @component
 class DocumentMRREvaluator:
     """
-    Evaluator that calculates the mean reciprocal rank of the retrieved documents. For details, please refer to the [resource](https://www.pinecone.io/learn/offline-evaluation/).
+    Evaluator that calculates the mean reciprocal rank of the retrieved documents.
 
     MRR measures how high the first retrieved document is ranked.
     Each question can have multiple ground truth documents and multiple retrieved documents.
@@ -41,6 +41,7 @@ class DocumentMRREvaluator:
     ```
     """
 
+    # Refer to https://www.pinecone.io/learn/offline-evaluation/ for the algorithm.
     @component.output_types(score=float, individual_scores=List[float])
     def run(
         self, ground_truth_documents: List[List[Document]], retrieved_documents: List[List[Document]]

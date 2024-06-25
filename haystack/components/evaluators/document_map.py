@@ -10,7 +10,7 @@ from haystack import Document, component
 @component
 class DocumentMAPEvaluator:
     """
-    A Mean Average Precision (MAP) evaluator for documents. For details, please refer to the [resource](https://www.pinecone.io/learn/offline-evaluation/).
+    A Mean Average Precision (MAP) evaluator for documents.
 
     Evaluator that calculates the mean average precision of the retrieved documents, a metric
     that measures how high retrieved documents are ranked.
@@ -43,6 +43,7 @@ class DocumentMAPEvaluator:
     ```
     """
 
+    # Refer to https://www.pinecone.io/learn/offline-evaluation/ for the algorithm.
     @component.output_types(score=float, individual_scores=List[float])
     def run(
         self, ground_truth_documents: List[List[Document]], retrieved_documents: List[List[Document]]
