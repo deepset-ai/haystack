@@ -152,9 +152,8 @@ class DocumentSplitter:
                 splits_pages.append(cur_page)
                 splits_start_idxs.append(cur_start_idx)
 
-            # ToDo: debug this logic
             processed_units = current_units[: split_length - split_overlap]
-            cur_start_idx += len((split_at_len * " ").join(processed_units)) + split_at_len
+            cur_start_idx += len("".join(processed_units)) + split_at_len
 
             if self.split_by == "page":
                 num_page_breaks = len(processed_units)
@@ -172,9 +171,6 @@ class DocumentSplitter:
         Creates Document objects from splits enriching them with page number and the metadata of the original document.
         """
         documents: List[Document] = []
-
-        # ToDo: remove this check once we are sure that the logic in _concatenate_units is correct
-        assert len(text_splits) == len(splits_pages) == len(splits_start_idxs)
 
         for i, (txt, split_idx) in enumerate(zip(text_splits, splits_start_idxs)):
             meta = deepcopy(meta)
@@ -201,17 +197,15 @@ class DocumentSplitter:
         """
         Adds split overlap information to the current and previous Document's meta.
         """
-        print("previous_doc_start_idx, current_doc_start_idx: ", previous_doc_start_idx, current_doc_start_idx)
-        print("len(previous_doc.content)-1: ", len(previous_doc.content) - 1)
-        overlapping_range = (current_doc_start_idx - previous_doc_start_idx, len(previous_doc.content) - 1)
-        print("overlapping_range: ", overlapping_range)
-        print()
+        overlapping_range = (current_doc_start_idx - previous_doc_start_idx - 1, len(previous_doc.content) - 1)
 
         if overlapping_range[0] < overlapping_range[1]:
             overlapping_str = previous_doc.content[overlapping_range[0] : overlapping_range[1]]
+
             if current_doc.content.startswith(overlapping_str):
-                # Add split overlap information to previous Document regarding this Document
-                previous_doc.meta["_split_overlap"].append({"doc_id": current_doc.id, "range": overlapping_range})
                 # Add split overlap information to this Document regarding the previous Document
-                overlapping_range = (0, overlapping_range[1] - overlapping_range[0])
                 current_doc.meta["_split_overlap"].append({"doc_id": previous_doc.id, "range": overlapping_range})
+
+                # Add split overlap information to previous Document regarding this Document
+                overlapping_range = (0, overlapping_range[1] - overlapping_range[0])
+                previous_doc.meta["_split_overlap"].append({"doc_id": current_doc.id, "range": overlapping_range})
