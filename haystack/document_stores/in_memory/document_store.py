@@ -2,11 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 import math
 import re
 import uuid
 from collections import Counter
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict, Iterable, List, Literal, Optional, Tuple
 
 import numpy as np
@@ -338,6 +340,42 @@ class InMemoryDocumentStore:
             The deserialized component.
         """
         return default_from_dict(cls, data)
+
+    def save_to_disk(self, path: str) -> None:
+        """
+        Write the database and its' data to disk as a JSON file.
+
+        :param path: The path to the JSON file.
+        """
+        data: Dict[str, Any] = self.to_dict()
+        data["documents"] = [doc.to_dict(flatten=False) for doc in self.storage.values()]
+        with open(path, "w") as f:
+            json.dump(data, f)
+
+    @classmethod
+    def load_from_disk(cls, path: str) -> "InMemoryDocumentStore":
+        """
+        Load the database and its' data from disk as a JSON file.
+
+        :param path: The path to the JSON file.
+        :returns: The loaded InMemoryDocumentStore.
+        """
+        if Path(path).exists():
+            try:
+                with open(path, "r") as f:
+                    data = json.load(f)
+            except Exception as e:
+                raise Exception(f"Error loading InMemoryDocumentStore from disk. error: {e}")
+
+            documents = data.pop("documents")
+            cls_object = default_from_dict(cls, data)
+            cls_object.write_documents(
+                documents=[Document(**doc) for doc in documents], policy=DuplicatePolicy.OVERWRITE
+            )
+            return cls_object
+
+        else:
+            raise FileNotFoundError(f"File {path} not found.")
 
     def count_documents(self) -> int:
         """

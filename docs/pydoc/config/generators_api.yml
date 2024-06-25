@@ -5,12 +5,10 @@ loaders:
       [
         "azure",
         "hugging_face_local",
-        "hugging_face_tgi",
         "hugging_face_api",
         "openai",
         "chat/azure",
         "chat/hugging_face_local",
-        "chat/hugging_face_tgi",
         "chat/hugging_face_api",
         "chat/openai",
       ]

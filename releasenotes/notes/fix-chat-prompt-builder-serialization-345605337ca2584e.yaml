@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Solve serialization bug on 'ChatPromptBuilder' by creating 'to_dict' and 'from_dict' methods on 'ChatMessage' and 'ChatPromptBuilder'.

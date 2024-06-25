@@ -108,7 +108,7 @@ class CacheChecker:
         misses = []
 
         for item in items:
-            filters = {self.cache_field: item}
+            filters = {"field": self.cache_field, "operator": "==", "value": item}
             found = self.document_store.filter_documents(filters=filters)
             if found:
                 found_documents.extend(found)
