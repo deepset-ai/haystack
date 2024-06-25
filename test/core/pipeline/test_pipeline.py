@@ -15,7 +15,8 @@ from haystack.core.component import component
 from haystack.core.component.types import InputSocket, OutputSocket, Variadic
 from haystack.core.errors import PipelineConnectError, PipelineDrawingError, PipelineError
 from haystack.core.pipeline import Pipeline, PredefinedPipeline
-from haystack.core.pipeline.pipeline import _enqueue_component, _add_missing_input_defaults
+from haystack.core.pipeline.pipeline import _enqueue_component
+from haystack.core.pipeline.base import _add_missing_input_defaults
 from haystack.core.serialization import DeserializationCallbacks
 from haystack.testing.factory import component_class
 from haystack.testing.sample_components import AddFixedValue, Double, Greet
@@ -1420,3 +1421,9 @@ class TestPipeline:
                 "reference_pattern": None,
             }
         }
+
+        name = "branch_joiner"
+        branch_joiner = BranchJoiner(int)
+        inputs_by_component = {}
+        _add_missing_input_defaults(name, branch_joiner, inputs_by_component)
+        assert inputs_by_component == {"branch_joiner": {}}
