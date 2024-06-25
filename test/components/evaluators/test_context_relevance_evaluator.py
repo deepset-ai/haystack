@@ -196,7 +196,7 @@ class TestContextRelevanceEvaluator:
 
     def test_run_missing_parameters(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        component = ContextRelevanceEvaluator(progress_bar=False)
+        component = ContextRelevanceEvaluator()
         with pytest.raises(TypeError, match="missing 2 required positional arguments"):
             component.run()
 
@@ -248,7 +248,7 @@ class TestContextRelevanceEvaluator:
         questions = ["Who created the Python language?"]
         contexts = [["Python, created by Guido van Rossum, is a high-level general-purpose programming language."]]
 
-        evaluator = ContextRelevanceEvaluator(progress_bar=False)
+        evaluator = ContextRelevanceEvaluator()
         result = evaluator.run(questions=questions, contexts=contexts)
 
         required_fields = {"individual_scores", "results", "score"}
@@ -277,7 +277,7 @@ class TestContextRelevanceEvaluator:
             ]
         ]
 
-        evaluator = ContextRelevanceEvaluator(progress_bar=False)
+        evaluator = ContextRelevanceEvaluator()
         result = evaluator.run(questions=questions, contexts=contexts)
 
         assert len(result["results"][0]["statements"]) == 4
