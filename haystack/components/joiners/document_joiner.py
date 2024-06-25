@@ -180,7 +180,7 @@ class DocumentJoiner:
         Merge multiple lists of Documents and assign scores based on Distribution-Based Score Fusion.
 
         (https://medium.com/plain-simple-software/distribution-based-score-fusion-dbsf-a-new-approach-to-vector-search-ranking-f87c37488b18)
-        If a Document is in more than one retriever, the sone with the highest score is used.
+        If a Document is in more than one retriever, the one with the highest score is used.
         """
         for documents in document_lists:
             scores_list = []
