@@ -11,7 +11,7 @@ from haystack.core.component import Component
 from haystack.core.errors import PipelineMaxLoops, PipelineRuntimeError
 from haystack.telemetry import pipeline_running
 
-from .base import PipelineBase
+from .base import PipelineBase, _add_missing_input_defaults
 
 logger = logging.getLogger(__name__)
 
@@ -324,7 +324,9 @@ class Pipeline(PipelineBase):
                     )
                     last_waiting_for_input = {item[0] for item in waiting_for_input}
 
-                    self._enqueue_next_runnable_component(last_inputs, to_run, waiting_for_input)
+                    (name, comp) = self._find_next_runnable_component(last_inputs, waiting_for_input)
+                    _add_missing_input_defaults(name, comp, last_inputs)
+                    _enqueue_component((name, comp), to_run, waiting_for_input)
 
             if len(include_outputs_from) > 0:
                 for name, output in extra_outputs.items():
