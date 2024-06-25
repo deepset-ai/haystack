@@ -1147,6 +1147,12 @@ def _has_all_inputs_with_defaults(c: Component) -> bool:
 
 def _add_missing_input_defaults(name: str, comp: Component, inputs_by_component: Dict[str, Dict[str, Any]]):
     """Updates the inputs with the default values for the inputs that are missing"""
+    if name not in inputs_by_component:
+        inputs_by_component[name] = {}
+
     for input_socket in comp.__haystack_input__._sockets_dict.values():  # type: ignore
+        if input_socket.is_mandatory:
+            continue
+
         if input_socket.name not in inputs_by_component[name]:
             inputs_by_component[name][input_socket.name] = input_socket.default_value
