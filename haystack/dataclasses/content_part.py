@@ -1,8 +1,8 @@
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from enum import Enum
 from typing import Any, Dict, Optional, Union
 
-from haystack.dataclasses import ByteStream
+from .byte_stream import ByteStream
 
 
 class ContentType(str, Enum):
@@ -73,6 +73,9 @@ class ContentPart:
             if self.image_detail is not None:
                 content["image_url"]["detail"] = self.image_detail.value
 
+        else:
+            ValueError("Invalid content type, only ByteStream and string are supported.")
+
         return content
 
     @classmethod
@@ -105,3 +108,42 @@ class ContentPart:
         """
         # TODO: add support for input str?
         return cls(type=ContentType.IMAGE_BASE64, content=image, image_detail=image_detail)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Converts ContentPart into a dictionary.
+
+        :returns:
+            Serialized version of the object.
+        """
+        data = asdict(self)
+        data["type"] = self.type.value
+
+        # Only add image_detail if it is not None
+        image_detail = data.pop("image_detail")
+        if image_detail is not None:
+            data["image_detail"] = image_detail.value
+
+        if isinstance(self.content, ByteStream):
+            data["content"] = self.content.to_string()
+
+        return data
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ContentPart":
+        """
+        Creates a new ContentPart object from a dictionary.
+
+        :param data:
+            The dictionary to build the ContentPart object.
+        :returns:
+            The created object.
+        """
+        data["type"] = ContentType(data["type"])
+        if "image_detail" in data:
+            data["image_detail"] = ImageDetail(data["image_detail"])
+
+        if data["type"] is ContentType.IMAGE_BASE64:  # Convert to bytes
+            data["content"] = ByteStream.from_string(data["content"])
+
+        return cls(**data)
