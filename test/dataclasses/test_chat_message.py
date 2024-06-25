@@ -4,7 +4,7 @@
 import pytest
 from transformers import AutoTokenizer
 
-from haystack.dataclasses import ChatMessage, ChatRole
+from haystack.dataclasses import ChatMessage, ChatRole, ContentPart
 
 
 def test_from_assistant_with_valid_content():
@@ -40,7 +40,7 @@ def test_from_function_with_empty_name():
     assert message.name == ""
 
 
-def test_to_openai_format():
+def test_to_openai_format_with_text_content():
     message = ChatMessage.from_system("You are good assistant")
     assert message.to_openai_format() == {"role": "system", "content": "You are good assistant"}
 
@@ -49,6 +49,32 @@ def test_to_openai_format():
 
     message = ChatMessage.from_function("Function call", "function_name")
     assert message.to_openai_format() == {"role": "function", "content": "Function call", "name": "function_name"}
+
+
+def test_to_openai_format_with_content_part():
+    message = ChatMessage.from_system(ContentPart.from_text("Content"))
+    assert message.to_openai_format() == {"role": "system", "content": {"type": "text", "text": "Content"}}
+
+    message = ChatMessage.from_user(ContentPart.from_image_url("image.com/test.jpg"))
+    assert message.to_openai_format() == {
+        "role": "user",
+        "content": {"type": "image_url", "image_url": {"url": "image.com/test.jpg"}},
+    }
+
+
+def test_to_openai_format_with_list_content():
+    message = ChatMessage.from_assistant(
+        content=["String Content", ContentPart.from_image_url("images.com/test.jpg"), ContentPart.from_text("Content")]
+    )
+
+    assert message.to_openai_format() == {
+        "role": "assistant",
+        "content": [
+            {"type": "text", "text": "String Content"},
+            {"type": "image_url", "image_url": {"url": "images.com/test.jpg"}},
+            {"type": "text", "text": "Content"},
+        ],
+    }
 
 
 @pytest.mark.integration
@@ -83,20 +109,71 @@ def test_apply_custom_chat_templating_on_chat_message():
     assert tokenized_messages == "You are good assistant\nHuman: I have a question\nAssistant:"
 
 
-def test_to_dict():
+def test_to_dict_with_text_content():
     message = ChatMessage.from_user("content")
     message.meta["some"] = "some"
 
     assert message.to_dict() == {"content": "content", "role": "user", "name": None, "meta": {"some": "some"}}
 
 
-def test_from_dict():
+def test_to_dict_with_content_part():
+    message = ChatMessage.from_user(ContentPart.from_text("content"))
+
+    assert message.to_dict() == {
+        "content": {"type": "text", "content": "content"},
+        "role": "user",
+        "name": None,
+        "meta": {},
+    }
+
+
+def test_to_dict_with_list_content():
+    message = ChatMessage.from_user(
+        content=[ContentPart.from_text("Content"), ContentPart.from_image_url("image.com/test.jpg"), "String Content"]
+    )
+
+    assert message.to_dict() == {
+        "content": [
+            {"type": "text", "content": "Content"},
+            {"type": "image_url", "content": "image.com/test.jpg"},
+            "String Content",
+        ],
+        "role": "user",
+        "name": None,
+        "meta": {},
+    }
+
+
+def test_from_dict_with_text_content():
     assert ChatMessage.from_dict(data={"content": "text", "role": "user", "name": None}) == ChatMessage(
         content="text", role=ChatRole("user"), name=None, meta={}
     )
+
+
+def test_from_dict_with_content_part():
+    assert ChatMessage.from_dict(
+        data={"content": {"type": "text", "content": "content"}, "role": "user", "name": None, "meta": {}}
+    ) == ChatMessage.from_user(content=ContentPart.from_text("content"))
 
 
 def test_from_dict_with_meta():
     assert ChatMessage.from_dict(
         data={"content": "text", "role": "user", "name": None, "meta": {"something": "something"}}
     ) == ChatMessage(content="text", role=ChatRole("user"), name=None, meta={"something": "something"})
+
+
+def test_from_dict_with_list_content():
+    assert ChatMessage.from_dict(
+        {
+            "content": [
+                {"type": "text", "content": "Content"},
+                {"type": "image_url", "content": "image.com/test.jpg"},
+                "String Content",
+            ],
+            "role": "user",
+            "name": None,
+            "meta": {},
+        }
+    ) == ChatMessage.from_user(
+        content=[ContentPart.from_text("Content"), ContentPart.from_image_url("image.com/test.jpg"), "String Content"]
+    )
