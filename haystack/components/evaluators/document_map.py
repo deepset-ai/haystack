@@ -43,6 +43,7 @@ class DocumentMAPEvaluator:
     ```
     """
 
+    # Refer to https://www.pinecone.io/learn/offline-evaluation/ for the algorithm.
     @component.output_types(score=float, individual_scores=List[float])
     def run(
         self, ground_truth_documents: List[List[Document]], retrieved_documents: List[List[Document]]
@@ -69,25 +70,21 @@ class DocumentMAPEvaluator:
         individual_scores = []
 
         for ground_truth, retrieved in zip(ground_truth_documents, retrieved_documents):
-            score = 0.0
-            for ground_document in ground_truth:
-                if ground_document.content is None:
+            average_precision = 0.0
+            average_precision_numerator = 0.0
+            relevant_documents = 0
+
+            ground_truth_contents = [doc.content for doc in ground_truth if doc.content is not None]
+            for rank, retrieved_document in enumerate(retrieved):
+                if retrieved_document.content is None:
                     continue
 
-                average_precision = 0.0
-                relevant_documents = 0
+                if retrieved_document.content in ground_truth_contents:
+                    relevant_documents += 1
+                    average_precision_numerator += relevant_documents / (rank + 1)
+            if relevant_documents > 0:
+                average_precision = average_precision_numerator / relevant_documents
+            individual_scores.append(average_precision)
 
-                for rank, retrieved_document in enumerate(retrieved):
-                    if retrieved_document.content is None:
-                        continue
-
-                    if ground_document.content in retrieved_document.content:
-                        relevant_documents += 1
-                        average_precision += relevant_documents / (rank + 1)
-                if relevant_documents > 0:
-                    score = average_precision / relevant_documents
-            individual_scores.append(score)
-
-        score = sum(individual_scores) / len(retrieved_documents)
-
+        score = sum(individual_scores) / len(ground_truth_documents)
         return {"score": score, "individual_scores": individual_scores}
