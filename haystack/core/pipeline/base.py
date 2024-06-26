@@ -1006,15 +1006,9 @@ class PipelineBase:
         :returns: The name and the instance of the next Component that can be run
         """
         for name, comp in waiting_for_input:
-            is_variadic = any(
-                socket.is_variadic
-                for socket in comp.__haystack_input__._sockets_dict.values()  # type: ignore
-            )
-            has_only_defaults = all(
-                not socket.is_mandatory
-                for socket in comp.__haystack_input__._sockets_dict.values()  # type: ignore
-            )
-            if is_variadic and not comp.__haystack_is_greedy__ or has_only_defaults:  # type: ignore[attr-defined]
+            is_lazy_variadic = _is_lazy_variadic(comp)
+            has_only_defaults = _has_all_inputs_with_defaults(comp)
+            if is_lazy_variadic or has_only_defaults:  # type: ignore[attr-defined]
                 return name, comp
 
         # If we reach this point it means that we found no Component that has a lazy variadic input or all inputs with
