@@ -16,6 +16,9 @@ from haystack.testing.test_utils import set_all_seeds
 
 set_all_seeds(0)
 
+# Tracing is disable by default to avoid failures in CI
+tracing.disable_tracing()
+
 
 @pytest.fixture()
 def mock_tokenizer():
