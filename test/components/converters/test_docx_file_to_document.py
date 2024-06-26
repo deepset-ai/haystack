@@ -13,7 +13,7 @@ def docx_converter():
     return DOCXToDocument()
 
 
-class TestDocxToDocument:
+class TestDOCXToDocument:
     def test_init(self, docx_converter):
         assert isinstance(docx_converter, DOCXToDocument)
 
