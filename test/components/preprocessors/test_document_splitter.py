@@ -282,8 +282,9 @@ class TestDocumentSplitter:
         doc = Document(content="This is a text with some words. There is a second sentence. And a third sentence.")
         docs = splitter.run(documents=[doc])
 
-        # check if the split_overlap information is added to the document
-        assert "_split_overlap" in docs["documents"][0].meta
+        # check split_overlap is added to all the documents
+        for doc in docs["documents"]:
+            assert "_split_overlap" in doc.meta
 
-        # reconstruct the original document from the split documents
+        # reconstruct the original document content from the split documents
         assert doc.content == merge_documents(docs["documents"])
