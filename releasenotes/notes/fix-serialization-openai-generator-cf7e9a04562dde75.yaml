@@ -1,0 +1,3 @@
+fixes:
+  - |
+    Adds the missing 'organization' parameter to the serialization function.
