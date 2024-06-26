@@ -1035,7 +1035,7 @@ class PipelineBase:
                 # If we don't do this the order of execution of the Pipeline's Components will be affected cause we
                 # enqueue the Components in `to_run` at the start using the order they are added in the Pipeline.
                 # If a Component A with defaults is added before a Component B that has no defaults, but in the Pipeline
-                # logic A must be executed after B it could run instead before if we don't do this check.
+                # logic A must be executed after B. However, B could run before A if we don't do this check.
                 all_with_default_inputs = False
 
             if not _is_lazy_variadic(comp) and not _has_all_inputs_with_defaults(comp):
