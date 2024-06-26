@@ -12,6 +12,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - uses: actions/setup-go@v5
+
       - name: Install actionlint
         run: go install github.com/rhysd/actionlint/cmd/actionlint@latest
 
