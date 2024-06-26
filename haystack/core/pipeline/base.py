@@ -1146,7 +1146,13 @@ def _has_all_inputs_with_defaults(c: Component) -> bool:
 
 
 def _add_missing_input_defaults(name: str, comp: Component, inputs_by_component: Dict[str, Dict[str, Any]]):
-    """Updates the inputs with the default values for the inputs that are missing"""
+    """
+    Updates the inputs with the default values for the inputs that are missing
+
+    :param name: Name of the Component
+    :param comp: Instance of the Component
+    :param inputs_by_component: The current state of the inputs divided by Component name
+    """
     if name not in inputs_by_component:
         inputs_by_component[name] = {}
 
