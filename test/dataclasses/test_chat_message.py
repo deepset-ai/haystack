@@ -4,7 +4,7 @@
 import pytest
 from transformers import AutoTokenizer
 
-from haystack.dataclasses import ChatMessage, ChatRole
+from haystack.dataclasses import ChatMessage, ChatRole, ContentType, ByteStream
 
 
 def test_from_assistant_with_valid_content():
@@ -100,3 +100,40 @@ def test_from_dict_with_meta():
     assert ChatMessage.from_dict(
         data={"content": "text", "role": "user", "name": None, "meta": {"something": "something"}}
     ) == ChatMessage(content="text", role=ChatRole("user"), name=None, meta={"something": "something"})
+
+
+def test_post_init_method():
+    message = ChatMessage.from_user("Content")
+    assert message.content == "Content"
+    assert "__haystack_content_type__" in message.meta
+    assert message.meta["__haystack_content_type__"] == ContentType.TEXT
+
+    message = ChatMessage.from_assistant("image_url:image.com/test.jpg")
+    assert message.content == "image.com/test.jpg"
+    assert "__haystack_content_type__" in message.meta
+    assert message.meta["__haystack_content_type__"] == ContentType.IMAGE_URL
+
+    message = ChatMessage.from_system(ByteStream(data=b"content", mime_type="image_base64"))
+    assert message.content == ByteStream(data=b"content", mime_type="image_base64")
+    assert "__haystack_content_type__" in message.meta
+    assert message.meta["__haystack_content_type__"] == ContentType.IMAGE_BASE64
+
+    message = ChatMessage.from_user(["content", "image_url:{{url}}", ByteStream(b"content", mime_type="image_base64")])
+    assert message.content == ["content", "{{url}}", ByteStream(b"content", mime_type="image_base64")]
+    assert "__haystack_content_type__" in message.meta
+    assert message.meta["__haystack_content_type__"] == [
+        ContentType.TEXT,
+        ContentType.IMAGE_URL,
+        ContentType.IMAGE_BASE64,
+    ]
+
+
+def test_post_init_raises_value_error_if_mime_type_is_none_or_invalid():
+    with pytest.raises(ValueError):
+        ChatMessage.from_user(ByteStream.from_string("content"))
+
+    with pytest.raises(ValueError):
+        ChatMessage.from_user(ByteStream("content", mime_type="fails"))
+
+    with pytest.raises(ValueError):
+        ChatMessage.from_user(ByteStream("content", mime_type="text"))

@@ -4,7 +4,9 @@
 
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+from .byte_stream import ByteStream
 
 
 class ChatRole(str, Enum):
@@ -14,6 +16,23 @@ class ChatRole(str, Enum):
     USER = "user"
     SYSTEM = "system"
     FUNCTION = "function"
+
+
+class ContentType(str, Enum):
+    """Enumeration representing the different types of content that fit in a ChatMessage."""
+
+    TEXT = "text"
+    IMAGE_URL = "image_url"
+    IMAGE_BASE64 = "image_base64"
+
+    @staticmethod
+    def valid_byte_stream_types() -> List["ContentType"]:
+        """Returns a list of all the valid types of represented by a ByteStream."""
+        return [ContentType.IMAGE_BASE64]
+
+    def is_valid_byte_stream_type(self) -> bool:
+        """Returns whether the type is a valid type for a ByteStream."""
+        return self in ContentType.valid_byte_stream_types()
 
 
 @dataclass
@@ -27,10 +46,90 @@ class ChatMessage:
     :param meta: Additional metadata associated with the message.
     """
 
-    content: str
+    content: Union[str, ByteStream, List[Union[str, ByteStream]]]
     role: ChatRole
     name: Optional[str]
     meta: Dict[str, Any] = field(default_factory=dict, hash=False)
+
+    def __post_init__(self) -> None:
+        """
+        This method runs after the __init__ method from dataclass.
+
+        It runs some checks on the content of the ChatMessage and populates metadata.
+        """
+        if isinstance(self.content, str):
+            content, content_type = self._parse_string_content(self.content)
+            self.content = content
+            self.meta["__haystack_content_type__"] = content_type
+        elif isinstance(self.content, ByteStream):
+            content, content_type = self._parse_byte_stream_content(self.content)
+            self.content = content
+            self.meta["__haystack_content_type__"] = content_type
+        elif isinstance(self.content, list):
+            content = []
+            content_types = []
+            for part in self.content:
+                if isinstance(part, str):
+                    part_content, content_type = self._parse_string_content(part)
+                    content.append(part_content)
+                    content_types.append(content_type)
+                elif isinstance(part, ByteStream):
+                    part_content, content_type = self._parse_byte_stream_content(part)
+                    content.append(part_content)
+                    content_types.append(content_type)
+                else:
+                    raise ValueError(
+                        "Invalid element in content. Valid types are str and ByteStream" "Element: " + part
+                    )
+            self.content = content
+            self.meta["__haystack_content_type__"] = content_types
+        else:
+            raise ValueError(
+                "Invalid type of content. Valid types are str, "
+                "ByteStream and a list of str and ByteStream objects."
+                "Content: " + self.content
+            )
+
+    @staticmethod
+    def _parse_string_content(content: str) -> Tuple[str, ContentType]:
+        """
+        Parse the string content to differentiate between different types of string representable content.
+
+        :param content: The string content you want to parse.
+        :returns: a tuple containing the parsed content and the content type.
+        """
+        if content.strip().startswith("image_url:"):
+            url = content.split("image_url:")[-1].strip()
+            return url, ContentType.IMAGE_URL
+        else:  # TEXT
+            return content, ContentType.TEXT
+
+    @staticmethod
+    def _parse_byte_stream_content(content: ByteStream) -> Tuple[ByteStream, ContentType]:
+        """
+        Parse the byte stream content to differentiate between different types of byte encoded content.
+
+        :param content: The bytes content you want to parse.
+        :returns: a tuple containing the parsed content and the content type.
+
+        :raises: Value error if the 'mime_type' attribute is None or any invalid value.
+        """
+        if content.mime_type is None:
+            raise ValueError(
+                "Unidentified ByteStream added as part of the content of the ChatMessage."
+                "Populate thee 'mime_type' attribute with the identifier of the content type."
+            )
+
+        content_type = ContentType(content.mime_type)
+        if not content_type.is_valid_byte_stream_type():
+            raise ValueError(
+                f"The 'mime_type' attribute of the introduced content "
+                f"has a not valid ContentType for a ByteStream"
+                f"Value: {content_type}. Valid content types: {", ".join([
+                                 c.value for c in ContentType.valid_byte_stream_types()])}"
+            )
+
+        return content, content_type
 
     def to_openai_format(self) -> Dict[str, Any]:
         """
@@ -59,7 +158,9 @@ class ChatMessage:
         return self.role == role
 
     @classmethod
-    def from_assistant(cls, content: str, meta: Optional[Dict[str, Any]] = None) -> "ChatMessage":
+    def from_assistant(
+        cls, content: Union[str, ByteStream, List[Union[str, ByteStream]]], meta: Optional[Dict[str, Any]] = None
+    ) -> "ChatMessage":
         """
         Create a message from the assistant.
 
@@ -70,7 +171,7 @@ class ChatMessage:
         return cls(content, ChatRole.ASSISTANT, None, meta or {})
 
     @classmethod
-    def from_user(cls, content: str) -> "ChatMessage":
+    def from_user(cls, content: Union[str, ByteStream, List[Union[str, ByteStream]]]) -> "ChatMessage":
         """
         Create a message from the user.
 
@@ -80,7 +181,7 @@ class ChatMessage:
         return cls(content, ChatRole.USER, None)
 
     @classmethod
-    def from_system(cls, content: str) -> "ChatMessage":
+    def from_system(cls, content: Union[str, ByteStream, List[Union[str, ByteStream]]]) -> "ChatMessage":
         """
         Create a message from the system.
 
@@ -90,7 +191,7 @@ class ChatMessage:
         return cls(content, ChatRole.SYSTEM, None)
 
     @classmethod
-    def from_function(cls, content: str, name: str) -> "ChatMessage":
+    def from_function(cls, content: Union[str, ByteStream, List[Union[str, ByteStream]]], name: str) -> "ChatMessage":
         """
         Create a message from a function call.
 
@@ -109,6 +210,8 @@ class ChatMessage:
         """
         data = asdict(self)
         data["role"] = self.role.value
+        if "__haystack_content_type__" in data["meta"]:
+            data["meta"].pop("__haystack_content_type__")
 
         return data
 
