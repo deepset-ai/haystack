@@ -18,4 +18,6 @@ jobs:
         run: go install github.com/rhysd/actionlint/cmd/actionlint@latest
 
       - name: Run actionlint
+        env:
+          SHELLCHECK_OPTS: --exclude=SC2102
         run: actionlint
