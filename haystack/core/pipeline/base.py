@@ -1053,6 +1053,7 @@ class PipelineBase:
             for input_socket in comp.__haystack_input__._sockets_dict.values():  # type: ignore
                 if input_socket.name not in inputs_by_component.get(name, {}) and input_socket.is_mandatory:
                     has_enough_inputs = False
+                    break
 
             if has_enough_inputs:
                 return name, comp
