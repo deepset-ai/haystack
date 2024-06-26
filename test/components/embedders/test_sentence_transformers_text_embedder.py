@@ -51,7 +51,7 @@ class TestSentenceTransformersTextEmbedder:
         assert data == {
             "type": "haystack.components.embedders.sentence_transformers_text_embedder.SentenceTransformersTextEmbedder",
             "init_parameters": {
-                "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
+                "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
                 "model": "model",
                 "device": ComponentDevice.from_str("cpu").to_dict(),
                 "prefix": "",
@@ -100,7 +100,7 @@ class TestSentenceTransformersTextEmbedder:
         data = {
             "type": "haystack.components.embedders.sentence_transformers_text_embedder.SentenceTransformersTextEmbedder",
             "init_parameters": {
-                "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
+                "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
                 "model": "model",
                 "device": ComponentDevice.from_str("cpu").to_dict(),
                 "prefix": "",
@@ -126,7 +126,7 @@ class TestSentenceTransformersTextEmbedder:
         data = {
             "type": "haystack.components.embedders.sentence_transformers_text_embedder.SentenceTransformersTextEmbedder",
             "init_parameters": {
-                "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
+                "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
                 "model": "model",
                 "device": None,
                 "prefix": "",

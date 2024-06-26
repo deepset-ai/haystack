@@ -60,7 +60,7 @@ class TestSentenceTransformersDocumentEmbedder:
             "init_parameters": {
                 "model": "model",
                 "device": ComponentDevice.from_str("cpu").to_dict(),
-                "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
+                "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
                 "prefix": "",
                 "suffix": "",
                 "batch_size": 32,

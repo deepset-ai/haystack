@@ -133,7 +133,6 @@ class TestHuggingFaceAPIGenerator:
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
             api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
-            token=Secret.from_env_var("ENV_VAR", strict=False),
             generation_kwargs={"temperature": 0.6},
             stop_words=["stop", "words"],
         )
@@ -143,7 +142,7 @@ class TestHuggingFaceAPIGenerator:
 
         assert init_params["api_type"] == "serverless_inference_api"
         assert init_params["api_params"] == {"model": "HuggingFaceH4/zephyr-7b-beta"}
-        assert init_params["token"] == {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"}
+        assert init_params["token"] == {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"}
         assert init_params["generation_kwargs"] == {"temperature": 0.6, "stop": ["stop", "words"], "max_tokens": 512}
 
     def test_from_dict(self, mock_check_valid_model):

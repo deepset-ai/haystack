@@ -151,7 +151,7 @@ class TestHuggingFaceLocalGenerator:
         assert data == {
             "type": "haystack.components.generators.hugging_face_local.HuggingFaceLocalGenerator",
             "init_parameters": {
-                "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
+                "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
                 "huggingface_pipeline_kwargs": {
                     "model": "google/flan-t5-base",
                     "task": "text2text-generation",
