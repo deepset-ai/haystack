@@ -146,6 +146,7 @@ class OpenAIGenerator:
             model=self.model,
             streaming_callback=callback_name,
             api_base_url=self.api_base_url,
+            organization=self.organization,
             generation_kwargs=self.generation_kwargs,
             system_prompt=self.system_prompt,
             api_key=self.api_key.to_dict(),
