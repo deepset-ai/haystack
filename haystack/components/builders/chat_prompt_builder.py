@@ -8,6 +8,7 @@ from jinja2 import Template, meta
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses.chat_message import ChatMessage, ChatRole
+from haystack.dataclasses.content_part import ContentPart, ContentType
 
 logger = logging.getLogger(__name__)
 
@@ -127,10 +128,48 @@ class ChatPromptBuilder:
             for message in template:
                 if message.is_from(ChatRole.USER) or message.is_from(ChatRole.SYSTEM):
                     # infere variables from template
-                    msg_template = Template(message.content)
-                    ast = msg_template.environment.parse(message.content)
-                    template_variables = meta.find_undeclared_variables(ast)
-                    variables += list(template_variables)
+                    if isinstance(message.content, str):
+                        msg_template = Template(message.content)
+                        ast = msg_template.environment.parse(message.content)
+                        template_variables = meta.find_undeclared_variables(ast)
+                        variables += list(template_variables)
+                    elif isinstance(message.content, ContentPart):
+                        if message.content.type is ContentType.IMAGE_BASE64:
+                            content = message.content.content.to_string()
+                        else:
+                            content = message.content.content
+                        msg_template = Template(content)
+                        ast = msg_template.environment.parse(content)
+                        template_variables = meta.find_undeclared_variables(ast)
+                        variables += list(template_variables)
+                    elif isinstance(message.content, list):
+                        for part in message.content:
+                            if isinstance(part, str):
+                                part_template = Template(part)
+                                ast = part_template.environment.parse(part)
+                                template_variables = meta.find_undeclared_variables(ast)
+                                variables += list(template_variables)
+                            elif isinstance(part, ContentPart):
+                                if part.type is ContentType.IMAGE_BASE64:
+                                    content = part.content.to_string()
+                                else:
+                                    content = part.content
+                                part_template = Template(content)
+                                ast = part_template.environment.parse(content)
+                                template_variables = meta.find_undeclared_variables(ast)
+                                variables += list(template_variables)
+                            else:
+                                raise ValueError(
+                                    "One of the elements of the content of one of the ChatMessages \
+                                    is not of a valid type."
+                                    "Valid types: str or ContentPart. Element: {part}"
+                                )
+                    else:
+                        raise ValueError(
+                            "The content of one of the messages in the template is not of a valid type."
+                            "Valid types: str, ContentPart or list of str and ContentPart."
+                            "Content: {self.content}"
+                        )
 
         # setup inputs
         static_input_slots = {"template": Optional[str], "template_variables": Optional[Dict[str, Any]]}

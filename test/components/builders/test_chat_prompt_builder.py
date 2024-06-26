@@ -5,7 +5,7 @@ import pytest
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
 from haystack import component
 from haystack.core.pipeline.pipeline import Pipeline
-from haystack.dataclasses.chat_message import ChatMessage
+from haystack.dataclasses.chat_message import ChatMessage, ContentPart, ByteStream
 from haystack.dataclasses.document import Document
 
 
@@ -535,3 +535,31 @@ class TestChatPromptBuilderDynamic:
         ]
         assert component._variables == ["var", "required_var"]
         assert component._required_variables == ["required_var"]
+
+
+def test_init_with_template_using_content_part():
+    messages = [
+        ChatMessage.from_system(ContentPart.from_text("This is {{content}}")),
+        ChatMessage.from_user(ContentPart.from_image_url("image.com/{{image}}")),
+        ChatMessage.from_user(ContentPart.from_base64_image(ByteStream.from_string("Hello {{world}}!"))),
+    ]
+
+    component = ChatPromptBuilder(template=messages)
+
+    assert component.template == messages
+
+
+def test_init_with_template_using_list_of_str_and_content_part():
+    messages = [
+        ChatMessage.from_system(
+            content=[
+                ContentPart.from_text("Your name is {{name}}"),
+                ContentPart.from_base64_image(ByteStream.from_string("image:{{bytes}}")),
+                "Random {{content}}",
+            ]
+        )
+    ]
+
+    component = ChatPromptBuilder(template=messages)
+
+    assert component.template == messages
