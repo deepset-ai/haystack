@@ -1,0 +1,13 @@
+---
+highlights: >
+    Added multi modal support for 'ChatMessage' content through 'ContentPart'
+features:
+  - |
+    Added a new data class, 'ContentPart', it is designed to store any kind of data type related to the content of a 'ChatMessage'.
+    For now, it just supports images (as image urls or base64 encoded images) and text.
+    It has OpenAI Chat API specific formatting.
+
+    Now 'ChatMessage' allows you to add 'ContentPart' as content or a list of 'str' and 'ContentPart', OpenAI Chat API
+    specific formatting and serialization was updated to support this feature.
+
+    Finally, 'ChatPromptBuilder' has been updated to support the multi modal capabilities of 'ChatMessage'.
