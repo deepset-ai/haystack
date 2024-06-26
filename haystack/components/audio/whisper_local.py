@@ -16,7 +16,20 @@ with LazyImport("Run 'pip install \"openai-whisper>=20231106\"' to install whisp
 
 
 logger = logging.getLogger(__name__)
-WhisperLocalModel = Literal["tiny", "small", "medium", "large", "large-v2"]
+WhisperLocalModel = Literal[
+    "tiny.en",
+    "tiny",
+    "base.en",
+    "base",
+    "small.en",
+    "small",
+    "medium.en",
+    "medium",
+    "large-v1",
+    "large-v2",
+    "large-v3",
+    "large",
+]
 
 
 @component
@@ -165,8 +178,6 @@ class LocalWhisperTranscriber:
         for source in sources:
             if not isinstance(source, ByteStream):
                 path = Path(source)
-                source = ByteStream.from_file_path(path)
-                source.meta["file_path"] = path
             else:
                 # If we received a ByteStream instance that doesn't have the "file_path" metadata set,
                 # we dump the bytes into a temporary file.
