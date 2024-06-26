@@ -21,7 +21,7 @@ with LazyImport("Run 'pip install python-docx'") as docx_import:
 
 
 @dataclass
-class DocxMetadata:
+class DOCXMetadata:
     """
     Describes the metadata of Docx file.
 
@@ -60,7 +60,7 @@ class DocxMetadata:
 
 
 @component
-class DocxToDocument:
+class DOCXToDocument:
     """
     Converts Docx files to Documents.
 
@@ -136,7 +136,7 @@ class DocxToDocument:
 
         return {"documents": documents}
 
-    def _get_docx_metadata(self, document: "DocxDocument") -> DocxMetadata:
+    def _get_docx_metadata(self, document: "DocxDocument") -> DOCXMetadata:
         """
         Get all relevant data from the 'core_properties' attribute from a Docx Document.
 
@@ -146,7 +146,7 @@ class DocxToDocument:
         :returns:
             A `DocxMetadata` dataclass all the relevant fields from the 'core_properties'
         """
-        return DocxMetadata(
+        return DOCXMetadata(
             author=document.core_properties.author,
             category=document.core_properties.category,
             comments=document.core_properties.comments,
