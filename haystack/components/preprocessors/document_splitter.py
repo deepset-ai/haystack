@@ -197,12 +197,12 @@ class DocumentSplitter:
         """
         Adds split overlap information to the current and previous Document's meta.
         """
-        overlapping_range = (current_doc_start_idx - previous_doc_start_idx - 1, len(previous_doc.content) - 1)
+        overlapping_range = (current_doc_start_idx - previous_doc_start_idx - 1, len(previous_doc.content) - 1)  # type: ignore
 
         if overlapping_range[0] < overlapping_range[1]:
-            overlapping_str = previous_doc.content[overlapping_range[0] : overlapping_range[1]]
+            overlapping_str = previous_doc.content[overlapping_range[0] : overlapping_range[1]]  # type: ignore
 
-            if current_doc.content.startswith(overlapping_str):
+            if current_doc.content.startswith(overlapping_str):  # type: ignore
                 # add split overlap information to this Document regarding the previous Document
                 current_doc.meta["_split_overlap"].append({"doc_id": previous_doc.id, "range": overlapping_range})
 
