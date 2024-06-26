@@ -16,7 +16,7 @@ class TestSentenceTransformersDocumentEmbedder:
         embedder = SentenceTransformersDocumentEmbedder(model="model")
         assert embedder.model == "model"
         assert embedder.device == ComponentDevice.resolve_device(None)
-        assert embedder.token == Secret.from_env_var("HF_API_TOKEN", strict=False)
+        assert embedder.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
         assert embedder.prefix == ""
         assert embedder.suffix == ""
         assert embedder.batch_size == 32
