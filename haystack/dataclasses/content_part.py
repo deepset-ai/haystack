@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 from dataclasses import asdict, dataclass
 from enum import Enum
 from typing import Any, Dict, Optional, Union
