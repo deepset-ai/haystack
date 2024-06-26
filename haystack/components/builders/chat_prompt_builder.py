@@ -2,11 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from copy import deepcopy
 from typing import Any, Dict, List, Optional, Set
 
 from jinja2 import Template, meta
 
 from haystack import component, default_from_dict, default_to_dict, logging
+from haystack.dataclasses.byte_stream import ByteStream
 from haystack.dataclasses.chat_message import ChatMessage, ChatRole
 from haystack.dataclasses.content_part import ContentPart, ContentType
 
@@ -233,13 +235,62 @@ class ChatPromptBuilder:
         for message in template:
             if message.is_from(ChatRole.USER) or message.is_from(ChatRole.SYSTEM):
                 self._validate_variables(set(template_variables_combined.keys()))
-                compiled_template = Template(message.content)
-                rendered_content = compiled_template.render(template_variables_combined)
-                rendered_message = (
-                    ChatMessage.from_user(rendered_content)
-                    if message.is_from(ChatRole.USER)
-                    else ChatMessage.from_system(rendered_content)
-                )
+                if isinstance(message.content, str):
+                    compiled_template = Template(message.content)
+                    rendered_content = compiled_template.render(template_variables_combined)
+                    rendered_message = (
+                        ChatMessage.from_user(rendered_content)
+                        if message.is_from(ChatRole.USER)
+                        else ChatMessage.from_system(rendered_content)
+                    )
+
+                elif isinstance(message.content, ContentPart):
+                    content = message.content.content
+                    if isinstance(content, str):
+                        compiled_template = Template(content)
+                        rendered_content = compiled_template.render(template_variables_combined)
+                        rendered_message = deepcopy(message)
+                        rendered_message.content.content = rendered_content
+                    else:  # ByteStream
+                        compiled_template = Template(content.to_string())
+                        rendered_content = ByteStream.from_string(compiled_template.render(template_variables_combined))
+                        rendered_message = deepcopy(message)
+                        rendered_message.content.content = rendered_content
+
+                elif isinstance(message.content, list):
+                    rendered_parts = []
+                    for part in message.content:
+                        if isinstance(part, str):
+                            compiled_template = Template(part)
+                            rendered_part = compiled_template.render(template_variables_combined)
+                        elif isinstance(part, ContentPart):
+                            rendered_part = deepcopy(part)
+                            if isinstance(part.content, str):
+                                compiled_template = Template(part.content)
+                                rendered_part.content = compiled_template.render(template_variables_combined)
+                            else:  # ByteStream
+                                compiled_template = Template(part.content.to_string())
+                                rendered_part.content = ByteStream.from_string(
+                                    compiled_template.render(template_variables_combined)
+                                )
+                        else:
+                            raise ValueError(
+                                "One of the elements of the content of one of the ChatMessages \
+                                    is not of a valid type."
+                                "Valid types: str or ContentPart. Element: {part}"
+                            )
+                        rendered_parts.append(rendered_part)
+
+                    rendered_message = deepcopy(message)
+                    rendered_message.content = rendered_parts
+
+                else:
+                    raise ValueError(
+                        "The content of one of the messages in the template is not of a valid type."
+                        "Valid types: str, ContentPart or list of str and ContentPart."
+                        "Content: {self.content}"
+                    )
+
                 processed_messages.append(rendered_message)
             else:
                 processed_messages.append(message)

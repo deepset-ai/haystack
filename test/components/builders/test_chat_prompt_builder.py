@@ -5,7 +5,9 @@ import pytest
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
 from haystack import component
 from haystack.core.pipeline.pipeline import Pipeline
-from haystack.dataclasses.chat_message import ChatMessage, ContentPart, ByteStream
+from haystack.dataclasses.chat_message import ChatMessage
+from haystack.dataclasses.content_part import ContentPart, ImageDetail
+from haystack.dataclasses.byte_stream import ByteStream
 from haystack.dataclasses.document import Document
 
 
@@ -563,3 +565,53 @@ def test_init_with_template_using_list_of_str_and_content_part():
     component = ChatPromptBuilder(template=messages)
 
     assert component.template == messages
+
+
+def test_init_with_template_using_content_part():
+    messages = [
+        ChatMessage.from_system(ContentPart.from_text("Hello {{name}}!")),
+        ChatMessage.from_user(
+            ContentPart.from_base64_image(image=ByteStream.from_string("{{bytes}}"), image_detail=ImageDetail.LOW)
+        ),
+        ChatMessage.from_assistant(ContentPart.from_text("Thanks {{user}}!")),
+        ChatMessage.from_user(ContentPart.from_image_url("image.com/{{image}}")),
+    ]
+
+    component = ChatPromptBuilder()
+
+    result = component.run(template=messages, name="World", bytes="bytes", image="test.jpg")
+    assert result["prompt"] == [
+        ChatMessage.from_system(ContentPart.from_text("Hello World!")),
+        ChatMessage.from_user(
+            ContentPart.from_base64_image(image=ByteStream.from_string("bytes"), image_detail=ImageDetail.LOW)
+        ),
+        ChatMessage.from_assistant(ContentPart.from_text("Thanks {{user}}!")),
+        ChatMessage.from_user(ContentPart.from_image_url("image.com/test.jpg")),
+    ]
+
+
+def test_init_with_template_using_list_of_str_and_content_part():
+    messages = [
+        ChatMessage.from_system(
+            content=[
+                ContentPart.from_text("Your name is {{name}}"),
+                ContentPart.from_base64_image(ByteStream.from_string("image:{{bytes}}")),
+                "Random {{content}}",
+                ContentPart.from_image_url("image.com/{{image}}", image_detail=ImageDetail.HIGH),
+            ]
+        )
+    ]
+
+    component = ChatPromptBuilder()
+
+    result = component.run(template=messages, name="NAME", bytes="bytes", content="TEXT", image="test.jpg")
+    assert result["prompt"] == [
+        ChatMessage.from_system(
+            content=[
+                ContentPart.from_text("Your name is NAME"),
+                ContentPart.from_base64_image(ByteStream.from_string("image:bytes")),
+                "Random TEXT",
+                ContentPart.from_image_url("image.com/test.jpg", image_detail=ImageDetail.HIGH),
+            ]
+        )
+    ]
