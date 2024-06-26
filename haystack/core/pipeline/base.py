@@ -995,6 +995,37 @@ class PipelineBase:
         # So we return the last Component, that could be the last from waiting_for_input or filtered_waiting_for_input.
         return name, comp
 
+    def _find_next_runnable_lazy_variadic_or_default_component(
+        self, waiting_for_input: List[Tuple[str, Component]]
+    ) -> Tuple[str, Component]:
+        """
+        Finds the next Component that can be run and has a lazy variadic input or all inputs with default values.
+
+        :param waiting_for_input: Queue of Components waiting for input
+
+        :returns: The name and the instance of the next Component that can be run
+        """
+        for name, comp in waiting_for_input:
+            is_variadic = any(
+                socket.is_variadic
+                for socket in comp.__haystack_input__._sockets_dict.values()  # type: ignore
+            )
+            has_only_defaults = all(
+                not socket.is_mandatory
+                for socket in comp.__haystack_input__._sockets_dict.values()  # type: ignore
+            )
+            if is_variadic and not comp.__haystack_is_greedy__ or has_only_defaults:  # type: ignore[attr-defined]
+                return name, comp
+
+        # If we reach this point it means that we found no Component that has a lazy variadic input or all inputs with
+        # default values to run.
+        # Similar to `_find_next_runnable_component` we might not find the Component we want, so we optimistically
+        # return the last Component in the list.
+        # We're probably stuck in a loop in this case, but we can't raise an exception as existing use cases might
+        # rely on this behaviour.
+        # The loop detection will be handled later on.
+        return name, comp
+
     def _is_stuck_in_a_loop(self, waiting_for_input: List[Tuple[str, Component]]) -> bool:
         """
         Checks if the Pipeline is stuck in a loop.

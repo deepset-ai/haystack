@@ -291,30 +291,9 @@ class Pipeline(PipelineBase):
                             warn(RuntimeWarning(msg))
                             break
 
-                        for name, comp in waiting_for_input:
-                            is_variadic = any(
-                                socket.is_variadic
-                                for socket in comp.__haystack_input__._sockets_dict.values()  # type: ignore
-                            )
-                            has_only_defaults = all(
-                                not socket.is_mandatory
-                                for socket in comp.__haystack_input__._sockets_dict.values()  # type: ignore
-                            )
-                            if is_variadic and not comp.__haystack_is_greedy__ or has_only_defaults:  # type: ignore[attr-defined]
-                                break
-
-                        # There was a lazy variadic or a component with only default waiting for input, we can run it
-                        waiting_for_input.remove((name, comp))
-                        to_run.append((name, comp))
-
-                        # Let's use the default value for the inputs that are still missing, or the component
-                        # won't run and will be put back in the waiting list, causing an infinite loop.
-                        for input_socket in comp.__haystack_input__._sockets_dict.values():  # type: ignore
-                            if input_socket.is_mandatory:
-                                continue
-                            if input_socket.name not in last_inputs[name]:
-                                last_inputs[name][input_socket.name] = input_socket.default_value
-
+                        (name, comp) = self._find_next_runnable_lazy_variadic_or_default_component(waiting_for_input)
+                        _add_missing_input_defaults(name, comp, last_inputs)
+                        _enqueue_component((name, comp), to_run, waiting_for_input)
                         continue
 
                     before_last_waiting_for_input = (
