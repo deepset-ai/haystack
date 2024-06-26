@@ -3,7 +3,7 @@ name: Github workflows linter
 on:
   pull_request:
     paths:
-      - ".github/workflows"
+      - ".github/workflows/**"
 
 jobs:
   lint-workflows:
