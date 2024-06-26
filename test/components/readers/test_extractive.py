@@ -21,7 +21,7 @@ from haystack.utils.device import ComponentDevice, DeviceMap
 def initialized_token(monkeypatch: MonkeyPatch) -> Secret:
     monkeypatch.setenv("HF_API_TOKEN", "secret-token")
 
-    return Secret.from_env_var("HF_API_TOKEN", strict=False)
+    return Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
 
 
 @pytest.fixture
