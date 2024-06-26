@@ -1324,3 +1324,55 @@ class TestPipeline:
         inputs_by_component = {}
         _add_missing_input_defaults(name, branch_joiner, inputs_by_component)
         assert inputs_by_component == {"branch_joiner": {}}
+
+    def test__find_next_runnable_lazy_variadic_or_default_component(self):
+        document_builder = component_class(
+            "DocumentBuilder", input_types={"text": str}, output_types={"doc": Document}
+        )()
+        document_joiner = component_class("DocumentJoiner", input_types={"docs": Variadic[Document]})()
+        prompt_builder = PromptBuilder(template="{{ questions | join('\n') }}")
+        pipe = Pipeline()
+
+        waiting_for_input = [("document_builder", document_builder)]
+        pair = pipe._find_next_runnable_lazy_variadic_or_default_component(waiting_for_input)
+        assert pair == ("document_builder", document_builder)
+
+        waiting_for_input = [("document_joiner", document_joiner)]
+        pair = pipe._find_next_runnable_lazy_variadic_or_default_component(waiting_for_input)
+        assert pair == ("document_joiner", document_joiner)
+
+        waiting_for_input = [("prompt_builder", prompt_builder)]
+        pair = pipe._find_next_runnable_lazy_variadic_or_default_component(waiting_for_input)
+        assert pair == ("prompt_builder", prompt_builder)
+
+        waiting_for_input = [
+            ("document_builder", document_builder),
+            ("document_joiner", document_joiner),
+            ("prompt_builder", prompt_builder),
+        ]
+        pair = pipe._find_next_runnable_lazy_variadic_or_default_component(waiting_for_input)
+        assert pair == ("document_joiner", document_joiner)
+
+        waiting_for_input = [
+            ("prompt_builder", prompt_builder),
+            ("document_builder", document_builder),
+            ("document_joiner", document_joiner),
+        ]
+        pair = pipe._find_next_runnable_lazy_variadic_or_default_component(waiting_for_input)
+        assert pair == ("prompt_builder", prompt_builder)
+
+        waiting_for_input = [
+            ("document_builder", document_builder),
+            ("document_joiner", document_joiner),
+            ("prompt_builder", prompt_builder),
+        ]
+        pair = pipe._find_next_runnable_lazy_variadic_or_default_component(waiting_for_input)
+        assert pair == ("document_joiner", document_joiner)
+
+        waiting_for_input = [
+            ("document_builder", document_builder),
+            ("prompt_builder", prompt_builder),
+            ("document_joiner", document_joiner),
+        ]
+        pair = pipe._find_next_runnable_lazy_variadic_or_default_component(waiting_for_input)
+        assert pair == ("prompt_builder", prompt_builder)
