@@ -28,7 +28,7 @@ class TestSentenceTransformersDiversityRanker:
         assert component.top_k == 10
         assert component.device == ComponentDevice.resolve_device(None)
         assert component.similarity == "cosine"
-        assert component.token == Secret.from_env_var("HF_API_TOKEN", strict=False)
+        assert component.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
         assert component.query_prefix == ""
         assert component.document_prefix == ""
         assert component.query_suffix == ""
@@ -105,7 +105,7 @@ class TestSentenceTransformersDiversityRanker:
         assert ranker.top_k == 10
         assert ranker.device == ComponentDevice.resolve_device(None)
         assert ranker.similarity == "cosine"
-        assert ranker.token == Secret.from_env_var("HF_API_TOKEN", strict=False)
+        assert ranker.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
         assert ranker.query_prefix == ""
         assert ranker.document_prefix == ""
         assert ranker.query_suffix == ""

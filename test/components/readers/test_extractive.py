@@ -227,7 +227,7 @@ def test_from_dict():
     component = ExtractiveReader.from_dict(data)
     assert component.model_name_or_path == "my-model"
     assert component.device is None
-    assert component.token == Secret.from_env_var("HF_API_TOKEN", strict=False)
+    assert component.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
     assert component.top_k == 20
     assert component.score_threshold is None
     assert component.max_seq_length == 384
