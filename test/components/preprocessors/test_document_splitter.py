@@ -241,7 +241,6 @@ class TestDocumentSplitter:
 
         expected_pages = [1, 1, 1, 2, 2, 1, 1, 3]
         for doc, p in zip(result["documents"], expected_pages):
-            print(doc.content, doc.meta, p)
             assert doc.meta["page_number"] == p
 
     def test_add_page_number_to_metadata_with_overlap_sentence_split(self):
@@ -252,7 +251,6 @@ class TestDocumentSplitter:
 
         expected_pages = [1, 1, 1, 2, 1, 1]
         for doc, p in zip(result["documents"], expected_pages):
-            print(doc.content, doc.meta, p)
             assert doc.meta["page_number"] == p
 
     def test_add_page_number_to_metadata_with_overlap_passage_split(self):
@@ -283,8 +281,9 @@ class TestDocumentSplitter:
         docs = splitter.run(documents=[doc])
 
         # check split_overlap is added to all the documents
-        for doc in docs["documents"]:
-            assert "_split_overlap" in doc.meta
+        assert len(docs["documents"]) == 3
+        for d in docs["documents"]:
+            assert "_split_overlap" in d.meta
 
         # reconstruct the original document content from the split documents
         assert doc.content == merge_documents(docs["documents"])
