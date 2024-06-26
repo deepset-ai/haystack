@@ -7,6 +7,28 @@ from haystack import Document
 from haystack.components.preprocessors import DocumentSplitter
 
 
+def merge_documents(documents):
+    """Merge a list of doc chunks into a single doc by concatenating their content, eliminating overlapping content."""
+    sorted_docs = sorted(documents, key=lambda doc: doc.meta["split_idx_start"])
+    merged_text = ""
+    last_idx_end = 0
+    for doc in sorted_docs:
+        start = doc.meta["split_idx_start"]  # start of the current content
+
+        # if the start of the current content is before the end of the last appended content, adjust it
+        if start < last_idx_end:
+            start = last_idx_end
+
+        # append the non-overlapping part to the merged text
+        merged_text = merged_text.strip()
+        merged_text += doc.content[start - doc.meta["split_idx_start"] :]
+
+        # update the last end index
+        last_idx_end = doc.meta["split_idx_start"] + len(doc.content)
+
+    return merged_text
+
+
 class TestDocumentSplitter:
     def test_non_text_document(self):
         with pytest.raises(
@@ -254,3 +276,14 @@ class TestDocumentSplitter:
 
         for doc, p in zip(result["documents"], expected_pages):
             assert doc.meta["page_number"] == p
+
+    def test_add_split_overlap_information(self):
+        splitter = DocumentSplitter(split_length=10, split_overlap=5, split_by="word")
+        doc = Document(content="This is a text with some words. There is a second sentence. And a third sentence.")
+        docs = splitter.run(documents=[doc])
+
+        # check if the split_overlap information is added to the document
+        assert "_split_overlap" in docs["documents"][0].meta
+
+        # reconstruct the original document from the split documents
+        assert doc.content == merge_documents(docs["documents"])

@@ -203,9 +203,9 @@ class DocumentSplitter:
             overlapping_str = previous_doc.content[overlapping_range[0] : overlapping_range[1]]
 
             if current_doc.content.startswith(overlapping_str):
-                # Add split overlap information to this Document regarding the previous Document
+                # add split overlap information to this Document regarding the previous Document
                 current_doc.meta["_split_overlap"].append({"doc_id": previous_doc.id, "range": overlapping_range})
 
-                # Add split overlap information to previous Document regarding this Document
+                # add split overlap information to previous Document regarding this Document
                 overlapping_range = (0, overlapping_range[1] - overlapping_range[0])
                 previous_doc.meta["_split_overlap"].append({"doc_id": current_doc.id, "range": overlapping_range})
