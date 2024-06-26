@@ -1008,7 +1008,7 @@ class PipelineBase:
         for name, comp in waiting_for_input:
             is_lazy_variadic = _is_lazy_variadic(comp)
             has_only_defaults = _has_all_inputs_with_defaults(comp)
-            if is_lazy_variadic or has_only_defaults:  # type: ignore[attr-defined]
+            if is_lazy_variadic or has_only_defaults:
                 return name, comp
 
         # If we reach this point it means that we found no Component that has a lazy variadic input or all inputs with
