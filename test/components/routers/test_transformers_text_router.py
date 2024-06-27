@@ -20,7 +20,7 @@ class TestTransformersTextRouter:
             "init_parameters": {
                 "labels": ["en", "de"],
                 "model": "papluca/xlm-roberta-base-language-detection",
-                "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
+                "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
                 "huggingface_pipeline_kwargs": {
                     "model": "papluca/xlm-roberta-base-language-detection",
                     "device": ComponentDevice.resolve_device(None).to_hf(),
@@ -41,7 +41,7 @@ class TestTransformersTextRouter:
             "init_parameters": {
                 "labels": ["en", "de"],
                 "model": "papluca/xlm-roberta-base-language-detection",
-                "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
+                "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
                 "huggingface_pipeline_kwargs": {
                     "model": "papluca/xlm-roberta-base-language-detection",
                     "device": ComponentDevice.from_str("cpu").to_hf(),
@@ -58,7 +58,7 @@ class TestTransformersTextRouter:
             "type": "haystack.components.routers.transformers_text_router.TransformersTextRouter",
             "init_parameters": {
                 "model": "papluca/xlm-roberta-base-language-detection",
-                "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
+                "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
                 "huggingface_pipeline_kwargs": {
                     "model": "papluca/xlm-roberta-base-language-detection",
                     "device": ComponentDevice.resolve_device(None).to_hf(),
@@ -70,7 +70,9 @@ class TestTransformersTextRouter:
         component = TransformersTextRouter.from_dict(data)
         assert component.labels == ["en", "de"]
         assert component.pipeline is None
-        assert component.token == Secret.from_dict({"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"})
+        assert component.token == Secret.from_dict(
+            {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"}
+        )
         assert component.huggingface_pipeline_kwargs == {
             "model": "papluca/xlm-roberta-base-language-detection",
             "device": ComponentDevice.resolve_device(None).to_hf(),
@@ -86,7 +88,7 @@ class TestTransformersTextRouter:
             "type": "haystack.components.routers.transformers_text_router.TransformersTextRouter",
             "init_parameters": {
                 "model": "papluca/xlm-roberta-base-language-detection",
-                "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
+                "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
                 "huggingface_pipeline_kwargs": {
                     "model": "papluca/xlm-roberta-base-language-detection",
                     "device": ComponentDevice.from_str("cpu").to_hf(),
@@ -98,7 +100,9 @@ class TestTransformersTextRouter:
         component = TransformersTextRouter.from_dict(data)
         assert component.labels == ["en", "de"]
         assert component.pipeline is None
-        assert component.token == Secret.from_dict({"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"})
+        assert component.token == Secret.from_dict(
+            {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"}
+        )
         assert component.huggingface_pipeline_kwargs == {
             "model": "papluca/xlm-roberta-base-language-detection",
             "device": ComponentDevice.from_str("cpu").to_hf(),
