@@ -159,6 +159,7 @@ class TestHuggingFaceLocalChatGenerator:
 
         generator_2 = HuggingFaceLocalChatGenerator.from_dict(result)
 
+        assert generator_2.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
         assert generator_2.generation_kwargs == {"max_new_tokens": 512, "n": 5, "stop_sequences": ["stop", "words"]}
         assert generator_2.streaming_callback is streaming_callback_handler
 

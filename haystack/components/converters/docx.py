@@ -21,7 +21,7 @@ with LazyImport("Run 'pip install python-docx'") as docx_import:
 
 
 @dataclass
-class DocxMetadata:
+class DOCXMetadata:
     """
     Describes the metadata of Docx file.
 
@@ -60,28 +60,28 @@ class DocxMetadata:
 
 
 @component
-class DocxToDocument:
+class DOCXToDocument:
     """
-    Converts Docx files to Documents.
+    Converts DOCX files to Documents.
 
-    Uses `python-docx` library to convert the Docx file to a document.
+    Uses `python-docx` library to convert the DOCX file to a document.
     This component does not preserve page breaks in the original document.
 
     Usage example:
     ```python
-    from haystack.components.converters.docx import DocxToDocument
+    from haystack.components.converters.docx import DOCXToDocument
 
-    converter = DocxToDocument()
+    converter = DOCXToDocument()
     results = converter.run(sources=["sample.docx"], meta={"date_added": datetime.now().isoformat()})
     documents = results["documents"]
     print(documents[0].content)
-    # 'This is a text from the Docx file.'
+    # 'This is a text from the DOCX file.'
     ```
     """
 
     def __init__(self):
         """
-        Create a DocxToDocument component.
+        Create a DOCXToDocument component.
         """
         docx_import.check()
 
@@ -92,7 +92,7 @@ class DocxToDocument:
         meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
     ):
         """
-        Converts Docx files to Documents.
+        Converts DOCX files to Documents.
 
         :param sources:
             List of file paths or ByteStream objects.
@@ -123,7 +123,7 @@ class DocxToDocument:
                 text = "\n".join(paragraphs)
             except Exception as e:
                 logger.warning(
-                    "Could not read {source} and convert it to a Docx Document, skipping. Error: {error}",
+                    "Could not read {source} and convert it to a DOCX Document, skipping. Error: {error}",
                     source=source,
                     error=e,
                 )
@@ -136,17 +136,17 @@ class DocxToDocument:
 
         return {"documents": documents}
 
-    def _get_docx_metadata(self, document: "DocxDocument") -> DocxMetadata:
+    def _get_docx_metadata(self, document: "DocxDocument") -> DOCXMetadata:
         """
-        Get all relevant data from the 'core_properties' attribute from a Docx Document.
+        Get all relevant data from the 'core_properties' attribute from a DOCX Document.
 
         :param document:
-            The Docx Document you want to extract metadata from
+            The DOCX Document you want to extract metadata from
 
         :returns:
-            A `DocxMetadata` dataclass all the relevant fields from the 'core_properties'
+            A `DOCXMetadata` dataclass all the relevant fields from the 'core_properties'
         """
-        return DocxMetadata(
+        return DOCXMetadata(
             author=document.core_properties.author,
             category=document.core_properties.category,
             comments=document.core_properties.comments,

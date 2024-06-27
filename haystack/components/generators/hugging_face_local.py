@@ -58,7 +58,7 @@ class HuggingFaceLocalGenerator:
         model: str = "google/flan-t5-base",
         task: Optional[Literal["text-generation", "text2text-generation"]] = None,
         device: Optional[ComponentDevice] = None,
-        token: Optional[Secret] = Secret.from_env_var("HF_API_TOKEN", strict=False),
+        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         generation_kwargs: Optional[Dict[str, Any]] = None,
         huggingface_pipeline_kwargs: Optional[Dict[str, Any]] = None,
         stop_words: Optional[List[str]] = None,

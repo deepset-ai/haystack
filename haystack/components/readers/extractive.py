@@ -55,7 +55,7 @@ class ExtractiveReader:
         self,
         model: Union[Path, str] = "deepset/roberta-base-squad2-distilled",
         device: Optional[ComponentDevice] = None,
-        token: Optional[Secret] = Secret.from_env_var("HF_API_TOKEN", strict=False),
+        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         top_k: int = 20,
         score_threshold: Optional[float] = None,
         max_seq_length: int = 384,

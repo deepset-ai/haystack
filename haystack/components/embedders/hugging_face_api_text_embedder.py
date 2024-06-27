@@ -73,7 +73,7 @@ class HuggingFaceAPITextEmbedder:
         self,
         api_type: Union[HFEmbeddingAPIType, str],
         api_params: Dict[str, str],
-        token: Optional[Secret] = Secret.from_env_var("HF_API_TOKEN", strict=False),
+        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         prefix: str = "",
         suffix: str = "",
         truncate: bool = True,

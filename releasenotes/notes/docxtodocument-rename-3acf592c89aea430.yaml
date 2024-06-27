@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Renamed component from DocxToDocument to DOCXToDocument to follow the naming convention of other converter components.
