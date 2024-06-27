@@ -180,13 +180,19 @@ class DocumentSplitter:
             doc.meta["split_idx_start"] = split_idx
             documents.append(doc)
 
-            if self.split_overlap > 0:
-                doc.meta["_split_overlap"] = []
-                if i != 0:
-                    doc_start_idx = splits_start_idxs[i]
-                    previous_doc = documents[i - 1]
-                    previous_doc_start_idx = splits_start_idxs[i - 1]
-                    self._add_split_overlap_information(doc, doc_start_idx, previous_doc, previous_doc_start_idx)
+            if self.split_overlap <= 0:
+                continue
+
+            doc.meta["_split_overlap"] = []
+
+            if i == 0:
+                continue
+
+            doc_start_idx = splits_start_idxs[i]
+            previous_doc = documents[i - 1]
+            previous_doc_start_idx = splits_start_idxs[i - 1]
+            self._add_split_overlap_information(doc, doc_start_idx, previous_doc, previous_doc_start_idx)
+
 
         return documents
 
