@@ -46,10 +46,12 @@ class TestLinkContentFetcher:
         assert fetcher.retry_attempts == 2
         assert fetcher.timeout == 3
         assert fetcher.handlers == {
-            "text/html": _text_content_handler,
-            "text/plain": _text_content_handler,
-            "application/pdf": _binary_content_handler,
-            "application/octet-stream": _binary_content_handler,
+            "text/*": _text_content_handler,
+            "application/json": _text_content_handler,
+            "application/*": _binary_content_handler,
+            "image/*": _binary_content_handler,
+            "audio/*": _binary_content_handler,
+            "video/*": _binary_content_handler,
         }
         assert hasattr(fetcher, "_get_response")
 
@@ -191,3 +193,11 @@ class TestLinkContentFetcher:
         fetcher = LinkContentFetcher()
         with pytest.raises(requests.exceptions.ConnectionError):
             fetcher.run(["https://non_existent_website_dot.com/"])
+
+    @pytest.mark.integration
+    def test_link_content_fetcher_audio(self):
+        fetcher = LinkContentFetcher()
+        streams = fetcher.run(["https://download.samplelib.com/mp3/sample-3s.mp3"])["streams"]
+        first_stream = streams[0]
+        assert first_stream.meta["content_type"] == "audio/mpeg"
+        assert len(first_stream.data) > 0
