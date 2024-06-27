@@ -5,17 +5,17 @@ import pytest
 
 from haystack.dataclasses import ByteStream
 from haystack import Document
-from haystack.components.converters.docx import DocxToDocument, DocxMetadata
+from haystack.components.converters.docx import DOCXToDocument, DOCXMetadata
 
 
 @pytest.fixture
 def docx_converter():
-    return DocxToDocument()
+    return DOCXToDocument()
 
 
-class TestDocxToDocument:
+class TestDOCXToDocument:
     def test_init(self, docx_converter):
-        assert isinstance(docx_converter, DocxToDocument)
+        assert isinstance(docx_converter, DOCXToDocument)
 
     def test_run(self, test_files_path, docx_converter):
         """
@@ -29,7 +29,7 @@ class TestDocxToDocument:
         assert docs[0].meta.keys() == {"file_path", "docx"}
         assert docs[0].meta == {
             "file_path": str(paths[0]),
-            "docx": DocxMetadata(
+            "docx": DOCXMetadata(
                 author="Microsoft Office User",
                 category="",
                 comments="",
@@ -54,7 +54,7 @@ class TestDocxToDocument:
         doc = output["documents"][0]
         assert doc.meta == {
             "file_path": str(paths[0]),
-            "docx": DocxMetadata(
+            "docx": DOCXMetadata(
                 author="Microsoft Office User",
                 category="",
                 comments="",
@@ -106,7 +106,7 @@ class TestDocxToDocument:
         assert "History and standardization" in docs[1].content
 
     def test_document_with_docx_metadata_to_dict(self):
-        docx_metadata = DocxMetadata(
+        docx_metadata = DOCXMetadata(
             author="Microsoft Office User",
             category="category",
             comments="comments",
