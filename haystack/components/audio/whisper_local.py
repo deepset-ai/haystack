@@ -17,6 +17,19 @@ with LazyImport("Run 'pip install \"openai-whisper>=20231106\"' to install whisp
 
 logger = logging.getLogger(__name__)
 WhisperLocalModel = Literal[
+    "base",
+    "base.en",
+    "large",
+    "large-v1",
+    "large-v2",
+    "large-v3",
+    "medium",
+    "medium.en",
+    "small",
+    "small.en",
+    "tiny",
+    "tiny.en"
+]
     "tiny.en",
     "tiny",
     "base.en",
