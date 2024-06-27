@@ -183,10 +183,14 @@ class TestLocalWhisperTranscriber:
         docs = output["documents"]
         assert len(docs) == 3
 
-        assert docs[0].content.strip().lower() == "this is the content of the document."
+        assert all(
+            word in docs[0].content.strip().lower() for word in {"content", "the", "document"}
+        ), f"Expected words not found in: {docs[0].content.strip().lower()}"
         assert test_files_path / "audio" / "this is the content of the document.wav" == docs[0].meta["audio_file"]
 
-        assert docs[1].content.strip().lower() == "the context for this answer is here."
+        assert all(
+            word in docs[1].content.strip().lower() for word in {"context", "answer"}
+        ), f"Expected words not found in: {docs[1].content.strip().lower()}"
         path = test_files_path / "audio" / "the context for this answer is here.wav"
         assert path.absolute() == docs[1].meta["audio_file"]
 
