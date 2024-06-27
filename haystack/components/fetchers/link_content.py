@@ -98,6 +98,7 @@ class LinkContentFetcher:
         self.handlers["text/*"] = _text_content_handler
         self.handlers["application/json"] = _text_content_handler
         self.handlers["application/*"] = _binary_content_handler
+        self.handlers["image/*"] = _binary_content_handler
         self.handlers["audio/*"] = _binary_content_handler
         self.handlers["video/*"] = _binary_content_handler
 
