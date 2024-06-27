@@ -76,7 +76,7 @@ class HuggingFaceAPIGenerator:
         self,
         api_type: Union[HFGenerationAPIType, str],
         api_params: Dict[str, str],
-        token: Optional[Secret] = Secret.from_env_var("HF_API_TOKEN", strict=False),
+        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         generation_kwargs: Optional[Dict[str, Any]] = None,
         stop_words: Optional[List[str]] = None,
         streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,

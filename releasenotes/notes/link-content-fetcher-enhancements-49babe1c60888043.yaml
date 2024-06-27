@@ -1,0 +1,4 @@
+---
+enhancements:
+ - |
+   Improve LinkContentFetcher to support a broader range of content types, including glob patterns for text, application, audio, and video types. This update introduces a more flexible content handler resolution mechanism, allowing for direct matches and pattern matching, thereby greatly improving the handler's adaptability to various content types encountered on the web.
