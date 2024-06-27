@@ -49,6 +49,7 @@ class TestLinkContentFetcher:
             "text/*": _text_content_handler,
             "application/json": _text_content_handler,
             "application/*": _binary_content_handler,
+            "image/*": _binary_content_handler,
             "audio/*": _binary_content_handler,
             "video/*": _binary_content_handler,
         }
