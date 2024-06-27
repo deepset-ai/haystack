@@ -193,7 +193,6 @@ class DocumentSplitter:
             previous_doc_start_idx = splits_start_idxs[i - 1]
             self._add_split_overlap_information(doc, doc_start_idx, previous_doc, previous_doc_start_idx)
 
-
         return documents
 
     @staticmethod
@@ -202,6 +201,11 @@ class DocumentSplitter:
     ):
         """
         Adds split overlap information to the current and previous Document's meta.
+
+        :param current_doc: The Document that is being split.
+        :param current_doc_start_idx: The starting index of the current Document.
+        :param previous_doc: The Document that was split before the current Document.
+        :param previous_doc_start_idx: The starting index of the previous Document.
         """
         overlapping_range = (current_doc_start_idx - previous_doc_start_idx - 1, len(previous_doc.content) - 1)  # type: ignore
 
