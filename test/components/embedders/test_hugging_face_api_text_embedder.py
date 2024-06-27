@@ -100,7 +100,7 @@ class TestHuggingFaceAPITextEmbedder:
             "init_parameters": {
                 "api_type": "serverless_inference_api",
                 "api_params": {"model": "BAAI/bge-small-en-v1.5"},
-                "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
+                "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
                 "prefix": "prefix",
                 "suffix": "suffix",
                 "truncate": False,
@@ -114,7 +114,7 @@ class TestHuggingFaceAPITextEmbedder:
             "init_parameters": {
                 "api_type": HFEmbeddingAPIType.SERVERLESS_INFERENCE_API,
                 "api_params": {"model": "BAAI/bge-small-en-v1.5"},
-                "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
+                "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
                 "prefix": "prefix",
                 "suffix": "suffix",
                 "truncate": False,

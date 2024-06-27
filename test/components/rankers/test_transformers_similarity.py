@@ -23,7 +23,7 @@ class TestSimilarityRanker:
             "init_parameters": {
                 "device": None,
                 "top_k": 10,
-                "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
+                "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
                 "query_prefix": "",
                 "document_prefix": "",
                 "model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
@@ -88,7 +88,7 @@ class TestSimilarityRanker:
                 "top_k": 10,
                 "query_prefix": "",
                 "document_prefix": "",
-                "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
+                "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
                 "model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
                 "meta_fields_to_embed": [],
                 "embedding_separator": "\n",

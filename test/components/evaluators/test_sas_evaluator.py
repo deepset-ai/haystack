@@ -28,7 +28,7 @@ class TestSASEvaluator:
                 "model": "sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
                 "batch_size": 32,
                 "device": {"type": "single", "device": "cuda:0"},
-                "token": {"type": "env_var", "env_vars": ["HF_API_TOKEN"], "strict": False},
+                "token": {"type": "env_var", "env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False},
             },
         }
         assert evaluator.to_dict() == expected_dict
@@ -42,7 +42,7 @@ class TestSASEvaluator:
                     "model": "sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
                     "batch_size": 32,
                     "device": {"type": "single", "device": "cuda:0"},
-                    "token": {"type": "env_var", "env_vars": ["HF_API_TOKEN"], "strict": False},
+                    "token": {"type": "env_var", "env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False},
                 },
             }
         )
