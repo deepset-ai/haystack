@@ -256,6 +256,12 @@ class TestContextRelevanceEvaluator:
         nested_required_fields = {"score", "statement_scores", "statements"}
         assert all(field in result["results"][0] for field in nested_required_fields)
 
+        # assert metadata is present
+        assert "metadata" in result
+        assert "metadata" in result["metadata"][0]["usage"]["prompt_tokens"]
+        assert "metadata" in result["metadata"][0]["usage"]["completion_tokens"]
+        assert "metadata" in result["metadata"][0]["usage"]["total_tokens"]
+
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
