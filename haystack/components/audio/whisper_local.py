@@ -16,7 +16,20 @@ with LazyImport("Run 'pip install \"openai-whisper>=20231106\"' to install whisp
 
 
 logger = logging.getLogger(__name__)
-WhisperLocalModel = Literal["tiny", "small", "medium", "large", "large-v2"]
+WhisperLocalModel = Literal[
+    "base",
+    "base.en",
+    "large",
+    "large-v1",
+    "large-v2",
+    "large-v3",
+    "medium",
+    "medium.en",
+    "small",
+    "small.en",
+    "tiny",
+    "tiny.en",
+]
 
 
 @component
@@ -161,25 +174,21 @@ class LocalWhisperTranscriber:
             raise RuntimeError("Model is not loaded, please run 'warm_up()' before calling 'run()'")
 
         return_segments = kwargs.pop("return_segments", False)
-        transcriptions: Dict[Path, Any] = {}
+        transcriptions = {}
+
         for source in sources:
-            if not isinstance(source, ByteStream):
-                path = Path(source)
-                source = ByteStream.from_file_path(path)
-                source.meta["file_path"] = path
-            else:
-                # If we received a ByteStream instance that doesn't have the "file_path" metadata set,
-                # we dump the bytes into a temporary file.
-                path = source.meta.get("file_path")
-                if path is None:
-                    fp = tempfile.NamedTemporaryFile(delete=False)
+            path = Path(source) if not isinstance(source, ByteStream) else source.meta.get("file_path")
+
+            if isinstance(source, ByteStream) and path is None:
+                with tempfile.NamedTemporaryFile(delete=False) as fp:
                     path = Path(fp.name)
                     source.to_file(path)
-                    source.meta["file_path"] = path
 
             transcription = self._model.transcribe(str(path), **kwargs)
+
             if not return_segments:
                 transcription.pop("segments", None)
+
             transcriptions[path] = transcription
 
         return transcriptions

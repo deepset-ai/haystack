@@ -90,38 +90,38 @@ class DocumentSplitter:
                     f"DocumentSplitter only works with text documents but content for document ID {doc.id} is None."
                 )
             units = self._split_into_units(doc.content, self.split_by)
-            text_splits, splits_pages = self._concatenate_units(
+            text_splits, splits_pages, splits_start_idxs = self._concatenate_units(
                 units, self.split_length, self.split_overlap, self.split_threshold
             )
             metadata = deepcopy(doc.meta)
             metadata["source_id"] = doc.id
             split_docs += self._create_docs_from_splits(
-                text_splits=text_splits, splits_pages=splits_pages, meta=metadata
+                text_splits=text_splits, splits_pages=splits_pages, splits_start_idxs=splits_start_idxs, meta=metadata
             )
         return {"documents": split_docs}
 
     def _split_into_units(self, text: str, split_by: Literal["word", "sentence", "passage", "page"]) -> List[str]:
         if split_by == "page":
-            split_at = "\f"
+            self.split_at = "\f"
         elif split_by == "passage":
-            split_at = "\n\n"
+            self.split_at = "\n\n"
         elif split_by == "sentence":
-            split_at = "."
+            self.split_at = "."
         elif split_by == "word":
-            split_at = " "
+            self.split_at = " "
         else:
             raise NotImplementedError(
                 "DocumentSplitter only supports 'word', 'sentence', 'page' or 'passage' split_by options."
             )
-        units = text.split(split_at)
+        units = text.split(self.split_at)
         # Add the delimiter back to all units except the last one
         for i in range(len(units) - 1):
-            units[i] += split_at
+            units[i] += self.split_at
         return units
 
     def _concatenate_units(
         self, elements: List[str], split_length: int, split_overlap: int, split_threshold: int
-    ) -> Tuple[List[str], List[int]]:
+    ) -> Tuple[List[str], List[int], List[int]]:
         """
         Concatenates the elements into parts of split_length units.
 
@@ -132,36 +132,90 @@ class DocumentSplitter:
 
         text_splits: List[str] = []
         splits_pages = []
+        splits_start_idxs = []
+        split_at_len = len(self.split_at)
+        cur_start_idx = 0
         cur_page = 1
         segments = windowed(elements, n=split_length, step=split_length - split_overlap)
+
         for seg in segments:
             current_units = [unit for unit in seg if unit is not None]
             txt = "".join(current_units)
+
             # check if length of current units is below split_threshold
             if len(current_units) < split_threshold and len(text_splits) > 0:
                 # concatenate the last split with the current one
                 text_splits[-1] += txt
+
             elif len(txt) > 0:
                 text_splits.append(txt)
                 splits_pages.append(cur_page)
+                splits_start_idxs.append(cur_start_idx)
+
             processed_units = current_units[: split_length - split_overlap]
+            cur_start_idx += len("".join(processed_units)) + split_at_len
+
             if self.split_by == "page":
                 num_page_breaks = len(processed_units)
             else:
                 num_page_breaks = sum(processed_unit.count("\f") for processed_unit in processed_units)
-            cur_page += num_page_breaks
-        return text_splits, splits_pages
 
-    @staticmethod
-    def _create_docs_from_splits(text_splits: List[str], splits_pages: List[int], meta: Dict) -> List[Document]:
+            cur_page += num_page_breaks
+
+        return text_splits, splits_pages, splits_start_idxs
+
+    def _create_docs_from_splits(
+        self, text_splits: List[str], splits_pages: List[int], splits_start_idxs: List[int], meta: Dict
+    ) -> List[Document]:
         """
         Creates Document objects from splits enriching them with page number and the metadata of the original document.
         """
         documents: List[Document] = []
 
-        for i, txt in enumerate(text_splits):
+        for i, (txt, split_idx) in enumerate(zip(text_splits, splits_start_idxs)):
             meta = deepcopy(meta)
             doc = Document(content=txt, meta=meta)
             doc.meta["page_number"] = splits_pages[i]
+            doc.meta["split_id"] = i
+            doc.meta["split_idx_start"] = split_idx
             documents.append(doc)
+
+            if self.split_overlap <= 0:
+                continue
+
+            doc.meta["_split_overlap"] = []
+
+            if i == 0:
+                continue
+
+            doc_start_idx = splits_start_idxs[i]
+            previous_doc = documents[i - 1]
+            previous_doc_start_idx = splits_start_idxs[i - 1]
+            self._add_split_overlap_information(doc, doc_start_idx, previous_doc, previous_doc_start_idx)
+
         return documents
+
+    @staticmethod
+    def _add_split_overlap_information(
+        current_doc: Document, current_doc_start_idx: int, previous_doc: Document, previous_doc_start_idx: int
+    ):
+        """
+        Adds split overlap information to the current and previous Document's meta.
+
+        :param current_doc: The Document that is being split.
+        :param current_doc_start_idx: The starting index of the current Document.
+        :param previous_doc: The Document that was split before the current Document.
+        :param previous_doc_start_idx: The starting index of the previous Document.
+        """
+        overlapping_range = (current_doc_start_idx - previous_doc_start_idx - 1, len(previous_doc.content) - 1)  # type: ignore
+
+        if overlapping_range[0] < overlapping_range[1]:
+            overlapping_str = previous_doc.content[overlapping_range[0] : overlapping_range[1]]  # type: ignore
+
+            if current_doc.content.startswith(overlapping_str):  # type: ignore
+                # add split overlap information to this Document regarding the previous Document
+                current_doc.meta["_split_overlap"].append({"doc_id": previous_doc.id, "range": overlapping_range})
+
+                # add split overlap information to previous Document regarding this Document
+                overlapping_range = (0, overlapping_range[1] - overlapping_range[0])
+                previous_doc.meta["_split_overlap"].append({"doc_id": current_doc.id, "range": overlapping_range})
