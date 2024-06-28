@@ -322,7 +322,7 @@ class TestAzureOCRDocumentConverter:
             azure_mock.return_value = MockPoller()
             ocr_node = AzureOCRDocumentConverter(endpoint="")
             bytes = (test_files_path / "pdf" / "sample_pdf_1.pdf").read_bytes()
-            byte_stream = ByteStream(bytes=bytes, meta={"test_from": "byte_stream"})
+            byte_stream = ByteStream(data=bytes, meta={"test_from": "byte_stream"})
             out = ocr_node.run(sources=[byte_stream], meta=[{"test": "value_1"}])
 
         docs = out["documents"]
