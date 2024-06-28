@@ -1,0 +1,9 @@
+---
+highlights: >
+    Added multi modal content to ChatMessage.
+features:
+  - |
+    The content attribute of ChatMessage accepts str, ByteSteam and a list of both.
+    By differentiating each content type, you can store images and image urls in ChatMessage so you can
+    build multi modal chat applications using haystack. Support for Audio, video and other content Types
+    is coming.
