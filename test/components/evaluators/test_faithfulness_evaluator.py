@@ -179,6 +179,7 @@ class TestFaithfulnessEvaluator:
                 {"score": 1, "statement_scores": [1, 1], "statements": ["c", "d"]},
             ],
             "score": 0.75,
+            "metadata": None,
         }
 
     def test_run_no_statements_extracted(self, monkeypatch):
@@ -215,6 +216,7 @@ class TestFaithfulnessEvaluator:
                 {"score": 0, "statement_scores": [], "statements": []},
             ],
             "score": 0.25,
+            "metadata": None,
         }
 
     def test_run_missing_parameters(self, monkeypatch):
