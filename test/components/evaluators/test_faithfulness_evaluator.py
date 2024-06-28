@@ -287,6 +287,6 @@ class TestFaithfulnessEvaluator:
 
         # assert that metadata is present in the result
         assert "metadata" in result
-        assert "metadata" in result["metadata"][0]["usage"]["prompt_tokens"]
-        assert "metadata" in result["metadata"][0]["usage"]["completion_tokens"]
-        assert "metadata" in result["metadata"][0]["usage"]["total_tokens"]
+        assert "prompt_tokens" in result["metadata"][0]["usage"]
+        assert "completion_tokens" in result["metadata"][0]["usage"]
+        assert "total_tokens" in result["metadata"][0]["usage"]
