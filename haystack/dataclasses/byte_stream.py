@@ -63,3 +63,15 @@ class ByteStream:
         :raises: UnicodeDecodeError: If the ByteStream data cannot be decoded with the specified encoding.
         """
         return self.data.decode(encoding)
+
+    @classmethod
+    def from_base64_image(cls, image: bytes, meta: Optional[Dict[str, Any]] = None) -> "ByteStream":
+        """
+        Create a ByteStream containing a base64 image.
+
+        The 'mime_type' field will be populated with 'image_base64'.
+
+        :param image: The base 64 encoded image
+        :param meta: Additional metadata to be stored with the ByteStream.
+        """
+        return cls(data=image, mime_type="image_base64", meta=meta or {})

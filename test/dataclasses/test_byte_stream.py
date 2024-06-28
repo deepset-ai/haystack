@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import pytest
+import base64
 
 from haystack.dataclasses import ByteStream
 
@@ -71,3 +72,17 @@ def test_to_file(tmp_path, request):
     ByteStream(test_str.encode()).to_file(test_path)
     with open(test_path, "rb") as fd:
         assert fd.read().decode() == test_str
+
+
+def test_from_base64_image(test_files_path):
+    # Function to encode the image
+    def encode_image(image_path):
+        with open(image_path, "rb") as image_file:
+            return base64.b64encode(image_file.read())
+
+    base64_image = encode_image(test_files_path / "images" / "apple.jpg")
+
+    b = ByteStream.from_base64_image(base64_image, {"some": "some"})
+    assert b.data == base64_image
+    assert b.mime_type == "image_base64"
+    assert b.meta == {"some": "some"}
