@@ -129,6 +129,10 @@ class ChatMessage:
 
         return content, content_type
 
+    def get_content_types(self) -> Union[ContentType, List[ContentType]]:
+        """Returns the content of the '__haystack_content_type__' meta key."""
+        return self.meta["__haystack_content_type__"]
+
     def to_openai_format(self) -> Dict[str, Any]:
         """
         Convert the message to the format expected by OpenAI's Chat API.
@@ -140,10 +144,38 @@ class ChatMessage:
             - `content`
             - `name` (optional)
         """
-        msg = {"role": self.role.value, "content": self.content}
+        msg = {"role": self.role.value}
         if self.name:
             msg["name"] = self.name
 
+        types = self.get_content_types()
+        if isinstance(types, list):
+            content = []
+            for type_, part in zip(types, self.content):
+                if type_ is ContentType.TEXT:
+                    content.append({"type": "text", "text": part})
+                elif type_ is ContentType.IMAGE_URL:
+                    content.append({"type": "image_url", "image_url": {"url": part}})
+                elif type_ is ContentType.IMAGE_BASE64:
+                    content.append(
+                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{part.to_string()}"}}
+                    )
+                else:
+                    raise ValueError("The content types stored at metadata '__haystack_content_type__' was corrupted.")
+        else:
+            if types is ContentType.TEXT:
+                content: str = self.content
+            elif types is ContentType.IMAGE_URL:
+                content = {"type": "image_url", "image_url": {"url": self.content}}
+            elif types is ContentType.IMAGE_BASE64:
+                content = {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/jpeg;base64,{self.content.to_string()}"},
+                }
+            else:
+                raise ValueError("The content types stored at metadata '__haystack_content_type__' was corrupted.")
+
+        msg["content"] = content
         return msg
 
     def is_from(self, role: ChatRole) -> bool:
