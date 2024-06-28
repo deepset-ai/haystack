@@ -78,16 +78,14 @@ class ChatMessage:
                     content.append(part_content)
                     content_types.append(content_type)
                 else:
-                    raise ValueError(
-                        "Invalid element in content. Valid types are str and ByteStream" "Element: " + part
-                    )
+                    raise ValueError("Invalid element in content. Valid types are str and ByteStream" "Element: {part}")
             self.content = content
             self.meta["__haystack_content_type__"] = content_types
         else:
             raise ValueError(
-                "Invalid type of content. Valid types are str, "
-                "ByteStream and a list of str and ByteStream objects."
-                "Content: " + self.content
+                f"Invalid type of content. Valid types are str, "
+                f"ByteStream and a list of str and ByteStream objects."
+                f"Content: {self.content}"
             )
 
     @staticmethod
@@ -211,8 +209,22 @@ class ChatMessage:
         data = asdict(self)
         data["role"] = self.role.value
         if "__haystack_content_type__" in data["meta"]:
-            data["meta"].pop("__haystack_content_type__")
+            types = data["meta"].pop("__haystack_content_type__")
+            if isinstance(types, list):
+                content = []
+                for type_, part in zip(types, self.content):
+                    if type_ is ContentType.IMAGE_URL:
+                        full_part = f"image_url:{part}"
+                    elif type_ in ContentType.valid_byte_stream_types():
+                        full_part = asdict(part)
+                    else:
+                        full_part = part
+                    content.append(full_part)
 
+                data["content"] = content
+            else:
+                if types is ContentType.IMAGE_URL:
+                    data["content"] = f"image_url:{data['content']}"
         return data
 
     @classmethod
@@ -226,5 +238,23 @@ class ChatMessage:
             The created object.
         """
         data["role"] = ChatRole(data["role"])
+
+        if "content" in data:
+            if isinstance(data["content"], str):
+                pass
+            elif isinstance(data["content"], dict):
+                data["content"] = ByteStream(**data["content"])
+            elif isinstance(data["content"], list):
+                content = []
+                for part in data["content"]:
+                    if isinstance(part, str):
+                        content.append(part)
+                    elif isinstance(part, dict):
+                        content.append(ByteStream(**part))
+                    else:
+                        raise ValueError("Invalid dict contains non deserializable content.")
+                data["content"] = content
+            else:
+                raise ValueError("Invalid dict contains non deserializable content.")
 
         return cls(**data)

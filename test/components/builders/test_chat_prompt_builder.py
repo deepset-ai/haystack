@@ -6,6 +6,7 @@ from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
 from haystack import component
 from haystack.core.pipeline.pipeline import Pipeline
 from haystack.dataclasses.chat_message import ChatMessage
+from haystack.dataclasses.byte_stream import ByteStream
 from haystack.dataclasses.document import Document
 
 
@@ -535,3 +536,52 @@ class TestChatPromptBuilderDynamic:
         ]
         assert component._variables == ["var", "required_var"]
         assert component._required_variables == ["required_var"]
+
+    def test_init_with_non_text_chat_message_content(self):
+        messages = [
+            ChatMessage.from_system("this is {{data}}"),
+            ChatMessage.from_user("image_url:images.com/{{image}}"),
+            ChatMessage.from_assistant(ByteStream(data=b"{{bytes}}", mime_type="image_base64")),
+            ChatMessage.from_user(
+                [
+                    "this is {{text}}",
+                    "image_url:more.images.com/{{more}}",
+                    ByteStream(data=b"more {{content}}", mime_type="image_base64"),
+                ]
+            ),
+        ]
+
+        prompt_builder = ChatPromptBuilder(template=messages)
+
+        assert prompt_builder.template == messages
+
+    def test_run_with_non_text_chat_message_content(self):
+        messages = [
+            ChatMessage.from_system("this is {{data}}"),
+            ChatMessage.from_user("image_url:images.com/{{image}}"),
+            ChatMessage.from_assistant(ByteStream(data=b"{{bytes}}", mime_type="image_base64")),
+            ChatMessage.from_user(
+                [
+                    "this is {{text}}",
+                    "image_url:more.images.com/{{more}}",
+                    ByteStream(data=b"more {{content}}", mime_type="image_base64"),
+                ]
+            ),
+        ]
+
+        prompt = ChatPromptBuilder().run(
+            template=messages, data="TEXT", image="test.jpg", text="a string", more="apple.png", content="BYTES"
+        )
+
+        assert prompt["prompt"] == [
+            ChatMessage.from_system("this is TEXT"),
+            ChatMessage.from_user("image_url:images.com/test.jpg"),
+            ChatMessage.from_assistant(ByteStream(data=b"{{bytes}}", mime_type="image_base64")),
+            ChatMessage.from_user(
+                [
+                    "this is a string",
+                    "image_url:more.images.com/apple.png",
+                    ByteStream(data=b"more BYTES", mime_type="image_base64"),
+                ]
+            ),
+        ]

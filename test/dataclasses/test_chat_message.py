@@ -89,10 +89,72 @@ def test_to_dict():
 
     assert message.to_dict() == {"content": "content", "role": "user", "name": None, "meta": {"some": "some"}}
 
+    message = ChatMessage.from_assistant("image_url:images.com/test.jpg")
+    assert message.to_dict() == {
+        "content": "image_url:images.com/test.jpg",
+        "role": "assistant",
+        "name": None,
+        "meta": {},
+    }
+
+    message = ChatMessage.from_system(ByteStream(b"bytes", mime_type="image_base64"))
+    assert message.to_dict() == {
+        "content": {"data": b"bytes", "mime_type": "image_base64", "meta": {}},
+        "role": "system",
+        "name": None,
+        "meta": {},
+    }
+
+    message = ChatMessage.from_user(
+        content=["string content", "image_url:images.com/test.jpg", ByteStream(b"bytes", mime_type="image_base64")]
+    )
+    assert message.to_dict() == {
+        "content": [
+            "string content",
+            "image_url:images.com/test.jpg",
+            {"data": b"bytes", "mime_type": "image_base64", "meta": {}},
+        ],
+        "role": "user",
+        "name": None,
+        "meta": {},
+    }
+
 
 def test_from_dict():
     assert ChatMessage.from_dict(data={"content": "text", "role": "user", "name": None}) == ChatMessage(
-        content="text", role=ChatRole("user"), name=None, meta={}
+        content="text", role=ChatRole.USER, name=None, meta={}
+    )
+
+    assert ChatMessage.from_dict(
+        data={"content": "image_url:images.com", "role": "user", "name": None, "meta": {}}
+    ) == ChatMessage(content="image_url:images.com", role=ChatRole.USER, name=None, meta={})
+
+    assert ChatMessage.from_dict(
+        data={
+            "content": {"data": b"bytes", "mime_type": "image_base64", "meta": {}},
+            "role": "user",
+            "name": None,
+            "meta": {},
+        }
+    ) == ChatMessage(
+        content=ByteStream(data=b"bytes", mime_type="image_base64"), role=ChatRole.USER, name=None, meta={}
+    )
+    assert ChatMessage.from_dict(
+        data={
+            "content": [
+                "string content",
+                "image_url:images.com/test.jpg",
+                {"data": b"bytes", "mime_type": "image_base64", "meta": {}},
+            ],
+            "role": "user",
+            "name": None,
+            "meta": {},
+        }
+    ) == ChatMessage(
+        content=["string content", "image_url:images.com/test.jpg", ByteStream(b"bytes", mime_type="image_base64")],
+        role=ChatRole.USER,
+        name=None,
+        meta={},
     )
 
 
@@ -133,7 +195,7 @@ def test_post_init_raises_value_error_if_mime_type_is_none_or_invalid():
         ChatMessage.from_user(ByteStream.from_string("content"))
 
     with pytest.raises(ValueError):
-        ChatMessage.from_user(ByteStream("content", mime_type="fails"))
+        ChatMessage.from_user(ByteStream(b"content", mime_type="fails"))
 
     with pytest.raises(ValueError):
-        ChatMessage.from_user(ByteStream("content", mime_type="text"))
+        ChatMessage.from_user(ByteStream(b"content", mime_type="text"))

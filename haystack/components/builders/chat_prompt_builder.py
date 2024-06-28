@@ -2,11 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from copy import deepcopy
 from typing import Any, Dict, List, Optional, Set
 
 from jinja2 import Template, meta
 
 from haystack import component, default_from_dict, default_to_dict, logging
+from haystack.dataclasses.byte_stream import ByteStream
 from haystack.dataclasses.chat_message import ChatMessage, ChatRole
 
 logger = logging.getLogger(__name__)
@@ -127,10 +129,40 @@ class ChatPromptBuilder:
             for message in template:
                 if message.is_from(ChatRole.USER) or message.is_from(ChatRole.SYSTEM):
                     # infere variables from template
-                    msg_template = Template(message.content)
-                    ast = msg_template.environment.parse(message.content)
-                    template_variables = meta.find_undeclared_variables(ast)
-                    variables += list(template_variables)
+                    if isinstance(message.content, str):
+                        msg_template = Template(message.content)
+                        ast = msg_template.environment.parse(message.content)
+                        template_variables = meta.find_undeclared_variables(ast)
+                        variables += list(template_variables)
+                    elif isinstance(message.content, ByteStream):
+                        msg_template = Template(message.content.to_string())
+                        ast = msg_template.environment.parse(message.content.to_string())
+                        template_variables = meta.find_undeclared_variables(ast)
+                        variables += list(template_variables)
+                    elif isinstance(message.content, list):
+                        for content in message.content:
+                            if isinstance(content, str):
+                                msg_template = Template(content)
+                                ast = msg_template.environment.parse(content)
+                                template_variables = meta.find_undeclared_variables(ast)
+                                variables += list(template_variables)
+                            elif isinstance(content, ByteStream):
+                                msg_template = Template(content.to_string())
+                                ast = msg_template.environment.parse(content.to_string())
+                                template_variables = meta.find_undeclared_variables(ast)
+                                variables += list(template_variables)
+                            else:
+                                raise ValueError(
+                                    f"One of the elements of the content of a ChatMessage is of"
+                                    f" an invalid type: {type(content)}\nValid Types: str and ByteStream."
+                                    f"Content: {content}"
+                                )
+                    else:
+                        raise ValueError(
+                            f"The content of a ChatMessage is of an invalid type: {type(message.content)}"
+                            f"Valid Types: str, ByteStream and List[str, ByteSteam]"
+                            f"Content: {message.content}"
+                        )
 
         # setup inputs
         static_input_slots = {"template": Optional[str], "template_variables": Optional[Dict[str, Any]]}
@@ -194,13 +226,44 @@ class ChatPromptBuilder:
         for message in template:
             if message.is_from(ChatRole.USER) or message.is_from(ChatRole.SYSTEM):
                 self._validate_variables(set(template_variables_combined.keys()))
-                compiled_template = Template(message.content)
-                rendered_content = compiled_template.render(template_variables_combined)
-                rendered_message = (
-                    ChatMessage.from_user(rendered_content)
-                    if message.is_from(ChatRole.USER)
-                    else ChatMessage.from_system(rendered_content)
-                )
+                if isinstance(message.content, str):
+                    compiled_template = Template(message.content)
+                    rendered_content = compiled_template.render(template_variables_combined)
+                    rendered_message = deepcopy(message)
+                    rendered_message.content = rendered_content
+                elif isinstance(message.content, ByteStream):
+                    compiled_template = Template(message.content.to_string())
+                    rendered_content = compiled_template.render(template_variables_combined)
+                    rendered_message = deepcopy(message)
+                    rendered_message.content.data = rendered_content.encode()
+                elif isinstance(message.content, list):
+                    rendered_content = []
+                    for part in message.content:
+                        if isinstance(part, str):
+                            compiled_template = Template(part)
+                            rendered_part = compiled_template.render(template_variables_combined)
+                            rendered_content.append(rendered_part)
+                        elif isinstance(part, ByteStream):
+                            compiled_template = Template(part.to_string())
+                            rendered_part_content = compiled_template.render(template_variables_combined)
+                            rendered_part = deepcopy(part)
+                            rendered_part.data = rendered_part_content.encode()
+                            rendered_content.append(rendered_part)
+                        else:
+                            raise ValueError(
+                                f"One of the elements of the content of a ChatMessage is of"
+                                f" an invalid type: {type(part)}\nValid Types: str and ByteStream."
+                                f"Content: {part}"
+                            )
+
+                    rendered_message = deepcopy(message)
+                    rendered_message.content = rendered_content
+                else:
+                    raise ValueError(
+                        f"The content of a ChatMessage is of an invalid type: {type(message.content)}"
+                        f"Valid Types: str, ByteStream and List[str, ByteSteam]"
+                        f"Content: {message.content}"
+                    )
                 processed_messages.append(rendered_message)
             else:
                 processed_messages.append(message)
