@@ -123,8 +123,8 @@ class ChatMessage:
             raise ValueError(
                 f"The 'mime_type' attribute of the introduced content "
                 f"has a not valid ContentType for a ByteStream"
-                f"Value: {content_type}. Valid content types: {', '.join([
-                                 c.value for c in ContentType.valid_byte_stream_types()])}"
+                f"Value: {content_type}. Valid content types:"
+                + ", ".join([c.value for c in ContentType.valid_byte_stream_types()])
             )
 
         return content, content_type
