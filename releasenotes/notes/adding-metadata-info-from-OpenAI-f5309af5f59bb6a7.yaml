@@ -1,0 +1,5 @@
+---
+
+enhancements:
+  - |
+    Using "openai" for the LLM-based evaluators will the metadata from OpenAI in the output dictionary, under the key "metadata".
