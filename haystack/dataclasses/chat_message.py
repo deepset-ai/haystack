@@ -152,22 +152,22 @@ class ChatMessage:
         if isinstance(types, list):
             content = []
             for type_, part in zip(types, self.content):
-                if type_ is ContentType.TEXT:
+                if type_ is ContentType.TEXT and isinstance(part, str):
                     content.append({"type": "text", "text": part})
-                elif type_ is ContentType.IMAGE_URL:
+                elif type_ is ContentType.IMAGE_URL and isinstance(part, str):
                     content.append({"type": "image_url", "image_url": {"url": part}})
-                elif type_ is ContentType.IMAGE_BASE64:
+                elif type_ is ContentType.IMAGE_BASE64 and isinstance(part, ByteStream):
                     content.append(
                         {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{part.to_string()}"}}
                     )
                 else:
                     raise ValueError("The content types stored at metadata '__haystack_content_type__' was corrupted.")
         else:
-            if types is ContentType.TEXT:
+            if types is ContentType.TEXT and isinstance(self.content, str):
                 content: str = self.content
-            elif types is ContentType.IMAGE_URL:
+            elif types is ContentType.IMAGE_URL and isinstance(self.content, str):
                 content = {"type": "image_url", "image_url": {"url": self.content}}
-            elif types is ContentType.IMAGE_BASE64:
+            elif types is ContentType.IMAGE_BASE64 and isinstance(self.content, ByteStream):
                 content = {
                     "type": "image_url",
                     "image_url": {"url": f"data:image/jpeg;base64,{self.content.to_string()}"},
@@ -245,7 +245,7 @@ class ChatMessage:
             if isinstance(types, list):
                 content = []
                 for type_, part in zip(types, self.content):
-                    if type_ is ContentType.IMAGE_URL:
+                    if type_ is ContentType.IMAGE_URL and isinstance(part, str):
                         full_part = f"image_url:{part}"
                     elif type_ in ContentType.valid_byte_stream_types():
                         full_part = asdict(part)
@@ -255,7 +255,7 @@ class ChatMessage:
 
                 data["content"] = content
             else:
-                if types is ContentType.IMAGE_URL:
+                if types is ContentType.IMAGE_URL and isinstance(data["content"], str):
                     data["content"] = f"image_url:{data['content']}"
         return data
 
