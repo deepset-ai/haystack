@@ -149,7 +149,7 @@ class ChatMessage:
             msg["name"] = self.name
 
         types = self.get_content_types()
-        if isinstance(types, list):
+        if isinstance(types, list) and isinstance(self.content, list):
             content = []
             for type_, part in zip(types, self.content):
                 if type_ is ContentType.TEXT and isinstance(part, str):
