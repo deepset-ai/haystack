@@ -36,9 +36,7 @@ class Pipeline(PipelineBase):
             return False
         expected_inputs = instance.__haystack_input__._sockets_dict.keys()  # type: ignore
         current_inputs = inputs[name].keys()
-        if expected_inputs != current_inputs:
-            return False
-        return True
+        return expected_inputs == current_inputs
 
     def _run_component(self, name: str, inputs: Dict[str, Any]) -> Dict[str, Any]:
         """
