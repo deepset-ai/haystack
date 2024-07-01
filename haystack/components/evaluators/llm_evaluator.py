@@ -218,7 +218,7 @@ class LLMEvaluator:
             msg = f"LLM evaluator failed for {errors} out of {len(list_of_input_names_to_values)} inputs."
             warn(msg)
 
-        return {"results": results, "metadata": metadata}
+        return {"results": results, "meta": metadata}
 
     def prepare_template(self) -> str:
         """
