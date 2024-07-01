@@ -129,7 +129,7 @@ class DocumentJoiner:
             output.append(doc_with_best_score)
         return output
 
-    def _merge(self, document_lists) -> Dict[str, Document]:
+    def _merge(self, document_lists) -> List[Document]:
         """
         Merge multiple lists of Documents and calculate a weighted sum of the scores of duplicate Documents.
         """
@@ -147,7 +147,7 @@ class DocumentJoiner:
 
         return documents_map.values()
 
-    def _reciprocal_rank_fusion(self, document_lists) -> Dict[str, Document]:
+    def _reciprocal_rank_fusion(self, document_lists) -> List[Document]:
         """
         Merge multiple lists of Documents and assign scores based on reciprocal rank fusion.
 
