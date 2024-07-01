@@ -190,8 +190,12 @@ class TestRemoteWhisperTranscriber:
 
         assert docs[2].content.strip().lower() == "answer."
 
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
     @pytest.mark.integration
-    def test_whisper_local_transcriber_pipeline_and_url_source(self):
+    def test_whisper_remote_transcriber_pipeline_and_url_source(self):
         pipe = Pipeline()
         pipe.add_component("fetcher", LinkContentFetcher())
         pipe.add_component("transcriber", RemoteWhisperTranscriber())
