@@ -5,7 +5,7 @@
 import itertools
 from collections import defaultdict
 from math import inf
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 from haystack import Document, component, logging
 from haystack.core.component.types import Variadic
