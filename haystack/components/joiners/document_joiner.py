@@ -5,7 +5,7 @@
 import itertools
 from collections import defaultdict
 from math import inf
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from haystack import Document, component, logging
 from haystack.core.component.types import Variadic
@@ -116,7 +116,7 @@ class DocumentJoiner:
 
         return {"documents": output_documents}
 
-    def _concatenate(self, document_lists: list) -> list:
+    def _concatenate(self, document_lists: List[Any]) -> List[Any]:
         """
         Concatenate multiple lists of Documents and return only the Document with the highest score for duplicates.
         """
@@ -129,7 +129,7 @@ class DocumentJoiner:
             output.append(doc_with_best_score)
         return output
 
-    def _merge(self, document_lists: list) -> list:
+    def _merge(self, document_lists: List[Any]) -> List[Any]:
         """
         Merge multiple lists of Documents and calculate a weighted sum of the scores of duplicate Documents.
         """
@@ -147,7 +147,7 @@ class DocumentJoiner:
 
         return documents_map.values()
 
-    def _reciprocal_rank_fusion(self, document_lists: list) -> list:
+    def _reciprocal_rank_fusion(self, document_lists: List[Any]) -> List[Any]:
         """
         Merge multiple lists of Documents and assign scores based on reciprocal rank fusion.
 
@@ -176,7 +176,7 @@ class DocumentJoiner:
 
         return documents_map.values()
 
-    def _distribution_based_rank_fusion(self, document_lists: list) -> list:
+    def _distribution_based_rank_fusion(self, document_lists: List[Any]) -> List[Any]:
         """
         Merge multiple lists of Documents and assign scores based on Distribution-Based Score Fusion.
 
