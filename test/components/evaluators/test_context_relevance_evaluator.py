@@ -177,6 +177,7 @@ class TestContextRelevanceEvaluator:
                 {"score": 0, "relevant_statements": ["Insufficient Information"]},
             ],
             "score": 0.5,
+            "meta": None,
         }
 
     def test_run_missing_parameters(self, monkeypatch):
@@ -234,3 +235,8 @@ class TestContextRelevanceEvaluator:
         assert all(field in result for field in required_fields)
         nested_required_fields = {"score", "relevant_statements"}
         assert all(field in result["results"][0] for field in nested_required_fields)
+
+        assert "meta" in result
+        assert "prompt_tokens" in result["meta"][0]["usage"]
+        assert "completion_tokens" in result["meta"][0]["usage"]
+        assert "total_tokens" in result["meta"][0]["usage"]
