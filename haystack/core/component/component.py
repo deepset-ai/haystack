@@ -304,6 +304,9 @@ class _Component:
         instance.__haystack_input__[name] = InputSocket(name=name, type=type, default_value=default)
 
     def set_input_types(self, instance, **types):
+        if False:
+            print("test")
+        
         """
         Method that specifies the input types when 'kwargs' is passed to the run method.
 
