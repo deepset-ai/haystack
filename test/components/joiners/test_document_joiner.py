@@ -115,6 +115,36 @@ class TestDocumentJoiner:
         ]
         assert all(doc.id in expected_document_ids for doc in output["documents"])
 
+    def test_run_with_distribution_based_rank_fusion_join_mode(self):
+        joiner = DocumentJoiner(join_mode="distribution_based_rank_fusion")
+        documents_1 = [
+            Document(content="a", score=0.6),
+            Document(content="b", score=0.2),
+            Document(content="c", score=0.5),
+        ]
+        documents_2 = [
+            Document(content="d", score=0.5),
+            Document(content="e", score=0.8),
+            Document(content="f", score=1.1, meta={"key": "value"}),
+            Document(content="g", score=0.3),
+            Document(content="a", score=0.3),
+        ]
+        output = joiner.run([documents_1, documents_2])
+        assert len(output["documents"]) == 7
+        expected_document_ids = [
+            doc.id
+            for doc in [
+                Document(content="a", score=0.66),
+                Document(content="b", score=0.27),
+                Document(content="c", score=0.56),
+                Document(content="d", score=0.44),
+                Document(content="e", score=0.60),
+                Document(content="f", score=0.76, meta={"key": "value"}),
+                Document(content="g", score=0.33),
+            ]
+        ]
+        assert all(doc.id in expected_document_ids for doc in output["documents"])
+
     def test_run_with_top_k_in_run_method(self):
         joiner = DocumentJoiner()
         documents_1 = [Document(content="a"), Document(content="b"), Document(content="c")]

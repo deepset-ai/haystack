@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Added a new mode in JoinDocuments,
+    Distribution-based rank fusion as
+    [the article](https://medium.com/plain-simple-software/distribution-based-score-fusion-dbsf-a-new-approach-to-vector-search-ranking-f87c37488b18)
