@@ -1,0 +1,4 @@
+---
+features:
+ - |
+   Introduce predefined custom filters for OutputAdapter to easily enhance pipeline data manipulation capabilities.
