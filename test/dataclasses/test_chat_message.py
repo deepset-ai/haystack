@@ -4,7 +4,7 @@
 import pytest
 from transformers import AutoTokenizer
 
-from haystack.dataclasses import ChatMessage, ChatRole
+from haystack.dataclasses import ChatMessage, ChatRole, ContentType, ByteStream
 
 
 def test_from_assistant_with_valid_content():
@@ -51,6 +51,32 @@ def test_to_openai_format():
     assert message.to_openai_format() == {"role": "function", "content": "Function call", "name": "function_name"}
 
 
+def test_to_openai_format_with_multimodal_content():
+    message = ChatMessage.from_system("image_url:images.com/test.jpg")
+    assert message.to_openai_format() == {
+        "role": "system",
+        "content": {"type": "image_url", "image_url": {"url": "images.com/test.jpg"}},
+    }
+
+    message = ChatMessage.from_user(ByteStream.from_base64_image(b"image"))
+    assert message.to_openai_format() == {
+        "role": "user",
+        "content": {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,image"}},
+    }
+
+    message = ChatMessage.from_assistant(
+        ["this is text", "image_url:images.com/test.jpg", ByteStream.from_base64_image(b"IMAGE")]
+    )
+    assert message.to_openai_format() == {
+        "role": "assistant",
+        "content": [
+            {"type": "text", "text": "this is text"},
+            {"type": "image_url", "image_url": {"url": "images.com/test.jpg"}},
+            {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,IMAGE"}},
+        ],
+    }
+
+
 @pytest.mark.integration
 def test_apply_chat_templating_on_chat_message():
     messages = [ChatMessage.from_system("You are good assistant"), ChatMessage.from_user("I have a question")]
@@ -89,10 +115,72 @@ def test_to_dict():
 
     assert message.to_dict() == {"content": "content", "role": "user", "name": None, "meta": {"some": "some"}}
 
+    message = ChatMessage.from_assistant("image_url:images.com/test.jpg")
+    assert message.to_dict() == {
+        "content": "image_url:images.com/test.jpg",
+        "role": "assistant",
+        "name": None,
+        "meta": {},
+    }
+
+    message = ChatMessage.from_system(ByteStream(b"bytes", mime_type="image_base64"))
+    assert message.to_dict() == {
+        "content": {"data": b"bytes", "mime_type": "image_base64", "meta": {}},
+        "role": "system",
+        "name": None,
+        "meta": {},
+    }
+
+    message = ChatMessage.from_user(
+        content=["string content", "image_url:images.com/test.jpg", ByteStream(b"bytes", mime_type="image_base64")]
+    )
+    assert message.to_dict() == {
+        "content": [
+            "string content",
+            "image_url:images.com/test.jpg",
+            {"data": b"bytes", "mime_type": "image_base64", "meta": {}},
+        ],
+        "role": "user",
+        "name": None,
+        "meta": {},
+    }
+
 
 def test_from_dict():
     assert ChatMessage.from_dict(data={"content": "text", "role": "user", "name": None}) == ChatMessage(
-        content="text", role=ChatRole("user"), name=None, meta={}
+        content="text", role=ChatRole.USER, name=None, meta={}
+    )
+
+    assert ChatMessage.from_dict(
+        data={"content": "image_url:images.com", "role": "user", "name": None, "meta": {}}
+    ) == ChatMessage(content="image_url:images.com", role=ChatRole.USER, name=None, meta={})
+
+    assert ChatMessage.from_dict(
+        data={
+            "content": {"data": b"bytes", "mime_type": "image_base64", "meta": {}},
+            "role": "user",
+            "name": None,
+            "meta": {},
+        }
+    ) == ChatMessage(
+        content=ByteStream(data=b"bytes", mime_type="image_base64"), role=ChatRole.USER, name=None, meta={}
+    )
+    assert ChatMessage.from_dict(
+        data={
+            "content": [
+                "string content",
+                "image_url:images.com/test.jpg",
+                {"data": b"bytes", "mime_type": "image_base64", "meta": {}},
+            ],
+            "role": "user",
+            "name": None,
+            "meta": {},
+        }
+    ) == ChatMessage(
+        content=["string content", "image_url:images.com/test.jpg", ByteStream(b"bytes", mime_type="image_base64")],
+        role=ChatRole.USER,
+        name=None,
+        meta={},
     )
 
 
@@ -100,3 +188,40 @@ def test_from_dict_with_meta():
     assert ChatMessage.from_dict(
         data={"content": "text", "role": "user", "name": None, "meta": {"something": "something"}}
     ) == ChatMessage(content="text", role=ChatRole("user"), name=None, meta={"something": "something"})
+
+
+def test_post_init_method():
+    message = ChatMessage.from_user("Content")
+    assert message.content == "Content"
+    assert "__haystack_content_type__" in message.meta
+    assert message.meta["__haystack_content_type__"] == ContentType.TEXT
+
+    message = ChatMessage.from_assistant("image_url:image.com/test.jpg")
+    assert message.content == "image.com/test.jpg"
+    assert "__haystack_content_type__" in message.meta
+    assert message.meta["__haystack_content_type__"] == ContentType.IMAGE_URL
+
+    message = ChatMessage.from_system(ByteStream(data=b"content", mime_type="image_base64"))
+    assert message.content == ByteStream(data=b"content", mime_type="image_base64")
+    assert "__haystack_content_type__" in message.meta
+    assert message.meta["__haystack_content_type__"] == ContentType.IMAGE_BASE64
+
+    message = ChatMessage.from_user(["content", "image_url:{{url}}", ByteStream(b"content", mime_type="image_base64")])
+    assert message.content == ["content", "{{url}}", ByteStream(b"content", mime_type="image_base64")]
+    assert "__haystack_content_type__" in message.meta
+    assert message.meta["__haystack_content_type__"] == [
+        ContentType.TEXT,
+        ContentType.IMAGE_URL,
+        ContentType.IMAGE_BASE64,
+    ]
+
+
+def test_post_init_raises_value_error_if_mime_type_is_none_or_invalid():
+    with pytest.raises(ValueError):
+        ChatMessage.from_user(ByteStream.from_string("content"))
+
+    with pytest.raises(ValueError):
+        ChatMessage.from_user(ByteStream(b"content", mime_type="fails"))
+
+    with pytest.raises(ValueError):
+        ChatMessage.from_user(ByteStream(b"content", mime_type="text"))
