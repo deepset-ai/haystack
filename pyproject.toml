@@ -54,6 +54,7 @@ dependencies = [
   "requests",
   "numpy<2",
   "python-dateutil",
+  "haystack-experimental",
 ]
 
 [tool.hatch.envs.default]
