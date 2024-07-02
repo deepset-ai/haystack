@@ -233,7 +233,7 @@ hatch run test:lint
 If the linters spot any error, you can fix it before checking in your code:
 
 ```sh
-hatch run test:lint-fix
+hatch run test:fix
 ```
 
 ## Requirements for Pull Requests
