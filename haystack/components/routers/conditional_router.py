@@ -8,13 +8,9 @@ from jinja2 import Environment, TemplateSyntaxError, meta
 from jinja2.nativetypes import NativeEnvironment
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.utils import deserialize_type, serialize_type
+from haystack.utils import deserialize_callable, deserialize_type, serialize_callable, serialize_type
 
 logger = logging.getLogger(__name__)
-
-
-class BadConditionFilterException(Exception):
-    """Exception raised when a custom filter is not callable."""
 
 
 class NoRouteSelectedException(Exception):
@@ -120,8 +116,9 @@ class ConditionalRouter:
         :param custom_filters: A dictionary of custom Jinja2 filters to be used in the condition expressions.
             For example, passing `{"my_filter": my_filter_fcn}` where:
             - `my_filter` is the name of the custom filter.
-            - `my_filter_fcn` is a callable that takes a variable and returns a value.
-            `{{ my_var|my_filter }}` can then be used inside a route condition expression.
+            - `my_filter_fcn` is a callable that takes `my_var:str` and returns `my_var[:3]`.
+              `{{ my_var|my_filter }}` can then be used inside a route condition expression like so:
+                `"condition": "{{ my_var|my_filter == 'foo' }}"`.
         """
         self._validate_routes(routes)
         self.routes: List[dict] = routes
@@ -156,23 +153,16 @@ class ConditionalRouter:
         for route in self.routes:
             # output_type needs to be serialized to a string
             route["output_type"] = serialize_type(route["output_type"])
-
-        # set all filter callables to None for serialization
-        custom_filters = {filter_name: None for filter_name in self.custom_filters.keys()}
-
-        return default_to_dict(self, routes=self.routes, custom_filters=custom_filters)
+        se_filters = {name: serialize_callable(filter_func) for name, filter_func in self.custom_filters.items()}
+        return default_to_dict(self, routes=self.routes, custom_filters=se_filters)
 
     @classmethod
-    def from_dict(
-        cls, data: Dict[str, Any], custom_filters: Optional[Dict[str, Callable]] = None
-    ) -> "ConditionalRouter":
+    def from_dict(cls, data: Dict[str, Any]) -> "ConditionalRouter":
         """
         Deserializes the component from a dictionary.
 
         :param data:
             The dictionary to deserialize from.
-        :param custom_filters:
-            An optional dictionary of custom Jinja2 filters to be used in the condition expressions.
         :returns:
             The deserialized component.
         """
@@ -181,13 +171,8 @@ class ConditionalRouter:
         for route in routes:
             # output_type needs to be deserialized from a string to a type
             route["output_type"] = deserialize_type(route["output_type"])
-
-        # Validate and add custom filters to the environment
-        init_params.get("custom_filters", {}).update(custom_filters or {})
-        for filter_name, filter_callable in init_params["custom_filters"].items():
-            if not callable(filter_callable):
-                raise BadConditionFilterException(f"You must specify a callable for custom filter '{filter_name}'.")
-
+        for name, filter_func in init_params.get("custom_filters", {}).items():
+            init_params["custom_filters"][name] = deserialize_callable(filter_func) if filter_func else None
         return default_from_dict(cls, data)
 
     def run(self, **kwargs):

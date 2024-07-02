@@ -8,8 +8,13 @@ from unittest import mock
 import pytest
 
 from haystack.components.routers import ConditionalRouter
-from haystack.components.routers.conditional_router import BadConditionFilterException, NoRouteSelectedException
+from haystack.components.routers.conditional_router import NoRouteSelectedException
 from haystack.dataclasses import ChatMessage
+
+
+def custom_filter_to_sede(value):
+    """splits by hyphen and returns the first part"""
+    return int(value.split("-")[0])
 
 
 class TestRouter:
@@ -305,10 +310,7 @@ class TestRouter:
             },
         ]
 
-        def get_area_code(phone_num):
-            return int(phone_num.split("-")[0])
-
-        router = ConditionalRouter(routes, custom_filters={"get_area_code": get_area_code})
+        router = ConditionalRouter(routes, custom_filters={"get_area_code": custom_filter_to_sede})
         kwargs = {"phone_num": "123-456-7890"}
         result = router.run(**kwargs)
         assert result == {"good_phone_num": "Phone number has a 123 area code"}
@@ -316,30 +318,22 @@ class TestRouter:
         result = router.run(**kwargs)
         assert result == {"bad_phone_num": "Phone number does not have 123 area code"}
 
-    def test_custom_filter_serialization(self):
-        routes = [{"condition": "{{ test|return_true }}", "output": "true", "output_name": "true", "output_type": str}]
-
-        def return_true(*args):
-            return True
-
-        custom_filters = {"return_true": return_true}
+    def test_sede_with_custom_filter(self):
+        routes = [
+            {
+                "condition": "{{ test|custom_filter_to_sede == 123 }}",
+                "output": "true",
+                "output_name": "test",
+                "output_type": str,
+            }
+        ]
+        custom_filters = {"custom_filter_to_sede": custom_filter_to_sede}
         router = ConditionalRouter(routes, custom_filters=custom_filters)
-        kwargs = {"test": "test"}
+        kwargs = {"test": "123-456-789"}
         result = router.run(**kwargs)
-        assert result == {"true": "true"}
+        assert result == {"test": "true"}
         serialized_router = router.to_dict()
-        assert serialized_router["init_parameters"]["custom_filters"] == {"return_true": None}
-        deserialized_router = ConditionalRouter.from_dict(serialized_router, custom_filters=custom_filters)
+        deserialized_router = ConditionalRouter.from_dict(serialized_router)
+        assert deserialized_router.custom_filters == router.custom_filters
+        assert deserialized_router.custom_filters["custom_filter_to_sede"]("123-456-789") == 123
         assert result == deserialized_router.run(**kwargs)
-
-    def test_custom_filter_bad_deserialization(self):
-        routes = [{"condition": "{{ test|return_true }}", "output": "true", "output_name": "true", "output_type": str}]
-
-        def return_true(*args):
-            return True
-
-        custom_filters = {"return_true": return_true}
-        router = ConditionalRouter(routes, custom_filters=custom_filters)
-        serialized_router = router.to_dict()
-        with pytest.raises(BadConditionFilterException):
-            ConditionalRouter.from_dict(serialized_router)
