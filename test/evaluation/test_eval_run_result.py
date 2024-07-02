@@ -150,7 +150,7 @@ def test_comparative_individual_scores_report():
             "reciprocal_rank": {"individual_scores": [0.378064, 0.534964], "score": 0.476932},
             "single_hit": {"individual_scores": [1, 1], "score": 0.75},
             "multi_hit": {"individual_scores": [0.706125, 0.454976], "score": 0.46428375},
-            "context_relevance": {"individual_scores": [0.805466, 0.410251], "score": 0.58177975},
+            "context_relevance": {"individual_scores": [1, 1], "score": 1},
             "faithfulness": {"individual_scores": [0.135581, 0.695974], "score": 0.40585375},
             "semantic_answer_similarity": {"individual_scores": [0.971241, 0.159320], "score": 0.53757075},
         },
@@ -168,7 +168,7 @@ def test_comparative_individual_scores_report():
             "reciprocal_rank": {"individual_scores": [0.378064, 0.534964], "score": 0.476932},
             "single_hit": {"individual_scores": [1, 1], "score": 0.75},
             "multi_hit": {"individual_scores": [0.706125, 0.454976], "score": 0.46428375},
-            "context_relevance": {"individual_scores": [0.805466, 0.410251], "score": 0.58177975},
+            "context_relevance": {"individual_scores": [1, 1], "score": 1},
             "faithfulness": {"individual_scores": [0.135581, 0.695974], "score": 0.40585375},
             "semantic_answer_similarity": {"individual_scores": [0.971241, 0.159320], "score": 0.53757075},
         },
@@ -178,24 +178,27 @@ def test_comparative_individual_scores_report():
     result2 = EvaluationRunResult("testing_pipeline_2", inputs=data_2["inputs"], results=data_2["metrics"])
     results = result1.comparative_individual_scores_report(result2)
 
-    assert results.to_json() == (
-        '{"query_id":{"0":"53c3b3e6","1":"225f87f7"},'
-        '"question":{"0":"What is the capital of France?","1":"What is the capital of Spain?"},'
-        '"contexts":{"0":"wiki_France","1":"wiki_Spain"},"answer":{"0":"Paris","1":"Madrid"},'
-        '"predicted_answer":{"0":"Paris","1":"Madrid"},'
-        '"testing_pipeline_1_reciprocal_rank":{"0":0.378064,"1":0.534964},'
-        '"testing_pipeline_1_single_hit":{"0":1,"1":1},'
-        '"testing_pipeline_1_multi_hit":{"0":0.706125,"1":0.454976},'
-        '"testing_pipeline_1_context_relevance":{"0":0.805466,"1":0.410251},'
-        '"testing_pipeline_1_faithfulness":{"0":0.135581,"1":0.695974},'
-        '"testing_pipeline_1_semantic_answer_similarity":{"0":0.971241,"1":0.15932},'
-        '"testing_pipeline_2_reciprocal_rank":{"0":0.378064,"1":0.534964},'
-        '"testing_pipeline_2_single_hit":{"0":1,"1":1},'
-        '"testing_pipeline_2_multi_hit":{"0":0.706125,"1":0.454976},'
-        '"testing_pipeline_2_context_relevance":{"0":0.805466,"1":0.410251},'
-        '"testing_pipeline_2_faithfulness":{"0":0.135581,"1":0.695974},'
-        '"testing_pipeline_2_semantic_answer_similarity":{"0":0.971241,"1":0.15932}}'
-    )
+    expected = {
+        "query_id": {0: "53c3b3e6", 1: "225f87f7"},
+        "question": {0: "What is the capital of France?", 1: "What is the capital of Spain?"},
+        "contexts": {0: "wiki_France", 1: "wiki_Spain"},
+        "answer": {0: "Paris", 1: "Madrid"},
+        "predicted_answer": {0: "Paris", 1: "Madrid"},
+        "testing_pipeline_1_reciprocal_rank": {0: 0.378064, 1: 0.534964},
+        "testing_pipeline_1_single_hit": {0: 1, 1: 1},
+        "testing_pipeline_1_multi_hit": {0: 0.706125, 1: 0.454976},
+        "testing_pipeline_1_context_relevance": {0: 1, 1: 1},
+        "testing_pipeline_1_faithfulness": {0: 0.135581, 1: 0.695974},
+        "testing_pipeline_1_semantic_answer_similarity": {0: 0.971241, 1: 0.15932},
+        "testing_pipeline_2_reciprocal_rank": {0: 0.378064, 1: 0.534964},
+        "testing_pipeline_2_single_hit": {0: 1, 1: 1},
+        "testing_pipeline_2_multi_hit": {0: 0.706125, 1: 0.454976},
+        "testing_pipeline_2_context_relevance": {0: 1, 1: 1},
+        "testing_pipeline_2_faithfulness": {0: 0.135581, 1: 0.695974},
+        "testing_pipeline_2_semantic_answer_similarity": {0: 0.971241, 1: 0.15932},
+    }
+
+    assert expected == results.to_dict()
 
 
 def test_comparative_individual_scores_report_keep_truth_answer_in_df():
@@ -211,7 +214,7 @@ def test_comparative_individual_scores_report_keep_truth_answer_in_df():
             "reciprocal_rank": {"individual_scores": [0.378064, 0.534964], "score": 0.476932},
             "single_hit": {"individual_scores": [1, 1], "score": 0.75},
             "multi_hit": {"individual_scores": [0.706125, 0.454976], "score": 0.46428375},
-            "context_relevance": {"individual_scores": [0.805466, 0.410251], "score": 0.58177975},
+            "context_relevance": {"individual_scores": [1, 1], "score": 1},
             "faithfulness": {"individual_scores": [0.135581, 0.695974], "score": 0.40585375},
             "semantic_answer_similarity": {"individual_scores": [0.971241, 0.159320], "score": 0.53757075},
         },
@@ -229,7 +232,7 @@ def test_comparative_individual_scores_report_keep_truth_answer_in_df():
             "reciprocal_rank": {"individual_scores": [0.378064, 0.534964], "score": 0.476932},
             "single_hit": {"individual_scores": [1, 1], "score": 0.75},
             "multi_hit": {"individual_scores": [0.706125, 0.454976], "score": 0.46428375},
-            "context_relevance": {"individual_scores": [0.805466, 0.410251], "score": 0.58177975},
+            "context_relevance": {"individual_scores": [1, 1], "score": 1},
             "faithfulness": {"individual_scores": [0.135581, 0.695974], "score": 0.40585375},
             "semantic_answer_similarity": {"individual_scores": [0.971241, 0.159320], "score": 0.53757075},
         },
