@@ -43,8 +43,8 @@ class ContextRelevanceEvaluator(LLMEvaluator):
 
     An LLM breaks up the context into multiple statements and checks whether each statement
     is relevant for answering a question.
-    The final score for the context relevance is a number from 0.0 to 1.0. It represents the proportion of
-    statements that can be inferred from the provided contexts.
+    The final score for the context relevance is either binary score of 1 or 0, where 1 indicates that the context
+    is relevant to the question and 0 indicates that the context is not relevant to the question.
 
     Usage example:
     ```python
@@ -64,11 +64,10 @@ class ContextRelevanceEvaluator(LLMEvaluator):
     print(result["score"])
     # 1.0
     print(result["individual_scores"])
-    # [1.0]
+    # [1]
     print(result["results"])
     # [{
-    #   'statements': ['Python, created by Guido van Rossum in the late 1980s.'],
-    #   'statement_scores': [1],
+    #   'relevant_statements': ['Python, created by Guido van Rossum in the late 1980s.'],
     #   'score': 1.0
     # }]
     ```
@@ -97,7 +96,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
                     "questions": "What is the capital of Italy?", "contexts": ["Rome is the capital of Italy."],
                 },
                 "outputs": {
-                    "statements": ["Rome is the capital of Italy."],
+                    "relevant_statements": ["Rome is the capital of Italy."],
                     "score": 1,
                 },
             }]
