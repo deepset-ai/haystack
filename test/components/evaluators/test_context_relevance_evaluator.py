@@ -160,7 +160,7 @@ class TestContextRelevanceEvaluator:
                 {"score": 1, "statement_scores": [1, 1], "statements": ["c", "d"]},
             ],
             "score": 0.75,
-            "metadata": None,
+            "meta": None,
         }
 
     def test_run_no_statements_extracted(self, monkeypatch):
@@ -193,7 +193,7 @@ class TestContextRelevanceEvaluator:
                 {"score": 0, "statement_scores": [], "statements": []},
             ],
             "score": 0.25,
-            "metadata": None,
+            "meta": None,
         }
 
     def test_run_missing_parameters(self, monkeypatch):
@@ -258,10 +258,10 @@ class TestContextRelevanceEvaluator:
         nested_required_fields = {"score", "statement_scores", "statements"}
         assert all(field in result["results"][0] for field in nested_required_fields)
 
-        assert "metadata" in result
-        assert "prompt_tokens" in result["metadata"][0]["usage"]
-        assert "completion_tokens" in result["metadata"][0]["usage"]
-        assert "total_tokens" in result["metadata"][0]["usage"]
+        assert "meta" in result
+        assert "prompt_tokens" in result["meta"][0]["usage"]
+        assert "completion_tokens" in result["meta"][0]["usage"]
+        assert "total_tokens" in result["meta"][0]["usage"]
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
