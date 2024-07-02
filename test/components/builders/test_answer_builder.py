@@ -5,8 +5,9 @@ import logging
 
 import pytest
 
-from haystack import GeneratedAnswer, Document
+from haystack import Document, GeneratedAnswer
 from haystack.components.builders.answer_builder import AnswerBuilder
+from haystack.dataclasses.chat_message import ChatMessage, ChatRole
 
 
 class TestAnswerBuilder:
@@ -150,3 +151,124 @@ class TestAnswerBuilder:
         assert len(answers[0].documents) == 2
         assert answers[0].documents[0].content == "test doc 2"
         assert answers[0].documents[1].content == "test doc 3"
+
+    def test_run_with_chat_message_replies_without_pattern(self):
+        component = AnswerBuilder()
+        replies = [
+            ChatMessage(
+                content="Answer: AnswerString",
+                role=ChatRole.ASSISTANT,
+                name=None,
+                meta={
+                    "model": "gpt-3.5-turbo-0613",
+                    "index": 0,
+                    "finish_reason": "stop",
+                    "usage": {"prompt_tokens": 32, "completion_tokens": 153, "total_tokens": 185},
+                },
+            )
+        ]
+        output = component.run(query="test query", replies=replies, meta=[{}])
+        answers = output["answers"]
+        assert len(answers) == 1
+        assert answers[0].data == "Answer: AnswerString"
+        assert answers[0].meta == {
+            "model": "gpt-3.5-turbo-0613",
+            "index": 0,
+            "finish_reason": "stop",
+            "usage": {"prompt_tokens": 32, "completion_tokens": 153, "total_tokens": 185},
+        }
+        assert answers[0].query == "test query"
+        assert answers[0].documents == []
+        assert isinstance(answers[0], GeneratedAnswer)
+
+    def test_run_with_chat_message_replies_with_pattern(self):
+        component = AnswerBuilder(pattern=r"Answer: (.*)")
+        replies = [
+            ChatMessage(
+                content="Answer: AnswerString",
+                role=ChatRole.ASSISTANT,
+                name=None,
+                meta={
+                    "model": "gpt-3.5-turbo-0613",
+                    "index": 0,
+                    "finish_reason": "stop",
+                    "usage": {"prompt_tokens": 32, "completion_tokens": 153, "total_tokens": 185},
+                },
+            )
+        ]
+        output = component.run(query="test query", replies=replies, meta=[{}])
+        answers = output["answers"]
+        assert len(answers) == 1
+        assert answers[0].data == "AnswerString"
+        assert answers[0].meta == {
+            "model": "gpt-3.5-turbo-0613",
+            "index": 0,
+            "finish_reason": "stop",
+            "usage": {"prompt_tokens": 32, "completion_tokens": 153, "total_tokens": 185},
+        }
+        assert answers[0].query == "test query"
+        assert answers[0].documents == []
+        assert isinstance(answers[0], GeneratedAnswer)
+
+    def test_run_with_chat_message_replies_with_documents(self):
+        component = AnswerBuilder(reference_pattern="\\[(\\d+)\\]")
+        replies = [
+            ChatMessage(
+                content="Answer: AnswerString[2]",
+                role=ChatRole.ASSISTANT,
+                name=None,
+                meta={
+                    "model": "gpt-3.5-turbo-0613",
+                    "index": 0,
+                    "finish_reason": "stop",
+                    "usage": {"prompt_tokens": 32, "completion_tokens": 153, "total_tokens": 185},
+                },
+            )
+        ]
+        output = component.run(
+            query="test query",
+            replies=replies,
+            meta=[{}],
+            documents=[Document(content="test doc 1"), Document(content="test doc 2")],
+        )
+        answers = output["answers"]
+        assert len(answers) == 1
+        assert answers[0].data == "Answer: AnswerString[2]"
+        assert answers[0].meta == {
+            "model": "gpt-3.5-turbo-0613",
+            "index": 0,
+            "finish_reason": "stop",
+            "usage": {"prompt_tokens": 32, "completion_tokens": 153, "total_tokens": 185},
+        }
+        assert answers[0].query == "test query"
+        assert len(answers[0].documents) == 1
+        assert answers[0].documents[0].content == "test doc 2"
+
+    def test_run_with_chat_message_replies_with_pattern_set_at_runtime(self):
+        component = AnswerBuilder(pattern="unused pattern")
+        replies = [
+            ChatMessage(
+                content="Answer: AnswerString",
+                role=ChatRole.ASSISTANT,
+                name=None,
+                meta={
+                    "model": "gpt-3.5-turbo-0613",
+                    "index": 0,
+                    "finish_reason": "stop",
+                    "usage": {"prompt_tokens": 32, "completion_tokens": 153, "total_tokens": 185},
+                },
+            )
+        ]
+        output = component.run(query="test query", replies=replies, meta=[{}], pattern=r"Answer: (.*)")
+        answers = output["answers"]
+        assert len(answers) == 1
+        assert answers[0].data == "AnswerString"
+        assert answers[0].meta == {
+            "model": "gpt-3.5-turbo-0613",
+            "index": 0,
+            "finish_reason": "stop",
+            "usage": {"prompt_tokens": 32, "completion_tokens": 153, "total_tokens": 185},
+        }
+        assert answers[0].query == "test query"
+        assert answers[0].documents == []
+        assert isinstance(answers[0], GeneratedAnswer)
