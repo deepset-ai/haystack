@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, List, Set
+from typing import Any, Callable, Dict, List, Optional, Set
 
 from jinja2 import Environment, TemplateSyntaxError, meta
 from jinja2.nativetypes import NativeEnvironment
@@ -11,6 +11,10 @@ from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.utils import deserialize_type, serialize_type
 
 logger = logging.getLogger(__name__)
+
+
+class BadConditionFilterException(Exception):
+    """Exception raised when a custom filter is not callable."""
 
 
 class NoRouteSelectedException(Exception):
@@ -102,7 +106,7 @@ class ConditionalRouter:
     ```
     """
 
-    def __init__(self, routes: List[Dict]):
+    def __init__(self, routes: List[Dict], custom_filters: Optional[Dict[str, Callable]] = None):
         """
         Initializes the `ConditionalRouter` with a list of routes detailing the conditions for routing.
 
@@ -113,12 +117,19 @@ class ConditionalRouter:
             - `output_type`: The type of the output data (e.g., str, List[int]).
             - `output_name`: The name under which the `output` value of the route is published. This name is used to
                 connect the router to other components in the pipeline.
+        :param custom_filters: A dictionary of custom Jinja2 filters to be used in the condition expressions.
+            For example, passing `{"my_filter": my_filter_fcn}` where:
+            - `my_filter` is the name of the custom filter.
+            - `my_filter_fcn` is a callable that takes a variable and returns a value.
+            `{{ my_var|my_filter }}` can then be used inside a route condition expression.
         """
         self._validate_routes(routes)
         self.routes: List[dict] = routes
+        self.custom_filters = custom_filters or {}
 
         # Create a Jinja native environment to inspect variables in the condition templates
         env = NativeEnvironment()
+        env.filters.update(self.custom_filters)
 
         # Inspect the routes to determine input and output types.
         input_types: Set[str] = set()  # let's just store the name, type will always be Any
@@ -146,15 +157,22 @@ class ConditionalRouter:
             # output_type needs to be serialized to a string
             route["output_type"] = serialize_type(route["output_type"])
 
-        return default_to_dict(self, routes=self.routes)
+        # set all filter callables to None for serialization
+        custom_filters = {filter_name: None for filter_name in self.custom_filters.keys()}
+
+        return default_to_dict(self, routes=self.routes, custom_filters=custom_filters)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ConditionalRouter":
+    def from_dict(
+        cls, data: Dict[str, Any], custom_filters: Optional[Dict[str, Callable]] = None
+    ) -> "ConditionalRouter":
         """
         Deserializes the component from a dictionary.
 
         :param data:
             The dictionary to deserialize from.
+        :param custom_filters:
+            An optional dictionary of custom Jinja2 filters to be used in the condition expressions.
         :returns:
             The deserialized component.
         """
@@ -163,6 +181,13 @@ class ConditionalRouter:
         for route in routes:
             # output_type needs to be deserialized from a string to a type
             route["output_type"] = deserialize_type(route["output_type"])
+
+        # Validate and add custom filters to the environment
+        init_params.get("custom_filters", {}).update(custom_filters or {})
+        for filter_name, filter_callable in init_params["custom_filters"].items():
+            if not callable(filter_callable):
+                raise BadConditionFilterException(f"You must specify a callable for custom filter '{filter_name}'.")
+
         return default_from_dict(cls, data)
 
     def run(self, **kwargs):
@@ -185,6 +210,7 @@ class ConditionalRouter:
         """
         # Create a Jinja native environment to evaluate the condition templates as Python expressions
         env = NativeEnvironment()
+        env.filters.update(self.custom_filters)
 
         for route in self.routes:
             try:

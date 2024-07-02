@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Added custom filters support to ConditionalRouter. Users can now pass in
+    one or more custom Jinja2 filter callables and be able to access those
+    filters when defining condition expressions in routes.
