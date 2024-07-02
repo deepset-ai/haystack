@@ -137,7 +137,8 @@ class AzureOCRDocumentConverter:
             result = poller.result()
             azure_output.append(result.to_dict())
 
-            docs = self._convert_tables_and_text(result=result, meta=metadata)
+            merged_metadata = {**bytestream.meta, **metadata}
+            docs = self._convert_tables_and_text(result=result, meta=merged_metadata)
             documents.extend(docs)
 
         return {"documents": documents, "raw_azure_response": azure_output}
