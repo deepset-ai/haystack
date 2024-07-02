@@ -153,6 +153,9 @@ class ContextRelevanceEvaluator(LLMEvaluator):
         result = super(ContextRelevanceEvaluator, self).run(questions=questions, contexts=contexts)
 
         for idx, res in enumerate(result["results"]):
+            if res is None:
+                result["results"][idx] = {"relevant_statements": [], "score": float("nan")}
+                continue
             if "relevant_statements" in res:
                 if res["relevant_statements"] == ["Insufficient Information"]:
                     res["score"] = 0

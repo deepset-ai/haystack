@@ -214,14 +214,8 @@ class TestContextRelevanceEvaluator:
         results = component.run(questions=questions, contexts=contexts)
 
         assert math.isnan(results["score"])
-
-        assert results["individual_scores"][0] == 1.0
-        assert math.isnan(results["individual_scores"][1])
-
-        assert results["results"][0] == {"statements": ["c", "d"], "statement_scores": [1, 1], "score": 1.0}
-
-        assert results["results"][1]["statements"] == []
-        assert results["results"][1]["statement_scores"] == []
+        assert results["results"][0] == {"relevant_statements": ["c", "d"], "score": 1}
+        assert results["results"][1]["relevant_statements"] == []
         assert math.isnan(results["results"][1]["score"])
 
     @pytest.mark.skipif(
@@ -236,77 +230,7 @@ class TestContextRelevanceEvaluator:
         evaluator = ContextRelevanceEvaluator()
         result = evaluator.run(questions=questions, contexts=contexts)
 
-        required_fields = {"individual_scores", "results", "score"}
+        required_fields = {"results"}
         assert all(field in result for field in required_fields)
-        nested_required_fields = {"score", "statement_scores", "statements"}
+        nested_required_fields = {"score", "relevant_statements"}
         assert all(field in result["results"][0] for field in nested_required_fields)
-
-    @pytest.mark.skipif(
-        not os.environ.get("OPENAI_API_KEY", None),
-        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-    )
-    @pytest.mark.integration
-    def test_all_statements_are_scored(self):
-        from haystack.components.evaluators import ContextRelevanceEvaluator
-
-        questions = ["Who created the Python language?"]
-        contexts = [
-            [
-                "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming "
-                "language. Its design philosophy emphasizes code readability, and its language constructs aim to help "
-                "programmers write clear, logical code for both small and large-scale software projects.",
-                "Java is a high-level, class-based, object-oriented programming language which allows you to write once, "
-                "run anywhere, meaning that compiled Java code can run on all platforms that support Java without the "
-                "need for recompilation.",
-                "Scala is a high-level, statically typed programming language.",
-            ]
-        ]
-
-        evaluator = ContextRelevanceEvaluator()
-        result = evaluator.run(questions=questions, contexts=contexts)
-
-        assert len(result["results"][0]["statements"]) == 4
-        assert len(result["results"][0]["statement_scores"]) == 4
-
-    @pytest.mark.integration
-    def new_behaviour(self):
-        from haystack.components.evaluators import ContextRelevanceEvaluator
-
-        questions = [
-            "Who created the Python language?",
-            "Why does java need a virtual machine",
-            "How can I optimize my C code through the compiler options?",
-        ]
-
-        contexts = [
-            [
-                "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming language. Its "
-                "design philosophy emphasizes code readability, and its language constructs aim to help programmers write clear, "
-                "logical code for both small and large-scale software projects."
-            ],
-            [
-                "Java requires a virtual machine (VM) to run due to its platform-independent design. This is because Java programs "
-                "are compiled into platform-independent bytecode, which the Java Virtual Machine (JVM) interprets and executes, "
-                "allowing them to run on any device with a compatible JVM. The JVM also provides automatic memory management "
-                "through garbage collection and enforces security features like sandboxing. Using a VM makes Java programs portable, "
-                "enabling them to be written once and run anywhere, which simplifies development and deployment."
-            ],
-            ["no relevant documents could be retrieved"],
-        ]
-
-        evaluator = ContextRelevanceEvaluator()
-        result = evaluator.run(questions=questions, contexts=contexts)
-
-        result = {
-            "results": {
-                "score": 0.67,
-                "individual_scores": [1, 1, 0],
-                "relevant_statements": [
-                    [
-                        "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming language."
-                    ],
-                    ["Java requires a virtual machine (VM) to run due to its platform-independent design."],
-                    ["Insufficient Information"],
-                ],
-            }
-        }
