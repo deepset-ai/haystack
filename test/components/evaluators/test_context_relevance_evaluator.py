@@ -146,6 +146,7 @@ class TestContextRelevanceEvaluator:
                 {"score": 0, "relevant_statements": ["Insufficient Information"]},
             ],
             "score": 0.5,
+            "meta": None,
         }
 
     def test_run_no_statements_extracted(self, monkeypatch):
