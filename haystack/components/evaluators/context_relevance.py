@@ -2,9 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from statistics import mean
 from typing import Any, Dict, List, Optional
-
-from numpy import mean as np_mean
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.evaluators.llm_evaluator import LLMEvaluator
@@ -15,12 +14,9 @@ _DEFAULT_EXAMPLES = [
     {
         "inputs": {
             "questions": "What is the capital of Germany?",
-            "contexts": ["Berlin is the capital of Germany and was founded in 1244."],
+            "contexts": ["Berlin is the capital of Germany. Berlin and was founded in 1244."],
         },
-        "outputs": {
-            "statements": ["Berlin is the capital of Germany.", "Berlin was founded in 1244."],
-            "statement_scores": [1, 0],
-        },
+        "outputs": {"relevant_statements": ["Berlin is the capital of Germany."]},
     },
     {
         "inputs": {
@@ -31,19 +27,11 @@ _DEFAULT_EXAMPLES = [
                 "Madrid is the capital of Spain.",
             ],
         },
-        "outputs": {
-            "statements": [
-                "Berlin is the capital of Germany.",
-                "Berlin was founded in 1244.",
-                "Europe is a continent with 44 countries.",
-                "Madrid is the capital of Spain.",
-            ],
-            "statement_scores": [0, 0, 0, 0],
-        },
+        "outputs": {"relevant_statements": ["Insufficient Information"]},
     },
     {
         "inputs": {"questions": "What is the capital of Italy?", "contexts": ["Rome is the capital of Italy."]},
-        "outputs": {"statements": ["Rome is the capital of Italy."], "statement_scores": [1]},
+        "outputs": {"relevant_statements": ["Rome is the capital of Italy."]},
     },
 ]
 
@@ -124,15 +112,15 @@ class ContextRelevanceEvaluator(LLMEvaluator):
             Whether to raise an exception if the API call fails.
 
         """
+
         self.instructions = (
-            "Your task is to judge how relevant the provided context is for answering a question. "
-            "First, please extract statements from the provided context. "
-            "Second, calculate a relevance score for each statement in the context. "
-            "The score is 1 if the statement is relevant to answer the question or 0 if it is not relevant. "
-            "Each statement should be scored individually."
+            "Please extract only sentences from the provided context which are absolutely relevant and "
+            "required to answer the following question. If no relevant sentences are found, or if you "
+            "believe the question cannot be answered from the given context, return the phrase "
+            '"Insufficient Information"'
         )
         self.inputs = [("questions", List[str]), ("contexts", List[List[str]])]
-        self.outputs = ["statements", "statement_scores"]
+        self.outputs = ["relevant_statements"]
         self.examples = examples or _DEFAULT_EXAMPLES
         self.api = api
         self.api_key = api_key
@@ -148,7 +136,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
             progress_bar=progress_bar,
         )
 
-    @component.output_types(individual_scores=List[int], score=float, results=List[Dict[str, Any]])
+    @component.output_types(score=float, results=List[Dict[str, Any]])
     def run(self, questions: List[str], contexts: List[List[str]]) -> Dict[str, Any]:
         """
         Run the LLM evaluator.
@@ -160,24 +148,19 @@ class ContextRelevanceEvaluator(LLMEvaluator):
         :returns:
             A dictionary with the following outputs:
                 - `score`: Mean context relevance score over all the provided input questions.
-                - `individual_scores`: A list of context relevance scores for each input question.
-                - `results`: A list of dictionaries with `statements` and `statement_scores` for each input context.
+                - `results`: A list of dictionaries with `relevant_statements` and `score` for each input context.
         """
         result = super(ContextRelevanceEvaluator, self).run(questions=questions, contexts=contexts)
 
-        # calculate average statement relevance score per query
         for idx, res in enumerate(result["results"]):
-            if res is None:
-                result["results"][idx] = {"statements": [], "statement_scores": [], "score": float("nan")}
-                continue
-            if not res["statements"]:
-                res["score"] = 0
-            else:
-                res["score"] = np_mean(res["statement_scores"])
+            if "relevant_statements" in res:
+                if res["relevant_statements"] == ["Insufficient Information"]:
+                    res["score"] = 0
+                elif res["relevant_statements"] is not None:
+                    res["score"] = 1
 
         # calculate average context relevance score over all queries
-        result["score"] = np_mean([res["score"] for res in result["results"]])
-        result["individual_scores"] = [res["score"] for res in result["results"]]
+        result["score"] = mean([res["score"] for res in result["results"]])
 
         return result
 

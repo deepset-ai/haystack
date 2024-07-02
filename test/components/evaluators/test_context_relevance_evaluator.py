@@ -20,24 +20,20 @@ class TestContextRelevanceEvaluator:
         assert component.api == "openai"
         assert component.generator.client.api_key == "test-api-key"
         assert component.instructions == (
-            "Your task is to judge how relevant the provided context is for answering a question. "
-            "First, please extract statements from the provided context. "
-            "Second, calculate a relevance score for each statement in the context. "
-            "The score is 1 if the statement is relevant to answer the question or 0 if it is not relevant. "
-            "Each statement should be scored individually."
+            "Please extract only sentences from the provided context which are absolutely relevant and "
+            "required to answer the following question. If no relevant sentences are found, or if you "
+            "believe the question cannot be answered from the given context, return the phrase "
+            '"Insufficient Information"'
         )
         assert component.inputs == [("questions", List[str]), ("contexts", List[List[str]])]
-        assert component.outputs == ["statements", "statement_scores"]
+        assert component.outputs == ["relevant_statements"]
         assert component.examples == [
             {
                 "inputs": {
                     "questions": "What is the capital of Germany?",
-                    "contexts": ["Berlin is the capital of Germany and was founded in 1244."],
+                    "contexts": ["Berlin is the capital of Germany. Berlin and was founded in 1244."],
                 },
-                "outputs": {
-                    "statements": ["Berlin is the capital of Germany.", "Berlin was founded in 1244."],
-                    "statement_scores": [1, 0],
-                },
+                "outputs": {"relevant_statements": ["Berlin is the capital of Germany."]},
             },
             {
                 "inputs": {
@@ -48,19 +44,11 @@ class TestContextRelevanceEvaluator:
                         "Madrid is the capital of Spain.",
                     ],
                 },
-                "outputs": {
-                    "statements": [
-                        "Berlin is the capital of Germany.",
-                        "Berlin was founded in 1244.",
-                        "Europe is a continent with 44 countries.",
-                        "Madrid is the capital of Spain.",
-                    ],
-                    "statement_scores": [0, 0, 0, 0],
-                },
+                "outputs": {"relevant_statements": ["Insufficient Information"]},
             },
             {
                 "inputs": {"questions": "What is the capital of Italy?", "contexts": ["Rome is the capital of Italy."]},
-                "outputs": {"statements": ["Rome is the capital of Italy."], "statement_scores": [1]},
+                "outputs": {"relevant_statements": ["Rome is the capital of Italy."]},
             },
         ]
 
@@ -132,9 +120,9 @@ class TestContextRelevanceEvaluator:
 
         def generator_run(self, *args, **kwargs):
             if "Football" in kwargs["prompt"]:
-                return {"replies": ['{"statements": ["a", "b"], "statement_scores": [1, 0]}']}
+                return {"replies": ['{"relevant_statements": ["a", "b"], "score": 1}']}
             else:
-                return {"replies": ['{"statements": ["c", "d"], "statement_scores": [1, 1]}']}
+                return {"replies": ['{"relevant_statements": ["Insufficient Information"], "score": 0}']}
 
         monkeypatch.setattr("haystack.components.generators.openai.OpenAIGenerator.run", generator_run)
 
@@ -147,19 +135,17 @@ class TestContextRelevanceEvaluator:
                 "Messi, drawing a followership of more than 4 billion people."
             ],
             [
-                "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming "
-                "language. Its design philosophy emphasizes code readability, and its language constructs aim to help "
+                "Python is design philosophy emphasizes code readability, and its language constructs aim to help "
                 "programmers write clear, logical code for both small and large-scale software projects."
             ],
         ]
         results = component.run(questions=questions, contexts=contexts)
         assert results == {
-            "individual_scores": [0.5, 1],
             "results": [
-                {"score": 0.5, "statement_scores": [1, 0], "statements": ["a", "b"]},
-                {"score": 1, "statement_scores": [1, 1], "statements": ["c", "d"]},
+                {"score": 1, "relevant_statements": ["a", "b"]},
+                {"score": 0, "relevant_statements": ["Insufficient Information"]},
             ],
-            "score": 0.75,
+            "score": 0.5,
         }
 
     def test_run_no_statements_extracted(self, monkeypatch):
@@ -168,9 +154,9 @@ class TestContextRelevanceEvaluator:
 
         def generator_run(self, *args, **kwargs):
             if "Football" in kwargs["prompt"]:
-                return {"replies": ['{"statements": ["a", "b"], "statement_scores": [1, 0]}']}
+                return {"replies": ['{"relevant_statements": ["a", "b"], "score": 1}']}
             else:
-                return {"replies": ['{"statements": [], "statement_scores": []}']}
+                return {"replies": ['{"relevant_statements": ["Insufficient Information"], "score": 0}']}
 
         monkeypatch.setattr("haystack.components.generators.openai.OpenAIGenerator.run", generator_run)
 
@@ -186,12 +172,11 @@ class TestContextRelevanceEvaluator:
         ]
         results = component.run(questions=questions, contexts=contexts)
         assert results == {
-            "individual_scores": [0.5, 0],
             "results": [
-                {"score": 0.5, "statement_scores": [1, 0], "statements": ["a", "b"]},
-                {"score": 0, "statement_scores": [], "statements": []},
+                {"score": 1, "relevant_statements": ["a", "b"]},
+                {"score": 0, "relevant_statements": ["Insufficient Information"]},
             ],
-            "score": 0.25,
+            "score": 0.5,
         }
 
     def test_run_missing_parameters(self, monkeypatch):
@@ -208,7 +193,7 @@ class TestContextRelevanceEvaluator:
             if "Python" in kwargs["prompt"]:
                 raise Exception("OpenAI API request failed.")
             else:
-                return {"replies": ['{"statements": ["c", "d"], "statement_scores": [1, 1]}']}
+                return {"replies": ['{"relevant_statements": ["c", "d"], "score": 1}']}
 
         monkeypatch.setattr("haystack.components.generators.openai.OpenAIGenerator.run", generator_run)
 
@@ -282,3 +267,46 @@ class TestContextRelevanceEvaluator:
 
         assert len(result["results"][0]["statements"]) == 4
         assert len(result["results"][0]["statement_scores"]) == 4
+
+    @pytest.mark.integration
+    def new_behaviour(self):
+        from haystack.components.evaluators import ContextRelevanceEvaluator
+
+        questions = [
+            "Who created the Python language?",
+            "Why does java need a virtual machine",
+            "How can I optimize my C code through the compiler options?",
+        ]
+
+        contexts = [
+            [
+                "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming language. Its "
+                "design philosophy emphasizes code readability, and its language constructs aim to help programmers write clear, "
+                "logical code for both small and large-scale software projects."
+            ],
+            [
+                "Java requires a virtual machine (VM) to run due to its platform-independent design. This is because Java programs "
+                "are compiled into platform-independent bytecode, which the Java Virtual Machine (JVM) interprets and executes, "
+                "allowing them to run on any device with a compatible JVM. The JVM also provides automatic memory management "
+                "through garbage collection and enforces security features like sandboxing. Using a VM makes Java programs portable, "
+                "enabling them to be written once and run anywhere, which simplifies development and deployment."
+            ],
+            ["no relevant documents could be retrieved"],
+        ]
+
+        evaluator = ContextRelevanceEvaluator()
+        result = evaluator.run(questions=questions, contexts=contexts)
+
+        result = {
+            "results": {
+                "score": 0.67,
+                "individual_scores": [1, 1, 0],
+                "relevant_statements": [
+                    [
+                        "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming language."
+                    ],
+                    ["Java requires a virtual machine (VM) to run due to its platform-independent design."],
+                    ["Insufficient Information"],
+                ],
+            }
+        }
