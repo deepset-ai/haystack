@@ -98,7 +98,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
                 },
                 "outputs": {
                     "statements": ["Rome is the capital of Italy."],
-                    "statement_scores": [1],
+                    "score": 1,
                 },
             }]
         :param progress_bar:
@@ -164,6 +164,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
 
         # calculate average context relevance score over all queries
         result["score"] = mean([res["score"] for res in result["results"]])
+        result["individual_scores"] = [res["score"] for res in result["results"]]  # useful for the EvaluationRunResult
 
         return result
 

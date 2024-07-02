@@ -131,4 +131,5 @@ class EvaluationRunResult(BaseEvaluationRunResult):
         pipe_a_df.columns = [f"{this_name}_{col}" if col not in ignore else col for col in pipe_a_df.columns]  # type: ignore
 
         results_df = pd_concat([pipe_a_df, pipe_b_df], axis=1)
+
         return results_df

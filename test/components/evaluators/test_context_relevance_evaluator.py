@@ -147,6 +147,7 @@ class TestContextRelevanceEvaluator:
             ],
             "score": 0.5,
             "meta": None,
+            "individual_scores": [1, 0],
         }
 
     def test_run_no_statements_extracted(self, monkeypatch):
@@ -179,6 +180,7 @@ class TestContextRelevanceEvaluator:
             ],
             "score": 0.5,
             "meta": None,
+            "individual_scores": [1, 0],
         }
 
     def test_run_missing_parameters(self, monkeypatch):
