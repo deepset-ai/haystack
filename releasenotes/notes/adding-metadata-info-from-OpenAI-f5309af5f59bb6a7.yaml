@@ -2,4 +2,4 @@
 
 enhancements:
   - |
-    When using "openai" for the LLM-based evaluators the metadata from OpenAI will be in the output dictionary, under the key "metadata".
+    When using "openai" for the LLM-based evaluators the metadata from OpenAI will be in the output dictionary, under the key "meta".
