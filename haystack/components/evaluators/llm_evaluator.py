@@ -176,7 +176,7 @@ class LLMEvaluator:
             and the evaluation results as the values. If an exception occurs for a particular input value, the result
             will be `None` for that entry.
             If the API is "openai" and the response contains a "meta" key, the metadata from OpenAI will be included
-            in the output dictionary, under the key "metadata".
+            in the output dictionary, under the key "meta".
         :raises ValueError:
             Only in the case that  `raise_on_failure` is set to True and the received inputs are not lists or have
             different lengths, or if the output is not a valid JSON or doesn't contain the expected keys.
