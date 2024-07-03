@@ -196,12 +196,9 @@ class DocumentJoiner:
             min_score = mean_score - 3 * std_dev
             max_score = mean_score + 3 * std_dev
 
-            if max_score == min_score:
-                for doc in documents:
-                    doc.score = 0
-            else:
-                for doc in documents:
-                    doc.score = (doc.score - min_score) / (max_score - min_score)
+			delta_score = max_score - min_score
+			for doc in documents:
+				doc.score = (doc.score - min_score) / delta_score if delta_score != 0.0 else 0.0
 
         output = self._concatenate(document_lists=document_lists)
 
