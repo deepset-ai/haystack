@@ -322,16 +322,16 @@ class TestRouter:
         routes = [
             {
                 "condition": "{{ test|custom_filter_to_sede == 123 }}",
-                "output": "true",
+                "output": "123",
                 "output_name": "test",
-                "output_type": str,
+                "output_type": int,
             }
         ]
         custom_filters = {"custom_filter_to_sede": custom_filter_to_sede}
         router = ConditionalRouter(routes, custom_filters=custom_filters)
         kwargs = {"test": "123-456-789"}
         result = router.run(**kwargs)
-        assert result == {"test": "true"}
+        assert result == {"test": 123}
         serialized_router = router.to_dict()
         deserialized_router = ConditionalRouter.from_dict(serialized_router)
         assert deserialized_router.custom_filters == router.custom_filters
