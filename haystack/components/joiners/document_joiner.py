@@ -197,7 +197,10 @@ class DocumentJoiner:
             max_score = mean_score + 3 * std_dev
 
             for doc in documents:
-                doc.score = (doc.score - min_score) / (max_score - min_score)
+                try:
+                    doc.score = (doc.score - min_score) / (max_score - min_score)
+                except ZeroDivisionError:
+                    doc.score = 0  # if max and min is the same value all documents are poorly informative
 
         output = self._concatenate(document_lists=document_lists)
 
