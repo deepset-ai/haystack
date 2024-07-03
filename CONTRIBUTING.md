@@ -222,19 +222,42 @@ options you would normally pass to `pytest`, for example:
 hatch run test:unit test/test_logging.py::TestSkipLoggingConfiguration::test_skip_logging_configuration
 ```
 
-We also use tools to ensure consistent code style, quality, and static type checking. The quality of your code will be
-tested by the CI, but once again, running the checks locally will speed up the review cycle. To check your code you
-can run:
+### Run code quality checks locally
 
+We also use tools to ensure consistent code style, quality, and static type checking. The quality of your code will be
+tested by the CI, but once again, running the checks locally will speed up the review cycle.
+
+
+To check your code type checking, run:
 ```sh
-hatch run test:lint
+hatch run test:type
 ```
+
+
+To check your code format run:
+```sh
+hatch run format-check
+```
+
+
+To format your code, you can run:
+```sh
+hatch run format
+````
+
+
+To check your code style according to linting rules run:
+```sh
+hatch run check
+hatch run test:lint
+````
+
 
 If the linters spot any error, you can fix it before checking in your code:
-
 ```sh
-hatch run test:lint-fix
+hatch run fix
 ```
+
 
 ## Requirements for Pull Requests
 
