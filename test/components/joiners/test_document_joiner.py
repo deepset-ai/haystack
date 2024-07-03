@@ -145,7 +145,7 @@ class TestDocumentJoiner:
         ]
         assert all(doc.id in expected_document_ids for doc in output["documents"])
 
-    def test_run_with_distribution_based_rank_fusion_join_mode(self):
+    def test_run_with_zeroexceptionerror_distribution_based_rank_fusion_join_mode(self):
         joiner = DocumentJoiner(join_mode="distribution_based_rank_fusion")
         documents_1 = [
             Document(content="a", score=0.2),
