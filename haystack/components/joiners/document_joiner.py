@@ -90,6 +90,8 @@ class DocumentJoiner:
             - `documents`: Merged list of Documents
         """
         output_documents = []
+
+        documents = list(documents)
         if self.join_mode == "concatenate":
             output_documents = self._concatenate(documents)
         elif self.join_mode == "merge":
@@ -116,7 +118,7 @@ class DocumentJoiner:
 
         return {"documents": output_documents}
 
-    def _concatenate(self, document_lists):
+    def _concatenate(self, document_lists: List[List[Document]]) -> List[Document]:
         """
         Concatenate multiple lists of Documents and return only the Document with the highest score for duplicates.
         """
@@ -129,11 +131,11 @@ class DocumentJoiner:
             output.append(doc_with_best_score)
         return output
 
-    def _merge(self, document_lists):
+    def _merge(self, document_lists: List[List[Document]]) -> List[Document]:
         """
         Merge multiple lists of Documents and calculate a weighted sum of the scores of duplicate Documents.
         """
-        scores_map = defaultdict(int)
+        scores_map: dict = defaultdict(int)
         documents_map = {}
         weights = self.weights if self.weights else [1 / len(document_lists)] * len(document_lists)
 
@@ -145,9 +147,9 @@ class DocumentJoiner:
         for doc in documents_map.values():
             doc.score = scores_map[doc.id]
 
-        return documents_map.values()
+        return list(documents_map.values())
 
-    def _reciprocal_rank_fusion(self, document_lists):
+    def _reciprocal_rank_fusion(self, document_lists: List[List[Document]]) -> List[Document]:
         """
         Merge multiple lists of Documents and assign scores based on reciprocal rank fusion.
 
@@ -156,7 +158,7 @@ class DocumentJoiner:
         """
         k = 61
 
-        scores_map = defaultdict(int)
+        scores_map: dict = defaultdict(int)
         documents_map = {}
         weights = self.weights if self.weights else [1 / len(document_lists)] * len(document_lists)
 
@@ -174,9 +176,9 @@ class DocumentJoiner:
         for doc in documents_map.values():
             doc.score = scores_map[doc.id]
 
-        return documents_map.values()
+        return list(documents_map.values())
 
-    def _distribution_based_rank_fusion(self, document_lists):
+    def _distribution_based_rank_fusion(self, document_lists: List[List[Document]]) -> List[Document]:
         """
         Merge multiple lists of Documents and assign scores based on Distribution-Based Score Fusion.
 
@@ -187,7 +189,7 @@ class DocumentJoiner:
             scores_list = []
 
             for doc in documents:
-                scores_list.append(doc.score)
+                scores_list.append(doc.score if doc.score is not None else 0)
 
             mean_score = sum(scores_list) / len(scores_list)
             std_dev = (sum((x - mean_score) ** 2 for x in scores_list) / len(scores_list)) ** 0.5
