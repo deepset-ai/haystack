@@ -171,10 +171,12 @@ class LLMEvaluator:
         :param inputs:
             The input values to evaluate. The keys are the input names and the values are lists of input values.
         :returns:
-            A dictionary with a single `results` entry that contains a list of results.
+            A dictionary with a `results` entry that contains a list of results.
             Each result is a dictionary containing the keys as defined in the `outputs` parameter of the LLMEvaluator
             and the evaluation results as the values. If an exception occurs for a particular input value, the result
             will be `None` for that entry.
+            If the API is "openai" and the response contains a "meta" key, the metadata from OpenAI will be included
+            in the output dictionary, under the key "meta".
         :raises ValueError:
             Only in the case that  `raise_on_failure` is set to True and the received inputs are not lists or have
             different lengths, or if the output is not a valid JSON or doesn't contain the expected keys.
@@ -187,6 +189,7 @@ class LLMEvaluator:
         list_of_input_names_to_values = [dict(zip(input_names, v)) for v in values]
 
         results: List[Optional[Dict[str, Any]]] = []
+        metadata = None
         errors = 0
         for input_names_to_values in tqdm(list_of_input_names_to_values, disable=not self.progress_bar):
             prompt = self.builder.run(**input_names_to_values)
@@ -208,11 +211,14 @@ class LLMEvaluator:
                 results.append(None)
                 errors += 1
 
+            if self.api == "openai" and "meta" in result:
+                metadata = result["meta"]
+
         if errors > 0:
             msg = f"LLM evaluator failed for {errors} out of {len(list_of_input_names_to_values)} inputs."
             warn(msg)
 
-        return {"results": results}
+        return {"results": results, "meta": metadata}
 
     def prepare_template(self) -> str:
         """

@@ -45,7 +45,7 @@ class TransformersSimilarityRanker:
         self,
         model: Union[str, Path] = "cross-encoder/ms-marco-MiniLM-L-6-v2",
         device: Optional[ComponentDevice] = None,
-        token: Optional[Secret] = Secret.from_env_var("HF_API_TOKEN", strict=False),
+        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         top_k: int = 10,
         query_prefix: str = "",
         document_prefix: str = "",

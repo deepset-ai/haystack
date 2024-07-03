@@ -4,6 +4,7 @@
 
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
+from fnmatch import fnmatch
 from typing import Callable, Dict, List, Optional, Tuple
 
 import requests
@@ -94,10 +95,12 @@ class LinkContentFetcher:
 
         # register default content handlers that extract data from the response
         self.handlers: Dict[str, Callable[[Response], ByteStream]] = defaultdict(lambda: _text_content_handler)
-        self.handlers["text/html"] = _text_content_handler
-        self.handlers["text/plain"] = _text_content_handler
-        self.handlers["application/pdf"] = _binary_content_handler
-        self.handlers["application/octet-stream"] = _binary_content_handler
+        self.handlers["text/*"] = _text_content_handler
+        self.handlers["application/json"] = _text_content_handler
+        self.handlers["application/*"] = _binary_content_handler
+        self.handlers["image/*"] = _binary_content_handler
+        self.handlers["audio/*"] = _binary_content_handler
+        self.handlers["video/*"] = _binary_content_handler
 
         @retry(
             reraise=True,
@@ -175,7 +178,7 @@ class LinkContentFetcher:
         try:
             response = self._get_response(url)
             content_type = self._get_content_type(response)
-            handler: Callable = self.handlers[content_type]
+            handler: Callable = self._resolve_handler(content_type)
             stream = handler(response)
         except Exception as e:
             if self.raise_on_failure:
@@ -216,6 +219,29 @@ class LinkContentFetcher:
         """
         content_type = response.headers.get("Content-Type", "")
         return content_type.split(";")[0]
+
+    def _resolve_handler(self, content_type: str) -> Callable[[Response], ByteStream]:
+        """
+        Resolves the handler for the given content type.
+
+        First, it tries to find a direct match for the content type in the handlers dictionary.
+        If no direct match is found, it tries to find a pattern match using the fnmatch function.
+        If no pattern match is found, it returns the default handler for text/plain.
+
+        :param content_type: The content type to resolve the handler for.
+        :returns: The handler for the given content type, if found. Otherwise, the default handler for text/plain.
+        """
+        # direct match
+        if content_type in self.handlers:
+            return self.handlers[content_type]
+
+        # pattern matches
+        for pattern, handler in self.handlers.items():
+            if fnmatch(content_type, pattern):
+                return handler
+
+        # default handler
+        return self.handlers["text/plain"]
 
     def _switch_user_agent(self, retry_state: RetryCallState) -> None:
         """

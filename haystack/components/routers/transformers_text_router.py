@@ -79,7 +79,7 @@ class TransformersTextRouter:
         model: str,
         labels: Optional[List[str]] = None,
         device: Optional[ComponentDevice] = None,
-        token: Optional[Secret] = Secret.from_env_var("HF_API_TOKEN", strict=False),
+        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         huggingface_pipeline_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """

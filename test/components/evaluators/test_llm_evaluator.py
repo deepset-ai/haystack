@@ -339,7 +339,7 @@ class TestLLMEvaluator:
         monkeypatch.setattr("haystack.components.generators.openai.OpenAIGenerator.run", generator_run)
 
         results = component.run(questions=["What is the capital of Germany?"], predicted_answers=["Berlin"])
-        assert results == {"results": [{"score": 0.5}]}
+        assert results == {"results": [{"score": 0.5}], "meta": None}
 
     def test_prepare_template(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")

@@ -15,7 +15,7 @@ class TestSentenceTransformersTextEmbedder:
         embedder = SentenceTransformersTextEmbedder(model="model")
         assert embedder.model == "model"
         assert embedder.device == ComponentDevice.resolve_device(None)
-        assert embedder.token == Secret.from_env_var("HF_API_TOKEN", strict=False)
+        assert embedder.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
         assert embedder.prefix == ""
         assert embedder.suffix == ""
         assert embedder.batch_size == 32
@@ -51,7 +51,7 @@ class TestSentenceTransformersTextEmbedder:
         assert data == {
             "type": "haystack.components.embedders.sentence_transformers_text_embedder.SentenceTransformersTextEmbedder",
             "init_parameters": {
-                "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
+                "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
                 "model": "model",
                 "device": ComponentDevice.from_str("cpu").to_dict(),
                 "prefix": "",
@@ -100,7 +100,7 @@ class TestSentenceTransformersTextEmbedder:
         data = {
             "type": "haystack.components.embedders.sentence_transformers_text_embedder.SentenceTransformersTextEmbedder",
             "init_parameters": {
-                "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
+                "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
                 "model": "model",
                 "device": ComponentDevice.from_str("cpu").to_dict(),
                 "prefix": "",
@@ -114,7 +114,7 @@ class TestSentenceTransformersTextEmbedder:
         component = SentenceTransformersTextEmbedder.from_dict(data)
         assert component.model == "model"
         assert component.device == ComponentDevice.from_str("cpu")
-        assert component.token == Secret.from_env_var("HF_API_TOKEN", strict=False)
+        assert component.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
         assert component.prefix == ""
         assert component.suffix == ""
         assert component.batch_size == 32
@@ -126,7 +126,7 @@ class TestSentenceTransformersTextEmbedder:
         data = {
             "type": "haystack.components.embedders.sentence_transformers_text_embedder.SentenceTransformersTextEmbedder",
             "init_parameters": {
-                "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
+                "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
                 "model": "model",
                 "device": None,
                 "prefix": "",
@@ -140,7 +140,7 @@ class TestSentenceTransformersTextEmbedder:
         component = SentenceTransformersTextEmbedder.from_dict(data)
         assert component.model == "model"
         assert component.device == ComponentDevice.resolve_device(None)
-        assert component.token == Secret.from_env_var("HF_API_TOKEN", strict=False)
+        assert component.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
         assert component.prefix == ""
         assert component.suffix == ""
         assert component.batch_size == 32
