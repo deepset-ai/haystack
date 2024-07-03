@@ -249,7 +249,7 @@ hatch run format
 To check your code style according to linting rules run:
 ```sh
 hatch run check
-hatch run lint
+hatch run test:lint
 ````
 
 
