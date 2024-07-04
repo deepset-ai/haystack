@@ -11,7 +11,7 @@ from haystack.core.component import Component
 from haystack.core.errors import PipelineMaxLoops, PipelineRuntimeError
 from haystack.telemetry import pipeline_running
 
-from .base import PipelineBase, _add_missing_input_defaults
+from .base import PipelineBase, _add_missing_input_defaults, _is_lazy_variadic
 
 logger = logging.getLogger(__name__)
 
@@ -225,22 +225,12 @@ class Pipeline(PipelineBase):
             while len(to_run) > 0:
                 name, comp = to_run.pop(0)
 
-                if any(socket.is_variadic for socket in comp.__haystack_input__._sockets_dict.values()) and not getattr(  # type: ignore
-                    comp, "is_greedy", False
-                ):
-                    there_are_non_variadics = False
-                    for _, other_comp in to_run:
-                        if not any(
-                            socket.is_variadic
-                            for socket in other_comp.__haystack_input__._sockets_dict.values()  # type: ignore
-                        ):
-                            there_are_non_variadics = True
-                            break
-
-                    if there_are_non_variadics:
-                        if (name, comp) not in waiting_for_input:
-                            waiting_for_input.append((name, comp))
-                        continue
+                if _is_lazy_variadic(comp) and not self._only_variadics_to_run(to_run):
+                    # We run Components with lazy variadic inputs only if there only Components with
+                    # variadic inputs left to run. It doesn't matter if lazy or greedy.
+                    if (name, comp) not in waiting_for_input:
+                        waiting_for_input.append((name, comp))
+                    continue
 
                 if self._component_has_enough_inputs_to_run(name, last_inputs):
                     if self.graph.nodes[name]["visits"] > self.max_loops_allowed:
