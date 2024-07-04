@@ -195,9 +195,11 @@ class DocumentJoiner:
             std_dev = (sum((x - mean_score) ** 2 for x in scores_list) / len(scores_list)) ** 0.5
             min_score = mean_score - 3 * std_dev
             max_score = mean_score + 3 * std_dev
+            delta_score = max_score - min_score
 
             for doc in documents:
-                doc.score = (doc.score - min_score) / (max_score - min_score)
+                doc.score = (doc.score - min_score) / delta_score if delta_score != 0.0 else 0.0
+                # if all docs have the same score delta_score is 0, the docs are uninformative for the query
 
         output = self._concatenate(document_lists=document_lists)
 
