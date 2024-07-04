@@ -5,7 +5,6 @@
 import json
 import os
 import os.path
-import sys
 from typing import Literal
 from unittest.mock import patch
 
