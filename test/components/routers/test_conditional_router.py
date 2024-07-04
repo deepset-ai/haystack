@@ -12,6 +12,11 @@ from haystack.components.routers.conditional_router import NoRouteSelectedExcept
 from haystack.dataclasses import ChatMessage
 
 
+def custom_filter_to_sede(value):
+    """splits by hyphen and returns the first part"""
+    return int(value.split("-")[0])
+
+
 class TestRouter:
     @pytest.fixture
     def routes(self):
@@ -288,3 +293,47 @@ class TestRouter:
         router_dict_first_invocation = copy.deepcopy(router.to_dict())
         router_dict_second_invocation = router.to_dict()
         assert router_dict_first_invocation == router_dict_second_invocation
+
+    def test_custom_filter(self):
+        routes = [
+            {
+                "condition": "{{phone_num|get_area_code == 123}}",
+                "output": "Phone number has a 123 area code",
+                "output_name": "good_phone_num",
+                "output_type": str,
+            },
+            {
+                "condition": "{{phone_num|get_area_code != 123}}",
+                "output": "Phone number does not have 123 area code",
+                "output_name": "bad_phone_num",
+                "output_type": str,
+            },
+        ]
+
+        router = ConditionalRouter(routes, custom_filters={"get_area_code": custom_filter_to_sede})
+        kwargs = {"phone_num": "123-456-7890"}
+        result = router.run(**kwargs)
+        assert result == {"good_phone_num": "Phone number has a 123 area code"}
+        kwargs = {"phone_num": "321-456-7890"}
+        result = router.run(**kwargs)
+        assert result == {"bad_phone_num": "Phone number does not have 123 area code"}
+
+    def test_sede_with_custom_filter(self):
+        routes = [
+            {
+                "condition": "{{ test|custom_filter_to_sede == 123 }}",
+                "output": "123",
+                "output_name": "test",
+                "output_type": int,
+            }
+        ]
+        custom_filters = {"custom_filter_to_sede": custom_filter_to_sede}
+        router = ConditionalRouter(routes, custom_filters=custom_filters)
+        kwargs = {"test": "123-456-789"}
+        result = router.run(**kwargs)
+        assert result == {"test": 123}
+        serialized_router = router.to_dict()
+        deserialized_router = ConditionalRouter.from_dict(serialized_router)
+        assert deserialized_router.custom_filters == router.custom_filters
+        assert deserialized_router.custom_filters["custom_filter_to_sede"]("123-456-789") == 123
+        assert result == deserialized_router.run(**kwargs)
