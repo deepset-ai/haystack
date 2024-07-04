@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import re
-from typing import Any, Dict, List, Optional, Union, cast
+from typing import Any, Dict, List, Optional, Union
 
 from haystack import Document, GeneratedAnswer, component, logging
 from haystack.dataclasses.chat_message import ChatMessage
@@ -104,20 +104,15 @@ class AnswerBuilder:
 
         pattern = pattern or self.pattern
         reference_pattern = reference_pattern or self.reference_pattern
-
-        # Extract content from ChatMessage objects if replies is a list of ChatMessages
-        if isinstance(replies[0], ChatMessage):
-            messages = cast(List[ChatMessage], replies)
-            meta = [msg.meta for msg in messages]
-            replies = [msg.content for msg in messages]
-
         all_answers = []
         for reply, metadata in zip(replies, meta):
+            # Extract content from ChatMessage objects if reply is a ChatMessages, else use the string as is
+            extracted_reply: str = reply.content if isinstance(reply, ChatMessage) else reply  # type: ignore
+            extracted_metadata = reply.meta if isinstance(reply, ChatMessage) else metadata
             referenced_docs = []
             if documents:
-                reference_idxs = []
                 if reference_pattern:
-                    reference_idxs = AnswerBuilder._extract_reference_idxs(str(reply), reference_pattern)
+                    reference_idxs = AnswerBuilder._extract_reference_idxs(extracted_reply, reference_pattern)
                 else:
                     reference_idxs = [doc_idx for doc_idx, _ in enumerate(documents)]
 
@@ -129,8 +124,10 @@ class AnswerBuilder:
                             "Document index '{index}' referenced in Generator output is out of range. ", index=idx + 1
                         )
 
-            answer_string = AnswerBuilder._extract_answer_string(str(reply), pattern)
-            answer = GeneratedAnswer(data=answer_string, query=query, documents=referenced_docs, meta=metadata)
+            answer_string = AnswerBuilder._extract_answer_string(extracted_reply, pattern)
+            answer = GeneratedAnswer(
+                data=answer_string, query=query, documents=referenced_docs, meta=extracted_metadata
+            )
             all_answers.append(answer)
 
         return {"answers": all_answers}
