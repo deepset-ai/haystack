@@ -61,7 +61,7 @@ class TestLinkContentFetcher:
         correct_response = b"Example test response"
         with patch("haystack.components.fetchers.link_content.requests") as mock_run:
             mock_run.get.return_value = Mock(
-                status_code=200, text="Example test response", headers={"Content-Type": "text/plain"}
+                status_code=200, content=b"Example test response", headers={"Content-Type": "text/plain"}
             )
             fetcher = LinkContentFetcher()
             streams = fetcher.run(urls=["https://www.example.com"])["streams"]
@@ -73,7 +73,7 @@ class TestLinkContentFetcher:
         correct_response = b"<h1>Example test response</h1>"
         with patch("haystack.components.fetchers.link_content.requests") as mock_run:
             mock_run.get.return_value = Mock(
-                status_code=200, text="<h1>Example test response</h1>", headers={"Content-Type": "text/html"}
+                status_code=200, content=b"<h1>Example test response</h1>", headers={"Content-Type": "text/html"}
             )
             fetcher = LinkContentFetcher()
             streams = fetcher.run(urls=["https://www.example.com"])["streams"]
