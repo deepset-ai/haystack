@@ -263,7 +263,8 @@ class Pipeline(PipelineBase):
                         # This happens when a component was put in the waiting list but we reached it from another edge.
                         waiting_for_input.remove((name, comp))
 
-                    self._dequeue_components_that_received_no_input(name, res, to_run, waiting_for_input)
+                    for pair in self._find_components_that_received_no_input(name, res):
+                        _dequeue_component(pair, to_run, waiting_for_input)
                     res = self._distribute_output(name, res, last_inputs, to_run, waiting_for_input)
 
                     if len(res) > 0:
@@ -341,3 +342,22 @@ def _enqueue_component(
 
     if component_pair not in to_run:
         to_run.append(component_pair)
+
+
+def _dequeue_component(
+    component_pair: Tuple[str, Component],
+    to_run: List[Tuple[str, Component]],
+    waiting_for_input: List[Tuple[str, Component]],
+):
+    """
+    Removes a Component both from the queue of Components to run and the waiting list.
+
+    :param component_pair: Tuple of Component name and instance
+    :param to_run: Queue of Components to run
+    :param waiting_for_input: Queue of Components waiting for input
+    """
+    if component_pair in waiting_for_input:
+        waiting_for_input.remove(component_pair)
+
+    if component_pair in to_run:
+        to_run.remove(component_pair)
