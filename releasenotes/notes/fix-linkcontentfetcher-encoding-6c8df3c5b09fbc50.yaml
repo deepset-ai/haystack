@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Encoding of LinkContentFetcher
