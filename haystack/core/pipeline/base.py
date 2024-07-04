@@ -8,7 +8,7 @@ from collections import defaultdict
 from copy import copy, deepcopy
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional, TextIO, Tuple, Type, TypeVar, Union
+from typing import Any, Dict, Iterator, List, Optional, Set, TextIO, Tuple, Type, TypeVar, Union
 
 import networkx  # type:ignore
 
@@ -820,36 +820,6 @@ class PipelineBase:
         for node in self.graph.nodes:
             self.graph.nodes[node]["visits"] = 0
 
-    def _dequeue_components_that_received_no_input(
-        self,
-        component_name: str,
-        component_result: Dict[str, Any],
-        to_run: List[Tuple[str, Component]],
-        waiting_for_input: List[Tuple[str, Component]],
-    ):
-        """
-        Removes Components that didn't receive any input from the list of Components to run.
-
-        We can't run those Components if they didn't receive any input, even if it's optional.
-        This is mainly useful for Components that have conditional outputs.
-
-        :param component_name: Name of the Component that created the output
-        :param component_result: The output of the Component
-        :param to_run: Queue of Components to run
-        :param waiting_for_input: Queue of Components waiting for input
-        """
-        instance: Component = self.graph.nodes[component_name]["instance"]
-        for socket_name, socket in instance.__haystack_output__._sockets_dict.items():  # type: ignore
-            if socket_name in component_result:
-                continue
-            for receiver in socket.receivers:
-                receiver_instance: Component = self.graph.nodes[receiver]["instance"]
-                pair = (receiver, receiver_instance)
-                if pair in to_run:
-                    to_run.remove(pair)
-                if pair in waiting_for_input:
-                    waiting_for_input.remove(pair)
-
     def _distribute_output(
         self,
         component_name: str,
@@ -1019,6 +989,26 @@ class PipelineBase:
         # rely on this behaviour.
         # The loop detection will be handled later on.
         return name, comp
+
+    def _find_components_that_received_no_input(
+        self, component_name: str, component_result: Dict[str, Any]
+    ) -> Set[Tuple[str, Component]]:
+        """
+        Find all the Components that are connected to component_name and didn't receive any input from it.
+
+        :param component_name: Name of the Component that created the output
+        :param component_result: Output of the Component
+        :return: A set of Components that didn't receive any input from component_name
+        """
+        components = set()
+        instance: Component = self.graph.nodes[component_name]["instance"]
+        for socket_name, socket in instance.__haystack_output__._sockets_dict.items():  # type: ignore
+            if socket_name in component_result:
+                continue
+            for receiver in socket.receivers:
+                receiver_instance: Component = self.graph.nodes[receiver]["instance"]
+                components.add((receiver, receiver_instance))
+        return components
 
     def _is_stuck_in_a_loop(self, waiting_for_input: List[Tuple[str, Component]]) -> bool:
         """
