@@ -15,7 +15,7 @@ from haystack.core.component import component
 from haystack.core.component.types import InputSocket, OutputSocket, Variadic
 from haystack.core.errors import PipelineConnectError, PipelineDrawingError, PipelineError
 from haystack.core.pipeline import Pipeline, PredefinedPipeline
-from haystack.core.pipeline.pipeline import _enqueue_component
+from haystack.core.pipeline.pipeline import _enqueue_component, _dequeue_component
 from haystack.core.pipeline.base import _add_missing_input_defaults
 from haystack.core.serialization import DeserializationCallbacks
 from haystack.testing.factory import component_class
@@ -1092,7 +1092,7 @@ class TestPipeline:
             "sentence_builder", {"sentence_builder": {"words": ["blah blah"]}}
         )
 
-    def test__dequeue_components_that_received_no_input(self):
+    def test__find_components_that_received_no_input(self):
         sentence_builder = component_class(
             "SentenceBuilder", input_types={"words": List[str]}, output={"text": "some words"}
         )()
@@ -1105,11 +1105,11 @@ class TestPipeline:
         pipe.add_component("document_builder", document_builder)
         pipe.connect("sentence_builder.text", "document_builder.text")
 
-        to_run = [("document_builder", document_builder)]
-        waiting_for_input = [("document_builder", document_builder)]
-        pipe._dequeue_components_that_received_no_input("sentence_builder", {}, to_run, waiting_for_input)
-        assert to_run == []
-        assert waiting_for_input == []
+        res = pipe._find_components_that_received_no_input("sentence_builder", {})
+        assert res == {("document_builder", document_builder)}
+
+        res = pipe._find_components_that_received_no_input("sentence_builder", {"text": "some text"})
+        assert res == set()
 
     def test__distribute_output(self):
         document_builder = component_class(
@@ -1295,6 +1295,42 @@ class TestPipeline:
         _enqueue_component(("document_builder", document_builder), to_run, waiting_for_input)
         assert to_run == [("document_joiner", document_joiner), ("document_builder", document_builder)]
         assert waiting_for_input == []
+
+    def test__dequeue_component(self):
+        document_builder = component_class(
+            "DocumentBuilder", input_types={"text": str}, output_types={"doc": Document}
+        )()
+        document_joiner = component_class("DocumentJoiner", input_types={"docs": Variadic[Document]})()
+
+        to_run = []
+        waiting_for_input = []
+        _dequeue_component(("document_builder", document_builder), to_run, waiting_for_input)
+        assert to_run == []
+        assert waiting_for_input == []
+
+        to_run = [("document_builder", document_builder)]
+        waiting_for_input = []
+        _dequeue_component(("document_builder", document_builder), to_run, waiting_for_input)
+        assert to_run == []
+        assert waiting_for_input == []
+
+        to_run = []
+        waiting_for_input = [("document_builder", document_builder)]
+        _dequeue_component(("document_builder", document_builder), to_run, waiting_for_input)
+        assert to_run == []
+        assert waiting_for_input == []
+
+        to_run = [("document_builder", document_builder)]
+        waiting_for_input = [("document_builder", document_builder)]
+        _dequeue_component(("document_builder", document_builder), to_run, waiting_for_input)
+        assert to_run == []
+        assert waiting_for_input == []
+
+        to_run = [("document_builder", document_builder)]
+        waiting_for_input = [("document_builder", document_builder)]
+        _dequeue_component(("document_joiner", document_joiner), to_run, waiting_for_input)
+        assert to_run == [("document_builder", document_builder)]
+        assert waiting_for_input == [("document_builder", document_builder)]
 
     def test__add_missing_input_defaults(self):
         name = "prompt_builder"
