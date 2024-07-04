@@ -156,7 +156,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
                 result["results"][idx] = {"relevant_statements": [], "score": float("nan")}
                 continue
             if "relevant_statements" in res:
-                if res["relevant_statements"] == ["Insufficient Information"]:
+                if "insufficient information" in res["relevant_statements"][0].lower():
                     res["score"] = 0
                 elif res["relevant_statements"] is not None:
                     res["score"] = 1
