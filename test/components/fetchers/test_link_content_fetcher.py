@@ -6,7 +6,12 @@ from unittest.mock import patch, Mock
 import pytest
 import requests
 
-from haystack.components.fetchers.link_content import LinkContentFetcher, _binary_content_handler, DEFAULT_USER_AGENT
+from haystack.components.fetchers.link_content import (
+    LinkContentFetcher,
+    _text_content_handler,
+    _binary_content_handler,
+    DEFAULT_USER_AGENT,
+)
 
 HTML_URL = "https://docs.haystack.deepset.ai/docs"
 TEXT_URL = "https://raw.githubusercontent.com/deepset-ai/haystack/main/README.md"
@@ -41,8 +46,9 @@ class TestLinkContentFetcher:
         assert fetcher.retry_attempts == 2
         assert fetcher.timeout == 3
         assert fetcher.handlers == {
-            "text/*": _binary_content_handler,
-            "application/json": _binary_content_handler,
+            "text/*": _text_content_handler,
+            "text/html": _binary_content_handler,
+            "application/json": _text_content_handler,
             "application/*": _binary_content_handler,
             "image/*": _binary_content_handler,
             "audio/*": _binary_content_handler,
@@ -61,7 +67,7 @@ class TestLinkContentFetcher:
         correct_response = b"Example test response"
         with patch("haystack.components.fetchers.link_content.requests") as mock_run:
             mock_run.get.return_value = Mock(
-                status_code=200, content=b"Example test response", headers={"Content-Type": "text/plain"}
+                status_code=200, text="Example test response", headers={"Content-Type": "text/plain"}
             )
             fetcher = LinkContentFetcher()
             streams = fetcher.run(urls=["https://www.example.com"])["streams"]

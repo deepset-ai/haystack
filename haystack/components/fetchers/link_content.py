@@ -29,6 +29,16 @@ REQUEST_HEADERS = {
 }
 
 
+def _text_content_handler(response: Response) -> ByteStream:
+    """
+    Handles text content.
+
+    :param response: Response object from the request.
+    :return: The extracted text.
+    """
+    return ByteStream.from_string(response.text)
+
+
 def _binary_content_handler(response: Response) -> ByteStream:
     """
     Handles binary content.
@@ -84,9 +94,10 @@ class LinkContentFetcher:
         self.timeout = timeout
 
         # register default content handlers that extract data from the response
-        self.handlers: Dict[str, Callable[[Response], ByteStream]] = defaultdict(lambda: _binary_content_handler)
-        self.handlers["text/*"] = _binary_content_handler
-        self.handlers["application/json"] = _binary_content_handler
+        self.handlers: Dict[str, Callable[[Response], ByteStream]] = defaultdict(lambda: _text_content_handler)
+        self.handlers["text/*"] = _text_content_handler
+        self.handlers["text/html"] = _binary_content_handler
+        self.handlers["application/json"] = _text_content_handler
         self.handlers["application/*"] = _binary_content_handler
         self.handlers["image/*"] = _binary_content_handler
         self.handlers["audio/*"] = _binary_content_handler

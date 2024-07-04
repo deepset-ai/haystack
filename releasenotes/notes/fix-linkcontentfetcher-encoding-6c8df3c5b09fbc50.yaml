@@ -1,4 +1,4 @@
 ---
 fixes:
   - |
-    Encoding of LinkContentFetcher
+    Encoding of HTML files in LinkContentFetcher
