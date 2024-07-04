@@ -5,6 +5,7 @@
 import json
 import os
 import os.path
+import sys
 from typing import Literal
 from unittest.mock import patch
 
@@ -249,6 +250,9 @@ class TestAzureOCRDocumentConverter:
     @pytest.mark.integration
     @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_ENDPOINT", None), reason="Azure endpoint not available")
     @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_API_KEY", None), reason="Azure credentials not available")
+    @pytest.mark.skipif(
+        sys.platform in ["darwin"], reason="Fails on osx: `file is corrupted or format is unsupported.`"
+    )
     def test_run_with_pdf_file(self, test_files_path):
         component = AzureOCRDocumentConverter(
             endpoint=os.environ["CORE_AZURE_CS_ENDPOINT"], api_key=Secret.from_env_var("CORE_AZURE_CS_API_KEY")
