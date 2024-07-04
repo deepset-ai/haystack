@@ -1033,14 +1033,11 @@ class PipelineBase:
             # BAIL!
             return True
 
-        if len(waiting_for_input) == 1:
-            # We have a single component with no variadic input or only default inputs waiting for input.
-            # If we're at this point it means it has been waiting for input for at least 2 iterations.
-            # This will never run.
-            # BAIL!
-            return True
-
-        return False
+        # If we have a single component with no variadic input or only default inputs waiting for input
+        # it means it has been waiting for input for at least 2 iterations.
+        # This will never run.
+        # BAIL!
+        return len(waiting_for_input) == 1
 
 
 def _connections_status(
