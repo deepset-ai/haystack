@@ -249,6 +249,7 @@ class TestAzureOCRDocumentConverter:
     @pytest.mark.integration
     @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_ENDPOINT", None), reason="Azure endpoint not available")
     @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_API_KEY", None), reason="Azure credentials not available")
+    @pytest.mark.flaky(reruns=5, reruns_delay=5)
     def test_run_with_pdf_file(self, test_files_path):
         component = AzureOCRDocumentConverter(
             endpoint=os.environ["CORE_AZURE_CS_ENDPOINT"], api_key=Secret.from_env_var("CORE_AZURE_CS_API_KEY")
