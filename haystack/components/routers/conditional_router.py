@@ -2,13 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, List, Set
+from typing import Any, Callable, Dict, List, Optional, Set
 
 from jinja2 import Environment, TemplateSyntaxError, meta
 from jinja2.nativetypes import NativeEnvironment
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.utils import deserialize_type, serialize_type
+from haystack.utils import deserialize_callable, deserialize_type, serialize_callable, serialize_type
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +102,7 @@ class ConditionalRouter:
     ```
     """
 
-    def __init__(self, routes: List[Dict]):
+    def __init__(self, routes: List[Dict], custom_filters: Optional[Dict[str, Callable]] = None):
         """
         Initializes the `ConditionalRouter` with a list of routes detailing the conditions for routing.
 
@@ -113,12 +113,20 @@ class ConditionalRouter:
             - `output_type`: The type of the output data (e.g., str, List[int]).
             - `output_name`: The name under which the `output` value of the route is published. This name is used to
                 connect the router to other components in the pipeline.
+        :param custom_filters: A dictionary of custom Jinja2 filters to be used in the condition expressions.
+            For example, passing `{"my_filter": my_filter_fcn}` where:
+            - `my_filter` is the name of the custom filter.
+            - `my_filter_fcn` is a callable that takes `my_var:str` and returns `my_var[:3]`.
+              `{{ my_var|my_filter }}` can then be used inside a route condition expression like so:
+                `"condition": "{{ my_var|my_filter == 'foo' }}"`.
         """
         self._validate_routes(routes)
         self.routes: List[dict] = routes
+        self.custom_filters = custom_filters or {}
 
         # Create a Jinja native environment to inspect variables in the condition templates
         env = NativeEnvironment()
+        env.filters.update(self.custom_filters)
 
         # Inspect the routes to determine input and output types.
         input_types: Set[str] = set()  # let's just store the name, type will always be Any
@@ -145,8 +153,8 @@ class ConditionalRouter:
         for route in self.routes:
             # output_type needs to be serialized to a string
             route["output_type"] = serialize_type(route["output_type"])
-
-        return default_to_dict(self, routes=self.routes)
+        se_filters = {name: serialize_callable(filter_func) for name, filter_func in self.custom_filters.items()}
+        return default_to_dict(self, routes=self.routes, custom_filters=se_filters)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ConditionalRouter":
@@ -163,6 +171,8 @@ class ConditionalRouter:
         for route in routes:
             # output_type needs to be deserialized from a string to a type
             route["output_type"] = deserialize_type(route["output_type"])
+        for name, filter_func in init_params.get("custom_filters", {}).items():
+            init_params["custom_filters"][name] = deserialize_callable(filter_func) if filter_func else None
         return default_from_dict(cls, data)
 
     def run(self, **kwargs):
@@ -185,6 +195,7 @@ class ConditionalRouter:
         """
         # Create a Jinja native environment to evaluate the condition templates as Python expressions
         env = NativeEnvironment()
+        env.filters.update(self.custom_filters)
 
         for route in self.routes:
             try:
