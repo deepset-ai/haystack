@@ -44,7 +44,7 @@ class TestContextRelevanceEvaluator:
                         "Madrid is the capital of Spain.",
                     ],
                 },
-                "outputs": {"relevant_statements": ["Insufficient Information"]},
+                "outputs": {"relevant_statements": []},
             },
             {
                 "inputs": {"questions": "What is the capital of Italy?", "contexts": ["Rome is the capital of Italy."]},
@@ -122,7 +122,7 @@ class TestContextRelevanceEvaluator:
             if "Football" in kwargs["prompt"]:
                 return {"replies": ['{"relevant_statements": ["a", "b"], "score": 1}']}
             else:
-                return {"replies": ['{"relevant_statements": ["Insufficient Information"], "score": 0}']}
+                return {"replies": ['{"relevant_statements": [], "score": 0}']}
 
         monkeypatch.setattr("haystack.components.generators.openai.OpenAIGenerator.run", generator_run)
 
@@ -140,11 +140,11 @@ class TestContextRelevanceEvaluator:
             ],
         ]
         results = component.run(questions=questions, contexts=contexts)
+
+        print(results)
+
         assert results == {
-            "results": [
-                {"score": 1, "relevant_statements": ["a", "b"]},
-                {"score": 0, "relevant_statements": ["Insufficient Information"]},
-            ],
+            "results": [{"score": 1, "relevant_statements": ["a", "b"]}, {"score": 0, "relevant_statements": []}],
             "score": 0.5,
             "meta": None,
             "individual_scores": [1, 0],
@@ -158,7 +158,7 @@ class TestContextRelevanceEvaluator:
             if "Football" in kwargs["prompt"]:
                 return {"replies": ['{"relevant_statements": ["a", "b"], "score": 1}']}
             else:
-                return {"replies": ['{"relevant_statements": ["Insufficient Information"], "score": 0}']}
+                return {"replies": ['{"relevant_statements": [], "score": 0}']}
 
         monkeypatch.setattr("haystack.components.generators.openai.OpenAIGenerator.run", generator_run)
 
@@ -174,10 +174,7 @@ class TestContextRelevanceEvaluator:
         ]
         results = component.run(questions=questions, contexts=contexts)
         assert results == {
-            "results": [
-                {"score": 1, "relevant_statements": ["a", "b"]},
-                {"score": 0, "relevant_statements": ["Insufficient Information"]},
-            ],
+            "results": [{"score": 1, "relevant_statements": ["a", "b"]}, {"score": 0, "relevant_statements": []}],
             "score": 0.5,
             "meta": None,
             "individual_scores": [1, 0],

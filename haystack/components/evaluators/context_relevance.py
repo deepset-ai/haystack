@@ -27,7 +27,7 @@ _DEFAULT_EXAMPLES = [
                 "Madrid is the capital of Spain.",
             ],
         },
-        "outputs": {"relevant_statements": ["Insufficient Information"]},
+        "outputs": {"relevant_statements": []},
     },
     {
         "inputs": {"questions": "What is the capital of Italy?", "contexts": ["Rome is the capital of Italy."]},
@@ -89,7 +89,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
     #   'score': 1.0
     #  },
     #  {
-    #   'relevant_statements': ['Insufficient Information'],
+    #   'relevant_statements': [],
     #   'score': 0.0
     #  }]
     ```
@@ -178,10 +178,10 @@ class ContextRelevanceEvaluator(LLMEvaluator):
                 result["results"][idx] = {"relevant_statements": [], "score": float("nan")}
                 continue
             if "relevant_statements" in res:
-                if "insufficient information" in res["relevant_statements"][0].lower():
-                    res["score"] = 0
-                elif res["relevant_statements"] is not None:
+                if len(res["relevant_statements"]) > 0:
                     res["score"] = 1
+                else:
+                    res["score"] = 0
 
         # calculate average context relevance score over all queries
         result["score"] = mean([res["score"] for res in result["results"]])
