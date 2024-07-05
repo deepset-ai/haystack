@@ -41,35 +41,57 @@ class ContextRelevanceEvaluator(LLMEvaluator):
     """
     Evaluator that checks if a provided context is relevant to the question.
 
-    An LLM breaks up the context into multiple statements and checks whether each statement
+    An LLM breaks up a context into multiple statements and checks whether each statement
     is relevant for answering a question.
-    The final score for the context relevance is either binary score of 1 or 0, where 1 indicates that the context
-    is relevant to the question and 0 indicates that the context is not relevant to the question.
+    The final score for each context is either binary score of 1 or 0, where 1 indicates that the context is relevant
+    to the question and 0 indicates that the context is not relevant.
+    The evaluator also provides the relevant statements from the context and an average score over all the provided
+    input questions contexts pairs.
 
     Usage example:
     ```python
     from haystack.components.evaluators import ContextRelevanceEvaluator
 
-    questions = ["Who created the Python language?"]
+    questions = ["Who created the Python language?", "Why does Java needs a JVM?", "Is C++ better than Python?"]
     contexts = [
         [(
             "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming "
             "language. Its design philosophy emphasizes code readability, and its language constructs aim to help "
             "programmers write clear, logical code for both small and large-scale software projects."
         )],
+        [(
+            "Java is a high-level, class-based, object-oriented programming language that is designed to have as few "
+            "implementation dependencies as possible. The JVM has two primary functions: to allow Java programs to run
+            on any device or operating system (known as the "write once, run anywhere" principle), and to manage and
+            optimize program memory.
+        )],
+        [(
+            "C++ is a general-purpose programming language created by Bjarne Stroustrup as an extension of the C "
+            "programming language."
+        )],
     ]
 
     evaluator = ContextRelevanceEvaluator()
     result = evaluator.run(questions=questions, contexts=contexts)
     print(result["score"])
-    # 1.0
+    # 0,67
     print(result["individual_scores"])
-    # [1]
+    # [1,1,0]
     print(result["results"])
     # [{
     #   'relevant_statements': ['Python, created by Guido van Rossum in the late 1980s.'],
+    #    'score': 1.0
+    #  },
+    #  {
+    #   'relevant_statements': ['The JVM has two primary functions: to allow Java programs to run on any device or
+    #                           operating system (known as the "write once, run anywhere" principle), and to manage and
+    #                           optimize program memory'],
     #   'score': 1.0
-    # }]
+    #  },
+    #  {
+    #   'relevant_statements': ['Insufficient Information'],
+    #   'score': 0.0
+    #  }]
     ```
     """
 
