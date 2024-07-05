@@ -1039,21 +1039,6 @@ class PipelineBase:
         # BAIL!
         return len(waiting_for_input) == 1
 
-    def _only_variadics_to_run(self, to_run: List[Tuple[str, Component]]) -> bool:
-        """
-        Returns True if all the Components in to_run have variadic inputs, False otherwise.
-
-        If the list is empty it returns True.
-
-        :param to_run: Queue of Components to run
-        :returns: True if all the Components in to_run have only variadic inputs, False otherwise
-        """
-        for _, comp in to_run:
-            if not any(socket.is_variadic for socket in comp.__haystack_input__._sockets_dict.values()):  # type: ignore
-                return False
-
-        return True
-
 
 def _connections_status(
     sender_node: str, receiver_node: str, sender_sockets: List[OutputSocket], receiver_sockets: List[InputSocket]
