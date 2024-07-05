@@ -1412,30 +1412,3 @@ class TestPipeline:
         ]
         pair = pipe._find_next_runnable_lazy_variadic_or_default_component(waiting_for_input)
         assert pair == ("prompt_builder", prompt_builder)
-
-    def test__only_variadics_to_run(self):
-        document_builder = component_class(
-            "DocumentBuilder", input_types={"text": str}, output_types={"doc": Document}
-        )()
-        document_joiner = component_class("DocumentJoiner", input_types={"docs": Variadic[Document]})()
-        prompt_builder = PromptBuilder(template="{{ questions | join('\n') }}")
-        pipe = Pipeline()
-
-        to_run = [("document_joiner", document_joiner)]
-        assert pipe._only_variadics_to_run(to_run)
-
-        to_run = []
-        assert pipe._only_variadics_to_run(to_run)
-
-        to_run = [
-            ("document_builder", document_builder),
-            ("prompt_builder", prompt_builder),
-            ("document_joiner", document_joiner),
-        ]
-        assert not pipe._only_variadics_to_run(to_run)
-
-        to_run = [("document_joiner", document_joiner), ("prompt_builder", prompt_builder)]
-        assert not pipe._only_variadics_to_run(to_run)
-
-        to_run = [("document_joiner", document_joiner), ("document_builder", document_builder)]
-        assert not pipe._only_variadics_to_run(to_run)

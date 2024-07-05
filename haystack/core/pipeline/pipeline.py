@@ -225,9 +225,9 @@ class Pipeline(PipelineBase):
             while len(to_run) > 0:
                 name, comp = to_run.pop(0)
 
-                if _is_lazy_variadic(comp) and not self._only_variadics_to_run(to_run):
+                if _is_lazy_variadic(comp) and not all(_is_lazy_variadic(comp) for _, comp in to_run):
                     # We run Components with lazy variadic inputs only if there only Components with
-                    # variadic inputs left to run. It doesn't matter if lazy or greedy.
+                    # lazy variadic inputs left to run
                     if (name, comp) not in waiting_for_input:
                         waiting_for_input.append((name, comp))
                     continue
