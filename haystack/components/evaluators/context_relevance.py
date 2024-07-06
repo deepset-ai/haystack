@@ -147,7 +147,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
             examples=self.examples,
             api=self.api,
             api_key=self.api_key,
-            api_parms=api_params,
+            api_params=api_params,
             raise_on_failure=raise_on_failure,
             progress_bar=progress_bar,
         )

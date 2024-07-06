@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    LLM based evaluators can pass in supported OpenAIGenerator parameters via api_params.
+    This allows for custom generation_kwargs, changing the api_base_url (for local evaluation),
+    and all other supported parameters as described in the OpenAIGenerator docs.
