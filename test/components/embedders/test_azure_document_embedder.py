@@ -43,6 +43,8 @@ class TestAzureOpenAIDocumentEmbedder:
                 "progress_bar": True,
                 "meta_fields_to_embed": [],
                 "embedding_separator": "\n",
+                "max_retries": 5,
+                "timeout": 30.0,
             },
         }
 
