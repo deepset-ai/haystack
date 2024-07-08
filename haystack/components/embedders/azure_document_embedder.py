@@ -33,7 +33,7 @@ class AzureOpenAIDocumentEmbedder:
     ```
     """
 
-    def __init__(
+    def __init__(  # noqa: PLR0913 (too-many-arguments)
         self,
         azure_endpoint: Optional[str] = None,
         api_version: Optional[str] = "2023-05-15",
@@ -48,6 +48,8 @@ class AzureOpenAIDocumentEmbedder:
         progress_bar: bool = True,
         meta_fields_to_embed: Optional[List[str]] = None,
         embedding_separator: str = "\n",
+        timeout: Optional[float] = None,
+        max_retries: Optional[int] = None,
     ):
         """
         Create an AzureOpenAIDocumentEmbedder component.
@@ -84,6 +86,10 @@ class AzureOpenAIDocumentEmbedder:
             List of meta fields that will be embedded along with the Document text.
         :param embedding_separator:
             Separator used to concatenate the meta fields to the Document text.
+        :param timeout: The timeout in seconds to be passed to the underlying `AzureOpenAI` client, if not set it is
+            inferred from the `OPENAI_TIMEOUT` environment variable or set to 30.
+        :param max_retries: Maximum retries to establish a connection with AzureOpenAI if it returns an internal error,
+            if not set it is inferred from the `OPENAI_MAX_RETRIES` environment variable or set to 5.
         """
         # if not provided as a parameter, azure_endpoint is read from the env var AZURE_OPENAI_ENDPOINT
         azure_endpoint = azure_endpoint or os.environ.get("AZURE_OPENAI_ENDPOINT")
@@ -106,6 +112,8 @@ class AzureOpenAIDocumentEmbedder:
         self.progress_bar = progress_bar
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
+        self.timeout = timeout or float(os.environ.get("OPENAI_TIMEOUT", 30.0))
+        self.max_retries = max_retries or int(os.environ.get("OPENAI_MAX_RETRIES", 5))
 
         self._client = AzureOpenAI(
             api_version=api_version,
@@ -114,6 +122,8 @@ class AzureOpenAIDocumentEmbedder:
             api_key=api_key.resolve_value() if api_key is not None else None,
             azure_ad_token=azure_ad_token.resolve_value() if azure_ad_token is not None else None,
             organization=organization,
+            timeout=self.timeout,
+            max_retries=self.max_retries,
         )
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
@@ -144,6 +154,8 @@ class AzureOpenAIDocumentEmbedder:
             embedding_separator=self.embedding_separator,
             api_key=self.api_key.to_dict() if self.api_key is not None else None,
             azure_ad_token=self.azure_ad_token.to_dict() if self.azure_ad_token is not None else None,
+            timeout=self.timeout,
+            max_retries=self.max_retries,
         )
 
     @classmethod
