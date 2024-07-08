@@ -1,10 +1,4 @@
 ---
 enhancements:
   - |
-    Add max_retries, timeout to AzureOpenAIDocumentEmbedder init.
-    AzureOpenAIDocumentEmbedder can now be initialised by setting max_retries.
-    If max_retries is not set, it is inferred from the `OPENAI_MAX_RETRIES`
-    environment variable or set to 5.
-    AzureOpenAIDocumentEmbedder can now be initialised by setting timeout.
-    If timeout is not set, it is inferred from the `OPENAI_TIMEOUT`
-    environment variable or set to 30.
+    Add `max_retries`, `timeout` parameters to the `AzureOpenAIDocumentEmbedder` initialization.
