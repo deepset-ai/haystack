@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import warnings
 from typing import Any, Dict, List, Optional
 
 from numpy import mean as np_mean
@@ -136,6 +137,13 @@ class ContextRelevanceEvaluator(LLMEvaluator):
         self.examples = examples or _DEFAULT_EXAMPLES
         self.api = api
         self.api_key = api_key
+
+        warnings.warn(
+            "The output of the ContextRelevanceEvaluator will change in Haystack 2.4.0. "
+            "Contexts will be scored as a whole instead of individual statements and only the relevant sentences "
+            "will be returned. A score of 1 is now returned if a relevant sentence is found, and 0 otherwise.",
+            DeprecationWarning,
+        )
 
         super(ContextRelevanceEvaluator, self).__init__(
             instructions=self.instructions,
