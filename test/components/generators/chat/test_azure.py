@@ -55,7 +55,8 @@ class TestOpenAIChatGenerator:
                 "organization": None,
                 "streaming_callback": None,
                 "generation_kwargs": {},
-                "timeout": None,
+                "timeout": 30.0,
+                "max_retries": 5,
             },
         }
 
@@ -66,6 +67,7 @@ class TestOpenAIChatGenerator:
             azure_ad_token=Secret.from_env_var("ENV_VAR1", strict=False),
             azure_endpoint="some-non-existing-endpoint",
             timeout=2.5,
+            max_retries=10,
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
         )
         data = component.to_dict()
@@ -80,6 +82,7 @@ class TestOpenAIChatGenerator:
                 "organization": None,
                 "streaming_callback": None,
                 "timeout": 2.5,
+                "max_retries": 10,
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
             },
         }
