@@ -98,7 +98,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
             The callback function accepts StreamingChunk as an argument.
         :param timeout: The timeout in seconds to be passed to the underlying `AzureOpenAI` client, if not set it is
             inferred from the `OPENAI_TIMEOUT` environment variable or set to 30.
-        :param max_retries: Maximum retries to establish contact with AzureOpenAI if it returns an internal error,
+        :param max_retries: Maximum retries to establish a connection with AzureOpenAI if it returns an internal error,
             if not set it is inferred from the `OPENAI_MAX_RETRIES` environment variable or set to 5.
         :param generation_kwargs: Other parameters to use for the model. These parameters are all sent directly to
             the OpenAI endpoint. See OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat) for
