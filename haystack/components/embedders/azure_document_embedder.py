@@ -86,7 +86,7 @@ class AzureOpenAIDocumentEmbedder:
             List of meta fields that will be embedded along with the Document text.
         :param embedding_separator:
             Separator used to concatenate the meta fields to the Document text.
-        :param timeout: The timeout to be passed to the underlying `AzureOpenAI` client, if not set it is
+        :param timeout: The timeout in seconds to be passed to the underlying `AzureOpenAI` client, if not set it is
             inferred from the `OPENAI_TIMEOUT` environment variable or set to 30.
         :param max_retries: Maximum retries to establish a connection with AzureOpenAI if it returns an internal error,
             if not set it is inferred from the `OPENAI_MAX_RETRIES` environment variable or set to 5.
