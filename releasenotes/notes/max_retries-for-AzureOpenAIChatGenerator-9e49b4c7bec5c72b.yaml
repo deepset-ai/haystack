@@ -1,9 +1,4 @@
 ---
 enhancements:
   - |
-    Add max_retries to AzureOpenAIChatGenerator.
-    AzureOpenAIChatGenerator can now be initialised by setting max_retries.
-    If not set, it is inferred from the `OPENAI_MAX_RETRIES`
-    environment variable or set to 5.
-    The timeout for AzureOpenAIChatGenerator, if not set, it is inferred
-    from the `OPENAI_TIMEOUT` environment variable or set to 30.
+    Add `max_retries` and `timeout` parameters to the AzureOpenAIChatGenerator initializations.
