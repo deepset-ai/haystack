@@ -81,6 +81,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         organization: Optional[str] = None,
         streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
         timeout: Optional[float] = None,
+        max_retries: Optional[int] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
@@ -95,6 +96,10 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization).
         :param streaming_callback: A callback function that is called when a new token is received from the stream.
             The callback function accepts StreamingChunk as an argument.
+        :param timeout: The timeout in seconds to be passed to the underlying `AzureOpenAI` client, if not set it is
+            inferred from the `OPENAI_TIMEOUT` environment variable or set to 30.
+        :param max_retries: Maximum retries to establish a connection with AzureOpenAI if it returns an internal error,
+            if not set it is inferred from the `OPENAI_MAX_RETRIES` environment variable or set to 5.
         :param generation_kwargs: Other parameters to use for the model. These parameters are all sent directly to
             the OpenAI endpoint. See OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat) for
             more details.
@@ -140,7 +145,8 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         self.azure_deployment = azure_deployment
         self.organization = organization
         self.model = azure_deployment or "gpt-35-turbo"
-        self.timeout = timeout
+        self.timeout = timeout or float(os.environ.get("OPENAI_TIMEOUT", 30.0))
+        self.max_retries = max_retries or int(os.environ.get("OPENAI_MAX_RETRIES", 5))
 
         self.client = AzureOpenAI(
             api_version=api_version,
@@ -149,6 +155,8 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
             api_key=api_key.resolve_value() if api_key is not None else None,
             azure_ad_token=azure_ad_token.resolve_value() if azure_ad_token is not None else None,
             organization=organization,
+            timeout=self.timeout,
+            max_retries=self.max_retries,
         )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -168,6 +176,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
             streaming_callback=callback_name,
             generation_kwargs=self.generation_kwargs,
             timeout=self.timeout,
+            max_retries=self.max_retries,
             api_key=self.api_key.to_dict() if self.api_key is not None else None,
             azure_ad_token=self.azure_ad_token.to_dict() if self.azure_ad_token is not None else None,
         )
