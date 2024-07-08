@@ -1,7 +1,8 @@
 from typing import Any, Dict, List
 
-from haystack import Document, component, default_to_dict
+from haystack import DeserializationError, Document, component, default_from_dict, default_to_dict
 from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.document_stores.types import DocumentStore
 
 
 @component
@@ -14,17 +15,28 @@ class SentenceWindowRetrieval:
     component to get the surrounding documents of the retrieved documents.
     """
 
-    def __init__(self, document_store: InMemoryDocumentStore, window_size: int = 3):
+    def __init__(self, document_store: DocumentStore, window_size: int = 3):
+        """
+        Creates a new SentenceWindowRetrieval component.
+
+        :param document_store: The document store to use for retrieving the surrounding documents.
+        :param window_size: The number of surrounding documents to retrieve.
+        """
+        if window_size < 1:
+            raise ValueError("The window_size parameter must be greater than 0.")
+
         self.window_size = window_size
         self.document_store = document_store
 
     @staticmethod
-    def merge_documents(documents: List[Document]):
+    def merge_documents_text(documents: List[Document]) -> str:
         """
-        Merge a list of document chunks text into a single string.
+        Merge a list of document text into a single string.
 
-        This functions concatenates the textual content of a List of Documents into a single string, eliminating any
+        This functions concatenates the textual content of a list of documents into a single string, eliminating any
         overlapping content.
+
+        :param documents: List of Documents to merge.
         """
         sorted_docs = sorted(documents, key=lambda doc: doc.meta["split_idx_start"])
         merged_text = ""
@@ -53,6 +65,26 @@ class SentenceWindowRetrieval:
         """
         docstore = self.document_store.to_dict()
         return default_to_dict(self, document_store=docstore, window_size=self.window_size)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "SentenceWindowRetrieval":
+        """
+        Deserializes the component from a dictionary.
+
+        :returns:
+            Deserialized component.
+        """
+        init_params = data.get("init_parameters", {})
+
+        if "document_store" not in init_params:
+            raise DeserializationError("Missing 'document_store' in serialization data")
+        if "type" not in init_params["document_store"]:
+            raise DeserializationError("Missing 'type' in document store's serialization data")
+
+        data["init_parameters"]["document_store"] = InMemoryDocumentStore.from_dict(
+            data["init_parameters"]["document_store"]
+        )
+        return default_from_dict(cls, data)
 
     @component.output_types(context_windows=List[str])
     def run(self, retrieved_documents: List[Document]):
@@ -83,6 +115,6 @@ class SentenceWindowRetrieval:
                     ],
                 }
             )
-            context_windows.append(self.merge_documents(context_docs))
+            context_windows.append(self.merge_documents_text(context_docs))
 
         return {"context_windows": context_windows}
