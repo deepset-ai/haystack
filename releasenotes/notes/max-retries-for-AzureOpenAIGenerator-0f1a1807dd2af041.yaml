@@ -1,0 +1,9 @@
+---
+enhancements:
+  - |
+    Add max_retries to AzureOpenAIGenerator.
+    AzureOpenAIGenerator can now be initialised by setting max_retries.
+    If not set, it is inferred from the `OPENAI_MAX_RETRIES`
+    environment variable or set to 5.
+    The timeout for AzureOpenAIGenerator, if not set, it is inferred
+    from the `OPENAI_TIMEOUT` environment variable or set to 30.
