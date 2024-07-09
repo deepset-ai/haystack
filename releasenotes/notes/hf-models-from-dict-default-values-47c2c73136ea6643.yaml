@@ -1,4 +1,3 @@
 fixes:
   - |
-    Fix from_dict methods of components using HF models to work with default values.
-    This updates the components, TransformersSimilarityRanker, SentenceTransformersDiversityRanker, SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder and LocalWhisperTranscriber from_dict methods to work when loading with init_parameters={}
+    This updates the components, TransformersSimilarityRanker, SentenceTransformersDiversityRanker, SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder and LocalWhisperTranscriber from_dict methods to work when loading with init_parameters only containing required parameters.
