@@ -54,14 +54,11 @@ class TestTransformersZeroShotTextRouter:
             "token": None,
         }
 
-    def test_from_dict_no_huggingface_pipeline_kwargs(self, monkeypatch):
+    def test_from_dict_no_default_parameters(self, monkeypatch):
         monkeypatch.delenv("HF_API_TOKEN", raising=False)
         data = {
             "type": "haystack.components.routers.zero_shot_text_router.TransformersZeroShotTextRouter",
-            "init_parameters": {
-                "labels": ["query", "passage"],
-                "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
-            },
+            "init_parameters": {"labels": ["query", "passage"]},
         }
         component = TransformersZeroShotTextRouter.from_dict(data)
         assert component.labels == ["query", "passage"]
