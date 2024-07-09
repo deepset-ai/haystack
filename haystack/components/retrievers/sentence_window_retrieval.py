@@ -1,11 +1,10 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-
+from importlib import import_module
 from typing import Any, Dict, List
 
 from haystack import DeserializationError, Document, component, default_from_dict, default_to_dict
-from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DocumentStore
 
 
@@ -85,9 +84,21 @@ class SentenceWindowRetrieval:
         if "type" not in init_params["document_store"]:
             raise DeserializationError("Missing 'type' in document store's serialization data")
 
-        data["init_parameters"]["document_store"] = InMemoryDocumentStore.from_dict(
-            data["init_parameters"]["document_store"]
-        )
+        def get_named_cls(serialised_doc_store: Dict[str, Any]):
+            """
+            Get the class qualified name from the type field in the serialized document store.
+            """
+            split = serialised_doc_store["type"].split(".")
+            module_path, class_name = ".".join(split[:-1]), split[-1]
+            module = import_module(module_path)
+            return getattr(module, class_name)
+
+        # deserialize the document store
+        doc_store_data = data["init_parameters"]["document_store"]
+        cls_name = get_named_cls(doc_store_data)
+        data["init_parameters"]["document_store"] = default_from_dict(cls_name, doc_store_data)
+
+        # deserialize the component
         return default_from_dict(cls, data)
 
     @component.output_types(context_windows=List[str])
@@ -103,6 +114,10 @@ class SentenceWindowRetrieval:
         :return:
             List of strings representing the context windows of the retrieved documents.
         """
+
+        if any("split_id" not in doc.meta for doc in retrieved_documents):
+            raise ValueError("The retrieved documents must have a 'split_id' in their metadata.")
+
         context_windows = []
         for doc in retrieved_documents:
             source_id = doc.meta["source_id"]
