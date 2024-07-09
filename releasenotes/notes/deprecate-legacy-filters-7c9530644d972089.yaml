@@ -1,0 +1,5 @@
+---
+deprecations:
+  - |
+    Haystack 1.x legacy filters are deprecated and will be removed in a future release. Please use the new
+    filter style as described in the documentation - https://docs.haystack.deepset.ai/docs/metadata-filtering
