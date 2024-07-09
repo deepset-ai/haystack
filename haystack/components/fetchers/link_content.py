@@ -96,6 +96,7 @@ class LinkContentFetcher:
         # register default content handlers that extract data from the response
         self.handlers: Dict[str, Callable[[Response], ByteStream]] = defaultdict(lambda: _text_content_handler)
         self.handlers["text/*"] = _text_content_handler
+        self.handlers["text/html"] = _binary_content_handler
         self.handlers["application/json"] = _text_content_handler
         self.handlers["application/*"] = _binary_content_handler
         self.handlers["image/*"] = _binary_content_handler
