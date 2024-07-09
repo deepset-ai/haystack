@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import warnings
 from dataclasses import fields
 from datetime import datetime
 from typing import Any, Dict, List, Union
@@ -103,7 +104,8 @@ def _less_than_equal(document_value: Any, filter_value: Any) -> bool:
 def _in(document_value: Any, filter_value: Any) -> bool:
     if not isinstance(filter_value, list):
         msg = (
-            f"Filter value must be a `list` when using operator 'in' or 'not in', received type '{type(filter_value)}'"
+            f"Filter value must be a `list` when using operator 'in' or 'not in', "
+            f"received type '{type(filter_value)}'"
         )
         raise FilterError(msg)
     return any(_equal(e, document_value) for e in filter_value)
@@ -214,6 +216,13 @@ def convert(filters: Dict[str, Any]) -> Dict[str, Any]:
     }
     ```
     """
+    warnings.warn(
+        "The use of legacy (Haystack 1.x) filters is deprecated and will be removed in the future. "
+        "Please use the new filter style as described in the documentation - "
+        "https://docs.haystack.deepset.ai/docs/metadata-filtering",
+        DeprecationWarning,
+    )
+
     if not isinstance(filters, dict):
         msg = f"Can't convert filters from type '{type(filters)}'"
         raise ValueError(msg)
