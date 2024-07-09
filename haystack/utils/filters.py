@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import warnings
 from dataclasses import fields
 from datetime import datetime
 from typing import Any, Dict, List, Union
@@ -214,6 +215,12 @@ def convert(filters: Dict[str, Any]) -> Dict[str, Any]:
     }
     ```
     """
+    warnings.warn(
+        "You are using deprecated filter syntax. Please use the new filter syntax as described "
+        "in the documentation. We will attempt to convert your old filter syntax to the new one. The old syntax "
+        "support will be removed in Haystack 2.5",
+        DeprecationWarning,
+    )
     if not isinstance(filters, dict):
         msg = f"Can't convert filters from type '{type(filters)}'"
         raise ValueError(msg)
