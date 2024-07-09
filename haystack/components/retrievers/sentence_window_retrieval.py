@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from importlib import import_module
 from typing import Any, Dict, List
 
 from haystack import DeserializationError, Document, component, default_from_dict, default_to_dict
