@@ -34,6 +34,8 @@ class TestAzureOpenAITextEmbedder:
                 "organization": None,
                 "azure_endpoint": "https://example-resource.azure.openai.com/",
                 "api_version": "2023-05-15",
+                "max_retries": 5,
+                "timeout": 30.0,
                 "prefix": "",
                 "suffix": "",
             },
