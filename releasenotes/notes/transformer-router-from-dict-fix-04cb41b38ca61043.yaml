@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fix TransformersZeroShotTextRouter and TransformersTextRouter from_dict methods to work with default value for huggingface_pipeline_kwargs.
+    So now if huggingface_pipeline_kwargs is left out or set to None, from_dict will correct load the components.
