@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+import os
 from typing import List
 
 import pytest
@@ -481,4 +482,31 @@ class TestLLMEvaluator:
         ]
         assert component.instructions == "test-instruction"
         assert component.inputs == [("predicted_answers", List[str])]
+        assert component.outputs == ["custom_score"]
+
+    @pytest.mark.skipif(
+        not (os.environ.get("API_BASE_URL") and os.environ.get("MODEL_NAME")),
+        reason="Export env vars API_BASE_URL and MODEL_NAME containing the OpenAI API compatible server URL and the model name to run this test.",
+    )
+    @pytest.mark.integration
+    def test_run_with_base_url(self):
+        component = LLMEvaluator(
+            instructions="test-instruction",
+            api_key=Secret.from_token("test-api-key"),
+            api_params={"api_base_url": os.environ["API_BASE_URL"], "model": os.environ["MODEL_NAME"]},
+            inputs=[("predicted_answers", List[str])],
+            outputs=["custom_score"],
+            api="openai",
+            examples=[
+                {
+                    "inputs": {"predicted_answers": "Damn, this is straight outta hell!!!"},
+                    "outputs": {"custom_score": 1},
+                },
+                {
+                    "inputs": {"predicted_answers": "Football is the most popular sport."},
+                    "outputs": {"custom_score": 0},
+                },
+            ],
+        )
+        component.run(predicted_answers=["Damn, this is straight outta hell!!!", "Football is the most popular sport."])
         assert component.outputs == ["custom_score"]

@@ -86,7 +86,7 @@ class LLMEvaluator:
         :param api_key:
             The API key.
         :param api_params:
-            Parameters for a OpenAI API compatible completions call.
+            Parameters for an OpenAI API compatible completions call.
 
         """
         self.validate_init_parameters(inputs, outputs, examples)

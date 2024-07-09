@@ -109,6 +109,7 @@ class TestFaithfulnessEvaluator:
             "init_parameters": {
                 "api_key": {"env_vars": ["ENV_VAR"], "strict": True, "type": "env_var"},
                 "api": "openai",
+                "api_params": {"generation_kwargs": {"response_format": {"type": "json_object"}, "seed": 42}},
                 "examples": [
                     {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
                 ],
