@@ -139,7 +139,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
         self.examples = examples or _DEFAULT_EXAMPLES
         self.api = api
         self.api_key = api_key
-        self.api_params = api_params
+        self.api_params = api_params or {}
 
         super(ContextRelevanceEvaluator, self).__init__(
             instructions=self.instructions,
