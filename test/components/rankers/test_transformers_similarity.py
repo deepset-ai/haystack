@@ -172,29 +172,22 @@ class TestSimilarityRanker:
             "device_map": ComponentDevice.resolve_device(None).to_hf(),
         }
 
-    def test_from_dict_no_optional_parameters(self):
+    def test_from_dict_no_default_parameters(self):
         data = {
             "type": "haystack.components.rankers.transformers_similarity.TransformersSimilarityRanker",
-            "init_parameters": {
-                "model": "my_model",
-                "top_k": 5,
-                "query_prefix": "",
-                "document_prefix": "",
-                "embedding_separator": "\n",
-                "scale_score": False,
-            },
+            "init_parameters": {},
         }
 
         component = TransformersSimilarityRanker.from_dict(data)
         assert component.device is None
-        assert component.model_name_or_path == "my_model"
+        assert component.model_name_or_path == "cross-encoder/ms-marco-MiniLM-L-6-v2"
         assert component.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
-        assert component.top_k == 5
+        assert component.top_k == 10
         assert component.query_prefix == ""
         assert component.document_prefix == ""
         assert component.meta_fields_to_embed == []
         assert component.embedding_separator == "\n"
-        assert not component.scale_score
+        assert component.scale_score
         assert component.calibration_factor == 1.0
         assert component.score_threshold is None
         # torch_dtype is correctly deserialized

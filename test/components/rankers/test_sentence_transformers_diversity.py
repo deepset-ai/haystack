@@ -144,19 +144,10 @@ class TestSentenceTransformersDiversityRanker:
         assert ranker.meta_fields_to_embed == []
         assert ranker.embedding_separator == "\n"
 
-    def test_from_dict_no_optional_parameters(self):
+    def test_from_dict_no_default_parameters(self):
         data = {
             "type": "haystack.components.rankers.sentence_transformers_diversity.SentenceTransformersDiversityRanker",
-            "init_parameters": {
-                "model": "sentence-transformers/all-MiniLM-L6-v2",
-                "top_k": 10,
-                "similarity": "cosine",
-                "query_prefix": "",
-                "document_prefix": "",
-                "query_suffix": "",
-                "document_suffix": "",
-                "embedding_separator": "\n",
-            },
+            "init_parameters": {},
         }
         ranker = SentenceTransformersDiversityRanker.from_dict(data)
 
