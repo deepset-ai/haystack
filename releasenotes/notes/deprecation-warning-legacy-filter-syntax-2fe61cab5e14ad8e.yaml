@@ -1,0 +1,4 @@
+---
+deprecations:
+ - |
+   Added deprecation warning for using old filter syntax. Users are advised to switch to the new filter syntax as the old syntax will be removed 2.5 Haystack release.
