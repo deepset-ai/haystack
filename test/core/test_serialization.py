@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+import datetime
+
 import sys
 from unittest.mock import Mock
 
@@ -10,7 +12,12 @@ from haystack.core.pipeline import Pipeline
 from haystack.core.component import component
 from haystack.core.errors import DeserializationError
 from haystack.testing import factory
-from haystack.core.serialization import default_to_dict, default_from_dict, generate_qualified_class_name
+from haystack.core.serialization import (
+    default_to_dict,
+    default_from_dict,
+    generate_qualified_class_name,
+    get_class_object,
+)
 
 
 def test_default_component_to_dict():
@@ -87,3 +94,10 @@ def test_get_qualified_class_name():
     comp = MyComponent()
     res = generate_qualified_class_name(type(comp))
     assert res == "haystack.testing.factory.MyComponent"
+
+
+def test_get_class_object():
+    data = {"type": "haystack.core.pipeline.Pipeline"}
+    class_object = get_class_object(data)
+    class_instance = class_object()
+    assert isinstance(class_instance, Pipeline)
