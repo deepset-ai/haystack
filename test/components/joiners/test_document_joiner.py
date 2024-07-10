@@ -2,24 +2,25 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import logging
+import re
 
 import pytest
 
 from haystack import Document
-from haystack.components.joiners.document_joiner import DocumentJoiner
+from haystack.components.joiners.document_joiner import DocumentJoiner, JoinMode
 
 
 class TestDocumentJoiner:
     def test_init(self):
         joiner = DocumentJoiner()
-        assert joiner.join_mode == "concatenate"
+        assert joiner.join_mode == JoinMode.CONCATENATE
         assert joiner.weights is None
         assert joiner.top_k is None
         assert joiner.sort_by_score
 
     def test_init_with_custom_parameters(self):
         joiner = DocumentJoiner(join_mode="merge", weights=[0.4, 0.6], top_k=5, sort_by_score=False)
-        assert joiner.join_mode == "merge"
+        assert joiner.join_mode == JoinMode.MERGE
         assert joiner.weights == [0.4, 0.6]
         assert joiner.top_k == 5
         assert not joiner.sort_by_score
@@ -41,8 +42,13 @@ class TestDocumentJoiner:
         assert result == {"documents": documents}
 
     def test_unsupported_join_mode(self):
-        with pytest.raises(ValueError, match="DocumentJoiner component does not support 'unsupported_mode' join_mode."):
-            DocumentJoiner(join_mode="unsupported_mode")
+        unsupported_mode = "unsupported_mode"
+        expected_error_pattern = (
+            re.escape(f"Unknown join mode '{unsupported_mode}'") + r".*Supported modes in DocumentJoiner are: \[.*\]"
+        )
+
+        with pytest.raises(ValueError, match=expected_error_pattern):
+            DocumentJoiner(join_mode=unsupported_mode)
 
     def test_run_with_concatenate_join_mode_and_top_k(self):
         joiner = DocumentJoiner(top_k=6)

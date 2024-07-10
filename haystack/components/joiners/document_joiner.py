@@ -4,13 +4,40 @@
 
 import itertools
 from collections import defaultdict
+from enum import Enum
 from math import inf
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from haystack import Document, component, logging
 from haystack.core.component.types import Variadic
 
 logger = logging.getLogger(__name__)
+
+
+class JoinMode(Enum):
+    """
+    Enum for join mode.
+    """
+
+    CONCATENATE = "concatenate"
+    MERGE = "merge"
+    RECIPROCAL_RANK_FUSION = "reciprocal_rank_fusion"
+    DISTRIBUTION_BASED_RANK_FUSION = "distribution_based_rank_fusion"
+
+    def __str__(self):
+        return self.value
+
+    @staticmethod
+    def from_str(string: str) -> "JoinMode":
+        """
+        Convert a string to a JoinMode enum.
+        """
+        enum_map = {e.value: e for e in JoinMode}
+        mode = enum_map.get(string)
+        if mode is None:
+            msg = f"Unknown join mode '{string}'. Supported modes in DocumentJoiner are: {list(enum_map.keys())}"
+            raise ValueError(msg)
+        return mode
 
 
 @component
@@ -45,7 +72,7 @@ class DocumentJoiner:
 
     def __init__(
         self,
-        join_mode: str = "concatenate",
+        join_mode: Union[str, JoinMode] = JoinMode.CONCATENATE,
         weights: Optional[List[float]] = None,
         top_k: Optional[int] = None,
         sort_by_score: bool = True,
@@ -68,8 +95,15 @@ class DocumentJoiner:
             If True sorts the Documents by score in descending order.
             If a Document has no score, it is handled as if its score is -infinity.
         """
-        if join_mode not in ["concatenate", "merge", "reciprocal_rank_fusion", "distribution_based_rank_fusion"]:
-            raise ValueError(f"DocumentJoiner component does not support '{join_mode}' join_mode.")
+        if isinstance(join_mode, str):
+            join_mode = JoinMode.from_str(join_mode)
+        join_mode_functions = {
+            JoinMode.CONCATENATE: self._concatenate,
+            JoinMode.MERGE: self._merge,
+            JoinMode.RECIPROCAL_RANK_FUSION: self._reciprocal_rank_fusion,
+            JoinMode.DISTRIBUTION_BASED_RANK_FUSION: self._distribution_based_rank_fusion,
+        }
+        self.join_mode_function = join_mode_functions[join_mode]
         self.join_mode = join_mode
         self.weights = [float(i) / sum(weights) for i in weights] if weights else None
         self.top_k = top_k
@@ -92,14 +126,7 @@ class DocumentJoiner:
         output_documents = []
 
         documents = list(documents)
-        if self.join_mode == "concatenate":
-            output_documents = self._concatenate(documents)
-        elif self.join_mode == "merge":
-            output_documents = self._merge(documents)
-        elif self.join_mode == "reciprocal_rank_fusion":
-            output_documents = self._reciprocal_rank_fusion(documents)
-        elif self.join_mode == "distribution_based_rank_fusion":
-            output_documents = self._distribution_based_rank_fusion(documents)
+        output_documents = self.join_mode_function(documents)
 
         if self.sort_by_score:
             output_documents = sorted(
