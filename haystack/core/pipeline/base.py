@@ -1039,6 +1039,22 @@ class PipelineBase:
         # BAIL!
         return len(waiting_for_input) == 1
 
+    def _component_has_enough_inputs_to_run(self, name: str, inputs: Dict[str, Dict[str, Any]]) -> bool:
+        """
+        Returns True if the Component has all the inputs it needs to run.
+
+        :param name: Name of the Component as defined in the Pipeline.
+        :param inputs: The current state of the inputs divided by Component name.
+
+        :return: Whether the Component can run or not.
+        """
+        instance: Component = self.graph.nodes[name]["instance"]
+        if name not in inputs:
+            return False
+        expected_inputs = instance.__haystack_input__._sockets_dict.keys()  # type: ignore
+        current_inputs = inputs[name].keys()
+        return expected_inputs == current_inputs
+
 
 def _connections_status(
     sender_node: str, receiver_node: str, sender_sockets: List[OutputSocket], receiver_sockets: List[InputSocket]
@@ -1105,3 +1121,43 @@ def _add_missing_input_defaults(name: str, comp: Component, inputs_by_component:
 
         if input_socket.name not in inputs_by_component[name]:
             inputs_by_component[name][input_socket.name] = input_socket.default_value
+
+
+def _enqueue_component(
+    component_pair: Tuple[str, Component],
+    to_run: List[Tuple[str, Component]],
+    waiting_for_input: List[Tuple[str, Component]],
+):
+    """
+    Append a Component in the queue of Components to run if not already in it.
+
+    Remove it from the waiting list if it's there.
+
+    :param component_pair: Tuple of Component name and instance
+    :param to_run: Queue of Components to run
+    :param waiting_for_input: Queue of Components waiting for input
+    """
+    if component_pair in waiting_for_input:
+        waiting_for_input.remove(component_pair)
+
+    if component_pair not in to_run:
+        to_run.append(component_pair)
+
+
+def _dequeue_component(
+    component_pair: Tuple[str, Component],
+    to_run: List[Tuple[str, Component]],
+    waiting_for_input: List[Tuple[str, Component]],
+):
+    """
+    Removes a Component both from the queue of Components to run and the waiting list.
+
+    :param component_pair: Tuple of Component name and instance
+    :param to_run: Queue of Components to run
+    :param waiting_for_input: Queue of Components waiting for input
+    """
+    if component_pair in waiting_for_input:
+        waiting_for_input.remove(component_pair)
+
+    if component_pair in to_run:
+        to_run.remove(component_pair)
