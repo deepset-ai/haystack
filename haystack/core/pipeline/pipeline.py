@@ -166,14 +166,14 @@ class Pipeline(PipelineBase):
         self._validate_input(data)
 
         # Initialize the inputs state
-        last_inputs: Dict[str, Dict[str, Any]] = self._init_inputs_state(data)
+        components_inputs: Dict[str, Dict[str, Any]] = self._init_inputs_state(data)
 
         # Take all components that:
         # - have no inputs
         # - receive input from the user
         # - have at least one input not connected
         # - have at least one input that is variadic
-        to_run: List[Tuple[str, Component]] = self._init_to_run(data)
+        run_queue: List[Tuple[str, Component]] = self._init_run_queue(data)
 
         # These variables are used to detect when we're stuck in a loop.
         # Stuck loops can happen when one or more components are waiting for input but
@@ -181,11 +181,11 @@ class Pipeline(PipelineBase):
         # This can happen when a whole branch of the graph is skipped for example.
         # When we find that two consecutive iterations of the loop where the waiting_for_input list is the same,
         # we know we're stuck in a loop and we can't make any progress.
-        before_last_waiting_for_input: Optional[Set[str]] = None
-        last_waiting_for_input: Optional[Set[str]] = None
+        before_last_waiting_queue: Optional[Set[str]] = None
+        last_waiting_queue: Optional[Set[str]] = None
 
         # The waiting_for_input list is used to keep track of components that are waiting for input.
-        waiting_for_input: List[Tuple[str, Component]] = []
+        waiting_queue: List[Tuple[str, Component]] = []
 
         include_outputs_from = set() if include_outputs_from is None else include_outputs_from
 
@@ -205,22 +205,22 @@ class Pipeline(PipelineBase):
             # Cache for extra outputs, if enabled.
             extra_outputs: Dict[Any, Any] = {}
 
-            while len(to_run) > 0:
-                name, comp = to_run.pop(0)
+            while len(run_queue) > 0:
+                name, comp = run_queue.pop(0)
 
-                if _is_lazy_variadic(comp) and not all(_is_lazy_variadic(comp) for _, comp in to_run):
+                if _is_lazy_variadic(comp) and not all(_is_lazy_variadic(comp) for _, comp in run_queue):
                     # We run Components with lazy variadic inputs only if there only Components with
                     # lazy variadic inputs left to run
-                    if (name, comp) not in waiting_for_input:
-                        waiting_for_input.append((name, comp))
+                    if (name, comp) not in waiting_queue:
+                        waiting_queue.append((name, comp))
                     continue
 
-                if self._component_has_enough_inputs_to_run(name, last_inputs):
+                if self._component_has_enough_inputs_to_run(name, components_inputs):
                     if self.graph.nodes[name]["visits"] > self.max_loops_allowed:
                         msg = f"Maximum loops count ({self.max_loops_allowed}) exceeded for component '{name}'"
                         raise PipelineMaxLoops(msg)
 
-                    res: Dict[str, Any] = self._run_component(name, last_inputs[name])
+                    res: Dict[str, Any] = self._run_component(name, components_inputs[name])
 
                     if name in include_outputs_from:
                         # Deepcopy the outputs to prevent downstream nodes from modifying them
@@ -228,35 +228,35 @@ class Pipeline(PipelineBase):
                         extra_outputs[name] = deepcopy(res)
 
                     # Reset the waiting for input previous states, we managed to run a component
-                    before_last_waiting_for_input = None
-                    last_waiting_for_input = None
+                    before_last_waiting_queue = None
+                    last_waiting_queue = None
 
-                    if (name, comp) in waiting_for_input:
+                    if (name, comp) in waiting_queue:
                         # We manage to run this component that was in the waiting list, we can remove it.
                         # This happens when a component was put in the waiting list but we reached it from another edge.
-                        waiting_for_input.remove((name, comp))
+                        waiting_queue.remove((name, comp))
 
                     for pair in self._find_components_that_received_no_input(name, res):
-                        _dequeue_component(pair, to_run, waiting_for_input)
-                    res = self._distribute_output(name, res, last_inputs, to_run, waiting_for_input)
+                        _dequeue_component(pair, run_queue, waiting_queue)
+                    res = self._distribute_output(name, res, components_inputs, run_queue, waiting_queue)
 
                     if len(res) > 0:
                         final_outputs[name] = res
                 else:
                     # This component doesn't have enough inputs so we can't run it yet
-                    if (name, comp) not in waiting_for_input:
-                        waiting_for_input.append((name, comp))
+                    if (name, comp) not in waiting_queue:
+                        waiting_queue.append((name, comp))
 
-                if len(to_run) == 0 and len(waiting_for_input) > 0:
+                if len(run_queue) == 0 and len(waiting_queue) > 0:
                     # Check if we're stuck in a loop.
                     # It's important to check whether previous waitings are None as it could be that no
                     # Component has actually been run yet.
                     if (
-                        before_last_waiting_for_input is not None
-                        and last_waiting_for_input is not None
-                        and before_last_waiting_for_input == last_waiting_for_input
+                        before_last_waiting_queue is not None
+                        and last_waiting_queue is not None
+                        and before_last_waiting_queue == last_waiting_queue
                     ):
-                        if self._is_stuck_in_a_loop(waiting_for_input):
+                        if self._is_stuck_in_a_loop(waiting_queue):
                             # We're stuck! We can't make any progress.
                             msg = (
                                 "Pipeline is stuck running in a loop. Partial outputs will be returned. "
@@ -265,19 +265,17 @@ class Pipeline(PipelineBase):
                             warn(RuntimeWarning(msg))
                             break
 
-                        (name, comp) = self._find_next_runnable_lazy_variadic_or_default_component(waiting_for_input)
-                        _add_missing_input_defaults(name, comp, last_inputs)
-                        _enqueue_component((name, comp), to_run, waiting_for_input)
+                        (name, comp) = self._find_next_runnable_lazy_variadic_or_default_component(waiting_queue)
+                        _add_missing_input_defaults(name, comp, components_inputs)
+                        _enqueue_component((name, comp), run_queue, waiting_queue)
                         continue
 
-                    before_last_waiting_for_input = (
-                        last_waiting_for_input.copy() if last_waiting_for_input is not None else None
-                    )
-                    last_waiting_for_input = {item[0] for item in waiting_for_input}
+                    before_last_waiting_queue = last_waiting_queue.copy() if last_waiting_queue is not None else None
+                    last_waiting_queue = {item[0] for item in waiting_queue}
 
-                    (name, comp) = self._find_next_runnable_component(last_inputs, waiting_for_input)
-                    _add_missing_input_defaults(name, comp, last_inputs)
-                    _enqueue_component((name, comp), to_run, waiting_for_input)
+                    (name, comp) = self._find_next_runnable_component(components_inputs, waiting_queue)
+                    _add_missing_input_defaults(name, comp, components_inputs)
+                    _enqueue_component((name, comp), run_queue, waiting_queue)
 
             if len(include_outputs_from) > 0:
                 for name, output in extra_outputs.items():
