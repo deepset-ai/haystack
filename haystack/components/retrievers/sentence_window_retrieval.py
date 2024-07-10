@@ -107,8 +107,9 @@ class SentenceWindowRetrieval:
 
         :param retrieved_documents: List of retrieved documents from the previous retriever.
         :type retrieved_documents: List[Document]
-        :return:
-            List of strings representing the context windows of the retrieved documents.
+        :returns:
+            A dictionary with the following keys:
+            - `context_windows`:  List of strings representing the context windows of the retrieved documents.
         """
 
         if not all("split_id" in doc.meta for doc in retrieved_documents):
