@@ -87,8 +87,8 @@ class SentenceWindowRetrieval:
 
         # deserialize the document store
         doc_store_data = data["init_parameters"]["document_store"]
-        cls_name = import_class_by_name(doc_store_data["type"])
-        data["init_parameters"]["document_store"] = default_from_dict(cls_name, doc_store_data)
+        doc_store_class = import_class_by_name(doc_store_data["type"])
+        data["init_parameters"]["document_store"] = default_from_dict(doc_store_class, doc_store_data)
 
         # deserialize the component
         return default_from_dict(cls, data)
