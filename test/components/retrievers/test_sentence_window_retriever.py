@@ -97,6 +97,26 @@ class TestSentenceWindowRetrieval:
         with pytest.raises(DeserializationError):
             SentenceWindowRetrieval.from_dict(data)
 
+    def test_document_without_split_id(self):
+        docs = [
+            Document(content="This is a text with some words. There is a ", meta={"id": "doc_0"}),
+            Document(content="some words. There is a second sentence. And there is ", meta={"id": "doc_1"}),
+        ]
+        with pytest.raises(ValueError):
+            retriever = SentenceWindowRetrieval(document_store=InMemoryDocumentStore(), window_size=3)
+            retriever.run(retrieved_documents=docs)
+
+    def test_document_without_source_id(self):
+        docs = [
+            Document(content="This is a text with some words. There is a ", meta={"id": "doc_0", "split_id": 0}),
+            Document(
+                content="some words. There is a second sentence. And there is ", meta={"id": "doc_1", "split_id": 1}
+            ),
+        ]
+        with pytest.raises(ValueError):
+            retriever = SentenceWindowRetrieval(document_store=InMemoryDocumentStore(), window_size=3)
+            retriever.run(retrieved_documents=docs)
+
     @pytest.mark.integration
     def test_run_with_pipeline(self):
         splitter = DocumentSplitter(split_length=10, split_overlap=5, split_by="word")
@@ -104,7 +124,10 @@ class TestSentenceWindowRetrieval:
             "This is a text with some words. There is a second sentence. And there is also a third sentence. "
             "It also contains a fourth sentence. And a fifth sentence. And a sixth sentence. And a seventh sentence"
         )
-        docs = splitter.run([Document(content=text)])
+
+        doc = Document(content=text)
+
+        docs = splitter.run([doc])
         ds = InMemoryDocumentStore()
         ds.write_documents(docs["documents"])
 

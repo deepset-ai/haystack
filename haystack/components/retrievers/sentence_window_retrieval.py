@@ -111,8 +111,11 @@ class SentenceWindowRetrieval:
             List of strings representing the context windows of the retrieved documents.
         """
 
-        if any("split_id" not in doc.meta for doc in retrieved_documents):
-            raise ValueError("The retrieved documents must have a 'split_id' in their metadata.")
+        if not all("split_id" in doc.meta for doc in retrieved_documents):
+            raise ValueError("The retrieved documents must have 'split_id' in the metadata.")
+
+        if not all("source_id" in doc.meta for doc in retrieved_documents):
+            raise ValueError("The retrieved documents must have 'source_id' in the metadata.")
 
         context_windows = []
         for doc in retrieved_documents:
