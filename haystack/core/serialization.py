@@ -5,9 +5,10 @@
 import inspect
 from collections.abc import Callable
 from dataclasses import dataclass
+from importlib import import_module
 from typing import Any, Dict, Optional, Type
 
-from haystack.core.component.component import _hook_component_init
+from haystack.core.component.component import _hook_component_init, logger
 from haystack.core.errors import DeserializationError, SerializationError
 
 
@@ -189,3 +190,25 @@ def default_from_dict(cls: Type[object], data: Dict[str, Any]) -> Any:
     if data["type"] != generate_qualified_class_name(cls):
         raise DeserializationError(f"Class '{data['type']}' can't be deserialized as '{cls.__name__}'")
     return cls(**init_params)
+
+
+def import_class_by_name(fully_qualified_name: str) -> Type[object]:
+    """
+    Utility function to import (load) a class object based on its fully qualified class name.
+
+    This function dynamically imports a class based on its string name.
+    It splits the name into module path and class name, imports the module,
+    and returns the class object.
+
+    :param fully_qualified_name: the fully qualified class name as a string
+    :returns: the class object.
+    :raises ImportError: If the class cannot be imported or found.
+    """
+    try:
+        module_path, class_name = fully_qualified_name.rsplit(".", 1)
+        logger.debug(f"Attempting to import class '{class_name}' from module '{module_path}'")
+        module = import_module(module_path)
+        return getattr(module, class_name)
+    except (ImportError, AttributeError) as error:
+        logger.error(f"Failed to import class '{fully_qualified_name}'")
+        raise ImportError(f"Could not import class '{fully_qualified_name}'") from error
