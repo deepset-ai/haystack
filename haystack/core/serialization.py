@@ -202,7 +202,7 @@ def import_class_by_name(fully_qualified_name: str) -> Type[object]:
 
     :param fully_qualified_name: the fully qualified class name as a string
     :returns: the class object.
-    :raises DeserializationError: If the class cannot be imported or found.
+    :raises ImportError: If the class cannot be imported or found.
     """
     try:
         module_path, class_name = fully_qualified_name.rsplit(".", 1)
