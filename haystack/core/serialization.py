@@ -194,7 +194,7 @@ def default_from_dict(cls: Type[object], data: Dict[str, Any]) -> Any:
 
 def import_class_by_name(fully_qualified_name: str) -> Type[object]:
     """
-    Utility function to retrieve a class object based on a fully qualified class name.
+    Utility function to import (load) a class object based on its fully qualified class name.
 
     This function dynamically imports a class based on its string name.
     It splits the name into module path and class name, imports the module,
