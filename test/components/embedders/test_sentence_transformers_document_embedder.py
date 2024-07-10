@@ -137,6 +137,25 @@ class TestSentenceTransformersDocumentEmbedder:
         assert component.trust_remote_code
         assert component.meta_fields_to_embed == ["meta_field"]
 
+    def test_from_dict_no_default_parameters(self):
+        component = SentenceTransformersDocumentEmbedder.from_dict(
+            {
+                "type": "haystack.components.embedders.sentence_transformers_document_embedder.SentenceTransformersDocumentEmbedder",
+                "init_parameters": {},
+            }
+        )
+        assert component.model == "sentence-transformers/all-mpnet-base-v2"
+        assert component.device == ComponentDevice.resolve_device(None)
+        assert component.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
+        assert component.prefix == ""
+        assert component.suffix == ""
+        assert component.batch_size == 32
+        assert component.progress_bar is True
+        assert component.normalize_embeddings is False
+        assert component.embedding_separator == "\n"
+        assert component.trust_remote_code is False
+        assert component.meta_fields_to_embed == []
+
     def test_from_dict_none_device(self):
         init_parameters = {
             "model": "model",

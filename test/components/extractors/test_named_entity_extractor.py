@@ -40,6 +40,17 @@ def test_named_entity_extractor_serde():
         _ = NamedEntityExtractor.from_dict(serde_data)
 
 
+def test_named_entity_extractor_from_dict_no_default_parameters_hf():
+    data = {
+        "type": "haystack.components.extractors.named_entity_extractor.NamedEntityExtractor",
+        "init_parameters": {"backend": "HUGGING_FACE", "model": "dslim/bert-base-NER"},
+    }
+    extractor = NamedEntityExtractor.from_dict(data)
+
+    assert extractor._backend.model_name == "dslim/bert-base-NER"
+    assert extractor._backend.device == ComponentDevice.resolve_device(None)
+
+
 # tests for NamedEntityExtractor serialization/deserialization in a pipeline
 def test_named_entity_extractor_pipeline_serde(tmp_path):
     extractor = NamedEntityExtractor(backend=NamedEntityExtractorBackend.HUGGING_FACE, model="dslim/bert-base-NER")
