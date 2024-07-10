@@ -101,3 +101,9 @@ def test_import_class_by_name():
     class_object = import_class_by_name(data)
     class_instance = class_object()
     assert isinstance(class_instance, Pipeline)
+
+
+def test_import_class_by_name_no_valid_class():
+    data = "some.invalid.class"
+    with pytest.raises(ImportError):
+        import_class_by_name(data)
