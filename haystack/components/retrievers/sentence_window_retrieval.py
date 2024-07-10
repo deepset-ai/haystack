@@ -5,7 +5,7 @@
 from typing import Any, Dict, List
 
 from haystack import DeserializationError, Document, component, default_from_dict, default_to_dict
-from haystack.core.serialization import get_class_object
+from haystack.core.serialization import import_class_by_name
 from haystack.document_stores.types import DocumentStore
 
 
@@ -87,7 +87,7 @@ class SentenceWindowRetrieval:
 
         # deserialize the document store
         doc_store_data = data["init_parameters"]["document_store"]
-        cls_name = get_class_object(doc_store_data["type"])
+        cls_name = import_class_by_name(doc_store_data["type"])
         data["init_parameters"]["document_store"] = default_from_dict(cls_name, doc_store_data)
 
         # deserialize the component

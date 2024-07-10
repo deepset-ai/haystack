@@ -16,7 +16,7 @@ from haystack.core.serialization import (
     default_to_dict,
     default_from_dict,
     generate_qualified_class_name,
-    get_class_object,
+    import_class_by_name,
 )
 
 
@@ -98,6 +98,6 @@ def test_get_qualified_class_name():
 
 def test_get_class_object():
     data = "haystack.core.pipeline.Pipeline"
-    class_object = get_class_object(data)
+    class_object = import_class_by_name(data)
     class_instance = class_object()
     assert isinstance(class_instance, Pipeline)

@@ -192,18 +192,23 @@ def default_from_dict(cls: Type[object], data: Dict[str, Any]) -> Any:
     return cls(**init_params)
 
 
-def get_class_object(fully_qualified_class: str) -> Any:
+def import_class_by_name(fully_qualified_class: str) -> Type[Any]:
     """
     Utility function to retrieve a class object based on a fully qualified class name.
 
+    This function dynamically imports a class based on its string name.
+    It splits the name into module path and class name, imports the module,
+    and returns the class object.
+
     :param fully_qualified_class: the fully qualified class name as a string
     :returns: the class object.
+    :raises DeserializationError: If the class cannot be imported or found.
     """
     split = fully_qualified_class.split(".")
     module_path, class_name = ".".join(split[:-1]), split[-1]
     try:
         logger.debug("Trying to import module '{module_path}'", module_name=module_path)
         module_name = import_module(module_path)
-    except (ImportError, DeserializationError) as e:
+    except (ImportError, AttributeError) as e:
         raise DeserializationError(f"Class '{fully_qualified_class}' not correctly imported") from e
     return getattr(module_name, class_name)
