@@ -144,6 +144,25 @@ class TestSentenceTransformersDiversityRanker:
         assert ranker.meta_fields_to_embed == []
         assert ranker.embedding_separator == "\n"
 
+    def test_from_dict_no_default_parameters(self):
+        data = {
+            "type": "haystack.components.rankers.sentence_transformers_diversity.SentenceTransformersDiversityRanker",
+            "init_parameters": {},
+        }
+        ranker = SentenceTransformersDiversityRanker.from_dict(data)
+
+        assert ranker.model_name_or_path == "sentence-transformers/all-MiniLM-L6-v2"
+        assert ranker.top_k == 10
+        assert ranker.device == ComponentDevice.resolve_device(None)
+        assert ranker.similarity == "cosine"
+        assert ranker.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
+        assert ranker.query_prefix == ""
+        assert ranker.document_prefix == ""
+        assert ranker.query_suffix == ""
+        assert ranker.document_suffix == ""
+        assert ranker.meta_fields_to_embed == []
+        assert ranker.embedding_separator == "\n"
+
     def test_to_dict_with_custom_init_parameters(self):
         component = SentenceTransformersDiversityRanker(
             model="sentence-transformers/msmarco-distilbert-base-v4",

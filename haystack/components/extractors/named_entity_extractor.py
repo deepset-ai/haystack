@@ -221,7 +221,7 @@ class NamedEntityExtractor:
         """
         try:
             init_params = data["init_parameters"]
-            if init_params["device"] is not None:
+            if init_params.get("device") is not None:
                 init_params["device"] = ComponentDevice.from_dict(init_params["device"])
             init_params["backend"] = NamedEntityExtractorBackend[init_params["backend"]]
             return default_from_dict(cls, data)
