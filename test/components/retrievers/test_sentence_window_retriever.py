@@ -94,7 +94,7 @@ class TestSentenceWindowRetrieval:
             "type": "SentenceWindowRetrieval",
             "init_parameters": {"document_store": {"type": "Nonexisting.Docstore", "init_parameters": {}}},
         }
-        with pytest.raises(ModuleNotFoundError):
+        with pytest.raises(DeserializationError):
             SentenceWindowRetrieval.from_dict(data)
 
     @pytest.mark.integration

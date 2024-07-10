@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from importlib import import_module
 from typing import Any, Dict, Optional, Type
 
-from haystack.core.component.component import _hook_component_init
+from haystack.core.component.component import _hook_component_init, logger
 from haystack.core.errors import DeserializationError, SerializationError
 
 
@@ -192,14 +192,18 @@ def default_from_dict(cls: Type[object], data: Dict[str, Any]) -> Any:
     return cls(**init_params)
 
 
-def get_class_object(serialised_object: Dict[str, Any]) -> Any:
+def get_class_object(fully_qualified_class: str) -> Any:
     """
     Utility function to retrieve a class object based on a fully qualified class name.
 
-    :param serialised_object: a dictionary containing the fully qualified class name under the key "type".
+    :param fully_qualified_class: the fully qualified class name as a string
     :returns: the class object.
     """
-    split = serialised_object["type"].split(".")
+    split = fully_qualified_class.split(".")
     module_path, class_name = ".".join(split[:-1]), split[-1]
-    module = import_module(module_path)
-    return getattr(module, class_name)
+    try:
+        logger.debug("Trying to import module '{module_path}'", module_name=module_path)
+        module_name = import_module(module_path)
+    except (ImportError, DeserializationError) as e:
+        raise DeserializationError(f"Class '{fully_qualified_class}' not correctly imported") from e
+    return getattr(module_name, class_name)

@@ -97,7 +97,7 @@ def test_get_qualified_class_name():
 
 
 def test_get_class_object():
-    data = {"type": "haystack.core.pipeline.Pipeline"}
+    data = "haystack.core.pipeline.Pipeline"
     class_object = get_class_object(data)
     class_instance = class_object()
     assert isinstance(class_instance, Pipeline)
