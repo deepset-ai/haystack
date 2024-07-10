@@ -96,7 +96,7 @@ def test_get_qualified_class_name():
     assert res == "haystack.testing.factory.MyComponent"
 
 
-def test_get_class_object():
+def test_import_class_by_name():
     data = "haystack.core.pipeline.Pipeline"
     class_object = import_class_by_name(data)
     class_instance = class_object()
