@@ -100,6 +100,7 @@ class TestContextRelevanceEvaluator:
             "init_parameters": {
                 "api_key": {"env_vars": ["ENV_VAR"], "strict": True, "type": "env_var"},
                 "api": "openai",
+                "api_params": {"generation_kwargs": {"response_format": {"type": "json_object"}, "seed": 42}},
                 "examples": [{"inputs": {"questions": "What is football?"}, "outputs": {"score": 0}}],
                 "progress_bar": False,
                 "raise_on_failure": False,
