@@ -6,6 +6,7 @@ import importlib
 from typing import Any, Dict, List
 
 from haystack import DeserializationError, Document, component, default_from_dict, default_to_dict, logging
+from haystack.core.serialization import import_class_by_name
 from haystack.document_stores.types import DocumentStore
 
 logger = logging.getLogger(__name__)
@@ -77,6 +78,7 @@ class CacheChecker:
         if "type" not in init_params["document_store"]:
             raise DeserializationError("Missing 'type' in document store's serialization data")
 
+        """
         try:
             module_name, type_ = init_params["document_store"]["type"].rsplit(".", 1)
             logger.debug("Trying to import module '{module_name}'", module_name=module_name)
@@ -88,8 +90,18 @@ class CacheChecker:
 
         docstore_class = getattr(module, type_)
         docstore = docstore_class.from_dict(init_params["document_store"])
-
         data["init_parameters"]["document_store"] = docstore
+        """
+
+        # deserialize the document store
+        doc_store_data = data["init_parameters"]["document_store"]
+        try:
+            doc_store_class = import_class_by_name(doc_store_data["type"])
+        except ImportError as e:
+            raise DeserializationError(f"Class '{doc_store_data['type']}' not correctly imported") from e
+
+        data["init_parameters"]["document_store"] = default_from_dict(doc_store_class, doc_store_data)
+
         return default_from_dict(cls, data)
 
     @component.output_types(hits=List[Document], misses=List)
