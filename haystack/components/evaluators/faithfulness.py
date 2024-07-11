@@ -88,6 +88,7 @@ class FaithfulnessEvaluator(LLMEvaluator):
         progress_bar: bool = True,
         api: str = "openai",
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
+        api_params: Optional[Dict[str, Any]] = None,
         raise_on_failure: bool = True,
     ):
         """
@@ -117,6 +118,8 @@ class FaithfulnessEvaluator(LLMEvaluator):
             Supported APIs: "openai".
         :param api_key:
             The API key.
+        :param api_params:
+            Parameters for an OpenAI API compatible completions call.
         :param raise_on_failure:
             Whether to raise an exception if the API call fails.
 
@@ -133,6 +136,7 @@ class FaithfulnessEvaluator(LLMEvaluator):
         self.examples = examples or _DEFAULT_EXAMPLES
         self.api = api
         self.api_key = api_key
+        self.api_params = api_params or {}
 
         super(FaithfulnessEvaluator, self).__init__(
             instructions=self.instructions,
@@ -141,6 +145,7 @@ class FaithfulnessEvaluator(LLMEvaluator):
             examples=self.examples,
             api=self.api,
             api_key=self.api_key,
+            api_params=self.api_params,
             raise_on_failure=raise_on_failure,
             progress_bar=progress_bar,
         )
@@ -193,6 +198,7 @@ class FaithfulnessEvaluator(LLMEvaluator):
             self,
             api=self.api,
             api_key=self.api_key.to_dict() if self.api_key else None,
+            api_params=self.api_params,
             examples=self.examples,
             progress_bar=self.progress_bar,
             raise_on_failure=self.raise_on_failure,

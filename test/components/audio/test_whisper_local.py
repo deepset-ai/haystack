@@ -74,6 +74,13 @@ class TestLocalWhisperTranscriber:
         assert transcriber.whisper_params == {}
         assert transcriber._model is None
 
+    def test_from_dict_no_default_parameters(self):
+        data = {"type": "haystack.components.audio.whisper_local.LocalWhisperTranscriber", "init_parameters": {}}
+        transcriber = LocalWhisperTranscriber.from_dict(data)
+        assert transcriber.model == "large"
+        assert transcriber.device == ComponentDevice.resolve_device(None)
+        assert transcriber.whisper_params == {}
+
     def test_from_dict_none_device(self):
         data = {
             "type": "haystack.components.audio.whisper_local.LocalWhisperTranscriber",

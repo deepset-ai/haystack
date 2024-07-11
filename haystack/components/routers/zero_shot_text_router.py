@@ -188,7 +188,8 @@ class TransformersZeroShotTextRouter:
             Deserialized component.
         """
         deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
-        deserialize_hf_model_kwargs(data["init_parameters"]["huggingface_pipeline_kwargs"])
+        if data["init_parameters"].get("huggingface_pipeline_kwargs") is not None:
+            deserialize_hf_model_kwargs(data["init_parameters"]["huggingface_pipeline_kwargs"])
         return default_from_dict(cls, data)
 
     @component.output_types(documents=Dict[str, str])

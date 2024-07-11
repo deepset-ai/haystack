@@ -13,6 +13,7 @@ import pytest
 from azure.ai.formrecognizer import AnalyzeResult
 
 from haystack.components.converters.azure import AzureOCRDocumentConverter
+from haystack.dataclasses.byte_stream import ByteStream
 from haystack.utils import Secret
 
 
@@ -248,6 +249,7 @@ class TestAzureOCRDocumentConverter:
     @pytest.mark.integration
     @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_ENDPOINT", None), reason="Azure endpoint not available")
     @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_API_KEY", None), reason="Azure credentials not available")
+    @pytest.mark.flaky(reruns=5, reruns_delay=5)
     def test_run_with_pdf_file(self, test_files_path):
         component = AzureOCRDocumentConverter(
             endpoint=os.environ["CORE_AZURE_CS_ENDPOINT"], api_key=Secret.from_env_var("CORE_AZURE_CS_API_KEY")
@@ -306,3 +308,24 @@ class TestAzureOCRDocumentConverter:
 
         # doesn't mean much, more for sanity check
         assert hash_string_1 != hash_string_2 != hash_string_3
+
+    @patch("haystack.utils.auth.EnvVarSecret.resolve_value")
+    def test_meta_from_byte_stream(self, mock_resolve_value, test_files_path) -> None:
+        mock_resolve_value.return_value = "test_api_key"
+
+        class MockPoller:
+            def result(self) -> AnalyzeResult:
+                with open(test_files_path / "json" / "azure_sample_pdf_1.json", encoding="utf-8") as azure_file:
+                    result = json.load(azure_file)
+                return AnalyzeResult.from_dict(result)
+
+        with patch("azure.ai.formrecognizer.DocumentAnalysisClient.begin_analyze_document") as azure_mock:
+            azure_mock.return_value = MockPoller()
+            ocr_node = AzureOCRDocumentConverter(endpoint="")
+            bytes = (test_files_path / "pdf" / "sample_pdf_1.pdf").read_bytes()
+            byte_stream = ByteStream(data=bytes, meta={"test_from": "byte_stream"})
+            out = ocr_node.run(sources=[byte_stream], meta=[{"test": "value_1"}])
+
+        docs = out["documents"]
+        assert docs[1].meta["test"] == "value_1"
+        assert docs[1].meta["test_from"] == "byte_stream"

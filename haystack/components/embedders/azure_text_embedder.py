@@ -41,6 +41,8 @@ class AzureOpenAITextEmbedder:
         api_key: Optional[Secret] = Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=False),
         azure_ad_token: Optional[Secret] = Secret.from_env_var("AZURE_OPENAI_AD_TOKEN", strict=False),
         organization: Optional[str] = None,
+        timeout: Optional[float] = None,
+        max_retries: Optional[int] = None,
         prefix: str = "",
         suffix: str = "",
     ):
@@ -67,6 +69,10 @@ class AzureOpenAITextEmbedder:
             The Organization ID. See OpenAI's
             [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization)
             for more information.
+        :param timeout: The timeout in seconds to be passed to the underlying `AzureOpenAI` client, if not set it is
+            inferred from the `OPENAI_TIMEOUT` environment variable or set to 30.
+        :param max_retries: Maximum retries to establish a connection with AzureOpenAI if it returns an internal error,
+            if not set it is inferred from the `OPENAI_MAX_RETRIES` environment variable or set to 5.
         :param prefix:
             A string to add at the beginning of each text.
         :param suffix:
@@ -90,6 +96,8 @@ class AzureOpenAITextEmbedder:
         self.azure_deployment = azure_deployment
         self.dimensions = dimensions
         self.organization = organization
+        self.timeout = timeout or float(os.environ.get("OPENAI_TIMEOUT", 30.0))
+        self.max_retries = max_retries or int(os.environ.get("OPENAI_MAX_RETRIES", 5))
         self.prefix = prefix
         self.suffix = suffix
 
@@ -100,6 +108,8 @@ class AzureOpenAITextEmbedder:
             api_key=api_key.resolve_value() if api_key is not None else None,
             azure_ad_token=azure_ad_token.resolve_value() if azure_ad_token is not None else None,
             organization=organization,
+            timeout=self.timeout,
+            max_retries=self.max_retries,
         )
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
@@ -126,6 +136,8 @@ class AzureOpenAITextEmbedder:
             suffix=self.suffix,
             api_key=self.api_key.to_dict() if self.api_key is not None else None,
             azure_ad_token=self.azure_ad_token.to_dict() if self.azure_ad_token is not None else None,
+            timeout=self.timeout,
+            max_retries=self.max_retries,
         )
 
     @classmethod

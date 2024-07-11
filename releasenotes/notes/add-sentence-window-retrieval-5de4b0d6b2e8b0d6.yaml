@@ -1,0 +1,7 @@
+---
+
+features:
+  - |
+    Adding a new component allowing to perform sentence-window retrieval, i.e. retrieves surrounding documents of a
+    given document from the document store. This is useful when a document is split into multiple chunks and you want to
+    retrieve the surrounding context of a given chunk.
