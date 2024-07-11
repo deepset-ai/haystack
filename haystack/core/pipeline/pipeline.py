@@ -9,7 +9,12 @@ from warnings import warn
 from haystack import logging, tracing
 from haystack.core.component import Component
 from haystack.core.errors import PipelineMaxLoops, PipelineRuntimeError
-from haystack.core.pipeline.base import _dequeue_component, _enqueue_component
+from haystack.core.pipeline.base import (
+    _dequeue_component,
+    _dequeue_waiting_component,
+    _enqueue_component,
+    _enqueue_waiting_component,
+)
 from haystack.telemetry import pipeline_running
 
 from .base import PipelineBase, _add_missing_input_defaults, _is_lazy_variadic
@@ -215,8 +220,7 @@ class Pipeline(PipelineBase):
                 if _is_lazy_variadic(comp) and not all(_is_lazy_variadic(comp) for _, comp in run_queue):
                     # We run Components with lazy variadic inputs only if there only Components with
                     # lazy variadic inputs left to run
-                    if (name, comp) not in waiting_queue:
-                        waiting_queue.append((name, comp))
+                    _enqueue_waiting_component((name, comp), waiting_queue)
                     continue
 
                 if self._component_has_enough_inputs_to_run(name, components_inputs):
@@ -235,10 +239,9 @@ class Pipeline(PipelineBase):
                     before_last_waiting_queue = None
                     last_waiting_queue = None
 
-                    if (name, comp) in waiting_queue:
-                        # We manage to run this component that was in the waiting list, we can remove it.
-                        # This happens when a component was put in the waiting list but we reached it from another edge.
-                        waiting_queue.remove((name, comp))
+                    # We manage to run this component that was in the waiting list, we can remove it.
+                    # This happens when a component was put in the waiting list but we reached it from another edge.
+                    _dequeue_waiting_component((name, comp), waiting_queue)
 
                     for pair in self._find_components_that_received_no_input(name, res):
                         _dequeue_component(pair, run_queue, waiting_queue)
@@ -248,8 +251,7 @@ class Pipeline(PipelineBase):
                         final_outputs[name] = res
                 else:
                     # This component doesn't have enough inputs so we can't run it yet
-                    if (name, comp) not in waiting_queue:
-                        waiting_queue.append((name, comp))
+                    _enqueue_waiting_component((name, comp), waiting_queue)
 
                 if len(run_queue) == 0 and len(waiting_queue) > 0:
                     # Check if we're stuck in a loop.

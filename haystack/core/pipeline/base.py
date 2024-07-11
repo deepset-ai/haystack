@@ -1161,3 +1161,25 @@ def _dequeue_component(
 
     if component_pair in run_queue:
         run_queue.remove(component_pair)
+
+
+def _enqueue_waiting_component(component_pair: Tuple[str, Component], waiting_queue: List[Tuple[str, Component]]):
+    """
+    Append a Component in the queue of Components that are waiting for inputs if not already in it.
+
+    :param component_pair: Tuple of Component name and instance
+    :param waiting_queue: Queue of Components waiting for input
+    """
+    if component_pair not in waiting_queue:
+        waiting_queue.append(component_pair)
+
+
+def _dequeue_waiting_component(component_pair: Tuple[str, Component], waiting_queue: List[Tuple[str, Component]]):
+    """
+    Removes a Component from the queue of Components that are waiting for inputs.
+
+    :param component_pair: Tuple of Component name and instance
+    :param waiting_queue: Queue of Components waiting for input
+    """
+    if component_pair in waiting_queue:
+        waiting_queue.remove(component_pair)

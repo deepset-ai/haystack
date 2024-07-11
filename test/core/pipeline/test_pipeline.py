@@ -15,8 +15,13 @@ from haystack.core.component import component
 from haystack.core.component.types import InputSocket, OutputSocket, Variadic
 from haystack.core.errors import PipelineConnectError, PipelineDrawingError, PipelineError
 from haystack.core.pipeline import Pipeline, PredefinedPipeline
-from haystack.core.pipeline.base import _dequeue_component
-from haystack.core.pipeline.base import _add_missing_input_defaults, _enqueue_component
+from haystack.core.pipeline.base import (
+    _add_missing_input_defaults,
+    _enqueue_component,
+    _dequeue_component,
+    _enqueue_waiting_component,
+    _dequeue_waiting_component,
+)
 from haystack.core.serialization import DeserializationCallbacks
 from haystack.testing.factory import component_class
 from haystack.testing.sample_components import AddFixedValue, Double, Greet
@@ -1410,3 +1415,47 @@ class TestPipeline:
         ]
         pair = pipe._find_next_runnable_lazy_variadic_or_default_component(waiting_queue)
         assert pair == ("prompt_builder", prompt_builder)
+
+    def test__enqueue_waiting_component(self):
+        document_builder = component_class(
+            "DocumentBuilder", input_types={"text": str}, output_types={"doc": Document}
+        )()
+        document_joiner = component_class("DocumentJoiner", input_types={"docs": Variadic[Document]})()
+
+        waiting_queue = []
+        _enqueue_waiting_component(("document_builder", document_builder), waiting_queue)
+        assert waiting_queue == [("document_builder", document_builder)]
+
+        waiting_queue = [("document_builder", document_builder)]
+        _enqueue_waiting_component(("document_builder", document_builder), waiting_queue)
+        assert waiting_queue == [("document_builder", document_builder)]
+
+        waiting_queue = [("document_joiner", document_joiner)]
+        _enqueue_waiting_component(("document_builder", document_builder), waiting_queue)
+        assert waiting_queue == [("document_joiner", document_joiner), ("document_builder", document_builder)]
+
+        waiting_queue = [("document_builder", document_builder), ("document_joiner", document_joiner)]
+        _enqueue_waiting_component(("document_builder", document_builder), waiting_queue)
+        assert waiting_queue == [("document_builder", document_builder), ("document_joiner", document_joiner)]
+
+    def test__dequeue_waiting_component(self):
+        document_builder = component_class(
+            "DocumentBuilder", input_types={"text": str}, output_types={"doc": Document}
+        )()
+        document_joiner = component_class("DocumentJoiner", input_types={"docs": Variadic[Document]})()
+
+        waiting_queue = []
+        _dequeue_waiting_component(("document_builder", document_builder), waiting_queue)
+        assert waiting_queue == []
+
+        waiting_queue = [("document_builder", document_builder)]
+        _dequeue_waiting_component(("document_builder", document_builder), waiting_queue)
+        assert waiting_queue == []
+
+        waiting_queue = [("document_joiner", document_joiner)]
+        _dequeue_waiting_component(("document_builder", document_builder), waiting_queue)
+        assert waiting_queue == [("document_joiner", document_joiner)]
+
+        waiting_queue = [("document_builder", document_builder), ("document_joiner", document_joiner)]
+        _dequeue_waiting_component(("document_builder", document_builder), waiting_queue)
+        assert waiting_queue == [("document_joiner", document_joiner)]
