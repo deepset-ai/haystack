@@ -179,8 +179,12 @@ class Pipeline(PipelineBase):
         # Stuck loops can happen when one or more components are waiting for input but
         # no other component is going to run.
         # This can happen when a whole branch of the graph is skipped for example.
-        # When we find that two consecutive iterations of the loop where the waiting_for_input list is the same,
+        # When we find that two consecutive iterations of the loop where the waiting_queue is the same,
         # we know we're stuck in a loop and we can't make any progress.
+        #
+        # They track the previous two states of the waiting_queue. So if waiting_queue would n,
+        # before_last_waiting_queue would be n-2 and last_waiting_queue would be n-1.
+        # When we run a component, we reset both.
         before_last_waiting_queue: Optional[Set[str]] = None
         last_waiting_queue: Optional[Set[str]] = None
 
