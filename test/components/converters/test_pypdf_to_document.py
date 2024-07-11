@@ -46,6 +46,15 @@ class TestPyPDFToDocument:
         assert isinstance(instance, PyPDFToDocument)
         assert isinstance(instance.converter, DefaultConverter)
 
+    def test_from_dict_with_converter_name(self):
+        data = {
+            "type": "haystack.components.converters.pypdf.PyPDFToDocument",
+            "init_parameters": {"converter_name": "DefaultConverter"},
+        }
+        instance = PyPDFToDocument.from_dict(data)
+        assert isinstance(instance, PyPDFToDocument)
+        assert isinstance(instance.converter, DefaultConverter)
+
     @pytest.mark.integration
     def test_run(self, test_files_path, pypdf_converter):
         """

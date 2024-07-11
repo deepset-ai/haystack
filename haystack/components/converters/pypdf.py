@@ -106,7 +106,9 @@ class PyPDFToDocument:
         :returns:
             Deserialized component.
         """
-
+        # Old versions of this component used to have a `converter_name` parameter. To ensure backwards compatibility,
+        # we remove it.
+        data["init_parameters"].pop("converter_name", None)
         if converter := data["init_parameters"].get("converter"):
             converter_class = deserialize_type(converter["type"])
             data["init_parameters"]["converter"] = converter_class.from_dict(data["init_parameters"]["converter"])
