@@ -83,27 +83,11 @@ class FilterRetriever:
         if "type" not in init_params["document_store"]:
             raise DeserializationError("Missing 'type' in document store's serialization data")
 
-        """""
-        try:
-            module_name, type_ = init_params["document_store"]["type"].rsplit(".", 1)
-            logger.debug("Trying to import module '{module_name}'", module_name=module_name)
-            module = importlib.import_module(module_name)
-        except (ImportError, DeserializationError) as e:
-            raise DeserializationError(
-                f"DocumentStore of type '{init_params['document_store']['type']}' not correctly imported"
-            ) from e
-
-        docstore_class = getattr(module, type_)
-        data["init_parameters"]["document_store"] = docstore_class.from_dict(data["init_parameters"]["document_store"])
-        """
-
-        # deserialize the document store
         doc_store_data = data["init_parameters"]["document_store"]
         try:
             doc_store_class = import_class_by_name(doc_store_data["type"])
         except ImportError as e:
             raise DeserializationError(f"Class '{doc_store_data['type']}' not correctly imported") from e
-
         data["init_parameters"]["document_store"] = default_from_dict(doc_store_class, doc_store_data)
 
         return default_from_dict(cls, data)
