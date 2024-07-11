@@ -122,6 +122,22 @@ class TestSentenceTransformersTextEmbedder:
         assert component.normalize_embeddings is False
         assert component.trust_remote_code is False
 
+    def test_from_dict_no_default_parameters(self):
+        data = {
+            "type": "haystack.components.embedders.sentence_transformers_text_embedder.SentenceTransformersTextEmbedder",
+            "init_parameters": {},
+        }
+        component = SentenceTransformersTextEmbedder.from_dict(data)
+        assert component.model == "sentence-transformers/all-mpnet-base-v2"
+        assert component.device == ComponentDevice.resolve_device(None)
+        assert component.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
+        assert component.prefix == ""
+        assert component.suffix == ""
+        assert component.batch_size == 32
+        assert component.progress_bar is True
+        assert component.normalize_embeddings is False
+        assert component.trust_remote_code is False
+
     def test_from_dict_none_device(self):
         data = {
             "type": "haystack.components.embedders.sentence_transformers_text_embedder.SentenceTransformersTextEmbedder",

@@ -170,10 +170,11 @@ class ExtractiveReader:
             Deserialized component.
         """
         init_params = data["init_parameters"]
-        deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
-        if init_params["device"] is not None:
+        deserialize_secrets_inplace(init_params, keys=["token"])
+        if init_params.get("device") is not None:
             init_params["device"] = ComponentDevice.from_dict(init_params["device"])
-        deserialize_hf_model_kwargs(init_params["model_kwargs"])
+        if init_params.get("model_kwargs") is not None:
+            deserialize_hf_model_kwargs(init_params["model_kwargs"])
 
         return default_from_dict(cls, data)
 
