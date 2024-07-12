@@ -15,6 +15,7 @@ import networkx  # type:ignore
 from haystack import logging
 from haystack.core.component import Component, InputSocket, OutputSocket, component
 from haystack.core.errors import (
+    DeserializationError,
     PipelineConnectError,
     PipelineDrawingError,
     PipelineError,
@@ -179,7 +180,18 @@ class PipelineBase:
 
                 # Create a new one
                 component_class = component.registry[component_data["type"]]
-                instance = component_from_dict(component_class, component_data, name, callbacks)
+
+                try:
+                    instance = component_from_dict(component_class, component_data, name, callbacks)
+                except Exception as e:
+                    msg = (
+                        f"Couldn't deserialize component '{name}' of class '{component_class.__name__}' "
+                        f"with the following data: {str(component_data)}. Possible reasons include "
+                        "malformed serialized data, mismatch between the serialized component and the "
+                        "loaded one (due to a breaking change, see "
+                        "https://github.com/deepset-ai/haystack/releases), etc."
+                    )
+                    raise DeserializationError(msg) from e
             pipe.add_component(name=name, instance=instance)
 
         for connection in data.get("connections", []):
@@ -229,10 +241,20 @@ class PipelineBase:
             The Marshaller used to create the string representation. Defaults to `YamlMarshaller`.
         :param callbacks:
             Callbacks to invoke during deserialization.
+        :raises DeserializationError:
+            If an error occurs during deserialization.
         :returns:
             A `Pipeline` object.
         """
-        return cls.from_dict(marshaller.unmarshal(data), callbacks)
+        try:
+            deserialized_data = marshaller.unmarshal(data)
+        except Exception as e:
+            raise DeserializationError(
+                "Error while unmarshalling serialized pipeline data. This is usually "
+                "caused by malformed or invalid syntax in the serialized representation."
+            ) from e
+
+        return cls.from_dict(deserialized_data, callbacks)
 
     @classmethod
     def load(
@@ -253,10 +275,12 @@ class PipelineBase:
             The Marshaller used to create the string representation. Defaults to `YamlMarshaller`.
         :param callbacks:
             Callbacks to invoke during deserialization.
+        :raises DeserializationError:
+            If an error occurs during deserialization.
         :returns:
             A `Pipeline` object.
         """
-        return cls.from_dict(marshaller.unmarshal(fp.read()), callbacks)
+        return cls.loads(fp.read(), marshaller, callbacks)
 
     def add_component(self, name: str, instance: Component) -> None:
         """
