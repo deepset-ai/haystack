@@ -768,9 +768,9 @@ class PipelineBase:
     def _init_run_queue(self, pipeline_inputs: Dict[str, Any]) -> List[Tuple[str, Component]]:
         run_queue: List[Tuple[str, Component]] = []
 
-		# HACK: Quick workaround for the issue of execution order not being
-		# well-defined (NB - https://github.com/deepset-ai/haystack/issues/7985).
-		# We should fix the original execution logic instead.
+        # HACK: Quick workaround for the issue of execution order not being
+        # well-defined (NB - https://github.com/deepset-ai/haystack/issues/7985).
+        # We should fix the original execution logic instead.
         if networkx.is_directed_acyclic_graph(self.graph):
             # If the Pipeline is linear we can easily determine the order of execution with
             # a topological sort.
