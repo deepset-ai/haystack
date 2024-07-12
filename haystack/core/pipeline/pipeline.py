@@ -4,13 +4,20 @@
 
 from copy import deepcopy
 from typing import Any, Dict, List, Mapping, Optional, Set, Tuple
+from warnings import warn
 
 from haystack import logging, tracing
 from haystack.core.component import Component
 from haystack.core.errors import PipelineMaxLoops, PipelineRuntimeError
+from haystack.core.pipeline.base import (
+    _dequeue_component,
+    _dequeue_waiting_component,
+    _enqueue_component,
+    _enqueue_waiting_component,
+)
 from haystack.telemetry import pipeline_running
 
-from .base import PipelineBase
+from .base import PipelineBase, _add_missing_input_defaults, _is_lazy_variadic
 
 logger = logging.getLogger(__name__)
 
@@ -21,22 +28,6 @@ class Pipeline(PipelineBase):
 
     Orchestrates component execution according to the execution graph, one after the other.
     """
-
-    def _component_has_enough_inputs_to_run(self, name: str, inputs: Dict[str, Dict[str, Any]]) -> bool:
-        """
-        Returns True if the Component has all the inputs it needs to run.
-
-        :param name: Name of the Component as defined in the Pipeline.
-        :param inputs: The current state of the inputs divided by Component name.
-
-        :return: Whether the Component can run or not.
-        """
-        instance: Component = self.graph.nodes[name]["instance"]
-        if name not in inputs:
-            return False
-        expected_inputs = instance.__haystack_input__._sockets_dict.keys()  # type: ignore
-        current_inputs = inputs[name].keys()
-        return expected_inputs == current_inputs
 
     def _run_component(self, name: str, inputs: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -93,9 +84,7 @@ class Pipeline(PipelineBase):
 
             return res
 
-    # TODO: We're ignoring these linting rules for the time being, after we properly optimize this function we'll
-    # remove the noqa
-    def run(  # noqa: C901, PLR0912, PLR0915 pylint: disable=too-many-branches,too-many-locals
+    def run(  # noqa: PLR0915
         self, data: Dict[str, Any], debug: bool = False, include_outputs_from: Optional[Set[str]] = None
     ) -> Dict[str, Any]:
         """
@@ -182,26 +171,30 @@ class Pipeline(PipelineBase):
         self._validate_input(data)
 
         # Initialize the inputs state
-        last_inputs: Dict[str, Dict[str, Any]] = self._init_inputs_state(data)
+        components_inputs: Dict[str, Dict[str, Any]] = self._init_inputs_state(data)
 
         # Take all components that:
         # - have no inputs
         # - receive input from the user
         # - have at least one input not connected
         # - have at least one input that is variadic
-        to_run: List[Tuple[str, Component]] = self._init_to_run(data)
+        run_queue: List[Tuple[str, Component]] = self._init_run_queue(data)
 
         # These variables are used to detect when we're stuck in a loop.
         # Stuck loops can happen when one or more components are waiting for input but
         # no other component is going to run.
         # This can happen when a whole branch of the graph is skipped for example.
-        # When we find that two consecutive iterations of the loop where the waiting_for_input list is the same,
+        # When we find that two consecutive iterations of the loop where the waiting_queue is the same,
         # we know we're stuck in a loop and we can't make any progress.
-        before_last_waiting_for_input: Optional[Set[str]] = None
-        last_waiting_for_input: Optional[Set[str]] = None
+        #
+        # They track the previous two states of the waiting_queue. So if waiting_queue would n,
+        # before_last_waiting_queue would be n-2 and last_waiting_queue would be n-1.
+        # When we run a component, we reset both.
+        before_last_waiting_queue: Optional[Set[str]] = None
+        last_waiting_queue: Optional[Set[str]] = None
 
         # The waiting_for_input list is used to keep track of components that are waiting for input.
-        waiting_for_input: List[Tuple[str, Component]] = []
+        waiting_queue: List[Tuple[str, Component]] = []
 
         include_outputs_from = set() if include_outputs_from is None else include_outputs_from
 
@@ -221,32 +214,21 @@ class Pipeline(PipelineBase):
             # Cache for extra outputs, if enabled.
             extra_outputs: Dict[Any, Any] = {}
 
-            while len(to_run) > 0:
-                name, comp = to_run.pop(0)
+            while len(run_queue) > 0:
+                name, comp = run_queue.pop(0)
 
-                if any(socket.is_variadic for socket in comp.__haystack_input__._sockets_dict.values()) and not getattr(  # type: ignore
-                    comp, "is_greedy", False
-                ):
-                    there_are_non_variadics = False
-                    for _, other_comp in to_run:
-                        if not any(
-                            socket.is_variadic
-                            for socket in other_comp.__haystack_input__._sockets_dict.values()  # type: ignore
-                        ):
-                            there_are_non_variadics = True
-                            break
+                if _is_lazy_variadic(comp) and not all(_is_lazy_variadic(comp) for _, comp in run_queue):
+                    # We run Components with lazy variadic inputs only if there only Components with
+                    # lazy variadic inputs left to run
+                    _enqueue_waiting_component((name, comp), waiting_queue)
+                    continue
 
-                    if there_are_non_variadics:
-                        if (name, comp) not in waiting_for_input:
-                            waiting_for_input.append((name, comp))
-                        continue
-
-                if self._component_has_enough_inputs_to_run(name, last_inputs):
+                if self._component_has_enough_inputs_to_run(name, components_inputs):
                     if self.graph.nodes[name]["visits"] > self.max_loops_allowed:
                         msg = f"Maximum loops count ({self.max_loops_allowed}) exceeded for component '{name}'"
                         raise PipelineMaxLoops(msg)
 
-                    res: Dict[str, Any] = self._run_component(name, last_inputs[name])
+                    res: Dict[str, Any] = self._run_component(name, components_inputs[name])
 
                     if name in include_outputs_from:
                         # Deepcopy the outputs to prevent downstream nodes from modifying them
@@ -254,80 +236,52 @@ class Pipeline(PipelineBase):
                         extra_outputs[name] = deepcopy(res)
 
                     # Reset the waiting for input previous states, we managed to run a component
-                    before_last_waiting_for_input = None
-                    last_waiting_for_input = None
+                    before_last_waiting_queue = None
+                    last_waiting_queue = None
 
-                    if (name, comp) in waiting_for_input:
-                        # We manage to run this component that was in the waiting list, we can remove it.
-                        # This happens when a component was put in the waiting list but we reached it from another edge.
-                        waiting_for_input.remove((name, comp))
+                    # We manage to run this component that was in the waiting list, we can remove it.
+                    # This happens when a component was put in the waiting list but we reached it from another edge.
+                    _dequeue_waiting_component((name, comp), waiting_queue)
 
-                    self._dequeue_components_that_received_no_input(name, res, to_run, waiting_for_input)
-                    res = self._distribute_output(name, res, last_inputs, to_run, waiting_for_input)
+                    for pair in self._find_components_that_received_no_input(name, res):
+                        _dequeue_component(pair, run_queue, waiting_queue)
+                    res = self._distribute_output(name, res, components_inputs, run_queue, waiting_queue)
 
                     if len(res) > 0:
                         final_outputs[name] = res
                 else:
                     # This component doesn't have enough inputs so we can't run it yet
-                    if (name, comp) not in waiting_for_input:
-                        waiting_for_input.append((name, comp))
+                    _enqueue_waiting_component((name, comp), waiting_queue)
 
-                if len(to_run) == 0 and len(waiting_for_input) > 0:
+                if len(run_queue) == 0 and len(waiting_queue) > 0:
                     # Check if we're stuck in a loop.
                     # It's important to check whether previous waitings are None as it could be that no
                     # Component has actually been run yet.
                     if (
-                        before_last_waiting_for_input is not None
-                        and last_waiting_for_input is not None
-                        and before_last_waiting_for_input == last_waiting_for_input
+                        before_last_waiting_queue is not None
+                        and last_waiting_queue is not None
+                        and before_last_waiting_queue == last_waiting_queue
                     ):
-                        # Are we actually stuck or there's a lazy variadic or a component with has only default inputs
-                        # waiting for input?
-                        # This is our last resort, if there's no lazy variadic or component with only default inputs
-                        # waiting for input we're stuck for real and we can't make any progress.
-                        for name, comp in waiting_for_input:
-                            is_variadic = any(
-                                socket.is_variadic
-                                for socket in comp.__haystack_input__._sockets_dict.values()  # type: ignore
+                        if self._is_stuck_in_a_loop(waiting_queue):
+                            # We're stuck! We can't make any progress.
+                            msg = (
+                                "Pipeline is stuck running in a loop. Partial outputs will be returned. "
+                                "Check the Pipeline graph for possible issues."
                             )
-                            has_only_defaults = all(
-                                not socket.is_mandatory
-                                for socket in comp.__haystack_input__._sockets_dict.values()  # type: ignore
-                            )
-                            if is_variadic and not comp.__haystack_is_greedy__ or has_only_defaults:  # type: ignore[attr-defined]
-                                break
-                        else:
-                            # We're stuck in a loop for real, we can't make any progress.
-                            # BAIL!
+                            warn(RuntimeWarning(msg))
                             break
 
-                        if len(waiting_for_input) == 1:
-                            # We have a single component with variadic input or only default inputs waiting for input.
-                            # If we're at this point it means it has been waiting for input for at least 2 iterations.
-                            # This will never run.
-                            # BAIL!
-                            break
-
-                        # There was a lazy variadic or a component with only default waiting for input, we can run it
-                        waiting_for_input.remove((name, comp))
-                        to_run.append((name, comp))
-
-                        # Let's use the default value for the inputs that are still missing, or the component
-                        # won't run and will be put back in the waiting list, causing an infinite loop.
-                        for input_socket in comp.__haystack_input__._sockets_dict.values():  # type: ignore
-                            if input_socket.is_mandatory:
-                                continue
-                            if input_socket.name not in last_inputs[name]:
-                                last_inputs[name][input_socket.name] = input_socket.default_value
-
+                        (name, comp) = self._find_next_runnable_lazy_variadic_or_default_component(waiting_queue)
+                        _add_missing_input_defaults(name, comp, components_inputs)
+                        _enqueue_component((name, comp), run_queue, waiting_queue)
                         continue
 
-                    before_last_waiting_for_input = (
-                        last_waiting_for_input.copy() if last_waiting_for_input is not None else None
-                    )
-                    last_waiting_for_input = {item[0] for item in waiting_for_input}
+                    before_last_waiting_queue = last_waiting_queue.copy() if last_waiting_queue is not None else None
+                    last_waiting_queue = {item[0] for item in waiting_queue}
 
-                    self._enqueue_next_runnable_component(last_inputs, to_run, waiting_for_input)
+                    (name, comp) = self._find_next_runnable_component(components_inputs, waiting_queue)
+                    _add_missing_input_defaults(name, comp, components_inputs)
+                    _enqueue_component((name, comp), run_queue, waiting_queue)
 
             if len(include_outputs_from) > 0:
                 for name, output in extra_outputs.items():

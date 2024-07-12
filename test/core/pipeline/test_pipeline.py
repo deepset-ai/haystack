@@ -8,12 +8,20 @@ from unittest.mock import patch
 import pytest
 
 from haystack import Document
-from haystack.components.builders import PromptBuilder
+from haystack.components.builders import PromptBuilder, AnswerBuilder
+from haystack.components.joiners import BranchJoiner
 from haystack.components.others import Multiplexer
 from haystack.core.component import component
 from haystack.core.component.types import InputSocket, OutputSocket, Variadic
 from haystack.core.errors import PipelineConnectError, PipelineDrawingError, PipelineError
 from haystack.core.pipeline import Pipeline, PredefinedPipeline
+from haystack.core.pipeline.base import (
+    _add_missing_input_defaults,
+    _enqueue_component,
+    _dequeue_component,
+    _enqueue_waiting_component,
+    _dequeue_waiting_component,
+)
 from haystack.core.serialization import DeserializationCallbacks
 from haystack.testing.factory import component_class
 from haystack.testing.sample_components import AddFixedValue, Double, Greet
@@ -765,7 +773,7 @@ class TestPipeline:
         for node in pipe.graph.nodes:
             assert pipe.graph.nodes[node]["visits"] == 0
 
-    def test__init_to_run(self):
+    def test__init_run_queue(self):
         ComponentWithVariadic = component_class(
             "ComponentWithVariadic", input_types={"in": Variadic[int]}, output_types={"out": int}
         )
@@ -792,13 +800,13 @@ class TestPipeline:
         pipe.connect("with_multiple_inputs.out", "with_variadic.in")
 
         data = {"yet_another_with_single_input": {"in": 1}}
-        to_run = pipe._init_to_run(data)
-        assert len(to_run) == 5
-        assert to_run[0][0] == "with_variadic"
-        assert to_run[1][0] == "with_no_inputs"
-        assert to_run[2][0] == "with_single_input"
-        assert to_run[3][0] == "yet_another_with_single_input"
-        assert to_run[4][0] == "with_multiple_inputs"
+        run_queue = pipe._init_run_queue(data)
+        assert len(run_queue) == 5
+        assert run_queue[0][0] == "with_variadic"
+        assert run_queue[1][0] == "with_no_inputs"
+        assert run_queue[2][0] == "with_single_input"
+        assert run_queue[3][0] == "yet_another_with_single_input"
+        assert run_queue[4][0] == "with_multiple_inputs"
 
     def test__init_inputs_state(self):
         pipe = Pipeline()
@@ -1089,7 +1097,7 @@ class TestPipeline:
             "sentence_builder", {"sentence_builder": {"words": ["blah blah"]}}
         )
 
-    def test__dequeue_components_that_received_no_input(self):
+    def test__find_components_that_received_no_input(self):
         sentence_builder = component_class(
             "SentenceBuilder", input_types={"words": List[str]}, output={"text": "some words"}
         )()
@@ -1102,11 +1110,11 @@ class TestPipeline:
         pipe.add_component("document_builder", document_builder)
         pipe.connect("sentence_builder.text", "document_builder.text")
 
-        to_run = [("document_builder", document_builder)]
-        waiting_for_input = [("document_builder", document_builder)]
-        pipe._dequeue_components_that_received_no_input("sentence_builder", {}, to_run, waiting_for_input)
-        assert to_run == []
-        assert waiting_for_input == []
+        res = pipe._find_components_that_received_no_input("sentence_builder", {})
+        assert res == {("document_builder", document_builder)}
+
+        res = pipe._find_components_that_received_no_input("sentence_builder", {"text": "some text"})
+        assert res == set()
 
     def test__distribute_output(self):
         document_builder = component_class(
@@ -1125,14 +1133,14 @@ class TestPipeline:
         pipe.connect("document_builder.another_doc", "document_joiner.docs")
 
         inputs = {"document_builder": {"text": "some text"}}
-        to_run = []
-        waiting_for_input = [("document_joiner", document_joiner)]
+        run_queue = []
+        waiting_queue = [("document_joiner", document_joiner)]
         res = pipe._distribute_output(
             "document_builder",
             {"doc": Document("some text"), "another_doc": Document()},
             inputs,
-            to_run,
-            waiting_for_input,
+            run_queue,
+            waiting_queue,
         )
 
         assert res == {}
@@ -1141,73 +1149,60 @@ class TestPipeline:
             "document_cleaner": {"doc": Document("some text")},
             "document_joiner": {"docs": [Document()]},
         }
-        assert to_run == [("document_cleaner", document_cleaner)]
-        assert waiting_for_input == [("document_joiner", document_joiner)]
+        assert run_queue == [("document_cleaner", document_cleaner)]
+        assert waiting_queue == [("document_joiner", document_joiner)]
 
-    def test__enqueue_next_runnable_component(self):
+    def test__find_next_runnable_component(self):
         document_builder = component_class(
             "DocumentBuilder", input_types={"text": str}, output_types={"doc": Document}
         )()
         pipe = Pipeline()
-        inputs_by_component = {"document_builder": {"text": "some text"}}
-        to_run = []
-        waiting_for_input = [("document_builder", document_builder)]
-        pipe._enqueue_next_runnable_component(inputs_by_component, to_run, waiting_for_input)
+        components_inputs = {"document_builder": {"text": "some text"}}
+        waiting_queue = [("document_builder", document_builder)]
+        pair = pipe._find_next_runnable_component(components_inputs, waiting_queue)
+        assert pair == ("document_builder", document_builder)
 
-        assert to_run == [("document_builder", document_builder)]
-        assert waiting_for_input == []
-
-    def test__enqueue_next_runnable_component_without_component_inputs(self):
+    def test__find_next_runnable_component_without_component_inputs(self):
         document_builder = component_class(
             "DocumentBuilder", input_types={"text": str}, output_types={"doc": Document}
         )()
         pipe = Pipeline()
-        inputs_by_component = {}
-        to_run = []
-        waiting_for_input = [("document_builder", document_builder)]
-        pipe._enqueue_next_runnable_component(inputs_by_component, to_run, waiting_for_input)
+        components_inputs = {}
+        waiting_queue = [("document_builder", document_builder)]
+        pair = pipe._find_next_runnable_component(components_inputs, waiting_queue)
+        assert pair == ("document_builder", document_builder)
 
-        assert to_run == [("document_builder", document_builder)]
-        assert waiting_for_input == []
-
-    def test__enqueue_next_runnable_component_with_component_with_only_variadic_non_greedy_input(self):
+    def test__find_next_runnable_component_with_component_with_only_variadic_non_greedy_input(self):
         document_joiner = component_class("DocumentJoiner", input_types={"docs": Variadic[Document]})()
 
         pipe = Pipeline()
-        inputs_by_component = {}
-        to_run = []
-        waiting_for_input = [("document_joiner", document_joiner)]
-        pipe._enqueue_next_runnable_component(inputs_by_component, to_run, waiting_for_input)
+        components_inputs = {}
+        waiting_queue = [("document_joiner", document_joiner)]
+        pair = pipe._find_next_runnable_component(components_inputs, waiting_queue)
+        assert pair == ("document_joiner", document_joiner)
 
-        assert to_run == [("document_joiner", document_joiner)]
-        assert waiting_for_input == []
-
-    def test__enqueue_next_runnable_component_with_component_with_only_default_input(self):
+    def test__find_next_runnable_component_with_component_with_only_default_input(self):
         prompt_builder = PromptBuilder(template="{{ questions | join('\n') }}")
 
         pipe = Pipeline()
-        inputs_by_component = {}
-        to_run = []
-        waiting_for_input = [("prompt_builder", prompt_builder)]
-        pipe._enqueue_next_runnable_component(inputs_by_component, to_run, waiting_for_input)
+        components_inputs = {}
+        waiting_queue = [("prompt_builder", prompt_builder)]
+        pair = pipe._find_next_runnable_component(components_inputs, waiting_queue)
 
-        assert to_run == [("prompt_builder", prompt_builder)]
-        assert waiting_for_input == []
+        assert pair == ("prompt_builder", prompt_builder)
 
-    def test__enqueue_next_runnable_component_with_component_with_variadic_non_greedy_and_default_input(self):
+    def test__find_next_runnable_component_with_component_with_variadic_non_greedy_and_default_input(self):
         document_joiner = component_class("DocumentJoiner", input_types={"docs": Variadic[Document]})()
         prompt_builder = PromptBuilder(template="{{ questions | join('\n') }}")
 
         pipe = Pipeline()
-        inputs_by_component = {}
-        to_run = []
-        waiting_for_input = [("prompt_builder", prompt_builder), ("document_joiner", document_joiner)]
-        pipe._enqueue_next_runnable_component(inputs_by_component, to_run, waiting_for_input)
+        components_inputs = {}
+        waiting_queue = [("prompt_builder", prompt_builder), ("document_joiner", document_joiner)]
+        pair = pipe._find_next_runnable_component(components_inputs, waiting_queue)
 
-        assert to_run == [("document_joiner", document_joiner)]
-        assert waiting_for_input == [("prompt_builder", prompt_builder)]
+        assert pair == ("document_joiner", document_joiner)
 
-    def test__enqueue_next_runnable_component_with_different_components_inputs(self):
+    def test__find_next_runnable_component_with_different_components_inputs(self):
         document_builder = component_class(
             "DocumentBuilder", input_types={"text": str}, output_types={"doc": Document}
         )()
@@ -1215,19 +1210,17 @@ class TestPipeline:
         prompt_builder = PromptBuilder(template="{{ questions | join('\n') }}")
 
         pipe = Pipeline()
-        inputs_by_component = {"document_builder": {"text": "some text"}}
-        to_run = []
-        waiting_for_input = [
+        components_inputs = {"document_builder": {"text": "some text"}}
+        waiting_queue = [
             ("prompt_builder", prompt_builder),
             ("document_builder", document_builder),
             ("document_joiner", document_joiner),
         ]
-        pipe._enqueue_next_runnable_component(inputs_by_component, to_run, waiting_for_input)
+        pair = pipe._find_next_runnable_component(components_inputs, waiting_queue)
 
-        assert to_run == [("document_builder", document_builder)]
-        assert waiting_for_input == [("prompt_builder", prompt_builder), ("document_joiner", document_joiner)]
+        assert pair == ("document_builder", document_builder)
 
-    def test__enqueue_next_runnable_component_with_different_components_without_any_input(self):
+    def test__find_next_runnable_component_with_different_components_without_any_input(self):
         document_builder = component_class(
             "DocumentBuilder", input_types={"text": str}, output_types={"doc": Document}
         )()
@@ -1235,14 +1228,234 @@ class TestPipeline:
         prompt_builder = PromptBuilder(template="{{ questions | join('\n') }}")
 
         pipe = Pipeline()
-        inputs_by_component = {}
-        to_run = []
-        waiting_for_input = [
+        components_inputs = {}
+        waiting_queue = [
             ("prompt_builder", prompt_builder),
             ("document_builder", document_builder),
             ("document_joiner", document_joiner),
         ]
-        pipe._enqueue_next_runnable_component(inputs_by_component, to_run, waiting_for_input)
+        pair = pipe._find_next_runnable_component(components_inputs, waiting_queue)
 
-        assert to_run == [("document_builder", document_builder)]
-        assert waiting_for_input == [("prompt_builder", prompt_builder), ("document_joiner", document_joiner)]
+        assert pair == ("document_builder", document_builder)
+
+    def test__is_stuck_in_a_loop(self):
+        document_builder = component_class(
+            "DocumentBuilder", input_types={"text": str}, output_types={"doc": Document}
+        )()
+        document_joiner = component_class("DocumentJoiner", input_types={"docs": Variadic[Document]})()
+        prompt_builder = PromptBuilder(template="{{ questions | join('\n') }}")
+
+        pipe = Pipeline()
+
+        waiting_queue = [("document_builder", document_builder)]
+        assert pipe._is_stuck_in_a_loop(waiting_queue)
+
+        waiting_queue = [("document_joiner", document_joiner)]
+        assert pipe._is_stuck_in_a_loop(waiting_queue)
+
+        waiting_queue = [("prompt_builder", prompt_builder)]
+        assert pipe._is_stuck_in_a_loop(waiting_queue)
+
+        waiting_queue = [("document_joiner", document_joiner), ("prompt_builder", prompt_builder)]
+        assert not pipe._is_stuck_in_a_loop(waiting_queue)
+
+        waiting_queue = [("document_builder", document_joiner), ("prompt_builder", prompt_builder)]
+        assert not pipe._is_stuck_in_a_loop(waiting_queue)
+
+        waiting_queue = [("document_builder", document_joiner), ("document_joiner", document_joiner)]
+        assert not pipe._is_stuck_in_a_loop(waiting_queue)
+
+    def test__enqueue_component(self):
+        document_builder = component_class(
+            "DocumentBuilder", input_types={"text": str}, output_types={"doc": Document}
+        )()
+        document_joiner = component_class("DocumentJoiner", input_types={"docs": Variadic[Document]})()
+
+        run_queue = []
+        waiting_queue = []
+        _enqueue_component(("document_builder", document_builder), run_queue, waiting_queue)
+        assert run_queue == [("document_builder", document_builder)]
+        assert waiting_queue == []
+
+        run_queue = [("document_builder", document_builder)]
+        waiting_queue = []
+        _enqueue_component(("document_builder", document_builder), run_queue, waiting_queue)
+        assert run_queue == [("document_builder", document_builder)]
+        assert waiting_queue == []
+
+        run_queue = []
+        waiting_queue = [("document_builder", document_builder)]
+        _enqueue_component(("document_builder", document_builder), run_queue, waiting_queue)
+        assert run_queue == [("document_builder", document_builder)]
+        assert waiting_queue == []
+
+        run_queue = []
+        waiting_queue = [("document_joiner", document_joiner)]
+        _enqueue_component(("document_builder", document_builder), run_queue, waiting_queue)
+        assert run_queue == [("document_builder", document_builder)]
+        assert waiting_queue == [("document_joiner", document_joiner)]
+
+        run_queue = [("document_joiner", document_joiner)]
+        waiting_queue = []
+        _enqueue_component(("document_builder", document_builder), run_queue, waiting_queue)
+        assert run_queue == [("document_joiner", document_joiner), ("document_builder", document_builder)]
+        assert waiting_queue == []
+
+    def test__dequeue_component(self):
+        document_builder = component_class(
+            "DocumentBuilder", input_types={"text": str}, output_types={"doc": Document}
+        )()
+        document_joiner = component_class("DocumentJoiner", input_types={"docs": Variadic[Document]})()
+
+        run_queue = []
+        waiting_queue = []
+        _dequeue_component(("document_builder", document_builder), run_queue, waiting_queue)
+        assert run_queue == []
+        assert waiting_queue == []
+
+        run_queue = [("document_builder", document_builder)]
+        waiting_queue = []
+        _dequeue_component(("document_builder", document_builder), run_queue, waiting_queue)
+        assert run_queue == []
+        assert waiting_queue == []
+
+        run_queue = []
+        waiting_queue = [("document_builder", document_builder)]
+        _dequeue_component(("document_builder", document_builder), run_queue, waiting_queue)
+        assert run_queue == []
+        assert waiting_queue == []
+
+        run_queue = [("document_builder", document_builder)]
+        waiting_queue = [("document_builder", document_builder)]
+        _dequeue_component(("document_builder", document_builder), run_queue, waiting_queue)
+        assert run_queue == []
+        assert waiting_queue == []
+
+        run_queue = [("document_builder", document_builder)]
+        waiting_queue = [("document_builder", document_builder)]
+        _dequeue_component(("document_joiner", document_joiner), run_queue, waiting_queue)
+        assert run_queue == [("document_builder", document_builder)]
+        assert waiting_queue == [("document_builder", document_builder)]
+
+    def test__add_missing_input_defaults(self):
+        name = "prompt_builder"
+        prompt_builder = PromptBuilder(template="{{ questions | join('\n') }}")
+        components_inputs = {}
+        _add_missing_input_defaults(name, prompt_builder, components_inputs)
+        assert components_inputs == {"prompt_builder": {"questions": "", "template": None, "template_variables": None}}
+
+        name = "answer_builder"
+        answer_builder = AnswerBuilder()
+        components_inputs = {"answer_builder": {"query": "What is the answer?"}}
+        _add_missing_input_defaults(name, answer_builder, components_inputs)
+        assert components_inputs == {
+            "answer_builder": {
+                "query": "What is the answer?",
+                "meta": None,
+                "documents": None,
+                "pattern": None,
+                "reference_pattern": None,
+            }
+        }
+
+        name = "branch_joiner"
+        branch_joiner = BranchJoiner(int)
+        components_inputs = {}
+        _add_missing_input_defaults(name, branch_joiner, components_inputs)
+        assert components_inputs == {"branch_joiner": {}}
+
+    def test__find_next_runnable_lazy_variadic_or_default_component(self):
+        document_builder = component_class(
+            "DocumentBuilder", input_types={"text": str}, output_types={"doc": Document}
+        )()
+        document_joiner = component_class("DocumentJoiner", input_types={"docs": Variadic[Document]})()
+        prompt_builder = PromptBuilder(template="{{ questions | join('\n') }}")
+        pipe = Pipeline()
+
+        waiting_queue = [("document_builder", document_builder)]
+        pair = pipe._find_next_runnable_lazy_variadic_or_default_component(waiting_queue)
+        assert pair == ("document_builder", document_builder)
+
+        waiting_queue = [("document_joiner", document_joiner)]
+        pair = pipe._find_next_runnable_lazy_variadic_or_default_component(waiting_queue)
+        assert pair == ("document_joiner", document_joiner)
+
+        waiting_queue = [("prompt_builder", prompt_builder)]
+        pair = pipe._find_next_runnable_lazy_variadic_or_default_component(waiting_queue)
+        assert pair == ("prompt_builder", prompt_builder)
+
+        waiting_queue = [
+            ("document_builder", document_builder),
+            ("document_joiner", document_joiner),
+            ("prompt_builder", prompt_builder),
+        ]
+        pair = pipe._find_next_runnable_lazy_variadic_or_default_component(waiting_queue)
+        assert pair == ("document_joiner", document_joiner)
+
+        waiting_queue = [
+            ("prompt_builder", prompt_builder),
+            ("document_builder", document_builder),
+            ("document_joiner", document_joiner),
+        ]
+        pair = pipe._find_next_runnable_lazy_variadic_or_default_component(waiting_queue)
+        assert pair == ("prompt_builder", prompt_builder)
+
+        waiting_queue = [
+            ("document_builder", document_builder),
+            ("document_joiner", document_joiner),
+            ("prompt_builder", prompt_builder),
+        ]
+        pair = pipe._find_next_runnable_lazy_variadic_or_default_component(waiting_queue)
+        assert pair == ("document_joiner", document_joiner)
+
+        waiting_queue = [
+            ("document_builder", document_builder),
+            ("prompt_builder", prompt_builder),
+            ("document_joiner", document_joiner),
+        ]
+        pair = pipe._find_next_runnable_lazy_variadic_or_default_component(waiting_queue)
+        assert pair == ("prompt_builder", prompt_builder)
+
+    def test__enqueue_waiting_component(self):
+        document_builder = component_class(
+            "DocumentBuilder", input_types={"text": str}, output_types={"doc": Document}
+        )()
+        document_joiner = component_class("DocumentJoiner", input_types={"docs": Variadic[Document]})()
+
+        waiting_queue = []
+        _enqueue_waiting_component(("document_builder", document_builder), waiting_queue)
+        assert waiting_queue == [("document_builder", document_builder)]
+
+        waiting_queue = [("document_builder", document_builder)]
+        _enqueue_waiting_component(("document_builder", document_builder), waiting_queue)
+        assert waiting_queue == [("document_builder", document_builder)]
+
+        waiting_queue = [("document_joiner", document_joiner)]
+        _enqueue_waiting_component(("document_builder", document_builder), waiting_queue)
+        assert waiting_queue == [("document_joiner", document_joiner), ("document_builder", document_builder)]
+
+        waiting_queue = [("document_builder", document_builder), ("document_joiner", document_joiner)]
+        _enqueue_waiting_component(("document_builder", document_builder), waiting_queue)
+        assert waiting_queue == [("document_builder", document_builder), ("document_joiner", document_joiner)]
+
+    def test__dequeue_waiting_component(self):
+        document_builder = component_class(
+            "DocumentBuilder", input_types={"text": str}, output_types={"doc": Document}
+        )()
+        document_joiner = component_class("DocumentJoiner", input_types={"docs": Variadic[Document]})()
+
+        waiting_queue = []
+        _dequeue_waiting_component(("document_builder", document_builder), waiting_queue)
+        assert waiting_queue == []
+
+        waiting_queue = [("document_builder", document_builder)]
+        _dequeue_waiting_component(("document_builder", document_builder), waiting_queue)
+        assert waiting_queue == []
+
+        waiting_queue = [("document_joiner", document_joiner)]
+        _dequeue_waiting_component(("document_builder", document_builder), waiting_queue)
+        assert waiting_queue == [("document_joiner", document_joiner)]
+
+        waiting_queue = [("document_builder", document_builder), ("document_joiner", document_joiner)]
+        _dequeue_waiting_component(("document_builder", document_builder), waiting_queue)
+        assert waiting_queue == [("document_joiner", document_joiner)]

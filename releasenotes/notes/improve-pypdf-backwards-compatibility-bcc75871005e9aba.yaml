@@ -1,4 +1,0 @@
----
-enhancements:
- - |
-   Enhanced the PyPDF converter to ensure backwards compatibility with Pipelines dumped with versions older than 2.3.0. The update includes a conditional check to automatically default to the `DefaultConverter` if a specific converter is not provided, improving the component's robustness and ease of use.
