@@ -423,7 +423,7 @@ def pipeline_that_has_three_branches_that_dont_merge():
             PipelineRunData(
                 inputs={"add_one": {"value": 1}},
                 expected_outputs={"add_one_again": {"result": 6}, "add_ten": {"result": 12}, "double": {"value": 4}},
-                expected_run_order=["add_one", "repeat", "double", "add_ten", "add_three", "add_one_again"],
+                expected_run_order=["add_one", "repeat", "add_ten", "double", "add_three", "add_one_again"],
             )
         ],
     )
@@ -448,7 +448,7 @@ def pipeline_that_has_two_branches_that_merge():
             PipelineRunData(
                 inputs={"first_addition": {"value": 1}, "third_addition": {"value": 1}},
                 expected_outputs={"fourth_addition": {"result": 3}},
-                expected_run_order=["first_addition", "second_addition", "third_addition", "diff", "fourth_addition"],
+                expected_run_order=["first_addition", "third_addition", "second_addition", "diff", "fourth_addition"],
             )
         ],
     )
@@ -633,7 +633,7 @@ def pipeline_that_has_a_component_with_mutable_output_sent_to_multiple_inputs():
                     },
                     "mm2": {"merged_message": "Fake message"},
                 },
-                expected_run_order=["prompt_builder", "mm1", "llm", "mm2"],
+                expected_run_order=["prompt_builder", "llm", "mm1", "mm2"],
             )
         ],
     )
@@ -1021,7 +1021,7 @@ def pipeline_that_has_multiple_branches_of_different_lengths_that_merge_into_a_c
             PipelineRunData(
                 inputs={"first_addition": {"value": 1}, "third_addition": {"value": 1}},
                 expected_outputs={"fourth_addition": {"result": 12}},
-                expected_run_order=["first_addition", "second_addition", "third_addition", "sum", "fourth_addition"],
+                expected_run_order=["first_addition", "third_addition", "second_addition", "sum", "fourth_addition"],
             )
         ],
     )
@@ -1372,6 +1372,112 @@ def pipeline_that_has_a_loop_and_a_component_with_default_inputs_that_doesnt_rec
                     "prompt_builder",
                     "llm",
                     "output_validator",
+                ],
+            )
+        ],
+    )
+
+
+@given(
+    "a pipeline that has multiple components with only default inputs and are added in a different order from the order of execution",
+    target_fixture="pipeline_data",
+)
+def pipeline_that_has_multiple_components_with_only_default_inputs_and_are_added_in_a_different_order_from_the_order_of_execution():
+    prompt_builder1 = PromptBuilder(
+        template="""
+    You are a spellchecking system. Check the given query and fill in the corrected query.
+
+    Question: {{question}}
+    Corrected question:
+    """
+    )
+    prompt_builder2 = PromptBuilder(
+        template="""
+    According to these documents:
+
+    {% for doc in documents %}
+    {{ doc.content }}
+    {% endfor %}
+
+    Answer the given question: {{question}}
+    Answer:
+    """
+    )
+    prompt_builder3 = PromptBuilder(
+        template="""
+    {% for ans in replies %}
+    {{ ans }}
+    {% endfor %}
+    """
+    )
+
+    @component
+    class FakeRetriever:
+        @component.output_types(documents=List[Document])
+        def run(
+            self,
+            query: str,
+            filters: Optional[Dict[str, Any]] = None,
+            top_k: Optional[int] = None,
+            scale_score: Optional[bool] = None,
+        ):
+            return {"documents": [Document(content="This is a document")]}
+
+    @component
+    class FakeRanker:
+        @component.output_types(documents=List[Document])
+        def run(
+            self,
+            query: str,
+            documents: List[Document],
+            top_k: Optional[int] = None,
+            scale_score: Optional[bool] = None,
+            calibration_factor: Optional[float] = None,
+            score_threshold: Optional[float] = None,
+        ):
+            return {"documents": documents}
+
+    @component
+    class FakeGenerator:
+        @component.output_types(replies=List[str], meta=Dict[str, Any])
+        def run(self, prompt: str, generation_kwargs: Optional[Dict[str, Any]] = None):
+            return {"replies": ["This is a reply"], "meta": {"meta_key": "meta_value"}}
+
+    pipeline = Pipeline()
+    pipeline.add_component(name="retriever", instance=FakeRetriever())
+    pipeline.add_component(name="ranker", instance=FakeRanker())
+    pipeline.add_component(name="prompt_builder2", instance=prompt_builder2)
+    pipeline.add_component(name="prompt_builder1", instance=prompt_builder1)
+    pipeline.add_component(name="prompt_builder3", instance=prompt_builder3)
+    pipeline.add_component(name="llm", instance=FakeGenerator())
+    pipeline.add_component(name="spellchecker", instance=FakeGenerator())
+
+    pipeline.connect("prompt_builder1", "spellchecker")
+    pipeline.connect("spellchecker.replies", "prompt_builder3")
+    pipeline.connect("prompt_builder3", "retriever.query")
+    pipeline.connect("prompt_builder3", "ranker.query")
+    pipeline.connect("retriever.documents", "ranker.documents")
+    pipeline.connect("ranker.documents", "prompt_builder2.documents")
+    pipeline.connect("prompt_builder3", "prompt_builder2.question")
+    pipeline.connect("prompt_builder2", "llm")
+
+    return (
+        pipeline,
+        [
+            PipelineRunData(
+                inputs={"prompt_builder1": {"question": "Wha i Acromegaly?"}},
+                expected_outputs={
+                    "llm": {"replies": ["This is a reply"], "meta": {"meta_key": "meta_value"}},
+                    "spellchecker": {"meta": {"meta_key": "meta_value"}},
+                },
+                expected_run_order=[
+                    "prompt_builder1",
+                    "spellchecker",
+                    "prompt_builder3",
+                    "retriever",
+                    "ranker",
+                    "prompt_builder2",
+                    "llm",
                 ],
             )
         ],
