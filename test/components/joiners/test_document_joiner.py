@@ -25,6 +25,41 @@ class TestDocumentJoiner:
         assert joiner.top_k == 5
         assert not joiner.sort_by_score
 
+    def test_to_dict(self):
+        joiner = DocumentJoiner()
+        data = joiner.to_dict()
+        assert data == {
+            "type": "haystack.components.joiners.document_joiner.DocumentJoiner",
+            "init_parameters": {"join_mode": "concatenate", "sort_by_score": True, "top_k": None, "weights": None},
+        }
+
+    def test_to_dict_custom_parameters(self):
+        joiner = DocumentJoiner("merge", weights=[0.4, 0.6], top_k=4, sort_by_score=False)
+        data = joiner.to_dict()
+        assert data == {
+            "type": "haystack.components.joiners.document_joiner.DocumentJoiner",
+            "init_parameters": {"join_mode": "merge", "weights": [0.4, 0.6], "top_k": 4, "sort_by_score": False},
+        }
+
+    def test_from_dict(self):
+        data = {"type": "haystack.components.joiners.document_joiner.DocumentJoiner", "init_parameters": {}}
+        document_joiner = DocumentJoiner.from_dict(data)
+        assert document_joiner.join_mode == JoinMode.CONCATENATE
+        assert document_joiner.weights == None
+        assert document_joiner.top_k == None
+        assert document_joiner.sort_by_score
+
+    def test_from_dict_customs_parameters(self):
+        data = {
+            "type": "haystack.components.joiners.document_joiner.DocumentJoiner",
+            "init_parameters": {"join_mode": "merge", "weights": [0.5, 0.6], "top_k": 6, "sort_by_score": False},
+        }
+        document_joiner = DocumentJoiner.from_dict(data)
+        assert document_joiner.join_mode == JoinMode.MERGE
+        assert document_joiner.weights == pytest.approx([0.5, 0.6], rel=0.1)
+        assert document_joiner.top_k == 6
+        assert not document_joiner.sort_by_score
+
     def test_empty_list(self):
         joiner = DocumentJoiner()
         result = joiner.run([])

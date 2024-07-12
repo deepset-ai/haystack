@@ -6,9 +6,9 @@ import itertools
 from collections import defaultdict
 from enum import Enum
 from math import inf
-from typing import List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
-from haystack import Document, component, logging
+from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.core.component.types import Variadic
 
 logger = logging.getLogger(__name__)
@@ -231,3 +231,30 @@ class DocumentJoiner:
         output = self._concatenate(document_lists=document_lists)
 
         return output
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serializes the component to a dictionary.
+
+        :returns:
+            Dictionary with serialized data.
+        """
+        return default_to_dict(
+            self,
+            join_mode=str(self.join_mode),
+            weights=self.weights,
+            top_k=self.top_k,
+            sort_by_score=self.sort_by_score,
+        )
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "DocumentJoiner":
+        """
+        Deserializes the component from a dictionary.
+
+        :param data:
+            The dictionary to deserialize from.
+        :returns:
+            The deserialized component.
+        """
+        return default_from_dict(cls, data)
