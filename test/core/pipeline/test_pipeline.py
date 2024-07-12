@@ -840,12 +840,13 @@ class TestPipeline:
 
         data = {"yet_another_with_single_input": {"in": 1}}
         run_queue = pipe._init_run_queue(data)
-        assert len(run_queue) == 5
-        assert run_queue[0][0] == "with_variadic"
-        assert run_queue[1][0] == "with_no_inputs"
-        assert run_queue[2][0] == "with_single_input"
-        assert run_queue[3][0] == "yet_another_with_single_input"
+        assert len(run_queue) == 6
+        assert run_queue[0][0] == "with_no_inputs"
+        assert run_queue[1][0] == "with_single_input"
+        assert run_queue[2][0] == "yet_another_with_single_input"
+        assert run_queue[3][0] == "another_with_single_input"
         assert run_queue[4][0] == "with_multiple_inputs"
+        assert run_queue[5][0] == "with_variadic"
 
     def test__init_inputs_state(self):
         pipe = Pipeline()
