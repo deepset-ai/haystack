@@ -13,7 +13,7 @@ from haystack.components.joiners import BranchJoiner
 from haystack.components.others import Multiplexer
 from haystack.core.component import component
 from haystack.core.component.types import InputSocket, OutputSocket, Variadic
-from haystack.core.errors import PipelineConnectError, PipelineDrawingError, PipelineError
+from haystack.core.errors import DeserializationError, PipelineConnectError, PipelineDrawingError, PipelineError
 from haystack.core.pipeline import Pipeline, PredefinedPipeline
 from haystack.core.pipeline.base import (
     _add_missing_input_defaults,
@@ -72,6 +72,45 @@ class TestPipeline:
             assert pipeline.max_loops_allowed == 99
             assert isinstance(pipeline.get_component("Comp1"), FakeComponent)
             assert isinstance(pipeline.get_component("Comp2"), FakeComponent)
+
+    def test_pipeline_loads_invalid_data(self):
+        invalid_yaml = """components:
+        Comp1:
+            init_parameters:
+            an_init_param: null
+            type: test.core.pipeline.test_pipeline.FakeComponent
+        Comp2*
+            init_parameters:
+            an_init_param: null
+            type: test.core.pipeline.test_pipeline.FakeComponent
+        connections:
+        * receiver: Comp2.input_
+        sender: Comp1.value
+        max_loops_allowed: 99
+        metadata:
+        """
+
+        with pytest.raises(DeserializationError, match="unmarshalling serialized"):
+            pipeline = Pipeline.loads(invalid_yaml)
+
+        invalid_init_parameter_yaml = """components:
+        Comp1:
+            init_parameters:
+            unknown: null
+            type: test.core.pipeline.test_pipeline.FakeComponent
+        Comp2:
+            init_parameters:
+            an_init_param: null
+            type: test.core.pipeline.test_pipeline.FakeComponent
+        connections:
+        - receiver: Comp2.input_
+        sender: Comp1.value
+        max_loops_allowed: 99
+        metadata: {}
+        """
+
+        with pytest.raises(DeserializationError, match=".*Comp1.*unknown.*"):
+            pipeline = Pipeline.loads(invalid_init_parameter_yaml)
 
     def test_pipeline_dump(self, test_files_path, tmp_path):
         pipeline = Pipeline()
