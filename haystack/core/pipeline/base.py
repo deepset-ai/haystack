@@ -150,12 +150,13 @@ class PipelineBase:
         :returns:
             Deserialized component.
         """
-        metadata = data.get("metadata", {})
-        max_loops_allowed = data.get("max_loops_allowed", 100)
-        debug_path = Path(data.get("debug_path", ".haystack_debug/"))
+        data_copy = deepcopy(data)  # to prevent modification of original data
+        metadata = data_copy.get("metadata", {})
+        max_loops_allowed = data_copy.get("max_loops_allowed", 100)
+        debug_path = Path(data_copy.get("debug_path", ".haystack_debug/"))
         pipe = cls(metadata=metadata, max_loops_allowed=max_loops_allowed, debug_path=debug_path)
         components_to_reuse = kwargs.get("components", {})
-        for name, component_data in data.get("components", {}).items():
+        for name, component_data in data_copy.get("components", {}).items():
             if name in components_to_reuse:
                 # Reuse an instance
                 instance = components_to_reuse[name]

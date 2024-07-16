@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from copy import deepcopy
 from typing import Any, Dict, List, Optional
 
 from haystack import DeserializationError, Document, component, default_from_dict, default_to_dict, logging
@@ -86,11 +85,10 @@ class DocumentWriter:
         except ImportError as e:
             raise DeserializationError(f"Class '{doc_store_data['type']}' not correctly imported") from e
 
-        data_copy = deepcopy(data)
-        data_copy["init_parameters"]["document_store"] = default_from_dict(doc_store_class, doc_store_data)
-        data_copy["init_parameters"]["policy"] = DuplicatePolicy[data["init_parameters"]["policy"]]
+        data["init_parameters"]["document_store"] = default_from_dict(doc_store_class, doc_store_data)
+        data["init_parameters"]["policy"] = DuplicatePolicy[data["init_parameters"]["policy"]]
 
-        return default_from_dict(cls, data_copy)
+        return default_from_dict(cls, data)
 
     @component.output_types(documents_written=int)
     def run(self, documents: List[Document], policy: Optional[DuplicatePolicy] = None):
