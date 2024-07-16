@@ -14,9 +14,42 @@ class SentenceWindowRetrieval:
     """
     A component that retrieves surrounding documents of a given document from the document store.
 
+    It relies on the `source_id` and on the `doc.meta['split_id']` to get the surrounding documents from the document.
     This component is designed to work together with one of the existing retrievers, e.g. BM25Retriever,
     EmbeddingRetriever. One of these retrievers can be used to retrieve documents based on a query and then use this
     component to get the surrounding documents of the retrieved documents.
+
+
+    Usage example:
+    ```python
+    from haystack import Document, Pipeline
+    from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+    from haystack.components.retrievers import SentenceWindowRetrieval
+    from haystack.components.preprocessors import DocumentSplitter
+    from haystack.document_stores.in_memory import InMemoryDocumentStore
+
+    splitter = DocumentSplitter(split_length=10, split_overlap=5, split_by="word")
+    text = (
+            "This is a text with some words. There is a second sentence. And there is also a third sentence. "
+            "It also contains a fourth sentence. And a fifth sentence. And a sixth sentence. And a seventh sentence"
+    )
+    doc = Document(content=text)
+    docs = splitter.run([doc])
+    doc_store = InMemoryDocumentStore()
+    doc_store.write_documents(docs["documents"])
+
+
+    rag = Pipeline()
+    rag.add_component("bm25_retriever", InMemoryBM25Retriever(doc_store, top_k=1))
+    rag.add_component("sentence_window_retriever", SentenceWindowRetrieval(document_store=doc_store, window_size=2))
+    rag.connect("bm25_retriever", "sentence_window_retriever")
+
+    rag.run({'bm25_retriever': {"query":"third"}})
+
+    >> {'sentence_window_retriever': {'context_windows': ['some words. There is a second sentence.
+    >> And there is also a third sentence. It also contains a fourth sentence. And a fifth sentence. And a sixth
+    >> sentence. And a']}}
+    ```
     """
 
     def __init__(self, document_store: DocumentStore, window_size: int = 3):
@@ -106,7 +139,6 @@ class SentenceWindowRetrieval:
         document from the document store.
 
         :param retrieved_documents: List of retrieved documents from the previous retriever.
-        :type retrieved_documents: List[Document]
         :returns:
             A dictionary with the following keys:
             - `context_windows`:  List of strings representing the context windows of the retrieved documents.
