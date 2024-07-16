@@ -44,7 +44,7 @@ class SentenceWindowRetrieval:
     rag.add_component("sentence_window_retriever", SentenceWindowRetrieval(document_store=doc_store, window_size=3))
     rag.connect("bm25_retriever", "sentence_window_retriever")
 
-    basic_rag.run({'bm25_retriever': {"query":"third"}})
+    rag.run({'bm25_retriever': {"query":"third"}})
 
     >>{'sentence_window_retriever': {'context_windows': ['This is a text with some words. There is a second sentence.
     >>And there is also a third sentence. It also contains a fourth sentence. And a fifth sentence. And a sixth sentence
