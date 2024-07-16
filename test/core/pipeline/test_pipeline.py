@@ -10,7 +10,6 @@ import pytest
 from haystack import Document
 from haystack.components.builders import PromptBuilder, AnswerBuilder
 from haystack.components.joiners import BranchJoiner
-from haystack.components.others import Multiplexer
 from haystack.core.component import component
 from haystack.core.component.types import InputSocket, OutputSocket, Variadic
 from haystack.core.errors import DeserializationError, PipelineConnectError, PipelineDrawingError, PipelineError
@@ -855,17 +854,17 @@ class TestPipeline:
         {{ questions | join("\n") }}
         """
         pipe.add_component("prompt_builder", PromptBuilder(template=template))
-        pipe.add_component("multiplexer", Multiplexer(type_=int))
+        pipe.add_component("branch_joiner", BranchJoiner(type_=int))
         questions = ["What is the capital of Italy?", "What is the capital of France?"]
         data = {
             "prompt_builder": {"questions": questions},
-            "multiplexer": {"value": 1},
+            "branch_joiner": {"value": 1},
             "not_a_component": "some input data",
         }
         res = pipe._init_inputs_state(data)
         assert res == {
             "prompt_builder": {"questions": ["What is the capital of Italy?", "What is the capital of France?"]},
-            "multiplexer": {"value": [1]},
+            "branch_joiner": {"value": [1]},
             "not_a_component": "some input data",
         }
         assert id(questions) != id(res["prompt_builder"]["questions"])
