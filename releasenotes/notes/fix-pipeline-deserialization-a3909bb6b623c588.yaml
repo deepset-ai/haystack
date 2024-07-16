@@ -1,4 +1,4 @@
 ---
 fixes:
   - |
-    fixes deseriliaztion of components in pipelines so that the original payload is not modified.
+    Prevent `Pipeline.from_dict` from modifying the dictionary parameter passed to it.
