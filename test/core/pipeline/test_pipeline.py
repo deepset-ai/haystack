@@ -12,7 +12,7 @@ from haystack.components.builders import PromptBuilder, AnswerBuilder
 from haystack.components.joiners import BranchJoiner
 from haystack.core.component import component
 from haystack.core.component.types import InputSocket, OutputSocket, Variadic
-from haystack.core.errors import PipelineConnectError, PipelineDrawingError, PipelineError
+from haystack.core.errors import DeserializationError, PipelineConnectError, PipelineDrawingError, PipelineError
 from haystack.core.pipeline import Pipeline, PredefinedPipeline
 from haystack.core.pipeline.base import (
     _add_missing_input_defaults,
@@ -71,6 +71,45 @@ class TestPipeline:
             assert pipeline.max_loops_allowed == 99
             assert isinstance(pipeline.get_component("Comp1"), FakeComponent)
             assert isinstance(pipeline.get_component("Comp2"), FakeComponent)
+
+    def test_pipeline_loads_invalid_data(self):
+        invalid_yaml = """components:
+        Comp1:
+            init_parameters:
+            an_init_param: null
+            type: test.core.pipeline.test_pipeline.FakeComponent
+        Comp2*
+            init_parameters:
+            an_init_param: null
+            type: test.core.pipeline.test_pipeline.FakeComponent
+        connections:
+        * receiver: Comp2.input_
+        sender: Comp1.value
+        max_loops_allowed: 99
+        metadata:
+        """
+
+        with pytest.raises(DeserializationError, match="unmarshalling serialized"):
+            pipeline = Pipeline.loads(invalid_yaml)
+
+        invalid_init_parameter_yaml = """components:
+        Comp1:
+            init_parameters:
+            unknown: null
+            type: test.core.pipeline.test_pipeline.FakeComponent
+        Comp2:
+            init_parameters:
+            an_init_param: null
+            type: test.core.pipeline.test_pipeline.FakeComponent
+        connections:
+        - receiver: Comp2.input_
+        sender: Comp1.value
+        max_loops_allowed: 99
+        metadata: {}
+        """
+
+        with pytest.raises(DeserializationError, match=".*Comp1.*unknown.*"):
+            pipeline = Pipeline.loads(invalid_init_parameter_yaml)
 
     def test_pipeline_dump(self, test_files_path, tmp_path):
         pipeline = Pipeline()
@@ -800,12 +839,13 @@ class TestPipeline:
 
         data = {"yet_another_with_single_input": {"in": 1}}
         run_queue = pipe._init_run_queue(data)
-        assert len(run_queue) == 5
-        assert run_queue[0][0] == "with_variadic"
-        assert run_queue[1][0] == "with_no_inputs"
-        assert run_queue[2][0] == "with_single_input"
-        assert run_queue[3][0] == "yet_another_with_single_input"
+        assert len(run_queue) == 6
+        assert run_queue[0][0] == "with_no_inputs"
+        assert run_queue[1][0] == "with_single_input"
+        assert run_queue[2][0] == "yet_another_with_single_input"
+        assert run_queue[3][0] == "another_with_single_input"
         assert run_queue[4][0] == "with_multiple_inputs"
+        assert run_queue[5][0] == "with_variadic"
 
     def test__init_inputs_state(self):
         pipe = Pipeline()
