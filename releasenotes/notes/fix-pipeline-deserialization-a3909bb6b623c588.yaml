@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    fixes deseriliaztion of components in pipelines so that the original payload is not modified.
