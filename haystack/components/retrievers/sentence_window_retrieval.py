@@ -139,7 +139,6 @@ class SentenceWindowRetrieval:
         document from the document store.
 
         :param retrieved_documents: List of retrieved documents from the previous retriever.
-        :type retrieved_documents: List[Document]
         :returns:
             A dictionary with the following keys:
             - `context_windows`:  List of strings representing the context windows of the retrieved documents.
