@@ -3,6 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 import pytest
 import pandas as pd
+from haystack.document_stores.types import FilterPolicy
+
+from haystack.document_stores.types.filter_policy import apply_filter_policy
 
 from haystack import Document
 from haystack.errors import FilterError
@@ -726,3 +729,122 @@ def test_convert_with_incorrect_filter_nesting():
 
     with pytest.raises(FilterError):
         convert({"number": {"page": {"chapter": "intro"}}})
+
+
+################################################################################
+# Tests for the apply_filter_policy function
+################################################################################
+def test_no_filters():
+    assert apply_filter_policy(FilterPolicy.MERGE, None, None) is None
+
+
+def test_replace_policy():
+    init_filter = {"field": "meta.name", "operator": "==", "value": "John"}
+    runtime_filter = {"field": "meta.year", "operator": "==", "value": "2022"}
+    assert apply_filter_policy(FilterPolicy.REPLACE, init_filter, runtime_filter) == runtime_filter
+
+
+def test_merge_comparison_filters():
+    init_filter = {"field": "meta.name", "operator": "==", "value": "John"}
+    runtime_filter = {"field": "meta.year", "operator": "==", "value": "2022"}
+    expected = {"operator": "AND", "conditions": [init_filter, runtime_filter]}
+    assert apply_filter_policy(FilterPolicy.MERGE, init_filter, runtime_filter) == expected
+
+
+def test_merge_comparison_filters_same_field():
+    init_filter = {"field": "meta.name", "operator": "==", "value": "John"}
+    runtime_filter = {"field": "meta.name", "operator": "==", "value": "Jane"}
+    assert apply_filter_policy(FilterPolicy.MERGE, init_filter, runtime_filter) == runtime_filter
+
+
+def test_merge_comparison_and_logical():
+    comparison_filter = {"field": "meta.type", "operator": "==", "value": "pdf"}
+    logical_filter = {
+        "operator": "AND",
+        "conditions": [
+            {"field": "meta.name", "operator": "==", "value": "John"},
+            {"field": "meta.year", "operator": "==", "value": "2022"},
+        ],
+    }
+    expected = {
+        "operator": "AND",
+        "conditions": [
+            {"field": "meta.name", "operator": "==", "value": "John"},
+            {"field": "meta.year", "operator": "==", "value": "2022"},
+            {"field": "meta.type", "operator": "==", "value": "pdf"},
+        ],
+    }
+    assert apply_filter_policy(FilterPolicy.MERGE, comparison_filter, logical_filter) == expected
+
+
+def test_merge_comparison_and_logical_different_operator():
+    comparison_filter = {"field": "meta.type", "operator": "==", "value": "pdf"}
+    logical_filter = {
+        "operator": "OR",
+        "conditions": [
+            {"field": "meta.name", "operator": "==", "value": "John"},
+            {"field": "meta.year", "operator": "==", "value": "2022"},
+        ],
+    }
+    expected = {"operator": "AND", "conditions": [comparison_filter, logical_filter]}
+    assert apply_filter_policy(FilterPolicy.MERGE, comparison_filter, logical_filter) == expected
+
+
+def test_merge_logical_filters_same_operator():
+    logical_filter1 = {
+        "operator": "AND",
+        "conditions": [
+            {"field": "meta.type", "operator": "==", "value": "pdf"},
+            {"field": "meta.month", "operator": "==", "value": "April"},
+        ],
+    }
+    logical_filter2 = {
+        "operator": "AND",
+        "conditions": [
+            {"field": "meta.name", "operator": "==", "value": "John"},
+            {"field": "meta.year", "operator": "==", "value": "2022"},
+        ],
+    }
+    expected = {
+        "operator": "AND",
+        "conditions": [
+            {"field": "meta.type", "operator": "==", "value": "pdf"},
+            {"field": "meta.month", "operator": "==", "value": "April"},
+            {"field": "meta.name", "operator": "==", "value": "John"},
+            {"field": "meta.year", "operator": "==", "value": "2022"},
+        ],
+    }
+    assert apply_filter_policy(FilterPolicy.MERGE, logical_filter1, logical_filter2) == expected
+
+
+def test_merge_logical_filters_different_operator():
+    logical_filter1 = {
+        "operator": "AND",
+        "conditions": [
+            {"field": "meta.type", "operator": "==", "value": "pdf"},
+            {"field": "meta.month", "operator": "==", "value": "April"},
+        ],
+    }
+    logical_filter2 = {
+        "operator": "OR",
+        "conditions": [
+            {"field": "meta.name", "operator": "==", "value": "John"},
+            {"field": "meta.year", "operator": "==", "value": "2022"},
+        ],
+    }
+    expected = {"operator": "AND", "conditions": [logical_filter1, logical_filter2]}
+    assert apply_filter_policy(FilterPolicy.MERGE, logical_filter1, logical_filter2) == expected
+
+
+def test_user_provided_logical_operator():
+    init_filter = {"field": "meta.name", "operator": "==", "value": "John"}
+    runtime_filter = {"field": "meta.year", "operator": "==", "value": "2022"}
+    expected = {"operator": "OR", "conditions": [init_filter, runtime_filter]}
+    assert apply_filter_policy(FilterPolicy.MERGE, init_filter, runtime_filter, "OR") == expected
+
+
+def test_default_logical_operator():
+    init_filter = {"field": "meta.name", "operator": "==", "value": "John"}
+    runtime_filter = {"field": "meta.year", "operator": "==", "value": "2022"}
+    expected = {"operator": "AND", "conditions": [init_filter, runtime_filter]}
+    assert apply_filter_policy(FilterPolicy.MERGE, init_filter, runtime_filter) == expected
