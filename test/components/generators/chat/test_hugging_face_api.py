@@ -44,7 +44,6 @@ def mock_chat_completion():
             ],
             id="some_id",
             model="some_model",
-            object="some_object",
             system_fingerprint="some_fingerprint",
             usage={"completion_tokens": 10, "prompt_tokens": 5, "total_tokens": 15},
             created=1710498360,
@@ -215,7 +214,6 @@ class TestHuggingFaceAPIGenerator:
                 ],
                 id="some_id",
                 model="some_model",
-                object="some_object",
                 system_fingerprint="some_fingerprint",
                 created=1710498504,
             )
@@ -228,7 +226,6 @@ class TestHuggingFaceAPIGenerator:
                 ],
                 id="some_id",
                 model="some_model",
-                object="some_object",
                 system_fingerprint="some_fingerprint",
                 created=1710498504,
             )

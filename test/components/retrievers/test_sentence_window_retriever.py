@@ -1,6 +1,7 @@
 import pytest
 
-from haystack import Document, DeserializationError
+from haystack import Document, DeserializationError, Pipeline
+from haystack.components.retrievers import InMemoryBM25Retriever
 from haystack.components.retrievers.sentence_window_retrieval import SentenceWindowRetrieval
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.preprocessors import DocumentSplitter
@@ -124,20 +125,24 @@ class TestSentenceWindowRetrieval:
             "This is a text with some words. There is a second sentence. And there is also a third sentence. "
             "It also contains a fourth sentence. And a fifth sentence. And a sixth sentence. And a seventh sentence"
         )
-
         doc = Document(content=text)
-
         docs = splitter.run([doc])
-        ds = InMemoryDocumentStore()
-        ds.write_documents(docs["documents"])
+        doc_store = InMemoryDocumentStore()
+        doc_store.write_documents(docs["documents"])
 
-        retriever = SentenceWindowRetrieval(document_store=ds, window_size=3)
-        result = retriever.run(retrieved_documents=[list(ds.storage.values())[3]])
+        rag = Pipeline()
+        rag.add_component("bm25_retriever", InMemoryBM25Retriever(doc_store, top_k=1))
+        rag.add_component("sentence_window_retriever", SentenceWindowRetrieval(document_store=doc_store, window_size=2))
+        rag.connect("bm25_retriever", "sentence_window_retriever")
+        result = rag.run({"bm25_retriever": {"query": "third"}})
+
         expected = {
-            "context_windows": [
-                "This is a text with some words. There is a second sentence. And there is also a third sentence. It "
-                "also contains a fourth sentence. And a fifth sentence. And a sixth sentence. And a seventh sentence"
-            ]
+            "sentence_window_retriever": {
+                "context_windows": [
+                    "some words. There is a second sentence. And there is also a third sentence. It also "
+                    "contains a fourth sentence. And a fifth sentence. And a sixth sentence. And a "
+                ]
+            }
         }
 
         assert result == expected

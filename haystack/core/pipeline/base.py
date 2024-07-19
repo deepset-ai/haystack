@@ -15,6 +15,7 @@ import networkx  # type:ignore
 from haystack import logging
 from haystack.core.component import Component, InputSocket, OutputSocket, component
 from haystack.core.errors import (
+    DeserializationError,
     PipelineConnectError,
     PipelineDrawingError,
     PipelineError,
@@ -149,12 +150,13 @@ class PipelineBase:
         :returns:
             Deserialized component.
         """
-        metadata = data.get("metadata", {})
-        max_loops_allowed = data.get("max_loops_allowed", 100)
-        debug_path = Path(data.get("debug_path", ".haystack_debug/"))
+        data_copy = deepcopy(data)  # to prevent modification of original data
+        metadata = data_copy.get("metadata", {})
+        max_loops_allowed = data_copy.get("max_loops_allowed", 100)
+        debug_path = Path(data_copy.get("debug_path", ".haystack_debug/"))
         pipe = cls(metadata=metadata, max_loops_allowed=max_loops_allowed, debug_path=debug_path)
         components_to_reuse = kwargs.get("components", {})
-        for name, component_data in data.get("components", {}).items():
+        for name, component_data in data_copy.get("components", {}).items():
             if name in components_to_reuse:
                 # Reuse an instance
                 instance = components_to_reuse[name]
@@ -179,7 +181,18 @@ class PipelineBase:
 
                 # Create a new one
                 component_class = component.registry[component_data["type"]]
-                instance = component_from_dict(component_class, component_data, name, callbacks)
+
+                try:
+                    instance = component_from_dict(component_class, component_data, name, callbacks)
+                except Exception as e:
+                    msg = (
+                        f"Couldn't deserialize component '{name}' of class '{component_class.__name__}' "
+                        f"with the following data: {str(component_data)}. Possible reasons include "
+                        "malformed serialized data, mismatch between the serialized component and the "
+                        "loaded one (due to a breaking change, see "
+                        "https://github.com/deepset-ai/haystack/releases), etc."
+                    )
+                    raise DeserializationError(msg) from e
             pipe.add_component(name=name, instance=instance)
 
         for connection in data.get("connections", []):
@@ -229,10 +242,20 @@ class PipelineBase:
             The Marshaller used to create the string representation. Defaults to `YamlMarshaller`.
         :param callbacks:
             Callbacks to invoke during deserialization.
+        :raises DeserializationError:
+            If an error occurs during deserialization.
         :returns:
             A `Pipeline` object.
         """
-        return cls.from_dict(marshaller.unmarshal(data), callbacks)
+        try:
+            deserialized_data = marshaller.unmarshal(data)
+        except Exception as e:
+            raise DeserializationError(
+                "Error while unmarshalling serialized pipeline data. This is usually "
+                "caused by malformed or invalid syntax in the serialized representation."
+            ) from e
+
+        return cls.from_dict(deserialized_data, callbacks)
 
     @classmethod
     def load(
@@ -253,10 +276,12 @@ class PipelineBase:
             The Marshaller used to create the string representation. Defaults to `YamlMarshaller`.
         :param callbacks:
             Callbacks to invoke during deserialization.
+        :raises DeserializationError:
+            If an error occurs during deserialization.
         :returns:
             A `Pipeline` object.
         """
-        return cls.from_dict(marshaller.unmarshal(fp.read()), callbacks)
+        return cls.loads(fp.read(), marshaller, callbacks)
 
     def add_component(self, name: str, instance: Component) -> None:
         """
@@ -767,6 +792,18 @@ class PipelineBase:
 
     def _init_run_queue(self, pipeline_inputs: Dict[str, Any]) -> List[Tuple[str, Component]]:
         run_queue: List[Tuple[str, Component]] = []
+
+        # HACK: Quick workaround for the issue of execution order not being
+        # well-defined (NB - https://github.com/deepset-ai/haystack/issues/7985).
+        # We should fix the original execution logic instead.
+        if networkx.is_directed_acyclic_graph(self.graph):
+            # If the Pipeline is linear we can easily determine the order of execution with
+            # a topological sort.
+            # So use that to get the run order.
+            for node in networkx.topological_sort(self.graph):
+                run_queue.append((node, self.graph.nodes[node]["instance"]))
+            return run_queue
+
         for node_name in self.graph.nodes:
             component = self.graph.nodes[node_name]["instance"]
 
