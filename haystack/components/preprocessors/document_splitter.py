@@ -133,7 +133,6 @@ class DocumentSplitter:
         text_splits: List[str] = []
         splits_pages = []
         splits_start_idxs = []
-        split_at_len = len(self.split_at)
         cur_start_idx = 0
         cur_page = 1
         segments = windowed(elements, n=split_length, step=split_length - split_overlap)
@@ -153,7 +152,7 @@ class DocumentSplitter:
                 splits_start_idxs.append(cur_start_idx)
 
             processed_units = current_units[: split_length - split_overlap]
-            cur_start_idx += len("".join(processed_units)) + split_at_len
+            cur_start_idx += len("".join(processed_units))
 
             if self.split_by == "page":
                 num_page_breaks = len(processed_units)
@@ -207,6 +206,9 @@ class DocumentSplitter:
         :param previous_doc: The Document that was split before the current Document.
         :param previous_doc_start_idx: The starting index of the previous Document.
         """
+        # (0, 41) & (20, 64)
+        # (20, 41)
+        # (20 - 0 - 1, 41 - 1) = (19, 40)
         overlapping_range = (current_doc_start_idx - previous_doc_start_idx - 1, len(previous_doc.content) - 1)  # type: ignore
 
         if overlapping_range[0] < overlapping_range[1]:
