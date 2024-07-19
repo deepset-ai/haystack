@@ -206,9 +206,6 @@ class DocumentSplitter:
         :param previous_doc: The Document that was split before the current Document.
         :param previous_doc_start_idx: The starting index of the previous Document.
         """
-        # (0, 41) & (20, 64)
-        # (20, 41)
-        # (20 - 0 - 1, 41 - 1) = (19, 40)
         overlapping_range = (current_doc_start_idx - previous_doc_start_idx, len(previous_doc.content))  # type: ignore
 
         if overlapping_range[0] < overlapping_range[1]:
