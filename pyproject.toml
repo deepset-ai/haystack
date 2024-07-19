@@ -112,7 +112,7 @@ extra-dependencies = [
   "ddtrace",
 
   # Structured logging
-  "structlog==24.2.0",
+  "structlog<=24.2.0",
 
   # Looking for missing imports
   "isort",
