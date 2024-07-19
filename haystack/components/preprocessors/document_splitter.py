@@ -209,7 +209,7 @@ class DocumentSplitter:
         # (0, 41) & (20, 64)
         # (20, 41)
         # (20 - 0 - 1, 41 - 1) = (19, 40)
-        overlapping_range = (current_doc_start_idx - previous_doc_start_idx - 1, len(previous_doc.content) - 1)  # type: ignore
+        overlapping_range = (current_doc_start_idx - previous_doc_start_idx, len(previous_doc.content))  # type: ignore
 
         if overlapping_range[0] < overlapping_range[1]:
             overlapping_str = previous_doc.content[overlapping_range[0] : overlapping_range[1]]  # type: ignore

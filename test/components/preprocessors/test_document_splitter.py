@@ -169,15 +169,20 @@ class TestDocumentSplitter:
         splitter = DocumentSplitter(split_by="word", split_length=10, split_overlap=2)
         text = "This is a text with some words. There is a second sentence. And there is a third sentence."
         result = splitter.run(documents=[Document(content=text)])
-        # TODO Add tests for _split_overlap information
         docs = result["documents"]
         assert len(docs) == 2
+        # doc 0
         assert docs[0].content == "This is a text with some words. There is a "
         assert docs[0].meta["split_id"] == 0
         assert docs[0].meta["split_idx_start"] == text.index(docs[0].content)
+        assert docs[0].meta["_split_overlap"][0]["range"] == (0, 5)
+        assert docs[1].content[0:5] == "is a "
+        # doc 1
         assert docs[1].content == "is a second sentence. And there is a third sentence."
         assert docs[1].meta["split_id"] == 1
         assert docs[1].meta["split_idx_start"] == text.index(docs[1].content)
+        assert docs[1].meta["_split_overlap"][0]["range"] == (38, 43)
+        assert docs[0].content[38:43] == "is a "
 
     def test_source_id_stored_in_metadata(self):
         splitter = DocumentSplitter(split_by="word", split_length=10)
@@ -305,22 +310,22 @@ class TestDocumentSplitter:
         assert docs[0].content == "This is a text with some words. There is a "
         assert docs[0].meta["split_id"] == 0
         assert docs[0].meta["split_idx_start"] == text.index(docs[0].content)  # 0
-        # assert docs[0].meta["_split_overlap"][0]['range'] == (0, 22)
-        # assert docs[1].content[0:22] == "some words. There is a "
+        assert docs[0].meta["_split_overlap"][0]["range"] == (0, 23)
+        assert docs[1].content[0:23] == "some words. There is a "
         # doc 1
         assert docs[1].content == "some words. There is a second sentence. And a third "
         assert docs[1].meta["split_id"] == 1
         assert docs[1].meta["split_idx_start"] == text.index(docs[1].content)  # 20
-        # assert docs[1].meta["_split_overlap"][0]['range'] == (20, 42)
-        # assert docs[1].meta["_split_overlap"][1]['range'] == (0, 28)
-        # assert docs[0].content[20:42] == "some words. There is a "
-        # assert docs[2].content[0:28] == "second sentence. And a third "
+        assert docs[1].meta["_split_overlap"][0]["range"] == (20, 43)
+        assert docs[1].meta["_split_overlap"][1]["range"] == (0, 29)
+        assert docs[0].content[20:43] == "some words. There is a "
+        assert docs[2].content[0:29] == "second sentence. And a third "
         # doc 2
         assert docs[2].content == "second sentence. And a third sentence."
         assert docs[2].meta["split_id"] == 2
-        assert docs[2].meta["split_idx_start"] == text.index(docs[2].content)  # 45
-        # assert docs[2].meta["_split_overlap"][0]['range'] == (23, 51)
-        # assert docs[1].content[23:51] == "second sentence. And a third "
+        assert docs[2].meta["split_idx_start"] == text.index(docs[2].content)  # 43
+        assert docs[2].meta["_split_overlap"][0]["range"] == (23, 52)
+        assert docs[1].content[23:52] == "second sentence. And a third "
 
         # reconstruct the original document content from the split documents
         assert doc.content == merge_documents(docs)
