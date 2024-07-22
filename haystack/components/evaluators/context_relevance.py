@@ -121,6 +121,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
                 },
                 "outputs": {
                     "relevant_statements": ["Rome is the capital of Italy."],
+                    "score": 1,
                 },
             }]
         :param progress_bar:
