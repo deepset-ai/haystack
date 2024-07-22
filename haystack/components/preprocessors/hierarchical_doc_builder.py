@@ -1,16 +1,18 @@
 from dataclasses import dataclass
 from typing import List, Optional
 
-from haystack import Document
+from haystack import Document, component
 from haystack.components.preprocessors import DocumentSplitter
 
 
 @dataclass
 class HierarchicalDocument(Document):
     """
-    A HierarchicalDoc is a Document that has been split into multiple blocks of different sizes.
+    A HierarchicalDocument is a Document that has been split into multiple blocks of different sizes.
 
-
+    It's used to represent a hierarchical tree structure when a Document is split into multiple bocks where each block
+    is a child of the previous block. Each document/block has a parent and children. The exception are the root block,
+    which is the original document, and the leaf blocks, which are the smallest blocks.
     """
 
     def __init__(self, document: Document):
@@ -63,13 +65,17 @@ class HierarchicalDocument(Document):
 
 class HierarchicalDocumentBuilder:
     """
-    Splitting documents into nodes of different block sizes, including parent and child nodes.
+    Splits a documents into different block sizes retaining the hierarchical structure.
+
+    The root node is the original document, and the leaf nodes are the smallest blocks. The smaller blocks are c
+    connected to the parent-larger blocks, which are connected to the original document.
     """
 
     def __init__(self, block_sizes: List[int]):
         self.block_sizes = sorted(block_sizes, reverse=True)
 
-    def build(self, documents: List[Document]) -> List[HierarchicalDocument]:
+    @component.output_types(documents=List[HierarchicalDocument])
+    def run(self, documents: List[Document]):
         """
         Build a hierarchical document structure.
         """
@@ -89,12 +95,7 @@ class HierarchicalDocumentBuilder:
 
     def build_hierarchy_from_doc(self, document: Document) -> List[HierarchicalDocument]:
         """
-        Build a hierarchical document structure from a single document.
-
-        :param document:
-        :type document:
-        :return:
-        :rtype:
+        Build a hierarchical tree document structure from a single document.
         """
 
         root = HierarchicalDocument(document)
@@ -110,10 +111,9 @@ class HierarchicalDocumentBuilder:
                     hierarchical_child_doc = HierarchicalDocument(child_doc)
                     hierarchical_child_doc.level = doc.level + 1
                     hierarchical_child_doc.block_size = block
-                    hierarchical_child_doc.parent_id = doc.id  # add parent to child through id
-                    all_docs.append(hierarchical_child_doc)  # to keep a list of all docs
-
-                    doc.children_ids.append(hierarchical_child_doc.id)  # add child to parent through id
+                    hierarchical_child_doc.parent_id = doc.id
+                    all_docs.append(hierarchical_child_doc)
+                    doc.children_ids.append(hierarchical_child_doc.id)
                     next_level_nodes.append(hierarchical_child_doc)
             current_level_nodes = next_level_nodes
 
