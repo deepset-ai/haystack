@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import warnings
 from statistics import mean
 from typing import Any, Dict, List, Optional
 
