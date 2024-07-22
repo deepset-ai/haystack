@@ -75,7 +75,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
     evaluator = ContextRelevanceEvaluator()
     result = evaluator.run(questions=questions, contexts=contexts)
     print(result["score"])
-    # 0,67
+    # 0.67
     print(result["individual_scores"])
     # [1,1,0]
     print(result["results"])
