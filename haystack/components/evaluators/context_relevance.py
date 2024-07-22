@@ -44,7 +44,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
 
     An LLM breaks up a context into multiple statements and checks whether each statement
     is relevant for answering a question.
-    The final score for each context is either binary score of 1 or 0, where 1 indicates that the context is relevant
+    The score for each context is either binary score of 1 or 0, where 1 indicates that the context is relevant
     to the question and 0 indicates that the context is not relevant.
     The evaluator also provides the relevant statements from the context and an average score over all the provided
     input questions contexts pairs.
