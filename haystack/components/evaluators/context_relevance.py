@@ -62,9 +62,9 @@ class ContextRelevanceEvaluator(LLMEvaluator):
         )],
         [(
             "Java is a high-level, class-based, object-oriented programming language that is designed to have as few "
-            "implementation dependencies as possible. The JVM has two primary functions: to allow Java programs to run
-            on any device or operating system (known as the "write once, run anywhere" principle), and to manage and
-            optimize program memory.
+            "implementation dependencies as possible. The JVM has two primary functions: to allow Java programs to run"
+            "on any device or operating system (known as the 'write once, run anywhere' principle), and to manage and"
+            "optimize program memory."
         )],
         [(
             "C++ is a general-purpose programming language created by Bjarne Stroustrup as an extension of the C "
@@ -113,7 +113,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
             Default examples will be used if none are provided.
             Each example must be a dictionary with keys "inputs" and "outputs".
             "inputs" must be a dictionary with keys "questions" and "contexts".
-            "outputs" must be a dictionary with "statements" and "statement_scores".
+            "outputs" must be a dictionary with "relevant_statements".
             Expected format:
             [{
                 "inputs": {
