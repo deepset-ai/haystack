@@ -141,8 +141,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
         self.instructions = (
             "Please extract only sentences from the provided context which are absolutely relevant and "
             "required to answer the following question. If no relevant sentences are found, or if you "
-            "believe the question cannot be answered from the given context, return the phrase "
-            '"Insufficient Information"'
+            "believe the question cannot be answered from the given context, return an empty list, example: []"
         )
         self.inputs = [("questions", List[str]), ("contexts", List[List[str]])]
         self.outputs = ["relevant_statements"]
@@ -190,11 +189,10 @@ class ContextRelevanceEvaluator(LLMEvaluator):
             if res is None:
                 result["results"][idx] = {"relevant_statements": [], "score": float("nan")}
                 continue
-            if "relevant_statements" in res:
-                if len(res["relevant_statements"]) > 0:
-                    res["score"] = 1
-                else:
-                    res["score"] = 0
+            if len(res["relevant_statements"]) > 0:
+                res["score"] = 1
+            else:
+                res["score"] = 0
 
         # calculate average context relevance score over all queries
         result["score"] = mean([res["score"] for res in result["results"]])

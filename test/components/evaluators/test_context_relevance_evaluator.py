@@ -22,8 +22,7 @@ class TestContextRelevanceEvaluator:
         assert component.instructions == (
             "Please extract only sentences from the provided context which are absolutely relevant and "
             "required to answer the following question. If no relevant sentences are found, or if you "
-            "believe the question cannot be answered from the given context, return the phrase "
-            '"Insufficient Information"'
+            "believe the question cannot be answered from the given context, return an empty list, example: []"
         )
         assert component.inputs == [("questions", List[str]), ("contexts", List[List[str]])]
         assert component.outputs == ["relevant_statements"]
