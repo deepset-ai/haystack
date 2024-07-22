@@ -169,29 +169,25 @@ class OpenAIGenerator:
             data["init_parameters"]["streaming_callback"] = deserialize_callable(serialized_callback_handler)
         return default_from_dict(cls, data)
 
-    @component.output_types(replies=List[str], meta=List[Dict[str, Any]])
-    def run(self, prompt: str, generation_kwargs: Optional[Dict[str, Any]] = None):
+    def invoke(self, *args, **kwargs):
         """
-        Invoke the text generation inference based on the provided messages and generation parameters.
+        Invokes the model with the given prompt.
 
-        :param prompt:
-            The string prompt to use for text generation.
-        :param generation_kwargs:
-            Additional keyword arguments for text generation. These parameters will potentially override the parameters
-            passed in the `__init__` method. For more details on the parameters supported by the OpenAI API, refer to
-            the OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat/create).
-        :returns:
-            A list of strings containing the generated responses and a list of dictionaries containing the metadata
-        for each response.
+        :param args: Additional positional arguments passed to the generator.
+        :param kwargs: Additional keyword arguments passed to the generator.
+        :returns: A list of responses.
         """
+        kwargs = kwargs.copy()
+        prompt: str = kwargs.pop("prompt", None)
+
         message = ChatMessage.from_user(prompt)
         if self.system_prompt:
             messages = [ChatMessage.from_system(self.system_prompt), message]
         else:
             messages = [message]
 
-        # update generation kwargs by merging with the generation kwargs passed to the run method
-        generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
+        # update generation kwargs by merging with the kwargs passed to the run method
+        generation_kwargs = {**self.generation_kwargs, **kwargs}
 
         # adapt ChatMessage(s) to the format expected by the OpenAI API
         openai_formatted_messages = [message.to_openai_format() for message in messages]
@@ -225,6 +221,24 @@ class OpenAIGenerator:
         for response in completions:
             self._check_finish_reason(response)
 
+        return completions
+
+    @component.output_types(replies=List[str], meta=List[Dict[str, Any]])
+    def run(self, prompt: str, generation_kwargs: Optional[Dict[str, Any]] = None):
+        """
+        Generate a list of responses for the given prompt.
+
+        :param prompt:
+            The string prompt to use for text generation.
+        :param generation_kwargs:
+            Additional keyword arguments for text generation. These parameters will potentially override the parameters
+            passed in the `__init__` method. For more details on the parameters supported by the OpenAI API, refer to
+            the OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat/create).
+        :returns: A dictionary with the following keys:
+            - `replies`: A list of generated responses.
+            - `meta`: A list of dictionaries containing the metadata.
+        """
+        completions = self.invoke(prompt=prompt, **(generation_kwargs or {}))
         return {
             "replies": [message.content for message in completions],
             "meta": [message.meta for message in completions],
