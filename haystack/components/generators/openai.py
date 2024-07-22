@@ -179,6 +179,7 @@ class OpenAIGenerator:
         """
         kwargs = kwargs.copy()
         prompt: str = kwargs.pop("prompt", None)
+        stream = kwargs.pop("streaming_callback", None)
 
         message = ChatMessage.from_user(prompt)
         if self.system_prompt:
@@ -188,9 +189,11 @@ class OpenAIGenerator:
 
         # update generation kwargs by merging with the kwargs passed to the run method
         generation_kwargs = {**self.generation_kwargs, **kwargs}
-
         # adapt ChatMessage(s) to the format expected by the OpenAI API
         openai_formatted_messages = [message.to_openai_format() for message in messages]
+
+        if stream:
+            self.streaming_callback = stream
 
         completion: Union[Stream[ChatCompletionChunk], ChatCompletion] = self.client.chat.completions.create(
             model=self.model,
