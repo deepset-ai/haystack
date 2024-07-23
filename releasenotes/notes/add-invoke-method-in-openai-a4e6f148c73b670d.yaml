@@ -1,4 +1,0 @@
----
-fixes:
-  - |
-    Add a separate invoke() method to be called by run(). This prevents the need to recreate the pipeline for streaming callbacks.

@@ -200,6 +200,11 @@ class OpenAIChatGenerator:
         # update generation kwargs by merging with the generation kwargs passed to the run method
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
 
+        streaming_callback = generation_kwargs.pop("streaming_callback", None)
+        # check if streaming_callback is passed to run()
+        if streaming_callback:
+            self.streaming_callback = streaming_callback
+
         # adapt ChatMessage(s) to the format expected by the OpenAI API
         openai_formatted_messages = [message.to_openai_format() for message in messages]
 
