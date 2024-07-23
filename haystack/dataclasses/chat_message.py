@@ -23,12 +23,13 @@ class ContentType(str, Enum):
 
     TEXT = "text"
     IMAGE_URL = "image_url"
-    IMAGE_BASE64 = "image_base64"
+    IMAGE_BASE64_JPG = "image_base64/jpg"
+    IMAGE_BASE64_PNG = "image_base64/png"
 
     @staticmethod
     def valid_byte_stream_types() -> List["ContentType"]:
         """Returns a list of all the valid types of represented by a ByteStream."""
-        return [ContentType.IMAGE_BASE64]
+        return [ContentType.IMAGE_BASE64_JPG, ContentType.IMAGE_BASE64_PNG]
 
     def is_valid_byte_stream_type(self) -> bool:
         """Returns whether the type is a valid type for a ByteStream."""
@@ -156,9 +157,13 @@ class ChatMessage:
                     content.append({"type": "text", "text": part})
                 elif type_ is ContentType.IMAGE_URL and isinstance(part, str):
                     content.append({"type": "image_url", "image_url": {"url": part}})
-                elif type_ is ContentType.IMAGE_BASE64 and isinstance(part, ByteStream):
+                elif type_ is ContentType.IMAGE_BASE64_JPG and isinstance(part, ByteStream):
                     content.append(
                         {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{part.to_string()}"}}
+                    )
+                elif type_ is ContentType.IMAGE_BASE64_PNG and isinstance(part, ByteStream):
+                    content.append(
+                        {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{part.to_string()}"}}
                     )
                 else:
                     raise ValueError("The content types stored at metadata '__haystack_content_type__' was corrupted.")
@@ -167,11 +172,14 @@ class ChatMessage:
                 content: str = self.content
             elif types is ContentType.IMAGE_URL and isinstance(self.content, str):
                 content = [{"type": "image_url", "image_url": {"url": self.content}}]
-            elif types is ContentType.IMAGE_BASE64 and isinstance(self.content, ByteStream):
-                content = [{
-                    "type": "image_url",
-                    "image_url": {"url": f"data:image/jpeg;base64,{self.content.to_string()}"},
-                }]
+            elif types is ContentType.IMAGE_BASE64_JPG and isinstance(self.content, ByteStream):
+                content = [
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{self.content.to_string()}"}}
+                ]
+            elif types is ContentType.IMAGE_BASE64_PNG and isinstance(self.content, ByteStream):
+                content = [
+                    {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{self.content.to_string()}"}}
+                ]
             else:
                 raise ValueError("The content types stored at metadata '__haystack_content_type__' was corrupted.")
 
