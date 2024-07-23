@@ -55,7 +55,7 @@ def test_to_openai_format_with_multimodal_content():
     message = ChatMessage.from_system("image_url:images.com/test.jpg")
     assert message.to_openai_format() == {
         "role": "system",
-        "content": {"type": "image_url", "image_url": {"url": "images.com/test.jpg"}},
+        "content": [{"type": "image_url", "image_url": {"url": "images.com/test.jpg"}}],
     }
 
     message = ChatMessage.from_user(ByteStream.from_base64_image(b"image"))
