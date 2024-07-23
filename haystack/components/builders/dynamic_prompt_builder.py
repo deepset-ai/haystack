@@ -98,10 +98,7 @@ class DynamicPromptBuilder:
         runtime_variables = runtime_variables or []
 
         # setup inputs
-        run_input_slots = {
-            "prompt_source": str,
-            "template_variables": Optional[Dict[str, Any]],
-        }
+        run_input_slots = {"prompt_source": str, "template_variables": Optional[Dict[str, Any]]}
         kwargs_input_slots = {var: Optional[Any] for var in runtime_variables}
         component.set_input_types(self, **run_input_slots, **kwargs_input_slots)
 
@@ -111,10 +108,7 @@ class DynamicPromptBuilder:
         self.runtime_variables = runtime_variables
 
     def run(
-        self,
-        prompt_source: str,
-        template_variables: Optional[Dict[str, Any]] = None,
-        **kwargs,
+        self, prompt_source: str, template_variables: Optional[Dict[str, Any]] = None, **kwargs
     ) -> ProcessedMessagesDict:
         """
         Executes the dynamic prompt building process.
@@ -148,9 +142,7 @@ class DynamicPromptBuilder:
                 "Please provide an appropriate template variable to enable prompt generation."
             )
 
-        template = self._validate_template(
-            prompt_source, set(template_variables_combined.keys())
-        )
+        template = self._validate_template(prompt_source, set(template_variables_combined.keys()))
         result = template.render(template_variables_combined)
         return {"prompt": result}
 
@@ -173,9 +165,7 @@ class DynamicPromptBuilder:
         template = Template(template_text)
         ast = template.environment.parse(template_text)
         required_template_variables = meta.find_undeclared_variables(ast)
-        filled_template_vars = required_template_variables.intersection(
-            provided_variables
-        )
+        filled_template_vars = required_template_variables.intersection(provided_variables)
         if len(filled_template_vars) != len(required_template_variables):
             raise ValueError(
                 f"The {self.__class__.__name__} requires specific template variables that are missing. "
