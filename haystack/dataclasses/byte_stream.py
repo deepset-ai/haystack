@@ -4,7 +4,7 @@
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
 
 @dataclass
@@ -65,13 +65,16 @@ class ByteStream:
         return self.data.decode(encoding)
 
     @classmethod
-    def from_base64_image(cls, image: bytes, meta: Optional[Dict[str, Any]] = None) -> "ByteStream":
+    def from_base64_image(
+        cls, image: bytes, image_format: str = "jpg", meta: Optional[Dict[str, Any]] = None
+    ) -> "ByteStream":
         """
         Create a ByteStream containing a base64 image.
 
         The 'mime_type' field will be populated with 'image_base64'.
 
         :param image: The base 64 encoded image
+        :param image_format: The file extension of the image.
         :param meta: Additional metadata to be stored with the ByteStream.
         """
-        return cls(data=image, mime_type="image_base64", meta=meta or {})
+        return cls(data=image, mime_type=f"image_base64/{image_format}", meta=meta or {})
