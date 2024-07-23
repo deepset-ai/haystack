@@ -1,0 +1,4 @@
+---
+deprecations:
+  - |
+    Removed deprecated init parameters `extractor_type` and `try_again` from `HTMLToDocument`.
