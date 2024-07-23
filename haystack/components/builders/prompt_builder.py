@@ -12,12 +12,13 @@ from haystack import component, default_to_dict
 @component
 class PromptBuilder:
     """
-    Renders a prompt filling in any variables so that it can send it to a Generator. The prompt uses Jinja2 template syntax. 
-    
-    The variables in the default template are used as PromptBuilder's input and are all optional. 
+    Renders a prompt filling in any variables so that it can send it to a Generator. 
+    The prompt uses Jinja2 template syntax.
+
+    The variables in the default template are used as PromptBuilder's input and are all optional.
     If they're not provided, they're replaced with an empty string in the rendered prompt.
-    To try out different prompts, you can replace the prompt template at runtime by providing a template for each pipeline run
-    invocation.
+    To try out different prompts, you can replace the prompt template at runtime by 
+    providing a template for each pipeline run invocation.
 
     ### Usage examples
 
@@ -95,8 +96,9 @@ class PromptBuilder:
         },
     })
     ```
-    To replace the variables in the default template when testing your prompt, pass the new variables in the `variables` parameter. 
-    
+    To replace the variables in the default template when testing your prompt, 
+    pass the new variables in the `variables` parameter.
+
     #### Overwriting variables at runtime
 
     To overwrite the values of variables, use `template_variables` during runtime:
@@ -140,9 +142,10 @@ class PromptBuilder:
         :param template:
             A prompt template that uses Jinja2 syntax to add variables. For example:
             `"Summarize this document: {{ documents[0].content }}\\nSummary:"`
-            It's used to render the prompt. 
-            The variables in the default template are input for PromptBuilder and are all optional, unless explicitly specified. 
-            If an optional variable is not provided, it's replaced with an empty string in the rendered prompt. 
+            It's used to render the prompt.
+            The variables in the default template are input for PromptBuilder and are all optional, 
+            unless explicitly specified.
+            If an optional variable is not provided, it's replaced with an empty string in the rendered prompt.
         :param required_variables: List variables that must be provided as input to PromptBuilder.
             If a variable listed as required is not provided, an exception is raised. Optional.
         :param variables:
