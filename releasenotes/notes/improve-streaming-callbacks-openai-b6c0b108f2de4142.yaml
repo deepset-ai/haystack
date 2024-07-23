@@ -1,4 +1,4 @@
 ---
-fixes:
+enhancements:
   - |
     Allows passing `streaming_callback` parameter to OpenAIGenerator and OpenAIChatGenerator during pipeline run. This prevents the need to recreate pipelines for streaming callbacks.
