@@ -10,7 +10,12 @@ from jinja2.nativetypes import NativeEnvironment
 from typing_extensions import TypeAlias
 
 from haystack import component, default_from_dict, default_to_dict
-from haystack.utils import deserialize_callable, deserialize_type, serialize_callable, serialize_type
+from haystack.utils import (
+    deserialize_callable,
+    deserialize_type,
+    serialize_callable,
+    serialize_type,
+)
 
 
 class OutputAdaptationException(Exception):
@@ -35,7 +40,12 @@ class OutputAdapter:
     ```
     """
 
-    def __init__(self, template: str, output_type: TypeAlias, custom_filters: Optional[Dict[str, Callable]] = None):
+    def __init__(
+        self,
+        template: str,
+        output_type: TypeAlias,
+        custom_filters: Optional[Dict[str, Callable]] = None,
+    ):
         """
         Create an OutputAdapter component.
 
@@ -77,7 +87,7 @@ class OutputAdapter:
         component.set_output_types(self, **{"output": output_type})
         self.output_type = output_type
 
-    def run(self, **kwargs):
+    def run(self, **kwargs) -> Dict[str, Any]:
         """
         Renders the Jinja template with the provided inputs.
 
@@ -100,11 +110,15 @@ class OutputAdapter:
             adapted_output_template = env.from_string(self.template)
             output_result = adapted_output_template.render(**kwargs)
             if isinstance(output_result, jinja2.runtime.Undefined):
-                raise OutputAdaptationException(f"Undefined variable in the template {self.template}; kwargs: {kwargs}")
+                raise OutputAdaptationException(
+                    f"Undefined variable in the template {self.template}; kwargs: {kwargs}"
+                )
 
             adapted_outputs["output"] = output_result
         except Exception as e:
-            raise OutputAdaptationException(f"Error adapting {self.template} with {kwargs}: {e}") from e
+            raise OutputAdaptationException(
+                f"Error adapting {self.template} with {kwargs}: {e}"
+            ) from e
         return adapted_outputs
 
     def to_dict(self) -> Dict[str, Any]:
@@ -114,9 +128,15 @@ class OutputAdapter:
         :returns:
             Dictionary with serialized data.
         """
-        se_filters = {name: serialize_callable(filter_func) for name, filter_func in self.custom_filters.items()}
+        se_filters = {
+            name: serialize_callable(filter_func)
+            for name, filter_func in self.custom_filters.items()
+        }
         return default_to_dict(
-            self, template=self.template, output_type=serialize_type(self.output_type), custom_filters=se_filters
+            self,
+            template=self.template,
+            output_type=serialize_type(self.output_type),
+            custom_filters=se_filters,
         )
 
     @classmethod
@@ -132,7 +152,9 @@ class OutputAdapter:
         init_params = data.get("init_parameters", {})
         init_params["output_type"] = deserialize_type(init_params["output_type"])
         for name, filter_func in init_params.get("custom_filters", {}).items():
-            init_params["custom_filters"][name] = deserialize_callable(filter_func) if filter_func else None
+            init_params["custom_filters"][name] = (
+                deserialize_callable(filter_func) if filter_func else None
+            )
         return default_from_dict(cls, data)
 
     def _extract_variables(self, env: NativeEnvironment) -> Set[str]:

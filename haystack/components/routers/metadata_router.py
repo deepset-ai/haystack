@@ -73,9 +73,11 @@ class MetadataRouter:
             ```
         """
         self.rules = rules
-        component.set_output_types(self, unmatched=List[Document], **{edge: List[Document] for edge in rules})
+        component.set_output_types(
+            self, unmatched=List[Document], **{edge: List[Document] for edge in rules}
+        )
 
-    def run(self, documents: List[Document]):
+    def run(self, documents: List[Document]) -> Dict[str, List[Document]]:
         """
         Route the documents.
 

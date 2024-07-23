@@ -8,7 +8,12 @@ from jinja2 import Environment, TemplateSyntaxError, meta
 from jinja2.nativetypes import NativeEnvironment
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.utils import deserialize_callable, deserialize_type, serialize_callable, serialize_type
+from haystack.utils import (
+    deserialize_callable,
+    deserialize_type,
+    serialize_callable,
+    serialize_type,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +107,9 @@ class ConditionalRouter:
     ```
     """
 
-    def __init__(self, routes: List[Dict], custom_filters: Optional[Dict[str, Callable]] = None):
+    def __init__(
+        self, routes: List[Dict], custom_filters: Optional[Dict[str, Callable]] = None
+    ):
         """
         Initializes the `ConditionalRouter` with a list of routes detailing the conditions for routing.
 
@@ -129,12 +136,16 @@ class ConditionalRouter:
         env.filters.update(self.custom_filters)
 
         # Inspect the routes to determine input and output types.
-        input_types: Set[str] = set()  # let's just store the name, type will always be Any
+        input_types: Set[str] = (
+            set()
+        )  # let's just store the name, type will always be Any
         output_types: Dict[str, str] = {}
 
         for route in routes:
             # extract inputs
-            route_input_names = self._extract_variables(env, [route["output"], route["condition"]])
+            route_input_names = self._extract_variables(
+                env, [route["output"], route["condition"]]
+            )
             input_types.update(route_input_names)
 
             # extract outputs
@@ -153,7 +164,10 @@ class ConditionalRouter:
         for route in self.routes:
             # output_type needs to be serialized to a string
             route["output_type"] = serialize_type(route["output_type"])
-        se_filters = {name: serialize_callable(filter_func) for name, filter_func in self.custom_filters.items()}
+        se_filters = {
+            name: serialize_callable(filter_func)
+            for name, filter_func in self.custom_filters.items()
+        }
         return default_to_dict(self, routes=self.routes, custom_filters=se_filters)
 
     @classmethod
@@ -172,10 +186,12 @@ class ConditionalRouter:
             # output_type needs to be deserialized from a string to a type
             route["output_type"] = deserialize_type(route["output_type"])
         for name, filter_func in init_params.get("custom_filters", {}).items():
-            init_params["custom_filters"][name] = deserialize_callable(filter_func) if filter_func else None
+            init_params["custom_filters"][name] = (
+                deserialize_callable(filter_func) if filter_func else None
+            )
         return default_from_dict(cls, data)
 
-    def run(self, **kwargs):
+    def run(self, **kwargs) -> Dict[str, Any]:
         """
         Executes the routing logic.
 
@@ -207,7 +223,9 @@ class ConditionalRouter:
                     # and return the output as a dictionary under the output_name key
                     return {route["output_name"]: output}
             except Exception as e:
-                raise RouteConditionException(f"Error evaluating condition for route '{route}': {e}") from e
+                raise RouteConditionException(
+                    f"Error evaluating condition for route '{route}': {e}"
+                ) from e
 
         raise NoRouteSelectedException(f"No route fired. Routes: {self.routes}")
 
@@ -232,9 +250,13 @@ class ConditionalRouter:
                 )
             for field in ["condition", "output"]:
                 if not self._validate_template(env, route[field]):
-                    raise ValueError(f"Invalid template for field '{field}': {route[field]}")
+                    raise ValueError(
+                        f"Invalid template for field '{field}': {route[field]}"
+                    )
 
-    def _extract_variables(self, env: NativeEnvironment, templates: List[str]) -> Set[str]:
+    def _extract_variables(
+        self, env: NativeEnvironment, templates: List[str]
+    ) -> Set[str]:
         """
         Extracts all variables from a list of Jinja template strings.
 

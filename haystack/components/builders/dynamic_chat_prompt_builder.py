@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import warnings
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, TypedDict
 
 from jinja2 import Template, meta
 
@@ -11,6 +11,10 @@ from haystack import component, logging
 from haystack.dataclasses.chat_message import ChatMessage, ChatRole
 
 logger = logging.getLogger(__name__)
+
+
+class ProcessedMessagesDict(TypedDict):
+    prompt: List[ChatMessage]
 
 
 @component
@@ -93,7 +97,10 @@ class DynamicChatPromptBuilder:
         runtime_variables = runtime_variables or []
 
         # setup inputs
-        default_inputs = {"prompt_source": List[ChatMessage], "template_variables": Optional[Dict[str, Any]]}
+        default_inputs = {
+            "prompt_source": List[ChatMessage],
+            "template_variables": Optional[Dict[str, Any]],
+        }
         additional_input_slots = {var: Optional[Any] for var in runtime_variables}
         component.set_input_types(self, **default_inputs, **additional_input_slots)
 
@@ -101,7 +108,12 @@ class DynamicChatPromptBuilder:
         component.set_output_types(self, prompt=List[ChatMessage])
         self.runtime_variables = runtime_variables
 
-    def run(self, prompt_source: List[ChatMessage], template_variables: Optional[Dict[str, Any]] = None, **kwargs):
+    def run(
+        self,
+        prompt_source: List[ChatMessage],
+        template_variables: Optional[Dict[str, Any]] = None,
+        **kwargs,
+    ) -> ProcessedMessagesDict:
         """
         Executes the dynamic prompt building process by processing a list of `ChatMessage` instances.
 
@@ -149,7 +161,9 @@ class DynamicChatPromptBuilder:
         processed_messages = []
         for message in prompt_source:
             if message.is_from(ChatRole.USER) or message.is_from(ChatRole.SYSTEM):
-                template = self._validate_template(message.content, set(template_variables.keys()))
+                template = self._validate_template(
+                    message.content, set(template_variables.keys())
+                )
                 rendered_content = template.render(template_variables)
                 rendered_message = (
                     ChatMessage.from_user(rendered_content)
@@ -180,7 +194,9 @@ class DynamicChatPromptBuilder:
         template = Template(template_text)
         ast = template.environment.parse(template_text)
         required_template_variables = meta.find_undeclared_variables(ast)
-        filled_template_vars = required_template_variables.intersection(provided_variables)
+        filled_template_vars = required_template_variables.intersection(
+            provided_variables
+        )
         if len(filled_template_vars) != len(required_template_variables):
             raise ValueError(
                 f"The {self.__class__.__name__} requires specific template variables that are missing. "

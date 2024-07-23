@@ -2,13 +2,17 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, Type
+from typing import Any, Dict, Type, TypedDict
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.core.component.types import Variadic
 from haystack.utils import deserialize_type, serialize_type
 
 logger = logging.getLogger(__name__)
+
+
+class JoinedBranchesDict(TypedDict):
+    value: Any
 
 
 @component(is_greedy=True)
@@ -122,10 +126,12 @@ class BranchJoiner:
         :returns:
               Deserialized component.
         """
-        data["init_parameters"]["type_"] = deserialize_type(data["init_parameters"]["type_"])
+        data["init_parameters"]["type_"] = deserialize_type(
+            data["init_parameters"]["type_"]
+        )
         return default_from_dict(cls, data)
 
-    def run(self, **kwargs):
+    def run(self, **kwargs) -> JoinedBranchesDict:
         """
         The run method of the `BranchJoiner` component.
 
@@ -137,5 +143,7 @@ class BranchJoiner:
             - `value`: The input data.
         """
         if (inputs_count := len(kwargs["value"])) != 1:
-            raise ValueError(f"BranchJoiner expects only one input, but {inputs_count} were received.")
+            raise ValueError(
+                f"BranchJoiner expects only one input, but {inputs_count} were received."
+            )
         return {"value": kwargs["value"][0]}
