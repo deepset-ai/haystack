@@ -13,8 +13,8 @@ from haystack import component, default_to_dict
 class PromptBuilder:
     """
     Renders a prompt filling in any variables so that it can send it to a Generator.
-    The prompt uses Jinja2 template syntax.
 
+    The prompt uses Jinja2 template syntax.
     The variables in the default template are used as PromptBuilder's input and are all optional.
     If they're not provided, they're replaced with an empty string in the rendered prompt.
     To try out different prompts, you can replace the prompt template at runtime by
