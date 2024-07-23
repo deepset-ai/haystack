@@ -168,10 +168,10 @@ class ChatMessage:
             elif types is ContentType.IMAGE_URL and isinstance(self.content, str):
                 content = [{"type": "image_url", "image_url": {"url": self.content}}]
             elif types is ContentType.IMAGE_BASE64 and isinstance(self.content, ByteStream):
-                content = {
+                content = [{
                     "type": "image_url",
                     "image_url": {"url": f"data:image/jpeg;base64,{self.content.to_string()}"},
-                }
+                }]
             else:
                 raise ValueError("The content types stored at metadata '__haystack_content_type__' was corrupted.")
 
