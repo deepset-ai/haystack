@@ -541,12 +541,12 @@ class TestChatPromptBuilderDynamic:
         messages = [
             ChatMessage.from_system("this is {{data}}"),
             ChatMessage.from_user("image_url:images.com/{{image}}"),
-            ChatMessage.from_assistant(ByteStream(data=b"{{bytes}}", mime_type="image_base64")),
+            ChatMessage.from_assistant(ByteStream(data=b"{{bytes}}", mime_type="image_base64/jpg")),
             ChatMessage.from_user(
                 [
                     "this is {{text}}",
                     "image_url:more.images.com/{{more}}",
-                    ByteStream(data=b"more {{content}}", mime_type="image_base64"),
+                    ByteStream(data=b"more {{content}}", mime_type="image_base64/jpg"),
                 ]
             ),
         ]
@@ -559,12 +559,12 @@ class TestChatPromptBuilderDynamic:
         messages = [
             ChatMessage.from_system("this is {{data}}"),
             ChatMessage.from_user("image_url:images.com/{{image}}"),
-            ChatMessage.from_assistant(ByteStream(data=b"{{bytes}}", mime_type="image_base64")),
+            ChatMessage.from_assistant(ByteStream(data=b"{{bytes}}", mime_type="image_base64/png")),
             ChatMessage.from_user(
                 [
                     "this is {{text}}",
                     "image_url:more.images.com/{{more}}",
-                    ByteStream(data=b"more {{content}}", mime_type="image_base64"),
+                    ByteStream(data=b"more {{content}}", mime_type="image_base64/png"),
                 ]
             ),
         ]
@@ -576,12 +576,12 @@ class TestChatPromptBuilderDynamic:
         assert prompt["prompt"] == [
             ChatMessage.from_system("this is TEXT"),
             ChatMessage.from_user("image_url:images.com/test.jpg"),
-            ChatMessage.from_assistant(ByteStream(data=b"{{bytes}}", mime_type="image_base64")),
+            ChatMessage.from_assistant(ByteStream(data=b"{{bytes}}", mime_type="image_base64/png")),
             ChatMessage.from_user(
                 [
                     "this is a string",
                     "image_url:more.images.com/apple.png",
-                    ByteStream(data=b"more BYTES", mime_type="image_base64"),
+                    ByteStream(data=b"more BYTES", mime_type="image_base64/png"),
                 ]
             ),
         ]
