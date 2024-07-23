@@ -166,7 +166,7 @@ class ChatMessage:
             if types is ContentType.TEXT and isinstance(self.content, str):
                 content: str = self.content
             elif types is ContentType.IMAGE_URL and isinstance(self.content, str):
-                content = {"type": "image_url", "image_url": {"url": self.content}}
+                content = [{"type": "image_url", "image_url": {"url": self.content}}]
             elif types is ContentType.IMAGE_BASE64 and isinstance(self.content, ByteStream):
                 content = {
                     "type": "image_url",
