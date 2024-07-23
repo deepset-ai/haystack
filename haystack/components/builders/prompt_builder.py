@@ -12,6 +12,7 @@ from haystack import component, default_to_dict
 @component
 class PromptBuilder:
     """
+    
     Renders a prompt filling in any variables so that it can send it to a Generator.
     The prompt uses Jinja2 template syntax.
 
