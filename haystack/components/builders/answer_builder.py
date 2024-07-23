@@ -109,6 +109,9 @@ class AnswerBuilder:
             # Extract content from ChatMessage objects if reply is a ChatMessages, else use the string as is
             extracted_reply: str = reply.content if isinstance(reply, ChatMessage) else reply  # type: ignore
             extracted_metadata = reply.meta if isinstance(reply, ChatMessage) else metadata
+
+            extracted_metadata.pop("__haystack_content_type__", None)  # Extract ChatMessage internal metadata key
+
             referenced_docs = []
             if documents:
                 if reference_pattern:
