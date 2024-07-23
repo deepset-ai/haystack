@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fix `TransformersZeroShotTextRouter` and `TransformersTextRouter` `from_dict` methods to work when `init_parameters` only contain required variables.

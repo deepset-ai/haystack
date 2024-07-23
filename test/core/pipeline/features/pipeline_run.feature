@@ -37,6 +37,7 @@ Feature: Pipeline running
         | that has a component with default inputs that doesn't receive anything from its sender |
         | that has a component with default inputs that doesn't receive anything from its sender but receives input from user |
         | that has a loop and a component with default inputs that doesn't receive anything from its sender but receives input from user |
+        | that has multiple components with only default inputs and are added in a different order from the order of execution |
 
     Scenario Outline: Running a bad Pipeline
         Given a pipeline <kind>

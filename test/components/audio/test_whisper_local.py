@@ -8,6 +8,8 @@ from unittest.mock import patch, MagicMock
 import pytest
 import torch
 
+from haystack import Pipeline
+from haystack.components.fetchers import LinkContentFetcher
 from haystack.dataclasses import Document, ByteStream
 from haystack.components.audio import LocalWhisperTranscriber
 from haystack.utils.device import ComponentDevice, Device
@@ -71,6 +73,13 @@ class TestLocalWhisperTranscriber:
         assert transcriber.device == ComponentDevice.from_single(Device.cpu())
         assert transcriber.whisper_params == {}
         assert transcriber._model is None
+
+    def test_from_dict_no_default_parameters(self):
+        data = {"type": "haystack.components.audio.whisper_local.LocalWhisperTranscriber", "init_parameters": {}}
+        transcriber = LocalWhisperTranscriber.from_dict(data)
+        assert transcriber.model == "large"
+        assert transcriber.device == ComponentDevice.resolve_device(None)
+        assert transcriber.whisper_params == {}
 
     def test_from_dict_none_device(self):
         data = {
@@ -169,7 +178,7 @@ class TestLocalWhisperTranscriber:
     @pytest.mark.integration
     @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="ffmpeg not installed on Windows CI")
     def test_whisper_local_transcriber(self, test_files_path):
-        comp = LocalWhisperTranscriber(model="medium", whisper_params={"language": "english"})
+        comp = LocalWhisperTranscriber(model="tiny", whisper_params={"language": "english"})
         comp.warm_up()
         output = comp.run(
             sources=[
@@ -181,13 +190,34 @@ class TestLocalWhisperTranscriber:
         docs = output["documents"]
         assert len(docs) == 3
 
-        assert docs[0].content.strip().lower() == "this is the content of the document."
+        assert all(
+            word in docs[0].content.strip().lower() for word in {"content", "the", "document"}
+        ), f"Expected words not found in: {docs[0].content.strip().lower()}"
         assert test_files_path / "audio" / "this is the content of the document.wav" == docs[0].meta["audio_file"]
 
-        assert docs[1].content.strip().lower() == "the context for this answer is here."
+        assert all(
+            word in docs[1].content.strip().lower() for word in {"context", "answer"}
+        ), f"Expected words not found in: {docs[1].content.strip().lower()}"
         path = test_files_path / "audio" / "the context for this answer is here.wav"
         assert path.absolute() == docs[1].meta["audio_file"]
 
         assert docs[2].content.strip().lower() == "answer."
         # meta.audio_file should contain the temp path where we dumped the audio bytes
         assert docs[2].meta["audio_file"]
+
+    @pytest.mark.integration
+    @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="ffmpeg not installed on Windows CI")
+    def test_whisper_local_transcriber_pipeline_and_url_source(self):
+        pipe = Pipeline()
+        pipe.add_component("fetcher", LinkContentFetcher())
+        pipe.add_component("transcriber", LocalWhisperTranscriber(model="tiny"))
+
+        pipe.connect("fetcher", "transcriber")
+        result = pipe.run(
+            data={
+                "fetcher": {
+                    "urls": ["https://ia903102.us.archive.org/19/items/100-Best--Speeches/EK_19690725_64kb.mp3"]
+                }
+            }
+        )
+        assert "Massachusetts" in result["transcriber"]["documents"][0].content

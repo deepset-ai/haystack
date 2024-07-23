@@ -58,6 +58,7 @@ class LLMEvaluator:
         raise_on_failure: bool = True,
         api: str = "openai",
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
+        api_params: Optional[Dict[str, Any]] = None,
     ):
         """
         Creates an instance of LLMEvaluator.
@@ -84,6 +85,8 @@ class LLMEvaluator:
             Supported APIs: "openai".
         :param api_key:
             The API key.
+        :param api_params:
+            Parameters for an OpenAI API compatible completions call.
 
         """
         self.validate_init_parameters(inputs, outputs, examples)
@@ -94,12 +97,16 @@ class LLMEvaluator:
         self.examples = examples
         self.api = api
         self.api_key = api_key
+        self.api_params = api_params or {}
         self.progress_bar = progress_bar
 
+        default_generation_kwargs = {"response_format": {"type": "json_object"}, "seed": 42}
+        user_generation_kwargs = self.api_params.get("generation_kwargs", {})
+        merged_generation_kwargs = {**default_generation_kwargs, **user_generation_kwargs}
+        self.api_params["generation_kwargs"] = merged_generation_kwargs
+
         if api == "openai":
-            self.generator = OpenAIGenerator(
-                api_key=api_key, generation_kwargs={"response_format": {"type": "json_object"}, "seed": 42}
-            )
+            self.generator = OpenAIGenerator(api_key=api_key, **self.api_params)
         else:
             raise ValueError(f"Unsupported API: {api}")
 
@@ -171,10 +178,12 @@ class LLMEvaluator:
         :param inputs:
             The input values to evaluate. The keys are the input names and the values are lists of input values.
         :returns:
-            A dictionary with a single `results` entry that contains a list of results.
+            A dictionary with a `results` entry that contains a list of results.
             Each result is a dictionary containing the keys as defined in the `outputs` parameter of the LLMEvaluator
             and the evaluation results as the values. If an exception occurs for a particular input value, the result
             will be `None` for that entry.
+            If the API is "openai" and the response contains a "meta" key, the metadata from OpenAI will be included
+            in the output dictionary, under the key "meta".
         :raises ValueError:
             Only in the case that  `raise_on_failure` is set to True and the received inputs are not lists or have
             different lengths, or if the output is not a valid JSON or doesn't contain the expected keys.
@@ -187,6 +196,7 @@ class LLMEvaluator:
         list_of_input_names_to_values = [dict(zip(input_names, v)) for v in values]
 
         results: List[Optional[Dict[str, Any]]] = []
+        metadata = None
         errors = 0
         for input_names_to_values in tqdm(list_of_input_names_to_values, disable=not self.progress_bar):
             prompt = self.builder.run(**input_names_to_values)
@@ -208,11 +218,14 @@ class LLMEvaluator:
                 results.append(None)
                 errors += 1
 
+            if self.api == "openai" and "meta" in result:
+                metadata = result["meta"]
+
         if errors > 0:
             msg = f"LLM evaluator failed for {errors} out of {len(list_of_input_names_to_values)} inputs."
             warn(msg)
 
-        return {"results": results}
+        return {"results": results, "meta": metadata}
 
     def prepare_template(self) -> str:
         """
@@ -276,6 +289,7 @@ class LLMEvaluator:
             examples=self.examples,
             api=self.api,
             api_key=self.api_key.to_dict(),
+            api_params=self.api_params,
             progress_bar=self.progress_bar,
         )
 

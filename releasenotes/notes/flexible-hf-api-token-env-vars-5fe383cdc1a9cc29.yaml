@@ -1,0 +1,4 @@
+---
+enhancements:
+ - |
+   Enhanced flexibility in HuggingFace API environment variable names across all related components to support both 'HF_API_TOKEN' and 'HF_TOKEN', improving compatibility with the widely used HF environmental variable naming conventions.

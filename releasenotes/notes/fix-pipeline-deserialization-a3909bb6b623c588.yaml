@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Prevent `Pipeline.from_dict` from modifying the dictionary parameter passed to it.

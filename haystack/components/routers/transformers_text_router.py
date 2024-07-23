@@ -79,7 +79,7 @@ class TransformersTextRouter:
         model: str,
         labels: Optional[List[str]] = None,
         device: Optional[ComponentDevice] = None,
-        token: Optional[Secret] = Secret.from_env_var("HF_API_TOKEN", strict=False),
+        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         huggingface_pipeline_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
@@ -177,7 +177,8 @@ class TransformersTextRouter:
             Deserialized component.
         """
         deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
-        deserialize_hf_model_kwargs(data["init_parameters"]["huggingface_pipeline_kwargs"])
+        if data["init_parameters"].get("huggingface_pipeline_kwargs") is not None:
+            deserialize_hf_model_kwargs(data["init_parameters"]["huggingface_pipeline_kwargs"])
         return default_from_dict(cls, data)
 
     @component.output_types(documents=Dict[str, str])

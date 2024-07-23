@@ -23,7 +23,7 @@ class TestSimilarityRanker:
             "init_parameters": {
                 "device": None,
                 "top_k": 10,
-                "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
+                "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
                 "query_prefix": "",
                 "document_prefix": "",
                 "model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
@@ -88,7 +88,7 @@ class TestSimilarityRanker:
                 "top_k": 10,
                 "query_prefix": "",
                 "document_prefix": "",
-                "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
+                "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
                 "model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
                 "meta_fields_to_embed": [],
                 "embedding_separator": "\n",
@@ -171,6 +171,27 @@ class TestSimilarityRanker:
             "torch_dtype": torch.float16,
             "device_map": ComponentDevice.resolve_device(None).to_hf(),
         }
+
+    def test_from_dict_no_default_parameters(self):
+        data = {
+            "type": "haystack.components.rankers.transformers_similarity.TransformersSimilarityRanker",
+            "init_parameters": {},
+        }
+
+        component = TransformersSimilarityRanker.from_dict(data)
+        assert component.device is None
+        assert component.model_name_or_path == "cross-encoder/ms-marco-MiniLM-L-6-v2"
+        assert component.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
+        assert component.top_k == 10
+        assert component.query_prefix == ""
+        assert component.document_prefix == ""
+        assert component.meta_fields_to_embed == []
+        assert component.embedding_separator == "\n"
+        assert component.scale_score
+        assert component.calibration_factor == 1.0
+        assert component.score_threshold is None
+        # torch_dtype is correctly deserialized
+        assert component.model_kwargs == {"device_map": ComponentDevice.resolve_device(None).to_hf()}
 
     @patch("torch.sigmoid")
     @patch("torch.sort")

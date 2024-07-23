@@ -28,7 +28,7 @@ class TestSentenceTransformersDiversityRanker:
         assert component.top_k == 10
         assert component.device == ComponentDevice.resolve_device(None)
         assert component.similarity == "cosine"
-        assert component.token == Secret.from_env_var("HF_API_TOKEN", strict=False)
+        assert component.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
         assert component.query_prefix == ""
         assert component.document_prefix == ""
         assert component.query_suffix == ""
@@ -72,7 +72,7 @@ class TestSentenceTransformersDiversityRanker:
                 "top_k": 10,
                 "device": ComponentDevice.resolve_device(None).to_dict(),
                 "similarity": "cosine",
-                "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
+                "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
                 "query_prefix": "",
                 "document_prefix": "",
                 "query_suffix": "",
@@ -90,7 +90,7 @@ class TestSentenceTransformersDiversityRanker:
                 "top_k": 10,
                 "device": ComponentDevice.resolve_device(None).to_dict(),
                 "similarity": "cosine",
-                "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
+                "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
                 "query_prefix": "",
                 "document_prefix": "",
                 "query_suffix": "",
@@ -105,7 +105,7 @@ class TestSentenceTransformersDiversityRanker:
         assert ranker.top_k == 10
         assert ranker.device == ComponentDevice.resolve_device(None)
         assert ranker.similarity == "cosine"
-        assert ranker.token == Secret.from_env_var("HF_API_TOKEN", strict=False)
+        assert ranker.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
         assert ranker.query_prefix == ""
         assert ranker.document_prefix == ""
         assert ranker.query_suffix == ""
@@ -121,7 +121,7 @@ class TestSentenceTransformersDiversityRanker:
                 "top_k": 10,
                 "device": None,
                 "similarity": "cosine",
-                "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
+                "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
                 "query_prefix": "",
                 "document_prefix": "",
                 "query_suffix": "",
@@ -136,7 +136,26 @@ class TestSentenceTransformersDiversityRanker:
         assert ranker.top_k == 10
         assert ranker.device == ComponentDevice.resolve_device(None)
         assert ranker.similarity == "cosine"
-        assert ranker.token == Secret.from_env_var("HF_API_TOKEN", strict=False)
+        assert ranker.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
+        assert ranker.query_prefix == ""
+        assert ranker.document_prefix == ""
+        assert ranker.query_suffix == ""
+        assert ranker.document_suffix == ""
+        assert ranker.meta_fields_to_embed == []
+        assert ranker.embedding_separator == "\n"
+
+    def test_from_dict_no_default_parameters(self):
+        data = {
+            "type": "haystack.components.rankers.sentence_transformers_diversity.SentenceTransformersDiversityRanker",
+            "init_parameters": {},
+        }
+        ranker = SentenceTransformersDiversityRanker.from_dict(data)
+
+        assert ranker.model_name_or_path == "sentence-transformers/all-MiniLM-L6-v2"
+        assert ranker.top_k == 10
+        assert ranker.device == ComponentDevice.resolve_device(None)
+        assert ranker.similarity == "cosine"
+        assert ranker.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
         assert ranker.query_prefix == ""
         assert ranker.document_prefix == ""
         assert ranker.query_suffix == ""

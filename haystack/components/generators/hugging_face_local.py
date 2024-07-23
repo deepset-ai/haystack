@@ -58,7 +58,7 @@ class HuggingFaceLocalGenerator:
         model: str = "google/flan-t5-base",
         task: Optional[Literal["text-generation", "text2text-generation"]] = None,
         device: Optional[ComponentDevice] = None,
-        token: Optional[Secret] = Secret.from_env_var("HF_API_TOKEN", strict=False),
+        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         generation_kwargs: Optional[Dict[str, Any]] = None,
         huggingface_pipeline_kwargs: Optional[Dict[str, Any]] = None,
         stop_words: Optional[List[str]] = None,
@@ -196,12 +196,13 @@ class HuggingFaceLocalGenerator:
             The deserialized component.
         """
         deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
-        deserialize_hf_model_kwargs(data["init_parameters"]["huggingface_pipeline_kwargs"])
         init_params = data.get("init_parameters", {})
         serialized_callback_handler = init_params.get("streaming_callback")
         if serialized_callback_handler:
             data["init_parameters"]["streaming_callback"] = deserialize_callable(serialized_callback_handler)
 
+        huggingface_pipeline_kwargs = init_params.get("huggingface_pipeline_kwargs", {})
+        deserialize_hf_model_kwargs(huggingface_pipeline_kwargs)
         return default_from_dict(cls, data)
 
     @component.output_types(replies=List[str])

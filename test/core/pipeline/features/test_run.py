@@ -9,7 +9,7 @@ from haystack.components.routers import ConditionalRouter
 from haystack.components.builders import PromptBuilder, AnswerBuilder
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.components.others import Multiplexer
+from haystack.components.joiners import BranchJoiner
 from haystack.testing.sample_components import (
     Accumulate,
     AddFixedValue,
@@ -91,7 +91,7 @@ def pipeline_complex():
     pipeline.add_component("add_one", AddFixedValue(add=1))
     pipeline.add_component("accumulate_2", Accumulate())
 
-    pipeline.add_component("multiplexer", Multiplexer(type_=int))
+    pipeline.add_component("branch_joiner", BranchJoiner(type_=int))
     pipeline.add_component("below_10", Threshold(threshold=10))
     pipeline.add_component("double", Double())
 
@@ -123,11 +123,11 @@ def pipeline_complex():
     pipeline.connect("add_four", "accumulate_3")
 
     pipeline.connect("parity.odd", "add_one.value")
-    pipeline.connect("add_one", "multiplexer.value")
-    pipeline.connect("multiplexer", "below_10")
+    pipeline.connect("add_one", "branch_joiner.value")
+    pipeline.connect("branch_joiner", "below_10")
 
     pipeline.connect("below_10.below", "double")
-    pipeline.connect("double", "multiplexer.value")
+    pipeline.connect("double", "branch_joiner.value")
 
     pipeline.connect("below_10.above", "accumulate_2")
     pipeline.connect("accumulate_2", "diff.second_value")
@@ -150,13 +150,13 @@ def pipeline_complex():
                     "add_two",
                     "parity",
                     "add_one",
-                    "multiplexer",
+                    "branch_joiner",
                     "below_10",
                     "double",
-                    "multiplexer",
+                    "branch_joiner",
                     "below_10",
                     "double",
-                    "multiplexer",
+                    "branch_joiner",
                     "below_10",
                     "accumulate_2",
                     "greet_enumerator",
@@ -206,43 +206,43 @@ def pipeline_that_has_a_single_component_with_a_default_input():
 @given("a pipeline that has two loops of identical lengths", target_fixture="pipeline_data")
 def pipeline_that_has_two_loops_of_identical_lengths():
     pipeline = Pipeline(max_loops_allowed=10)
-    pipeline.add_component("multiplexer", Multiplexer(type_=int))
+    pipeline.add_component("branch_joiner", BranchJoiner(type_=int))
     pipeline.add_component("remainder", Remainder(divisor=3))
     pipeline.add_component("add_one", AddFixedValue(add=1))
     pipeline.add_component("add_two", AddFixedValue(add=2))
 
-    pipeline.connect("multiplexer.value", "remainder.value")
+    pipeline.connect("branch_joiner.value", "remainder.value")
     pipeline.connect("remainder.remainder_is_1", "add_two.value")
     pipeline.connect("remainder.remainder_is_2", "add_one.value")
-    pipeline.connect("add_two", "multiplexer.value")
-    pipeline.connect("add_one", "multiplexer.value")
+    pipeline.connect("add_two", "branch_joiner.value")
+    pipeline.connect("add_one", "branch_joiner.value")
     return (
         pipeline,
         [
             PipelineRunData(
-                inputs={"multiplexer": {"value": 0}},
+                inputs={"branch_joiner": {"value": 0}},
                 expected_outputs={"remainder": {"remainder_is_0": 0}},
-                expected_run_order=["multiplexer", "remainder"],
+                expected_run_order=["branch_joiner", "remainder"],
             ),
             PipelineRunData(
-                inputs={"multiplexer": {"value": 3}},
+                inputs={"branch_joiner": {"value": 3}},
                 expected_outputs={"remainder": {"remainder_is_0": 3}},
-                expected_run_order=["multiplexer", "remainder"],
+                expected_run_order=["branch_joiner", "remainder"],
             ),
             PipelineRunData(
-                inputs={"multiplexer": {"value": 4}},
+                inputs={"branch_joiner": {"value": 4}},
                 expected_outputs={"remainder": {"remainder_is_0": 6}},
-                expected_run_order=["multiplexer", "remainder", "add_two", "multiplexer", "remainder"],
+                expected_run_order=["branch_joiner", "remainder", "add_two", "branch_joiner", "remainder"],
             ),
             PipelineRunData(
-                inputs={"multiplexer": {"value": 5}},
+                inputs={"branch_joiner": {"value": 5}},
                 expected_outputs={"remainder": {"remainder_is_0": 6}},
-                expected_run_order=["multiplexer", "remainder", "add_one", "multiplexer", "remainder"],
+                expected_run_order=["branch_joiner", "remainder", "add_one", "branch_joiner", "remainder"],
             ),
             PipelineRunData(
-                inputs={"multiplexer": {"value": 6}},
+                inputs={"branch_joiner": {"value": 6}},
                 expected_outputs={"remainder": {"remainder_is_0": 6}},
-                expected_run_order=["multiplexer", "remainder"],
+                expected_run_order=["branch_joiner", "remainder"],
             ),
         ],
     )
@@ -251,46 +251,53 @@ def pipeline_that_has_two_loops_of_identical_lengths():
 @given("a pipeline that has two loops of different lengths", target_fixture="pipeline_data")
 def pipeline_that_has_two_loops_of_different_lengths():
     pipeline = Pipeline(max_loops_allowed=10)
-    pipeline.add_component("multiplexer", Multiplexer(type_=int))
+    pipeline.add_component("branch_joiner", BranchJoiner(type_=int))
     pipeline.add_component("remainder", Remainder(divisor=3))
     pipeline.add_component("add_one", AddFixedValue(add=1))
     pipeline.add_component("add_two_1", AddFixedValue(add=1))
     pipeline.add_component("add_two_2", AddFixedValue(add=1))
 
-    pipeline.connect("multiplexer.value", "remainder.value")
+    pipeline.connect("branch_joiner.value", "remainder.value")
     pipeline.connect("remainder.remainder_is_1", "add_two_1.value")
     pipeline.connect("add_two_1", "add_two_2.value")
-    pipeline.connect("add_two_2", "multiplexer")
+    pipeline.connect("add_two_2", "branch_joiner")
     pipeline.connect("remainder.remainder_is_2", "add_one.value")
-    pipeline.connect("add_one", "multiplexer")
+    pipeline.connect("add_one", "branch_joiner")
 
     return (
         pipeline,
         [
             PipelineRunData(
-                inputs={"multiplexer": {"value": 0}},
+                inputs={"branch_joiner": {"value": 0}},
                 expected_outputs={"remainder": {"remainder_is_0": 0}},
-                expected_run_order=["multiplexer", "remainder"],
+                expected_run_order=["branch_joiner", "remainder"],
             ),
             PipelineRunData(
-                inputs={"multiplexer": {"value": 3}},
+                inputs={"branch_joiner": {"value": 3}},
                 expected_outputs={"remainder": {"remainder_is_0": 3}},
-                expected_run_order=["multiplexer", "remainder"],
+                expected_run_order=["branch_joiner", "remainder"],
             ),
             PipelineRunData(
-                inputs={"multiplexer": {"value": 4}},
+                inputs={"branch_joiner": {"value": 4}},
                 expected_outputs={"remainder": {"remainder_is_0": 6}},
-                expected_run_order=["multiplexer", "remainder", "add_two_1", "add_two_2", "multiplexer", "remainder"],
+                expected_run_order=[
+                    "branch_joiner",
+                    "remainder",
+                    "add_two_1",
+                    "add_two_2",
+                    "branch_joiner",
+                    "remainder",
+                ],
             ),
             PipelineRunData(
-                inputs={"multiplexer": {"value": 5}},
+                inputs={"branch_joiner": {"value": 5}},
                 expected_outputs={"remainder": {"remainder_is_0": 6}},
-                expected_run_order=["multiplexer", "remainder", "add_one", "multiplexer", "remainder"],
+                expected_run_order=["branch_joiner", "remainder", "add_one", "branch_joiner", "remainder"],
             ),
             PipelineRunData(
-                inputs={"multiplexer": {"value": 6}},
+                inputs={"branch_joiner": {"value": 6}},
                 expected_outputs={"remainder": {"remainder_is_0": 6}},
-                expected_run_order=["multiplexer", "remainder"],
+                expected_run_order=["branch_joiner", "remainder"],
             ),
         ],
     )
@@ -302,20 +309,20 @@ def pipeline_that_has_a_single_loop_with_two_conditional_branches():
     pipeline = Pipeline(max_loops_allowed=10)
 
     pipeline.add_component("add_one", AddFixedValue(add=1))
-    pipeline.add_component("multiplexer", Multiplexer(type_=int))
+    pipeline.add_component("branch_joiner", BranchJoiner(type_=int))
     pipeline.add_component("below_10", Threshold(threshold=10))
     pipeline.add_component("below_5", Threshold(threshold=5))
     pipeline.add_component("add_three", AddFixedValue(add=3))
     pipeline.add_component("accumulator", accumulator)
     pipeline.add_component("add_two", AddFixedValue(add=2))
 
-    pipeline.connect("add_one.result", "multiplexer")
-    pipeline.connect("multiplexer.value", "below_10.value")
+    pipeline.connect("add_one.result", "branch_joiner")
+    pipeline.connect("branch_joiner.value", "below_10.value")
     pipeline.connect("below_10.below", "accumulator.value")
     pipeline.connect("accumulator.value", "below_5.value")
     pipeline.connect("below_5.above", "add_three.value")
-    pipeline.connect("below_5.below", "multiplexer")
-    pipeline.connect("add_three.result", "multiplexer")
+    pipeline.connect("below_5.below", "branch_joiner")
+    pipeline.connect("add_three.result", "branch_joiner")
     pipeline.connect("below_10.above", "add_two.value")
 
     return (
@@ -326,16 +333,16 @@ def pipeline_that_has_a_single_loop_with_two_conditional_branches():
                 expected_outputs={"add_two": {"result": 13}},
                 expected_run_order=[
                     "add_one",
-                    "multiplexer",
+                    "branch_joiner",
                     "below_10",
                     "accumulator",
                     "below_5",
-                    "multiplexer",
+                    "branch_joiner",
                     "below_10",
                     "accumulator",
                     "below_5",
                     "add_three",
-                    "multiplexer",
+                    "branch_joiner",
                     "below_10",
                     "add_two",
                 ],
@@ -423,7 +430,7 @@ def pipeline_that_has_three_branches_that_dont_merge():
             PipelineRunData(
                 inputs={"add_one": {"value": 1}},
                 expected_outputs={"add_one_again": {"result": 6}, "add_ten": {"result": 12}, "double": {"value": 4}},
-                expected_run_order=["add_one", "repeat", "double", "add_ten", "add_three", "add_one_again"],
+                expected_run_order=["add_one", "repeat", "add_ten", "double", "add_three", "add_one_again"],
             )
         ],
     )
@@ -448,7 +455,7 @@ def pipeline_that_has_two_branches_that_merge():
             PipelineRunData(
                 inputs={"first_addition": {"value": 1}, "third_addition": {"value": 1}},
                 expected_outputs={"fourth_addition": {"result": 3}},
-                expected_run_order=["first_addition", "second_addition", "third_addition", "diff", "fourth_addition"],
+                expected_run_order=["first_addition", "third_addition", "second_addition", "diff", "fourth_addition"],
             )
         ],
     )
@@ -498,18 +505,18 @@ def pipeline_that_has_different_combinations_of_branches_that_merge_and_do_not_m
 def pipeline_that_has_two_branches_one_of_which_loops_back():
     pipeline = Pipeline(max_loops_allowed=10)
     pipeline.add_component("add_zero", AddFixedValue(add=0))
-    pipeline.add_component("multiplexer", Multiplexer(type_=int))
+    pipeline.add_component("branch_joiner", BranchJoiner(type_=int))
     pipeline.add_component("sum", Sum())
     pipeline.add_component("below_10", Threshold(threshold=10))
     pipeline.add_component("add_one", AddFixedValue(add=1))
     pipeline.add_component("counter", Accumulate())
     pipeline.add_component("add_two", AddFixedValue(add=2))
 
-    pipeline.connect("add_zero", "multiplexer.value")
-    pipeline.connect("multiplexer", "below_10.value")
+    pipeline.connect("add_zero", "branch_joiner.value")
+    pipeline.connect("branch_joiner", "below_10.value")
     pipeline.connect("below_10.below", "add_one.value")
     pipeline.connect("add_one.result", "counter.value")
-    pipeline.connect("counter.value", "multiplexer.value")
+    pipeline.connect("counter.value", "branch_joiner.value")
     pipeline.connect("below_10.above", "add_two.value")
     pipeline.connect("add_two.result", "sum.values")
 
@@ -521,15 +528,15 @@ def pipeline_that_has_two_branches_one_of_which_loops_back():
                 expected_outputs={"sum": {"total": 23}},
                 expected_run_order=[
                     "add_zero",
-                    "multiplexer",
+                    "branch_joiner",
                     "below_10",
                     "add_one",
                     "counter",
-                    "multiplexer",
+                    "branch_joiner",
                     "below_10",
                     "add_one",
                     "counter",
-                    "multiplexer",
+                    "branch_joiner",
                     "below_10",
                     "add_two",
                     "sum",
@@ -633,7 +640,7 @@ def pipeline_that_has_a_component_with_mutable_output_sent_to_multiple_inputs():
                     },
                     "mm2": {"merged_message": "Fake message"},
                 },
-                expected_run_order=["prompt_builder", "mm1", "llm", "mm2"],
+                expected_run_order=["prompt_builder", "llm", "mm1", "mm2"],
             )
         ],
     )
@@ -660,10 +667,10 @@ def pipeline_that_has_a_greedy_and_variadic_component_after_a_component_with_def
     template = "Given this documents: {{ documents|join(', ', attribute='content') }} Answer this question: {{ query }}"
     pipeline.add_component("retriever", InMemoryBM25Retriever(document_store=document_store))
     pipeline.add_component("prompt_builder", PromptBuilder(template=template))
-    pipeline.add_component("multiplexer", Multiplexer(List[Document]))
+    pipeline.add_component("branch_joiner", BranchJoiner(List[Document]))
 
-    pipeline.connect("retriever", "multiplexer")
-    pipeline.connect("multiplexer", "prompt_builder.documents")
+    pipeline.connect("retriever", "branch_joiner")
+    pipeline.connect("branch_joiner", "prompt_builder.documents")
     return (
         pipeline,
         [
@@ -682,7 +689,7 @@ def pipeline_that_has_a_greedy_and_variadic_component_after_a_component_with_def
                         "question"
                     }
                 },
-                expected_run_order=["retriever", "multiplexer", "prompt_builder"],
+                expected_run_order=["retriever", "branch_joiner", "prompt_builder"],
             )
         ],
     )
@@ -1021,7 +1028,7 @@ def pipeline_that_has_multiple_branches_of_different_lengths_that_merge_into_a_c
             PipelineRunData(
                 inputs={"first_addition": {"value": 1}, "third_addition": {"value": 1}},
                 expected_outputs={"fourth_addition": {"result": 12}},
-                expected_run_order=["first_addition", "second_addition", "third_addition", "sum", "fourth_addition"],
+                expected_run_order=["first_addition", "third_addition", "second_addition", "sum", "fourth_addition"],
             )
         ],
     )
@@ -1063,20 +1070,20 @@ def pipeline_that_is_linear_and_returns_intermediate_outputs():
 def pipeline_that_has_a_loop_and_returns_intermediate_outputs_from_it():
     pipeline = Pipeline(max_loops_allowed=10)
     pipeline.add_component("add_one", AddFixedValue(add=1))
-    pipeline.add_component("multiplexer", Multiplexer(type_=int))
+    pipeline.add_component("branch_joiner", BranchJoiner(type_=int))
     pipeline.add_component("below_10", Threshold(threshold=10))
     pipeline.add_component("below_5", Threshold(threshold=5))
     pipeline.add_component("add_three", AddFixedValue(add=3))
     pipeline.add_component("accumulator", Accumulate())
     pipeline.add_component("add_two", AddFixedValue(add=2))
 
-    pipeline.connect("add_one.result", "multiplexer")
-    pipeline.connect("multiplexer.value", "below_10.value")
+    pipeline.connect("add_one.result", "branch_joiner")
+    pipeline.connect("branch_joiner.value", "below_10.value")
     pipeline.connect("below_10.below", "accumulator.value")
     pipeline.connect("accumulator.value", "below_5.value")
     pipeline.connect("below_5.above", "add_three.value")
-    pipeline.connect("below_5.below", "multiplexer")
-    pipeline.connect("add_three.result", "multiplexer")
+    pipeline.connect("below_5.below", "branch_joiner")
+    pipeline.connect("add_three.result", "branch_joiner")
     pipeline.connect("below_10.above", "add_two.value")
 
     return (
@@ -1087,7 +1094,7 @@ def pipeline_that_has_a_loop_and_returns_intermediate_outputs_from_it():
                 include_outputs_from={
                     "add_two",
                     "add_one",
-                    "multiplexer",
+                    "branch_joiner",
                     "below_10",
                     "accumulator",
                     "below_5",
@@ -1096,7 +1103,7 @@ def pipeline_that_has_a_loop_and_returns_intermediate_outputs_from_it():
                 expected_outputs={
                     "add_two": {"result": 13},
                     "add_one": {"result": 4},
-                    "multiplexer": {"value": 11},
+                    "branch_joiner": {"value": 11},
                     "below_10": {"above": 11},
                     "accumulator": {"value": 8},
                     "below_5": {"above": 8},
@@ -1104,16 +1111,16 @@ def pipeline_that_has_a_loop_and_returns_intermediate_outputs_from_it():
                 },
                 expected_run_order=[
                     "add_one",
-                    "multiplexer",
+                    "branch_joiner",
                     "below_10",
                     "accumulator",
                     "below_5",
-                    "multiplexer",
+                    "branch_joiner",
                     "below_10",
                     "accumulator",
                     "below_5",
                     "add_three",
-                    "multiplexer",
+                    "branch_joiner",
                     "below_10",
                     "add_two",
                 ],
@@ -1372,6 +1379,112 @@ def pipeline_that_has_a_loop_and_a_component_with_default_inputs_that_doesnt_rec
                     "prompt_builder",
                     "llm",
                     "output_validator",
+                ],
+            )
+        ],
+    )
+
+
+@given(
+    "a pipeline that has multiple components with only default inputs and are added in a different order from the order of execution",
+    target_fixture="pipeline_data",
+)
+def pipeline_that_has_multiple_components_with_only_default_inputs_and_are_added_in_a_different_order_from_the_order_of_execution():
+    prompt_builder1 = PromptBuilder(
+        template="""
+    You are a spellchecking system. Check the given query and fill in the corrected query.
+
+    Question: {{question}}
+    Corrected question:
+    """
+    )
+    prompt_builder2 = PromptBuilder(
+        template="""
+    According to these documents:
+
+    {% for doc in documents %}
+    {{ doc.content }}
+    {% endfor %}
+
+    Answer the given question: {{question}}
+    Answer:
+    """
+    )
+    prompt_builder3 = PromptBuilder(
+        template="""
+    {% for ans in replies %}
+    {{ ans }}
+    {% endfor %}
+    """
+    )
+
+    @component
+    class FakeRetriever:
+        @component.output_types(documents=List[Document])
+        def run(
+            self,
+            query: str,
+            filters: Optional[Dict[str, Any]] = None,
+            top_k: Optional[int] = None,
+            scale_score: Optional[bool] = None,
+        ):
+            return {"documents": [Document(content="This is a document")]}
+
+    @component
+    class FakeRanker:
+        @component.output_types(documents=List[Document])
+        def run(
+            self,
+            query: str,
+            documents: List[Document],
+            top_k: Optional[int] = None,
+            scale_score: Optional[bool] = None,
+            calibration_factor: Optional[float] = None,
+            score_threshold: Optional[float] = None,
+        ):
+            return {"documents": documents}
+
+    @component
+    class FakeGenerator:
+        @component.output_types(replies=List[str], meta=Dict[str, Any])
+        def run(self, prompt: str, generation_kwargs: Optional[Dict[str, Any]] = None):
+            return {"replies": ["This is a reply"], "meta": {"meta_key": "meta_value"}}
+
+    pipeline = Pipeline()
+    pipeline.add_component(name="retriever", instance=FakeRetriever())
+    pipeline.add_component(name="ranker", instance=FakeRanker())
+    pipeline.add_component(name="prompt_builder2", instance=prompt_builder2)
+    pipeline.add_component(name="prompt_builder1", instance=prompt_builder1)
+    pipeline.add_component(name="prompt_builder3", instance=prompt_builder3)
+    pipeline.add_component(name="llm", instance=FakeGenerator())
+    pipeline.add_component(name="spellchecker", instance=FakeGenerator())
+
+    pipeline.connect("prompt_builder1", "spellchecker")
+    pipeline.connect("spellchecker.replies", "prompt_builder3")
+    pipeline.connect("prompt_builder3", "retriever.query")
+    pipeline.connect("prompt_builder3", "ranker.query")
+    pipeline.connect("retriever.documents", "ranker.documents")
+    pipeline.connect("ranker.documents", "prompt_builder2.documents")
+    pipeline.connect("prompt_builder3", "prompt_builder2.question")
+    pipeline.connect("prompt_builder2", "llm")
+
+    return (
+        pipeline,
+        [
+            PipelineRunData(
+                inputs={"prompt_builder1": {"question": "Wha i Acromegaly?"}},
+                expected_outputs={
+                    "llm": {"replies": ["This is a reply"], "meta": {"meta_key": "meta_value"}},
+                    "spellchecker": {"meta": {"meta_key": "meta_value"}},
+                },
+                expected_run_order=[
+                    "prompt_builder1",
+                    "spellchecker",
+                    "prompt_builder3",
+                    "retriever",
+                    "ranker",
+                    "prompt_builder2",
+                    "llm",
                 ],
             )
         ],

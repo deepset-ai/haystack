@@ -21,7 +21,7 @@ from haystack.utils.device import ComponentDevice, DeviceMap
 def initialized_token(monkeypatch: MonkeyPatch) -> Secret:
     monkeypatch.setenv("HF_API_TOKEN", "secret-token")
 
-    return Secret.from_env_var("HF_API_TOKEN", strict=False)
+    return Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
 
 
 @pytest.fixture
@@ -108,7 +108,7 @@ def test_to_dict(initialized_token: Secret):
         "init_parameters": {
             "model": "my-model",
             "device": None,
-            "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
+            "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
             "top_k": 20,
             "score_threshold": None,
             "max_seq_length": 384,
@@ -160,7 +160,7 @@ def test_to_dict_empty_model_kwargs(initialized_token: Secret):
         "init_parameters": {
             "model": "my-model",
             "device": None,
-            "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
+            "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
             "top_k": 20,
             "score_threshold": None,
             "max_seq_length": 384,
@@ -191,7 +191,7 @@ def test_to_dict_device_map(device_map, expected):
         "init_parameters": {
             "model": "my-model",
             "device": None,
-            "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
+            "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
             "top_k": 20,
             "score_threshold": None,
             "max_seq_length": 384,
@@ -211,7 +211,7 @@ def test_from_dict():
         "init_parameters": {
             "model": "my-model",
             "device": None,
-            "token": {"env_vars": ["HF_API_TOKEN"], "strict": False, "type": "env_var"},
+            "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
             "top_k": 20,
             "score_threshold": None,
             "max_seq_length": 384,
@@ -227,7 +227,7 @@ def test_from_dict():
     component = ExtractiveReader.from_dict(data)
     assert component.model_name_or_path == "my-model"
     assert component.device is None
-    assert component.token == Secret.from_env_var("HF_API_TOKEN", strict=False)
+    assert component.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
     assert component.top_k == 20
     assert component.score_threshold is None
     assert component.max_seq_length == 384
@@ -241,6 +241,25 @@ def test_from_dict():
         "torch_dtype": torch.float16,
         "device_map": ComponentDevice.resolve_device(None).to_hf(),
     }
+
+
+def test_from_dict_no_default_parameters():
+    data = {"type": "haystack.components.readers.extractive.ExtractiveReader", "init_parameters": {}}
+
+    component = ExtractiveReader.from_dict(data)
+    assert component.model_name_or_path == "deepset/roberta-base-squad2-distilled"
+    assert component.device is None
+    assert component.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
+    assert component.top_k == 20
+    assert component.score_threshold is None
+    assert component.max_seq_length == 384
+    assert component.stride == 128
+    assert component.max_batch_size is None
+    assert component.answers_per_seq is None
+    assert component.no_answer
+    assert component.calibration_factor == 0.1
+    assert component.overlap_threshold == 0.01
+    assert component.model_kwargs == {"device_map": ComponentDevice.resolve_device(None).to_hf()}
 
 
 def test_from_dict_no_token():

@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Add `max_retries`, `timeout` parameters to the `AzureOpenAIDocumentEmbedder` initialization.

@@ -3,7 +3,7 @@ name: Github workflows linter
 on:
   pull_request:
     paths:
-      - ".github/workflows"
+      - ".github/workflows/**"
 
 jobs:
   lint-workflows:
@@ -12,8 +12,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - uses: actions/setup-go@v5
+
       - name: Install actionlint
         run: go install github.com/rhysd/actionlint/cmd/actionlint@latest
 
       - name: Run actionlint
+        env:
+          SHELLCHECK_OPTS: --exclude=SC2102
         run: actionlint

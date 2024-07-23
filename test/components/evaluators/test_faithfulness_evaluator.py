@@ -109,6 +109,7 @@ class TestFaithfulnessEvaluator:
             "init_parameters": {
                 "api_key": {"env_vars": ["ENV_VAR"], "strict": True, "type": "env_var"},
                 "api": "openai",
+                "api_params": {"generation_kwargs": {"response_format": {"type": "json_object"}, "seed": 42}},
                 "examples": [
                     {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
                 ],
@@ -179,6 +180,7 @@ class TestFaithfulnessEvaluator:
                 {"score": 1, "statement_scores": [1, 1], "statements": ["c", "d"]},
             ],
             "score": 0.75,
+            "meta": None,
         }
 
     def test_run_no_statements_extracted(self, monkeypatch):
@@ -215,6 +217,7 @@ class TestFaithfulnessEvaluator:
                 {"score": 0, "statement_scores": [], "statements": []},
             ],
             "score": 0.25,
+            "meta": None,
         }
 
     def test_run_missing_parameters(self, monkeypatch):
@@ -282,3 +285,9 @@ class TestFaithfulnessEvaluator:
         assert all(field in result for field in required_fields)
         nested_required_fields = {"score", "statement_scores", "statements"}
         assert all(field in result["results"][0] for field in nested_required_fields)
+
+        # assert that metadata is present in the result
+        assert "meta" in result
+        assert "prompt_tokens" in result["meta"][0]["usage"]
+        assert "completion_tokens" in result["meta"][0]["usage"]
+        assert "total_tokens" in result["meta"][0]["usage"]
