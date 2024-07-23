@@ -215,7 +215,7 @@ class OpenAIChatGenerator:
         chat_completion: Union[Stream[ChatCompletionChunk], ChatCompletion] = self.client.chat.completions.create(
             model=self.model,
             messages=openai_formatted_messages,  # type: ignore # openai expects list of specific message types
-            stream=self.streaming_callback is not None,
+            stream=streaming_callback is not None,
             **generation_kwargs,
         )
 
