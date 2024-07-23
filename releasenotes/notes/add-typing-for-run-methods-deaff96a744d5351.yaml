@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Adding typing of returned values for run methods of 'DynamicChatPromptBuilder', 'DynamicPromptBuilder', 'OutputAdaptationException', 'BranchJoiner', 'ConditionalRouter' and 'MetadataRouter'.
