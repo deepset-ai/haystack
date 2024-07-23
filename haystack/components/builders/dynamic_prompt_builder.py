@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class ProcessedMessagesDict(TypedDict):
-    prompt: Any
+    prompt: str
 
 
 @component
