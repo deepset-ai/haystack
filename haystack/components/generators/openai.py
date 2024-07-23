@@ -169,36 +169,46 @@ class OpenAIGenerator:
             data["init_parameters"]["streaming_callback"] = deserialize_callable(serialized_callback_handler)
         return default_from_dict(cls, data)
 
-    def invoke(self, **kwargs):
+    def run(
+        self,
+        prompt: str,
+        streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
+        generation_kwargs: Optional[Dict[str, Any]] = None,
+    ):
         """
-        Invokes the model with the given prompt.
+        Invoke the text generation inference based on the provided messages and generation parameters.
 
-        :param kwargs: Additional keyword arguments passed to the generator.
-        :returns: A list of responses.
+        :param prompt:
+            The string prompt to use for text generation.
+        :param streaming_callback:
+            A callback function that is called when a new token is received from the stream.
+        :param generation_kwargs:
+            Additional keyword arguments for text generation. These parameters will potentially override the parameters
+            passed in the `__init__` method. For more details on the parameters supported by the OpenAI API, refer to
+            the OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat/create).
+        :returns:
+            A list of strings containing the generated responses and a list of dictionaries containing the metadata
+        for each response.
         """
-        kwargs = kwargs.copy()
-        prompt: str = kwargs.pop("prompt", None)
-        streaming_callback = kwargs.pop("streaming_callback", None)
-
         message = ChatMessage.from_user(prompt)
         if self.system_prompt:
             messages = [ChatMessage.from_system(self.system_prompt), message]
         else:
             messages = [message]
 
-        # check if streaming_callback is passed to run()
-        if streaming_callback:
-            self.streaming_callback = streaming_callback
-
         # update generation kwargs by merging with the generation kwargs passed to the run method
-        generation_kwargs = {**self.generation_kwargs, **kwargs}
+        generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
+
+        # check if streaming_callback is passed
+        streaming_callback = streaming_callback or self.streaming_callback
+
         # adapt ChatMessage(s) to the format expected by the OpenAI API
         openai_formatted_messages = [message.to_openai_format() for message in messages]
 
         completion: Union[Stream[ChatCompletionChunk], ChatCompletion] = self.client.chat.completions.create(
             model=self.model,
             messages=openai_formatted_messages,  # type: ignore
-            stream=self.streaming_callback is not None,
+            stream=streaming_callback is not None,
             **generation_kwargs,
         )
 
@@ -212,10 +222,10 @@ class OpenAIGenerator:
 
             # pylint: disable=not-an-iterable
             for chunk in completion:
-                if chunk.choices and self.streaming_callback:
+                if chunk.choices and streaming_callback:
                     chunk_delta: StreamingChunk = self._build_chunk(chunk)
                     chunks.append(chunk_delta)
-                    self.streaming_callback(chunk_delta)  # invoke callback with the chunk_delta
+                    streaming_callback(chunk_delta)  # invoke callback with the chunk_delta
             completions = [self._connect_chunks(chunk, chunks)]
         elif isinstance(completion, ChatCompletion):
             completions = [self._build_message(completion, choice) for choice in completion.choices]
@@ -224,24 +234,6 @@ class OpenAIGenerator:
         for response in completions:
             self._check_finish_reason(response)
 
-        return completions
-
-    @component.output_types(replies=List[str], meta=List[Dict[str, Any]])
-    def run(self, prompt: str, generation_kwargs: Optional[Dict[str, Any]] = None):
-        """
-        Generate a list of responses for the given prompt.
-
-        :param prompt:
-            The string prompt to use for text generation.
-        :param generation_kwargs:
-            Additional keyword arguments for text generation. These parameters will potentially override the parameters
-            passed in the `__init__` method. For more details on the parameters supported by the OpenAI API, refer to
-            the OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat/create).
-        :returns: A dictionary with the following keys:
-            - `replies`: A list of generated responses.
-            - `meta`: A list of dictionaries containing the metadata.
-        """
-        completions = self.invoke(prompt=prompt, **(generation_kwargs or {}))
         return {
             "replies": [message.content for message in completions],
             "meta": [message.meta for message in completions],
