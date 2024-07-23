@@ -67,7 +67,7 @@ class ChatMessage:
             self.content = content
             self.meta["__haystack_content_type__"] = content_type
         elif isinstance(self.content, list):
-            content = []
+            content: List[Union[str, ByteStream]] = []
             content_types = []
             for part in self.content:
                 if isinstance(part, str):
@@ -151,7 +151,7 @@ class ChatMessage:
 
         types = self.get_content_types()
         if isinstance(types, list) and isinstance(self.content, list):
-            content = []
+            content: List[Dict[str, Any]] = []
             for type_, part in zip(types, self.content):
                 if type_ is ContentType.TEXT and isinstance(part, str):
                     content.append({"type": "text", "text": part})
@@ -171,13 +171,13 @@ class ChatMessage:
             if types is ContentType.TEXT and isinstance(self.content, str):
                 content: str = self.content
             elif types is ContentType.IMAGE_URL and isinstance(self.content, str):
-                content = [{"type": "image_url", "image_url": {"url": self.content}}]
+                content: List[Dict[str, Any]] = [{"type": "image_url", "image_url": {"url": self.content}}]
             elif types is ContentType.IMAGE_BASE64_JPG and isinstance(self.content, ByteStream):
-                content = [
+                content: List[Dict[str, Any]] = [
                     {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{self.content.to_string()}"}}
                 ]
             elif types is ContentType.IMAGE_BASE64_PNG and isinstance(self.content, ByteStream):
-                content = [
+                content: List[Dict[str, Any]] = [
                     {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{self.content.to_string()}"}}
                 ]
             else:
@@ -250,15 +250,15 @@ class ChatMessage:
         data["role"] = self.role.value
         if "__haystack_content_type__" in data["meta"]:
             types = data["meta"].pop("__haystack_content_type__")
-            if isinstance(types, list):
+            if isinstance(types, list) and isinstance(self.content, list):
                 content = []
                 for type_, part in zip(types, self.content):
                     if type_ is ContentType.IMAGE_URL and isinstance(part, str):
-                        full_part = f"image_url:{part}"
-                    elif type_ in ContentType.valid_byte_stream_types():
-                        full_part = asdict(part)
+                        full_part: Union[str, Dict[str, Any]] = f"image_url:{part}"
+                    elif type_ in ContentType.valid_byte_stream_types() and isinstance(part, ByteStream):
+                        full_part: Union[str, Dict[str, Any]] = asdict(part)
                     else:
-                        full_part = part
+                        full_part: Union[str, Dict[str, Any]] = part
                     content.append(full_part)
 
                 data["content"] = content
@@ -285,7 +285,7 @@ class ChatMessage:
             elif isinstance(data["content"], dict):
                 data["content"] = ByteStream(**data["content"])
             elif isinstance(data["content"], list):
-                content = []
+                content: List[Union[str, ByteStream]] = []
                 for part in data["content"]:
                     if isinstance(part, str):
                         content.append(part)

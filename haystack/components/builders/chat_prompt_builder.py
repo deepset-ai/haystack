@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from copy import deepcopy
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Union
 
 from jinja2 import Template, meta
 
@@ -237,16 +237,16 @@ class ChatPromptBuilder:
                     rendered_message = deepcopy(message)
                     rendered_message.content.data = rendered_content.encode()
                 elif isinstance(message.content, list):
-                    rendered_content = []
+                    rendered_content: List[Union[str, ByteStream]] = []
                     for part in message.content:
                         if isinstance(part, str):
                             compiled_template = Template(part)
-                            rendered_part = compiled_template.render(template_variables_combined)
+                            rendered_part: str = compiled_template.render(template_variables_combined)
                             rendered_content.append(rendered_part)
                         elif isinstance(part, ByteStream):
                             compiled_template = Template(part.to_string())
                             rendered_part_content = compiled_template.render(template_variables_combined)
-                            rendered_part = deepcopy(part)
+                            rendered_part: ByteStream = deepcopy(part)
                             rendered_part.data = rendered_part_content.encode()
                             rendered_content.append(rendered_part)
                         else:
