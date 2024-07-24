@@ -14,7 +14,8 @@ from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
 @component
 class SentenceTransformersTextEmbedder:
     """
-    Embeds strings using Sentence Transformers models. 
+    Embeds strings using Sentence Transformers models.
+
     You can use it to embed user query and send it to an embedding retriever.
 
     Usage example:
@@ -48,7 +49,7 @@ class SentenceTransformersTextEmbedder:
         Create a SentenceTransformersTextEmbedder component.
 
         :param model:
-            The model to use for calculating embeddings. 
+            The model to use for calculating embeddings.
             Specify the path to a local model or the ID of the model on Hugging Face.
         :param device:
             Overrides the default device used to load the model.
@@ -63,7 +64,8 @@ class SentenceTransformersTextEmbedder:
         :param batch_size:
             Number of texts to embed at once.
         :param progress_bar:
-            Enables a progress bar for calculating embeddings.
+            If `True`, shows a progress bar for calculating embeddings.
+            If `False`, disables the progress bar.
         :param normalize_embeddings:
             If enabled, returned vectors have a length of 1.
         :param trust_remote_code:
