@@ -1,0 +1,3 @@
+---
+  - |
+    Correctly expose `PPTXToDocument` component in `haystack` namespace.
