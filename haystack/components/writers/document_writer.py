@@ -34,13 +34,13 @@ class DocumentWriter:
         Create a DocumentWriter component.
 
         :param document_store:
-            The DocumentStore where the documents are to be written.
+            The instance of the document store where you want to store your documents.
         :param policy:
-            The policy to apply when a Document with the same id already exists in the DocumentStore.
-            - `DuplicatePolicy.NONE`: Default policy, behaviour depends on the Document Store.
-            - `DuplicatePolicy.SKIP`: If a Document with the same id already exists, it is skipped and not written.
-            - `DuplicatePolicy.OVERWRITE`: If a Document with the same id already exists, it is overwritten.
-            - `DuplicatePolicy.FAIL`: If a Document with the same id already exists, an error is raised.
+            The policy to apply when a Document with the same ID already exists in the DocumentStore.
+            - `DuplicatePolicy.NONE`: Default policy, relies on the DocumentStore settings.
+            - `DuplicatePolicy.SKIP`: Skips documents with the same ID and doesn't write them to the DocumentStore.
+            - `DuplicatePolicy.OVERWRITE`: Overwrites documents with the same ID.
+            - `DuplicatePolicy.FAIL`: Raises an error if a Document with the same ID is already in the DocumentStore.
         """
         self.document_store = document_store
         self.policy = policy
@@ -95,11 +95,11 @@ class DocumentWriter:
         Run the DocumentWriter on the given input data.
 
         :param documents:
-            A list of documents to write to the store.
+            A list of documents to write to the document store.
         :param policy:
             The policy to use when encountering duplicate documents.
         :returns:
-            Number of documents written
+            Number of documents written to the document store.
 
         :raises ValueError:
             If the specified document store is not found.
