@@ -14,7 +14,8 @@ from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
 @component
 class SentenceTransformersTextEmbedder:
     """
-    Embeds strings using Sentence Transformers models. You can use it to embed user query and send it to an embedding retriever.
+    Embeds strings using Sentence Transformers models. 
+    You can use it to embed user query and send it to an embedding retriever.
 
     Usage example:
     ```python
