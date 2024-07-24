@@ -168,7 +168,8 @@ class OpenAIGenerator:
         if serialized_callback_handler:
             data["init_parameters"]["streaming_callback"] = deserialize_callable(serialized_callback_handler)
         return default_from_dict(cls, data)
-
+        
+    @component.output_types(replies=List[str], meta=List[Dict[str, Any]])
     def run(
         self,
         prompt: str,
