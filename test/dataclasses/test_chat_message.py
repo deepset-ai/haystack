@@ -61,7 +61,7 @@ def test_to_openai_format_with_multimodal_content():
     message = ChatMessage.from_user(ByteStream.from_base64_image(b"image"))
     assert message.to_openai_format() == {
         "role": "user",
-        "content": [{"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,image"}}],
+        "content": [{"type": "image_url", "image_url": {"url": "data:image/jpg;base64,image"}}],
     }
 
     message = ChatMessage.from_user(ByteStream.from_base64_image(b"image", image_format="png"))
@@ -78,7 +78,7 @@ def test_to_openai_format_with_multimodal_content():
         "content": [
             {"type": "text", "text": "this is text"},
             {"type": "image_url", "image_url": {"url": "images.com/test.jpg"}},
-            {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,IMAGE"}},
+            {"type": "image_url", "image_url": {"url": "data:image/jpg;base64,IMAGE"}},
         ],
     }
 
@@ -210,12 +210,12 @@ def test_post_init_method():
     message = ChatMessage.from_system(ByteStream(data=b"content", mime_type="image_base64/jpg"))
     assert message.content == ByteStream(data=b"content", mime_type="image_base64/jpg")
     assert "__haystack_content_type__" in message.meta
-    assert message.meta["__haystack_content_type__"] == ContentType.IMAGE_BASE64_JPG
+    assert message.meta["__haystack_content_type__"] == ContentType.IMAGE_BASE64
 
     message = ChatMessage.from_system(ByteStream(data=b"content", mime_type="image_base64/png"))
     assert message.content == ByteStream(data=b"content", mime_type="image_base64/png")
     assert "__haystack_content_type__" in message.meta
-    assert message.meta["__haystack_content_type__"] == ContentType.IMAGE_BASE64_PNG
+    assert message.meta["__haystack_content_type__"] == ContentType.IMAGE_BASE64
 
     message = ChatMessage.from_user(
         [
@@ -235,8 +235,8 @@ def test_post_init_method():
     assert message.meta["__haystack_content_type__"] == [
         ContentType.TEXT,
         ContentType.IMAGE_URL,
-        ContentType.IMAGE_BASE64_JPG,
-        ContentType.IMAGE_BASE64_PNG,
+        ContentType.IMAGE_BASE64,
+        ContentType.IMAGE_BASE64,
     ]
 
 
