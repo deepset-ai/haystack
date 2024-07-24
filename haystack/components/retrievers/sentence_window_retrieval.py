@@ -85,7 +85,6 @@ class SentenceWindowRetrieval:
             start = max(start, last_idx_end)
 
             # append the non-overlapping part to the merged text
-            merged_text = merged_text.strip()
             merged_text += doc.content[start - doc.meta["split_idx_start"] :]  # type: ignore
 
             # update the last end index
