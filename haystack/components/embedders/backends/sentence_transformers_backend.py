@@ -22,14 +22,22 @@ class _SentenceTransformersEmbeddingBackendFactory:
 
     @staticmethod
     def get_embedding_backend(
-        model: str, device: Optional[str] = None, auth_token: Optional[Secret] = None, trust_remote_code: bool = False
+        model: str,
+        device: Optional[str] = None,
+        auth_token: Optional[Secret] = None,
+        trust_remote_code: bool = False,
+        truncate_dim: Optional[int] = None,
     ):
-        embedding_backend_id = f"{model}{device}{auth_token}"
+        embedding_backend_id = f"{model}{device}{auth_token}{truncate_dim}"
 
         if embedding_backend_id in _SentenceTransformersEmbeddingBackendFactory._instances:
             return _SentenceTransformersEmbeddingBackendFactory._instances[embedding_backend_id]
         embedding_backend = _SentenceTransformersEmbeddingBackend(
-            model=model, device=device, auth_token=auth_token, trust_remote_code=trust_remote_code
+            model=model,
+            device=device,
+            auth_token=auth_token,
+            trust_remote_code=trust_remote_code,
+            truncate_dim=truncate_dim,
         )
         _SentenceTransformersEmbeddingBackendFactory._instances[embedding_backend_id] = embedding_backend
         return embedding_backend
@@ -46,6 +54,7 @@ class _SentenceTransformersEmbeddingBackend:
         device: Optional[str] = None,
         auth_token: Optional[Secret] = None,
         trust_remote_code: bool = False,
+        truncate_dim: Optional[int] = None,
     ):
         sentence_transformers_import.check()
         self.model = SentenceTransformer(
@@ -53,6 +62,7 @@ class _SentenceTransformersEmbeddingBackend:
             device=device,
             use_auth_token=auth_token.resolve_value() if auth_token else None,
             trust_remote_code=trust_remote_code,
+            truncate_dim=truncate_dim,
         )
 
     def embed(self, data: List[str], **kwargs) -> List[List[float]]:

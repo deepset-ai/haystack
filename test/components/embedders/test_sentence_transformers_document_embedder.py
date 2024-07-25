@@ -25,6 +25,7 @@ class TestSentenceTransformersDocumentEmbedder:
         assert embedder.meta_fields_to_embed == []
         assert embedder.embedding_separator == "\n"
         assert embedder.trust_remote_code is False
+        assert embedder.truncate_dim is None
 
     def test_init_with_parameters(self):
         embedder = SentenceTransformersDocumentEmbedder(
@@ -39,6 +40,7 @@ class TestSentenceTransformersDocumentEmbedder:
             meta_fields_to_embed=["test_field"],
             embedding_separator=" | ",
             trust_remote_code=True,
+            truncate_dim=256,
         )
         assert embedder.model == "model"
         assert embedder.device == ComponentDevice.from_str("cuda:0")
@@ -51,6 +53,7 @@ class TestSentenceTransformersDocumentEmbedder:
         assert embedder.meta_fields_to_embed == ["test_field"]
         assert embedder.embedding_separator == " | "
         assert embedder.trust_remote_code
+        assert embedder.truncate_dim == 256
 
     def test_to_dict(self):
         component = SentenceTransformersDocumentEmbedder(model="model", device=ComponentDevice.from_str("cpu"))
@@ -69,6 +72,7 @@ class TestSentenceTransformersDocumentEmbedder:
                 "embedding_separator": "\n",
                 "meta_fields_to_embed": [],
                 "trust_remote_code": False,
+                "truncate_dim": None,
             },
         }
 
@@ -85,6 +89,7 @@ class TestSentenceTransformersDocumentEmbedder:
             meta_fields_to_embed=["meta_field"],
             embedding_separator=" - ",
             trust_remote_code=True,
+            truncate_dim=256,
         )
         data = component.to_dict()
 
@@ -102,6 +107,7 @@ class TestSentenceTransformersDocumentEmbedder:
                 "embedding_separator": " - ",
                 "trust_remote_code": True,
                 "meta_fields_to_embed": ["meta_field"],
+                "truncate_dim": 256,
             },
         }
 
@@ -118,6 +124,7 @@ class TestSentenceTransformersDocumentEmbedder:
             "embedding_separator": " - ",
             "meta_fields_to_embed": ["meta_field"],
             "trust_remote_code": True,
+            "truncate_dim": 256,
         }
         component = SentenceTransformersDocumentEmbedder.from_dict(
             {
@@ -136,6 +143,7 @@ class TestSentenceTransformersDocumentEmbedder:
         assert component.embedding_separator == " - "
         assert component.trust_remote_code
         assert component.meta_fields_to_embed == ["meta_field"]
+        assert component.truncate_dim == 256
 
     def test_from_dict_no_default_parameters(self):
         component = SentenceTransformersDocumentEmbedder.from_dict(
@@ -155,6 +163,7 @@ class TestSentenceTransformersDocumentEmbedder:
         assert component.embedding_separator == "\n"
         assert component.trust_remote_code is False
         assert component.meta_fields_to_embed == []
+        assert component.truncate_dim is None
 
     def test_from_dict_none_device(self):
         init_parameters = {
@@ -169,6 +178,7 @@ class TestSentenceTransformersDocumentEmbedder:
             "embedding_separator": " - ",
             "meta_fields_to_embed": ["meta_field"],
             "trust_remote_code": True,
+            "truncate_dim": None,
         }
         component = SentenceTransformersDocumentEmbedder.from_dict(
             {
@@ -187,6 +197,7 @@ class TestSentenceTransformersDocumentEmbedder:
         assert component.embedding_separator == " - "
         assert component.trust_remote_code
         assert component.meta_fields_to_embed == ["meta_field"]
+        assert component.truncate_dim is None
 
     @patch(
         "haystack.components.embedders.sentence_transformers_document_embedder._SentenceTransformersEmbeddingBackendFactory"
@@ -198,7 +209,7 @@ class TestSentenceTransformersDocumentEmbedder:
         mocked_factory.get_embedding_backend.assert_not_called()
         embedder.warm_up()
         mocked_factory.get_embedding_backend.assert_called_once_with(
-            model="model", device="cpu", auth_token=None, trust_remote_code=False
+            model="model", device="cpu", auth_token=None, trust_remote_code=False, truncate_dim=None
         )
 
     @patch(

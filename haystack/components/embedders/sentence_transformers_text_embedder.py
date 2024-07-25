@@ -42,6 +42,7 @@ class SentenceTransformersTextEmbedder:
         progress_bar: bool = True,
         normalize_embeddings: bool = False,
         trust_remote_code: bool = False,
+        truncate_dim: Optional[int] = None,
     ):
         """
         Create a SentenceTransformersTextEmbedder component.
@@ -67,6 +68,8 @@ class SentenceTransformersTextEmbedder:
         :param trust_remote_code:
             If `False`, only Hugging Face verified model architectures are allowed.
             If `True`, custom models and scripts are allowed.
+        :param truncate_dim:
+            The dimension to truncate sentence embeddings to. None does no truncation.
         """
 
         self.model = model
@@ -78,6 +81,7 @@ class SentenceTransformersTextEmbedder:
         self.progress_bar = progress_bar
         self.normalize_embeddings = normalize_embeddings
         self.trust_remote_code = trust_remote_code
+        self.truncate_dim = truncate_dim
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -103,6 +107,7 @@ class SentenceTransformersTextEmbedder:
             progress_bar=self.progress_bar,
             normalize_embeddings=self.normalize_embeddings,
             trust_remote_code=self.trust_remote_code,
+            truncate_dim=self.truncate_dim,
         )
 
     @classmethod
@@ -131,6 +136,7 @@ class SentenceTransformersTextEmbedder:
                 device=self.device.to_torch_str(),
                 auth_token=self.token,
                 trust_remote_code=self.trust_remote_code,
+                truncate_dim=self.truncate_dim,
             )
 
     @component.output_types(embedding=List[float])
