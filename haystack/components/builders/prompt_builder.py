@@ -12,6 +12,7 @@ from haystack import component, default_to_dict
 @component
 class PromptBuilder:
     """
+
     Renders a prompt filling in any variables so that it can send it to a Generator.
 
     The prompt uses Jinja2 template syntax.
@@ -22,7 +23,7 @@ class PromptBuilder:
 
     ### Usage examples
 
-    #### The component on its own
+    #### On its own
 
     This example uses PromptBuilder to render a prompt template and fill it with `target_language`
     and `snippet`. PromptBuilder returns a prompt with the string "Translate the following context to Spanish.
