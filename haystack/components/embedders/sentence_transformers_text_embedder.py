@@ -67,7 +67,7 @@ class SentenceTransformersTextEmbedder:
             If `True`, shows a progress bar for calculating embeddings.
             If `False`, disables the progress bar.
         :param normalize_embeddings:
-            If enabled, returned vectors have a length of 1.
+            If `True`, returned vectors have a length of 1.
         :param trust_remote_code:
             If `False`, permits only Hugging Face verified model architectures.
             If `True`, permits custom models and scripts.
