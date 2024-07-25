@@ -40,7 +40,7 @@ class TestDocumentCleaner:
         result = cleaner.run(
             documents=[
                 Document(
-                    content="This is a text with some words. "
+                    content="This is a text with some words. \f"
                     ""
                     "There is a second sentence. "
                     ""
@@ -51,7 +51,7 @@ class TestDocumentCleaner:
         assert len(result["documents"]) == 1
         assert (
             result["documents"][0].content
-            == "This is a text with some words. There is a second sentence. And there is a third sentence."
+            == "This is a text with some words. \fThere is a second sentence. And there is a third sentence."
         )
 
     def test_remove_whitespaces(self):
@@ -63,33 +63,33 @@ class TestDocumentCleaner:
                     ""
                     "There is a second sentence.  "
                     ""
-                    "And there  is a third sentence. "
+                    "And there  is a third sentence.\f "
                 )
             ]
         )
         assert len(result["documents"]) == 1
         assert result["documents"][0].content == (
-            "This is a text with some words. " "" "There is a second sentence. " "" "And there is a third sentence."
+            "This is a text with some words. " "" "There is a second sentence. " "" "And there is a third sentence.\f"
         )
 
     def test_remove_substrings(self):
         cleaner = DocumentCleaner(remove_substrings=["This", "A", "words", "🪲"])
-        result = cleaner.run(documents=[Document(content="This is a text with some words.🪲")])
+        result = cleaner.run(documents=[Document(content="This is a text with some words.\f🪲")])
         assert len(result["documents"]) == 1
-        assert result["documents"][0].content == " is a text with some ."
+        assert result["documents"][0].content == " is a text with some .\f"
 
     def test_remove_regex(self):
         cleaner = DocumentCleaner(remove_regex=r"\s\s+")
-        result = cleaner.run(documents=[Document(content="This is a  text with   some words.")])
+        result = cleaner.run(documents=[Document(content="This is a  text \f with   some words.")])
         assert len(result["documents"]) == 1
-        assert result["documents"][0].content == "This is a text with some words."
+        assert result["documents"][0].content == "This is a text\fwith some words."
 
     def test_remove_repeated_substrings(self):
         cleaner = DocumentCleaner(
             remove_empty_lines=False, remove_extra_whitespaces=False, remove_repeated_substrings=True
         )
 
-        text = """First PageThis is a header.
+        text = """First Page\fThis is a header.
         Page  of
         2
         4
@@ -109,7 +109,7 @@ class TestDocumentCleaner:
         This is a footer number 1
         This is footer number 2"""
 
-        expected_text = """First Page 2
+        expected_text = """First Page\f 2
         4
         Lorem ipsum dolor sit amet 3
         4
