@@ -1,0 +1,6 @@
+---
+highlights: >
+    Adding the `JSONToDocument` component to convert JSON files to Documents.
+features:
+  - |
+    Adding the `JSONToDocument` component using the `jq` library to extract text content from JSON files and to transform it into Haystack Documents.
