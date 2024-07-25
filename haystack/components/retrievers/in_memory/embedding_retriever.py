@@ -72,8 +72,8 @@ class InMemoryEmbeddingRetriever:
             When `True`, scales the score of retrieved documents to a range of 0 to 1, where 1 means extremely relevant.
             When `False`, uses raw similarity scores.
         :param return_embedding:
-            When `True`, returns the embedding of the retrieved Documents.
-            When `False`, returns just the Documents, without their embeddings.
+            When `True`, returns the embedding of the retrieved documents.
+            When `False`, returns just the documents, without their embeddings.
         :param filter_policy: The filter policy to apply during retrieval.
         Filter policy determines how filters are applied when retrieving documents. You can choose:
         - `REPLACE` (default): Overrides the initialization filters with the filters specified at runtime.
@@ -164,8 +164,8 @@ class InMemoryEmbeddingRetriever:
             When `True`, scales the score of retrieved documents to a range of 0 to 1, where 1 means extremely relevant.
             When `False`, uses raw similarity scores.
         :param return_embedding:
-            When `True`, returns the embedding of the retrieved Documents.
-            When `False`, returns just the Documents, without their embeddings.
+            When `True`, returns the embedding of the retrieved documents.
+            When `False`, returns just the documents, without their embeddings.
         :returns:
             The retrieved documents.
 
