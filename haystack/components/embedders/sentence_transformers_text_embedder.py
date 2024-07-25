@@ -54,7 +54,7 @@ class SentenceTransformersTextEmbedder:
         :param device:
             Overrides the default device used to load the model.
         :param token:
-            To use private models from Hugging Face, enter an API token here.
+            An API token to use private models from Hugging Face.
         :param prefix:
             A string to add at the beginning of each text to be embedded.
             You can use it to prepend the text with an instruction, as required by some embedding models,
