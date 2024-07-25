@@ -29,7 +29,7 @@ class TestSentenceWindowRetrieval:
                 "page_number": 1,
                 "split_id": 0,
                 "split_idx_start": 0,
-                "_split_overlap": [{"doc_id": "doc_1", "range": (0, 22)}],
+                "_split_overlap": [{"doc_id": "doc_1", "range": (0, 23)}],
             },
             {
                 "id": "doc_1",
@@ -37,8 +37,8 @@ class TestSentenceWindowRetrieval:
                 "source_id": "c5d7c632affc486d0cfe7b3c0f4dc1d3896ea720da2b538d6d10b104a3df5f99",
                 "page_number": 1,
                 "split_id": 1,
-                "split_idx_start": 21,
-                "_split_overlap": [{"doc_id": "doc_0", "range": (20, 42)}, {"doc_id": "doc_2", "range": (0, 29)}],
+                "split_idx_start": 20,
+                "_split_overlap": [{"doc_id": "doc_0", "range": (20, 43)}, {"doc_id": "doc_2", "range": (0, 29)}],
             },
             {
                 "id": "doc_2",
@@ -46,7 +46,7 @@ class TestSentenceWindowRetrieval:
                 "source_id": "c5d7c632affc486d0cfe7b3c0f4dc1d3896ea720da2b538d6d10b104a3df5f99",
                 "page_number": 1,
                 "split_id": 2,
-                "split_idx_start": 45,
+                "split_idx_start": 43,
                 "_split_overlap": [{"doc_id": "doc_1", "range": (23, 52)}],
             },
         ]

@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    The DocumentSplitter was incorrectly calculating the `split_start_idx` and `_split_overlap` information due to slight miscalculations of appropriate indices.
+    This fixes those so the `split_start_idx` and `_split_overlap` information is correct.
