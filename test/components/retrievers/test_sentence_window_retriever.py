@@ -1,6 +1,7 @@
 import pytest
 
-from haystack import Document, DeserializationError
+from haystack import Document, DeserializationError, Pipeline
+from haystack.components.retrievers import InMemoryBM25Retriever
 from haystack.components.retrievers.sentence_window_retrieval import SentenceWindowRetrieval
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.preprocessors import DocumentSplitter
@@ -28,7 +29,7 @@ class TestSentenceWindowRetrieval:
                 "page_number": 1,
                 "split_id": 0,
                 "split_idx_start": 0,
-                "_split_overlap": [{"doc_id": "doc_1", "range": (0, 22)}],
+                "_split_overlap": [{"doc_id": "doc_1", "range": (0, 23)}],
             },
             {
                 "id": "doc_1",
@@ -36,8 +37,8 @@ class TestSentenceWindowRetrieval:
                 "source_id": "c5d7c632affc486d0cfe7b3c0f4dc1d3896ea720da2b538d6d10b104a3df5f99",
                 "page_number": 1,
                 "split_id": 1,
-                "split_idx_start": 21,
-                "_split_overlap": [{"doc_id": "doc_0", "range": (20, 42)}, {"doc_id": "doc_2", "range": (0, 29)}],
+                "split_idx_start": 20,
+                "_split_overlap": [{"doc_id": "doc_0", "range": (20, 43)}, {"doc_id": "doc_2", "range": (0, 29)}],
             },
             {
                 "id": "doc_2",
@@ -45,7 +46,7 @@ class TestSentenceWindowRetrieval:
                 "source_id": "c5d7c632affc486d0cfe7b3c0f4dc1d3896ea720da2b538d6d10b104a3df5f99",
                 "page_number": 1,
                 "split_id": 2,
-                "split_idx_start": 45,
+                "split_idx_start": 43,
                 "_split_overlap": [{"doc_id": "doc_1", "range": (23, 52)}],
             },
         ]
@@ -124,20 +125,24 @@ class TestSentenceWindowRetrieval:
             "This is a text with some words. There is a second sentence. And there is also a third sentence. "
             "It also contains a fourth sentence. And a fifth sentence. And a sixth sentence. And a seventh sentence"
         )
-
         doc = Document(content=text)
-
         docs = splitter.run([doc])
-        ds = InMemoryDocumentStore()
-        ds.write_documents(docs["documents"])
+        doc_store = InMemoryDocumentStore()
+        doc_store.write_documents(docs["documents"])
 
-        retriever = SentenceWindowRetrieval(document_store=ds, window_size=3)
-        result = retriever.run(retrieved_documents=[list(ds.storage.values())[3]])
+        rag = Pipeline()
+        rag.add_component("bm25_retriever", InMemoryBM25Retriever(doc_store, top_k=1))
+        rag.add_component("sentence_window_retriever", SentenceWindowRetrieval(document_store=doc_store, window_size=2))
+        rag.connect("bm25_retriever", "sentence_window_retriever")
+        result = rag.run({"bm25_retriever": {"query": "third"}})
+
         expected = {
-            "context_windows": [
-                "This is a text with some words. There is a second sentence. And there is also a third sentence. It "
-                "also contains a fourth sentence. And a fifth sentence. And a sixth sentence. And a seventh sentence"
-            ]
+            "sentence_window_retriever": {
+                "context_windows": [
+                    "some words. There is a second sentence. And there is also a third sentence. It also "
+                    "contains a fourth sentence. And a fifth sentence. And a sixth sentence. And a "
+                ]
+            }
         }
 
         assert result == expected

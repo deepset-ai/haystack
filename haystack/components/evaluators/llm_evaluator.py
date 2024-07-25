@@ -58,6 +58,7 @@ class LLMEvaluator:
         raise_on_failure: bool = True,
         api: str = "openai",
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
+        api_params: Optional[Dict[str, Any]] = None,
     ):
         """
         Creates an instance of LLMEvaluator.
@@ -84,6 +85,8 @@ class LLMEvaluator:
             Supported APIs: "openai".
         :param api_key:
             The API key.
+        :param api_params:
+            Parameters for an OpenAI API compatible completions call.
 
         """
         self.validate_init_parameters(inputs, outputs, examples)
@@ -94,12 +97,16 @@ class LLMEvaluator:
         self.examples = examples
         self.api = api
         self.api_key = api_key
+        self.api_params = api_params or {}
         self.progress_bar = progress_bar
 
+        default_generation_kwargs = {"response_format": {"type": "json_object"}, "seed": 42}
+        user_generation_kwargs = self.api_params.get("generation_kwargs", {})
+        merged_generation_kwargs = {**default_generation_kwargs, **user_generation_kwargs}
+        self.api_params["generation_kwargs"] = merged_generation_kwargs
+
         if api == "openai":
-            self.generator = OpenAIGenerator(
-                api_key=api_key, generation_kwargs={"response_format": {"type": "json_object"}, "seed": 42}
-            )
+            self.generator = OpenAIGenerator(api_key=api_key, **self.api_params)
         else:
             raise ValueError(f"Unsupported API: {api}")
 
@@ -282,6 +289,7 @@ class LLMEvaluator:
             examples=self.examples,
             api=self.api,
             api_key=self.api_key.to_dict(),
+            api_params=self.api_params,
             progress_bar=self.progress_bar,
         )
 
