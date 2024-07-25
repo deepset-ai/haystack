@@ -319,15 +319,11 @@ class TestStructuredLoggingJSONRendering:
                             "filename": str(Path.cwd() / "test" / "test_logging.py"),
                             "lineno": ANY,  # otherwise the test breaks if you add a line :-)
                             "name": "test_logging_exceptions_json",
-                            "line": "",
-                            "locals": None,
                         },
                         {
                             "filename": str(Path.cwd() / "test" / "test_logging.py"),
                             "lineno": ANY,  # otherwise the test breaks if you add a line :-)
                             "name": "function_that_raises_and_adds_to_stack_trace",
-                            "line": "",
-                            "locals": None,
                         },
                     ],
                 }

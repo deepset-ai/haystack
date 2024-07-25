@@ -1,0 +1,4 @@
+---
+upgrade:
+  - |
+    Removed deprecated init parameters `extractor_type` and `try_others` from `HTMLToDocument`.
