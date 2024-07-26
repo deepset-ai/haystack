@@ -196,6 +196,27 @@ class TestOpenAIGenerator:
         assert len(response["replies"]) == 1
         assert "Hello" in response["replies"][0]  # see mock_chat_completion_chunk
 
+    def test_run_with_streaming_callback_in_run_method(self, mock_chat_completion_chunk):
+        streaming_callback_called = False
+
+        def streaming_callback(chunk: StreamingChunk) -> None:
+            nonlocal streaming_callback_called
+            streaming_callback_called = True
+
+        # pass streaming_callback to run()
+        component = OpenAIGenerator(api_key=Secret.from_token("test-api-key"))
+        response = component.run("Come on, stream!", streaming_callback=streaming_callback)
+
+        # check we called the streaming callback
+        assert streaming_callback_called
+
+        # check that the component still returns the correct response
+        assert isinstance(response, dict)
+        assert "replies" in response
+        assert isinstance(response["replies"], list)
+        assert len(response["replies"]) == 1
+        assert "Hello" in response["replies"][0]  # see mock_chat_completion_chunk
+
     def test_run_with_params(self, mock_chat_completion):
         component = OpenAIGenerator(
             api_key=Secret.from_token("test-api-key"), generation_kwargs={"max_tokens": 10, "temperature": 0.5}

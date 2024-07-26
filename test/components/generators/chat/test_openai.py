@@ -219,6 +219,27 @@ class TestOpenAIChatGenerator:
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
         assert "Hello" in response["replies"][0].content  # see mock_chat_completion_chunk
 
+    def test_run_with_streaming_callback_in_run_method(self, chat_messages, mock_chat_completion_chunk):
+        streaming_callback_called = False
+
+        def streaming_callback(chunk: StreamingChunk) -> None:
+            nonlocal streaming_callback_called
+            streaming_callback_called = True
+
+        component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
+        response = component.run(chat_messages, streaming_callback=streaming_callback)
+
+        # check we called the streaming callback
+        assert streaming_callback_called
+
+        # check that the component still returns the correct response
+        assert isinstance(response, dict)
+        assert "replies" in response
+        assert isinstance(response["replies"], list)
+        assert len(response["replies"]) == 1
+        assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
+        assert "Hello" in response["replies"][0].content  # see mock_chat_completion_chunk
+
     def test_check_abnormal_completions(self, caplog):
         caplog.set_level(logging.INFO)
         component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
