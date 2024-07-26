@@ -12,7 +12,7 @@ from haystack.components.converters.tika import TikaDocumentConverter
 class TestTikaDocumentConverter:
     @patch("haystack.components.converters.tika.tika_parser.from_buffer")
     def test_run(self, mock_tika_parser):
-        mock_tika_parser.return_value = {"content": "Content of mock source"}
+        mock_tika_parser.return_value = {"content": "<div><p>Content of mock source</p></div>"}
 
         component = TikaDocumentConverter()
         source = ByteStream(data=b"placeholder data")
