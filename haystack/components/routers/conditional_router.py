@@ -205,6 +205,10 @@ class ConditionalRouter:
                     # We now evaluate the `output` expression to determine the route output
                     t_output = self._env.from_string(route["output"])
                     output = t_output.render(**kwargs)
+                    # We suppress the exception in case the output is already a string, otherwise
+                    # we try to evaluate it and would fail.
+                    # This must be done cause the output could be different literal structures.
+                    # This doesn't support any user types.
                     with contextlib.suppress(Exception):
                         output = ast.literal_eval(output)
                     # and return the output as a dictionary under the output_name key

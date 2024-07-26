@@ -103,6 +103,10 @@ class OutputAdapter:
             if isinstance(output_result, jinja2.runtime.Undefined):
                 raise OutputAdaptationException(f"Undefined variable in the template {self.template}; kwargs: {kwargs}")
 
+            # We suppress the exception in case the output is already a string, otherwise
+            # we try to evaluate it and would fail.
+            # This must be done cause the output could be different literal structures.
+            # This doesn't support any user types.
             with contextlib.suppress(Exception):
                 output_result = ast.literal_eval(output_result)
 
