@@ -302,6 +302,7 @@ class TestStructuredLoggingJSONRendering:
         # Use `capfd` to capture the output of the final structlog rendering result
         output = capfd.readouterr().err
         parsed_output = json.loads(output)
+        print(parsed_output)
         assert parsed_output == {
             "event": "An error happened ",
             "level": "error",
@@ -319,11 +320,15 @@ class TestStructuredLoggingJSONRendering:
                             "filename": str(Path.cwd() / "test" / "test_logging.py"),
                             "lineno": ANY,  # otherwise the test breaks if you add a line :-)
                             "name": "test_logging_exceptions_json",
+                            "line": "",
+                            "locals": None,
                         },
                         {
                             "filename": str(Path.cwd() / "test" / "test_logging.py"),
                             "lineno": ANY,  # otherwise the test breaks if you add a line :-)
                             "name": "function_that_raises_and_adds_to_stack_trace",
+                            "line": "",
+                            "locals": None,
                         },
                     ],
                 }
