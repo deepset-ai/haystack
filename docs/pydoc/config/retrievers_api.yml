@@ -6,7 +6,7 @@ loaders:
         "in_memory/bm25_retriever",
         "in_memory/embedding_retriever",
         "filter_retriever",
-        "sentence_window_retrieval",
+        "sentence_window_retriever",
       ]
     ignore_when_discovered: ["__init__"]
 processors:
