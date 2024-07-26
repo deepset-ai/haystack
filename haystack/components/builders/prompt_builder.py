@@ -4,7 +4,8 @@
 
 from typing import Any, Dict, List, Optional, Set
 
-from jinja2 import Template, meta
+from jinja2 import meta
+from jinja2.sandbox import SandboxedEnvironment
 
 from haystack import component, default_to_dict
 
@@ -158,10 +159,12 @@ class PromptBuilder:
         self._variables = variables
         self._required_variables = required_variables
         self.required_variables = required_variables or []
-        self.template = Template(template)
+
+        self._env = SandboxedEnvironment()
+        self.template = self._env.from_string(template)
         if not variables:
             # infere variables from template
-            ast = self.template.environment.parse(template)
+            ast = self._env.parse(template)
             template_variables = meta.find_undeclared_variables(ast)
             variables = list(template_variables)
 
@@ -216,8 +219,8 @@ class PromptBuilder:
         self._validate_variables(set(template_variables_combined.keys()))
 
         compiled_template = self.template
-        if isinstance(template, str):
-            compiled_template = Template(template)
+        if template is not None:
+            compiled_template = self._env.from_string(template)
 
         result = compiled_template.render(template_variables_combined)
         return {"prompt": result}
