@@ -1,4 +1,7 @@
 ---
+upgrade:
+  - |
+    `OutputAdapter` and `ConditionalRouter` can't return users inputs anymore.
 security:
   - |
     Fix issue that could lead to remote code execution when using insecure Jinja template in the following Components:
@@ -9,5 +12,3 @@ security:
     - `ConditionalRouter`
 
     The same issue has been fixed in the `PipelineTemplate` class too.
-
-    This is also a breaking change as we can't support user types as outputs of `OutputAdapter` and `ConditionalRouter` anymore.
