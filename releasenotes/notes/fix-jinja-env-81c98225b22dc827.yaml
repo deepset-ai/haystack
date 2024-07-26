@@ -1,0 +1,11 @@
+---
+security:
+  - |
+    Fix issue that could lead to remote code execution when using insecure Jinja template in the following Components:
+
+    - `PromptBuilder`
+    - `ChatPromptBuilder`
+    - `OutputAdapter`
+    - `ConditionalRouter`
+
+    The same issue has been fixed in the `PipelineTemplate` class too.
