@@ -10,7 +10,7 @@ from haystack.document_stores.types import DocumentStore
 
 
 @component
-class SentenceWindowRetrieval:
+class SentenceWindowRetriever:
     """
     A component that retrieves surrounding documents of a given document from the document store.
 
@@ -24,7 +24,7 @@ class SentenceWindowRetrieval:
     ```python
     from haystack import Document, Pipeline
     from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
-    from haystack.components.retrievers import SentenceWindowRetrieval
+    from haystack.components.retrievers import SentenceWindowRetriever
     from haystack.components.preprocessors import DocumentSplitter
     from haystack.document_stores.in_memory import InMemoryDocumentStore
 
@@ -41,7 +41,7 @@ class SentenceWindowRetrieval:
 
     rag = Pipeline()
     rag.add_component("bm25_retriever", InMemoryBM25Retriever(doc_store, top_k=1))
-    rag.add_component("sentence_window_retriever", SentenceWindowRetrieval(document_store=doc_store, window_size=2))
+    rag.add_component("sentence_window_retriever", SentenceWindowRetriever(document_store=doc_store, window_size=2))
     rag.connect("bm25_retriever", "sentence_window_retriever")
 
     rag.run({'bm25_retriever': {"query":"third"}})
@@ -54,7 +54,7 @@ class SentenceWindowRetrieval:
 
     def __init__(self, document_store: DocumentStore, window_size: int = 3):
         """
-        Creates a new SentenceWindowRetrieval component.
+        Creates a new SentenceWindowRetriever component.
 
         :param document_store: The document store to use for retrieving the surrounding documents.
         :param window_size: The number of surrounding documents to retrieve.
@@ -103,7 +103,7 @@ class SentenceWindowRetrieval:
         return default_to_dict(self, document_store=docstore, window_size=self.window_size)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SentenceWindowRetrieval":
+    def from_dict(cls, data: Dict[str, Any]) -> "SentenceWindowRetriever":
         """
         Deserializes the component from a dictionary.
 

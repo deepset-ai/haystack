@@ -12,7 +12,13 @@ from haystack.document_stores.types import FilterPolicy
 @component
 class InMemoryEmbeddingRetriever:
     """
-    Retrieves documents using vector similarity.
+    Retrieves documents that are most semantically similar to the query.
+
+    Use this retriever with the InMemoryDocumentStore.
+
+    When using this retriever, make sure it has query and document embeddings available.
+    In indexing pipelines, use a DocumentEmbedder to embed documents.
+    In query pipelines, use a TextEmbedder to embed queries and send them to the retriever.
 
     Usage example:
     ```python
@@ -57,17 +63,22 @@ class InMemoryEmbeddingRetriever:
         Create the InMemoryEmbeddingRetriever component.
 
         :param document_store:
-            An instance of InMemoryDocumentStore.
+            An instance of InMemoryDocumentStore where the retriever should search for relevant documents.
         :param filters:
-            A dictionary with filters to narrow down the search space.
+            A dictionary with filters to narrow down the retriever's search space in the document store.
         :param top_k:
             The maximum number of documents to retrieve.
         :param scale_score:
-            Scales the BM25 score to a unit interval in the range of 0 to 1, where 1 means extremely relevant. If set
-            to `False`, uses raw similarity scores.
+            When `True`, scales the score of retrieved documents to a range of 0 to 1, where 1 means extremely relevant.
+            When `False`, uses raw similarity scores.
         :param return_embedding:
-            Whether to return the embedding of the retrieved Documents.
+            When `True`, returns the embedding of the retrieved documents.
+            When `False`, returns just the documents, without their embeddings.
         :param filter_policy: The filter policy to apply during retrieval.
+        Filter policy determines how filters are applied when retrieving documents. You can choose:
+        - `REPLACE` (default): Overrides the initialization filters with the filters specified at runtime.
+        Use this policy to dynamically change filtering for specific queries.
+        - `MERGE`: Combines runtime filters with initialization filters to narrow down the search.
         :raises ValueError:
             If the specified top_k is not > 0.
         """
@@ -146,15 +157,15 @@ class InMemoryEmbeddingRetriever:
         :param query_embedding:
             Embedding of the query.
         :param filters:
-            A dictionary with filters to narrow down the search space.
+            A dictionary with filters to narrow down the search space when retrieving documents.
         :param top_k:
             The maximum number of documents to return.
         :param scale_score:
-            Scales the similarity score to a unit interval in the range of 0 to 1, where 1 means extremely relevant.
-            If set to `False`, uses raw similarity scores. If not specified, the value provided at initialization
-            is used.
+            When `True`, scales the score of retrieved documents to a range of 0 to 1, where 1 means extremely relevant.
+            When `False`, uses raw similarity scores.
         :param return_embedding:
-            Whether to return the embedding of the retrieved Documents.
+            When `True`, returns the embedding of the retrieved documents.
+            When `False`, returns just the documents, without their embeddings.
         :returns:
             The retrieved documents.
 
