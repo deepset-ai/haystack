@@ -18,33 +18,32 @@ with LazyImport("Run 'pip install tika'") as tika_import:
 logger = logging.getLogger(__name__)
 
 
-class TikaXHTMLParser(HTMLParser):
-    # Use the built-in HTML parser with minimum dependencies
+class XHTMLParser(HTMLParser):
+    """
+    Custom parser to extract pages from Tika XHTML content.
+    """
+
     def __init__(self):
-        tika_import.check()
+        super().__init__()
         self.ingest = True
         self.page = ""
         self.pages: List[str] = []
-        super(TikaXHTMLParser, self).__init__()
 
-    def handle_starttag(self, tag, attrs):
-        """Handle Start Tag"""
-        # find page div
-        pagediv = [value for attr, value in attrs if attr == "class" and value == "page"]
-        if tag == "div" and pagediv:
+    def handle_starttag(self, tag: str, attrs: List[tuple]):
+        """Identify the start of a page div."""
+        if tag == "div" and any(attr == "class" and value == "page" for attr, value in attrs):
             self.ingest = True
 
-    def handle_endtag(self, tag):
-        """Handle End Tag"""
-        # close page div, or a single page without page div, save page and open a new page
-        if (tag == "div" or tag == "body") and self.ingest:
+    def handle_endtag(self, tag: str):
+        """Identify the end of a page div."""
+        if self.ingest and tag in ("div", "body"):
             self.ingest = False
             # restore words hyphened to the next line
             self.pages.append(self.page.replace("-\n", ""))
             self.page = ""
 
-    def handle_data(self, data):
-        """Handle Data"""
+    def handle_data(self, data: str):
+        """Populate the page content."""
         if self.ingest:
             self.page += data
 
@@ -117,11 +116,14 @@ class TikaDocumentConverter:
                 logger.warning("Could not read {source}. Skipping it. Error: {error}", source=source, error=e)
                 continue
             try:
-                parsed = tika_parser.from_buffer(
+                # we extract the content as XHTML to preserve the structure of the document as much as possible
+                # this works for PDFs, but does not work for other file types (DOCX)
+                xhtml_content = tika_parser.from_buffer(
                     io.BytesIO(bytestream.data), serverEndpoint=self.tika_url, xmlContent=True
-                )
-                parser = TikaXHTMLParser()
-                parser.feed(parsed["content"])
+                )["content"]
+                xhtml_parser = XHTMLParser()
+                xhtml_parser.feed(xhtml_content)
+                text = "\f".join(xhtml_parser.pages)
             except Exception as conversion_e:
                 logger.warning(
                     "Failed to extract text from {source}. Skipping it. Error: {error}",
@@ -130,16 +132,6 @@ class TikaDocumentConverter:
                 )
                 continue
 
-            # Old Processing Code from Haystack 1.X Tika integration
-            cleaned_pages = []
-            # TODO investigate title of document appearing in the first extracted page
-            for page in parser.pages:
-                lines = page.splitlines()
-                cleaned_lines = list(lines)
-
-                page = "\n".join(cleaned_lines)
-                cleaned_pages.append(page)
-            text = "\f".join(cleaned_pages)
             merged_metadata = {**bytestream.meta, **metadata}
             document = Document(content=text, meta=merged_metadata)
             documents.append(document)

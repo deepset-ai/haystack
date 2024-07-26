@@ -1,5 +1,5 @@
 ---
-fixes:
+enhancements:
   - |
-    Fix Tika not providing `\f` tag for page number tracking by integrating Haystack 1.X integration of Tika logic.
-    It uses Tika parsing to HTML and then process the HTML to insert new page (`\f`) tag.
+    `TikaDocumentConverter` now returns page breaks ("\f") in the output.
+    This only works for PDF files.
