@@ -302,7 +302,6 @@ class TestStructuredLoggingJSONRendering:
         # Use `capfd` to capture the output of the final structlog rendering result
         output = capfd.readouterr().err
         parsed_output = json.loads(output)
-        print(parsed_output)
         assert parsed_output == {
             "event": "An error happened ",
             "level": "error",
