@@ -14,11 +14,11 @@ logger = logging.getLogger(__name__)
 @component
 class AnswerBuilder:
     """
-    Takes a query and the reply from a Generator and turns them into a GeneratedAnswer object.
+    Takes a query and the replies from a Generator and turns them into a `GeneratedAnswer` object.
 
-    AnswerBuilder can parse a reply received from a Generator using custom regular expressions.
+    AnswerBuilder can parse the replies received from a Generator using custom regular expressions.
     Check out the usage example below to see how it works.
-    Optionally, it can also take documents and metadata from the Generator to add to the GeneratedAnswer object.
+    Optionally, it can also take documents and metadata from the Generator to add to the `GeneratedAnswer` object.
     AnswerBuilder works with both non-chat and chat Generators.
 
     ### Usage example
