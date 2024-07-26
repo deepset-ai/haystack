@@ -5,7 +5,8 @@
 import warnings
 from typing import Any, Dict, List, Optional, Set
 
-from jinja2 import Template, meta
+from jinja2 import meta
+from jinja2.sandbox import SandboxedEnvironment
 
 from haystack import component, logging
 from haystack.dataclasses.chat_message import ChatMessage, ChatRole
@@ -177,8 +178,8 @@ class DynamicChatPromptBuilder:
         :raises ValueError:
             If all the required template variables are not provided.
         """
-        template = Template(template_text)
-        ast = template.environment.parse(template_text)
+        env = SandboxedEnvironment()
+        ast = env.parse(template_text)
         required_template_variables = meta.find_undeclared_variables(ast)
         filled_template_vars = required_template_variables.intersection(provided_variables)
         if len(filled_template_vars) != len(required_template_variables):
@@ -187,4 +188,4 @@ class DynamicChatPromptBuilder:
                 f"Required variables: {required_template_variables}. Only the following variables were "
                 f"provided: {provided_variables}. Please provide all the required template variables."
             )
-        return template
+        return env.from_string(template_text)

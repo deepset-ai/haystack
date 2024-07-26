@@ -8,6 +8,8 @@ security:
 
     - `PromptBuilder`
     - `ChatPromptBuilder`
+    - `DynamicPromptBuilder`
+    - `DynamicChatPromptBuilder`
     - `OutputAdapter`
     - `ConditionalRouter`
 
