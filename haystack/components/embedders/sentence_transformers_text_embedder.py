@@ -69,7 +69,9 @@ class SentenceTransformersTextEmbedder:
             If `False`, only Hugging Face verified model architectures are allowed.
             If `True`, custom models and scripts are allowed.
         :param truncate_dim:
-            The dimension to truncate sentence embeddings to. None does no truncation.
+            The dimension to truncate sentence embeddings to. `None` does no truncation.
+            If the model has not been trained with Matryoshka Representation Learning,
+            truncation of embeddings can significantly affect performance.
         """
 
         self.model = model
