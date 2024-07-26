@@ -326,6 +326,6 @@ def apply_filter_policy(
                     runtime_filters, init_filters, logical_operator
                 )
             elif is_logical_filter(init_filters) and is_logical_filter(runtime_filters):
-                return combine_two_comparison_filters(init_filters, runtime_filters, logical_operator)
+                return combine_two_logical_filters(init_filters, runtime_filters)
 
     return runtime_filters or init_filters

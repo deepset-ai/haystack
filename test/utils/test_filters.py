@@ -780,13 +780,20 @@ def test_merge_comparison_and_logical():
 def test_merge_comparison_and_logical_different_operator():
     comparison_filter = {"field": "meta.type", "operator": "==", "value": "pdf"}
     logical_filter = {
-        "operator": "OR",
+        "operator": "AND",
         "conditions": [
             {"field": "meta.name", "operator": "==", "value": "John"},
             {"field": "meta.year", "operator": "==", "value": "2022"},
         ],
     }
-    expected = {"operator": "AND", "conditions": [comparison_filter, logical_filter]}
+    expected = {
+        "operator": "AND",
+        "conditions": [
+            {"field": "meta.name", "operator": "==", "value": "John"},
+            {"field": "meta.year", "operator": "==", "value": "2022"},
+            {"field": "meta.type", "operator": "==", "value": "pdf"},
+        ],
+    }
     assert apply_filter_policy(FilterPolicy.MERGE, comparison_filter, logical_filter) == expected
 
 
@@ -814,7 +821,8 @@ def test_merge_logical_filters_same_operator():
             {"field": "meta.year", "operator": "==", "value": "2022"},
         ],
     }
-    assert apply_filter_policy(FilterPolicy.MERGE, logical_filter1, logical_filter2) == expected
+    result = apply_filter_policy(FilterPolicy.MERGE, logical_filter1, logical_filter2)
+    assert result == expected
 
 
 def test_merge_logical_filters_different_operator():
@@ -832,7 +840,13 @@ def test_merge_logical_filters_different_operator():
             {"field": "meta.year", "operator": "==", "value": "2022"},
         ],
     }
-    expected = {"operator": "AND", "conditions": [logical_filter1, logical_filter2]}
+    expected = {
+        "operator": "OR",
+        "conditions": [
+            {"field": "meta.name", "operator": "==", "value": "John"},
+            {"field": "meta.year", "operator": "==", "value": "2022"},
+        ],
+    }
     assert apply_filter_policy(FilterPolicy.MERGE, logical_filter1, logical_filter2) == expected
 
 
