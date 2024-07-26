@@ -2,10 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import ast
+import contextlib
 from typing import Any, Callable, Dict, List, Optional, Set
 
 from jinja2 import Environment, TemplateSyntaxError, meta
 from jinja2.nativetypes import NativeEnvironment
+from jinja2.sandbox import SandboxedEnvironment
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.utils import deserialize_callable, deserialize_type, serialize_callable, serialize_type
@@ -125,8 +128,8 @@ class ConditionalRouter:
         self.custom_filters = custom_filters or {}
 
         # Create a Jinja native environment to inspect variables in the condition templates
-        env = NativeEnvironment()
-        env.filters.update(self.custom_filters)
+        self._env = SandboxedEnvironment()
+        self._env.filters.update(self.custom_filters)
 
         # Inspect the routes to determine input and output types.
         input_types: Set[str] = set()  # let's just store the name, type will always be Any
@@ -134,7 +137,7 @@ class ConditionalRouter:
 
         for route in routes:
             # extract inputs
-            route_input_names = self._extract_variables(env, [route["output"], route["condition"]])
+            route_input_names = self._extract_variables(self._env, [route["output"], route["condition"]])
             input_types.update(route_input_names)
 
             # extract outputs
@@ -194,16 +197,20 @@ class ConditionalRouter:
             routes.
         """
         # Create a Jinja native environment to evaluate the condition templates as Python expressions
-        env = NativeEnvironment()
-        env.filters.update(self.custom_filters)
-
         for route in self.routes:
             try:
-                t = env.from_string(route["condition"])
-                if t.render(**kwargs):
+                t = self._env.from_string(route["condition"])
+                rendered = t.render(**kwargs)
+                if ast.literal_eval(rendered):
                     # We now evaluate the `output` expression to determine the route output
-                    t_output = env.from_string(route["output"])
+                    t_output = self._env.from_string(route["output"])
                     output = t_output.render(**kwargs)
+                    # We suppress the exception in case the output is already a string, otherwise
+                    # we try to evaluate it and would fail.
+                    # This must be done cause the output could be different literal structures.
+                    # This doesn't support any user types.
+                    with contextlib.suppress(Exception):
+                        output = ast.literal_eval(output)
                     # and return the output as a dictionary under the output_name key
                     return {route["output_name"]: output}
             except Exception as e:
@@ -234,7 +241,7 @@ class ConditionalRouter:
                 if not self._validate_template(env, route[field]):
                     raise ValueError(f"Invalid template for field '{field}': {route[field]}")
 
-    def _extract_variables(self, env: NativeEnvironment, templates: List[str]) -> Set[str]:
+    def _extract_variables(self, env: SandboxedEnvironment, templates: List[str]) -> Set[str]:
         """
         Extracts all variables from a list of Jinja template strings.
 
