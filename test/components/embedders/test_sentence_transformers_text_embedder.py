@@ -217,3 +217,24 @@ class TestSentenceTransformersTextEmbedder:
 
         with pytest.raises(TypeError, match="SentenceTransformersTextEmbedder expects a string as input"):
             embedder.run(text=list_integers_input)
+
+    @pytest.mark.integration
+    def test_run_trunc(self):
+        """
+        sentence-transformers/paraphrase-albert-small-v2 maps sentences & paragraphs to a 768 dimensional dense vector space
+        """
+        checkpoint = "sentence-transformers/paraphrase-albert-small-v2"
+        text = "a nice text to embed"
+
+        embedder_def = SentenceTransformersTextEmbedder(model=checkpoint)
+        embedder_def.warm_up()
+        result_def = embedder_def.run(text=text)
+        embedding_def = result_def["embedding"]
+
+        embedder_trunc = SentenceTransformersTextEmbedder(model=checkpoint, truncate_dim=128)
+        embedder_trunc.warm_up()
+        result_trunc = embedder_trunc.run(text=text)
+        embedding_trunc = result_trunc["embedding"]
+
+        assert len(embedding_def) == 768
+        assert len(embedding_trunc) == 128
