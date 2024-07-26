@@ -76,7 +76,7 @@ class SentenceTransformersDocumentEmbedder:
             If `True`, custom models and scripts are allowed.
         :param truncate_dim:
             The dimension to truncate sentence embeddings to. `None` does no truncation.
-            If the model has not been trained with Matryoshka Representation Learning, 
+            If the model has not been trained with Matryoshka Representation Learning,
             truncation of embeddings can significantly affect performance.
         """
 
