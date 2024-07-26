@@ -22,6 +22,7 @@ class TestSentenceTransformersTextEmbedder:
         assert embedder.progress_bar is True
         assert embedder.normalize_embeddings is False
         assert embedder.trust_remote_code is False
+        assert embedder.truncate_dim is None
 
     def test_init_with_parameters(self):
         embedder = SentenceTransformersTextEmbedder(
@@ -34,6 +35,7 @@ class TestSentenceTransformersTextEmbedder:
             progress_bar=False,
             normalize_embeddings=True,
             trust_remote_code=True,
+            truncate_dim=256,
         )
         assert embedder.model == "model"
         assert embedder.device == ComponentDevice.from_str("cuda:0")
@@ -43,7 +45,8 @@ class TestSentenceTransformersTextEmbedder:
         assert embedder.batch_size == 64
         assert embedder.progress_bar is False
         assert embedder.normalize_embeddings is True
-        assert embedder.trust_remote_code
+        assert embedder.trust_remote_code is True
+        assert embedder.truncate_dim == 256
 
     def test_to_dict(self):
         component = SentenceTransformersTextEmbedder(model="model", device=ComponentDevice.from_str("cpu"))
@@ -60,6 +63,7 @@ class TestSentenceTransformersTextEmbedder:
                 "progress_bar": True,
                 "normalize_embeddings": False,
                 "trust_remote_code": False,
+                "truncate_dim": None,
             },
         }
 
@@ -74,6 +78,7 @@ class TestSentenceTransformersTextEmbedder:
             progress_bar=False,
             normalize_embeddings=True,
             trust_remote_code=True,
+            truncate_dim=256,
         )
         data = component.to_dict()
         assert data == {
@@ -88,6 +93,7 @@ class TestSentenceTransformersTextEmbedder:
                 "progress_bar": False,
                 "normalize_embeddings": True,
                 "trust_remote_code": True,
+                "truncate_dim": 256,
             },
         }
 
@@ -109,6 +115,7 @@ class TestSentenceTransformersTextEmbedder:
                 "progress_bar": True,
                 "normalize_embeddings": False,
                 "trust_remote_code": False,
+                "truncate_dim": None,
             },
         }
         component = SentenceTransformersTextEmbedder.from_dict(data)
@@ -121,6 +128,7 @@ class TestSentenceTransformersTextEmbedder:
         assert component.progress_bar is True
         assert component.normalize_embeddings is False
         assert component.trust_remote_code is False
+        assert component.truncate_dim is None
 
     def test_from_dict_no_default_parameters(self):
         data = {
@@ -137,6 +145,7 @@ class TestSentenceTransformersTextEmbedder:
         assert component.progress_bar is True
         assert component.normalize_embeddings is False
         assert component.trust_remote_code is False
+        assert component.truncate_dim is None
 
     def test_from_dict_none_device(self):
         data = {
@@ -151,6 +160,7 @@ class TestSentenceTransformersTextEmbedder:
                 "progress_bar": True,
                 "normalize_embeddings": False,
                 "trust_remote_code": False,
+                "truncate_dim": 256,
             },
         }
         component = SentenceTransformersTextEmbedder.from_dict(data)
@@ -163,6 +173,7 @@ class TestSentenceTransformersTextEmbedder:
         assert component.progress_bar is True
         assert component.normalize_embeddings is False
         assert component.trust_remote_code is False
+        assert component.truncate_dim == 256
 
     @patch(
         "haystack.components.embedders.sentence_transformers_text_embedder._SentenceTransformersEmbeddingBackendFactory"
@@ -172,7 +183,7 @@ class TestSentenceTransformersTextEmbedder:
         mocked_factory.get_embedding_backend.assert_not_called()
         embedder.warm_up()
         mocked_factory.get_embedding_backend.assert_called_once_with(
-            model="model", device="cpu", auth_token=None, trust_remote_code=False
+            model="model", device="cpu", auth_token=None, trust_remote_code=False, truncate_dim=None
         )
 
     @patch(
@@ -206,3 +217,24 @@ class TestSentenceTransformersTextEmbedder:
 
         with pytest.raises(TypeError, match="SentenceTransformersTextEmbedder expects a string as input"):
             embedder.run(text=list_integers_input)
+
+    @pytest.mark.integration
+    def test_run_trunc(self):
+        """
+        sentence-transformers/paraphrase-albert-small-v2 maps sentences & paragraphs to a 768 dimensional dense vector space
+        """
+        checkpoint = "sentence-transformers/paraphrase-albert-small-v2"
+        text = "a nice text to embed"
+
+        embedder_def = SentenceTransformersTextEmbedder(model=checkpoint)
+        embedder_def.warm_up()
+        result_def = embedder_def.run(text=text)
+        embedding_def = result_def["embedding"]
+
+        embedder_trunc = SentenceTransformersTextEmbedder(model=checkpoint, truncate_dim=128)
+        embedder_trunc.warm_up()
+        result_trunc = embedder_trunc.run(text=text)
+        embedding_trunc = result_trunc["embedding"]
+
+        assert len(embedding_def) == 768
+        assert len(embedding_trunc) == 128

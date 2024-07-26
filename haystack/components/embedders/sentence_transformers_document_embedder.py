@@ -44,6 +44,7 @@ class SentenceTransformersDocumentEmbedder:
         meta_fields_to_embed: Optional[List[str]] = None,
         embedding_separator: str = "\n",
         trust_remote_code: bool = False,
+        truncate_dim: Optional[int] = None,
     ):
         """
         Create a SentenceTransformersDocumentEmbedder component.
@@ -73,6 +74,10 @@ class SentenceTransformersDocumentEmbedder:
         :param trust_remote_code:
             If `False`, only Hugging Face verified model architectures are allowed.
             If `True`, custom models and scripts are allowed.
+        :param truncate_dim:
+            The dimension to truncate sentence embeddings to. `None` does no truncation.
+            If the model has not been trained with Matryoshka Representation Learning,
+            truncation of embeddings can significantly affect performance.
         """
 
         self.model = model
@@ -86,6 +91,7 @@ class SentenceTransformersDocumentEmbedder:
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
         self.trust_remote_code = trust_remote_code
+        self.truncate_dim = truncate_dim
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -113,6 +119,7 @@ class SentenceTransformersDocumentEmbedder:
             meta_fields_to_embed=self.meta_fields_to_embed,
             embedding_separator=self.embedding_separator,
             trust_remote_code=self.trust_remote_code,
+            truncate_dim=self.truncate_dim,
         )
 
     @classmethod
@@ -141,6 +148,7 @@ class SentenceTransformersDocumentEmbedder:
                 device=self.device.to_torch_str(),
                 auth_token=self.token,
                 trust_remote_code=self.trust_remote_code,
+                truncate_dim=self.truncate_dim,
             )
 
     @component.output_types(documents=List[Document])
