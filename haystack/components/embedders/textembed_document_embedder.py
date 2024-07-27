@@ -45,7 +45,7 @@ class TextEmbedDocumentEmbedder:
             base_url (str): The base URL of the embedding service.
             embed_batch_size (int): The batch size for embedding requests.
             timeout (float): Timeout for requests.
-            api_key (Optional[str]): Authentication token for generating it.
+            api_key (Optional[Secret]): Authentication token for generating it.
         """
         self.model_name = model_name
         self.base_url = base_url
