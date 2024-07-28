@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Added a new component `EmptyDocumentRemover` that removes empty documents from a list of documents.
+    Mainly thought for cleaning the document list before running a `DocumentSplitter` as it raises `ValueError` if some document is empty.
