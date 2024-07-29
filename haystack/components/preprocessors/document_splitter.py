@@ -48,7 +48,7 @@ class DocumentSplitter:
         :param split_length: The maximum number of units in each split.
         :param split_overlap: The number of overlapping units for each split.
         :param split_threshold: The minimum number of units per split. If a split has fewer units
-            than the threshold, it's' attached to the previous split.
+            than the threshold, it's attached to the previous split.
         """
 
         self.split_by = split_by
