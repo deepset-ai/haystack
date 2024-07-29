@@ -18,7 +18,7 @@ class SentenceTransformersDocumentEmbedder:
 
     It stores the embeddings in the `embedding` metadata field of each document.
     You can also embed documents' metadata.
-    Use this component in indexing pipelines to embed documents from PreProcessors
+    Use this component in indexing pipelines to embed input documents
     and send them to DocumentWriter to write a into a Document Store.
 
     ### Usage example:
