@@ -43,15 +43,16 @@ class JoinMode(Enum):
 @component
 class DocumentJoiner:
     """
-    A component that joins multiple list of Documents into a single list.
+    Joins multiple lists of documents into a single list.
 
-    It supports different joins modes:
-    - concatenate: Keeps the highest scored Document in case of duplicates.
-    - merge: Merge a calculate a weighted sum of the scores of duplicate Documents.
-    - reciprocal_rank_fusion: Merge and assign scores based on reciprocal rank fusion.
-    - distribution_based_rank_fusion: Merge and assign scores based on scores distribution in each retriever
+    It supports different join modes:
+    - concatenate: Keeps the highest-scored document in case of duplicates.
+    - merge: Calculates a weighted sum of scores for duplicates and merges them.
+    - reciprocal_rank_fusion: Merges and assigns scores based on reciprocal rank fusion.
+    - distribution_based_rank_fusion: Merges and assigns scores based on scores distribution in each Retriever.
 
-    Usage example:
+    ### Usage example:
+
     ```python
     document_store = InMemoryDocumentStore()
     p = Pipeline()
@@ -78,22 +79,25 @@ class DocumentJoiner:
         sort_by_score: bool = True,
     ):
         """
-        Create an DocumentJoiner component.
+        Creates a DocumentJoiner component.
 
         :param join_mode:
             Specifies the join mode to use. Available modes:
-            - `concatenate`
-            - `merge`
-            - `reciprocal_rank_fusion`
-            - `distribution_based_rank_fusion`
+            - `concatenate`: Keeps the highest-scored document in case of duplicates.
+            - `merge`: Calculates a weighted sum of scores for duplicates and merges them.
+            - `reciprocal_rank_fusion`: Merges and assigns scores based on reciprocal rank fusion.
+            - `distribution_based_rank_fusion`: Merges and assigns scores based on scores
+            distribution in each Retriever.
         :param weights:
-            Weight for each list of Documents received, must have the same length as the number of inputs.
-            If `join_mode` is `concatenate` or `distribution_based_rank_fusion` this parameter is ignored.
+            Assign importance to each list of documents to influence how they're joined.
+            This parameter is ignored for
+            `concatenate` or `distribution_based_rank_fusion` join modes.
+            Weight for each list of documents must match the number of inputs.
         :param top_k:
-            The maximum number of Documents to return.
+            The maximum number of documents to return.
         :param sort_by_score:
-            If True sorts the Documents by score in descending order.
-            If a Document has no score, it is handled as if its score is -infinity.
+            If `True`, sorts the documents by score in descending order.
+            If a document has no score, it is handled as if its score is -infinity.
         """
         if isinstance(join_mode, str):
             join_mode = JoinMode.from_str(join_mode)
@@ -115,9 +119,9 @@ class DocumentJoiner:
         Joins multiple lists of Documents into a single list depending on the `join_mode` parameter.
 
         :param documents:
-            List of list of Documents to be merged.
+            List of list of documents to be merged.
         :param top_k:
-            The maximum number of Documents to return. Overrides the instance's `top_k` if provided.
+            The maximum number of documents to return. Overrides the instance's `top_k` if provided.
 
         :returns:
             A dictionary with the following keys:
