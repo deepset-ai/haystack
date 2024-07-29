@@ -23,6 +23,7 @@ class DocumentCleaner:
     page headers and footers (in this order).
 
     ### Usage example:
+    
     ```python
     from haystack import Document
     from haystack.components.preprocessors import DocumentCleaner
