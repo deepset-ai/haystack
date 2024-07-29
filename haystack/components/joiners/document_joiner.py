@@ -90,7 +90,7 @@ class DocumentJoiner:
             distribution in each retriever.
         :param weights:
             Assign importance to each list of documents to influence how they're joined.
-            This parameter is used in join modes that combine scores and ignored for
+            This parameter is ignored for
             `concatenate` or `distribution_based_rank_fusion` join modes.
             Weight for each list of documents must match the number of inputs.
         :param top_k:
