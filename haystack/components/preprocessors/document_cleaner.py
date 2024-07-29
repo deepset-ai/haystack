@@ -68,6 +68,8 @@ class DocumentCleaner:
             Note: This will run before any pattern matching or removal.
         """
 
+        self._validate_params(unicode_normalization=unicode_normalization)
+
         self.remove_empty_lines = remove_empty_lines
         self.remove_extra_whitespaces = remove_extra_whitespaces
         self.remove_repeated_substrings = remove_repeated_substrings
@@ -76,6 +78,16 @@ class DocumentCleaner:
         self.keep_id = keep_id
         self.unicode_normalization = unicode_normalization
         self.ascii_only = ascii_only
+
+    def _validate_params(self, unicode_normalization: Optional[str]):
+        """
+        Validate the parameters of the DocumentCleaner.
+
+        :param unicode_normalization: Unicode normalization form to apply to the text.
+        :raises ValueError: if the parameters are not valid.
+        """
+        if unicode_normalization and unicode_normalization not in ["NFC", "NFKC", "NFD", "NFKD"]:
+            raise ValueError("unicode_normalization must be one of 'NFC', 'NFKC', 'NFD', 'NFKD'.")
 
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document]):
