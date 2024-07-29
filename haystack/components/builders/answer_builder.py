@@ -14,9 +14,9 @@ logger = logging.getLogger(__name__)
 @component
 class AnswerBuilder:
     """
-    Takes a query and the replies from a Generator and turns them into a `GeneratedAnswer` object.
+    Converts a query and Generator replies into a `GeneratedAnswer` object.
 
-    AnswerBuilder can parse the replies received from a Generator using custom regular expressions.
+    AnswerBuilder parses Generator replies using custom regular expressions.
     Check out the usage example below to see how it works.
     Optionally, it can also take documents and metadata from the Generator to add to the `GeneratedAnswer` object.
     AnswerBuilder works with both non-chat and chat Generators.
@@ -36,10 +36,10 @@ class AnswerBuilder:
         Creates an instance of the AnswerBuilder component.
 
         :param pattern:
-            The regular expression pattern used extract the answer text from the Generator.
+            The regular expression pattern to extract the answer text from the Generator.
             If not specified, the entire response is used as the answer.
             The regular expression can have one capture group at most.
-            If a capture group is present, the text matched by the capture group
+            If present, the capture group text
             is used as the answer. If no capture group is present, the whole match is used as the answer.
             Examples:
                 `[^\\n]+$` finds "this is an answer" in a string "this is an argument.\\nthis is an answer".
@@ -77,15 +77,15 @@ class AnswerBuilder:
         :param meta:
             The metadata returned by the Generator. If not specified, the generated answer will contain no metadata.
         :param documents:
-            The documents used as the Generator inputs. If `documents` are specified, they are added to
+            The documents used as the Generator inputs. If specified, they are added to
             the`GeneratedAnswer` objects.
             If both `documents` and `reference_pattern` are specified, the documents referenced in the
             Generator output are extracted from the input documents and added to the `GeneratedAnswer` objects.
         :param pattern:
-            The regular expression pattern used extract the answer text from the Generator.
+            The regular expression pattern to extract the answer text from the Generator.
             If not specified, the entire response is used as the answer.
             The regular expression can have one capture group at most.
-            If a capture group is present, the text matched by the capture group
+            If present, the capture group text 
             is used as the answer. If no capture group is present, the whole match is used as the answer.
                 Examples:
                     `[^\\n]+$` finds "this is an answer" in a string "this is an argument.\\nthis is an answer".
