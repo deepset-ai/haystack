@@ -195,10 +195,10 @@ class TestDocumentCleaner:
         em Space"""
 
         expected_text = """\
-
+        \n\
         Comment ca va
         A
-
+         \n\
         em Space"""
 
         cleaner = DocumentCleaner(ascii_only=True, remove_extra_whitespaces=False, remove_empty_lines=False)
