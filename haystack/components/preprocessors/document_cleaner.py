@@ -6,7 +6,8 @@ import re
 from copy import deepcopy
 from functools import partial, reduce
 from itertools import chain
-from typing import Generator, List, Optional, Set
+from typing import Generator, List, Literal, Optional, Set
+from unicodedata import normalize
 
 from haystack import Document, component, logging
 
@@ -45,6 +46,8 @@ class DocumentCleaner:
         keep_id: bool = False,
         remove_substrings: Optional[List[str]] = None,
         remove_regex: Optional[str] = None,
+        unicode_normalization: Optional[Literal["NFC", "NFKC", "NFD", "NFKD"]] = None,
+        ascii_only: bool = False,
     ):
         """
         Initialize DocumentCleaner.
@@ -57,6 +60,12 @@ class DocumentCleaner:
         :param remove_substrings: List of substrings to remove from the text.
         :param remove_regex: Regex to match and replace substrings by "".
         :param keep_id: If `True`, keeps the IDs of the original documents.
+        :param unicode_normalization: Unicode normalization form to apply to the text.
+            Note: This will run before any other steps.
+        :param ascii_only: Whether to convert the text to ASCII only.
+            Will remove accents from characters and replace them with ASCII characters.
+            Other non-ASCII characters will be removed.
+            Note: This will run before any pattern matching or removal.
         """
 
         self.remove_empty_lines = remove_empty_lines
@@ -65,6 +74,8 @@ class DocumentCleaner:
         self.remove_substrings = remove_substrings
         self.remove_regex = remove_regex
         self.keep_id = keep_id
+        self.unicode_normalization = unicode_normalization
+        self.ascii_only = ascii_only
 
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document]):
@@ -93,6 +104,10 @@ class DocumentCleaner:
                 continue
             text = doc.content
 
+            if self.unicode_normalization:
+                text = self._normalize_unicode(text, self.unicode_normalization)
+            if self.ascii_only:
+                text = self._ascii_only(text)
             if self.remove_extra_whitespaces:
                 text = self._remove_extra_whitespaces(text)
             if self.remove_empty_lines:
@@ -107,6 +122,32 @@ class DocumentCleaner:
             cleaned_docs.append(Document(content=text, meta=deepcopy(doc.meta), id=doc.id if self.keep_id else ""))
 
         return {"documents": cleaned_docs}
+
+    def _normalize_unicode(self, text: str, form: Literal["NFC", "NFKC", "NFD", "NFKD"]) -> str:
+        """
+        Normalize the unicode of the text.
+
+        :param text: Text to normalize.
+        :param form: Unicode normalization form to apply to the text.
+            Options: "NFC", "NFKC", "NFD", "NFKD".
+        :returns: The normalized text.
+        """
+        return normalize(form, text)
+
+    def _ascii_only(self, text: str) -> str:
+        """
+        Convert the text to ASCII only.
+
+        Will remove accents from characters and replace them with ASCII characters.
+        Other non-ASCII characters will be removed.
+
+        :param text: Text to convert to ASCII only.
+        :returns: The text in ASCII only.
+        """
+
+        # First normalize the text to NFKD to separate the characters and their diacritics
+        # Then encode it to ASCII and ignore any characters that can't be encoded
+        return self._normalize_unicode(text, "NFKD").encode("ascii", "ignore").decode("utf-8")
 
     def _remove_empty_lines(self, text: str) -> str:
         """
