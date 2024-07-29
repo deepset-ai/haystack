@@ -13,13 +13,14 @@ from haystack import Document, component
 @component
 class DocumentSplitter:
     """
-    Splits a list of text documents into a list of text documents with shorter texts.
+    Splits long documents into smaller chunks.
 
-    Splitting documents with long texts is a common preprocessing step during indexing.
-    This allows Embedders to create significant semantic representations
-    and avoids exceeding the maximum context length of language models.
+    This is a common preprocessing step during indexing.
+    It helps Embedders create meaningful semantic representations
+    and prevents exceeding language model context limits.
 
-    Usage example:
+    ### Usage example
+
     ```python
     from haystack import Document
     from haystack.components.preprocessors import DocumentSplitter
@@ -39,14 +40,15 @@ class DocumentSplitter:
         split_threshold: int = 0,
     ):
         """
-        Initialize the DocumentSplitter.
+        Initialize DocumentSplitter.
 
-        :param split_by: The unit by which the document should be split. Choose from "word" for splitting by " ",
-            "sentence" for splitting by ".", "page" for splitting by "\\f" or "passage" for splitting by "\\n\\n".
+        :param split_by: The unit for splitting your documents. Choose from `word` for splitting by spaces (" "),
+            `sentence` for splitting by periods ("."), `page` for splitting by form feed ("\\f"),
+            or `passage` for splitting by double line breaks ("\\n\\n").
         :param split_length: The maximum number of units in each split.
-        :param split_overlap: The number of units that each split should overlap.
-        :param split_threshold: The minimum number of units that the split should have. If the split has fewer units
-            than the threshold, it will be attached to the previous split.
+        :param split_overlap: The number of overlapping units for each split.
+        :param split_threshold: The minimum number of units per split. If a split has fewer units
+            than the threshold, it's attached to the previous split.
         """
 
         self.split_by = split_by
@@ -71,10 +73,10 @@ class DocumentSplitter:
         :param documents: The documents to split.
 
         :returns: A dictionary with the following key:
-            - `documents`: List of documents with the split texts. A metadata field "source_id" is added to each
-            document to keep track of the original document that was split. Another metadata field "page_number"
-            is added to each number to keep track of the page it belonged to in the original document. Other metadata
-            are copied from the original document.
+            - `documents`: List of documents with the split texts. Each document includes:
+                - A metadata field `source_id` to track the original document.
+                - A metadata field `page_number` to track the original page number.
+                - All other metadata copied from the original document.
 
         :raises TypeError: if the input is not a list of Documents.
         :raises ValueError: if the content of a document is None.
