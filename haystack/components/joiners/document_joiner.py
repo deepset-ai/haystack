@@ -49,7 +49,7 @@ class DocumentJoiner:
     - concatenate: Keeps the highest-scored document in case of duplicates.
     - merge: Calculates a weighted sum of scores for duplicates and merges them.
     - reciprocal_rank_fusion: Merges and assigns scores based on reciprocal rank fusion.
-    - distribution_based_rank_fusion: Merges and assigns scores based on scores distribution in each retriever.
+    - distribution_based_rank_fusion: Merges and assigns scores based on scores distribution in each Retriever.
 
     ### Usage example:
     
