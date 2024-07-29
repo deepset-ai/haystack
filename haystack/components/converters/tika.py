@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import io
+from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
@@ -15,6 +16,36 @@ with LazyImport("Run 'pip install tika'") as tika_import:
     from tika import parser as tika_parser
 
 logger = logging.getLogger(__name__)
+
+
+class XHTMLParser(HTMLParser):
+    """
+    Custom parser to extract pages from Tika XHTML content.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.ingest = True
+        self.page = ""
+        self.pages: List[str] = []
+
+    def handle_starttag(self, tag: str, attrs: List[tuple]):
+        """Identify the start of a page div."""
+        if tag == "div" and any(attr == "class" and value == "page" for attr, value in attrs):
+            self.ingest = True
+
+    def handle_endtag(self, tag: str):
+        """Identify the end of a page div."""
+        if self.ingest and tag in ("div", "body"):
+            self.ingest = False
+            # restore words hyphened to the next line
+            self.pages.append(self.page.replace("-\n", ""))
+            self.page = ""
+
+    def handle_data(self, data: str):
+        """Populate the page content."""
+        if self.ingest:
+            self.page += data
 
 
 @component
@@ -85,7 +116,14 @@ class TikaDocumentConverter:
                 logger.warning("Could not read {source}. Skipping it. Error: {error}", source=source, error=e)
                 continue
             try:
-                text = tika_parser.from_buffer(io.BytesIO(bytestream.data), serverEndpoint=self.tika_url)["content"]
+                # we extract the content as XHTML to preserve the structure of the document as much as possible
+                # this works for PDFs, but does not work for other file types (DOCX)
+                xhtml_content = tika_parser.from_buffer(
+                    io.BytesIO(bytestream.data), serverEndpoint=self.tika_url, xmlContent=True
+                )["content"]
+                xhtml_parser = XHTMLParser()
+                xhtml_parser.feed(xhtml_content)
+                text = "\f".join(xhtml_parser.pages)
             except Exception as conversion_e:
                 logger.warning(
                     "Failed to extract text from {source}. Skipping it. Error: {error}",

@@ -2,23 +2,23 @@ import pytest
 
 from haystack import Document, DeserializationError, Pipeline
 from haystack.components.retrievers import InMemoryBM25Retriever
-from haystack.components.retrievers.sentence_window_retrieval import SentenceWindowRetrieval
+from haystack.components.retrievers.sentence_window_retriever import SentenceWindowRetriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.preprocessors import DocumentSplitter
 
 
-class TestSentenceWindowRetrieval:
+class TestSentenceWindowRetriever:
     def test_init_default(self):
-        retrieval = SentenceWindowRetrieval(InMemoryDocumentStore())
-        assert retrieval.window_size == 3
+        retriever = SentenceWindowRetriever(InMemoryDocumentStore())
+        assert retriever.window_size == 3
 
     def test_init_with_parameters(self):
-        retrieval = SentenceWindowRetrieval(InMemoryDocumentStore(), window_size=5)
-        assert retrieval.window_size == 5
+        retriever = SentenceWindowRetriever(InMemoryDocumentStore(), window_size=5)
+        assert retriever.window_size == 5
 
     def test_init_with_invalid_window_size_parameter(self):
         with pytest.raises(ValueError):
-            SentenceWindowRetrieval(InMemoryDocumentStore(), window_size=-2)
+            SentenceWindowRetriever(InMemoryDocumentStore(), window_size=-2)
 
     def test_merge_documents(self):
         docs = [
@@ -50,15 +50,15 @@ class TestSentenceWindowRetrieval:
                 "_split_overlap": [{"doc_id": "doc_1", "range": (23, 52)}],
             },
         ]
-        merged_text = SentenceWindowRetrieval.merge_documents_text([Document.from_dict(doc) for doc in docs])
+        merged_text = SentenceWindowRetriever.merge_documents_text([Document.from_dict(doc) for doc in docs])
         expected = "This is a text with some words. There is a second sentence. And there is also a third sentence"
         assert merged_text == expected
 
     def test_to_dict(self):
-        window_retrieval = SentenceWindowRetrieval(InMemoryDocumentStore())
-        data = window_retrieval.to_dict()
+        window_retriever = SentenceWindowRetriever(InMemoryDocumentStore())
+        data = window_retriever.to_dict()
 
-        assert data["type"] == "haystack.components.retrievers.sentence_window_retrieval.SentenceWindowRetrieval"
+        assert data["type"] == "haystack.components.retrievers.sentence_window_retriever.SentenceWindowRetriever"
         assert data["init_parameters"]["window_size"] == 3
         assert (
             data["init_parameters"]["document_store"]["type"]
@@ -67,7 +67,7 @@ class TestSentenceWindowRetrieval:
 
     def test_from_dict(self):
         data = {
-            "type": "haystack.components.retrievers.sentence_window_retrieval.SentenceWindowRetrieval",
+            "type": "haystack.components.retrievers.sentence_window_retriever.SentenceWindowRetriever",
             "init_parameters": {
                 "document_store": {
                     "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore",
@@ -76,27 +76,27 @@ class TestSentenceWindowRetrieval:
                 "window_size": 5,
             },
         }
-        component = SentenceWindowRetrieval.from_dict(data)
+        component = SentenceWindowRetriever.from_dict(data)
         assert isinstance(component.document_store, InMemoryDocumentStore)
         assert component.window_size == 5
 
     def test_from_dict_without_docstore(self):
-        data = {"type": "SentenceWindowRetrieval", "init_parameters": {}}
+        data = {"type": "SentenceWindowRetriever", "init_parameters": {}}
         with pytest.raises(DeserializationError, match="Missing 'document_store' in serialization data"):
-            SentenceWindowRetrieval.from_dict(data)
+            SentenceWindowRetriever.from_dict(data)
 
     def test_from_dict_without_docstore_type(self):
-        data = {"type": "SentenceWindowRetrieval", "init_parameters": {"document_store": {"init_parameters": {}}}}
+        data = {"type": "SentenceWindowRetriever", "init_parameters": {"document_store": {"init_parameters": {}}}}
         with pytest.raises(DeserializationError, match="Missing 'type' in document store's serialization data"):
-            SentenceWindowRetrieval.from_dict(data)
+            SentenceWindowRetriever.from_dict(data)
 
     def test_from_dict_non_existing_docstore(self):
         data = {
-            "type": "SentenceWindowRetrieval",
+            "type": "SentenceWindowRetriever",
             "init_parameters": {"document_store": {"type": "Nonexisting.Docstore", "init_parameters": {}}},
         }
         with pytest.raises(DeserializationError):
-            SentenceWindowRetrieval.from_dict(data)
+            SentenceWindowRetriever.from_dict(data)
 
     def test_document_without_split_id(self):
         docs = [
@@ -104,7 +104,7 @@ class TestSentenceWindowRetrieval:
             Document(content="some words. There is a second sentence. And there is ", meta={"id": "doc_1"}),
         ]
         with pytest.raises(ValueError):
-            retriever = SentenceWindowRetrieval(document_store=InMemoryDocumentStore(), window_size=3)
+            retriever = SentenceWindowRetriever(document_store=InMemoryDocumentStore(), window_size=3)
             retriever.run(retrieved_documents=docs)
 
     def test_document_without_source_id(self):
@@ -115,7 +115,7 @@ class TestSentenceWindowRetrieval:
             ),
         ]
         with pytest.raises(ValueError):
-            retriever = SentenceWindowRetrieval(document_store=InMemoryDocumentStore(), window_size=3)
+            retriever = SentenceWindowRetriever(document_store=InMemoryDocumentStore(), window_size=3)
             retriever.run(retrieved_documents=docs)
 
     @pytest.mark.integration
@@ -132,7 +132,7 @@ class TestSentenceWindowRetrieval:
 
         rag = Pipeline()
         rag.add_component("bm25_retriever", InMemoryBM25Retriever(doc_store, top_k=1))
-        rag.add_component("sentence_window_retriever", SentenceWindowRetrieval(document_store=doc_store, window_size=2))
+        rag.add_component("sentence_window_retriever", SentenceWindowRetriever(document_store=doc_store, window_size=2))
         rag.connect("bm25_retriever", "sentence_window_retriever")
         result = rag.run({"bm25_retriever": {"query": "third"}})
 
