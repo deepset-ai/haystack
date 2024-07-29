@@ -19,7 +19,8 @@ class DocumentSplitter:
     It helps Embedders create meaningful semantic representations
     and prevents exceeding language model context limits.
 
-    Usage example:
+    ### Usage example
+    
     ```python
     from haystack import Document
     from haystack.components.preprocessors import DocumentSplitter
