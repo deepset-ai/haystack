@@ -87,7 +87,7 @@ class DocumentJoiner:
             - `merge`: Calculates a weighted sum of scores for duplicates and merges them.
             - `reciprocal_rank_fusion`: Merges and assigns scores based on reciprocal rank fusion.
             - `distribution_based_rank_fusion`: Merges and assigns scores based on scores
-            distribution in each retriever.
+            distribution in each Retriever.
         :param weights:
             Assign importance to each list of documents to influence how they're joined.
             This parameter is ignored for
