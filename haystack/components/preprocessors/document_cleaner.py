@@ -23,7 +23,7 @@ class DocumentCleaner:
     page headers and footers (in this order).
 
     ### Usage example:
-    
+
     ```python
     from haystack import Document
     from haystack.components.preprocessors import DocumentCleaner
@@ -47,7 +47,7 @@ class DocumentCleaner:
         remove_regex: Optional[str] = None,
     ):
         """
-        Initialize the DocumentCleaner.
+        Initialize DocumentCleaner.
 
         :param remove_empty_lines: If `True`, removes empty lines.
         :param remove_extra_whitespaces: If `True`, removes extra whitespaces.
