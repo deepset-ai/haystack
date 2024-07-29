@@ -22,7 +22,7 @@ class SentenceTransformersDocumentEmbedder:
     and send them to DocumentWriter to write a into a Document Store.
 
     ### Usage example:
-    
+
     ```python
     from haystack import Document
     from haystack.components.embedders import SentenceTransformersDocumentEmbedder
@@ -162,7 +162,7 @@ class SentenceTransformersDocumentEmbedder:
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document]):
         """
-        Embed a list of Documents.
+        Embed a list of documents.
 
         :param documents:
             Documents to embed.
