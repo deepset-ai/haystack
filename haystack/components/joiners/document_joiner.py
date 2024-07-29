@@ -43,7 +43,7 @@ class JoinMode(Enum):
 @component
 class DocumentJoiner:
     """
-    Joins multiple list of documents into a single list.
+    Joins multiple lists of documents into a single list.
 
     It supports different joins modes:
     - concatenate: Keeps the highest-scored document in case of duplicates.
