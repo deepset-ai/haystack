@@ -45,14 +45,14 @@ class DocumentJoiner:
     """
     Joins multiple lists of documents into a single list.
 
-    It supports different joins modes:
+    It supports different join modes:
     - concatenate: Keeps the highest-scored document in case of duplicates.
     - merge: Calculates a weighted sum of scores for duplicates and merges them.
     - reciprocal_rank_fusion: Merges and assigns scores based on reciprocal rank fusion.
     - distribution_based_rank_fusion: Merges and assigns scores based on scores distribution in each Retriever.
 
     ### Usage example:
-    
+
     ```python
     document_store = InMemoryDocumentStore()
     p = Pipeline()
