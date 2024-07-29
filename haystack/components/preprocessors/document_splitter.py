@@ -20,7 +20,7 @@ class DocumentSplitter:
     and prevents exceeding language model context limits.
 
     ### Usage example
-    
+
     ```python
     from haystack import Document
     from haystack.components.preprocessors import DocumentSplitter
@@ -40,7 +40,7 @@ class DocumentSplitter:
         split_threshold: int = 0,
     ):
         """
-        Initialize the DocumentSplitter.
+        Initialize DocumentSplitter.
 
         :param split_by: The unit for splitting your documents. Choose from `word` for splitting by spaces (" "),
             `sentence` for splitting by periods ("."), `page` for splitting by form feed ("\\f"),
