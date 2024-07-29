@@ -19,13 +19,9 @@ class FileTypeRouter:
     """
     Categorizes files or byte streams by their MIME types, helping in context-based routing.
 
-    FileTypeRouter sorts data sources (file paths or byte streams) by MIME types.
-    This helps route files based on their content type.
     FileTypeRouter supports both exact MIME type matching and regex patterns.
 
     For file paths, MIME types come from extensions, while byte streams use metadata.
-    This helps classify files and data streams for specific tasks.
-
     You can use regex patterns in the `mime_types` parameter to set broad categories
     (such as 'audio/*' or 'text/*') or specific types.
     MIME types without regex patterns are treated as exact matches.
