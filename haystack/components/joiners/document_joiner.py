@@ -52,6 +52,7 @@ class DocumentJoiner:
     - distribution_based_rank_fusion: Merges and assigns scores based on scores distribution in each retriever.
 
     ### Usage example:
+    
     ```python
     document_store = InMemoryDocumentStore()
     p = Pipeline()
