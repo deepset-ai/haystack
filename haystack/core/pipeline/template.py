@@ -6,7 +6,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
-from jinja2 import Environment, PackageLoader, TemplateSyntaxError, meta
+from jinja2 import PackageLoader, TemplateSyntaxError, meta
+from jinja2.sandbox import SandboxedEnvironment
 
 TEMPLATE_FILE_EXTENSION = ".yaml.jinja2"
 TEMPLATE_HOME_DIR = Path(__file__).resolve().parent / "predefined"
@@ -74,7 +75,7 @@ class PipelineTemplate:
 
         :param template_content: The raw template source to use in the template.
         """
-        env = Environment(
+        env = SandboxedEnvironment(
             loader=PackageLoader("haystack.core.pipeline", "predefined"), trim_blocks=True, lstrip_blocks=True
         )
         try:
