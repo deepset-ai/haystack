@@ -85,7 +85,7 @@ class AnswerBuilder:
             The regular expression pattern to extract the answer text from the Generator.
             If not specified, the entire response is used as the answer.
             The regular expression can have one capture group at most.
-            If present, the capture group text 
+            If present, the capture group text
             is used as the answer. If no capture group is present, the whole match is used as the answer.
                 Examples:
                     `[^\\n]+$` finds "this is an answer" in a string "this is an argument.\\nthis is an answer".
