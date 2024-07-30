@@ -58,12 +58,14 @@ class DefaultConverter:
 @component
 class PyPDFToDocument:
     """
-    Converts PDF files to Documents.
+    Converts PDF files to documents your pipeline can query.
 
-    Uses `pypdf` compatible converters to convert PDF files to Documents.
-    A default text extraction converter is used if one is not provided.
+    This component uses converters compatible with the PyPDF library.
+    If no converter is provided, uses a default text extraction converter.
+    You can attach metadata to the resulting documents.
 
-    Usage example:
+    ### Usage example
+
     ```python
     from haystack.components.converters.pypdf import PyPDFToDocument
 
@@ -117,21 +119,20 @@ class PyPDFToDocument:
         meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
     ):
         """
-        Converts PDF files to Documents.
+        Converts PDF files to documents.
 
         :param sources:
-            List of file paths or ByteStream objects.
+            List of file paths or ByteStream objects to convert.
         :param meta:
-            Optional metadata to attach to the Documents.
-            This value can be either a list of dictionaries or a single dictionary.
-            If it's a single dictionary, its content is added to the metadata of all produced Documents.
-            If it's a list, the length of the list must match the number of sources, because the two lists will
-            be zipped.
-            If `sources` contains ByteStream objects, their `meta` will be added to the output Documents.
+            Optional metadata to attach to the documents.
+            This value can be a list of dictionaries or a single dictionary.
+            If it's a single dictionary, its content is added to the metadata of all produced documents.
+            If it's a list, its length must match the number of sources, as they are zipped together.
+            For ByteStream objects, their `meta` is added to the output documents.
 
         :returns:
             A dictionary with the following keys:
-            - `documents`: Created Documents
+            - `documents`: A list of converted documents.
         """
         documents = []
         meta_list = normalize_metadata(meta, sources_count=len(sources))
