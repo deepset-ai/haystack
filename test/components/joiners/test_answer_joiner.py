@@ -1,13 +1,18 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-import logging
-import re
+
+from typing import List
 
 import pytest
 
-from haystack import Document, GeneratedAnswer
+from haystack import Document, GeneratedAnswer, Answer
 from haystack.components.joiners.answer_joiner import AnswerJoiner, JoinMode
+
+
+# custom join function that returns a single Answer, just for serde testing
+def single_answer_function(answers: List[List[Answer]]) -> List[Answer]:
+    return [GeneratedAnswer(data="custom", query="custom", documents=[], meta={})]
 
 
 class TestAnswerJoiner:
@@ -26,16 +31,25 @@ class TestAnswerJoiner:
         data = joiner.to_dict()
         assert data == {
             "type": "haystack.components.joiners.answer_joiner.AnswerJoiner",
-            "init_parameters": {"join_mode": "concatenate", "top_k": 10},
+            "init_parameters": {"join_mode": "concatenate", "custom_join_function": None, "top_k": 10},
         }
 
-    def test_to_dict_custom_parameters(self):
-        joiner = AnswerJoiner("concatenate", top_k=5)
+    def test_to_from_dict_with_custom_function(self):
+        joiner = AnswerJoiner("concatenate", custom_join_function=single_answer_function, top_k=5)
         data = joiner.to_dict()
         assert data == {
             "type": "haystack.components.joiners.answer_joiner.AnswerJoiner",
-            "init_parameters": {"join_mode": "concatenate", "top_k": 5},
+            "init_parameters": {
+                "join_mode": "concatenate",
+                "custom_join_function": "joiners.test_answer_joiner.single_answer_function",
+                "top_k": 5,
+            },
         }
+
+        deserialized_joiner = AnswerJoiner.from_dict(data)
+        assert deserialized_joiner.join_mode == JoinMode.CONCATENATE
+        assert deserialized_joiner.top_k == 5
+        assert deserialized_joiner.custom_join_function == single_answer_function
 
     def test_from_dict(self):
         data = {"type": "haystack.components.joiners.answer_joiner.AnswerJoiner", "init_parameters": {}}

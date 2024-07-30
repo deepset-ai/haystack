@@ -9,13 +9,14 @@ from typing import Any, Callable, Dict, List, Optional, Union
 
 from haystack import Answer, component, default_from_dict, default_to_dict, logging
 from haystack.core.component.types import Variadic
+from haystack.utils import deserialize_callable, serialize_callable
 
 logger = logging.getLogger(__name__)
 
 
 class JoinMode(Enum):
     """
-    Enum for join mode.
+    Enum for AnswerJoiner join modes.
     """
 
     CONCATENATE = "concatenate"
@@ -39,13 +40,12 @@ class JoinMode(Enum):
 @component
 class AnswerJoiner:
     """
-    A component that joins multiple list of Answers into a single list.
+    The `AnswerJoiner` is useful for merging of multiple lists of `Answer` objects into a single unified list.
 
-    It supports different joins modes:
-    - concatenate: Keeps the highest scored Answer in case of duplicates.
-
-    It also supports a custom join function that can be provided at initialization or at runtime.
-
+    This component is useful in scenarios where you have answers from different generators and need to combine
+    them into a single list. One option of merging is to use predefined join modes, such as `CONCATENATE`, which
+    keeps the highest scored answer in case of duplicates. Another option is to provide a custom join function
+    that takes a list of lists of `Answer` objects and returns a single list of `Answer` objects.
     """
 
     def __init__(
@@ -77,6 +77,9 @@ class AnswerJoiner:
 
         if custom_join_function and not callable(custom_join_function):
             raise ValueError("The provided custom_join_function is not callable.")
+
+        # we'll need to serialize the custom_join_function
+        self.custom_join_function = custom_join_function
 
         # Assign the join function: prioritize custom function if provided
         self.join_mode_function: Callable[[List[List[Answer]]], List[Answer]] = (
@@ -148,7 +151,12 @@ class AnswerJoiner:
         :returns:
             Dictionary with serialized data.
         """
-        return default_to_dict(self, join_mode=str(self.join_mode), top_k=self.top_k)
+        return default_to_dict(
+            self,
+            join_mode=str(self.join_mode),
+            custom_join_function=serialize_callable(self.custom_join_function) if self.custom_join_function else None,
+            top_k=self.top_k,
+        )
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "AnswerJoiner":
@@ -160,4 +168,8 @@ class AnswerJoiner:
         :returns:
             The deserialized component.
         """
+        init_params = data.get("init_parameters", {})
+        custom_join_function = init_params.get("custom_join_function")
+        if custom_join_function:
+            data["init_parameters"]["custom_join_function"] = deserialize_callable(custom_join_function)
         return default_from_dict(cls, data)
