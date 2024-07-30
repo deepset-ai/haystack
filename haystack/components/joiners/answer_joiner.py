@@ -7,9 +7,12 @@ from enum import Enum
 from math import inf
 from typing import Any, Callable, Dict, List, Optional, Union
 
-from haystack import Answer, component, default_from_dict, default_to_dict, logging
+from haystack import ExtractedAnswer, GeneratedAnswer, component, default_from_dict, default_to_dict, logging
 from haystack.core.component.types import Variadic
+from haystack.dataclasses.answer import ExtractedTableAnswer
 from haystack.utils import deserialize_callable, serialize_callable
+
+AnswerType = Union[GeneratedAnswer, ExtractedTableAnswer, ExtractedAnswer]
 
 logger = logging.getLogger(__name__)
 
@@ -46,12 +49,49 @@ class AnswerJoiner:
     them into a single list. One option of merging is to use predefined join modes, such as `CONCATENATE`, which
     keeps the highest scored answer in case of duplicates. Another option is to provide a custom join function
     that takes a list of lists of `Answer` objects and returns a single list of `Answer` objects.
+
+    For example, let's say you want to merge answers from two different generators:
+
+    ```python
+        from haystack.components.builders import AnswerBuilder
+        from haystack.components.joiners import AnswerJoiner
+
+        from haystack.core.pipeline import Pipeline
+
+        from haystack.components.generators.chat import OpenAIChatGenerator
+        from haystack.dataclasses import ChatMessage
+
+
+        query = "What's Natural Language Processing?"
+        messages = [ChatMessage.from_system("You are a helpful, respectful and honest assistant. Be super concise."),
+                    ChatMessage.from_user(query)]
+
+        pipe = Pipeline()
+        pipe.add_component("gpt-4o", OpenAIChatGenerator(model="gpt-4o"))
+        pipe.add_component("llama", OpenAIChatGenerator(model="gpt-3.5-turbo"))
+        pipe.add_component("aba", AnswerBuilder())
+        pipe.add_component("abb", AnswerBuilder())
+        pipe.add_component("joiner", AnswerJoiner())
+
+        pipe.connect("gpt-4o.replies", "aba")
+        pipe.connect("llama.replies", "abb")
+        pipe.connect("aba.answers", "joiner")
+        pipe.connect("abb.answers", "joiner")
+
+        results = pipe.run(data={"gpt-4o": {"messages": messages},
+                                 "llama": {"messages": messages},
+                                 "aba": {"query": query},
+                                 "abb": {"query": query}})
+
+        assert "joiner" in results
+        assert len(results["joiner"]["answers"]) == 2
+    ```
     """
 
     def __init__(
         self,
         join_mode: Union[str, JoinMode] = JoinMode.CONCATENATE,
-        custom_join_function: Optional[Callable[[List[List[Answer]]], List[Answer]]] = None,
+        custom_join_function: Optional[Callable[[List[List[AnswerType]]], List[AnswerType]]] = None,
         top_k: Optional[int] = None,
     ):
         """
@@ -69,7 +109,7 @@ class AnswerJoiner:
         """
         if isinstance(join_mode, str):
             join_mode = JoinMode.from_str(join_mode)
-        join_mode_functions: Dict[JoinMode, Callable[[List[List[Answer]]], List[Answer]]] = {
+        join_mode_functions: Dict[JoinMode, Callable[[List[List[AnswerType]]], List[AnswerType]]] = {
             JoinMode.CONCATENATE: self._concatenate
         }
         if join_mode not in join_mode_functions:
@@ -82,18 +122,18 @@ class AnswerJoiner:
         self.custom_join_function = custom_join_function
 
         # Assign the join function: prioritize custom function if provided
-        self.join_mode_function: Callable[[List[List[Answer]]], List[Answer]] = (
+        self.join_mode_function: Callable[[List[List[AnswerType]]], List[AnswerType]] = (
             custom_join_function if custom_join_function else join_mode_functions[join_mode]
         )
 
         self.join_mode = join_mode
         self.top_k = top_k or 10
 
-    @component.output_types(answers=List[Answer])
+    @component.output_types(answers=List[AnswerType])
     def run(
         self,
-        answers: Variadic[List[Answer]],
-        custom_join_function: Optional[Callable[[List[List[Answer]]], List[Answer]]] = None,
+        answers: Variadic[List[AnswerType]],
+        custom_join_function: Optional[Callable[[List[List[AnswerType]]], List[AnswerType]]] = None,
         top_k: Optional[int] = None,
     ):
         """
@@ -120,14 +160,14 @@ class AnswerJoiner:
         # Use custom join function if provided at runtime, else use the init join function
         join_function = custom_join_function or self.join_mode_function
 
-        output_answers: List[Answer] = join_function(answers_list)
+        output_answers: List[AnswerType] = join_function(answers_list)
 
         effective_top_k = top_k if top_k is not None else self.top_k
         output_answers = output_answers[:effective_top_k]
 
         return {"answers": output_answers}
 
-    def _concatenate(self, answer_lists: List[List[Answer]]) -> List[Answer]:
+    def _concatenate(self, answer_lists: List[List[AnswerType]]) -> List[AnswerType]:
         """
         Concatenate multiple lists of Answers, flattening them into a single list and sorting by score.
 

@@ -1,13 +1,18 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-
+import os
 from typing import List
 
 import pytest
 
-from haystack import Document, GeneratedAnswer, Answer
+from haystack.components.builders import AnswerBuilder
+from haystack.utils import Secret
+
+from haystack import Document, GeneratedAnswer, Answer, Pipeline
+from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.joiners.answer_joiner import AnswerJoiner, JoinMode
+from haystack.dataclasses import ChatMessage
 
 
 # custom join function that returns a single Answer, just for serde testing
@@ -90,3 +95,36 @@ class TestAnswerJoiner:
         unsupported_mode = "unsupported_mode"
         with pytest.raises(ValueError):
             AnswerJoiner(join_mode=unsupported_mode)
+
+    @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY", ""), reason="Needs OPENAI_API_KEY to run this test.")
+    @pytest.mark.integration
+    def test_with_pipeline(self):
+        query = "What's Natural Language Processing?"
+        messages = [
+            ChatMessage.from_system("You are a helpful, respectful and honest assistant. Be super concise."),
+            ChatMessage.from_user(query),
+        ]
+
+        pipe = Pipeline()
+        pipe.add_component("gpt-4o", OpenAIChatGenerator(model="gpt-4o"))
+        pipe.add_component("llama", OpenAIChatGenerator(model="gpt-3.5-turbo"))
+        pipe.add_component("aba", AnswerBuilder())
+        pipe.add_component("abb", AnswerBuilder())
+        pipe.add_component("joiner", AnswerJoiner())
+
+        pipe.connect("gpt-4o.replies", "aba")
+        pipe.connect("llama.replies", "abb")
+        pipe.connect("aba.answers", "joiner")
+        pipe.connect("abb.answers", "joiner")
+
+        results = pipe.run(
+            data={
+                "gpt-4o": {"messages": messages},
+                "llama": {"messages": messages},
+                "aba": {"query": query},
+                "abb": {"query": query},
+            }
+        )
+
+        assert "joiner" in results
+        assert len(results["joiner"]["answers"]) == 2
