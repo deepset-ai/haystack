@@ -191,7 +191,7 @@ class OpenAIChatGenerator:
         :param generation_kwargs: Additional keyword arguments for text generation. These parameters will
                                   override the parameters passed during component initialization.
                                   For details on OpenAI API parameters, see
-                                  [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat).
+                                  [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat/create).
 
         :returns:
             A list containing the generated responses as ChatMessage instances.
