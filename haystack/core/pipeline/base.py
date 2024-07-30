@@ -927,21 +927,23 @@ class PipelineBase:
             pair = (receiver_name, receiver)
 
             is_greedy = getattr(receiver, "__haystack_is_greedy__", False)
-            if receiver_socket.is_variadic and is_greedy:
-                # If the receiver is greedy, we can run it as soon as possible.
-                # First we remove it from the status lists it's in if it's there or we risk running it multiple times.
-                if pair in run_queue:
-                    run_queue.remove(pair)
-                if pair in waiting_queue:
-                    waiting_queue.remove(pair)
-                run_queue.append(pair)
-
-            if receiver_socket.is_variadic and not is_greedy and pair not in waiting_queue:
-                # If the receiver Component has a variadic input that is not greedy
-                # we put it in the waiting queue.
-                # This make sure that we don't run it earlier than necessary and we can collect
-                # as many inputs as we can before running it.
-                waiting_queue.append(pair)
+            if receiver_socket.is_variadic:
+                if is_greedy:
+                    # If the receiver is greedy, we can run it as soon as possible.
+                    # First we remove it from the status lists it's in if it's there or
+                    # we risk running it multiple times.
+                    if pair in run_queue:
+                        run_queue.remove(pair)
+                    if pair in waiting_queue:
+                        waiting_queue.remove(pair)
+                    run_queue.append(pair)
+                else:
+                    # If the receiver Component has a variadic input that is not greedy
+                    # we put it in the waiting queue.
+                    # This make sure that we don't run it earlier than necessary and we can collect
+                    # as many inputs as we can before running it.
+                    if pair not in waiting_queue:
+                        waiting_queue.append(pair)
 
             if pair not in waiting_queue and pair not in run_queue:
                 # Queue up the Component that received this input to run, only if it's not already waiting
