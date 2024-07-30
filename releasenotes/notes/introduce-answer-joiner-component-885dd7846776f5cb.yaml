@@ -1,0 +1,4 @@
+---
+features:
+ - |
+   Introduced a new AnswerJoiner component that allows joining multiple lists of Answers into a single list using various join modes, with a default mode of concatenation.
