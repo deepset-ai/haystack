@@ -61,7 +61,7 @@ class TransformersSimilarityRanker:
         Creates an instance of TransformersSimilarityRanker.
 
         :param model:
-            The name or local path of a pre-trained cross-encoder model.
+            The ranking model. Pass a local path or the Hugging Face model name of a cross-encoder model.
         :param device:
             Overrides the default device to load the model on.
         :param token:
@@ -70,10 +70,10 @@ class TransformersSimilarityRanker:
             The maximum number of documents to return per query.
         :param query_prefix:
             A string to add at the beginning of the query text before ranking.
-            You can use it to prepend the text with an instruction, as required by some reranking models, such as `bge`.
+            Use it to prepend the text with an instruction, as required by reranking models like `bge`.
         :param document_prefix:
             A string to add at the beginning of each document before ranking. You can use it to prepend the document
-            with an instruction, as required by some embedding models, such as `bge`.
+            with an instruction, as required by embedding models like `bge`.
         :param meta_fields_to_embed:
             List of metadata fields to embed with the document.
         :param embedding_separator:
@@ -82,10 +82,10 @@ class TransformersSimilarityRanker:
             If `True`, scales the raw logit predictions using a Sigmoid activation function.
             If `False`, disables scaling of the raw logit predictions.
         :param calibration_factor:
-            You can use this factor to calibrate probabilities with `sigmoid(logits * calibration_factor)`.
+            Use this factor to calibrate probabilities with `sigmoid(logits * calibration_factor)`.
             Used only if `scale_score` is `True`.
         :param score_threshold:
-            Use it to return documents only with a score above this threshold.
+            Use it to return documents with a score above this threshold only.
         :param model_kwargs:
             Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
             when loading the model. Refer to specific model documentation for available kwargs.
@@ -204,12 +204,12 @@ class TransformersSimilarityRanker:
         :param documents:
             A list of documents to be ranked.
         :param top_k:
-            The maximum number of documents the Ranker will return.
+            The maximum number of documents to return.
         :param scale_score:
             If `True`, scales the raw logit predictions using a Sigmoid activation function.
             If `False`, disables scaling of the raw logit predictions.
         :param calibration_factor:
-            You can use this factor to calibrate probabilities with `sigmoid(logits * calibration_factor)`.
+            Use this factor to calibrate probabilities with `sigmoid(logits * calibration_factor)`.
             Used only if `scale_score` is `True`.
         :param score_threshold:
             Use it to return documents only with a score above this threshold.
