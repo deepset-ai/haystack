@@ -70,7 +70,7 @@ class OpenAITextEmbedder:
         :param api_base_url:
             Overrides default base URL for all HTTP requests.
         :param organization:
-            Your Organization ID. See OpenAI's
+            Your organization ID. See OpenAI's
             [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization)
             for more information.
         :param prefix:
