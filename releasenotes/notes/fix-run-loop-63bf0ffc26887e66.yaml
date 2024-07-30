@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fix a bug in `Pipeline.run()` that would cause it to get stuck in an infinite loop and never return.
+
+    This was caused by Components waiting forever for their inputs when parts of the Pipeline graph are skipped
+    cause of a "decision" Component not returning outputs for that side of the Pipeline.
