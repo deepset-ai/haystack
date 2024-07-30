@@ -936,6 +936,13 @@ class PipelineBase:
                     waiting_queue.remove(pair)
                 run_queue.append(pair)
 
+            if receiver_socket.is_variadic and not is_greedy and pair not in waiting_queue:
+                # If the receiver Component has a variadic input that is not greedy
+                # we put it in the waiting queue.
+                # This make sure that we don't run it earlier than necessary and we can collect
+                # as many inputs as we can before running it.
+                waiting_queue.append(pair)
+
             if pair not in waiting_queue and pair not in run_queue:
                 # Queue up the Component that received this input to run, only if it's not already waiting
                 # for input or already ready to run.
@@ -1027,11 +1034,14 @@ class PipelineBase:
         # The loop detection will be handled later on.
         return name, comp
 
-    def _find_components_that_received_no_input(
+    def _find_components_that_will_receive_no_input(
         self, component_name: str, component_result: Dict[str, Any]
     ) -> Set[Tuple[str, Component]]:
         """
         Find all the Components that are connected to component_name and didn't receive any input from it.
+
+        This includes the descendants of the Components that didn't receive any input from component_name.
+        That is necessary to avoid getting stuck into infinite loops waiting for inputs that will never arrive.
 
         :param component_name: Name of the Component that created the output
         :param component_result: Output of the Component
@@ -1045,6 +1055,13 @@ class PipelineBase:
             for receiver in socket.receivers:
                 receiver_instance: Component = self.graph.nodes[receiver]["instance"]
                 components.add((receiver, receiver_instance))
+                # Get the descendants too. When we remove a Component that received no input
+                # it's extremely likely that its descendants will receive no input as well.
+                # This is fine even if the Pipeline will merge back into a single Component
+                # at a certain point. The merging Component will be put back into the run
+                # queue at a later stage.
+                components |= {(d, self.graph.nodes[d]["instance"]) for d in networkx.descendants(self.graph, receiver)}
+
         return components
 
     def _is_stuck_in_a_loop(self, waiting_queue: List[Tuple[str, Component]]) -> bool:
