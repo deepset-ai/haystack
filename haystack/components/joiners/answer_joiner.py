@@ -44,9 +44,16 @@ class AnswerJoiner:
     It supports different joins modes:
     - concatenate: Keeps the highest scored Answer in case of duplicates.
 
+    It also supports a custom join function that can be provided at initialization or at runtime.
+
     """
 
-    def __init__(self, join_mode: Union[str, JoinMode] = JoinMode.CONCATENATE, top_k: Optional[int] = None):
+    def __init__(
+        self,
+        join_mode: Union[str, JoinMode] = JoinMode.CONCATENATE,
+        custom_join_function: Optional[Callable[[List[List[Answer]]], List[Answer]]] = None,
+        top_k: Optional[int] = None,
+    ):
         """
         Create an AnswerJoiner component.
 
@@ -54,6 +61,9 @@ class AnswerJoiner:
             Specifies the join mode to use. Available modes:
             - `concatenate`
             Defaults to `concatenate`.
+        :param custom_join_function:
+            A custom function to join multiple lists of Answers into a single list. If provided, it
+            takes precedence over the `join_mode` parameter.
         :param top_k:
             The maximum number of Answers to return. Defaults to 10 if not specified.
         """
@@ -65,18 +75,33 @@ class AnswerJoiner:
         if join_mode not in join_mode_functions:
             raise ValueError(f"Join mode '{join_mode}' is not supported.")
 
-        self.join_mode_function = join_mode_functions[join_mode]
+        if custom_join_function and not callable(custom_join_function):
+            raise ValueError("The provided custom_join_function is not callable.")
+
+        # Assign the join function: prioritize custom function if provided
+        self.join_mode_function: Callable[[List[List[Answer]]], List[Answer]] = (
+            custom_join_function if custom_join_function else join_mode_functions[join_mode]
+        )
 
         self.join_mode = join_mode
         self.top_k = top_k or 10
 
     @component.output_types(answers=List[Answer])
-    def run(self, answers: Variadic[List[Answer]], top_k: Optional[int] = None):
+    def run(
+        self,
+        answers: Variadic[List[Answer]],
+        custom_join_function: Optional[Callable[[List[List[Answer]]], List[Answer]]] = None,
+        top_k: Optional[int] = None,
+    ):
         """
         Joins multiple lists of Answers into a single list depending on the `join_mode` parameter.
 
         :param answers:
             Nested list of Answers to be merged.
+        :param custom_join_function:
+            A custom function to join lists of Answers. Overrides the default behavior if provided.
+            The function should accept a list of lists of Answers and return a single list of Answers.
+
         :param top_k:
             The maximum number of Answers to return. Overrides the instance's `top_k` if provided.
 
@@ -84,8 +109,15 @@ class AnswerJoiner:
             A dictionary with the following keys:
             - `answers`: Merged list of Answers
         """
-        answers = list(answers)
-        output_answers: List[Answer] = self.join_mode_function(answers)
+        answers_list = list(answers)
+
+        if custom_join_function and not callable(custom_join_function):
+            raise ValueError("The provided custom_join_function is not callable.")
+
+        # Use custom join function if provided at runtime, else use the init join function
+        join_function = custom_join_function or self.join_mode_function
+
+        output_answers: List[Answer] = join_function(answers_list)
 
         effective_top_k = top_k if top_k is not None else self.top_k
         output_answers = output_answers[:effective_top_k]
@@ -102,7 +134,7 @@ class AnswerJoiner:
         # flatten
         flattened_answers = list(itertools.chain.from_iterable(answer_lists))
 
-        # sort in descending order
+        # sort in descending order by score if available
         sorted_answers = sorted(
             flattened_answers, key=lambda answer: answer.score if hasattr(answer, "score") else -inf, reverse=True
         )
