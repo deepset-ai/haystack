@@ -63,7 +63,7 @@ class TransformersSimilarityRanker:
         :param model:
             The ranking model. Pass a local path or the Hugging Face model name of a cross-encoder model.
         :param device:
-            Overrides the default device to load the model on.
+            The device on which the model is loaded. If `None`, overrides the default device.
         :param token:
             The API token to download private models from Hugging Face.
         :param top_k:
