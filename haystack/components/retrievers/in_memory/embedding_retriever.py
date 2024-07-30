@@ -20,7 +20,7 @@ class InMemoryEmbeddingRetriever:
     In indexing pipelines, use a DocumentEmbedder to embed documents.
     In query pipelines, use a TextEmbedder to embed queries and send them to the retriever.
 
-    Usage example:
+    ### Usage example
     ```python
     from haystack import Document
     from haystack.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
