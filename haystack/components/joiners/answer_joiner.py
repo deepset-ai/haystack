@@ -62,9 +62,10 @@ class AnswerJoiner:
         join_mode_functions: Dict[JoinMode, Callable[[List[List[Answer]]], List[Answer]]] = {
             JoinMode.CONCATENATE: self._concatenate
         }
-        self.join_mode_function = join_mode_functions.get(join_mode)
-        if not self.join_mode_function:
+        if join_mode not in join_mode_functions:
             raise ValueError(f"Join mode '{join_mode}' is not supported.")
+
+        self.join_mode_function = join_mode_functions[join_mode]
 
         self.join_mode = join_mode
         self.top_k = top_k or 10
