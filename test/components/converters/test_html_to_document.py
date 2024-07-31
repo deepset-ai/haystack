@@ -5,6 +5,7 @@ import logging
 from pathlib import Path
 
 import pytest
+from unittest.mock import patch
 
 from haystack.components.converters import HTMLToDocument
 from haystack.dataclasses import ByteStream
@@ -161,21 +162,23 @@ class TestHTMLToDocument:
         assert new_converter.extraction_kwargs == converter.extraction_kwargs
 
     def test_run_difficult_html(self, test_files_path):
-        # boilerpy3's DefaultExtractor fails to extract text from this HTML file
-
         converter = HTMLToDocument()
         result = converter.run(sources=[Path(test_files_path / "html" / "paul_graham_superlinear.html")])
 
         assert len(result["documents"]) == 1
         assert "Superlinear" in result["documents"][0].content
 
-    def test_run_with_extraction_kwargs(self, test_files_path):
+    @patch("haystack.components.converters.html.extract")
+    def test_run_with_extraction_kwargs(self, mock_extract, test_files_path):
         sources = [test_files_path / "html" / "what_is_haystack.html"]
 
         converter = HTMLToDocument()
+        converter.run(sources=sources)
+        assert mock_extract.call_count == 1
+        assert "favor_precision" not in mock_extract.call_args[1]
+
         precise_converter = HTMLToDocument(extraction_kwargs={"favor_precision": True})
-
-        doc = converter.run(sources=sources)["documents"][0]
-        precise_doc = precise_converter.run(sources=sources)["documents"][0]
-
-        assert len(doc.content) > len(precise_doc.content)
+        mock_extract.reset_mock()
+        precise_converter.run(sources=sources)
+        assert mock_extract.call_count == 1
+        assert mock_extract.call_args[1]["favor_precision"] is True
