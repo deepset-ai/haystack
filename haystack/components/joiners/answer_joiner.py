@@ -82,8 +82,6 @@ class AnswerJoiner:
                                  "aba": {"query": query},
                                  "abb": {"query": query}})
 
-        assert "joiner" in results
-        assert len(results["joiner"]["answers"]) == 2
     ```
     """
 
