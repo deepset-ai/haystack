@@ -9,7 +9,7 @@ from haystack.components.routers import ConditionalRouter
 from haystack.components.builders import PromptBuilder, AnswerBuilder
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.components.joiners import BranchJoiner
+from haystack.components.joiners import BranchJoiner, DocumentJoiner
 from haystack.testing.sample_components import (
     Accumulate,
     AddFixedValue,
@@ -1487,5 +1487,95 @@ def pipeline_that_has_multiple_components_with_only_default_inputs_and_are_added
                     "llm",
                 ],
             )
+        ],
+    )
+
+
+@given("a pipeline that is linear with conditional branching and multiple joins", target_fixture="pipeline_data")
+def that_is_linear_with_conditional_branching_and_multiple_joins():
+    pipeline = Pipeline()
+
+    @component
+    class FakeRouter:
+        @component.output_types(LEGIT=str, INJECTION=str)
+        def run(self, query: str):
+            if "injection" in query:
+                return {"INJECTION": query}
+            return {"LEGIT": query}
+
+    @component
+    class FakeEmbedder:
+        @component.output_types(embeddings=List[float])
+        def run(self, text: str):
+            return {"embeddings": [1.0, 2.0, 3.0]}
+
+    @component
+    class FakeRanker:
+        @component.output_types(documents=List[Document])
+        def run(self, query: str, documents: List[Document]):
+            return {"documents": documents}
+
+    @component
+    class FakeRetriever:
+        @component.output_types(documents=List[Document])
+        def run(self, query: str):
+            if "injection" in query:
+                return {"documents": []}
+            return {"documents": [Document(content="This is a document")]}
+
+    @component
+    class FakeEmbeddingRetriever:
+        @component.output_types(documents=List[Document])
+        def run(self, query_embedding: List[float]):
+            return {"documents": [Document(content="This is another document")]}
+
+    pipeline.add_component(name="router", instance=FakeRouter())
+    pipeline.add_component(name="text_embedder", instance=FakeEmbedder())
+    pipeline.add_component(name="retriever", instance=FakeEmbeddingRetriever())
+    pipeline.add_component(name="emptyretriever", instance=FakeRetriever())
+    pipeline.add_component(name="joinerfinal", instance=DocumentJoiner())
+    pipeline.add_component(name="joinerhybrid", instance=DocumentJoiner())
+    pipeline.add_component(name="ranker", instance=FakeRanker())
+    pipeline.add_component(name="bm25retriever", instance=FakeRetriever())
+
+    pipeline.connect("router.INJECTION", "emptyretriever.query")
+    pipeline.connect("router.LEGIT", "text_embedder.text")
+    pipeline.connect("text_embedder", "retriever.query_embedding")
+    pipeline.connect("router.LEGIT", "ranker.query")
+    pipeline.connect("router.LEGIT", "bm25retriever.query")
+    pipeline.connect("bm25retriever", "joinerhybrid.documents")
+    pipeline.connect("retriever", "joinerhybrid.documents")
+    pipeline.connect("joinerhybrid.documents", "ranker.documents")
+    pipeline.connect("ranker", "joinerfinal.documents")
+    pipeline.connect("emptyretriever", "joinerfinal.documents")
+
+    return (
+        pipeline,
+        [
+            PipelineRunData(
+                inputs={"router": {"query": "I'm a legit question"}},
+                expected_outputs={
+                    "joinerfinal": {
+                        "documents": [
+                            Document(content="This is a document"),
+                            Document(content="This is another document"),
+                        ]
+                    }
+                },
+                expected_run_order=[
+                    "router",
+                    "text_embedder",
+                    "bm25retriever",
+                    "retriever",
+                    "joinerhybrid",
+                    "ranker",
+                    "joinerfinal",
+                ],
+            ),
+            PipelineRunData(
+                inputs={"router": {"query": "I'm a nasty prompt injection"}},
+                expected_outputs={"joinerfinal": {"documents": []}},
+                expected_run_order=["router", "emptyretriever", "joinerfinal"],
+            ),
         ],
     )

@@ -22,11 +22,12 @@ with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'") a
 @component
 class TransformersSimilarityRanker:
     """
-    Ranks Documents based on their similarity to the query.
+    Ranks documents based on their semantic similarity to the query.
 
-    It uses a pre-trained cross-encoder model (from the Hugging Face Hub) to embed the query and the Documents.
+    It uses a pre-trained cross-encoder model from Hugging Face to embed the query and the documents.
 
-    Usage example:
+    ### Usage example
+
     ```python
     from haystack import Document
     from haystack.components.rankers import TransformersSimilarityRanker
@@ -60,34 +61,34 @@ class TransformersSimilarityRanker:
         Creates an instance of TransformersSimilarityRanker.
 
         :param model:
-            The name or path of a pre-trained cross-encoder model from the Hugging Face Hub.
+            The ranking model. Pass a local path or the Hugging Face model name of a cross-encoder model.
         :param device:
-            The device on which the model is loaded. If `None`, the default device is automatically selected.
+            The device on which the model is loaded. If `None`, overrides the default device.
         :param token:
-            The API token used to download private models from Hugging Face.
+            The API token to download private models from Hugging Face.
         :param top_k:
-            The maximum number of Documents to return per query.
+            The maximum number of documents to return per query.
         :param query_prefix:
-            A string to add to the beginning of the query text before ranking.
-            Can be used to prepend the text with an instruction, as required by some reranking models, such as bge.
+            A string to add at the beginning of the query text before ranking.
+            Use it to prepend the text with an instruction, as required by reranking models like `bge`.
         :param document_prefix:
-            A string to add to the beginning of each Document text before ranking. Can be used to prepend the text with
-            an instruction, as required by some embedding models, such as bge.
+            A string to add at the beginning of each document before ranking. You can use it to prepend the document
+            with an instruction, as required by embedding models like `bge`.
         :param meta_fields_to_embed:
-            List of meta fields that should be embedded along with the Document content.
+            List of metadata fields to embed with the document.
         :param embedding_separator:
-            Separator used to concatenate the meta fields to the Document content.
+            Separator to concatenate metadata fields to the document.
         :param scale_score:
-            Whether the raw logit predictions will be scaled using a Sigmoid activation function.
-            Set this to False if you do not want any scaling of the raw logit predictions.
+            If `True`, scales the raw logit predictions using a Sigmoid activation function.
+            If `False`, disables scaling of the raw logit predictions.
         :param calibration_factor:
-            Factor used for calibrating probabilities calculated by `sigmoid(logits * calibration_factor)`.
-            This is only used if `scale_score` is set to True.
+            Use this factor to calibrate probabilities with `sigmoid(logits * calibration_factor)`.
+            Used only if `scale_score` is `True`.
         :param score_threshold:
-            If provided only returns documents with a score above this threshold.
-        :param model_kwargs: Additional keyword arguments passed to `AutoModelForSequenceClassification.from_pretrained`
-            when loading the model specified in `model`. For details on what kwargs you can pass,
-            see the model's documentation.
+            Use it to return documents with a score above this threshold only.
+        :param model_kwargs:
+            Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
+            when loading the model. Refer to specific model documentation for available kwargs.
 
         :raises ValueError:
             If `top_k` is not > 0.
@@ -196,25 +197,25 @@ class TransformersSimilarityRanker:
         score_threshold: Optional[float] = None,
     ):
         """
-        Returns a list of Documents ranked by their similarity to the given query.
+        Returns a list of documents ranked by their similarity to the given query.
 
         :param query:
-            Query string.
+            The input query to compare the documents to.
         :param documents:
-            List of Documents.
+            A list of documents to be ranked.
         :param top_k:
-            The maximum number of Documents you want the Ranker to return.
+            The maximum number of documents to return.
         :param scale_score:
-            Whether the raw logit predictions will be scaled using a Sigmoid activation function.
-            Set this to False if you do not want any scaling of the raw logit predictions.
+            If `True`, scales the raw logit predictions using a Sigmoid activation function.
+            If `False`, disables scaling of the raw logit predictions.
         :param calibration_factor:
-            Factor used for calibrating probabilities calculated by
-            `sigmoid(logits * calibration_factor)`. This is only used if `scale_score` is set to True.
+            Use this factor to calibrate probabilities with `sigmoid(logits * calibration_factor)`.
+            Used only if `scale_score` is `True`.
         :param score_threshold:
-            If provided only returns documents with a score above this threshold.
+            Use it to return documents only with a score above this threshold.
         :returns:
             A dictionary with the following keys:
-            - `documents`: List of Documents most similar to the given query in descending order of similarity.
+            - `documents`: A list of documents closest to the query, sorted from most similar to least similar.
 
         :raises ValueError:
             If `top_k` is not > 0.

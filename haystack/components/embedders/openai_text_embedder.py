@@ -17,9 +17,12 @@ OPENAI_MAX_RETRIES = int(os.environ.get("OPENAI_MAX_RETRIES", 5))
 @component
 class OpenAITextEmbedder:
     """
-    A component for embedding strings using OpenAI models.
+    Embeds strings using OpenAI models.
 
-    Usage example:
+    You can use it to embed user query and send it to an embedding Retriever.
+
+    ### Usage example
+
     ```python
     from haystack.components.embedders import OpenAITextEmbedder
 
@@ -48,34 +51,38 @@ class OpenAITextEmbedder:
         max_retries: Optional[int] = None,
     ):
         """
-        Create an OpenAITextEmbedder component.
+        Creates an OpenAITextEmbedder component.
 
-        By setting the 'OPENAI_TIMEOUT' and 'OPENAI_MAX_RETRIES' you can change the timeout and max_retries parameters
+        Before initializing the component, you can set the 'OPENAI_TIMEOUT' and 'OPENAI_MAX_RETRIES'
+        environment variables to override the `timeout` and `max_retries` parameters respectively
         in the OpenAI client.
 
         :param api_key:
             The OpenAI API key.
+            You can set it with an environment variable `OPENAI_API_KEY`, or pass with this parameter
+            during initialization.
         :param model:
-            The name of the model to use.
+            The name of the model to use for calculating embeddings.
+            The default model is `text-embedding-ada-002`.
         :param dimensions:
-            The number of dimensions the resulting output embeddings should have. Only supported in `text-embedding-3` a
-            nd later models.
+            The number of dimensions of the resulting embeddings. Only `text-embedding-3` and
+            later models support this parameter.
         :param api_base_url:
-            Overrides default base url for all HTTP requests.
+            Overrides default base URL for all HTTP requests.
         :param organization:
-            The Organization ID. See OpenAI's
+            Your organization ID. See OpenAI's
             [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization)
             for more information.
         :param prefix:
-            A string to add at the beginning of each text.
+            A string to add at the beginning of each text to embed.
         :param suffix:
-            A string to add at the end of each text.
+            A string to add at the end of each text to embed.
         :param timeout:
-            Timeout for OpenAI Client calls, if not set it is inferred from the `OPENAI_TIMEOUT` environment variable
-            or set to 30.
+            Timeout for OpenAI client calls. If not set, it defaults to either the
+            `OPENAI_TIMEOUT` environment variable, or 30 seconds.
         :param max_retries:
-            Maximum retries to stablish contact with OpenAI if it returns an internal error, if not set it is inferred
-            from the `OPENAI_MAX_RETRIES` environment variable or set to 5.
+            Maximum number of retries to contact OpenAI after an internal error.
+            If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
         """
         self.model = model
         self.dimensions = dimensions
@@ -138,7 +145,7 @@ class OpenAITextEmbedder:
     @component.output_types(embedding=List[float], meta=Dict[str, Any])
     def run(self, text: str):
         """
-        Embed a single string.
+        Embeds a single string.
 
         :param text:
             Text to embed.

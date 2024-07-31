@@ -245,7 +245,7 @@ class Pipeline(PipelineBase):
                     # This happens when a component was put in the waiting list but we reached it from another edge.
                     _dequeue_waiting_component((name, comp), waiting_queue)
 
-                    for pair in self._find_components_that_received_no_input(name, res):
+                    for pair in self._find_components_that_will_receive_no_input(name, res):
                         _dequeue_component(pair, run_queue, waiting_queue)
                     res = self._distribute_output(name, res, components_inputs, run_queue, waiting_queue)
 
