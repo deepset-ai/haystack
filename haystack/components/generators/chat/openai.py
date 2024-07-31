@@ -8,12 +8,14 @@ import os
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from openai import OpenAI, Stream
-from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletionMessage
+from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletionMessage, ChatCompletionToolParam
 from openai.types.chat.chat_completion import Choice
 from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import ChatMessage, StreamingChunk
+from haystack.dataclasses.chat_message import ToolCall
+from haystack.dataclasses.tool import Tool
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 
 logger = logging.getLogger(__name__)
@@ -186,6 +188,7 @@ class OpenAIChatGenerator:
     def run(
         self,
         messages: List[ChatMessage],
+        tools: Optional[List[Tool]] = None,
         streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
     ):
@@ -212,9 +215,16 @@ class OpenAIChatGenerator:
         # adapt ChatMessage(s) to the format expected by the OpenAI API
         openai_formatted_messages = [message.to_openai_format() for message in messages]
 
+        tools_openai_format = None
+        if tools:
+            tools_openai_format = [
+                ChatCompletionToolParam({"type": "function", "function": tool.tool_spec}) for tool in tools
+            ]
+
         chat_completion: Union[Stream[ChatCompletionChunk], ChatCompletion] = self.client.chat.completions.create(
             model=self.model,
             messages=openai_formatted_messages,  # type: ignore # openai expects list of specific message types
+            tools=tools_openai_format,
             stream=streaming_callback is not None,
             **generation_kwargs,
         )
@@ -306,6 +316,9 @@ class OpenAIChatGenerator:
         """
         message: ChatCompletionMessage = choice.message
         content = message.content or ""
+        tool_calls = []
+
+        # function_call is deprecated: I ignored it for now
         if message.function_call:
             # here we mimic the tools format response so that if user passes deprecated `functions` parameter
             # she'll get the same output as if new `tools` parameter was passed
@@ -314,10 +327,15 @@ class OpenAIChatGenerator:
                 [{"function": message.function_call.model_dump(), "type": "function", "id": completion.id}]
             )
         elif message.tool_calls:
-            # new `tools` parameter was passed, use pydantic model dump to serialize the tool calls
-            content = json.dumps([tc.model_dump() for tc in message.tool_calls])
+            for openai_tool_call in message.tool_calls:
+                tool_call = ToolCall(
+                    id=openai_tool_call.id,
+                    tool_name=openai_tool_call.function.name,
+                    arguments=json.loads(openai_tool_call.function.arguments),
+                )
+                tool_calls.append(tool_call)
 
-        chat_message = ChatMessage.from_assistant(content)
+        chat_message = ChatMessage.from_assistant(content=content, tool_calls=tool_calls)
         chat_message.meta.update(
             {
                 "model": completion.model,
