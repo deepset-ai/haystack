@@ -2,74 +2,67 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import os
-from typing import List
 
 import pytest
 
 from haystack.components.builders import AnswerBuilder
-from haystack.utils import Secret
 
-from haystack import Document, GeneratedAnswer, Answer, Pipeline
+from haystack import Document, GeneratedAnswer, Pipeline
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.joiners.answer_joiner import AnswerJoiner, JoinMode
 from haystack.dataclasses import ChatMessage
-
-
-# custom join function that returns a single Answer, just for serde testing
-def single_answer_function(answers: List[List[Answer]]) -> List[Answer]:
-    return [GeneratedAnswer(data="custom", query="custom", documents=[], meta={})]
 
 
 class TestAnswerJoiner:
     def test_init(self):
         joiner = AnswerJoiner()
         assert joiner.join_mode == JoinMode.CONCATENATE
-        assert joiner.top_k == 10
+        assert joiner.top_k is None
+        assert joiner.sort_by_score is False
 
     def test_init_with_custom_parameters(self):
-        joiner = AnswerJoiner(join_mode="concatenate", top_k=5)
+        joiner = AnswerJoiner(join_mode="concatenate", top_k=5, sort_by_score=True)
         assert joiner.join_mode == JoinMode.CONCATENATE
         assert joiner.top_k == 5
+        assert joiner.sort_by_score is True
 
     def test_to_dict(self):
         joiner = AnswerJoiner()
         data = joiner.to_dict()
         assert data == {
             "type": "haystack.components.joiners.answer_joiner.AnswerJoiner",
-            "init_parameters": {"join_mode": "concatenate", "custom_join_function": None, "top_k": 10},
+            "init_parameters": {"join_mode": "concatenate", "top_k": None, "sort_by_score": False},
         }
 
-    def test_to_from_dict_with_custom_function(self):
-        joiner = AnswerJoiner("concatenate", custom_join_function=single_answer_function, top_k=5)
+    def test_to_from_dict_custom_parameters(self):
+        joiner = AnswerJoiner("concatenate", top_k=5, sort_by_score=True)
         data = joiner.to_dict()
         assert data == {
             "type": "haystack.components.joiners.answer_joiner.AnswerJoiner",
-            "init_parameters": {
-                "join_mode": "concatenate",
-                "custom_join_function": "joiners.test_answer_joiner.single_answer_function",
-                "top_k": 5,
-            },
+            "init_parameters": {"join_mode": "concatenate", "top_k": 5, "sort_by_score": True},
         }
 
         deserialized_joiner = AnswerJoiner.from_dict(data)
         assert deserialized_joiner.join_mode == JoinMode.CONCATENATE
         assert deserialized_joiner.top_k == 5
-        assert deserialized_joiner.custom_join_function == single_answer_function
+        assert deserialized_joiner.sort_by_score is True
 
     def test_from_dict(self):
         data = {"type": "haystack.components.joiners.answer_joiner.AnswerJoiner", "init_parameters": {}}
-        document_joiner = AnswerJoiner.from_dict(data)
-        assert document_joiner.join_mode == JoinMode.CONCATENATE
-        assert document_joiner.top_k == 10
+        answer_joiner = AnswerJoiner.from_dict(data)
+        assert answer_joiner.join_mode == JoinMode.CONCATENATE
+        assert answer_joiner.top_k is None
+        assert answer_joiner.sort_by_score is False
 
     def test_from_dict_customs_parameters(self):
         data = {
             "type": "haystack.components.joiners.answer_joiner.AnswerJoiner",
-            "init_parameters": {"join_mode": "concatenate", "top_k": 5},
+            "init_parameters": {"join_mode": "concatenate", "top_k": 5, "sort_by_score": True},
         }
-        document_joiner = AnswerJoiner.from_dict(data)
-        assert document_joiner.join_mode == JoinMode.CONCATENATE
-        assert document_joiner.top_k == 5
+        answer_joiner = AnswerJoiner.from_dict(data)
+        assert answer_joiner.join_mode == JoinMode.CONCATENATE
+        assert answer_joiner.top_k == 5
+        assert answer_joiner.sort_by_score is True
 
     def test_empty_list(self):
         joiner = AnswerJoiner()
@@ -81,7 +74,7 @@ class TestAnswerJoiner:
         result = joiner.run([[], []])
         assert result == {"answers": []}
 
-    def test_list_with_one_empty_list(self):
+    def test_list_of_single_answer(self):
         joiner = AnswerJoiner()
         answers = [
             GeneratedAnswer(query="a", data="a", meta={}, documents=[Document(content="a")]),
