@@ -16,7 +16,7 @@ class DocumentWriter:
     """
     Writes documents to a DocumentStore.
 
-    Usage example:
+    ### Usage example
     ```python
     from haystack import Document
     from haystack.components.writers import DocumentWriter

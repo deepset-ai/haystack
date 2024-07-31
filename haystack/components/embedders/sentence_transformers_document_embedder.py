@@ -14,9 +14,15 @@ from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
 @component
 class SentenceTransformersDocumentEmbedder:
     """
-    A component for computing Document embeddings using Sentence Transformers models.
+    Calculates document embeddings using Sentence Transformers models.
 
-    Usage example:
+    It stores the embeddings in the `embedding` metadata field of each document.
+    You can also embed documents' metadata.
+    Use this component in indexing pipelines to embed input documents
+    and send them to DocumentWriter to write a into a Document Store.
+
+    ### Usage example:
+
     ```python
     from haystack import Document
     from haystack.components.embedders import SentenceTransformersDocumentEmbedder
@@ -44,35 +50,42 @@ class SentenceTransformersDocumentEmbedder:
         meta_fields_to_embed: Optional[List[str]] = None,
         embedding_separator: str = "\n",
         trust_remote_code: bool = False,
+        truncate_dim: Optional[int] = None,
     ):
         """
-        Create a SentenceTransformersDocumentEmbedder component.
+        Creates a SentenceTransformersDocumentEmbedder component.
 
         :param model:
-            Local path or ID of the model on HuggingFace Hub.
+            The model to use for calculating embeddings.
+            Pass a local path or ID of the model on Hugging Face.
         :param device:
-            Overrides the default device used to load the model.
+            The device to use for loading the model.
+            Overrides the default device.
         :param token:
-            The API token used to download private models from Hugging Face.
+            The API token to download private models from Hugging Face.
         :param prefix:
-            A string to add at the beginning of each text.
+            A string to add at the beginning of each document text.
             Can be used to prepend the text with an instruction, as required by some embedding models,
             such as E5 and bge.
         :param suffix:
-            A string to add at the end of each text.
+            A string to add at the end of each document text.
         :param batch_size:
-            Number of Documents to encode at once.
+            Number of documents to embed at once.
         :param progress_bar:
-            If True shows a progress bar when running.
+            If `True`, shows a progress bar when embedding documents.
         :param normalize_embeddings:
-            If True returned vectors will have length 1.
+            If `True`, returns vectors with length 1.
         :param meta_fields_to_embed:
-            List of meta fields that will be embedded along with the Document text.
+            List of metadata fields to embed along with the document text.
         :param embedding_separator:
-            Separator used to concatenate the meta fields to the Document text.
+            Separator used to concatenate the metadata fields to the document text.
         :param trust_remote_code:
-            If `False`, only Hugging Face verified model architectures are allowed.
-            If `True`, custom models and scripts are allowed.
+            If `False`, allows only Hugging Face verified model architectures.
+            If `True`, allows custom models and scripts.
+        :param truncate_dim:
+            The dimension to truncate sentence embeddings to. `None` does no truncation.
+            If the model wasn't trained with Matryoshka Representation Learning,
+            truncating embeddings can significantly affect performance.
         """
 
         self.model = model
@@ -86,6 +99,7 @@ class SentenceTransformersDocumentEmbedder:
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
         self.trust_remote_code = trust_remote_code
+        self.truncate_dim = truncate_dim
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -113,6 +127,7 @@ class SentenceTransformersDocumentEmbedder:
             meta_fields_to_embed=self.meta_fields_to_embed,
             embedding_separator=self.embedding_separator,
             trust_remote_code=self.trust_remote_code,
+            truncate_dim=self.truncate_dim,
         )
 
     @classmethod
@@ -141,19 +156,20 @@ class SentenceTransformersDocumentEmbedder:
                 device=self.device.to_torch_str(),
                 auth_token=self.token,
                 trust_remote_code=self.trust_remote_code,
+                truncate_dim=self.truncate_dim,
             )
 
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document]):
         """
-        Embed a list of Documents.
+        Embed a list of documents.
 
         :param documents:
             Documents to embed.
 
         :returns:
             A dictionary with the following keys:
-            - `documents`: Documents with embeddings
+            - `documents`: Documents with embeddings.
         """
         if not isinstance(documents, list) or documents and not isinstance(documents[0], Document):
             raise TypeError(

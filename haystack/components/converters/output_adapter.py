@@ -2,11 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import ast
+import contextlib
 from typing import Any, Callable, Dict, Optional, Set
 
 import jinja2.runtime
 from jinja2 import TemplateSyntaxError, meta
-from jinja2.nativetypes import NativeEnvironment
+from jinja2.sandbox import SandboxedEnvironment
 from typing_extensions import TypeAlias
 
 from haystack import component, default_from_dict, default_to_dict
@@ -58,18 +60,18 @@ class OutputAdapter:
 
         # Create a Jinja native environment, we need it to:
         # a) add custom filters to the environment for filter compilation stage
-        env = NativeEnvironment()
+        self._env = SandboxedEnvironment(undefined=jinja2.runtime.StrictUndefined)
         try:
-            env.parse(template)  # Validate template syntax
+            self._env.parse(template)  # Validate template syntax
             self.template = template
         except TemplateSyntaxError as e:
             raise ValueError(f"Invalid Jinja template '{template}': {e}") from e
 
         for name, filter_func in self.custom_filters.items():
-            env.filters[name] = filter_func
+            self._env.filters[name] = filter_func
 
         # b) extract variables in the template
-        route_input_names = self._extract_variables(env)
+        route_input_names = self._extract_variables(self._env)
         input_types.update(route_input_names)
 
         # the env is not needed, discarded automatically
@@ -92,15 +94,21 @@ class OutputAdapter:
         # check if kwargs are empty
         if not kwargs:
             raise ValueError("No input data provided for output adaptation")
-        env = NativeEnvironment()
         for name, filter_func in self.custom_filters.items():
-            env.filters[name] = filter_func
+            self._env.filters[name] = filter_func
         adapted_outputs = {}
         try:
-            adapted_output_template = env.from_string(self.template)
+            adapted_output_template = self._env.from_string(self.template)
             output_result = adapted_output_template.render(**kwargs)
             if isinstance(output_result, jinja2.runtime.Undefined):
                 raise OutputAdaptationException(f"Undefined variable in the template {self.template}; kwargs: {kwargs}")
+
+            # We suppress the exception in case the output is already a string, otherwise
+            # we try to evaluate it and would fail.
+            # This must be done cause the output could be different literal structures.
+            # This doesn't support any user types.
+            with contextlib.suppress(Exception):
+                output_result = ast.literal_eval(output_result)
 
             adapted_outputs["output"] = output_result
         except Exception as e:
@@ -135,14 +143,12 @@ class OutputAdapter:
             init_params["custom_filters"][name] = deserialize_callable(filter_func) if filter_func else None
         return default_from_dict(cls, data)
 
-    def _extract_variables(self, env: NativeEnvironment) -> Set[str]:
+    def _extract_variables(self, env: SandboxedEnvironment) -> Set[str]:
         """
         Extracts all variables from a list of Jinja template strings.
 
         :param env: A Jinja native environment.
         :return: A set of variable names extracted from the template strings.
         """
-        variables = set()
         ast = env.parse(self.template)
-        variables.update(meta.find_undeclared_variables(ast))
-        return variables
+        return meta.find_undeclared_variables(ast)

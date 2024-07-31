@@ -18,10 +18,12 @@ class DocumentCleaner:
     """
     Cleans the text in the documents.
 
-    Cleans up text documents by removing extra whitespaces, empty lines, specified substrings, regexes,
+    It removes extra whitespaces,
+    empty lines, specified substrings, regexes,
     page headers and footers (in this order).
 
-    Usage example:
+    ### Usage example:
+
     ```python
     from haystack import Document
     from haystack.components.preprocessors import DocumentCleaner
@@ -45,16 +47,16 @@ class DocumentCleaner:
         remove_regex: Optional[str] = None,
     ):
         """
-        Initialize the DocumentCleaner.
+        Initialize DocumentCleaner.
 
-        :param remove_empty_lines: Whether to remove empty lines.
-        :param remove_extra_whitespaces: Whether to remove extra whitespaces.
-        :param remove_repeated_substrings: Whether to remove repeated substrings (headers/footers) from pages.
-            Pages in the text need to be separated by form feed character "\\f",
+        :param remove_empty_lines: If `True`, removes empty lines.
+        :param remove_extra_whitespaces: If `True`, removes extra whitespaces.
+        :param remove_repeated_substrings: If `True`, removes repeated substrings (headers and footers) from pages.
+            Pages must be separated by a form feed character "\\f",
             which is supported by `TextFileToDocument` and `AzureOCRDocumentConverter`.
         :param remove_substrings: List of substrings to remove from the text.
         :param remove_regex: Regex to match and replace substrings by "".
-        :param keep_id: keep the ids of the original documents
+        :param keep_id: If `True`, keeps the IDs of the original documents.
         """
 
         self.remove_empty_lines = remove_empty_lines

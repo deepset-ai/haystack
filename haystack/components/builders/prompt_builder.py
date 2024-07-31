@@ -4,7 +4,8 @@
 
 from typing import Any, Dict, List, Optional, Set
 
-from jinja2 import Template, meta
+from jinja2 import meta
+from jinja2.sandbox import SandboxedEnvironment
 
 from haystack import component, default_to_dict
 
@@ -12,23 +13,22 @@ from haystack import component, default_to_dict
 @component
 class PromptBuilder:
     """
-    PromptBuilder is a component that renders a prompt from a template string using Jinja2 templates.
 
-    For prompt engineering, users can switch the template at runtime by providing a template for each pipeline run
-    invocation.
+    Renders a prompt filling in any variables so that it can send it to a Generator.
 
-    The template variables found in the default template string are used as input types for the component and are all
-    optional, unless explicitly specified. If an optional template variable is not provided as an input, it will be
-    replaced with an empty string in the rendered prompt. Use `variables` and `required_variables` to change the
-    default variable behavior.
+    The prompt uses Jinja2 template syntax.
+    The variables in the default template are used as PromptBuilder's input and are all optional.
+    If they're not provided, they're replaced with an empty string in the rendered prompt.
+    To try out different prompts, you can replace the prompt template at runtime by
+    providing a template for each pipeline run invocation.
 
     ### Usage examples
 
     #### On its own
 
-    Below is an example of using the `PromptBuilder` to render a prompt template and fill it with `target_language`
-    and `snippet`. The PromptBuilder returns a prompt with the string "Translate the following context to spanish.
-    Context: I can't speak spanish.; Translation:".
+    This example uses PromptBuilder to render a prompt template and fill it with `target_language`
+    and `snippet`. PromptBuilder returns a prompt with the string "Translate the following context to Spanish.
+    Context: I can't speak Spanish.; Translation:".
     ```python
     from haystack.components.builders import PromptBuilder
 
@@ -39,8 +39,8 @@ class PromptBuilder:
 
     #### In a Pipeline
 
-    Below is an example of a RAG pipeline where we use a `PromptBuilder` to render a custom prompt template and fill it
-    with the contents of retrieved Documents and a query. The rendered prompt is then sent to a Generator.
+    This is an example of a RAG pipeline where PromptBuilder renders a custom prompt template and fills it
+    with the contents of the retrieved documents and a query. The rendered prompt is then sent to a Generator.
     ```python
     from haystack import Pipeline, Document
     from haystack.utils import Secret
@@ -69,11 +69,9 @@ class PromptBuilder:
     print(result)
     ```
 
-    #### Changing the template at runtime (Prompt Engineering)
+    #### Changing the template at runtime (prompt engineering)
 
-    `PromptBuilder` allows you to switch the prompt template of an existing pipeline.
-    Below's example builds on top of the existing pipeline of the previous section.
-    The existing pipeline is invoked with a new prompt template:
+    You can change the prompt template of an existing pipeline, like in this example:
     ```python
     documents = [
         Document(content="Joe lives in Berlin", meta={"name": "doc1"}),
@@ -100,13 +98,12 @@ class PromptBuilder:
         },
     })
     ```
-    If you want to use different variables during prompt engineering than in the default template,
-    you can do so by setting `PromptBuilder`'s `variables` init parameter accordingly.
+    To replace the variables in the default template when testing your prompt,
+    pass the new variables in the `variables` parameter.
 
     #### Overwriting variables at runtime
 
-    In case you want to overwrite the values of variables, you can use `template_variables` during runtime as
-    illustrated below:
+    To overwrite the values of variables, use `template_variables` during runtime:
     ```python
     language_template = \"\"\"
     You are a helpful assistant.
@@ -132,9 +129,9 @@ class PromptBuilder:
     })
     ```
     Note that `language_template` introduces variable `answer_language` which is not bound to any pipeline variable.
-    If not set otherwise, it would evaluate to its default value 'English'.
-    In this example we are overwriting its value to 'German'.
-    `template_variables` allows you to overwrite pipeline variables (such as documents) as well.
+    If not set otherwise, it will use its default value 'English'.
+    This example overwrites its value to 'German'.
+    Use `template_variables` to overwrite pipeline variables (such as documents) as well.
 
     """
 
@@ -145,23 +142,29 @@ class PromptBuilder:
         Constructs a PromptBuilder component.
 
         :param template:
-            A Jinja2 template string that is used to render the prompt, e.g.:
+            A prompt template that uses Jinja2 syntax to add variables. For example:
             `"Summarize this document: {{ documents[0].content }}\\nSummary:"`
-        :param required_variables: An optional list of input variables that must be provided at runtime.
-            If a required variable is not provided at runtime, an exception will be raised.
+            It's used to render the prompt.
+            The variables in the default template are input for PromptBuilder and are all optional,
+            unless explicitly specified.
+            If an optional variable is not provided, it's replaced with an empty string in the rendered prompt.
+        :param required_variables: List variables that must be provided as input to PromptBuilder.
+            If a variable listed as required is not provided, an exception is raised. Optional.
         :param variables:
-            An optional list of input variables to be used in prompt templates instead of the ones inferred from
-            `template`. For example, if you want to use more variables during prompt engineering than the ones present
+            List input variables to use in prompt templates instead of the ones inferred from the
+            `template` parameter. For example, to use more variables during prompt engineering than the ones present
             in the default template, you can provide them here.
         """
         self._template_string = template
         self._variables = variables
         self._required_variables = required_variables
         self.required_variables = required_variables or []
-        self.template = Template(template)
+
+        self._env = SandboxedEnvironment()
+        self.template = self._env.from_string(template)
         if not variables:
             # infere variables from template
-            ast = self.template.environment.parse(template)
+            ast = self._env.parse(template)
             template_variables = meta.find_undeclared_variables(ast)
             variables = list(template_variables)
 
@@ -216,8 +219,8 @@ class PromptBuilder:
         self._validate_variables(set(template_variables_combined.keys()))
 
         compiled_template = self.template
-        if isinstance(template, str):
-            compiled_template = Template(template)
+        if template is not None:
+            compiled_template = self._env.from_string(template)
 
         result = compiled_template.render(template_variables_combined)
         return {"prompt": result}

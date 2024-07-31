@@ -14,7 +14,9 @@ from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
 @component
 class SentenceTransformersTextEmbedder:
     """
-    A component for embedding strings using Sentence Transformers models.
+    Embeds strings using Sentence Transformers models.
+
+    You can use it to embed user query and send it to an embedding retriever.
 
     Usage example:
     ```python
@@ -42,31 +44,38 @@ class SentenceTransformersTextEmbedder:
         progress_bar: bool = True,
         normalize_embeddings: bool = False,
         trust_remote_code: bool = False,
+        truncate_dim: Optional[int] = None,
     ):
         """
         Create a SentenceTransformersTextEmbedder component.
 
         :param model:
-            Local path or ID of the model on HuggingFace Hub.
+            The model to use for calculating embeddings.
+            Specify the path to a local model or the ID of the model on Hugging Face.
         :param device:
             Overrides the default device used to load the model.
         :param token:
-            The API token used to download private models from Hugging Face.
+            An API token to use private models from Hugging Face.
         :param prefix:
-            A string to add at the beginning of each text.
-            Can be used to prepend the text with an instruction, as required by some embedding models,
+            A string to add at the beginning of each text to be embedded.
+            You can use it to prepend the text with an instruction, as required by some embedding models,
             such as E5 and bge.
         :param suffix:
-            A string to add at the end of each text.
+            A string to add at the end of each text to embed.
         :param batch_size:
-            Number of Documents to encode at once.
+            Number of texts to embed at once.
         :param progress_bar:
-            If True shows a progress bar when running.
+            If `True`, shows a progress bar for calculating embeddings.
+            If `False`, disables the progress bar.
         :param normalize_embeddings:
-            If True returned vectors will have length 1.
+            If `True`, returned vectors have a length of 1.
         :param trust_remote_code:
-            If `False`, only Hugging Face verified model architectures are allowed.
-            If `True`, custom models and scripts are allowed.
+            If `False`, permits only Hugging Face verified model architectures.
+            If `True`, permits custom models and scripts.
+        :param truncate_dim:
+            The dimension to truncate sentence embeddings to. `None` does no truncation.
+            If the model has not been trained with Matryoshka Representation Learning,
+            truncation of embeddings can significantly affect performance.
         """
 
         self.model = model
@@ -78,6 +87,7 @@ class SentenceTransformersTextEmbedder:
         self.progress_bar = progress_bar
         self.normalize_embeddings = normalize_embeddings
         self.trust_remote_code = trust_remote_code
+        self.truncate_dim = truncate_dim
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -103,6 +113,7 @@ class SentenceTransformersTextEmbedder:
             progress_bar=self.progress_bar,
             normalize_embeddings=self.normalize_embeddings,
             trust_remote_code=self.trust_remote_code,
+            truncate_dim=self.truncate_dim,
         )
 
     @classmethod
@@ -131,6 +142,7 @@ class SentenceTransformersTextEmbedder:
                 device=self.device.to_torch_str(),
                 auth_token=self.token,
                 trust_remote_code=self.trust_remote_code,
+                truncate_dim=self.truncate_dim,
             )
 
     @component.output_types(embedding=List[float])
