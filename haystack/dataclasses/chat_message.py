@@ -128,7 +128,6 @@ class ChatMessage:
         """
         return cls(content, ChatRole.FUNCTION, name, None)
 
-    # Ignored since it is deprecated
     @classmethod
     def from_tool(cls, content: str, tool_call_id: str) -> "ChatMessage":
         """
