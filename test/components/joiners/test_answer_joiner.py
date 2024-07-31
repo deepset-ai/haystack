@@ -7,7 +7,8 @@ import pytest
 
 from haystack.components.builders import AnswerBuilder
 
-from haystack import Document, GeneratedAnswer, Pipeline
+from haystack import Document, Pipeline
+from haystack.dataclasses.answer import ExtractedAnswer, GeneratedAnswer, ExtractedTableAnswer
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.joiners.answer_joiner import AnswerJoiner, JoinMode
 from haystack.dataclasses import ChatMessage
@@ -83,6 +84,23 @@ class TestAnswerJoiner:
         ]
         result = joiner.run([answers])
         assert result == {"answers": answers}
+
+    def test_two_lists_of_generated_answers(self):
+        joiner = AnswerJoiner()
+        answers1 = [GeneratedAnswer(query="a", data="a", meta={}, documents=[Document(content="a")])]
+        answers2 = [GeneratedAnswer(query="d", data="d", meta={}, documents=[Document(content="d")])]
+        result = joiner.run([answers1, answers2])
+        assert result == {"answers": answers1 + answers2}
+
+    def test_multiple_lists_of_mixed_answers(self):
+        joiner = AnswerJoiner()
+        answers1 = [GeneratedAnswer(query="a", data="a", meta={}, documents=[Document(content="a")])]
+        answers2 = [ExtractedAnswer(query="d", score=0.9, meta={}, document=Document(content="d"))]
+        answers3 = [ExtractedTableAnswer(query="e", score=0.7, meta={}, document=Document(content="e"))]
+        answers4 = [GeneratedAnswer(query="f", data="f", meta={}, documents=[Document(content="f")])]
+        all_answers = answers1 + answers2 + answers3 + answers4  # type: ignore
+        result = joiner.run([answers1, answers2, answers3, answers4])
+        assert result == {"answers": all_answers}
 
     def test_unsupported_join_mode(self):
         unsupported_mode = "unsupported_mode"
