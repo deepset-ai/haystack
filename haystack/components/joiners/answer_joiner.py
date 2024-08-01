@@ -42,45 +42,46 @@ class JoinMode(Enum):
 @component
 class AnswerJoiner:
     """
-    The `AnswerJoiner` is useful for merging of multiple lists of `Answer` objects into a single unified list.
+    Merges multiple lists of `Answer` objects into a single list.
 
-    This component is useful in scenarios where you have answers from different generators and need to combine
-    them into a single list. Currently only one join mode is supported: `CONCATENATE`. This mode concatenates multiple
-    lists of answers into a single list.
+    Use this component to combine answers from different Generators into a single list.
+    Currently, the component supports only one join mode: `CONCATENATE`.
+    This mode concatenates multiple lists of answers into a single list.
 
-    For example, let's say you want to merge answers from two different generators:
+    ### Usage example
+
+    In this example, AnswerJoiner merges answers from two different Generators:
 
     ```python
-        from haystack.components.builders import AnswerBuilder
-        from haystack.components.joiners import AnswerJoiner
+    from haystack.components.builders import AnswerBuilder
+    from haystack.components.joiners import AnswerJoiner
 
-        from haystack.core.pipeline import Pipeline
+    from haystack.core.pipeline import Pipeline
 
-        from haystack.components.generators.chat import OpenAIChatGenerator
-        from haystack.dataclasses import ChatMessage
+    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.dataclasses import ChatMessage
 
 
-        query = "What's Natural Language Processing?"
-        messages = [ChatMessage.from_system("You are a helpful, respectful and honest assistant. Be super concise."),
-                    ChatMessage.from_user(query)]
+    query = "What's Natural Language Processing?"
+    messages = [ChatMessage.from_system("You are a helpful, respectful and honest assistant. Be super concise."),
+                ChatMessage.from_user(query)]
 
-        pipe = Pipeline()
-        pipe.add_component("gpt-4o", OpenAIChatGenerator(model="gpt-4o"))
-        pipe.add_component("llama", OpenAIChatGenerator(model="gpt-3.5-turbo"))
-        pipe.add_component("aba", AnswerBuilder())
-        pipe.add_component("abb", AnswerBuilder())
-        pipe.add_component("joiner", AnswerJoiner())
+    pipe = Pipeline()
+    pipe.add_component("gpt-4o", OpenAIChatGenerator(model="gpt-4o"))
+    pipe.add_component("llama", OpenAIChatGenerator(model="gpt-3.5-turbo"))
+    pipe.add_component("aba", AnswerBuilder())
+    pipe.add_component("abb", AnswerBuilder())
+    pipe.add_component("joiner", AnswerJoiner())
 
-        pipe.connect("gpt-4o.replies", "aba")
-        pipe.connect("llama.replies", "abb")
-        pipe.connect("aba.answers", "joiner")
-        pipe.connect("abb.answers", "joiner")
+    pipe.connect("gpt-4o.replies", "aba")
+    pipe.connect("llama.replies", "abb")
+    pipe.connect("aba.answers", "joiner")
+    pipe.connect("abb.answers", "joiner")
 
-        results = pipe.run(data={"gpt-4o": {"messages": messages},
-                                 "llama": {"messages": messages},
-                                 "aba": {"query": query},
-                                 "abb": {"query": query}})
-
+    results = pipe.run(data={"gpt-4o": {"messages": messages},
+                                "llama": {"messages": messages},
+                                "aba": {"query": query},
+                                "abb": {"query": query}})
     ```
     """
 
@@ -91,7 +92,7 @@ class AnswerJoiner:
         sort_by_score: bool = False,
     ):
         """
-        Create an AnswerJoiner component.
+        Creates an AnswerJoiner component.
 
         :param join_mode:
             Specifies the join mode to use. Available modes:
