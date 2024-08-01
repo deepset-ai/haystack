@@ -44,7 +44,7 @@ class FilterRetriever:
         Create the FilterRetriever component.
 
         :param document_store:
-            An instance of a Document Store to use with the retriever.
+            An instance of a Document Store to use with the Retriever.
         :param filters:
             A dictionary with filters to narrow down the search space.
         """
