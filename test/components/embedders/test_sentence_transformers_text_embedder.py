@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from unittest.mock import MagicMock, patch
 
+import torch
 import numpy as np
 import pytest
 
@@ -64,6 +65,8 @@ class TestSentenceTransformersTextEmbedder:
                 "normalize_embeddings": False,
                 "trust_remote_code": False,
                 "truncate_dim": None,
+                "model_kwargs": None,
+                "tokenizer_kwargs": None,
             },
         }
 
@@ -79,6 +82,8 @@ class TestSentenceTransformersTextEmbedder:
             normalize_embeddings=True,
             trust_remote_code=True,
             truncate_dim=256,
+            model_kwargs={"torch_dtype": torch.float32},
+            tokenizer_kwargs={"model_max_length": 512},
         )
         data = component.to_dict()
         assert data == {
@@ -94,6 +99,8 @@ class TestSentenceTransformersTextEmbedder:
                 "normalize_embeddings": True,
                 "trust_remote_code": True,
                 "truncate_dim": 256,
+                "model_kwargs": {"torch_dtype": "torch.float32"},
+                "tokenizer_kwargs": {"model_max_length": 512},
             },
         }
 
@@ -116,6 +123,8 @@ class TestSentenceTransformersTextEmbedder:
                 "normalize_embeddings": False,
                 "trust_remote_code": False,
                 "truncate_dim": None,
+                "model_kwargs": {"torch_dtype": "torch.float32"},
+                "tokenizer_kwargs": {"model_max_length": 512},
             },
         }
         component = SentenceTransformersTextEmbedder.from_dict(data)
@@ -129,6 +138,8 @@ class TestSentenceTransformersTextEmbedder:
         assert component.normalize_embeddings is False
         assert component.trust_remote_code is False
         assert component.truncate_dim is None
+        assert component.model_kwargs == {"torch_dtype": torch.float32}
+        assert component.tokenizer_kwargs == {"model_max_length": 512}
 
     def test_from_dict_no_default_parameters(self):
         data = {
@@ -183,7 +194,13 @@ class TestSentenceTransformersTextEmbedder:
         mocked_factory.get_embedding_backend.assert_not_called()
         embedder.warm_up()
         mocked_factory.get_embedding_backend.assert_called_once_with(
-            model="model", device="cpu", auth_token=None, trust_remote_code=False, truncate_dim=None
+            model="model",
+            device="cpu",
+            auth_token=None,
+            trust_remote_code=False,
+            truncate_dim=None,
+            model_kwargs=None,
+            tokenizer_kwargs=None,
         )
 
     @patch(
