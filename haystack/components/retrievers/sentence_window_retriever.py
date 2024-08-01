@@ -15,7 +15,7 @@ class SentenceWindowRetriever:
     Retrieves documents adjacent to a given document in the Document Store.
 
     During indexing, documents are broken into smaller chunks, or sentences. When you submit a query,
-    the retriever fetches the most relevant sentence. To provide full context,
+    the Retriever fetches the most relevant sentence. To provide full context,
     SentenceWindowRetriever fetches a number of neighboring sentences before and after each
     relevant one. You can set this number with the `window_size` parameter.
     It uses `source_id` and `doc.meta['split_id']` to locate the surrounding documents.
