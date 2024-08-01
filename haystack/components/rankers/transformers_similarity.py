@@ -116,7 +116,7 @@ class TransformersSimilarityRanker:
 
         model_kwargs = resolve_hf_device_map(device=device, model_kwargs=model_kwargs)
         self.model_kwargs = model_kwargs
-        self.tokenizer_kwargs = tokenizer_kwargs
+        self.tokenizer_kwargs = tokenizer_kwargs or {}
 
         # Parameter validation
         if self.scale_score and self.calibration_factor is None:
