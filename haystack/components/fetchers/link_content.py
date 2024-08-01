@@ -52,12 +52,16 @@ def _binary_content_handler(response: Response) -> ByteStream:
 @component
 class LinkContentFetcher:
     """
-    LinkContentFetcher is a component for fetching and extracting content from URLs.
+    Fetches and extracts content from URLs.
 
-    It supports handling various content types, retries on failures, and automatic user-agent rotation for failed web
-    requests.
+    It supports various content types, retries on failures, and automatic user-agent rotation for failed web
+    requests. Use it as the data-fetching step in your pipelines.
 
-    Usage example:
+    You may need to convert LinkContentFetcher's output into a list of documents. Use HTMLToDocument
+    converter to do this.
+
+    ### Usage example
+
     ```python
     from haystack.components.fetchers.link_content import LinkContentFetcher
 
@@ -84,7 +88,7 @@ class LinkContentFetcher:
             For multiple URLs, it logs errors and returns the content it successfully fetched.
         :param user_agents: [User agents](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/User-Agent)
             for fetching content. If `None`, a default user agent is used.
-        :param retry_attempts: Specifies how many times you want it to retry to fetch the URL's content.
+        :param retry_attempts: The number of times to retry to fetch the URL's content.
         :param timeout: Timeout in seconds for the request.
         """
         self.raise_on_failure = raise_on_failure
