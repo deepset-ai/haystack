@@ -12,7 +12,7 @@ from haystack.document_stores.types import DocumentStore
 @component
 class SentenceWindowRetriever:
     """
-    Retrieves documents adjacent to a given document in the document store.
+    Retrieves documents adjacent to a given document in the Document Store.
 
     During indexing, documents are broken into smaller chunks, or sentences. When you submit a query,
     the retriever fetches the most relevant sentence. To provide full context,
