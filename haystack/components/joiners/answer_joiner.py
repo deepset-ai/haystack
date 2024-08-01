@@ -45,9 +45,8 @@ class AnswerJoiner:
     The `AnswerJoiner` is useful for merging of multiple lists of `Answer` objects into a single unified list.
 
     This component is useful in scenarios where you have answers from different generators and need to combine
-    them into a single list. One option of merging is to use predefined join modes, such as `CONCATENATE`, which
-    keeps the highest scored answer in case of duplicates. Another option is to provide a custom join function
-    that takes a list of lists of `Answer` objects and returns a single list of `Answer` objects.
+    them into a single list. Currently only one join mode is supported: `CONCATENATE`. This mode concatenates multiple
+    lists of answers into a single list.
 
     For example, let's say you want to merge answers from two different generators:
 
@@ -99,6 +98,9 @@ class AnswerJoiner:
             - `concatenate`: Concatenates multiple lists of Answers into a single list.
         :param top_k:
             The maximum number of Answers to return.
+        :param sort_by_score:
+            If `True`, sorts the documents by score in descending order.
+            If a document has no score, it is handled as if its score is -infinity.
         """
         if isinstance(join_mode, str):
             join_mode = JoinMode.from_str(join_mode)
