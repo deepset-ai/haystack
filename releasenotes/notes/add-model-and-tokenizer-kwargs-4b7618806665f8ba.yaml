@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Adds model_kwargs and tokenizer_kwargs to the components TransformersSimilarityRanker, SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder.
+    This allows passing things like model_max_length or torch_dtype for better management of model inference.
