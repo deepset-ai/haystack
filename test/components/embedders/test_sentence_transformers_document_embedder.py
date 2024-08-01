@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
+import torch
 
 from haystack import Document
 from haystack.components.embedders.sentence_transformers_document_embedder import SentenceTransformersDocumentEmbedder
@@ -73,6 +74,8 @@ class TestSentenceTransformersDocumentEmbedder:
                 "meta_fields_to_embed": [],
                 "trust_remote_code": False,
                 "truncate_dim": None,
+                "model_kwargs": None,
+                "tokenizer_kwargs": None,
             },
         }
 
@@ -90,6 +93,8 @@ class TestSentenceTransformersDocumentEmbedder:
             embedding_separator=" - ",
             trust_remote_code=True,
             truncate_dim=256,
+            model_kwargs={"torch_dtype": torch.float32},
+            tokenizer_kwargs={"model_max_length": 512},
         )
         data = component.to_dict()
 
@@ -108,6 +113,8 @@ class TestSentenceTransformersDocumentEmbedder:
                 "trust_remote_code": True,
                 "meta_fields_to_embed": ["meta_field"],
                 "truncate_dim": 256,
+                "model_kwargs": {"torch_dtype": "torch.float32"},
+                "tokenizer_kwargs": {"model_max_length": 512},
             },
         }
 
@@ -209,7 +216,13 @@ class TestSentenceTransformersDocumentEmbedder:
         mocked_factory.get_embedding_backend.assert_not_called()
         embedder.warm_up()
         mocked_factory.get_embedding_backend.assert_called_once_with(
-            model="model", device="cpu", auth_token=None, trust_remote_code=False, truncate_dim=None
+            model="model",
+            device="cpu",
+            auth_token=None,
+            trust_remote_code=False,
+            truncate_dim=None,
+            model_kwargs=None,
+            tokenizer_kwargs=None,
         )
 
     @patch(
