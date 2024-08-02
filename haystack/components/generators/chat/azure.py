@@ -21,7 +21,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
     """
     Generates text using OpenAI's models on Azure.
 
-    It works with the gpt-4 and gpt-3.5-turbo models and supports streaming responses
+    It works with the gpt-4 and gpt-3.5-turbo - type models and supports streaming responses
     from OpenAI API. It uses [ChatMessage](https://docs.haystack.deepset.ai/docs/data-classes#chatmessage)
     format in input and output.
 
