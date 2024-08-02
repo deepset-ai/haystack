@@ -9,6 +9,7 @@ from haystack.components.embedders.backends.sentence_transformers_backend import
     _SentenceTransformersEmbeddingBackendFactory,
 )
 from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
+from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs
 
 
 @component
@@ -45,6 +46,8 @@ class SentenceTransformersTextEmbedder:
         normalize_embeddings: bool = False,
         trust_remote_code: bool = False,
         truncate_dim: Optional[int] = None,
+        model_kwargs: Optional[Dict[str, Any]] = None,
+        tokenizer_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
         Create a SentenceTransformersTextEmbedder component.
@@ -76,6 +79,12 @@ class SentenceTransformersTextEmbedder:
             The dimension to truncate sentence embeddings to. `None` does no truncation.
             If the model has not been trained with Matryoshka Representation Learning,
             truncation of embeddings can significantly affect performance.
+        :param model_kwargs:
+            Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
+            when loading the model. Refer to specific model documentation for available kwargs.
+        :param tokenizer_kwargs:
+            Additional keyword arguments for `AutoTokenizer.from_pretrained` when loading the tokenizer.
+            Refer to specific model documentation for available kwargs.
         """
 
         self.model = model
@@ -88,6 +97,9 @@ class SentenceTransformersTextEmbedder:
         self.normalize_embeddings = normalize_embeddings
         self.trust_remote_code = trust_remote_code
         self.truncate_dim = truncate_dim
+        self.model_kwargs = model_kwargs
+        self.tokenizer_kwargs = tokenizer_kwargs
+        self.embedding_backend = None
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -102,7 +114,7 @@ class SentenceTransformersTextEmbedder:
         :returns:
             Dictionary with serialized data.
         """
-        return default_to_dict(
+        serialization_dict = default_to_dict(
             self,
             model=self.model,
             device=self.device.to_dict(),
@@ -114,7 +126,12 @@ class SentenceTransformersTextEmbedder:
             normalize_embeddings=self.normalize_embeddings,
             trust_remote_code=self.trust_remote_code,
             truncate_dim=self.truncate_dim,
+            model_kwargs=self.model_kwargs,
+            tokenizer_kwargs=self.tokenizer_kwargs,
         )
+        if serialization_dict["init_parameters"].get("model_kwargs") is not None:
+            serialize_hf_model_kwargs(serialization_dict["init_parameters"]["model_kwargs"])
+        return serialization_dict
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "SentenceTransformersTextEmbedder":
@@ -130,19 +147,23 @@ class SentenceTransformersTextEmbedder:
         if init_params.get("device") is not None:
             init_params["device"] = ComponentDevice.from_dict(init_params["device"])
         deserialize_secrets_inplace(init_params, keys=["token"])
+        if init_params.get("model_kwargs") is not None:
+            deserialize_hf_model_kwargs(init_params["model_kwargs"])
         return default_from_dict(cls, data)
 
     def warm_up(self):
         """
         Initializes the component.
         """
-        if not hasattr(self, "embedding_backend"):
+        if self.embedding_backend is None:
             self.embedding_backend = _SentenceTransformersEmbeddingBackendFactory.get_embedding_backend(
                 model=self.model,
                 device=self.device.to_torch_str(),
                 auth_token=self.token,
                 trust_remote_code=self.trust_remote_code,
                 truncate_dim=self.truncate_dim,
+                model_kwargs=self.model_kwargs,
+                tokenizer_kwargs=self.tokenizer_kwargs,
             )
 
     @component.output_types(embedding=List[float])
@@ -162,7 +183,7 @@ class SentenceTransformersTextEmbedder:
                 "SentenceTransformersTextEmbedder expects a string as input."
                 "In case you want to embed a list of Documents, please use the SentenceTransformersDocumentEmbedder."
             )
-        if not hasattr(self, "embedding_backend"):
+        if self.embedding_backend is None:
             raise RuntimeError("The embedding model has not been loaded. Please call warm_up() before running.")
 
         text_to_embed = self.prefix + text + self.suffix
