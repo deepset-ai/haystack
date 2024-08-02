@@ -31,8 +31,7 @@ class ConditionalRouter:
 
     You define these conditions in a list of dictionaries called `routes`.
     Each dictionary in this list represents a single route. Each route has these four elements:
-    - `condition`: A Jinja2 string expression that ConditionalRouter evaluates for being true.
-    If the condition is true, it select this route.
+    - `condition`: A Jinja2 string expression that determines if the route is selected.
     - `output`: A Jinja2 expression defining the route's output value.
     - `output_type`: The type of the output data (for example, `str`, `List[int]`).
     - `output_name`: The name you want to use to publish `output`. This name is used to connect
@@ -113,8 +112,7 @@ class ConditionalRouter:
 
         :param routes: A list of dictionaries, each defining a route.
             Each route has these four elements:
-            - `condition`: A Jinja2 string expression that ConditionalRouter evaluates for being true.
-            If the condition is true, it select this route.
+            - `condition`: A Jinja2 string expression that determines if the route is selected.
             - `output`: A Jinja2 expression defining the route's output value.
             - `output_type`: The type of the output data (for example, `str`, `List[int]`).
             - `output_name`: The name you want to use to publish `output`. This name is used to connect
