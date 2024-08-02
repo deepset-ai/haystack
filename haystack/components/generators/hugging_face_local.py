@@ -33,11 +33,12 @@ with LazyImport(message="Run 'pip install transformers[torch]'") as transformers
 @component
 class HuggingFaceLocalGenerator:
     """
-    Generator based on a Hugging Face model.
+    Generates text using models from Hugging Face that run locally.
 
-    This component provides an interface to generate text using a Hugging Face model that runs locally.
+    LLMs running locally may need powerful hardware.
 
-    Usage example:
+    ### Usage example
+
     ```python
     from haystack.components.generators import HuggingFaceLocalGenerator
 
@@ -67,35 +68,32 @@ class HuggingFaceLocalGenerator:
         """
         Creates an instance of a HuggingFaceLocalGenerator.
 
-        :param model: The name or path of a Hugging Face model for text generation,
-        :param task: The task for the Hugging Face pipeline.
-            Possible values are "text-generation" and "text2text-generation".
-            Generally, decoder-only models like GPT support "text-generation",
-            while encoder-decoder models like T5 support "text2text-generation".
-            If the task is also specified in the `huggingface_pipeline_kwargs`, this parameter will be ignored.
-            If not specified, the component will attempt to infer the task from the model name,
-            calling the Hugging Face Hub API.
-        :param device: The device on which the model is loaded. If `None`, the default device is automatically
-            selected. If a device/device map is specified in `huggingface_pipeline_kwargs`, it overrides this parameter.
+        :param model: The Hugging Face text generation model name or path.
+        :param task: The task for the Hugging Face pipeline. Possible options:
+            - `text-generation`: Supported by decoder models, like GPT.
+            - `text2text-generation`: Supported by encoder-decoder models, like T5.
+            If the task is specified in `huggingface_pipeline_kwargs`, this parameter is ignored.
+            If not specified, the component calls the Hugging Face API to infer the task from the model name.
+        :param device: The device for loading the model. If `None`, automatically selects the default device.
+            If a device or device map is specified in `huggingface_pipeline_kwargs`, it overrides this parameter.
         :param token: The token to use as HTTP bearer authorization for remote files.
-            If the token is also specified in the `huggingface_pipeline_kwargs`, this parameter will be ignored.
-        :param generation_kwargs: A dictionary containing keyword arguments to customize text generation.
-            Some examples: `max_length`, `max_new_tokens`, `temperature`, `top_k`, `top_p`,...
+            If the token is specified in `huggingface_pipeline_kwargs`, this parameter is ignored.
+        :param generation_kwargs: A dictionary with keyword arguments to customize text generation.
+            Some examples: `max_length`, `max_new_tokens`, `temperature`, `top_k`, `top_p`.
             See Hugging Face's documentation for more information:
             - [customize-text-generation](https://huggingface.co/docs/transformers/main/en/generation_strategies#customize-text-generation)
             - [transformers.GenerationConfig](https://huggingface.co/docs/transformers/main/en/main_classes/text_generation#transformers.GenerationConfig)
-        :param huggingface_pipeline_kwargs: Dictionary containing keyword arguments used to initialize the
+        :param huggingface_pipeline_kwargs: Dictionary with keyword arguments to initialize the
             Hugging Face pipeline for text generation.
             These keyword arguments provide fine-grained control over the Hugging Face pipeline.
             In case of duplication, these kwargs override `model`, `task`, `device`, and `token` init parameters.
-            See Hugging Face's [documentation](https://huggingface.co/docs/transformers/en/main_classes/pipelines#transformers.pipeline.task)
-            for more information on the available kwargs.
+            For available kwargs, see [Hugging Face documentation](https://huggingface.co/docs/transformers/en/main_classes/pipelines#transformers.pipeline.task).
             In this dictionary, you can also include `model_kwargs` to specify the kwargs for model initialization:
             [transformers.PreTrainedModel.from_pretrained](https://huggingface.co/docs/transformers/en/main_classes/model#transformers.PreTrainedModel.from_pretrained)
-        :param stop_words: A list of stop words. If any one of the stop words is generated, the generation is stopped.
-            If you provide this parameter, you should not specify the `stopping_criteria` in `generation_kwargs`.
+        :param stop_words: If the model generates a stop word, the generation stops.
+            If you provide this parameter, don't specify the `stopping_criteria` in `generation_kwargs`.
             For some chat models, the output includes both the new text and the original prompt.
-            In these cases, it's important to make sure your prompt has no stop words.
+            In these cases, make sure your prompt has no stop words.
         :param streaming_callback: An optional callable for handling streaming responses.
         """
         transformers_import.check()
