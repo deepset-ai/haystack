@@ -27,15 +27,17 @@ logger = logging.getLogger(__name__)
 @component
 class HuggingFaceAPIGenerator:
     """
-    A Generator component that uses Hugging Face APIs to generate text.
+    Generates text using Hugging Face APIs.
 
-    This component can be used to generate text using different Hugging Face APIs:
+    Use it with the following Hugging Face APIs:
     - [Free Serverless Inference API]((https://huggingface.co/inference-api)
     - [Paid Inference Endpoints](https://huggingface.co/inference-endpoints)
     - [Self-hosted Text Generation Inference](https://github.com/huggingface/text-generation-inference)
 
+    ### Usage examples
 
-    Example usage with the free Serverless Inference API:
+    #### With the free serverless inference API
+
     ```python
     from haystack.components.generators import HuggingFaceAPIGenerator
     from haystack.utils import Secret
@@ -48,7 +50,8 @@ class HuggingFaceAPIGenerator:
     print(result)
     ```
 
-    Example usage with paid Inference Endpoints:
+    #### With paid inference endpoints
+
     ```python
     from haystack.components.generators import HuggingFaceAPIGenerator
     from haystack.utils import Secret
@@ -60,7 +63,7 @@ class HuggingFaceAPIGenerator:
     result = generator.run(prompt="What's Natural Language Processing?")
     print(result)
 
-    Example usage with self-hosted Text Generation Inference:
+    #### With self-hosted text generation inference
     ```python
     from haystack.components.generators import HuggingFaceAPIGenerator
 
@@ -85,18 +88,21 @@ class HuggingFaceAPIGenerator:
         Initialize the HuggingFaceAPIGenerator instance.
 
         :param api_type:
-            The type of Hugging Face API to use.
+            The type of Hugging Face API to use. Available types:
+            - `text_generation_inference`: See [TGI](https://github.com/huggingface/text-generation-inference).
+            - `inference_endpoints`: See [Inference Endpoints](https://huggingface.co/inference-endpoints).
+            - `serverless_inference_api`: See [Serverless Inference API](https://huggingface.co/inference-api).
         :param api_params:
-            A dictionary containing the following keys:
-            - `model`: model ID on the Hugging Face Hub. Required when `api_type` is `SERVERLESS_INFERENCE_API`.
+            A dictionary with the following keys:
+            - `model`: Hugging Face model ID. Required when `api_type` is `SERVERLESS_INFERENCE_API`.
             - `url`: URL of the inference endpoint. Required when `api_type` is `INFERENCE_ENDPOINTS` or
             `TEXT_GENERATION_INFERENCE`.
-        :param token: The HuggingFace token to use as HTTP bearer authorization.
-            You can find your HF token in your [account settings](https://huggingface.co/settings/tokens).
+        :param token: The Hugging Face token to use as HTTP bearer authorization.
+            Check your HF token in your [account settings](https://huggingface.co/settings/tokens).
         :param generation_kwargs:
-            A dictionary containing keyword arguments to customize text generation. Some examples: `max_new_tokens`,
-            `temperature`, `top_k`, `top_p`,...
-            See Hugging Face's [documentation](https://huggingface.co/docs/huggingface_hub/en/package_reference/inference_client#huggingface_hub.InferenceClient.text_generation)
+            A dictionary with keyword arguments to customize text generation. Some examples: `max_new_tokens`,
+            `temperature`, `top_k`, `top_p`.
+            For details, see [Hugging Face documentation](https://huggingface.co/docs/huggingface_hub/en/package_reference/inference_client#huggingface_hub.InferenceClient.text_generation)
             for more information.
         :param stop_words: An optional list of strings representing the stop words.
         :param streaming_callback: An optional callable for handling streaming responses.
@@ -182,7 +188,7 @@ class HuggingFaceAPIGenerator:
         :param generation_kwargs:
             Additional keyword arguments for text generation.
         :returns:
-            A dictionary containing the generated replies and metadata. Both are lists of length n.
+            A dictionary with the generated replies and metadata. Both are lists of length n.
             - replies: A list of strings representing the generated replies.
         """
         # update generation kwargs by merging with the default ones
