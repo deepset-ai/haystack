@@ -5,6 +5,7 @@
 from dataclasses import asdict, dataclass, field
 from enum import Enum
 from typing import Any, Dict, Optional
+from warnings import warn
 
 
 class ChatRole(str, Enum):
@@ -43,6 +44,8 @@ class ChatMessage:
             - `content`
             - `name` (optional)
         """
+        warn("The `to_openai_format` method is deprecated and will be removed in Haystack 2.5.0.", DeprecationWarning)
+
         msg = {"role": self.role.value, "content": self.content}
         if self.name:
             msg["name"] = self.name

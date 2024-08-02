@@ -18,6 +18,22 @@ with LazyImport(message="Run 'pip install \"huggingface_hub[inference]>=0.23.0\"
 logger = logging.getLogger(__name__)
 
 
+def _convert_message_to_hfapi_format(message: ChatMessage) -> Dict[str, str]:
+    """
+    Convert a message to the format expected by Hugging Face APIs.
+
+    :returns: A dictionary with the following keys:
+        - `role`
+        - `content`
+        - `name` (optional)
+    """
+    formatted_msg = {"role": message.role.value, "content": message.content}
+    if message.name:
+        formatted_msg["name"] = message.name
+
+    return formatted_msg
+
+
 @component
 class HuggingFaceAPIChatGenerator:
     """
@@ -204,7 +220,7 @@ class HuggingFaceAPIChatGenerator:
         # update generation kwargs by merging with the default ones
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
 
-        formatted_messages = [m.to_openai_format() for m in messages]
+        formatted_messages = [_convert_message_to_hfapi_format(message) for message in messages]
 
         if self.streaming_callback:
             return self._run_streaming(formatted_messages, generation_kwargs)
