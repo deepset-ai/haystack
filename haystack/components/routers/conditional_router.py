@@ -27,18 +27,18 @@ class RouteConditionException(Exception):
 @component
 class ConditionalRouter:
     """
-    `ConditionalRouter` allows data routing based on specific conditions.
+    Routes data based on specific conditions.
 
-    This is achieved by defining a list named `routes`. Each element in this list is a dictionary representing a
-    single route.
-    A route dictionary comprises four key elements:
+    You define these conditions in a list of dictionaries called `routes`.
+    Each dictionary in this list represents a single route. Each route has these four elements:
     - `condition`: A Jinja2 string expression that determines if the route is selected.
     - `output`: A Jinja2 expression defining the route's output value.
-    - `output_type`: The type of the output data (e.g., `str`, `List[int]`).
-    - `output_name`: The name under which the `output` value of the route is published. This name is used to connect
+    - `output_type`: The type of the output data (for example, `str`, `List[int]`).
+    - `output_name`: The name you want to use to publish `output`. This name is used to connect
     the router to other components in the pipeline.
 
-    Usage example:
+    ### Usage example
+
     ```python
     from typing import List
     from haystack.components.routers import ConditionalRouter
@@ -65,16 +65,17 @@ class ConditionalRouter:
     ```
 
     In this example, we configure two routes. The first route sends the 'streams' value to 'enough_streams' if the
-    stream count exceeds two. Conversely, the second route directs 'streams' to 'insufficient_streams' when there
+    stream count exceeds two. The second route directs 'streams' to 'insufficient_streams' if there
     are two or fewer streams.
 
-    In the pipeline setup, the router is connected to other components using the output names. For example, the
-    'enough_streams' output might be connected to another component that processes the streams, while the
-    'insufficient_streams' output might be connected to a component that fetches more streams, and so on.
+    In the pipeline setup, the Router connects to other components using the output names. For example,
+    'enough_streams' might connect to a component that processes streams, while
+    'insufficient_streams' might connect to a component that fetches more streams.
 
 
-    Here is a pseudocode example of a pipeline that uses the `ConditionalRouter` and routes fetched `ByteStreams` to
+    Here is a pipeline that uses `ConditionalRouter` and routes the fetched `ByteStreams` to
     different components depending on the number of streams fetched:
+
     ```python
     from typing import List
     from haystack import Pipeline
@@ -110,17 +111,17 @@ class ConditionalRouter:
         Initializes the `ConditionalRouter` with a list of routes detailing the conditions for routing.
 
         :param routes: A list of dictionaries, each defining a route.
-            A route dictionary comprises four key elements:
+            Each route has these four elements:
             - `condition`: A Jinja2 string expression that determines if the route is selected.
             - `output`: A Jinja2 expression defining the route's output value.
-            - `output_type`: The type of the output data (e.g., str, List[int]).
-            - `output_name`: The name under which the `output` value of the route is published. This name is used to
-                connect the router to other components in the pipeline.
-        :param custom_filters: A dictionary of custom Jinja2 filters to be used in the condition expressions.
+            - `output_type`: The type of the output data (for example, `str`, `List[int]`).
+            - `output_name`: The name you want to use to publish `output`. This name is used to connect
+            the router to other components in the pipeline.
+        :param custom_filters: A dictionary of custom Jinja2 filters used in the condition expressions.
             For example, passing `{"my_filter": my_filter_fcn}` where:
             - `my_filter` is the name of the custom filter.
             - `my_filter_fcn` is a callable that takes `my_var:str` and returns `my_var[:3]`.
-              `{{ my_var|my_filter }}` can then be used inside a route condition expression like so:
+              `{{ my_var|my_filter }}` can then be used inside a route condition expression:
                 `"condition": "{{ my_var|my_filter == 'foo' }}"`.
         """
         self._validate_routes(routes)
