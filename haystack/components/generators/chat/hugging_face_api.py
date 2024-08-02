@@ -102,7 +102,7 @@ class HuggingFaceAPIChatGenerator:
 
         :param api_type:
             The type of Hugging Face API to use. Available types:
-            - `text_generation_inference`: See (TGI)](https://github.com/huggingface/text-generation-inference).
+            - `text_generation_inference`: See [TGI](https://github.com/huggingface/text-generation-inference).
             - `inference_endpoints`: See [Inference Endpoints](https://huggingface.co/inference-endpoints).
             - `serverless_inference_api`: See [Serverless Inference API](https://huggingface.co/inference-api).
         :param api_params:
