@@ -12,15 +12,21 @@ from haystack.document_stores.types import DocumentStore
 @component
 class SentenceWindowRetriever:
     """
-    A component that retrieves surrounding documents of a given document from the document store.
+    Retrieves documents adjacent to a given document in the Document Store.
 
-    It relies on the `source_id` and on the `doc.meta['split_id']` to get the surrounding documents from the document.
-    This component is designed to work together with one of the existing retrievers, e.g. BM25Retriever,
-    EmbeddingRetriever. One of these retrievers can be used to retrieve documents based on a query and then use this
-    component to get the surrounding documents of the retrieved documents.
+    During indexing, documents are broken into smaller chunks, or sentences. When you submit a query,
+    the Retriever fetches the most relevant sentence. To provide full context,
+    SentenceWindowRetriever fetches a number of neighboring sentences before and after each
+    relevant one. You can set this number with the `window_size` parameter.
+    It uses `source_id` and `doc.meta['split_id']` to locate the surrounding documents.
+
+    This component works with existing Retrievers, like BM25Retriever or
+    EmbeddingRetriever. First, use a Retriever to find documents based on a query and then use
+    SentenceWindowRetriever to get the surrounding documents for context.
 
 
-    Usage example:
+    ### Usage example
+
     ```python
     from haystack import Document, Pipeline
     from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
@@ -56,8 +62,9 @@ class SentenceWindowRetriever:
         """
         Creates a new SentenceWindowRetriever component.
 
-        :param document_store: The document store to use for retrieving the surrounding documents.
-        :param window_size: The number of surrounding documents to retrieve.
+        :param document_store: The Document Store to retrieve the surrounding documents from.
+        :param window_size: The number of documents to retrieve before and after the relevant one.
+        For example, `window_size: 2` fetches 2 preceding and 2 following documents.
         """
         if window_size < 1:
             raise ValueError("The window_size parameter must be greater than 0.")
