@@ -81,8 +81,8 @@ class AzureOpenAIGenerator(OpenAIGenerator):
         [Setting up your organization](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization).
         :param streaming_callback: A callback function called when a new token is received from the stream.
             It accepts StreamingChunk as an argument.
-        :param system_prompt: The system prompt to use for text generation. If not provided, the system prompt is
-        omitted, and the default system prompt of the model is used.
+        :param system_prompt: The system prompt to use for text generation. If not provided, the Generator
+        omits the system prompt and uses the default system prompt.
         :param timeout: Timeout for AzureOpenAI client. If not set, it is inferred from the
             `OPENAI_TIMEOUT` environment variable or set to 30.
         :param max_retries: Maximum retries to establish contact with AzureOpenAI if it returns an internal error.
