@@ -156,6 +156,7 @@ class TestSimilarityRanker:
                 "calibration_factor": None,
                 "score_threshold": 0.01,
                 "model_kwargs": {"torch_dtype": "torch.float16"},
+                "tokenizer_kwargs": {"model_max_length": 512},
             },
         }
 
@@ -176,6 +177,7 @@ class TestSimilarityRanker:
             "torch_dtype": torch.float16,
             "device_map": ComponentDevice.resolve_device(None).to_hf(),
         }
+        assert component.tokenizer_kwargs == {"model_max_length": 512}
 
     def test_from_dict_no_default_parameters(self):
         data = {
