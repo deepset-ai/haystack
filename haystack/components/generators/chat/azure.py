@@ -91,7 +91,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         :param timeout: Timeout for OpenAI client calls. If not set, it defaults to either the
             `OPENAI_TIMEOUT` environment variable, or 30 seconds.
         :param max_retries: Maximum number of retries to contact OpenAI after an internal error.
-            If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5
+            If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
         :param generation_kwargs: Other parameters to use for the model. These parameters are sent directly to
             the OpenAI endpoint. For details, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat).
             Some of the supported parameters:
