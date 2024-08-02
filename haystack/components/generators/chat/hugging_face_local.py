@@ -36,14 +36,14 @@ PIPELINE_SUPPORTED_TASKS = ["text-generation", "text2text-generation"]
 @component
 class HuggingFaceLocalChatGenerator:
     """
-    A Chat Generator component that uses models available on Hugging Face Hub to generate chat responses locally.
+    Generates chat responses using models from Hugging Face that run locally.
 
-    The `HuggingFaceLocalChatGenerator` class is a component designed for generating chat responses using models from
-    Hugging Face's model hub. It is tailored for local runtime text generation tasks and provides a convenient interface
-    for working with chat-based models, such as `HuggingFaceH4/zephyr-7b-beta` or `meta-llama/Llama-2-7b-chat-hf`
-    etc.
+    Use this component with chat-based models,
+    such as `HuggingFaceH4/zephyr-7b-beta` or `meta-llama/Llama-2-7b-chat-hf`.
+    LLMs running locally may need powerful hardware.
 
-    Usage example:
+    ### Usage example
+
     ```python
     from haystack.components.generators.chat import HuggingFaceLocalChatGenerator
     from haystack.dataclasses import ChatMessage
@@ -86,44 +86,39 @@ class HuggingFaceLocalChatGenerator:
         """
         Initializes the HuggingFaceLocalChatGenerator component.
 
-        :param model: The name or path of a Hugging Face model for text generation,
-            for example, `mistralai/Mistral-7B-Instruct-v0.2`, `TheBloke/OpenHermes-2.5-Mistral-7B-16k-AWQ`, etc.
-            The important aspect of the model is that it should be a chat model and that it supports ChatML messaging
+        :param model: The Hugging Face text generation model name or path,
+            for example, `mistralai/Mistral-7B-Instruct-v0.2` or `TheBloke/OpenHermes-2.5-Mistral-7B-16k-AWQ`.
+            The model must be a chat model supporting the ChatML messaging
             format.
-            If the model is also specified in the `huggingface_pipeline_kwargs`, this parameter will be ignored.
-        :param task: The task for the Hugging Face pipeline.
-            Possible values are "text-generation" and "text2text-generation".
-            Generally, decoder-only models like GPT support "text-generation",
-            while encoder-decoder models like T5 support "text2text-generation".
-            If the task is also specified in the `huggingface_pipeline_kwargs`, this parameter will be ignored.
-            If not specified, the component will attempt to infer the task from the model name,
-            calling the Hugging Face Hub API.
-        :param device: The device on which the model is loaded. If `None`, the default device is automatically
-            selected. If a device/device map is specified in `huggingface_pipeline_kwargs`, it overrides this parameter.
+            If the model is specified in `huggingface_pipeline_kwargs`, this parameter is ignored.
+        :param task: The task for the Hugging Face pipeline. Possible options:
+            - `text-generation`: Supported by decoder models, like GPT.
+            - `text2text-generation`: Supported by encoder-decoder models, like T5.
+            If the task is specified in `huggingface_pipeline_kwargs`, this parameter is ignored.
+            If not specified, the component calls the Hugging Face API to infer the task from the model name.
+        :param device: The device for loading the model. If `None`, automatically selects the default device.
+            If a device or device map is specified in `huggingface_pipeline_kwargs`, it overrides this parameter.
         :param token: The token to use as HTTP bearer authorization for remote files.
-            If the token is also specified in the `huggingface_pipeline_kwargs`, this parameter will be ignored.
-        :param chat_template: This optional parameter allows you to specify a Jinja template for formatting chat
-            messages. While high-quality and well-supported chat models typically include their own chat templates
-            accessible through their tokenizer, there are models that do not offer this feature. For such scenarios,
-            or if you wish to use a custom template instead of the model's default, you can use this parameter to
-            set your preferred chat template.
-        :param generation_kwargs: A dictionary containing keyword arguments to customize text generation.
-            Some examples: `max_length`, `max_new_tokens`, `temperature`, `top_k`, `top_p`, etc.
+            If the token is specified in `huggingface_pipeline_kwargs`, this parameter is ignored.
+        :param chat_template: Specifies an optional Jinja template for formatting chat
+            messages. Most high-quality chat models have their own templates, but for models without this
+            feature or if you prefer a custom template, use this parameter.
+        :param generation_kwargs: A dictionary with keyword arguments to customize text generation.
+            Some examples: `max_length`, `max_new_tokens`, `temperature`, `top_k`, `top_p`.
             See Hugging Face's documentation for more information:
             - - [customize-text-generation](https://huggingface.co/docs/transformers/main/en/generation_strategies#customize-text-generation)
             - - [GenerationConfig](https://huggingface.co/docs/transformers/main/en/main_classes/text_generation#transformers.GenerationConfig)
-            - The only generation_kwargs we set by default is max_new_tokens, which is set to 512 tokens.
-        :param huggingface_pipeline_kwargs: Dictionary containing keyword arguments used to initialize the
+            The only `generation_kwargs` set by default is `max_new_tokens`, which is set to 512 tokens.
+        :param huggingface_pipeline_kwargs: Dictionary with keyword arguments to initialize the
             Hugging Face pipeline for text generation.
             These keyword arguments provide fine-grained control over the Hugging Face pipeline.
             In case of duplication, these kwargs override `model`, `task`, `device`, and `token` init parameters.
-            See Hugging Face's [documentation](https://huggingface.co/docs/transformers/en/main_classes/pipelines#transformers.pipeline.task)
-            for more information on the available kwargs.
+            For kwargs, see [Hugging Face documentation](https://huggingface.co/docs/transformers/en/main_classes/pipelines#transformers.pipeline.task).
             In this dictionary, you can also include `model_kwargs` to specify the kwargs for [model initialization](https://huggingface.co/docs/transformers/en/main_classes/model#transformers.PreTrainedModel.from_pretrained)
-        :param stop_words: A list of stop words. If any one of the stop words is generated, the generation is stopped.
-            If you provide this parameter, you should not specify the `stopping_criteria` in `generation_kwargs`.
+        :param stop_words: A list of stop words. If the model generates a stop word, the generation stops.
+            If you provide this parameter, don't specify the `stopping_criteria` in `generation_kwargs`.
             For some chat models, the output includes both the new text and the original prompt.
-            In these cases, it's important to make sure your prompt has no stop words.
+            In these cases, make sure your prompt has no stop words.
         :param streaming_callback: An optional callable for handling streaming responses.
         """
         torch_and_transformers_import.check()
@@ -240,7 +235,7 @@ class HuggingFaceLocalChatGenerator:
         """
         Invoke text generation inference based on the provided messages and generation parameters.
 
-        :param messages: A list of ChatMessage instances representing the input messages.
+        :param messages: A list of ChatMessage objects representing the input messages.
         :param generation_kwargs: Additional keyword arguments for text generation.
         :returns:
             A list containing the generated responses as ChatMessage instances.
