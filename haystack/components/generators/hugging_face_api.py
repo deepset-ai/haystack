@@ -34,7 +34,7 @@ class HuggingFaceAPIGenerator:
     - [Paid Inference Endpoints](https://huggingface.co/inference-endpoints)
     - [Self-hosted Text Generation Inference](https://github.com/huggingface/text-generation-inference)
 
-    ### Example usage
+    ### Usage examples
 
     #### With the free serverless inference API
 
