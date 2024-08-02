@@ -83,7 +83,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         :param azure_deployment: The deployment of the model, usually the model name.
         :param api_key: The API key to use for authentication.
         :param azure_ad_token: [Azure Active Directory token](https://www.microsoft.com/en-us/security/business/identity-access/microsoft-entra-id).
-        :param organization: The Organization ID, defaults to `None`. For help, see
+        :param organization: Your organization ID, defaults to `None`. For help, see
         [Setting up your organization](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization).
         :param streaming_callback: A callback function called when a new token is received from the stream.
             It accepts [StreamingChunk](https://docs.haystack.deepset.ai/docs/data-classes#streamingchunk)
