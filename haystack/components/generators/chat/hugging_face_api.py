@@ -21,20 +21,18 @@ logger = logging.getLogger(__name__)
 @component
 class HuggingFaceAPIChatGenerator:
     """
-    A Chat Generator component that uses Hugging Face APIs to generate text.
+    Completes chats using Hugging Face APIs.
 
-    This component can be used to generate text using different Hugging Face APIs with the ChatMessage format:
+    HuggingFaceAPIChatGenerator uses the [ChatMessage](https://docs.haystack.deepset.ai/docs/data-classes#chatmessage)
+    format for input and output. Use it to generate text with Hugging Face APIs:
     - [Free Serverless Inference API](https://huggingface.co/inference-api)
     - [Paid Inference Endpoints](https://huggingface.co/inference-endpoints)
     - [Self-hosted Text Generation Inference](https://github.com/huggingface/text-generation-inference)
 
-    Input and Output Format:
-      - ChatMessage Format: This component uses the ChatMessage format to structure both input and output,
-        ensuring coherent and contextually relevant responses in chat-based text generation scenarios. Details on the
-        ChatMessage format can be found [here](https://docs.haystack.deepset.ai/docs/data-classes#chatmessage).
+    ### Usage examples
 
+    #### With the free serverless inference API
 
-    Example usage with the free Serverless Inference API:
     ```python
     from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
     from haystack.dataclasses import ChatMessage
@@ -56,7 +54,8 @@ class HuggingFaceAPIChatGenerator:
     print(result)
     ```
 
-    Example usage with paid Inference Endpoints:
+    #### With paid inference endpoints
+
     ```python
     from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
     from haystack.dataclasses import ChatMessage
@@ -72,7 +71,8 @@ class HuggingFaceAPIChatGenerator:
     result = generator.run(messages)
     print(result)
 
-    Example usage with self-hosted Text Generation Inference:
+    #### With self-hosted text generation inference
+
     ```python
     from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
     from haystack.dataclasses import ChatMessage
@@ -101,18 +101,21 @@ class HuggingFaceAPIChatGenerator:
         Initialize the HuggingFaceAPIChatGenerator instance.
 
         :param api_type:
-            The type of Hugging Face API to use.
+            The type of Hugging Face API to use. Available types:
+            - `text_generation_inference`: See [TGI](https://github.com/huggingface/text-generation-inference).
+            - `inference_endpoints`: See [Inference Endpoints](https://huggingface.co/inference-endpoints).
+            - `serverless_inference_api`: See [Serverless Inference API](https://huggingface.co/inference-api).
         :param api_params:
-            A dictionary containing the following keys:
-            - `model`: model ID on the Hugging Face Hub. Required when `api_type` is `SERVERLESS_INFERENCE_API`.
+            A dictionary with the following keys:
+            - `model`: Hugging Face model ID. Required when `api_type` is `SERVERLESS_INFERENCE_API`.
             - `url`: URL of the inference endpoint. Required when `api_type` is `INFERENCE_ENDPOINTS` or
             `TEXT_GENERATION_INFERENCE`.
-        :param token: The HuggingFace token to use as HTTP bearer authorization
-            You can find your HF token in your [account settings](https://huggingface.co/settings/tokens)
+        :param token: The Hugging Face token to use as HTTP bearer authorization.
+            Check your HF token in your [account settings](https://huggingface.co/settings/tokens).
         :param generation_kwargs:
-            A dictionary containing keyword arguments to customize text generation.
-                Some examples: `max_tokens`, `temperature`, `top_p`...
-                See Hugging Face's documentation for more information at: [chat_completion](https://huggingface.co/docs/huggingface_hub/package_reference/inference_client#huggingface_hub.InferenceClient.chat_completion).
+            A dictionary with keyword arguments to customize text generation.
+                Some examples: `max_tokens`, `temperature`, `top_p`.
+                For details, see [Hugging Face chat_completion documentation](https://huggingface.co/docs/huggingface_hub/package_reference/inference_client#huggingface_hub.InferenceClient.chat_completion).
         :param stop_words: An optional list of strings representing the stop words.
         :param streaming_callback: An optional callable for handling streaming responses.
         """
@@ -192,10 +195,10 @@ class HuggingFaceAPIChatGenerator:
         """
         Invoke the text generation inference based on the provided messages and generation parameters.
 
-        :param messages: A list of ChatMessage instances representing the input messages.
+        :param messages: A list of ChatMessage objects representing the input messages.
         :param generation_kwargs: Additional keyword arguments for text generation.
         :returns: A dictionary with the following keys:
-            - `replies`: A list containing the generated responses as ChatMessage instances.
+            - `replies`: A list containing the generated responses as ChatMessage objects.
         """
 
         # update generation kwargs by merging with the default ones
