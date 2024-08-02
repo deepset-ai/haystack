@@ -68,7 +68,7 @@ class ConditionalRouter:
     stream count exceeds two. The second route directs 'streams' to 'insufficient_streams' if there
     are two or fewer streams.
 
-    In the pipeline setup, the router connects to other components using the output names. For example,
+    In the pipeline setup, the Router connects to other components using the output names. For example,
     'enough_streams' might connect to a component that processes streams, while
     'insufficient_streams' might connect to a component that fetches more streams.
 
