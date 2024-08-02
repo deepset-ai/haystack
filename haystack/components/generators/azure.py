@@ -80,7 +80,7 @@ class AzureOpenAIGenerator(OpenAIGenerator):
         :param organization: The Organization ID, defaults to `None`. For help, see
         [Setting up your organization](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization).
         :param streaming_callback: A callback function called when a new token is received from the stream.
-            It accepts StreamingChunk as an argument.
+            It accepts [StreamingChunk](https://docs.haystack.deepset.ai/docs/data-classes#streamingchunk) as an argument.
         :param system_prompt: The system prompt to use for text generation. If not provided, the Generator
         omits the system prompt and uses the default system prompt.
         :param timeout: Timeout for AzureOpenAI client. If not set, it is inferred from the
