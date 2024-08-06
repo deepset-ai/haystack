@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fix ChatPromptBuilder from_dict method when template value is None.

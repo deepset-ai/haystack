@@ -546,4 +546,4 @@ class TestChatPromptBuilderDynamic:
 
         assert component.template == []
         assert component._variables is None
-        assert component._required_variables == []
+        assert component._required_variables is None
