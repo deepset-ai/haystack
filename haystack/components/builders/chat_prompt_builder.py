@@ -254,7 +254,8 @@ class ChatPromptBuilder:
             The deserialized component.
         """
         init_parameters = data["init_parameters"]
-        template = init_parameters.get("template", [])
-        init_parameters["template"] = [ChatMessage.from_dict(d) for d in template]
+        template = init_parameters.get("template")
+        if template:
+            init_parameters["template"] = [ChatMessage.from_dict(d) for d in template]
 
         return default_from_dict(cls, data)
