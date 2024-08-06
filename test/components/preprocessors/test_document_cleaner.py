@@ -139,3 +139,68 @@ class TestDocumentCleaner:
         assert len(result["documents"]) == 2
         assert result["documents"][0].id == "1"
         assert result["documents"][1].id == "2"
+
+    def test_unicode_normalization(self):
+        text = """\
+        ｱｲｳｴｵ
+        Comment ça va
+        مرحبا بالعالم
+        em Space"""
+
+        expected_text_NFC = """\
+        ｱｲｳｴｵ
+        Comment ça va
+        مرحبا بالعالم
+        em Space"""
+
+        expected_text_NFD = """\
+        ｱｲｳｴｵ
+        Comment ça va
+        مرحبا بالعالم
+        em Space"""
+
+        expected_text_NFKC = """\
+        アイウエオ
+        Comment ça va
+        مرحبا بالعالم
+        em Space"""
+
+        expected_text_NFKD = """\
+        アイウエオ
+        Comment ça va
+        مرحبا بالعالم
+        em Space"""
+
+        nfc_cleaner = DocumentCleaner(unicode_normalization="NFC", remove_extra_whitespaces=False)
+        nfd_cleaner = DocumentCleaner(unicode_normalization="NFD", remove_extra_whitespaces=False)
+        nfkc_cleaner = DocumentCleaner(unicode_normalization="NFKC", remove_extra_whitespaces=False)
+        nfkd_cleaner = DocumentCleaner(unicode_normalization="NFKD", remove_extra_whitespaces=False)
+
+        nfc_result = nfc_cleaner.run(documents=[Document(content=text)])
+        nfd_result = nfd_cleaner.run(documents=[Document(content=text)])
+        nfkc_result = nfkc_cleaner.run(documents=[Document(content=text)])
+        nfkd_result = nfkd_cleaner.run(documents=[Document(content=text)])
+
+        assert nfc_result["documents"][0].content == expected_text_NFC
+        assert nfd_result["documents"][0].content == expected_text_NFD
+        assert nfkc_result["documents"][0].content == expected_text_NFKC
+        assert nfkd_result["documents"][0].content == expected_text_NFKD
+
+    def test_ascii_only(self):
+        text = """\
+        ｱｲｳｴｵ
+        Comment ça va
+        Á
+        مرحبا بالعالم
+        em Space"""
+
+        expected_text = """\
+        \n\
+        Comment ca va
+        A
+         \n\
+        em Space"""
+
+        cleaner = DocumentCleaner(ascii_only=True, remove_extra_whitespaces=False, remove_empty_lines=False)
+        result = cleaner.run(documents=[Document(content=text)])
+        assert result["documents"][0].content == expected_text

@@ -33,6 +33,7 @@ class TestSimilarityRanker:
                 "calibration_factor": 1.0,
                 "score_threshold": None,
                 "model_kwargs": {"device_map": ComponentDevice.resolve_device(None).to_hf()},
+                "tokenizer_kwargs": {},
             },
         }
 
@@ -48,6 +49,7 @@ class TestSimilarityRanker:
             calibration_factor=None,
             score_threshold=0.01,
             model_kwargs={"torch_dtype": torch.float16},
+            tokenizer_kwargs={"model_max_length": 512},
         )
         data = component.to_dict()
         assert data == {
@@ -68,6 +70,7 @@ class TestSimilarityRanker:
                     "torch_dtype": "torch.float16",
                     "device_map": ComponentDevice.from_str("cuda:0").to_hf(),
                 },  # torch_dtype is correctly serialized
+                "tokenizer_kwargs": {"model_max_length": 512},
             },
         }
 
@@ -102,6 +105,7 @@ class TestSimilarityRanker:
                     "bnb_4bit_compute_dtype": "torch.bfloat16",
                     "device_map": ComponentDevice.resolve_device(None).to_hf(),
                 },
+                "tokenizer_kwargs": {},
             },
         }
 
@@ -132,6 +136,7 @@ class TestSimilarityRanker:
                 "calibration_factor": 1.0,
                 "score_threshold": None,
                 "model_kwargs": {"device_map": expected},
+                "tokenizer_kwargs": {},
             },
         }
 
@@ -151,6 +156,7 @@ class TestSimilarityRanker:
                 "calibration_factor": None,
                 "score_threshold": 0.01,
                 "model_kwargs": {"torch_dtype": "torch.float16"},
+                "tokenizer_kwargs": {"model_max_length": 512},
             },
         }
 
@@ -171,6 +177,7 @@ class TestSimilarityRanker:
             "torch_dtype": torch.float16,
             "device_map": ComponentDevice.resolve_device(None).to_hf(),
         }
+        assert component.tokenizer_kwargs == {"model_max_length": 512}
 
     def test_from_dict_no_default_parameters(self):
         data = {

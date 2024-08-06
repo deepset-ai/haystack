@@ -1136,23 +1136,26 @@ class TestPipeline:
             "sentence_builder", {"sentence_builder": {"words": ["blah blah"]}}
         )
 
-    def test__find_components_that_received_no_input(self):
+    def test__find_components_that_will_receive_no_input(self):
         sentence_builder = component_class(
             "SentenceBuilder", input_types={"words": List[str]}, output={"text": "some words"}
         )()
         document_builder = component_class(
             "DocumentBuilder", input_types={"text": str}, output={"doc": Document(content="some words")}
         )()
+        document_joiner = component_class("DocumentJoiner", input_types={"docs": Variadic[Document]})()
 
         pipe = Pipeline()
         pipe.add_component("sentence_builder", sentence_builder)
         pipe.add_component("document_builder", document_builder)
+        pipe.add_component("document_joiner", document_joiner)
         pipe.connect("sentence_builder.text", "document_builder.text")
+        pipe.connect("document_builder.doc", "document_joiner.docs")
 
-        res = pipe._find_components_that_received_no_input("sentence_builder", {})
-        assert res == {("document_builder", document_builder)}
+        res = pipe._find_components_that_will_receive_no_input("sentence_builder", {})
+        assert res == {("document_builder", document_builder), ("document_joiner", document_joiner)}
 
-        res = pipe._find_components_that_received_no_input("sentence_builder", {"text": "some text"})
+        res = pipe._find_components_that_will_receive_no_input("sentence_builder", {"text": "some text"})
         assert res == set()
 
     def test__distribute_output(self):

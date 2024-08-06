@@ -9,14 +9,21 @@ from haystack.components.embedders.backends.sentence_transformers_backend import
     _SentenceTransformersEmbeddingBackendFactory,
 )
 from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
+from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs
 
 
 @component
 class SentenceTransformersDocumentEmbedder:
     """
-    A component for computing Document embeddings using Sentence Transformers models.
+    Calculates document embeddings using Sentence Transformers models.
 
-    Usage example:
+    It stores the embeddings in the `embedding` metadata field of each document.
+    You can also embed documents' metadata.
+    Use this component in indexing pipelines to embed input documents
+    and send them to DocumentWriter to write a into a Document Store.
+
+    ### Usage example:
+
     ```python
     from haystack import Document
     from haystack.components.embedders import SentenceTransformersDocumentEmbedder
@@ -31,7 +38,7 @@ class SentenceTransformersDocumentEmbedder:
     ```
     """
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         model: str = "sentence-transformers/all-mpnet-base-v2",
         device: Optional[ComponentDevice] = None,
@@ -45,39 +52,49 @@ class SentenceTransformersDocumentEmbedder:
         embedding_separator: str = "\n",
         trust_remote_code: bool = False,
         truncate_dim: Optional[int] = None,
+        model_kwargs: Optional[Dict[str, Any]] = None,
+        tokenizer_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
-        Create a SentenceTransformersDocumentEmbedder component.
+        Creates a SentenceTransformersDocumentEmbedder component.
 
         :param model:
-            Local path or ID of the model on HuggingFace Hub.
+            The model to use for calculating embeddings.
+            Pass a local path or ID of the model on Hugging Face.
         :param device:
-            Overrides the default device used to load the model.
+            The device to use for loading the model.
+            Overrides the default device.
         :param token:
-            The API token used to download private models from Hugging Face.
+            The API token to download private models from Hugging Face.
         :param prefix:
-            A string to add at the beginning of each text.
+            A string to add at the beginning of each document text.
             Can be used to prepend the text with an instruction, as required by some embedding models,
             such as E5 and bge.
         :param suffix:
-            A string to add at the end of each text.
+            A string to add at the end of each document text.
         :param batch_size:
-            Number of Documents to encode at once.
+            Number of documents to embed at once.
         :param progress_bar:
-            If True shows a progress bar when running.
+            If `True`, shows a progress bar when embedding documents.
         :param normalize_embeddings:
-            If True returned vectors will have length 1.
+            If `True`, returns vectors with length 1.
         :param meta_fields_to_embed:
-            List of meta fields that will be embedded along with the Document text.
+            List of metadata fields to embed along with the document text.
         :param embedding_separator:
-            Separator used to concatenate the meta fields to the Document text.
+            Separator used to concatenate the metadata fields to the document text.
         :param trust_remote_code:
-            If `False`, only Hugging Face verified model architectures are allowed.
-            If `True`, custom models and scripts are allowed.
+            If `False`, allows only Hugging Face verified model architectures.
+            If `True`, allows custom models and scripts.
         :param truncate_dim:
             The dimension to truncate sentence embeddings to. `None` does no truncation.
-            If the model has not been trained with Matryoshka Representation Learning,
-            truncation of embeddings can significantly affect performance.
+            If the model wasn't trained with Matryoshka Representation Learning,
+            truncating embeddings can significantly affect performance.
+        :param model_kwargs:
+            Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
+            when loading the model. Refer to specific model documentation for available kwargs.
+        :param tokenizer_kwargs:
+            Additional keyword arguments for `AutoTokenizer.from_pretrained` when loading the tokenizer.
+            Refer to specific model documentation for available kwargs.
         """
 
         self.model = model
@@ -92,6 +109,9 @@ class SentenceTransformersDocumentEmbedder:
         self.embedding_separator = embedding_separator
         self.trust_remote_code = trust_remote_code
         self.truncate_dim = truncate_dim
+        self.model_kwargs = model_kwargs
+        self.tokenizer_kwargs = tokenizer_kwargs
+        self.embedding_backend = None
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -106,7 +126,7 @@ class SentenceTransformersDocumentEmbedder:
         :returns:
             Dictionary with serialized data.
         """
-        return default_to_dict(
+        serialization_dict = default_to_dict(
             self,
             model=self.model,
             device=self.device.to_dict(),
@@ -120,7 +140,12 @@ class SentenceTransformersDocumentEmbedder:
             embedding_separator=self.embedding_separator,
             trust_remote_code=self.trust_remote_code,
             truncate_dim=self.truncate_dim,
+            model_kwargs=self.model_kwargs,
+            tokenizer_kwargs=self.tokenizer_kwargs,
         )
+        if serialization_dict["init_parameters"].get("model_kwargs") is not None:
+            serialize_hf_model_kwargs(serialization_dict["init_parameters"]["model_kwargs"])
+        return serialization_dict
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "SentenceTransformersDocumentEmbedder":
@@ -136,42 +161,44 @@ class SentenceTransformersDocumentEmbedder:
         if init_params.get("device") is not None:
             init_params["device"] = ComponentDevice.from_dict(init_params["device"])
         deserialize_secrets_inplace(init_params, keys=["token"])
+        if init_params.get("model_kwargs") is not None:
+            deserialize_hf_model_kwargs(init_params["model_kwargs"])
         return default_from_dict(cls, data)
 
     def warm_up(self):
         """
         Initializes the component.
         """
-        if not hasattr(self, "embedding_backend"):
+        if self.embedding_backend is None:
             self.embedding_backend = _SentenceTransformersEmbeddingBackendFactory.get_embedding_backend(
                 model=self.model,
                 device=self.device.to_torch_str(),
                 auth_token=self.token,
                 trust_remote_code=self.trust_remote_code,
                 truncate_dim=self.truncate_dim,
+                model_kwargs=self.model_kwargs,
+                tokenizer_kwargs=self.tokenizer_kwargs,
             )
 
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document]):
         """
-        Embed a list of Documents.
+        Embed a list of documents.
 
         :param documents:
             Documents to embed.
 
         :returns:
             A dictionary with the following keys:
-            - `documents`: Documents with embeddings
+            - `documents`: Documents with embeddings.
         """
         if not isinstance(documents, list) or documents and not isinstance(documents[0], Document):
             raise TypeError(
                 "SentenceTransformersDocumentEmbedder expects a list of Documents as input."
                 "In case you want to embed a list of strings, please use the SentenceTransformersTextEmbedder."
             )
-        if not hasattr(self, "embedding_backend"):
+        if self.embedding_backend is None:
             raise RuntimeError("The embedding model has not been loaded. Please call warm_up() before running.")
-
-        # TODO: once non textual Documents are properly supported, we should also prepare them for embedding here
 
         texts_to_embed = []
         for doc in documents:

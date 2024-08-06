@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Dict, List, Optional, cast
+from typing import Any, Dict, List, Optional, cast
 
 import numpy as np
 
@@ -27,6 +27,8 @@ class _SentenceTransformersEmbeddingBackendFactory:
         auth_token: Optional[Secret] = None,
         trust_remote_code: bool = False,
         truncate_dim: Optional[int] = None,
+        model_kwargs: Optional[Dict[str, Any]] = None,
+        tokenizer_kwargs: Optional[Dict[str, Any]] = None,
     ):
         embedding_backend_id = f"{model}{device}{auth_token}{truncate_dim}"
 
@@ -38,6 +40,8 @@ class _SentenceTransformersEmbeddingBackendFactory:
             auth_token=auth_token,
             trust_remote_code=trust_remote_code,
             truncate_dim=truncate_dim,
+            model_kwargs=model_kwargs,
+            tokenizer_kwargs=tokenizer_kwargs,
         )
         _SentenceTransformersEmbeddingBackendFactory._instances[embedding_backend_id] = embedding_backend
         return embedding_backend
@@ -55,6 +59,8 @@ class _SentenceTransformersEmbeddingBackend:
         auth_token: Optional[Secret] = None,
         trust_remote_code: bool = False,
         truncate_dim: Optional[int] = None,
+        model_kwargs: Optional[Dict[str, Any]] = None,
+        tokenizer_kwargs: Optional[Dict[str, Any]] = None,
     ):
         sentence_transformers_import.check()
         self.model = SentenceTransformer(
@@ -63,6 +69,8 @@ class _SentenceTransformersEmbeddingBackend:
             use_auth_token=auth_token.resolve_value() if auth_token else None,
             trust_remote_code=trust_remote_code,
             truncate_dim=truncate_dim,
+            model_kwargs=model_kwargs,
+            tokenizer_kwargs=tokenizer_kwargs,
         )
 
     def embed(self, data: List[str], **kwargs) -> List[List[float]]:
