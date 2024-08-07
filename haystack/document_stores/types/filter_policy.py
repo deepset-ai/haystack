@@ -133,7 +133,7 @@ def combine_two_logical_filters(
         )
         # Output:
         {
-            "operator": LogicalOperator.AND,
+            "operator": "AND",
             "conditions": [
                 {"field": "meta.type", "operator": "==", "value": "article"},
                 {"field": "meta.rating", "operator": ">=", "value": 3},
@@ -186,7 +186,7 @@ def combine_init_comparison_and_runtime_logical_filters(
     )
     # Output:
     {
-        "operator": LogicalOperator.AND,
+        "operator": "AND",
         "conditions": [
             {"field": "meta.type", "operator": "==", "value": "article"},
             {"field": "meta.rating", "operator": ">=", "value": 3},
@@ -243,7 +243,7 @@ def combine_runtime_comparison_and_init_logical_filters(
     )
     # Output:
     {
-        "operator": LogicalOperator.AND,
+        "operator": "AND",
         "conditions": [
             {"field": "meta.type", "operator": "==", "value": "article"},
             {"field": "meta.rating", "operator": ">=", "value": 3},
@@ -293,7 +293,7 @@ def combine_two_comparison_filters(
         )
         # Output:
         {
-            "operator": LogicalOperator.AND,
+            "operator": "AND",
             "conditions": [
                 {"field": "meta.type", "operator": "==", "value": "article"},
                 {"field": "meta.date", "operator": ">=", "value": "2015-01-01"},
