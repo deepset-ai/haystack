@@ -24,7 +24,7 @@ class LogicalOperator(Enum):
         Convert a string to a LogicalOperator enum.
 
         :param operator_label: The string to convert.
-        :return: The corresponding FilterPolicy enum.
+        :return: The corresponding LogicalOperator enum.
         """
         enum_map = {e.value: e for e in LogicalOperator}
         operator = enum_map.get(operator_label)
