@@ -77,6 +77,38 @@ def test_merge_init_comparison_and_runtime_logical_filters():
     }
 
 
+def test_merge_runtime_comparison_and_init_logical_filters_with_string_operators():
+    """
+    Merging a runtime comparison filter with an init logical filter, but with string-based logical operators
+    Result: AND operator with both filters
+    """
+    # Test with string-based logical operators
+    init_filters = {
+        "operator": "AND",
+        "conditions": [
+            {"field": "meta.type", "operator": "==", "value": "article"},
+            {"field": "meta.rating", "operator": ">=", "value": 3},
+        ],
+    }
+    runtime_filters = {
+        "operator": "AND",
+        "conditions": [
+            {"field": "meta.genre", "operator": "IN", "value": ["economy", "politics"]},
+            {"field": "meta.publisher", "operator": "==", "value": "nytimes"},
+        ],
+    }
+    result = apply_filter_policy(FilterPolicy.MERGE, init_filters, runtime_filters)
+    assert result == {
+        "operator": LogicalOperator.AND,
+        "conditions": [
+            {"field": "meta.type", "operator": "==", "value": "article"},
+            {"field": "meta.rating", "operator": ">=", "value": 3},
+            {"field": "meta.genre", "operator": "IN", "value": ["economy", "politics"]},
+            {"field": "meta.publisher", "operator": "==", "value": "nytimes"},
+        ],
+    }
+
+
 def test_merge_runtime_comparison_and_init_logical_filters():
     """
     Merging a runtime comparison filter with an init logical filter

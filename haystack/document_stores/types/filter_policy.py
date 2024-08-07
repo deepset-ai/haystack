@@ -64,6 +64,29 @@ class FilterPolicy(Enum):
         return policy
 
 
+def convert_logical_operators(filter_dict: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Convert string-based logical operators in a filter dictionary to LogicalOperator enums.
+
+    :param filter_dict: A dictionary representing a filter with potential string logical operators.
+    :return: A new dictionary with LogicalOperator enums in place of string operators.
+    """
+    # If the dictionary represents a logical filter, update the 'operator'
+    if is_logical_filter(filter_dict) and isinstance(filter_dict["operator"], str):
+        try:
+            filter_dict["operator"] = LogicalOperator.from_str(filter_dict["operator"])
+        except ValueError as e:
+            raise ValueError(f"Error converting logical operator: {e}")
+
+        # Not sure if these filters can be nested, but just in case they are let's recursively convert them
+        filter_dict["conditions"] = [
+            convert_logical_operators(condition) if isinstance(condition, dict) else condition
+            for condition in filter_dict["conditions"]
+        ]
+
+    return filter_dict
+
+
 def is_comparison_filter(filter_item: Dict[str, Any]) -> bool:
     """
     Check if the given filter is a comparison filter.
@@ -318,7 +341,10 @@ def apply_filter_policy(
     :returns: A dictionary containing the resulting filters based on the provided policy.
     """
     if filter_policy == FilterPolicy.MERGE and runtime_filters and init_filters:
-        # here we merge new filters
+        # first convert string-based logical operators to LogicalOperator enums
+        init_filters = convert_logical_operators(init_filters)
+        runtime_filters = convert_logical_operators(runtime_filters)
+        # now we merge filters
         if is_comparison_filter(init_filters) and is_comparison_filter(runtime_filters):
             return combine_two_comparison_filters(init_filters, runtime_filters, default_logical_operator)
         elif is_comparison_filter(init_filters) and is_logical_filter(runtime_filters):
