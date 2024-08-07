@@ -168,9 +168,9 @@ class DocumentCleaner:
         :param text: Text to clean.
         :returns: The text without empty lines.
         """
-        lines = text.split("\n")
-        non_empty_lines = filter(lambda line: line.strip() != "", lines)
-        return "\n".join(non_empty_lines)
+        pages = text.split("\f")
+        cleaned_pages = ["\n".join(line for line in page.split("\n") if line.strip()) for page in pages]
+        return "\f".join(cleaned_pages)
 
     def _remove_extra_whitespaces(self, text: str) -> str:
         """
@@ -179,7 +179,9 @@ class DocumentCleaner:
         :param text: Text to clean.
         :returns: The text without extra whitespaces.
         """
-        return re.sub(r"\s\s+", " ", text).strip()
+        texts = text.split("\f")
+        cleaned_text = [re.sub(r"\s\s+", " ", text).strip() for text in texts]
+        return "\f".join(cleaned_text)
 
     def _remove_regex(self, text: str, regex: str) -> str:
         """
@@ -189,7 +191,9 @@ class DocumentCleaner:
         :param regex: Regex to match and replace substrings by "".
         :returns: The text without the substrings that match the regex.
         """
-        return re.sub(regex, "", text).strip()
+        texts = text.split("\f")
+        cleaned_text = [re.sub(regex, "", text).strip() for text in texts]
+        return "\f".join(cleaned_text)
 
     def _remove_substrings(self, text: str, substrings: List[str]) -> str:
         """
