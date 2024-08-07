@@ -114,12 +114,8 @@ class DocumentCleaner:
         :returns: The text without empty lines.
         """
         pages = text.split("\f")
-        lines_per_page = [page.split("\n") for page in pages]
-        non_empty_lines = []
-        for lines in lines_per_page:
-            non_empty_lines.append(filter(lambda line: line.strip() != "", lines))
-        lines_without_empty_lines = ["\n".join(lines) for lines in non_empty_lines]
-        return "\f".join(lines_without_empty_lines)
+        cleaned_pages = ["\n".join(line for line in page.split("\n") if line.strip()) for page in pages]
+        return "\f".join(cleaned_pages)
 
     def _remove_extra_whitespaces(self, text: str) -> str:
         """
