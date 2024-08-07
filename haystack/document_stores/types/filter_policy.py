@@ -78,12 +78,6 @@ def convert_logical_operators(filter_dict: Dict[str, Any]) -> Dict[str, Any]:
         except ValueError as e:
             raise ValueError(f"Error converting logical operator: {e}")
 
-        # Not sure if these filters can be nested, but just in case they are let's recursively convert them
-        filter_dict["conditions"] = [
-            convert_logical_operators(condition) if isinstance(condition, dict) else condition
-            for condition in filter_dict["conditions"]
-        ]
-
     return filter_dict
 
 
