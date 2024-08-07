@@ -26,8 +26,8 @@ class LogicalOperator(Enum):
         :param operator_label: The string to convert.
         :return: The corresponding LogicalOperator enum.
         """
-        enum_map = {e.value: e for e in LogicalOperator}
-        operator = enum_map.get(operator_label)
+        enum_map = {e.value.lower(): e for e in LogicalOperator}
+        operator = enum_map.get(operator_label.lower() if operator_label else "")
         if operator is None:
             msg = f"Unknown LogicalOperator type '{operator}'. Supported types are: {list(enum_map.keys())}"
             raise ValueError(msg)
@@ -56,8 +56,8 @@ class FilterPolicy(Enum):
         :param filter_policy: The string to convert.
         :return: The corresponding FilterPolicy enum.
         """
-        enum_map = {e.value: e for e in FilterPolicy}
-        policy = enum_map.get(filter_policy)
+        enum_map = {e.value.lower(): e for e in FilterPolicy}
+        policy = enum_map.get(filter_policy.lower() if filter_policy else "")
         if policy is None:
             msg = f"Unknown FilterPolicy type '{filter_policy}'. Supported types are: {list(enum_map.keys())}"
             raise ValueError(msg)
