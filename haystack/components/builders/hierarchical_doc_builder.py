@@ -1,6 +1,6 @@
-from typing import List, Literal
+from typing import Any, Dict, List, Literal
 
-from haystack import Document, component
+from haystack import Document, component, default_to_dict
 from haystack.components.preprocessors import DocumentSplitter
 from haystack.dataclasses.hierarchical_document import HierarchicalDocument
 
@@ -11,6 +11,11 @@ class HierarchicalDocumentBuilder:
 
     The root node is the original document, the leaf nodes are the smallest blocks. The blocks in between are connected
     such that the smaller blocks are children of the parent-larger blocks.
+
+    ### Usage examples
+
+    #### On its own
+
     """
 
     def __init__(
@@ -27,7 +32,7 @@ class HierarchicalDocumentBuilder:
         :param split_by: The unit for splitting your documents.
         """
 
-        if list(set(block_sizes)) != block_sizes:
+        if len(set(block_sizes)) != len(block_sizes):
             raise ValueError("block_sizes must not contain duplicates")
         self.block_sizes = sorted(set(block_sizes), reverse=True)
         self.split_overlap = split_overlap
@@ -65,7 +70,6 @@ class HierarchicalDocumentBuilder:
 
         root = HierarchicalDocument(document)
         current_level_nodes = [root]
-
         all_docs = []
 
         for block in self.block_sizes:
@@ -83,3 +87,25 @@ class HierarchicalDocumentBuilder:
             current_level_nodes = next_level_nodes
 
         return all_docs
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Returns a dictionary representation of the component.
+
+        :returns:
+                Serialized dictionary representation of the component.
+        """
+        return default_to_dict(
+            self, block_sizes=self.block_sizes, split_overlap=self.split_overlap, split_by=self.split_by
+        )
+
+    @classmethod
+    def from_dict(cls, init_parameters):
+        """
+        Load a HierarchicalDocumentBuilder from a dictionary.
+
+        :param init_parameters:
+        :returns:
+            HierarchicalDocumentBuilder object
+        """
+        return HierarchicalDocumentBuilder(**init_parameters)

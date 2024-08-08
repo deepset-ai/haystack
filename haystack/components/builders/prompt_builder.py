@@ -163,7 +163,7 @@ class PromptBuilder:
         self._env = SandboxedEnvironment()
         self.template = self._env.from_string(template)
         if not variables:
-            # infere variables from template
+            # infer variables from template
             ast = self._env.parse(template)
             template_variables = meta.find_undeclared_variables(ast)
             variables = list(template_variables)
