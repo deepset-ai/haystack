@@ -1,0 +1,8 @@
+---
+upgrade:
+  - |
+    The `serialize_callback_handler` and `deserialize_callback_handler` utility functions have been removed.
+    Use `serialize_callable` and `deserialize_callable` instead.
+
+    For more information on `serialize_callable` and `deserialize_callable`, see the API reference:
+    https://docs.haystack.deepset.ai/reference/utils-api#module-callable_serialization
