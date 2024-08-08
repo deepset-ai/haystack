@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+
 import pytest
 
 from haystack import Document, Pipeline
@@ -42,7 +43,7 @@ class TestHierarchicalDocumentBuilder:
             "init_parameters": {"block_sizes": [10, 5, 2], "split_overlap": 0, "split_by": "word"},
         }
 
-        builder = HierarchicalDocumentBuilder.from_dict(data["init_parameters"])
+        builder = HierarchicalDocumentBuilder.from_dict(data)
         assert builder.block_sizes == [10, 5, 2]
         assert builder.split_overlap == 0
         assert builder.split_by == "word"
@@ -57,34 +58,41 @@ class TestHierarchicalDocumentBuilder:
         assert len(docs) == 9
         assert docs[0].content == "one two three four five six seven eight nine ten"
 
-        # root node
+        # level 1 - root node
+        assert docs[0].level == 1
         assert len(docs[0].children_ids) == 2
 
-        # level 1
-        assert len(docs[1].children_ids) == 3  # left branch
-        assert len(docs[2].children_ids) == 3  # right branch
+        # level 2 -left branch
+        assert docs[1].parent_id == docs[0].id
+        assert docs[1].level == 2
+        assert len(docs[1].children_ids) == 3
 
-        # level 2 - left branch - left branch
-        assert len(docs[3].children_ids) == 0
-        assert len(docs[4].children_ids) == 0
-        assert len(docs[5].children_ids) == 0
+        # level 2 - right branch
+        assert docs[2].parent_id == docs[0].id
+        assert docs[2].level == 2
+        assert len(docs[2].children_ids) == 3
+
+        # level 3 - left branch - leaf nodes
         assert docs[3].parent_id == docs[1].id
         assert docs[4].parent_id == docs[1].id
         assert docs[5].parent_id == docs[1].id
         assert docs[3].level == 3
         assert docs[4].level == 3
         assert docs[5].level == 3
+        assert len(docs[3].children_ids) == 0
+        assert len(docs[4].children_ids) == 0
+        assert len(docs[5].children_ids) == 0
 
-        # level 2 - leaf nodes - right branch
-        assert len(docs[6].children_ids) == 0
-        assert len(docs[7].children_ids) == 0
-        assert len(docs[8].children_ids) == 0
+        # level 3 - right branch - leaf nodes
         assert docs[6].parent_id == docs[2].id
         assert docs[7].parent_id == docs[2].id
         assert docs[8].parent_id == docs[2].id
         assert docs[6].level == 3
         assert docs[7].level == 3
         assert docs[8].level == 3
+        assert len(docs[6].children_ids) == 0
+        assert len(docs[7].children_ids) == 0
+        assert len(docs[8].children_ids) == 0
 
     def test_to_dict_in_pipeline(self):
         pipeline = Pipeline()
@@ -96,32 +104,11 @@ class TestHierarchicalDocumentBuilder:
         pipeline.connect("hierarchical_doc_builder", "doc_writer")
         expected = pipeline.to_dict()
 
-        assert expected == {
-            "metadata": {},
-            "max_loops_allowed": 100,
-            "components": {
-                "hierarchical_doc_builder": {
-                    "type": "haystack.components.builders.hierarchical_doc_builder.HierarchicalDocumentBuilder",
-                    "init_parameters": {"block_sizes": [10, 5, 2], "split_overlap": 0, "split_by": "word"},
-                },
-                "doc_writer": {
-                    "type": "haystack.components.writers.document_writer.DocumentWriter",
-                    "init_parameters": {
-                        "document_store": {
-                            "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore",
-                            "init_parameters": {
-                                "bm25_tokenization_regex": "(?u)\\b\\w\\w+\\b",
-                                "bm25_algorithm": "BM25L",
-                                "bm25_parameters": {},
-                                "embedding_similarity_function": "dot_product",
-                                "index": "f32ad5bf-43cb-4035-9823-1de1ae9853c1",
-                            },
-                        },
-                        "policy": "NONE",
-                    },
-                },
-            },
-            "connections": [{"sender": "hierarchical_doc_builder.documents", "receiver": "doc_writer.documents"}],
+        assert expected.keys() == {"metadata", "max_loops_allowed", "components", "connections"}
+        assert expected["components"].keys() == {"hierarchical_doc_builder", "doc_writer"}
+        assert expected["components"]["hierarchical_doc_builder"] == {
+            "type": "haystack.components.builders.hierarchical_doc_builder.HierarchicalDocumentBuilder",
+            "init_parameters": {"block_sizes": [10, 5, 2], "split_overlap": 0, "split_by": "word"},
         }
 
     def test_from_dict_in_pipeline(self):

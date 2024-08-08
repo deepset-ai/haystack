@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Literal
 
-from haystack import Document, component, default_to_dict
+from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.components.preprocessors import DocumentSplitter
 from haystack.dataclasses.hierarchical_document import HierarchicalDocument
 
@@ -13,9 +13,16 @@ class HierarchicalDocumentBuilder:
     The root node is the original document, the leaf nodes are the smallest blocks. The blocks in between are connected
     such that the smaller blocks are children of the parent-larger blocks.
 
-    ### Usage examples
+    ## Usage example
+    ```python
+    from haystack import Document
+    from haystack.components import HierarchicalDocumentBuilder
 
-    #### On its own
+    doc = Document(content="This is a test document")
+    builder = HierarchicalDocumentBuilder(block_sizes=[10, 5, 2], split_overlap=0, split_by="word")
+    hierarchical_docs = builder.run([doc])
+    ```
+
 
     """
 
@@ -52,7 +59,7 @@ class HierarchicalDocumentBuilder:
             hierarchical_docs.extend(self.build_hierarchy_from_doc(doc))
         return {"documents": hierarchical_docs}
 
-    def _split_doc(self, doc: Document, block_size: int):
+    def _split_doc(self, doc: Document, block_size: int) -> List[Document]:
         splitter = DocumentSplitter(split_length=block_size, split_overlap=self.split_overlap, split_by=self.split_by)
         split_docs = splitter.run([doc])
         return split_docs["documents"]
@@ -101,12 +108,14 @@ class HierarchicalDocumentBuilder:
         )
 
     @classmethod
-    def from_dict(cls, init_parameters):
+    def from_dict(cls, data: Dict[str, Any]) -> "HierarchicalDocumentBuilder":
         """
-        Load a HierarchicalDocumentBuilder from a dictionary.
+        Deserialize this component from a dictionary.
 
-        :param init_parameters:
+        :param data:
+            The dictionary to deserialize and create the component.
+
         :returns:
-            HierarchicalDocumentBuilder object
+            The deserialized component.
         """
-        return HierarchicalDocumentBuilder(**init_parameters)
+        return default_from_dict(cls, data)
