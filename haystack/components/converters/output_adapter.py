@@ -139,8 +139,13 @@ class OutputAdapter:
         """
         init_params = data.get("init_parameters", {})
         init_params["output_type"] = deserialize_type(init_params["output_type"])
-        for name, filter_func in init_params.get("custom_filters", {}).items():
-            init_params["custom_filters"][name] = deserialize_callable(filter_func) if filter_func else None
+
+        custom_filters = init_params.get("custom_filters", {})
+        if custom_filters:
+            init_params["custom_filters"] = {
+                name: deserialize_callable(filter_func) if filter_func else None
+                for name, filter_func in custom_filters.items()
+            }
         return default_from_dict(cls, data)
 
     def _extract_variables(self, env: SandboxedEnvironment) -> Set[str]:
