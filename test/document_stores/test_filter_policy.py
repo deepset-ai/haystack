@@ -45,7 +45,7 @@ def test_merge_two_comparison_filters():
     runtime_filters = {"field": "meta.type", "operator": "==", "value": "article"}
     result = apply_filter_policy(FilterPolicy.MERGE, init_filters, runtime_filters)
     assert result == {
-        "operator": LogicalOperator.AND,
+        "operator": "AND",
         "conditions": [
             {"field": "meta.date", "operator": ">=", "value": "2015-01-01"},
             {"field": "meta.type", "operator": "==", "value": "article"},
@@ -60,7 +60,7 @@ def test_merge_init_comparison_and_runtime_logical_filters():
     """
     init_filters = {"field": "meta.date", "operator": ">=", "value": "2015-01-01"}
     runtime_filters = {
-        "operator": LogicalOperator.AND,
+        "operator": "AND",
         "conditions": [
             {"field": "meta.type", "operator": "==", "value": "article"},
             {"field": "meta.rating", "operator": ">=", "value": 3},
@@ -68,7 +68,7 @@ def test_merge_init_comparison_and_runtime_logical_filters():
     }
     result = apply_filter_policy(FilterPolicy.MERGE, init_filters, runtime_filters)
     assert result == {
-        "operator": LogicalOperator.AND,
+        "operator": "AND",
         "conditions": [
             {"field": "meta.type", "operator": "==", "value": "article"},
             {"field": "meta.rating", "operator": ">=", "value": 3},
@@ -99,7 +99,7 @@ def test_merge_runtime_comparison_and_init_logical_filters_with_string_operators
     }
     result = apply_filter_policy(FilterPolicy.MERGE, init_filters, runtime_filters)
     assert result == {
-        "operator": LogicalOperator.AND,
+        "operator": "AND",
         "conditions": [
             {"field": "meta.type", "operator": "==", "value": "article"},
             {"field": "meta.rating", "operator": ">=", "value": 3},
@@ -115,7 +115,7 @@ def test_merge_runtime_comparison_and_init_logical_filters():
     Result: AND operator with both filters
     """
     init_filters = {
-        "operator": LogicalOperator.AND,
+        "operator": "AND",
         "conditions": [
             {"field": "meta.type", "operator": "==", "value": "article"},
             {"field": "meta.rating", "operator": ">=", "value": 3},
@@ -124,7 +124,7 @@ def test_merge_runtime_comparison_and_init_logical_filters():
     runtime_filters = {"field": "meta.date", "operator": ">=", "value": "2015-01-01"}
     result = apply_filter_policy(FilterPolicy.MERGE, init_filters, runtime_filters)
     assert result == {
-        "operator": LogicalOperator.AND,
+        "operator": "AND",
         "conditions": [
             {"field": "meta.type", "operator": "==", "value": "article"},
             {"field": "meta.rating", "operator": ">=", "value": 3},
@@ -139,14 +139,14 @@ def test_merge_two_logical_filters():
     Result: AND operator with both filters
     """
     init_filters = {
-        "operator": LogicalOperator.AND,
+        "operator": "AND",
         "conditions": [
             {"field": "meta.type", "operator": "==", "value": "article"},
             {"field": "meta.rating", "operator": ">=", "value": 3},
         ],
     }
     runtime_filters = {
-        "operator": LogicalOperator.AND,
+        "operator": "AND",
         "conditions": [
             {"field": "meta.genre", "operator": "IN", "value": ["economy", "politics"]},
             {"field": "meta.publisher", "operator": "==", "value": "nytimes"},
@@ -154,7 +154,7 @@ def test_merge_two_logical_filters():
     }
     result = apply_filter_policy(FilterPolicy.MERGE, init_filters, runtime_filters)
     assert result == {
-        "operator": LogicalOperator.AND,
+        "operator": "AND",
         "conditions": [
             {"field": "meta.type", "operator": "==", "value": "article"},
             {"field": "meta.rating", "operator": ">=", "value": 3},
@@ -171,7 +171,7 @@ def test_merge_with_different_logical_operators():
     """
     init_filters = {"operator": "AND", "conditions": [{"field": "meta.type", "operator": "==", "value": "article"}]}
     runtime_filters = {
-        "operator": LogicalOperator.OR,
+        "operator": "OR",
         "conditions": [{"field": "meta.genre", "operator": "IN", "value": ["economy", "politics"]}],
     }
     result = apply_filter_policy(FilterPolicy.MERGE, init_filters, runtime_filters)
@@ -204,7 +204,7 @@ def test_merge_with_custom_logical_operator(logical_operator):
         default_logical_operator=LogicalOperator.from_str(logical_operator),
     )
     assert result == {
-        "operator": LogicalOperator.from_str(logical_operator),
+        "operator": logical_operator,
         "conditions": [
             {"field": "meta.date", "operator": ">=", "value": "2015-01-01"},
             {"field": "meta.type", "operator": "==", "value": "article"},

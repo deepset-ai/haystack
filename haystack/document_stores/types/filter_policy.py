@@ -81,6 +81,19 @@ def convert_logical_operators(filter_dict: Dict[str, Any]) -> Dict[str, Any]:
     return filter_dict
 
 
+def logical_operators_to_str(filter_dict: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Convert any logical operators found in a filter dictionary to string.
+
+    :param filter_dict: A dictionary representing a filter with potential LogicalOperator enums.
+    :return: A new dictionary with LogicalOperator strings in place of enums.
+    """
+    # If the dictionary represents a logical filter, update the 'operator'
+    if is_logical_filter(filter_dict) and isinstance(filter_dict["operator"], LogicalOperator):
+        filter_dict["operator"] = filter_dict["operator"].value
+    return filter_dict
+
+
 def is_comparison_filter(filter_item: Dict[str, Any]) -> bool:
     """
     Check if the given filter is a comparison filter.
@@ -340,16 +353,23 @@ def apply_filter_policy(
         runtime_filters = convert_logical_operators(runtime_filters)
         # now we merge filters
         if is_comparison_filter(init_filters) and is_comparison_filter(runtime_filters):
-            return combine_two_comparison_filters(init_filters, runtime_filters, default_logical_operator)
+            combined_filters = combine_two_comparison_filters(init_filters, runtime_filters, default_logical_operator)
+            return logical_operators_to_str(combined_filters)
         elif is_comparison_filter(init_filters) and is_logical_filter(runtime_filters):
-            return combine_init_comparison_and_runtime_logical_filters(
+            combined_filters = combine_init_comparison_and_runtime_logical_filters(
                 init_filters, runtime_filters, default_logical_operator
             )
+            return logical_operators_to_str(combined_filters)
         elif is_logical_filter(init_filters) and is_comparison_filter(runtime_filters):
-            return combine_runtime_comparison_and_init_logical_filters(
+            combined_filters = combine_runtime_comparison_and_init_logical_filters(
                 runtime_filters, init_filters, default_logical_operator
             )
+            return logical_operators_to_str(combined_filters)
         elif is_logical_filter(init_filters) and is_logical_filter(runtime_filters):
-            return combine_two_logical_filters(init_filters, runtime_filters)
+            combined_filters = combine_two_logical_filters(init_filters, runtime_filters)
+            return logical_operators_to_str(combined_filters)
 
-    return runtime_filters or init_filters
+    resulting_filter = runtime_filters or init_filters
+    if resulting_filter:
+        resulting_filter = logical_operators_to_str(resulting_filter)
+    return resulting_filter
