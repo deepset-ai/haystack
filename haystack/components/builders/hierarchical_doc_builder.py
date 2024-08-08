@@ -2,15 +2,15 @@ from typing import List
 
 from haystack import Document, component
 from haystack.components.preprocessors import DocumentSplitter
-from haystack.dataclasses.document_hierarchical import HierarchicalDocument
+from haystack.dataclasses.hierarchical_document import HierarchicalDocument
 
 
 class HierarchicalDocumentBuilder:
     """
-    Splits a documents into different block sizes retaining the hierarchical structure.
+    Splits a documents into different block sizes building a hierarchical tree structure of blocks of different sizes.
 
-    The root node is the original document, and the leaf nodes are the smallest blocks. The smaller blocks are c
-    connected to the parent-larger blocks, which are connected to the original document.
+    The root node is the original document, the leaf nodes are the smallest blocks. The blocks in between are connected
+    such that the smaller blocks are children of the parent-larger blocks.
     """
 
     def __init__(self, block_sizes: List[int]):
