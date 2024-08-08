@@ -28,10 +28,20 @@ def test_factory_behavior(mock_sentence_transformer):
 @patch("haystack.components.embedders.backends.sentence_transformers_backend.SentenceTransformer")
 def test_model_initialization(mock_sentence_transformer):
     _SentenceTransformersEmbeddingBackendFactory.get_embedding_backend(
-        model="model", device="cpu", auth_token=Secret.from_token("fake-api-token"), trust_remote_code=True
+        model="model",
+        device="cpu",
+        auth_token=Secret.from_token("fake-api-token"),
+        trust_remote_code=True,
+        truncate_dim=256,
     )
     mock_sentence_transformer.assert_called_once_with(
-        model_name_or_path="model", device="cpu", use_auth_token="fake-api-token", trust_remote_code=True
+        model_name_or_path="model",
+        device="cpu",
+        use_auth_token="fake-api-token",
+        trust_remote_code=True,
+        truncate_dim=256,
+        model_kwargs=None,
+        tokenizer_kwargs=None,
     )
 
 

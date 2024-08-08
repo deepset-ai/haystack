@@ -12,7 +12,7 @@ from haystack.components.converters.tika import TikaDocumentConverter
 class TestTikaDocumentConverter:
     @patch("haystack.components.converters.tika.tika_parser.from_buffer")
     def test_run(self, mock_tika_parser):
-        mock_tika_parser.return_value = {"content": "Content of mock source"}
+        mock_tika_parser.return_value = {"content": "<div><p>Content of mock source</p></div>"}
 
         component = TikaDocumentConverter()
         source = ByteStream(data=b"placeholder data")
@@ -61,6 +61,8 @@ class TestTikaDocumentConverter:
         assert "A sample PDF file" in documents[0].content
         assert "Page 2 of Sample PDF" in documents[0].content
         assert "Page 4 of Sample PDF" in documents[0].content
+        assert documents[0].content.count("\f") == 3  # 4 pages
+
         assert "First Page" in documents[1].content
         assert (
             "Wiki engines usually allow content to be written using a simplified markup language"
@@ -68,6 +70,7 @@ class TestTikaDocumentConverter:
         )
         assert "This section needs additional citations for verification." in documents[1].content
         assert "This would make it easier for other users to find the article." in documents[1].content
+        assert documents[1].content.count("\f") == 3  # 4 pages
 
     @pytest.mark.integration
     def test_run_with_docx_file(self, test_files_path):

@@ -1,14 +1,7 @@
 loaders:
   - type: haystack_pydoc_tools.loaders.CustomPythonLoader
     search_path: [../../../haystack/components/builders]
-    modules:
-      [
-        "answer_builder",
-        "prompt_builder",
-        "dynamic_prompt_builder",
-        "dynamic_chat_prompt_builder",
-        "chat_prompt_builder",
-      ]
+    modules: ["answer_builder", "prompt_builder", "chat_prompt_builder"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter

@@ -20,7 +20,6 @@ def merge_documents(documents):
             start = last_idx_end
 
         # append the non-overlapping part to the merged text
-        merged_text = merged_text.strip()
         merged_text += doc.content[start - doc.meta["split_idx_start"] :]
 
         # update the last end index
@@ -61,16 +60,16 @@ class TestDocumentSplitter:
 
     def test_split_by_word(self):
         splitter = DocumentSplitter(split_by="word", split_length=10)
-        result = splitter.run(
-            documents=[
-                Document(
-                    content="This is a text with some words. There is a second sentence. And there is a third sentence."
-                )
-            ]
-        )
-        assert len(result["documents"]) == 2
-        assert result["documents"][0].content == "This is a text with some words. There is a "
-        assert result["documents"][1].content == "second sentence. And there is a third sentence."
+        text = "This is a text with some words. There is a second sentence. And there is a third sentence."
+        result = splitter.run(documents=[Document(content=text)])
+        docs = result["documents"]
+        assert len(docs) == 2
+        assert docs[0].content == "This is a text with some words. There is a "
+        assert docs[0].meta["split_id"] == 0
+        assert docs[0].meta["split_idx_start"] == text.index(docs[0].content)
+        assert docs[1].content == "second sentence. And there is a third sentence."
+        assert docs[1].meta["split_id"] == 1
+        assert docs[1].meta["split_idx_start"] == text.index(docs[1].content)
 
     def test_split_by_word_with_threshold(self):
         splitter = DocumentSplitter(split_by="word", split_length=15, split_threshold=10)
@@ -89,77 +88,101 @@ class TestDocumentSplitter:
 
     def test_split_by_word_multiple_input_docs(self):
         splitter = DocumentSplitter(split_by="word", split_length=10)
-        result = splitter.run(
-            documents=[
-                Document(
-                    content="This is a text with some words. There is a second sentence. And there is a third sentence."
-                ),
-                Document(
-                    content="This is a different text with some words. There is a second sentence. And there is a third sentence. And there is a fourth sentence."
-                ),
-            ]
-        )
-        assert len(result["documents"]) == 5
-        assert result["documents"][0].content == "This is a text with some words. There is a "
-        assert result["documents"][1].content == "second sentence. And there is a third sentence."
-        assert result["documents"][2].content == "This is a different text with some words. There is "
-        assert result["documents"][3].content == "a second sentence. And there is a third sentence. And "
-        assert result["documents"][4].content == "there is a fourth sentence."
+        text1 = "This is a text with some words. There is a second sentence. And there is a third sentence."
+        text2 = "This is a different text with some words. There is a second sentence. And there is a third sentence. And there is a fourth sentence."
+        result = splitter.run(documents=[Document(content=text1), Document(content=text2)])
+        docs = result["documents"]
+        assert len(docs) == 5
+        # doc 0
+        assert docs[0].content == "This is a text with some words. There is a "
+        assert docs[0].meta["split_id"] == 0
+        assert docs[0].meta["split_idx_start"] == text1.index(docs[0].content)
+        # doc 1
+        assert docs[1].content == "second sentence. And there is a third sentence."
+        assert docs[1].meta["split_id"] == 1
+        assert docs[1].meta["split_idx_start"] == text1.index(docs[1].content)
+        # doc 2
+        assert docs[2].content == "This is a different text with some words. There is "
+        assert docs[2].meta["split_id"] == 0
+        assert docs[2].meta["split_idx_start"] == text2.index(docs[2].content)
+        # doc 3
+        assert docs[3].content == "a second sentence. And there is a third sentence. And "
+        assert docs[3].meta["split_id"] == 1
+        assert docs[3].meta["split_idx_start"] == text2.index(docs[3].content)
+        # doc 4
+        assert docs[4].content == "there is a fourth sentence."
+        assert docs[4].meta["split_id"] == 2
+        assert docs[4].meta["split_idx_start"] == text2.index(docs[4].content)
 
     def test_split_by_sentence(self):
         splitter = DocumentSplitter(split_by="sentence", split_length=1)
-        result = splitter.run(
-            documents=[
-                Document(
-                    content="This is a text with some words. There is a second sentence. And there is a third sentence."
-                )
-            ]
-        )
-        assert len(result["documents"]) == 3
-        assert result["documents"][0].content == "This is a text with some words."
-        assert result["documents"][1].content == " There is a second sentence."
-        assert result["documents"][2].content == " And there is a third sentence."
+        text = "This is a text with some words. There is a second sentence. And there is a third sentence."
+        result = splitter.run(documents=[Document(content=text)])
+        docs = result["documents"]
+        assert len(docs) == 3
+        assert docs[0].content == "This is a text with some words."
+        assert docs[0].meta["split_id"] == 0
+        assert docs[0].meta["split_idx_start"] == text.index(docs[0].content)
+        assert docs[1].content == " There is a second sentence."
+        assert docs[1].meta["split_id"] == 1
+        assert docs[1].meta["split_idx_start"] == text.index(docs[1].content)
+        assert docs[2].content == " And there is a third sentence."
+        assert docs[2].meta["split_id"] == 2
+        assert docs[2].meta["split_idx_start"] == text.index(docs[2].content)
 
     def test_split_by_passage(self):
         splitter = DocumentSplitter(split_by="passage", split_length=1)
-        result = splitter.run(
-            documents=[
-                Document(
-                    content="This is a text with some words. There is a second sentence.\n\nAnd there is a third sentence.\n\n And another passage."
-                )
-            ]
-        )
-        assert len(result["documents"]) == 3
-        assert result["documents"][0].content == "This is a text with some words. There is a second sentence.\n\n"
-        assert result["documents"][1].content == "And there is a third sentence.\n\n"
-        assert result["documents"][2].content == " And another passage."
+        text = "This is a text with some words. There is a second sentence.\n\nAnd there is a third sentence.\n\n And another passage."
+        result = splitter.run(documents=[Document(content=text)])
+        docs = result["documents"]
+        assert len(docs) == 3
+        assert docs[0].content == "This is a text with some words. There is a second sentence.\n\n"
+        assert docs[0].meta["split_id"] == 0
+        assert docs[0].meta["split_idx_start"] == text.index(docs[0].content)
+        assert docs[1].content == "And there is a third sentence.\n\n"
+        assert docs[1].meta["split_id"] == 1
+        assert docs[1].meta["split_idx_start"] == text.index(docs[1].content)
+        assert docs[2].content == " And another passage."
+        assert docs[2].meta["split_id"] == 2
+        assert docs[2].meta["split_idx_start"] == text.index(docs[2].content)
 
     def test_split_by_page(self):
         splitter = DocumentSplitter(split_by="page", split_length=1)
-        result = splitter.run(
-            documents=[
-                Document(
-                    content="This is a text with some words. There is a second sentence.\f And there is a third sentence.\f And another passage."
-                )
-            ]
-        )
-        assert len(result["documents"]) == 3
-        assert result["documents"][0].content == "This is a text with some words. There is a second sentence.\x0c"
-        assert result["documents"][1].content == " And there is a third sentence.\x0c"
-        assert result["documents"][2].content == " And another passage."
+        text = "This is a text with some words. There is a second sentence.\f And there is a third sentence.\f And another passage."
+        result = splitter.run(documents=[Document(content=text)])
+        docs = result["documents"]
+        assert len(docs) == 3
+        assert docs[0].content == "This is a text with some words. There is a second sentence.\f"
+        assert docs[0].meta["split_id"] == 0
+        assert docs[0].meta["split_idx_start"] == text.index(docs[0].content)
+        assert docs[0].meta["page_number"] == 1
+        assert docs[1].content == " And there is a third sentence.\f"
+        assert docs[1].meta["split_id"] == 1
+        assert docs[1].meta["split_idx_start"] == text.index(docs[1].content)
+        assert docs[1].meta["page_number"] == 2
+        assert docs[2].content == " And another passage."
+        assert docs[2].meta["split_id"] == 2
+        assert docs[2].meta["split_idx_start"] == text.index(docs[2].content)
+        assert docs[2].meta["page_number"] == 3
 
     def test_split_by_word_with_overlap(self):
         splitter = DocumentSplitter(split_by="word", split_length=10, split_overlap=2)
-        result = splitter.run(
-            documents=[
-                Document(
-                    content="This is a text with some words. There is a second sentence. And there is a third sentence."
-                )
-            ]
-        )
-        assert len(result["documents"]) == 2
-        assert result["documents"][0].content == "This is a text with some words. There is a "
-        assert result["documents"][1].content == "is a second sentence. And there is a third sentence."
+        text = "This is a text with some words. There is a second sentence. And there is a third sentence."
+        result = splitter.run(documents=[Document(content=text)])
+        docs = result["documents"]
+        assert len(docs) == 2
+        # doc 0
+        assert docs[0].content == "This is a text with some words. There is a "
+        assert docs[0].meta["split_id"] == 0
+        assert docs[0].meta["split_idx_start"] == text.index(docs[0].content)
+        assert docs[0].meta["_split_overlap"][0]["range"] == (0, 5)
+        assert docs[1].content[0:5] == "is a "
+        # doc 1
+        assert docs[1].content == "is a second sentence. And there is a third sentence."
+        assert docs[1].meta["split_id"] == 1
+        assert docs[1].meta["split_idx_start"] == text.index(docs[1].content)
+        assert docs[1].meta["_split_overlap"][0]["range"] == (38, 43)
+        assert docs[0].content[38:43] == "is a "
 
     def test_source_id_stored_in_metadata(self):
         splitter = DocumentSplitter(split_by="word", split_length=10)
@@ -277,13 +300,32 @@ class TestDocumentSplitter:
 
     def test_add_split_overlap_information(self):
         splitter = DocumentSplitter(split_length=10, split_overlap=5, split_by="word")
+        text = "This is a text with some words. There is a second sentence. And a third sentence."
         doc = Document(content="This is a text with some words. There is a second sentence. And a third sentence.")
-        docs = splitter.run(documents=[doc])
+        docs = splitter.run(documents=[doc])["documents"]
 
         # check split_overlap is added to all the documents
-        assert len(docs["documents"]) == 3
-        for d in docs["documents"]:
-            assert "_split_overlap" in d.meta
+        assert len(docs) == 3
+        # doc 0
+        assert docs[0].content == "This is a text with some words. There is a "
+        assert docs[0].meta["split_id"] == 0
+        assert docs[0].meta["split_idx_start"] == text.index(docs[0].content)  # 0
+        assert docs[0].meta["_split_overlap"][0]["range"] == (0, 23)
+        assert docs[1].content[0:23] == "some words. There is a "
+        # doc 1
+        assert docs[1].content == "some words. There is a second sentence. And a third "
+        assert docs[1].meta["split_id"] == 1
+        assert docs[1].meta["split_idx_start"] == text.index(docs[1].content)  # 20
+        assert docs[1].meta["_split_overlap"][0]["range"] == (20, 43)
+        assert docs[1].meta["_split_overlap"][1]["range"] == (0, 29)
+        assert docs[0].content[20:43] == "some words. There is a "
+        assert docs[2].content[0:29] == "second sentence. And a third "
+        # doc 2
+        assert docs[2].content == "second sentence. And a third sentence."
+        assert docs[2].meta["split_id"] == 2
+        assert docs[2].meta["split_idx_start"] == text.index(docs[2].content)  # 43
+        assert docs[2].meta["_split_overlap"][0]["range"] == (23, 52)
+        assert docs[1].content[23:52] == "second sentence. And a third "
 
         # reconstruct the original document content from the split documents
-        assert doc.content == merge_documents(docs["documents"])
+        assert doc.content == merge_documents(docs)

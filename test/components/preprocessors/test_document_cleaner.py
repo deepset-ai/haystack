@@ -40,7 +40,7 @@ class TestDocumentCleaner:
         result = cleaner.run(
             documents=[
                 Document(
-                    content="This is a text with some words. "
+                    content="This is a text with some words. \f"
                     ""
                     "There is a second sentence. "
                     ""
@@ -51,7 +51,7 @@ class TestDocumentCleaner:
         assert len(result["documents"]) == 1
         assert (
             result["documents"][0].content
-            == "This is a text with some words. There is a second sentence. And there is a third sentence."
+            == "This is a text with some words. \fThere is a second sentence. And there is a third sentence."
         )
 
     def test_remove_whitespaces(self):
@@ -63,33 +63,33 @@ class TestDocumentCleaner:
                     ""
                     "There is a second sentence.  "
                     ""
-                    "And there  is a third sentence. "
+                    "And there  is a third sentence.\f "
                 )
             ]
         )
         assert len(result["documents"]) == 1
         assert result["documents"][0].content == (
-            "This is a text with some words. " "" "There is a second sentence. " "" "And there is a third sentence."
+            "This is a text with some words. " "" "There is a second sentence. " "" "And there is a third sentence.\f"
         )
 
     def test_remove_substrings(self):
         cleaner = DocumentCleaner(remove_substrings=["This", "A", "words", "🪲"])
-        result = cleaner.run(documents=[Document(content="This is a text with some words.🪲")])
+        result = cleaner.run(documents=[Document(content="This is a text with some words.\f🪲")])
         assert len(result["documents"]) == 1
-        assert result["documents"][0].content == " is a text with some ."
+        assert result["documents"][0].content == " is a text with some .\f"
 
     def test_remove_regex(self):
         cleaner = DocumentCleaner(remove_regex=r"\s\s+")
-        result = cleaner.run(documents=[Document(content="This is a  text with   some words.")])
+        result = cleaner.run(documents=[Document(content="This is a  text \f with   some words.")])
         assert len(result["documents"]) == 1
-        assert result["documents"][0].content == "This is a text with some words."
+        assert result["documents"][0].content == "This is a text\fwith some words."
 
     def test_remove_repeated_substrings(self):
         cleaner = DocumentCleaner(
             remove_empty_lines=False, remove_extra_whitespaces=False, remove_repeated_substrings=True
         )
 
-        text = """First PageThis is a header.
+        text = """First Page\fThis is a header.
         Page  of
         2
         4
@@ -109,7 +109,7 @@ class TestDocumentCleaner:
         This is a footer number 1
         This is footer number 2"""
 
-        expected_text = """First Page 2
+        expected_text = """First Page\f 2
         4
         Lorem ipsum dolor sit amet 3
         4
@@ -139,3 +139,68 @@ class TestDocumentCleaner:
         assert len(result["documents"]) == 2
         assert result["documents"][0].id == "1"
         assert result["documents"][1].id == "2"
+
+    def test_unicode_normalization(self):
+        text = """\
+        ｱｲｳｴｵ
+        Comment ça va
+        مرحبا بالعالم
+        em Space"""
+
+        expected_text_NFC = """\
+        ｱｲｳｴｵ
+        Comment ça va
+        مرحبا بالعالم
+        em Space"""
+
+        expected_text_NFD = """\
+        ｱｲｳｴｵ
+        Comment ça va
+        مرحبا بالعالم
+        em Space"""
+
+        expected_text_NFKC = """\
+        アイウエオ
+        Comment ça va
+        مرحبا بالعالم
+        em Space"""
+
+        expected_text_NFKD = """\
+        アイウエオ
+        Comment ça va
+        مرحبا بالعالم
+        em Space"""
+
+        nfc_cleaner = DocumentCleaner(unicode_normalization="NFC", remove_extra_whitespaces=False)
+        nfd_cleaner = DocumentCleaner(unicode_normalization="NFD", remove_extra_whitespaces=False)
+        nfkc_cleaner = DocumentCleaner(unicode_normalization="NFKC", remove_extra_whitespaces=False)
+        nfkd_cleaner = DocumentCleaner(unicode_normalization="NFKD", remove_extra_whitespaces=False)
+
+        nfc_result = nfc_cleaner.run(documents=[Document(content=text)])
+        nfd_result = nfd_cleaner.run(documents=[Document(content=text)])
+        nfkc_result = nfkc_cleaner.run(documents=[Document(content=text)])
+        nfkd_result = nfkd_cleaner.run(documents=[Document(content=text)])
+
+        assert nfc_result["documents"][0].content == expected_text_NFC
+        assert nfd_result["documents"][0].content == expected_text_NFD
+        assert nfkc_result["documents"][0].content == expected_text_NFKC
+        assert nfkd_result["documents"][0].content == expected_text_NFKD
+
+    def test_ascii_only(self):
+        text = """\
+        ｱｲｳｴｵ
+        Comment ça va
+        Á
+        مرحبا بالعالم
+        em Space"""
+
+        expected_text = """\
+        \n\
+        Comment ca va
+        A
+         \n\
+        em Space"""
+
+        cleaner = DocumentCleaner(ascii_only=True, remove_extra_whitespaces=False, remove_empty_lines=False)
+        result = cleaner.run(documents=[Document(content=text)])
+        assert result["documents"][0].content == expected_text

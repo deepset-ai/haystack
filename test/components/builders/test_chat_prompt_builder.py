@@ -535,3 +535,15 @@ class TestChatPromptBuilderDynamic:
         ]
         assert component._variables == ["var", "required_var"]
         assert component._required_variables == ["required_var"]
+
+    def test_from_dict_template_none(self):
+        component = ChatPromptBuilder.from_dict(
+            data={
+                "type": "haystack.components.builders.chat_prompt_builder.ChatPromptBuilder",
+                "init_parameters": {"template": None},
+            }
+        )
+
+        assert component.template is None
+        assert component._variables is None
+        assert component._required_variables is None

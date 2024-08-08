@@ -6,7 +6,8 @@ import re
 from copy import deepcopy
 from functools import partial, reduce
 from itertools import chain
-from typing import Generator, List, Optional, Set
+from typing import Generator, List, Literal, Optional, Set
+from unicodedata import normalize
 
 from haystack import Document, component, logging
 
@@ -18,10 +19,12 @@ class DocumentCleaner:
     """
     Cleans the text in the documents.
 
-    Cleans up text documents by removing extra whitespaces, empty lines, specified substrings, regexes,
+    It removes extra whitespaces,
+    empty lines, specified substrings, regexes,
     page headers and footers (in this order).
 
-    Usage example:
+    ### Usage example:
+
     ```python
     from haystack import Document
     from haystack.components.preprocessors import DocumentCleaner
@@ -43,19 +46,29 @@ class DocumentCleaner:
         keep_id: bool = False,
         remove_substrings: Optional[List[str]] = None,
         remove_regex: Optional[str] = None,
+        unicode_normalization: Optional[Literal["NFC", "NFKC", "NFD", "NFKD"]] = None,
+        ascii_only: bool = False,
     ):
         """
-        Initialize the DocumentCleaner.
+        Initialize DocumentCleaner.
 
-        :param remove_empty_lines: Whether to remove empty lines.
-        :param remove_extra_whitespaces: Whether to remove extra whitespaces.
-        :param remove_repeated_substrings: Whether to remove repeated substrings (headers/footers) from pages.
-            Pages in the text need to be separated by form feed character "\\f",
+        :param remove_empty_lines: If `True`, removes empty lines.
+        :param remove_extra_whitespaces: If `True`, removes extra whitespaces.
+        :param remove_repeated_substrings: If `True`, removes repeated substrings (headers and footers) from pages.
+            Pages must be separated by a form feed character "\\f",
             which is supported by `TextFileToDocument` and `AzureOCRDocumentConverter`.
         :param remove_substrings: List of substrings to remove from the text.
         :param remove_regex: Regex to match and replace substrings by "".
-        :param keep_id: keep the ids of the original documents
+        :param keep_id: If `True`, keeps the IDs of the original documents.
+        :param unicode_normalization: Unicode normalization form to apply to the text.
+            Note: This will run before any other steps.
+        :param ascii_only: Whether to convert the text to ASCII only.
+            Will remove accents from characters and replace them with ASCII characters.
+            Other non-ASCII characters will be removed.
+            Note: This will run before any pattern matching or removal.
         """
+
+        self._validate_params(unicode_normalization=unicode_normalization)
 
         self.remove_empty_lines = remove_empty_lines
         self.remove_extra_whitespaces = remove_extra_whitespaces
@@ -63,6 +76,18 @@ class DocumentCleaner:
         self.remove_substrings = remove_substrings
         self.remove_regex = remove_regex
         self.keep_id = keep_id
+        self.unicode_normalization = unicode_normalization
+        self.ascii_only = ascii_only
+
+    def _validate_params(self, unicode_normalization: Optional[str]):
+        """
+        Validate the parameters of the DocumentCleaner.
+
+        :param unicode_normalization: Unicode normalization form to apply to the text.
+        :raises ValueError: if the parameters are not valid.
+        """
+        if unicode_normalization and unicode_normalization not in ["NFC", "NFKC", "NFD", "NFKD"]:
+            raise ValueError("unicode_normalization must be one of 'NFC', 'NFKC', 'NFD', 'NFKD'.")
 
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document]):
@@ -91,6 +116,10 @@ class DocumentCleaner:
                 continue
             text = doc.content
 
+            if self.unicode_normalization:
+                text = self._normalize_unicode(text, self.unicode_normalization)
+            if self.ascii_only:
+                text = self._ascii_only(text)
             if self.remove_extra_whitespaces:
                 text = self._remove_extra_whitespaces(text)
             if self.remove_empty_lines:
@@ -106,6 +135,32 @@ class DocumentCleaner:
 
         return {"documents": cleaned_docs}
 
+    def _normalize_unicode(self, text: str, form: Literal["NFC", "NFKC", "NFD", "NFKD"]) -> str:
+        """
+        Normalize the unicode of the text.
+
+        :param text: Text to normalize.
+        :param form: Unicode normalization form to apply to the text.
+            Options: "NFC", "NFKC", "NFD", "NFKD".
+        :returns: The normalized text.
+        """
+        return normalize(form, text)
+
+    def _ascii_only(self, text: str) -> str:
+        """
+        Convert the text to ASCII only.
+
+        Will remove accents from characters and replace them with ASCII characters.
+        Other non-ASCII characters will be removed.
+
+        :param text: Text to convert to ASCII only.
+        :returns: The text in ASCII only.
+        """
+
+        # First normalize the text to NFKD to separate the characters and their diacritics
+        # Then encode it to ASCII and ignore any characters that can't be encoded
+        return self._normalize_unicode(text, "NFKD").encode("ascii", "ignore").decode("utf-8")
+
     def _remove_empty_lines(self, text: str) -> str:
         """
         Remove empty lines and lines that contain nothing but whitespaces from text.
@@ -113,9 +168,9 @@ class DocumentCleaner:
         :param text: Text to clean.
         :returns: The text without empty lines.
         """
-        lines = text.split("\n")
-        non_empty_lines = filter(lambda line: line.strip() != "", lines)
-        return "\n".join(non_empty_lines)
+        pages = text.split("\f")
+        cleaned_pages = ["\n".join(line for line in page.split("\n") if line.strip()) for page in pages]
+        return "\f".join(cleaned_pages)
 
     def _remove_extra_whitespaces(self, text: str) -> str:
         """
@@ -124,7 +179,9 @@ class DocumentCleaner:
         :param text: Text to clean.
         :returns: The text without extra whitespaces.
         """
-        return re.sub(r"\s\s+", " ", text).strip()
+        texts = text.split("\f")
+        cleaned_text = [re.sub(r"\s\s+", " ", text).strip() for text in texts]
+        return "\f".join(cleaned_text)
 
     def _remove_regex(self, text: str, regex: str) -> str:
         """
@@ -134,7 +191,9 @@ class DocumentCleaner:
         :param regex: Regex to match and replace substrings by "".
         :returns: The text without the substrings that match the regex.
         """
-        return re.sub(regex, "", text).strip()
+        texts = text.split("\f")
+        cleaned_text = [re.sub(regex, "", text).strip() for text in texts]
+        return "\f".join(cleaned_text)
 
     def _remove_substrings(self, text: str, substrings: List[str]) -> str:
         """

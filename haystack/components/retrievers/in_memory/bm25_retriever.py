@@ -12,9 +12,12 @@ from haystack.document_stores.types import FilterPolicy
 @component
 class InMemoryBM25Retriever:
     """
-    Retrieves documents using the BM25 algorithm.
+    Retrieves documents that are most similar to the query using keyword-based algorithm.
 
-    Usage example:
+    Use this retriever with the InMemoryDocumentStore.
+
+    ### Usage example
+
     ```python
     from haystack import Document
     from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
@@ -47,15 +50,19 @@ class InMemoryBM25Retriever:
         Create the InMemoryBM25Retriever component.
 
         :param document_store:
-            An instance of InMemoryDocumentStore.
+            An instance of InMemoryDocumentStore where the retriever should search for relevant documents.
         :param filters:
-            A dictionary with filters to narrow down the search space.
+            A dictionary with filters to narrow down the retriever's search space in the document store.
         :param top_k:
             The maximum number of documents to retrieve.
         :param scale_score:
-            Scales the BM25 score to a unit interval in the range of 0 to 1, where 1 means extremely relevant.
-            If set to `False`, uses raw similarity scores.
+            When `True`, scales the score of retrieved documents to a range of 0 to 1, where 1 means extremely relevant.
+            When `False`, uses raw similarity scores.
         :param filter_policy: The filter policy to apply during retrieval.
+        Filter policy determines how filters are applied when retrieving documents. You can choose:
+        - `REPLACE` (default): Overrides the initialization filters with the filters specified at runtime.
+        Use this policy to dynamically change filtering for specific queries.
+        - `MERGE`: Combines runtime filters with initialization filters to narrow down the search.
         :raises ValueError:
             If the specified `top_k` is not > 0.
         """
@@ -131,13 +138,12 @@ class InMemoryBM25Retriever:
         :param query:
             The query string for the Retriever.
         :param filters:
-            A dictionary with filters to narrow down the search space.
+            A dictionary with filters to narrow down the search space when retrieving documents.
         :param top_k:
             The maximum number of documents to return.
         :param scale_score:
-            Scales the BM25 score to a unit interval in the range of 0 to 1, where 1 means extremely relevant.
-            If set to `False`, uses raw similarity scores. If not specified, the value provided at initialization
-            is used.
+            When `True`, scales the score of retrieved documents to a range of 0 to 1, where 1 means extremely relevant.
+            When `False`, uses raw similarity scores.
         :returns:
             The retrieved documents.
 

@@ -48,14 +48,14 @@ class Pipeline(PipelineBase):
                 "haystack.component.input_types": {k: type(v).__name__ for k, v in inputs.items()},
                 "haystack.component.input_spec": {
                     key: {
-                        "type": value.type.__name__ if isinstance(value.type, type) else str(value.type),
+                        "type": (value.type.__name__ if isinstance(value.type, type) else str(value.type)),
                         "senders": value.senders,
                     }
                     for key, value in instance.__haystack_input__._sockets_dict.items()  # type: ignore
                 },
                 "haystack.component.output_spec": {
                     key: {
-                        "type": value.type.__name__ if isinstance(value.type, type) else str(value.type),
+                        "type": (value.type.__name__ if isinstance(value.type, type) else str(value.type)),
                         "receivers": value.receivers,
                     }
                     for key, value in instance.__haystack_output__._sockets_dict.items()  # type: ignore
@@ -155,6 +155,8 @@ class Pipeline(PipelineBase):
         The pipeline resolves inputs to the correct components, returning
         {'hello2': {'output': 'Hello, Hello, world!!'}}.
         """
+        warn("The 'debug' parameter is deprecated and will be removed in Haystack 2.5.0.", DeprecationWarning)
+
         pipeline_running(self)
 
         # Reset the visits count for each component
@@ -243,7 +245,7 @@ class Pipeline(PipelineBase):
                     # This happens when a component was put in the waiting list but we reached it from another edge.
                     _dequeue_waiting_component((name, comp), waiting_queue)
 
-                    for pair in self._find_components_that_received_no_input(name, res):
+                    for pair in self._find_components_that_will_receive_no_input(name, res):
                         _dequeue_component(pair, run_queue, waiting_queue)
                     res = self._distribute_output(name, res, components_inputs, run_queue, waiting_queue)
 

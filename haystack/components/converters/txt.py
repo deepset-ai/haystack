@@ -15,9 +15,14 @@ logger = logging.getLogger(__name__)
 @component
 class TextFileToDocument:
     """
-    Converts text files to Documents.
+    Converts text files to documents your pipeline can query.
 
-    Usage example:
+    By default, it uses UTF-8 encoding when converting files but
+    you can also set custom encoding.
+    It can attach metadata to the resulting documents.
+
+    ### Usage example
+
     ```python
     from haystack.components.converters.txt import TextFileToDocument
 
@@ -31,12 +36,12 @@ class TextFileToDocument:
 
     def __init__(self, encoding: str = "utf-8"):
         """
-        Create a TextFileToDocument component.
+        Creates a TextFileToDocument component.
 
         :param encoding:
-            The encoding of the text files.
-            Note that if the encoding is specified in the metadata of a source ByteStream,
-            it will override this value.
+            The encoding of the text files to convert.
+            If the encoding is specified in the metadata of a source ByteStream,
+            it overrides this value.
         """
         self.encoding = encoding
 
@@ -47,21 +52,20 @@ class TextFileToDocument:
         meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
     ):
         """
-        Converts text files to Documents.
+        Converts text files to documents.
 
         :param sources:
-            List of HTML file paths or ByteStream objects.
+            List of HTML file paths or ByteStream objects to convert.
         :param meta:
-            Optional metadata to attach to the Documents.
-            This value can be either a list of dictionaries or a single dictionary.
-            If it's a single dictionary, its content is added to the metadata of all produced Documents.
-            If it's a list, the length of the list must match the number of sources, because the two lists will
-            be zipped.
-            If `sources` contains ByteStream objects, their `meta` will be added to the output Documents.
+            Optional metadata to attach to the documents.
+            This value can be a list of dictionaries or a single dictionary.
+            If it's a single dictionary, its content is added to the metadata of all produced documents.
+            If it's a list, its length must match the number of sources as they're zipped together.
+            For ByteStream objects, their `meta` is added to the output documents.
 
         :returns:
             A dictionary with the following keys:
-            - `documents`: Created Documents
+            - `documents`: A list of converted documents.
         """
         documents = []
 

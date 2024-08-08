@@ -1,7 +1,7 @@
 loaders:
   - type: haystack_pydoc_tools.loaders.CustomPythonLoader
     search_path: [../../../haystack/components/joiners]
-    modules: ["document_joiner", "branch"]
+    modules: ["document_joiner", "branch", "answer_joiner"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
