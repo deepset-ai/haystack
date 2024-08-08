@@ -81,19 +81,6 @@ def convert_logical_operators(filter_dict: Dict[str, Any]) -> Dict[str, Any]:
     return filter_dict
 
 
-def logical_operators_to_str(filter_dict: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Convert any logical operators found in a filter dictionary to string.
-
-    :param filter_dict: A dictionary representing a filter with potential LogicalOperator enums.
-    :return: A new dictionary with LogicalOperator strings in place of enums.
-    """
-    # If the dictionary represents a logical filter, update the 'operator'
-    if is_logical_filter(filter_dict) and isinstance(filter_dict["operator"], LogicalOperator):
-        filter_dict["operator"] = filter_dict["operator"].value
-    return filter_dict
-
-
 def is_comparison_filter(filter_item: Dict[str, Any]) -> bool:
     """
     Check if the given filter is a comparison filter.
@@ -158,7 +145,7 @@ def combine_two_logical_filters(
     """
     if init_logical_filter["operator"] == runtime_logical_filter["operator"]:
         return {
-            "operator": init_logical_filter["operator"],
+            "operator": str(init_logical_filter["operator"]),
             "conditions": init_logical_filter["conditions"] + runtime_logical_filter["conditions"],
         }
 
@@ -171,6 +158,7 @@ def combine_two_logical_filters(
         init_logical_filter=init_logical_filter,
         runtime_logical_filter=runtime_logical_filter,
     )
+    runtime_logical_filter["operator"] = str(runtime_logical_filter["operator"])
     return runtime_logical_filter
 
 
@@ -220,7 +208,7 @@ def combine_init_comparison_and_runtime_logical_filters(
                 init_filter=init_comparison_filter,
                 filters=runtime_logical_filter,
             )
-        return {"operator": runtime_logical_filter["operator"], "conditions": conditions}
+        return {"operator": str(runtime_logical_filter["operator"]), "conditions": conditions}
 
     logger.warning(
         "The provided logical_operator, {logical_operator}, does not match the logical operator found in "
@@ -228,6 +216,7 @@ def combine_init_comparison_and_runtime_logical_filters(
         logical_operator=logical_operator,
         filters_logical_operator=runtime_logical_filter["operator"],
     )
+    runtime_logical_filter["operator"] = str(runtime_logical_filter["operator"])
     return runtime_logical_filter
 
 
@@ -276,7 +265,7 @@ def combine_runtime_comparison_and_init_logical_filters(
             )
             conditions = [c for c in conditions if c.get("field") != runtime_comparison_filter["field"]]
         conditions.append(runtime_comparison_filter)
-        return {"operator": init_logical_filter["operator"], "conditions": conditions}
+        return {"operator": str(init_logical_filter["operator"]), "conditions": conditions}
 
     logger.warning(
         "The provided logical_operator, {logical_operator}, does not match the logical operator found in "
@@ -323,7 +312,7 @@ def combine_two_comparison_filters(
         )
         return runtime_comparison_filter
 
-    return {"operator": logical_operator, "conditions": [init_comparison_filter, runtime_comparison_filter]}
+    return {"operator": str(logical_operator), "conditions": [init_comparison_filter, runtime_comparison_filter]}
 
 
 def apply_filter_policy(
@@ -353,23 +342,19 @@ def apply_filter_policy(
         runtime_filters = convert_logical_operators(runtime_filters)
         # now we merge filters
         if is_comparison_filter(init_filters) and is_comparison_filter(runtime_filters):
-            combined_filters = combine_two_comparison_filters(init_filters, runtime_filters, default_logical_operator)
-            return logical_operators_to_str(combined_filters)
+            return combine_two_comparison_filters(init_filters, runtime_filters, default_logical_operator)
         elif is_comparison_filter(init_filters) and is_logical_filter(runtime_filters):
-            combined_filters = combine_init_comparison_and_runtime_logical_filters(
+            return combine_init_comparison_and_runtime_logical_filters(
                 init_filters, runtime_filters, default_logical_operator
             )
-            return logical_operators_to_str(combined_filters)
         elif is_logical_filter(init_filters) and is_comparison_filter(runtime_filters):
-            combined_filters = combine_runtime_comparison_and_init_logical_filters(
+            return combine_runtime_comparison_and_init_logical_filters(
                 runtime_filters, init_filters, default_logical_operator
             )
-            return logical_operators_to_str(combined_filters)
         elif is_logical_filter(init_filters) and is_logical_filter(runtime_filters):
-            combined_filters = combine_two_logical_filters(init_filters, runtime_filters)
-            return logical_operators_to_str(combined_filters)
+            return combine_two_logical_filters(init_filters, runtime_filters)
 
     resulting_filter = runtime_filters or init_filters
-    if resulting_filter:
-        resulting_filter = logical_operators_to_str(resulting_filter)
+    if resulting_filter and is_logical_filter(resulting_filter):
+        resulting_filter["operator"] = str(resulting_filter["operator"])
     return resulting_filter
