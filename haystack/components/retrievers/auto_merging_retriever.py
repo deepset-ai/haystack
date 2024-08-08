@@ -1,36 +1,36 @@
-from haystack import component
+from typing import List
+
+from haystack import Document, component
+from haystack.dataclasses.document_hierarchical import HierarchicalDocument
 from haystack.document_stores.types import DocumentStore
 
 
 @component
 class AutoMergingRetriever:
     """
-    Auto-merging retrieval aims to combine (or merge) information from multiple sources or segments of text.
+    A retriever which returns parent documents of the matched leaf documents, based on a threshold.
 
-    This approach is particularly useful when no single document or segment fully answers the query but rather the
-    answer lies in combining information from multiple sources.
+    The AutoMergingRetriever assumes you have a hierarchical tree structure of documents, where the leaf nodes
+    are indexed in a document store. During retrieval, if the number of matched leaf documents below the same parent is
+    above a certain threshold, the retriever will return the parent document instead of the individual leaf documents.
 
-    It allows smaller chunks to be merged into bigger parent chunks.
+    The rational is, given that a paragraph is split into multiple sentences represented as leaf documents, and if for
+    a given query, multiple sentences are matched, the retriever will return the whole paragraph instead of the
+    individual sentences, since the whole paragraph might be more informative than the individual sentences alone.
 
-
-    It does this via the following steps:
-
-    - Define a hierarchy of smaller chunks linked to parent chunks.
-    - If the set of smaller chunks linking to a parent chunk exceeds some threshold (say, cosine similarity),
-      then “merge” smaller chunks into the bigger parent chunk.
-
-    The method will finally retrieve the parent chunk for better context.
+    # https://www.youtube.com/watch?v=oDzWsynpOyI
+    # https://pbs.twimg.com/media/F7ONuajWMAAvuWh?format=jpg&name=4096x4096
     """
 
     def __init__(self, document_store: DocumentStore, threshold: float = 0.9):
         self.document_store = document_store
         self.threshold = threshold
 
-    def run(self):
+    @component.output_types(documents=List[Document])
+    def run(self, matched_leaf_documents: List[HierarchicalDocument]):
         """
         Run the AutoMergingRetriever.
-
-        :return:
-        :rtype:
         """
-        pass
+
+        # find the parent documents for the matched leaf documents
+        # parent_ids = [doc.parent_id for doc in matched_leaf_documents]
