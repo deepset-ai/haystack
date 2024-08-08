@@ -3,35 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Literal, Optional
 
 from haystack import logging
 
 logger = logging.getLogger(__name__)
-
-
-class LogicalOperator(Enum):
-    AND = "AND"
-    OR = "OR"
-    NOT = "NOT"
-
-    def __str__(self):
-        return self.value
-
-    @staticmethod
-    def from_str(operator_label: str) -> "LogicalOperator":
-        """
-        Convert a string to a LogicalOperator enum.
-
-        :param operator_label: The string to convert.
-        :return: The corresponding LogicalOperator enum.
-        """
-        enum_map = {e.value.lower(): e for e in LogicalOperator}
-        operator = enum_map.get(operator_label.lower() if operator_label else "")
-        if operator is None:
-            msg = f"Unknown LogicalOperator type '{operator}'. Supported types are: {list(enum_map.keys())}"
-            raise ValueError(msg)
-        return operator
 
 
 class FilterPolicy(Enum):
@@ -62,23 +38,6 @@ class FilterPolicy(Enum):
             msg = f"Unknown FilterPolicy type '{filter_policy}'. Supported types are: {list(enum_map.keys())}"
             raise ValueError(msg)
         return policy
-
-
-def convert_logical_operators(filter_dict: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Convert string-based logical operators in a filter dictionary to LogicalOperator enums.
-
-    :param filter_dict: A dictionary representing a filter with potential string logical operators.
-    :return: A new dictionary with LogicalOperator enums in place of string operators.
-    """
-    # If the dictionary represents a logical filter, update the 'operator'
-    if is_logical_filter(filter_dict) and isinstance(filter_dict["operator"], str):
-        try:
-            filter_dict["operator"] = LogicalOperator.from_str(filter_dict["operator"])
-        except ValueError as e:
-            raise ValueError(f"Error converting logical operator: {e}")
-
-    return filter_dict
 
 
 def is_comparison_filter(filter_item: Dict[str, Any]) -> bool:
@@ -115,21 +74,21 @@ def combine_two_logical_filters(
 
         ```python
         init_logical_filter = {
-            "operator": LogicalOperator.AND,
+            "operator": "AND",
             "conditions": [
                 {"field": "meta.type", "operator": "==", "value": "article"},
                 {"field": "meta.rating", "operator": ">=", "value": 3},
             ]
         }
         runtime_logical_filter = {
-            "operator": LogicalOperator.AND,
+            "operator": "AND",
             "conditions": [
                 {"field": "meta.genre", "operator": "IN", "value": ["economy", "politics"]},
                 {"field": "meta.publisher", "operator": "==", "value": "nytimes"},
             ]
         }
         new_filters = combine_two_logical_filters(
-            init_logical_filter, runtime_logical_filter, LogicalOperator.AND
+            init_logical_filter, runtime_logical_filter, "AND"
         )
         # Output:
         {
@@ -163,7 +122,9 @@ def combine_two_logical_filters(
 
 
 def combine_init_comparison_and_runtime_logical_filters(
-    init_comparison_filter: Dict[str, Any], runtime_logical_filter: Dict[str, Any], logical_operator: LogicalOperator
+    init_comparison_filter: Dict[str, Any],
+    runtime_logical_filter: Dict[str, Any],
+    logical_operator: Literal["AND", "OR", "NOT"],
 ) -> Dict[str, Any]:
     """
     Combine a runtime logical filter with the init comparison filter using the provided logical_operator.
@@ -175,7 +136,7 @@ def combine_init_comparison_and_runtime_logical_filters(
 
     ```python
     runtime_logical_filter = {
-        "operator": LogicalOperator.AND,
+        "operator": "AND",
         "conditions": [
             {"field": "meta.type", "operator": "==", "value": "article"},
             {"field": "meta.rating", "operator": ">=", "value": 3},
@@ -183,7 +144,7 @@ def combine_init_comparison_and_runtime_logical_filters(
     }
     init_comparison_filter = {"field": "meta.date", "operator": ">=", "value": "2015-01-01"}
     new_filters = combine_init_comparison_and_runtime_logical_filters(
-        init_comparison_filter, runtime_logical_filter, LogicalOperator.AND
+        init_comparison_filter, runtime_logical_filter, "AND"
     )
     # Output:
     {
@@ -221,7 +182,9 @@ def combine_init_comparison_and_runtime_logical_filters(
 
 
 def combine_runtime_comparison_and_init_logical_filters(
-    runtime_comparison_filter: Dict[str, Any], init_logical_filter: Dict[str, Any], logical_operator: LogicalOperator
+    runtime_comparison_filter: Dict[str, Any],
+    init_logical_filter: Dict[str, Any],
+    logical_operator: Literal["AND", "OR", "NOT"],
 ) -> Dict[str, Any]:
     """
     Combine an init logical filter with the runtime comparison filter using the provided logical_operator.
@@ -233,7 +196,7 @@ def combine_runtime_comparison_and_init_logical_filters(
 
     ```python
     init_logical_filter = {
-        "operator": LogicalOperator.AND,
+        "operator": "AND",
         "conditions": [
             {"field": "meta.type", "operator": "==", "value": "article"},
             {"field": "meta.rating", "operator": ">=", "value": 3},
@@ -241,7 +204,7 @@ def combine_runtime_comparison_and_init_logical_filters(
     }
     runtime_comparison_filter = {"field": "meta.date", "operator": ">=", "value": "2015-01-01"}
     new_filters = combine_runtime_comparison_and_init_logical_filters(
-        runtime_comparison_filter, init_logical_filter, LogicalOperator.AND
+        runtime_comparison_filter, init_logical_filter, "AND"
     )
     # Output:
     {
@@ -277,7 +240,9 @@ def combine_runtime_comparison_and_init_logical_filters(
 
 
 def combine_two_comparison_filters(
-    init_comparison_filter: Dict[str, Any], runtime_comparison_filter: Dict[str, Any], logical_operator: LogicalOperator
+    init_comparison_filter: Dict[str, Any],
+    runtime_comparison_filter: Dict[str, Any],
+    logical_operator: Literal["AND", "OR", "NOT"],
 ) -> Dict[str, Any]:
     """
     Combine a comparison filter with the `init_comparison_filter` using the provided `logical_operator`.
@@ -291,7 +256,7 @@ def combine_two_comparison_filters(
         runtime_comparison_filter = {"field": "meta.type", "operator": "==", "value": "article"},
         init_comparison_filter = {"field": "meta.date", "operator": ">=", "value": "2015-01-01"},
         new_filters = combine_two_comparison_filters(
-            init_comparison_filter, runtime_comparison_filter, LogicalOperator.AND
+            init_comparison_filter, runtime_comparison_filter, "AND"
         )
         # Output:
         {
@@ -319,7 +284,7 @@ def apply_filter_policy(
     filter_policy: FilterPolicy,
     init_filters: Optional[Dict[str, Any]] = None,
     runtime_filters: Optional[Dict[str, Any]] = None,
-    default_logical_operator: LogicalOperator = LogicalOperator.AND,
+    default_logical_operator: Literal["AND", "OR", "NOT"] = "AND",
 ) -> Optional[Dict[str, Any]]:
     """
     Apply the filter policy to the given initial and runtime filters to determine the final set of filters used.
@@ -337,9 +302,6 @@ def apply_filter_policy(
     :returns: A dictionary containing the resulting filters based on the provided policy.
     """
     if filter_policy == FilterPolicy.MERGE and runtime_filters and init_filters:
-        # first convert string-based logical operators to LogicalOperator enums
-        init_filters = convert_logical_operators(init_filters)
-        runtime_filters = convert_logical_operators(runtime_filters)
         # now we merge filters
         if is_comparison_filter(init_filters) and is_comparison_filter(runtime_filters):
             return combine_two_comparison_filters(init_filters, runtime_filters, default_logical_operator)
@@ -354,7 +316,4 @@ def apply_filter_policy(
         elif is_logical_filter(init_filters) and is_logical_filter(runtime_filters):
             return combine_two_logical_filters(init_filters, runtime_filters)
 
-    resulting_filter = runtime_filters or init_filters
-    if resulting_filter and is_logical_filter(resulting_filter):
-        resulting_filter["operator"] = str(resulting_filter["operator"])
-    return resulting_filter
+    return runtime_filters or init_filters

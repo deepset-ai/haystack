@@ -4,36 +4,7 @@
 
 import pytest
 
-from haystack.document_stores.types import LogicalOperator, apply_filter_policy, FilterPolicy
-
-
-def test_logical_operator_from_str():
-    """
-    Test the conversion of a string to a LogicalOperator enum.
-    """
-    assert LogicalOperator.from_str("AND") == LogicalOperator.AND
-    assert LogicalOperator.from_str("OR") == LogicalOperator.OR
-    assert LogicalOperator.from_str("NOT") == LogicalOperator.NOT
-
-    with pytest.raises(ValueError):
-        LogicalOperator.from_str(None)
-
-    with pytest.raises(ValueError):
-        LogicalOperator.from_str("INVALID")
-
-
-def test_filter_policy_from_str():
-    """
-    Test the conversion of a string to a FilterPolicy enum.
-    """
-    assert FilterPolicy.from_str("REPLACE") == FilterPolicy.REPLACE
-    assert FilterPolicy.from_str("MERGE") == FilterPolicy.MERGE
-
-    with pytest.raises(ValueError):
-        FilterPolicy.from_str(None)
-
-    with pytest.raises(ValueError):
-        FilterPolicy.from_str("INVALID")
+from haystack.document_stores.types import apply_filter_policy, FilterPolicy
 
 
 def test_merge_two_comparison_filters():
@@ -190,7 +161,7 @@ def test_merge_comparison_filters_with_same_field():
 
 
 @pytest.mark.parametrize("logical_operator", ["AND", "OR", "NOT"])
-def test_merge_with_custom_logical_operator(logical_operator):
+def test_merge_with_custom_logical_operator(logical_operator: str):
     """
     Merging with a custom logical operator
     Result: The given logical operator with both filters
@@ -198,10 +169,7 @@ def test_merge_with_custom_logical_operator(logical_operator):
     init_filters = {"field": "meta.date", "operator": ">=", "value": "2015-01-01"}
     runtime_filters = {"field": "meta.type", "operator": "==", "value": "article"}
     result = apply_filter_policy(
-        FilterPolicy.MERGE,
-        init_filters,
-        runtime_filters,
-        default_logical_operator=LogicalOperator.from_str(logical_operator),
+        FilterPolicy.MERGE, init_filters, runtime_filters, default_logical_operator=logical_operator
     )
     assert result == {
         "operator": logical_operator,
