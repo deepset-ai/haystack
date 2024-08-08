@@ -5,6 +5,7 @@ from haystack.components.preprocessors import DocumentSplitter
 from haystack.dataclasses.hierarchical_document import HierarchicalDocument
 
 
+@component
 class HierarchicalDocumentBuilder:
     """
     Splits a documents into different block sizes building a hierarchical tree structure of blocks of different sizes.
@@ -49,7 +50,7 @@ class HierarchicalDocumentBuilder:
         hierarchical_docs = []
         for doc in documents:
             hierarchical_docs.extend(self.build_hierarchy_from_doc(doc))
-        return hierarchical_docs
+        return {"documents": hierarchical_docs}
 
     def _split_doc(self, doc: Document, block_size: int):
         splitter = DocumentSplitter(split_length=block_size, split_overlap=self.split_overlap, split_by=self.split_by)

@@ -1,8 +1,12 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from haystack import Document
+import pytest
+
+from haystack import Document, Pipeline
 from haystack.components.builders.hierarchical_doc_builder import HierarchicalDocumentBuilder
+from haystack.components.writers import DocumentWriter
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 
 class TestHierarchicalDocumentBuilder:
@@ -47,7 +51,8 @@ class TestHierarchicalDocumentBuilder:
         builder = HierarchicalDocumentBuilder(block_sizes=[10, 5, 2], split_overlap=0, split_by="word")
         text = "one two three four five six seven eight nine ten"
         doc = Document(content=text)
-        docs = builder.run([doc])
+        output = builder.run([doc])
+        docs = output["documents"]
 
         assert len(docs) == 9
         assert docs[0].content == "one two three four five six seven eight nine ten"
@@ -59,7 +64,7 @@ class TestHierarchicalDocumentBuilder:
         assert len(docs[1].children_ids) == 3  # left branch
         assert len(docs[2].children_ids) == 3  # right branch
 
-        # level 2 - leaf nodes - left branch
+        # level 2 - left branch - left branch
         assert len(docs[3].children_ids) == 0
         assert len(docs[4].children_ids) == 0
         assert len(docs[5].children_ids) == 0
@@ -81,5 +86,89 @@ class TestHierarchicalDocumentBuilder:
         assert docs[7].level == 3
         assert docs[8].level == 3
 
+    def test_to_dict_in_pipeline(self):
+        pipeline = Pipeline()
+        hierarchical_doc_builder = HierarchicalDocumentBuilder(block_sizes=[10, 5, 2])
+        doc_store = InMemoryDocumentStore()
+        doc_writer = DocumentWriter(document_store=doc_store)
+        pipeline.add_component(name="hierarchical_doc_builder", instance=hierarchical_doc_builder)
+        pipeline.add_component(name="doc_writer", instance=doc_writer)
+        pipeline.connect("hierarchical_doc_builder", "doc_writer")
+        expected = pipeline.to_dict()
+
+        assert expected == {
+            "metadata": {},
+            "max_loops_allowed": 100,
+            "components": {
+                "hierarchical_doc_builder": {
+                    "type": "haystack.components.builders.hierarchical_doc_builder.HierarchicalDocumentBuilder",
+                    "init_parameters": {"block_sizes": [10, 5, 2], "split_overlap": 0, "split_by": "word"},
+                },
+                "doc_writer": {
+                    "type": "haystack.components.writers.document_writer.DocumentWriter",
+                    "init_parameters": {
+                        "document_store": {
+                            "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore",
+                            "init_parameters": {
+                                "bm25_tokenization_regex": "(?u)\\b\\w\\w+\\b",
+                                "bm25_algorithm": "BM25L",
+                                "bm25_parameters": {},
+                                "embedding_similarity_function": "dot_product",
+                                "index": "f32ad5bf-43cb-4035-9823-1de1ae9853c1",
+                            },
+                        },
+                        "policy": "NONE",
+                    },
+                },
+            },
+            "connections": [{"sender": "hierarchical_doc_builder.documents", "receiver": "doc_writer.documents"}],
+        }
+
+    def test_from_dict_in_pipeline(self):
+        data = {
+            "metadata": {},
+            "max_loops_allowed": 100,
+            "components": {
+                "hierarchical_doc_builder": {
+                    "type": "haystack.components.builders.hierarchical_doc_builder.HierarchicalDocumentBuilder",
+                    "init_parameters": {"block_sizes": [10, 5, 2], "split_overlap": 0, "split_by": "word"},
+                },
+                "doc_writer": {
+                    "type": "haystack.components.writers.document_writer.DocumentWriter",
+                    "init_parameters": {
+                        "document_store": {
+                            "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore",
+                            "init_parameters": {
+                                "bm25_tokenization_regex": "(?u)\\b\\w\\w+\\b",
+                                "bm25_algorithm": "BM25L",
+                                "bm25_parameters": {},
+                                "embedding_similarity_function": "dot_product",
+                                "index": "f32ad5bf-43cb-4035-9823-1de1ae9853c1",
+                            },
+                        },
+                        "policy": "NONE",
+                    },
+                },
+            },
+            "connections": [{"sender": "hierarchical_doc_builder.documents", "receiver": "doc_writer.documents"}],
+        }
+
+        pipeline = Pipeline.from_dict(data)
+
+    @pytest.mark.integration
     def test_example_in_pipeline(self):
-        pass
+        pipeline = Pipeline()
+        hierarchical_doc_builder = HierarchicalDocumentBuilder(block_sizes=[10, 5, 2], split_overlap=0, split_by="word")
+        doc_store = InMemoryDocumentStore()
+        doc_writer = DocumentWriter(document_store=doc_store)
+
+        pipeline.add_component(name="hierarchical_doc_builder", instance=hierarchical_doc_builder)
+        pipeline.add_component(name="doc_writer", instance=doc_writer)
+        pipeline.connect("hierarchical_doc_builder.documents", "doc_writer")
+
+        text = "one two three four five six seven eight nine ten"
+        doc = Document(content=text)
+        docs = pipeline.run({"hierarchical_doc_builder": {"documents": [doc]}})
+
+        assert docs["doc_writer"]["documents_written"] == 9
+        assert len(doc_store.storage.values()) == 9
