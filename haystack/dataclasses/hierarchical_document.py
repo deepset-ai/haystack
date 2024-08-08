@@ -46,7 +46,7 @@ class HierarchicalDocument(Document):
         fields.append(f"children: {self.children_ids}")
         fields.append(f"level: {self.level}")
         fields.append(f"block_size: {self.block_size}")
-        fields.append(f"parent: {self.parent_id}")
+        fields.append(f"parent_id: {self.parent_id}")
         fields_str = ", ".join(fields)
 
         return f"{self.__class__.__name__}(id={self.id}, {fields_str})"
