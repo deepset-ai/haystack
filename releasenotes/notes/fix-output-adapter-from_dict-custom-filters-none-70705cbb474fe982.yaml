@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fix Output Adapter from_dict method when custom_filters value is None.
