@@ -1,5 +1,4 @@
 ---
 features:
   - |
-    Adds the `HierarchicalDocument` extending the `Document` with additional attributes to hold the hierarchical tree structure when a Document is split into multiple blocks where each smaller block is a child of a previous larger block.
     Adds the `HierarchicalDocumentBuilder` to split a `Document` into multiple `HierarchicalDocument` of different block sizes building a hierarchical tree structure where each smaller block is a child of a previous larger block.

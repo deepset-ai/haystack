@@ -59,40 +59,40 @@ class TestHierarchicalDocumentBuilder:
         assert docs[0].content == "one two three four five six seven eight nine ten"
 
         # level 1 - root node
-        assert docs[0].level == 1
-        assert len(docs[0].children_ids) == 2
+        assert docs[0].meta["level"] == 1
+        assert len(docs[0].meta["children_ids"]) == 2
 
         # level 2 -left branch
-        assert docs[1].parent_id == docs[0].id
-        assert docs[1].level == 2
-        assert len(docs[1].children_ids) == 3
+        assert docs[1].meta["parent_id"] == docs[0].id
+        assert docs[1].meta["level"] == 2
+        assert len(docs[1].meta["children_ids"]) == 3
 
         # level 2 - right branch
-        assert docs[2].parent_id == docs[0].id
-        assert docs[2].level == 2
-        assert len(docs[2].children_ids) == 3
+        assert docs[2].meta["parent_id"] == docs[0].id
+        assert docs[2].meta["level"] == 2
+        assert len(docs[2].meta["children_ids"]) == 3
 
         # level 3 - left branch - leaf nodes
-        assert docs[3].parent_id == docs[1].id
-        assert docs[4].parent_id == docs[1].id
-        assert docs[5].parent_id == docs[1].id
-        assert docs[3].level == 3
-        assert docs[4].level == 3
-        assert docs[5].level == 3
-        assert len(docs[3].children_ids) == 0
-        assert len(docs[4].children_ids) == 0
-        assert len(docs[5].children_ids) == 0
+        assert docs[3].meta["parent_id"] == docs[1].id
+        assert docs[4].meta["parent_id"] == docs[1].id
+        assert docs[5].meta["parent_id"] == docs[1].id
+        assert docs[3].meta["level"] == 3
+        assert docs[4].meta["level"] == 3
+        assert docs[5].meta["level"] == 3
+        assert len(docs[3].meta["children_ids"]) == 0
+        assert len(docs[4].meta["children_ids"]) == 0
+        assert len(docs[5].meta["children_ids"]) == 0
 
         # level 3 - right branch - leaf nodes
-        assert docs[6].parent_id == docs[2].id
-        assert docs[7].parent_id == docs[2].id
-        assert docs[8].parent_id == docs[2].id
-        assert docs[6].level == 3
-        assert docs[7].level == 3
-        assert docs[8].level == 3
-        assert len(docs[6].children_ids) == 0
-        assert len(docs[7].children_ids) == 0
-        assert len(docs[8].children_ids) == 0
+        assert docs[6].meta["parent_id"] == docs[2].id
+        assert docs[7].meta["parent_id"] == docs[2].id
+        assert docs[8].meta["parent_id"] == docs[2].id
+        assert docs[6].meta["level"] == 3
+        assert docs[7].meta["level"] == 3
+        assert docs[8].meta["level"] == 3
+        assert len(docs[6].meta["children_ids"]) == 0
+        assert len(docs[7].meta["children_ids"]) == 0
+        assert len(docs[8].meta["children_ids"]) == 0
 
     def test_to_dict_in_pipeline(self):
         pipeline = Pipeline()
@@ -140,7 +140,7 @@ class TestHierarchicalDocumentBuilder:
             "connections": [{"sender": "hierarchical_doc_builder.documents", "receiver": "doc_writer.documents"}],
         }
 
-        pipeline = Pipeline.from_dict(data)
+        assert Pipeline.from_dict(data)
 
     @pytest.mark.integration
     def test_example_in_pipeline(self):

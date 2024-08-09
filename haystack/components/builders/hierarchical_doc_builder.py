@@ -6,7 +6,6 @@ from typing import Any, Dict, List, Literal
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.components.preprocessors import DocumentSplitter
-from haystack.dataclasses.hierarchical_document import HierarchicalDocument
 
 
 @component
@@ -25,11 +24,11 @@ class HierarchicalDocumentBuilder:
     doc = Document(content="This is a test document")
     builder = HierarchicalDocumentBuilder(block_sizes=[10, 5, 2], split_overlap=0, split_by="word")
     builder.run([doc])
-    >> {'documents': [HierarchicalDocument(id=06dc21e637ae25d526f36b3d456edf035ec6df7efb575092c54c6bd86c0061b7, content: 'This is a test document', meta: {'source_id': '2594f015eb8eca9dd088d8e7ecc9b25e16681842815088a7535566d6ac38cdcf', 'page_number': 1, 'split_id': 0, 'split_idx_start': 0}, children: ['5b6548b18d2d507c4c035f5d64a4f4a103d07f9f75b828ecffa72018d7fd2309'], level: 1, block_size: 10, parent_id: 2594f015eb8eca9dd088d8e7ecc9b25e16681842815088a7535566d6ac38cdcf),
-    >> HierarchicalDocument(id=5b6548b18d2d507c4c035f5d64a4f4a103d07f9f75b828ecffa72018d7fd2309, content: 'This is a test document', meta: {'source_id': '06dc21e637ae25d526f36b3d456edf035ec6df7efb575092c54c6bd86c0061b7', 'page_number': 1, 'split_id': 0, 'split_idx_start': 0}, children: ['e795be3a1a9aa7429c4c78bbd1d63f2a8772b30ffd8464e1d43ba4dd0903511a', '0fa536df594f11d15d385b657ff176b7f3442fcc4ba90f3862f03432df99b9b3', 'c6c61c2ab43e75950cc08d2af3347598c28ab712dee58e3ef50cbab64c20f81b'], level: 2, block_size: 5, parent_id: 06dc21e637ae25d526f36b3d456edf035ec6df7efb575092c54c6bd86c0061b7),
-    >> HierarchicalDocument(id=e795be3a1a9aa7429c4c78bbd1d63f2a8772b30ffd8464e1d43ba4dd0903511a, content: 'This is ', meta: {'source_id': '5b6548b18d2d507c4c035f5d64a4f4a103d07f9f75b828ecffa72018d7fd2309', 'page_number': 1, 'split_id': 0, 'split_idx_start': 0}, children: [], level: 3, block_size: 2, parent_id: 5b6548b18d2d507c4c035f5d64a4f4a103d07f9f75b828ecffa72018d7fd2309),
-    >> HierarchicalDocument(id=0fa536df594f11d15d385b657ff176b7f3442fcc4ba90f3862f03432df99b9b3, content: 'a test ', meta: {'source_id': '5b6548b18d2d507c4c035f5d64a4f4a103d07f9f75b828ecffa72018d7fd2309', 'page_number': 1, 'split_id': 1, 'split_idx_start': 8}, children: [], level: 3, block_size: 2, parent_id: 5b6548b18d2d507c4c035f5d64a4f4a103d07f9f75b828ecffa72018d7fd2309),
-    >> HierarchicalDocument(id=c6c61c2ab43e75950cc08d2af3347598c28ab712dee58e3ef50cbab64c20f81b, content: 'document', meta: {'source_id': '5b6548b18d2d507c4c035f5d64a4f4a103d07f9f75b828ecffa72018d7fd2309', 'page_number': 1, 'split_id': 2, 'split_idx_start': 15}, children: [], level: 3, block_size: 2, parent_id: 5b6548b18d2d507c4c035f5d64a4f4a103d07f9f75b828ecffa72018d7fd2309)]}
+    >> {'documents': [Document(id=82c6fe8eaac88f2ac6773ef8909f4b28676fe09ea12657820e10b441df6142a4, content: 'This is a test document', meta: {'block_size': 10, 'parent_id': '2594f015eb8eca9dd088d8e7ecc9b25e16681842815088a7535566d6ac38cdcf', 'children_ids': ['f28b00099c27730918311da04f2460afbfea7970fe17a5a603a017ee6f262ce6'], 'level': 1, 'source_id': '2594f015eb8eca9dd088d8e7ecc9b25e16681842815088a7535566d6ac38cdcf', 'page_number': 1, 'split_id': 0, 'split_idx_start': 0}),
+    >> Document(id=f28b00099c27730918311da04f2460afbfea7970fe17a5a603a017ee6f262ce6, content: 'This is a test document', meta: {'block_size': 5, 'parent_id': '82c6fe8eaac88f2ac6773ef8909f4b28676fe09ea12657820e10b441df6142a4', 'children_ids': ['a1efed06362249712c7c162a36bf19066efcbf3ac2c171591d704d3792cd1521', '27662dfa9bce83008e359ebac49fb9b54f19392e7e85c112a0182dcc69ab4484', '97396afcd387a736e9be6dd882b1d0de7ce91c809b81a231ad925cd1163ea397'], 'level': 2, 'source_id': '82c6fe8eaac88f2ac6773ef8909f4b28676fe09ea12657820e10b441df6142a4', 'page_number': 1, 'split_id': 0, 'split_idx_start': 0}),
+    >> Document(id=a1efed06362249712c7c162a36bf19066efcbf3ac2c171591d704d3792cd1521, content: 'This is ', meta: {'block_size': 2, 'parent_id': 'f28b00099c27730918311da04f2460afbfea7970fe17a5a603a017ee6f262ce6', 'children_ids': [], 'level': 3, 'source_id': 'f28b00099c27730918311da04f2460afbfea7970fe17a5a603a017ee6f262ce6', 'page_number': 1, 'split_id': 0, 'split_idx_start': 0}),
+    >> Document(id=27662dfa9bce83008e359ebac49fb9b54f19392e7e85c112a0182dcc69ab4484, content: 'a test ', meta: {'block_size': 2, 'parent_id': 'f28b00099c27730918311da04f2460afbfea7970fe17a5a603a017ee6f262ce6', 'children_ids': [], 'level': 3, 'source_id': 'f28b00099c27730918311da04f2460afbfea7970fe17a5a603a017ee6f262ce6', 'page_number': 1, 'split_id': 1, 'split_idx_start': 8}),
+    >> Document(id=97396afcd387a736e9be6dd882b1d0de7ce91c809b81a231ad925cd1163ea397, content: 'document', meta: {'block_size': 2, 'parent_id': 'f28b00099c27730918311da04f2460afbfea7970fe17a5a603a017ee6f262ce6', 'children_ids': [], 'level': 3, 'source_id': 'f28b00099c27730918311da04f2460afbfea7970fe17a5a603a017ee6f262ce6', 'page_number': 1, 'split_id': 2, 'split_idx_start': 15})]}
     ```
     """  # noqa: E501
 
@@ -53,7 +52,7 @@ class HierarchicalDocumentBuilder:
         self.split_overlap = split_overlap
         self.split_by = split_by
 
-    @component.output_types(documents=List[HierarchicalDocument])
+    @component.output_types(documents=List[Document])
     def run(self, documents: List[Document]):
         """
         Builds a hierarchical document structure for each document in a list of documents.
@@ -71,7 +70,15 @@ class HierarchicalDocumentBuilder:
         split_docs = splitter.run([doc])
         return split_docs["documents"]
 
-    def build_hierarchy_from_doc(self, document: Document) -> List[HierarchicalDocument]:
+    @staticmethod
+    def _add_meta_data(document: Document):
+        document.meta["block_size"] = 0
+        document.meta["parent_id"] = None
+        document.meta["children_ids"] = []
+        document.meta["level"] = 0
+        return document
+
+    def build_hierarchy_from_doc(self, document: Document) -> List[Document]:
         """
         Build a hierarchical tree document structure from a single document.
 
@@ -83,7 +90,7 @@ class HierarchicalDocumentBuilder:
             List of HierarchicalDocument
         """
 
-        root = HierarchicalDocument(document)
+        root = self._add_meta_data(document)
         current_level_nodes = [root]
         all_docs = []
 
@@ -92,13 +99,13 @@ class HierarchicalDocumentBuilder:
             for doc in current_level_nodes:
                 child_docs = self._split_doc(doc, block)
                 for child_doc in child_docs:
-                    hierarchical_child_doc = HierarchicalDocument(child_doc)
-                    hierarchical_child_doc.level = doc.level + 1
-                    hierarchical_child_doc.block_size = block
-                    hierarchical_child_doc.parent_id = doc.id
-                    all_docs.append(hierarchical_child_doc)
-                    doc.children_ids.append(hierarchical_child_doc.id)
-                    next_level_nodes.append(hierarchical_child_doc)
+                    child_doc = self._add_meta_data(child_doc)
+                    child_doc.meta["level"] = doc.meta["level"] + 1
+                    child_doc.meta["block_size"] = block
+                    child_doc.meta["parent_id"] = doc.id
+                    all_docs.append(child_doc)
+                    doc.meta["children_ids"].append(child_doc.id)
+                    next_level_nodes.append(child_doc)
             current_level_nodes = next_level_nodes
 
         return all_docs
