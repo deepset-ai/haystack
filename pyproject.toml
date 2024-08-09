@@ -99,6 +99,7 @@ extra-dependencies = [
   "tika",                             # TikaDocumentConverter
   "azure-ai-formrecognizer>=3.2.0b2", # AzureOCRDocumentConverter
   "trafilatura",                      # HTMLToDocument
+  "jq",                               # JSONToDocument
   "python-pptx",                      # PPTXToDocument
   "python-docx",                      # DocxToDocument
 
