@@ -303,6 +303,7 @@ class TestSentenceTransformersDocumentEmbedder:
             batch_size=32,
             show_progress_bar=True,
             normalize_embeddings=False,
+            precision="float32",
         )
 
     def test_prefix_suffix(self):
@@ -330,4 +331,5 @@ class TestSentenceTransformersDocumentEmbedder:
             batch_size=32,
             show_progress_bar=True,
             normalize_embeddings=False,
+            precision="float32",
         )
