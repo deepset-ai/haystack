@@ -21,14 +21,16 @@ class HierarchicalDocumentBuilder:
     from haystack import Document
     from haystack.components.builders import HierarchicalDocumentBuilder
 
-    doc = Document(content="This is a test document")
-    builder = HierarchicalDocumentBuilder(block_sizes=[10, 5, 2], split_overlap=0, split_by="word")
+    doc = Document(content="This is a simple test document")
+    builder = HierarchicalDocumentBuilder(block_sizes=[3, 2], split_overlap=0, split_by="word")
     builder.run([doc])
-    >> {'documents': [Document(id=82c6fe8eaac88f2ac6773ef8909f4b28676fe09ea12657820e10b441df6142a4, content: 'This is a test document', meta: {'block_size': 10, 'parent_id': '2594f015eb8eca9dd088d8e7ecc9b25e16681842815088a7535566d6ac38cdcf', 'children_ids': ['f28b00099c27730918311da04f2460afbfea7970fe17a5a603a017ee6f262ce6'], 'level': 1, 'source_id': '2594f015eb8eca9dd088d8e7ecc9b25e16681842815088a7535566d6ac38cdcf', 'page_number': 1, 'split_id': 0, 'split_idx_start': 0}),
-    >> Document(id=f28b00099c27730918311da04f2460afbfea7970fe17a5a603a017ee6f262ce6, content: 'This is a test document', meta: {'block_size': 5, 'parent_id': '82c6fe8eaac88f2ac6773ef8909f4b28676fe09ea12657820e10b441df6142a4', 'children_ids': ['a1efed06362249712c7c162a36bf19066efcbf3ac2c171591d704d3792cd1521', '27662dfa9bce83008e359ebac49fb9b54f19392e7e85c112a0182dcc69ab4484', '97396afcd387a736e9be6dd882b1d0de7ce91c809b81a231ad925cd1163ea397'], 'level': 2, 'source_id': '82c6fe8eaac88f2ac6773ef8909f4b28676fe09ea12657820e10b441df6142a4', 'page_number': 1, 'split_id': 0, 'split_idx_start': 0}),
-    >> Document(id=a1efed06362249712c7c162a36bf19066efcbf3ac2c171591d704d3792cd1521, content: 'This is ', meta: {'block_size': 2, 'parent_id': 'f28b00099c27730918311da04f2460afbfea7970fe17a5a603a017ee6f262ce6', 'children_ids': [], 'level': 3, 'source_id': 'f28b00099c27730918311da04f2460afbfea7970fe17a5a603a017ee6f262ce6', 'page_number': 1, 'split_id': 0, 'split_idx_start': 0}),
-    >> Document(id=27662dfa9bce83008e359ebac49fb9b54f19392e7e85c112a0182dcc69ab4484, content: 'a test ', meta: {'block_size': 2, 'parent_id': 'f28b00099c27730918311da04f2460afbfea7970fe17a5a603a017ee6f262ce6', 'children_ids': [], 'level': 3, 'source_id': 'f28b00099c27730918311da04f2460afbfea7970fe17a5a603a017ee6f262ce6', 'page_number': 1, 'split_id': 1, 'split_idx_start': 8}),
-    >> Document(id=97396afcd387a736e9be6dd882b1d0de7ce91c809b81a231ad925cd1163ea397, content: 'document', meta: {'block_size': 2, 'parent_id': 'f28b00099c27730918311da04f2460afbfea7970fe17a5a603a017ee6f262ce6', 'children_ids': [], 'level': 3, 'source_id': 'f28b00099c27730918311da04f2460afbfea7970fe17a5a603a017ee6f262ce6', 'page_number': 1, 'split_id': 2, 'split_idx_start': 15})]}
+    >> {'documents': [Document(id=3f7e91e9a775ed0815606a0bc2f732b38b7682a84d5b23c06997a8dcfa849a0d, content: 'This is a simple test document', meta: {'block_size': 0, 'parent_id': None, 'children_ids': ['5ff4a36b5371580ac5f2ea21a5690dcc18802c7e5e187d57c5e2d312eee22dfd', '8dc5707ebe647dedab97db15d0fc82a5e551bbe54a9fb82f79b68b3e3046a3a2'], 'level': 0}),
+    >> Document(id=5ff4a36b5371580ac5f2ea21a5690dcc18802c7e5e187d57c5e2d312eee22dfd, content: 'This is a ', meta: {'block_size': 3, 'parent_id': '3f7e91e9a775ed0815606a0bc2f732b38b7682a84d5b23c06997a8dcfa849a0d', 'children_ids': ['f196b211ebadd5f47afedff14284759b4654f0722c38976760b88d675e7dc8f6', '52c7e9fc53ae9aa734cc15d8624ae63468b423a7032077ee4cdcf524569274d3'], 'level': 1, 'source_id': '3f7e91e9a775ed0815606a0bc2f732b38b7682a84d5b23c06997a8dcfa849a0d', 'page_number': 1, 'split_id': 0, 'split_idx_start': 0}),
+    >> Document(id=8dc5707ebe647dedab97db15d0fc82a5e551bbe54a9fb82f79b68b3e3046a3a2, content: 'simple test document', meta: {'block_size': 3, 'parent_id': '3f7e91e9a775ed0815606a0bc2f732b38b7682a84d5b23c06997a8dcfa849a0d', 'children_ids': ['39d299629a35051fc9ebb62a0594626546d6ec1b1de7cfcdfb03be58b769478e', 'e23ceb261772f539830384097e4f6c513205019cf422378078ff66dd4870f91a'], 'level': 1, 'source_id': '3f7e91e9a775ed0815606a0bc2f732b38b7682a84d5b23c06997a8dcfa849a0d', 'page_number': 1, 'split_id': 1, 'split_idx_start': 10}),
+    >> Document(id=f196b211ebadd5f47afedff14284759b4654f0722c38976760b88d675e7dc8f6, content: 'This is ', meta: {'block_size': 2, 'parent_id': '5ff4a36b5371580ac5f2ea21a5690dcc18802c7e5e187d57c5e2d312eee22dfd', 'children_ids': [], 'level': 2, 'source_id': '5ff4a36b5371580ac5f2ea21a5690dcc18802c7e5e187d57c5e2d312eee22dfd', 'page_number': 1, 'split_id': 0, 'split_idx_start': 0}),
+    >> Document(id=52c7e9fc53ae9aa734cc15d8624ae63468b423a7032077ee4cdcf524569274d3, content: 'a ', meta: {'block_size': 2, 'parent_id': '5ff4a36b5371580ac5f2ea21a5690dcc18802c7e5e187d57c5e2d312eee22dfd', 'children_ids': [], 'level': 2, 'source_id': '5ff4a36b5371580ac5f2ea21a5690dcc18802c7e5e187d57c5e2d312eee22dfd', 'page_number': 1, 'split_id': 1, 'split_idx_start': 8}),
+    >> Document(id=39d299629a35051fc9ebb62a0594626546d6ec1b1de7cfcdfb03be58b769478e, content: 'simple test ', meta: {'block_size': 2, 'parent_id': '8dc5707ebe647dedab97db15d0fc82a5e551bbe54a9fb82f79b68b3e3046a3a2', 'children_ids': [], 'level': 2, 'source_id': '8dc5707ebe647dedab97db15d0fc82a5e551bbe54a9fb82f79b68b3e3046a3a2', 'page_number': 1, 'split_id': 0, 'split_idx_start': 0}),
+    >> Document(id=e23ceb261772f539830384097e4f6c513205019cf422378078ff66dd4870f91a, content: 'document', meta: {'block_size': 2, 'parent_id': '8dc5707ebe647dedab97db15d0fc82a5e551bbe54a9fb82f79b68b3e3046a3a2', 'children_ids': [], 'level': 2, 'source_id': '8dc5707ebe647dedab97db15d0fc82a5e551bbe54a9fb82f79b68b3e3046a3a2', 'page_number': 1, 'split_id': 1, 'split_idx_start': 12})]}
     ```
     """  # noqa: E501
 
@@ -98,6 +100,10 @@ class HierarchicalDocumentBuilder:
             next_level_nodes = []
             for doc in current_level_nodes:
                 child_docs = self._split_doc(doc, block)
+                # if it's only one document skip
+                if len(child_docs) == 1:
+                    next_level_nodes.append(doc)
+                    continue
                 for child_doc in child_docs:
                     child_doc = self._add_meta_data(child_doc)
                     child_doc.meta["level"] = doc.meta["level"] + 1
@@ -108,7 +114,7 @@ class HierarchicalDocumentBuilder:
                     next_level_nodes.append(child_doc)
             current_level_nodes = next_level_nodes
 
-        return all_docs
+        return [root] + all_docs
 
     def to_dict(self) -> Dict[str, Any]:
         """
