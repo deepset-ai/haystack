@@ -280,11 +280,5 @@ class TestSentenceTransformersTextEmbedder:
         result_def = embedder_def.run(text=text)
         embedding_def = result_def["embedding"]
 
-        check = 0
-
-        for emb in embedding_def:
-            if not isinstance(emb, int):
-                check += 1
-
         assert len(embedding_def) == 768
-        assert check == 0
+        assert(all(isinstance(el,int) for el in embedding_def))
