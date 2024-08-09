@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Add `unsafe` argument to enable behaviour that could lead to remote code execution in `ConditionalRouter` and `OutputAdapter`.
+    By default unsafe behaviour is not enabled, the user must set it explicitly to `True`.
+    This means that user types like `ChatMessage`, `Document`, and `Answer` can be used as output types when `unsafe` is `True`.
+    We recommend using `unsafe` behaviour only when the Jinja templates source is trusted.

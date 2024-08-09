@@ -307,3 +307,24 @@ class TestRouter:
         assert deserialized_router.custom_filters == router.custom_filters
         assert deserialized_router.custom_filters["custom_filter_to_sede"]("123-456-789") == 123
         assert result == deserialized_router.run(**kwargs)
+
+    def test_unsafe(self):
+        routes = [
+            {
+                "condition": "{{streams|length < 2}}",
+                "output": "{{message}}",
+                "output_type": ChatMessage,
+                "output_name": "message",
+            },
+            {
+                "condition": "{{streams|length >= 2}}",
+                "output": "{{streams}}",
+                "output_type": List[int],
+                "output_name": "streams",
+            },
+        ]
+        router = ConditionalRouter(routes, unsafe=True)
+        streams = [1]
+        message = ChatMessage.from_user(content="This is a message")
+        res = router.run(streams=streams, message=message)
+        assert res == {"message": message}
