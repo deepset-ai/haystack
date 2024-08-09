@@ -20,15 +20,17 @@ logger = logging.getLogger(__name__)
 @component
 class HuggingFaceAPITextEmbedder:
     """
-    A component that embeds text using Hugging Face APIs.
+    Embeds strings using Hugging Face APIs.
 
-    This component can be used to embed strings using different Hugging Face APIs:
+    Use it with the following Hugging Face APIs:
     - [Free Serverless Inference API]((https://huggingface.co/inference-api)
     - [Paid Inference Endpoints](https://huggingface.co/inference-endpoints)
     - [Self-hosted Text Embeddings Inference](https://github.com/huggingface/text-embeddings-inference)
 
+    ### Usage examples
 
-    Example usage with the free Serverless Inference API:
+    #### With free serverless inference API
+
     ```python
     from haystack.components.embedders import HuggingFaceAPITextEmbedder
     from haystack.utils import Secret
@@ -42,7 +44,8 @@ class HuggingFaceAPITextEmbedder:
     # {'embedding': [0.017020374536514282, -0.023255806416273117, ...],
     ```
 
-    Example usage with paid Inference Endpoints:
+    #### With paid inference endpoints
+
     ```python
     from haystack.components.embedders import HuggingFaceAPITextEmbedder
     from haystack.utils import Secret
@@ -55,7 +58,8 @@ class HuggingFaceAPITextEmbedder:
     # {'embedding': [0.017020374536514282, -0.023255806416273117, ...],
     ```
 
-    Example usage with self-hosted Text Embeddings Inference:
+    #### With self-hosted text embeddings inference
+
     ```python
     from haystack.components.embedders import HuggingFaceAPITextEmbedder
     from haystack.utils import Secret
@@ -80,33 +84,33 @@ class HuggingFaceAPITextEmbedder:
         normalize: bool = False,
     ):
         """
-        Create an HuggingFaceAPITextEmbedder component.
+        Creates a HuggingFaceAPITextEmbedder component.
 
         :param api_type:
             The type of Hugging Face API to use.
         :param api_params:
-            A dictionary containing the following keys:
-            - `model`: model ID on the Hugging Face Hub. Required when `api_type` is `SERVERLESS_INFERENCE_API`.
+            A dictionary with the following keys:
+            - `model`: Hugging Face model ID. Required when `api_type` is `SERVERLESS_INFERENCE_API`.
             - `url`: URL of the inference endpoint. Required when `api_type` is `INFERENCE_ENDPOINTS` or
-                `TEXT_EMBEDDINGS_INFERENCE`.
-        :param token: The HuggingFace token to use as HTTP bearer authorization
-            You can find your HF token in your [account settings](https://huggingface.co/settings/tokens)
+            `TEXT_EMBEDDINGS_INFERENCE`.
+        :param token: The Hugging Face token to use as HTTP bearer authorization.
+            Check your HF token in your [account settings](https://huggingface.co/settings/tokens).
         :param prefix:
             A string to add at the beginning of each text.
         :param suffix:
             A string to add at the end of each text.
         :param truncate:
-            Truncate input text from the end to the maximum length supported by the model.
-            This parameter takes effect when the `api_type` is `TEXT_EMBEDDINGS_INFERENCE`.
-            It also takes effect when the `api_type` is `INFERENCE_ENDPOINTS` and the backend is based on Text
-            Embeddings Inference. This parameter is ignored when the `api_type` is `SERVERLESS_INFERENCE_API`
-            (it is always set to `True` and cannot be changed).
+            Truncates the input text to the maximum length supported by the model.
+            Applicable when `api_type` is `TEXT_EMBEDDINGS_INFERENCE`, or `INFERENCE_ENDPOINTS`
+            if the backend uses Text Embeddings Inference.
+            If `api_type` is `SERVERLESS_INFERENCE_API`, this parameter is ignored.
+            It is always set to `True` and cannot be changed.
         :param normalize:
-            Normalize the embeddings to unit length.
-            This parameter takes effect when the `api_type` is `TEXT_EMBEDDINGS_INFERENCE`.
-            It also takes effect when the `api_type` is `INFERENCE_ENDPOINTS` and the backend is based on Text
-            Embeddings Inference. This parameter is ignored when the `api_type` is `SERVERLESS_INFERENCE_API`
-            (it is always set to `False` and cannot be changed).
+            Normalizes the embeddings to unit length.
+            Applicable when `api_type` is `TEXT_EMBEDDINGS_INFERENCE`, or `INFERENCE_ENDPOINTS`
+            if the backend uses Text Embeddings Inference.
+            If `api_type` is `SERVERLESS_INFERENCE_API`, this parameter is ignored.
+            It is always set to `False` and cannot be changed.
         """
         huggingface_hub_import.check()
 
@@ -179,7 +183,7 @@ class HuggingFaceAPITextEmbedder:
     @component.output_types(embedding=List[float])
     def run(self, text: str):
         """
-        Embed a single string.
+        Embeds a single string.
 
         :param text:
             Text to embed.
