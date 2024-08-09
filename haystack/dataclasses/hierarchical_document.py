@@ -7,13 +7,10 @@ class HierarchicalDocument(Document):
     """
     A HierarchicalDocument is a Document that has been split into multiple blocks of different sizes.
 
-    This class is a subclass of Document, it only adds additional attributes to represent the hierarchical structure.
-
-    It holds the hierarchical tree structure when a Document is split into multiple bocks where each smaller block
-    is a child of a previous larger block. Each document/block has a parent and children.
-
-    The exceptions are the root block, which is the original document, and the leaf blocks, which are the
-    smallest blocks and have no children.
+    This class is a subclass of Document and adds additional attributes to hold the hierarchical tree structure when
+    a Document is split into multiple bocks where each smaller block is a child of a previous larger block.
+    Each document/block has a parent and children, the exceptions are the root block, which is the original document,
+    and the leaf blocks, which are the smallest blocks and have no children.
     """
 
     def __init__(self, document: Document):
