@@ -4,6 +4,7 @@
 
 from haystack.components.builders.answer_builder import AnswerBuilder
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
+from haystack.components.builders.hierarchical_doc_builder import HierarchicalDocumentBuilder
 from haystack.components.builders.prompt_builder import PromptBuilder
 
-__all__ = ["AnswerBuilder", "PromptBuilder", "ChatPromptBuilder"]
+__all__ = ["AnswerBuilder", "HierarchicalDocumentBuilder", "PromptBuilder", "ChatPromptBuilder"]
