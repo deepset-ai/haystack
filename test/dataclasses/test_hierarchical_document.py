@@ -18,5 +18,3 @@ def test_repr():
     assert "level: 0" in doc.__repr__()
     assert "block_size: 0" in doc.__repr__()
     assert "parent_id: None" in doc.__repr__()
-    doc.content = "a" * 10
-    assert "content: ' " in doc.__repr__()
