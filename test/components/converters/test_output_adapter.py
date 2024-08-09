@@ -129,6 +129,22 @@ class TestOutputAdapter:
         # invoke the custom filter to check if it is deserialized correctly
         assert deserialized_adapter.custom_filters["custom_filter"]("test") == "TEST"
 
+    def test_output_adapter_from_dict_custom_filters_none(self):
+        component = OutputAdapter.from_dict(
+            data={
+                "type": "haystack.components.converters.output_adapter.OutputAdapter",
+                "init_parameters": {
+                    "template": "{{ documents[0].content}}",
+                    "output_type": "str",
+                    "custom_filters": None,
+                },
+            }
+        )
+
+        assert component.template == "{{ documents[0].content}}"
+        assert component.output_type == str
+        assert component.custom_filters == {}
+
     def test_output_adapter_in_pipeline(self):
         @component
         class DocumentProducer:
