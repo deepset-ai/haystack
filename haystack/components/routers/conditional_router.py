@@ -139,9 +139,8 @@ class ConditionalRouter:
                 "Use this only if you trust the source of the template."
             )
             warn(msg)
-            self._env = NativeEnvironment()
-        else:
-            self._env = SandboxedEnvironment()
+
+        self._env = NativeEnvironment() if self._unsafe else SandboxedEnvironment()
         self._env.filters.update(self.custom_filters)
 
         self._validate_routes(routes)
