@@ -281,4 +281,4 @@ class TestSentenceTransformersTextEmbedder:
         embedding_def = result_def["embedding"]
 
         assert len(embedding_def) == 768
-        assert(all(isinstance(el,int) for el in embedding_def))
+        assert all(isinstance(el, int) for el in embedding_def)
