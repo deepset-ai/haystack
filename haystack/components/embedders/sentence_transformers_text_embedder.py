@@ -87,7 +87,7 @@ class SentenceTransformersTextEmbedder:
             Additional keyword arguments for `AutoTokenizer.from_pretrained` when loading the tokenizer.
             Refer to specific model documentation for available kwargs.
         :param precision:
-            The precision to use for the embeddings. Can be “float32”, “int8”, “uint8”, “binary”, or “ubinary”.
+            The precision to use for the embeddings.
             All non-float32 precisions are quantized embeddings.
             Quantized embeddings are smaller in size and faster to compute, but may have a lower accuracy.
             They are useful for reducing the size of the embeddings of a corpus for semantic search, among other tasks.
