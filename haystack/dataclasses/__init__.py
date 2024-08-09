@@ -10,13 +10,13 @@ from haystack.dataclasses.sparse_embedding import SparseEmbedding
 from haystack.dataclasses.streaming_chunk import StreamingChunk
 
 __all__ = [
-    "Document",
-    "ExtractedAnswer",
-    "GeneratedAnswer",
     "Answer",
     "ByteStream",
     "ChatMessage",
     "ChatRole",
-    "StreamingChunk",
+    "Document",
+    "ExtractedAnswer",
+    "GeneratedAnswer",
     "SparseEmbedding",
+    "StreamingChunk",
 ]
