@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.embedders.backends.sentence_transformers_backend import (
@@ -48,6 +48,7 @@ class SentenceTransformersTextEmbedder:
         truncate_dim: Optional[int] = None,
         model_kwargs: Optional[Dict[str, Any]] = None,
         tokenizer_kwargs: Optional[Dict[str, Any]] = None,
+        precision: Literal["float32", "int8", "uint8", "binary", "ubinary"] = "float32",
     ):
         """
         Create a SentenceTransformersTextEmbedder component.
@@ -85,6 +86,11 @@ class SentenceTransformersTextEmbedder:
         :param tokenizer_kwargs:
             Additional keyword arguments for `AutoTokenizer.from_pretrained` when loading the tokenizer.
             Refer to specific model documentation for available kwargs.
+        :param precision:
+            The precision to use for the embeddings.
+            All non-float32 precisions are quantized embeddings.
+            Quantized embeddings are smaller in size and faster to compute, but may have a lower accuracy.
+            They are useful for reducing the size of the embeddings of a corpus for semantic search, among other tasks.
         """
 
         self.model = model
@@ -100,6 +106,7 @@ class SentenceTransformersTextEmbedder:
         self.model_kwargs = model_kwargs
         self.tokenizer_kwargs = tokenizer_kwargs
         self.embedding_backend = None
+        self.precision = precision
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -128,6 +135,7 @@ class SentenceTransformersTextEmbedder:
             truncate_dim=self.truncate_dim,
             model_kwargs=self.model_kwargs,
             tokenizer_kwargs=self.tokenizer_kwargs,
+            precision=self.precision,
         )
         if serialization_dict["init_parameters"].get("model_kwargs") is not None:
             serialize_hf_model_kwargs(serialization_dict["init_parameters"]["model_kwargs"])
@@ -192,5 +200,6 @@ class SentenceTransformersTextEmbedder:
             batch_size=self.batch_size,
             show_progress_bar=self.progress_bar,
             normalize_embeddings=self.normalize_embeddings,
+            precision=self.precision,
         )[0]
         return {"embedding": embedding}

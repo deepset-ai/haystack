@@ -24,6 +24,7 @@ class TestSentenceTransformersTextEmbedder:
         assert embedder.normalize_embeddings is False
         assert embedder.trust_remote_code is False
         assert embedder.truncate_dim is None
+        assert embedder.precision == "float32"
 
     def test_init_with_parameters(self):
         embedder = SentenceTransformersTextEmbedder(
@@ -37,6 +38,7 @@ class TestSentenceTransformersTextEmbedder:
             normalize_embeddings=True,
             trust_remote_code=True,
             truncate_dim=256,
+            precision="int8",
         )
         assert embedder.model == "model"
         assert embedder.device == ComponentDevice.from_str("cuda:0")
@@ -48,6 +50,7 @@ class TestSentenceTransformersTextEmbedder:
         assert embedder.normalize_embeddings is True
         assert embedder.trust_remote_code is True
         assert embedder.truncate_dim == 256
+        assert embedder.precision == "int8"
 
     def test_to_dict(self):
         component = SentenceTransformersTextEmbedder(model="model", device=ComponentDevice.from_str("cpu"))
@@ -67,6 +70,7 @@ class TestSentenceTransformersTextEmbedder:
                 "truncate_dim": None,
                 "model_kwargs": None,
                 "tokenizer_kwargs": None,
+                "precision": "float32",
             },
         }
 
@@ -84,6 +88,7 @@ class TestSentenceTransformersTextEmbedder:
             truncate_dim=256,
             model_kwargs={"torch_dtype": torch.float32},
             tokenizer_kwargs={"model_max_length": 512},
+            precision="int8",
         )
         data = component.to_dict()
         assert data == {
@@ -101,6 +106,7 @@ class TestSentenceTransformersTextEmbedder:
                 "truncate_dim": 256,
                 "model_kwargs": {"torch_dtype": "torch.float32"},
                 "tokenizer_kwargs": {"model_max_length": 512},
+                "precision": "int8",
             },
         }
 
@@ -125,6 +131,7 @@ class TestSentenceTransformersTextEmbedder:
                 "truncate_dim": None,
                 "model_kwargs": {"torch_dtype": "torch.float32"},
                 "tokenizer_kwargs": {"model_max_length": 512},
+                "precision": "float32",
             },
         }
         component = SentenceTransformersTextEmbedder.from_dict(data)
@@ -140,6 +147,7 @@ class TestSentenceTransformersTextEmbedder:
         assert component.truncate_dim is None
         assert component.model_kwargs == {"torch_dtype": torch.float32}
         assert component.tokenizer_kwargs == {"model_max_length": 512}
+        assert component.precision == "float32"
 
     def test_from_dict_no_default_parameters(self):
         data = {
@@ -157,6 +165,7 @@ class TestSentenceTransformersTextEmbedder:
         assert component.normalize_embeddings is False
         assert component.trust_remote_code is False
         assert component.truncate_dim is None
+        assert component.precision == "float32"
 
     def test_from_dict_none_device(self):
         data = {
@@ -172,6 +181,7 @@ class TestSentenceTransformersTextEmbedder:
                 "normalize_embeddings": False,
                 "trust_remote_code": False,
                 "truncate_dim": 256,
+                "precision": "int8",
             },
         }
         component = SentenceTransformersTextEmbedder.from_dict(data)
@@ -185,6 +195,7 @@ class TestSentenceTransformersTextEmbedder:
         assert component.normalize_embeddings is False
         assert component.trust_remote_code is False
         assert component.truncate_dim == 256
+        assert component.precision == "int8"
 
     @patch(
         "haystack.components.embedders.sentence_transformers_text_embedder._SentenceTransformersEmbeddingBackendFactory"
@@ -255,3 +266,19 @@ class TestSentenceTransformersTextEmbedder:
 
         assert len(embedding_def) == 768
         assert len(embedding_trunc) == 128
+
+    @pytest.mark.integration
+    def test_run_quantization(self):
+        """
+        sentence-transformers/paraphrase-albert-small-v2 maps sentences & paragraphs to a 768 dimensional dense vector space
+        """
+        checkpoint = "sentence-transformers/paraphrase-albert-small-v2"
+        text = "a nice text to embed"
+
+        embedder_def = SentenceTransformersTextEmbedder(model=checkpoint, precision="int8")
+        embedder_def.warm_up()
+        result_def = embedder_def.run(text=text)
+        embedding_def = result_def["embedding"]
+
+        assert len(embedding_def) == 768
+        assert all(isinstance(el, int) for el in embedding_def)
