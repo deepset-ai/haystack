@@ -1,0 +1,7 @@
+---
+highlights: >
+    Adds support for zero shot document classification
+features:
+  - |
+    Adds support for zero shot document classification. This allows you to classify documents into user-defined
+    classes using pre-trained models from huggingface. Also adds support for multi-label classification.
