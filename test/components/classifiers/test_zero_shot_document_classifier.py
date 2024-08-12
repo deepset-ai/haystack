@@ -2,9 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from unittest.mock import patch
-
 import pytest
+
+from unittest.mock import patch
 
 from haystack import Document
 from haystack.components.classifiers import TransformersZeroShotDocumentClassifier
