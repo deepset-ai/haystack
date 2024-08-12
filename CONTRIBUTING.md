@@ -158,7 +158,7 @@ $ hatch --version
 Hatch, version 1.9.3
 ```
 
-You can now create a new virtual environment for Haystack with `hatch` by running:
+You can create a new virtual environment for Haystack with `hatch` by running:
 
 ```console
 $ hatch shell
