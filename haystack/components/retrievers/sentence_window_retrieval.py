@@ -10,19 +10,19 @@ from haystack.document_stores.types import DocumentStore
 
 
 @component
-class SentenceWindowRetriever:
+class SentenceWindowRetrieval:
     """
     Retrieves documents adjacent to a given document in the Document Store.
 
     During indexing, documents are broken into smaller chunks, or sentences. When you submit a query,
     the Retriever fetches the most relevant sentence. To provide full context,
-    SentenceWindowRetriever fetches a number of neighboring sentences before and after each
+    SentenceWindowRetrieval fetches a number of neighboring sentences before and after each
     relevant one. You can set this number with the `window_size` parameter.
     It uses `source_id` and `doc.meta['split_id']` to locate the surrounding documents.
 
     This component works with existing Retrievers, like BM25Retriever or
     EmbeddingRetriever. First, use a Retriever to find documents based on a query and then use
-    SentenceWindowRetriever to get the surrounding documents for context.
+    SentenceWindowRetrieval to get the surrounding documents for context.
 
 
     ### Usage example
@@ -30,7 +30,7 @@ class SentenceWindowRetriever:
     ```python
     from haystack import Document, Pipeline
     from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
-    from haystack.components.retrievers import SentenceWindowRetriever
+    from haystack.components.retrievers import SentenceWindowRetrieval
     from haystack.components.preprocessors import DocumentSplitter
     from haystack.document_stores.in_memory import InMemoryDocumentStore
 
@@ -47,7 +47,7 @@ class SentenceWindowRetriever:
 
     rag = Pipeline()
     rag.add_component("bm25_retriever", InMemoryBM25Retriever(doc_store, top_k=1))
-    rag.add_component("sentence_window_retriever", SentenceWindowRetriever(document_store=doc_store, window_size=2))
+    rag.add_component("sentence_window_retriever", SentenceWindowRetrieval(document_store=doc_store, window_size=2))
     rag.connect("bm25_retriever", "sentence_window_retriever")
 
     rag.run({'bm25_retriever': {"query":"third"}})
@@ -60,7 +60,7 @@ class SentenceWindowRetriever:
 
     def __init__(self, document_store: DocumentStore, window_size: int = 3):
         """
-        Creates a new SentenceWindowRetriever component.
+        Creates a new SentenceWindowRetrieval component.
 
         :param document_store: The Document Store to retrieve the surrounding documents from.
         :param window_size: The number of documents to retrieve before and after the relevant one.
@@ -110,7 +110,7 @@ class SentenceWindowRetriever:
         return default_to_dict(self, document_store=docstore, window_size=self.window_size)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SentenceWindowRetriever":
+    def from_dict(cls, data: Dict[str, Any]) -> "SentenceWindowRetrieval":
         """
         Deserializes the component from a dictionary.
 

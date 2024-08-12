@@ -1,0 +1,4 @@
+---
+upgrade:
+  - |
+      `SentenceWindowRetriever` component has been reverted back to `SenetenceWindowRetrieval`.
