@@ -10,13 +10,67 @@ from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
 
 logger = logging.getLogger(__name__)
 
+
 with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
     from transformers import pipeline
 
-    from haystack.utils.hf import deserialize_hf_model_kwargs, resolve_hf_pipeline_kwargs, serialize_hf_model_kwargs
+    from haystack.utils.hf import (  # pylint: disable=ungrouped-imports
+        deserialize_hf_model_kwargs,
+        resolve_hf_pipeline_kwargs,
+        serialize_hf_model_kwargs,
+    )
 
 
+@component
 class TransformersZeroShotDocumentClassifier:
+    """
+    Zero-shot classification of documents based on given labels and add the predicted label to their metadata.
+
+    The component uses a Hugging Face pipeline for zero-shot classification. This is useful for classifying documents
+    based on a set of labels. The model and the set of labels to be used for categorization are to be specified.
+    Additionally, the component can be configured to allow multiple labels to be true.
+
+    Classification is run on document's content field by default. If you want it to run on another field, set the
+    `classification_field` to one of document's meta fields.
+
+    Example usage in a pipeline that classifies documents based on predefined classification labels,
+    retrieved from a search pipeline:
+
+    ```python
+    from haystack import Document
+    from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+    from haystack.document_stores.in_memory import InMemoryDocumentStore
+    from haystack.core.pipeline import Pipeline
+    from haystack.components.classifiers import TransformersZeroShotDocumentClassifier
+
+    documents = [Document(id="0", content="Today was a nice day!"),
+                 Document(id="1", content="Yesterday was a bad day!")]
+
+    document_store = InMemoryDocumentStore()
+    retriever = InMemoryBM25Retriever(document_store=document_store)
+    document_classifier = TransformersZeroShotDocumentClassifier(
+        model="cross-encoder/nli-distilroberta-base",
+        labels=["positive", "negative"],
+    )
+
+    document_store.write_documents(documents)
+
+    pipeline = Pipeline()
+    pipeline.add_component(instance=retriever, name="retriever")
+    pipeline.add_component(instance=document_classifier, name="document_classifier")
+    pipeline.connect("retriever", "document_classifier")
+
+    queries = ["How was your day today?", "How was your day yesterday?"]
+    expected_predictions = ["positive", "negative"]
+
+    for idx, query in enumerate(queries):
+        result = pipeline.run({"retriever": {"query": query, "top_k": 1}})
+        assert result["document_classifier"]['documents'][0].to_dict()["id"] == str(idx)
+        assert (result["document_classifier"]['documents'][0].to_dict()["classification"]["label"]
+                == expected_predictions[idx])
+    ```
+    """
+
     def __init__(
         self,
         model: str,
