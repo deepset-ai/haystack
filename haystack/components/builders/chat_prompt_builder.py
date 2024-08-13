@@ -18,9 +18,9 @@ class ChatPromptBuilder:
     """
     Renders a chat prompt from a template string using Jinja2 syntax.
 
-    It constructs prompts using static or dynamic templates, which can be updated for each pipeline run.
+    It constructs prompts using static or dynamic templates, which you can update for each pipeline run.
 
-    Template variables in the initial template are optional unless specified otherwise.
+    Template variables in the template are optional unless specified otherwise.
     If an optional variable isn't provided, it defaults to an empty string. Use `variable` and `required_variables`
     to define input types and required variables.
 
@@ -107,7 +107,7 @@ class ChatPromptBuilder:
 
         :param template:
             A list of `ChatMessage` objects. The component looks for Jinja2 template syntax and
-            renders the prompt with the provided variables. You need to provide the template in either
+            renders the prompt with the provided variables. Provide the template in either
             the `init` method` or the `run` method.
         :param required_variables:
             List variables that must be provided as input to ChatPromptBuilder.
@@ -151,12 +151,12 @@ class ChatPromptBuilder:
         Renders the prompt template with the provided variables.
 
         It applies the template variables to render the final prompt. You can provide variables with pipeline kwargs.
-        In order to overwrite the default template, you can set the `template` parameter.
-        In order to overwrite pipeline kwargs, you can set the `template_variables` parameter.
+        To overwrite the default template, you can set the `template` parameter.
+        To overwrite pipeline kwargs, you can set the `template_variables` parameter.
 
         :param template:
             An optional list of `ChatMessage` objects to overwrite ChatPromptBuilder's default template.
-            If None, the default template provided at initialization is used.
+            If `None`, the default template provided at initialization is used.
         :param template_variables:
             An optional dictionary of template variables to overwrite the pipeline variables.
         :param kwargs:
