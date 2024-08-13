@@ -63,7 +63,7 @@ class TextLanguageRouter:
 
     def run(self, text: str) -> Dict[str, str]:
         """
-        Routes text strings to different output connections based on their language.
+        Routes the text strings to different output connections based on their language.
 
         If the document's text doesn't match any of the specified languages, the metadata value is set to "unmatched".
 
