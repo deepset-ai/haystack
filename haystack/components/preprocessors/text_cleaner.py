@@ -12,7 +12,7 @@ from haystack import component
 @component
 class TextCleaner:
     """
-    Cleans the text strings.
+    Cleans text strings.
 
     It can remove substrings matching a list of regular expressions, convert text to lowercase,
     remove punctuation, and remove numbers.
