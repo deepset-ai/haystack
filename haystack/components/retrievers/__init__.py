@@ -5,6 +5,13 @@
 from haystack.components.retrievers.filter_retriever import FilterRetriever
 from haystack.components.retrievers.in_memory.bm25_retriever import InMemoryBM25Retriever
 from haystack.components.retrievers.in_memory.embedding_retriever import InMemoryEmbeddingRetriever
+from haystack.components.retrievers.sentence_window_retrieval import SentenceWindowRetrieval
 from haystack.components.retrievers.sentence_window_retriever import SentenceWindowRetriever
 
-__all__ = ["FilterRetriever", "InMemoryEmbeddingRetriever", "InMemoryBM25Retriever", "SentenceWindowRetriever"]
+__all__ = [
+    "FilterRetriever",
+    "InMemoryEmbeddingRetriever",
+    "InMemoryBM25Retriever",
+    "SentenceWindowRetriever",
+    "SentenceWindowRetrieval",
+]
