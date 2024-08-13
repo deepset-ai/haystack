@@ -56,7 +56,7 @@ class DocumentLanguageClassifier:
         """
         Initializes the DocumentLanguageClassifier component.
 
-        :param languages: A list of ISO language codes to be detected.
+        :param languages: A list of ISO language codes.
             See the supported languages in [`langdetect` documentation](https://github.com/Mimino666/langdetect#languages).
             If not specified, defaults to ["en"].
         """
