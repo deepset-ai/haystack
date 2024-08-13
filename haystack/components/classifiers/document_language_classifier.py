@@ -18,8 +18,8 @@ class DocumentLanguageClassifier:
     """
     Classifies the language of each document and adds it to their metadata.
 
-    Provide a list of languages during initialization. If the document's text doesn't match any of the languages
-    specified at initialization, the metadata value is set to "unmatched".
+    Provide a list of languages during initialization. If the document's text doesn't match any of the
+    specified languages, the metadata value is set to "unmatched".
     To route documents based on their language, use the MetadataRouter component after DocumentLanguageClassifier.
     For routing plain text, use the TextLanguageRouter component instead.
 
