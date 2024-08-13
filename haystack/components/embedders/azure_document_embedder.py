@@ -87,14 +87,14 @@ class AzureOpenAIDocumentEmbedder:
         :param progress_bar:
             If `True`, shows a progress bar when running.
         :param meta_fields_to_embed:
-            List of meta fields that will be embedded along with the document text.
+            List of metadata fields to embed along with the document text.
         :param embedding_separator:
-            Separator used to concatenate the meta fields to the document text.
+            Separator used to concatenate the metadata fields to the document text.
         :param timeout: The timeout for `AzureOpenAI` client calls, in seconds.
             If not set, defaults to either the
             `OPENAI_TIMEOUT` environment variable, or 30 seconds.
         :param max_retries: Maximum number of retries to contact AzureOpenAI after an internal error.
-            If not set, defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
+            If not set, defaults to either the `OPENAI_MAX_RETRIES` environment variable or to 5 retries.
         """
         # if not provided as a parameter, azure_endpoint is read from the env var AZURE_OPENAI_ENDPOINT
         azure_endpoint = azure_endpoint or os.environ.get("AZURE_OPENAI_ENDPOINT")
@@ -233,7 +233,7 @@ class AzureOpenAIDocumentEmbedder:
 
         :returns:
             A dictionary with the following keys:
-            - `documents`: Documents with embeddings.
+            - `documents`: A list of documents with embeddings.
             - `meta`: Information about the usage of the model.
         """
         if not (isinstance(documents, list) and all(isinstance(doc, Document) for doc in documents)):
