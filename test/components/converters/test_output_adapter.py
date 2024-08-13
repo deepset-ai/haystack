@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+
+from typing import List
 import json
 
 import pytest
@@ -128,6 +130,17 @@ class TestOutputAdapter:
 
         # invoke the custom filter to check if it is deserialized correctly
         assert deserialized_adapter.custom_filters["custom_filter"]("test") == "TEST"
+
+    def test_sede_with_list_output_type_in_pipeline(self):
+        pipe = Pipeline()
+        pipe.add_component("adapter", OutputAdapter(template="{{ test }}", output_type=List[str]))
+        serialized_pipe = pipe.dumps()
+
+        # we serialize the pipeline and check if the output type is serialized correctly (as typing.List[str])
+        assert "typing.List[str]" in serialized_pipe
+
+        deserialized_pipe = Pipeline.loads(serialized_pipe)
+        assert deserialized_pipe.get_component("adapter").output_type == List[str]
 
     def test_output_adapter_from_dict_custom_filters_none(self):
         component = OutputAdapter.from_dict(
