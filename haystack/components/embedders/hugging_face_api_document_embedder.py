@@ -136,9 +136,9 @@ class HuggingFaceAPIDocumentEmbedder:
         :param progress_bar:
             If `True`, shows a progress bar when running.
         :param meta_fields_to_embed:
-            List of meta fields that will be embedded along with the document text.
+            List of metadata fields to embed along with the document text.
         :param embedding_separator:
-            Separator used to concatenate the meta fields to the document text.
+            Separator used to concatenate the metadata fields to the document text.
         """
         huggingface_hub_import.check()
 
@@ -264,7 +264,7 @@ class HuggingFaceAPIDocumentEmbedder:
 
         :returns:
             A dictionary with the following keys:
-            - `documents`: Documents with embeddings.
+            - `documents`: A list of documents with embeddings.
         """
         if not isinstance(documents, list) or documents and not isinstance(documents[0], Document):
             raise TypeError(
