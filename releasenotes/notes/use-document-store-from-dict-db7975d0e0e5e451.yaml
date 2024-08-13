@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Use `from_dict` method of the specific Document Store class when deserializing the underlying Document Store
+    instead of the generic `default_from_dict` method.
+    This impacts the following generic components: `CacheChecker`, `DocumentWriter`, `FilterRetriever`, and
+    `SentenceWindowRetriever`.
