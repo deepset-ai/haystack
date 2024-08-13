@@ -15,9 +15,10 @@ from haystack.utils import Secret, deserialize_secrets_inplace
 @component
 class AzureOpenAIDocumentEmbedder:
     """
-    A component for computing Document embeddings using OpenAI models on Azure.
+    Calculates document embeddings using OpenAI models deployed on Azure.
 
-    Usage example:
+    ### Usage example
+
     ```python
     from haystack import Document
     from haystack.components.embedders import AzureOpenAIDocumentEmbedder
@@ -52,44 +53,48 @@ class AzureOpenAIDocumentEmbedder:
         max_retries: Optional[int] = None,
     ):
         """
-        Create an AzureOpenAIDocumentEmbedder component.
+        Creates an AzureOpenAIDocumentEmbedder component.
 
         :param azure_endpoint:
-            The endpoint of the deployed model.
+            The endpoint of the model deployed on Azure.
         :param api_version:
             The version of the API to use.
         :param azure_deployment:
-            The deployment of the model, usually matches the model name.
+            The name of the model deployed on Azure. The default model is text-embedding-ada-002.
         :param dimensions:
-            The number of dimensions the resulting output embeddings should have. Only supported in text-embedding-3
+            The number of dimensions of the resulting embeddings. Only supported in text-embedding-3
             and later models.
         :param api_key:
-            The API key used for authentication.
+            The Azure OpenAI API key.
+            You can set it with an environment variable `AZURE_OPENAI_API_KEY`, or pass with this
+            parameter during initialization.
         :param azure_ad_token:
-            Microsoft Entra ID token, see Microsoft's official
+            Microsoft Entra ID token, see Microsoft's
             [Entra ID](https://www.microsoft.com/en-us/security/business/identity-access/microsoft-entra-id)
-            documentation for more information.
-            Used to be called Azure Active Directory.
+            documentation for more information. You can set it with an environment variable
+            `AZURE_OPENAI_AD_TOKEN`, or pass with this parameter during initialization.
+            Previously called Azure Active Directory.
         :param organization:
-            The Organization ID. See OpenAI's
-            [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization)
+            Your organization ID. See OpenAI's
+            [Setting Up Your Organization](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization)
             for more information.
         :param prefix:
             A string to add at the beginning of each text.
         :param suffix:
             A string to add at the end of each text.
         :param batch_size:
-            Number of Documents to encode at once.
+            Number of documents to embed at once.
         :param progress_bar:
-            If True shows a progress bar when running.
+            If `True`, shows a progress bar when running.
         :param meta_fields_to_embed:
-            List of meta fields that will be embedded along with the Document text.
+            List of metadata fields to embed along with the document text.
         :param embedding_separator:
-            Separator used to concatenate the meta fields to the Document text.
-        :param timeout: The timeout in seconds to be passed to the underlying `AzureOpenAI` client, if not set it is
-            inferred from the `OPENAI_TIMEOUT` environment variable or set to 30.
-        :param max_retries: Maximum retries to establish a connection with AzureOpenAI if it returns an internal error,
-            if not set it is inferred from the `OPENAI_MAX_RETRIES` environment variable or set to 5.
+            Separator used to concatenate the metadata fields to the document text.
+        :param timeout: The timeout for `AzureOpenAI` client calls, in seconds.
+            If not set, defaults to either the
+            `OPENAI_TIMEOUT` environment variable, or 30 seconds.
+        :param max_retries: Maximum number of retries to contact AzureOpenAI after an internal error.
+            If not set, defaults to either the `OPENAI_MAX_RETRIES` environment variable or to 5 retries.
         """
         # if not provided as a parameter, azure_endpoint is read from the env var AZURE_OPENAI_ENDPOINT
         azure_endpoint = azure_endpoint or os.environ.get("AZURE_OPENAI_ENDPOINT")
@@ -221,14 +226,14 @@ class AzureOpenAIDocumentEmbedder:
     @component.output_types(documents=List[Document], meta=Dict[str, Any])
     def run(self, documents: List[Document]) -> Dict[str, Any]:
         """
-        Embed a list of Documents.
+        Embeds a list of documents.
 
         :param documents:
             Documents to embed.
 
         :returns:
             A dictionary with the following keys:
-            - `documents`: Documents with embeddings
+            - `documents`: A list of documents with embeddings.
             - `meta`: Information about the usage of the model.
         """
         if not (isinstance(documents, list) and all(isinstance(doc, Document) for doc in documents)):
