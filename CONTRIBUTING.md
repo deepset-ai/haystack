@@ -158,6 +158,12 @@ $ hatch --version
 Hatch, version 1.9.3
 ```
 
+You can create a new virtual environment for Haystack with `hatch` by running:
+
+```console
+$ hatch shell
+```
+
 ### Clone the git repository
 
 You won't be able to make changes directly to this repo, so the first step is to [create a fork](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo).
