@@ -68,9 +68,9 @@ class OpenAIDocumentEmbedder:
             The number of dimensions of the resulting embeddings. Only `text-embedding-3` and
             later models support this parameter.
         :param api_base_url:
-            Overrides default base URL for all HTTP requests.
+            Overrides the default base URL for all HTTP requests.
         :param organization:
-            Your organization ID. See OpenAI's
+            Your OpenAI organization ID. See OpenAI's
             [Setting Up Your Organization](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization)
             for more information.
         :param prefix:
@@ -82,15 +82,15 @@ class OpenAIDocumentEmbedder:
         :param progress_bar:
             If `True`, shows a progress bar when running.
         :param meta_fields_to_embed:
-            List of meta fields to embed along with the document text.
+            List of metadata fields to embed along with the document text.
         :param embedding_separator:
-            Separator used to concatenate the meta fields to the document text.
+            Separator used to concatenate the metadata fields to the document text.
         :param timeout:
             Timeout for OpenAI client calls. If not set, it defaults to either the
             `OPENAI_TIMEOUT` environment variable, or 30 seconds.
         :param max_retries:
             Maximum number of retries to contact OpenAI after an internal error.
-            If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
+            If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or 5 retries.
         """
         self.api_key = api_key
         self.model = model
@@ -212,11 +212,11 @@ class OpenAIDocumentEmbedder:
         Embeds a list of documents.
 
         :param documents:
-            Documents to embed.
+            A list of documents to embed.
 
         :returns:
             A dictionary with the following keys:
-            - `documents`: Documents with embeddings.
+            - `documents`: A list of documents with embeddings.
             - `meta`: Information about the usage of the model.
         """
         if not isinstance(documents, list) or documents and not isinstance(documents[0], Document):
