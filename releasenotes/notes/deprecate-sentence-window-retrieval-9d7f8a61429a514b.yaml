@@ -1,0 +1,4 @@
+---
+deprecations:
+  - |
+    `SentenceWindowRetrieval` is deprecated and will be removed in future. Use `SentenceWindowRetriever` instead.
