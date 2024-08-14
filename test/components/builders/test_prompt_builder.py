@@ -4,6 +4,8 @@
 from typing import Any, Dict, List, Optional
 from jinja2 import TemplateSyntaxError
 import pytest
+from unittest.mock import patch, MagicMock
+import datetime
 
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack import component
@@ -254,3 +256,96 @@ class TestPromptBuilder:
             "prompt_builder": {"prompt": "This is the dynamic prompt:\n Query: Where does the speaker live?"}
         }
         assert result == expected_dynamic
+
+    @patch("haystack.components.builders.prompt_builder.datetime")  # Mock datetime to control the current date and time
+    def test_template_with_default_date_format(self, mock_datetime: MagicMock) -> None:
+        mock_datetime.datetime.now.return_value = datetime.datetime(
+            2024, 8, 14, 12, 30, 45, 123456, tzinfo=datetime.timezone.utc
+        )
+
+        template = "Today's date is {{ utc_now() }}"
+        builder = PromptBuilder(template=template)
+
+        result = builder.run()
+
+        expected_prompt = "Today's date is 2024-08-14 12:30:45.123456"
+        assert result["prompt"] == expected_prompt
+
+    @patch("haystack.components.builders.prompt_builder.datetime")
+    def test_template_with_custom_date_format(self, mock_datetime: MagicMock) -> None:
+        mock_datetime.datetime.now.return_value = datetime.datetime(
+            2024, 8, 14, 12, 30, 45, 123456, tzinfo=datetime.timezone.utc
+        )
+
+        template = "The date today is {{ utc_now('%Y/%m/%d') }}"
+        builder = PromptBuilder(template=template)
+
+        result = builder.run()
+
+        expected_prompt = "The date today is 2024/08/14"
+        assert result["prompt"] == expected_prompt
+
+    @patch("haystack.components.builders.prompt_builder.datetime")
+    def test_template_with_time_only_format(self, mock_datetime: MagicMock) -> None:
+        mock_datetime.datetime.now.return_value = datetime.datetime(
+            2024, 8, 14, 12, 30, 45, 123456, tzinfo=datetime.timezone.utc
+        )
+
+        template = "Current time is {{ utc_now('%H:%M:%S') }}"
+        builder = PromptBuilder(template=template)
+
+        result = builder.run()
+
+        expected_prompt = "Current time is 12:30:45"
+        assert result["prompt"] == expected_prompt
+
+    @patch("haystack.components.builders.prompt_builder.datetime")
+    def test_template_with_multiple_date_formats(self, mock_datetime: MagicMock) -> None:
+        mock_datetime.datetime.now.return_value = datetime.datetime(
+            2024, 8, 14, 12, 30, 45, 123456, tzinfo=datetime.timezone.utc
+        )
+
+        template = "Today is {{ utc_now('%Y-%m-%d') }}, and the current time is {{ utc_now('%H:%M') }}"
+        builder = PromptBuilder(template=template)
+
+        result = builder.run()
+
+        expected_prompt = "Today is 2024-08-14, and the current time is 12:30"
+        assert result["prompt"] == expected_prompt
+
+    def test_template_without_utc_now(self):
+        template = "Hello, this is a static template."
+        builder = PromptBuilder(template=template)
+
+        result = builder.run()
+
+        expected_prompt = "Hello, this is a static template."
+        assert result["prompt"] == expected_prompt
+
+    def test_current_date_empty_format(self):
+        with pytest.raises(ValueError):
+            template = "Hello, this is an empty date: {{ utc_now('') }}"
+            builder = PromptBuilder(template=template)
+
+            builder.run()
+
+    def test_current_date_invalid_format(self):
+        with pytest.raises(ValueError):
+            template = "Hello, this is an invalid date: {{ utc_now('%Q-%W-%R') }}"
+            builder = PromptBuilder(template=template)
+
+            builder.run()
+
+    def test_current_date_none(self):
+        with pytest.raises(TypeError):
+            template = "Hello, this is an invalid date: {{ utc_now(None) }}"
+            builder = PromptBuilder(template=template)
+
+            builder.run()
+
+    def test_current_typeerror(self):
+        with pytest.raises(TypeError):
+            template = "Hello, this is an invalid date: {{ utc_now(10) }}"
+            builder = PromptBuilder(template=template)
+
+            builder.run()
