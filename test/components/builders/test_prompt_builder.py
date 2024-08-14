@@ -322,21 +322,21 @@ class TestPromptBuilder:
         expected_prompt = "Hello, this is a static template."
         assert result["prompt"] == expected_prompt
 
-    def test_current_date_empty_format(self):
+    def test_utc_now_empty_format(self):
         with pytest.raises(ValueError):
             template = "Hello, this is an empty date: {{ utc_now('') }}"
             builder = PromptBuilder(template=template)
 
             builder.run()
 
-    def test_current_date_invalid_format(self):
+    def test_utc_now_invalid_format(self):
         with pytest.raises(ValueError):
             template = "Hello, this is an invalid date: {{ utc_now('%Q-%W-%R') }}"
             builder = PromptBuilder(template=template)
 
             builder.run()
 
-    def test_current_date_none(self):
+    def test_utc_now_none(self):
         with pytest.raises(TypeError):
             template = "Hello, this is an invalid date: {{ utc_now(None) }}"
             builder = PromptBuilder(template=template)

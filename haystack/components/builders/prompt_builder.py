@@ -163,7 +163,7 @@ class PromptBuilder:
 
         self._env = SandboxedEnvironment()
         self.template = self._env.from_string(template)
-        self._env.globals["utc_now"] = self._current_date
+        self._env.globals["utc_now"] = self._utc_now
 
         if not variables:
             # infere variables from template
@@ -246,7 +246,7 @@ class PromptBuilder:
             )
 
     @staticmethod
-    def _current_date(date_format: str = "%Y-%m-%d %H:%M:%S.%f") -> str:
+    def _utc_now(date_format: str = "%Y-%m-%d %H:%M:%S.%f") -> str:
         """
         Return current date in UTC timezone as string.
 
