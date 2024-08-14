@@ -3,6 +3,7 @@ import pytest
 
 from haystack.document_stores.in_memory.document_store import InMemoryDocumentStore
 from haystack.utils.docstore_deserialization import deserialize_document_store_in_init_parameters
+from haystack.core.errors import DeserializationError
 
 
 class FakeDocumentStore:
@@ -59,3 +60,26 @@ def test_default_from_dict_is_called():
         mock_default_from_dict.assert_called_once_with(
             FakeDocumentStore, {"type": "test_docstore_deserialization.FakeDocumentStore", "init_parameters": {}}
         )
+
+
+def test_missing_document_store_key():
+    data = {"init_parameters": {"policy": "SKIP"}}
+    with pytest.raises(DeserializationError):
+        deserialize_document_store_in_init_parameters(data)
+
+
+def test_missing_type_key_in_document_store():
+    data = {"init_parameters": {"document_store": {"init_parameters": {}}, "policy": "SKIP"}}
+    with pytest.raises(DeserializationError):
+        deserialize_document_store_in_init_parameters(data)
+
+
+def test_invalid_class_import():
+    data = {
+        "init_parameters": {
+            "document_store": {"type": "invalid.module.InvalidClass", "init_parameters": {}},
+            "policy": "SKIP",
+        }
+    }
+    with pytest.raises(DeserializationError):
+        deserialize_document_store_in_init_parameters(data)
