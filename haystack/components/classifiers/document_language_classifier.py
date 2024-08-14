@@ -16,7 +16,7 @@ with LazyImport("Run 'pip install langdetect'") as langdetect_import:
 @component
 class DocumentLanguageClassifier:
     """
-    Classifies the language of each document and adds it to their metadata.
+    Classifies the language of each document and adds it to its metadata.
 
     Provide a list of languages during initialization. If the document's text doesn't match any of the
     specified languages, the metadata value is set to "unmatched".
@@ -68,7 +68,7 @@ class DocumentLanguageClassifier:
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document]):
         """
-        Classifies the language of each document and adds it to their metadata.
+        Classifies the language of each document and adds it to its metadata.
 
         If the document's text doesn't match any of the languages specified at initialization,
         sets the metadata value to "unmatched".
