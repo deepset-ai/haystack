@@ -1,0 +1,35 @@
+from typing import Any, Dict
+
+from haystack import DeserializationError
+from haystack.core.serialization import default_from_dict, import_class_by_name
+
+
+def deserialize_document_store_in_init_parameters(data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Deserializes a generic document store from the init_parameters of a component.
+
+    :param data:
+        The dictionary to deserialize from.
+    :returns:
+        The dictionary, with the document store deserialized.
+
+    :raises DeserializationError:
+        If the document store is not properly specified in the serialization data or its type cannot be imported.
+    """
+    init_params = data.get("init_parameters", {})
+    if "document_store" not in init_params:
+        raise DeserializationError("Missing 'document_store' in serialization data")
+    if "type" not in init_params["document_store"]:
+        raise DeserializationError("Missing 'type' in document store's serialization data")
+
+    doc_store_data = data["init_parameters"]["document_store"]
+    try:
+        doc_store_class = import_class_by_name(doc_store_data["type"])
+    except ImportError as e:
+        raise DeserializationError(f"Class '{doc_store_data['type']}' not correctly imported") from e
+    if hasattr(doc_store_class, "from_dict"):
+        data["init_parameters"]["document_store"] = doc_store_class.from_dict(doc_store_data)
+    else:
+        data["init_parameters"]["document_store"] = default_from_dict(doc_store_class, doc_store_data)
+
+    return data
