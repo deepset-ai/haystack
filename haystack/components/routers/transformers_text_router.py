@@ -182,7 +182,7 @@ class TransformersTextRouter:
     @component.output_types(documents=Dict[str, str])
     def run(self, text: str):
         """
-        Routes text strings to different connections based on a category label.
+        Routes the text strings to different connections based on a category label.
 
         :param text: A string of text to route.
         :returns:
