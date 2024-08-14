@@ -84,9 +84,7 @@ class TopPSampler:
             logger.warning("No documents with scores found. Returning the original documents.")
             return {"documents": documents}
 
-        sorted_docs_with_scores = sorted(
-            zip(documents_with_scores, scores, strict=True), key=lambda x: x[1], reverse=True
-        )
+        sorted_docs_with_scores = sorted(zip(documents_with_scores, scores), key=lambda x: x[1], reverse=True)
         sorted_documents = [doc for doc, _ in sorted_docs_with_scores]
         sorted_scores = [score for _, score in sorted_docs_with_scores]
 
