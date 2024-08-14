@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import datetime
 from typing import Any, Dict, List, Optional, Set
 
 from jinja2 import meta
@@ -162,6 +163,8 @@ class PromptBuilder:
 
         self._env = SandboxedEnvironment()
         self.template = self._env.from_string(template)
+        self._env.globals["utc_now"] = self._current_date
+
         if not variables:
             # infere variables from template
             ast = self._env.parse(template)
@@ -241,3 +244,21 @@ class PromptBuilder:
                 f"Missing required input variables in PromptBuilder: {missing_vars_str}. "
                 f"Required variables: {self.required_variables}. Provided variables: {provided_variables}."
             )
+
+    @staticmethod
+    def _current_date(date_format: str = "%Y-%m-%d %H:%M:%S.%f") -> str:
+        """
+        Return current date in UTC timezone as string.
+
+        :param date_format: Date format to display.
+            Default format is "%Y-%m-%d %H:%M:%S.%f".
+        """
+        if not isinstance(date_format, str):
+            raise TypeError("Date format must be a string")
+
+        try:
+            datetime.date.fromisoformat(date_format)
+        except ValueError:
+            raise ValueError(f"Provided date format {date_format} is not valid.")
+
+        return datetime.datetime.now(tz=datetime.timezone.utc).strftime(date_format)
