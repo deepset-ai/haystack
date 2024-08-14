@@ -24,7 +24,7 @@ with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'") a
 @component
 class TransformersTextRouter:
     """
-    Routes text strings to different connections based on a category label.
+    Routes the text strings to different connections based on a category label.
 
     The labels are specific to each model and can be found it its description on Hugging Face.
 
