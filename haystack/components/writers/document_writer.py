@@ -84,7 +84,10 @@ class DocumentWriter:
             doc_store_class = import_class_by_name(doc_store_data["type"])
         except ImportError as e:
             raise DeserializationError(f"Class '{doc_store_data['type']}' not correctly imported") from e
-        data["init_parameters"]["document_store"] = default_from_dict(doc_store_class, doc_store_data)
+        if hasattr(doc_store_class, "from_dict"):
+            data["init_parameters"]["document_store"] = doc_store_class.from_dict(doc_store_data)
+        else:
+            data["init_parameters"]["document_store"] = default_from_dict(doc_store_class, doc_store_data)
         data["init_parameters"]["policy"] = DuplicatePolicy[data["init_parameters"]["policy"]]
 
         return default_from_dict(cls, data)
