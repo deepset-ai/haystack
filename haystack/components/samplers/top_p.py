@@ -125,7 +125,7 @@ class TopPSampler:
         :param doc: Document object.
         :return: Score of the document.
         """
-        score = doc.meta.get(self.score_field)
+        score = doc.meta.get(self.score_field)  # type: ignore
         if not isinstance(score, float):
             score = None
         return score  # type: ignore
