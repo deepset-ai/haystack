@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Introduce an utility function to deserialize a generic Document Store
+    from the init_parameters of a serialized component.

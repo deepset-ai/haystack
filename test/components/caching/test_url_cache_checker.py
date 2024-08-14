@@ -60,7 +60,7 @@ class TestCacheChecker:
             "type": "haystack.components.caching.cache_checker.UrlCacheChecker",
             "init_parameters": {"document_store": {"init_parameters": {}}},
         }
-        with pytest.raises(DeserializationError, match="Missing 'type' in document store's serialization data"):
+        with pytest.raises(DeserializationError):
             CacheChecker.from_dict(data)
 
     def test_from_dict_nonexisting_docstore(self):

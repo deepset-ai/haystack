@@ -4,9 +4,9 @@
 
 from typing import Any, Dict, List
 
-from haystack import DeserializationError, Document, component, default_from_dict, default_to_dict
-from haystack.core.serialization import import_class_by_name
+from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.document_stores.types import DocumentStore
+from haystack.utils import deserialize_document_store_in_init_parameters
 
 
 @component
@@ -117,24 +117,8 @@ class SentenceWindowRetriever:
         :returns:
             Deserialized component.
         """
-        init_params = data.get("init_parameters", {})
-
-        if "document_store" not in init_params:
-            raise DeserializationError("Missing 'document_store' in serialization data")
-        if "type" not in init_params["document_store"]:
-            raise DeserializationError("Missing 'type' in document store's serialization data")
-
         # deserialize the document store
-        doc_store_data = data["init_parameters"]["document_store"]
-        try:
-            doc_store_class = import_class_by_name(doc_store_data["type"])
-        except ImportError as e:
-            raise DeserializationError(f"Class '{doc_store_data['type']}' not correctly imported") from e
-
-        if hasattr(doc_store_class, "from_dict"):
-            data["init_parameters"]["document_store"] = doc_store_class.from_dict(doc_store_data)
-        else:
-            data["init_parameters"]["document_store"] = default_from_dict(doc_store_class, doc_store_data)
+        data = deserialize_document_store_in_init_parameters(data)
 
         # deserialize the component
         return default_from_dict(cls, data)
