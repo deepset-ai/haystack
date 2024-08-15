@@ -60,6 +60,8 @@ class TestAzureOpenAIGenerator:
                 "timeout": 30.0,
                 "max_retries": 5,
                 "generation_kwargs": {},
+                "default_headers": {},
+                "azure_kwargs": {},
             },
         }
 
@@ -89,6 +91,8 @@ class TestAzureOpenAIGenerator:
                 "timeout": 3.5,
                 "max_retries": 10,
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
+                "default_headers": {},
+                "azure_kwargs": {},
             },
         }
 
