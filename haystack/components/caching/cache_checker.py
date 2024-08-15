@@ -16,10 +16,11 @@ class CacheChecker:
     """
     Checks for the presence of documents in a Document Store based on a specified field in each document's metadata.
 
-    If matching documents are found, they are returned as hits. If not, the items
-    are returned as misses, indicating they are not in the cache.
+    If matching documents are found, they are returned as "hits". If not found in the cache, the items
+    are returned as "misses".
 
-    Usage example:
+    ### Usage example
+
     ```python
     from haystack import Document
     from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -41,12 +42,12 @@ class CacheChecker:
 
     def __init__(self, document_store: DocumentStore, cache_field: str):
         """
-        Create a CacheChecker component.
+        Creates a CacheChecker component.
 
         :param document_store:
-            Document store to check.
+            Document Store to check for the presence of specific documents.
         :param cache_field:
-            Name of the Document metadata field
+            Name of the document's metadata field
             to check for cache hits.
         """
         self.document_store = document_store
@@ -85,7 +86,7 @@ class CacheChecker:
             Values to be checked against the cache field.
         :return:
             A dictionary with two keys:
-            - `hits` - Documents that matched with any of the items.
+            - `hits` - Documents that matched with at least one of the items.
             - `misses` - Items that were not present in any documents.
         """
         found_documents = []
