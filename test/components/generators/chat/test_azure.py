@@ -57,6 +57,8 @@ class TestOpenAIChatGenerator:
                 "generation_kwargs": {},
                 "timeout": 30.0,
                 "max_retries": 5,
+                "default_headers": {},
+                "azure_kwargs": {},
             },
         }
 
@@ -84,6 +86,8 @@ class TestOpenAIChatGenerator:
                 "timeout": 2.5,
                 "max_retries": 10,
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
+                "default_headers": {},
+                "azure_kwargs": {},
             },
         }
 
