@@ -109,6 +109,9 @@ class AzureOpenAIGenerator(OpenAIGenerator):
                 Higher values make the model less likely to repeat the token.
             - `logit_bias`: Adds a logit bias to specific tokens. The keys of the dictionary are tokens, and the
                 values are the bias to add to that token.
+        :param default_headers: Default headers to use for the AzureOpenAI client.
+        :param azure_kwargs: Other parameters to use for the AzureOpenAI class. See the [AzureOpenAI class](https://github.com/openai/openai-python/blob/main/src/openai/lib/azure.py)
+            for supported parameters.
         """
         # We intentionally do not call super().__init__ here because we only need to instantiate the client to interact
         # with the API.
