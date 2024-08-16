@@ -132,7 +132,7 @@ class RemoteWhisperTranscriber:
             A list of file paths or `ByteStream` objects containing the audio files to transcribe.
 
         :returns: A dictionary with the following keys:
-            - `documents`: A list of documents, one for each file. The content of the document is the transcribed text.
+            - `documents`: A list of documents, one document for each file. The content of each document is the transcribed text.
         """
         documents = []
 
