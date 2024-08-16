@@ -35,13 +35,14 @@ WhisperLocalModel = Literal[
 @component
 class LocalWhisperTranscriber:
     """
-    Transcribes audio files using OpenAI's Whisper model in your local machine.
+    Transcribes audio files using OpenAI's Whisper model on your local machine.
 
     For the supported audio formats, languages, and other parameters, see the
     [Whisper API documentation](https://platform.openai.com/docs/guides/speech-to-text) and the official Whisper
-    [github repository](https://github.com/openai/whisper).
+    [GitHub repository](https://github.com/openai/whisper).
 
-    Usage example:
+    ### Usage example
+
     ```python
     from haystack.components.audio import LocalWhisperTranscriber
 
@@ -61,11 +62,12 @@ class LocalWhisperTranscriber:
         Creates an instance of the LocalWhisperTranscriber component.
 
         :param model:
-            Name of the model to use. Set it to one of the following values:
-        :type model:
-            Literal["tiny", "small", "medium", "large", "large-v2"]
+            The name of the model to use. Set to one of the following models:
+            "tiny", "base", "small", "medium", "large" (default).
+            For details on the models and their modifications, see the
+            [Whisper documentation](https://github.com/openai/whisper?tab=readme-ov-file#available-models-and-languages).
         :param device:
-            The device on which the model is loaded. If `None`, the default device is automatically selected.
+            The device for loading the model. If `None`, automatically selects the default device.
         """
         whisper_import.check()
         if model not in get_args(WhisperLocalModel):
@@ -111,19 +113,20 @@ class LocalWhisperTranscriber:
     @component.output_types(documents=List[Document])
     def run(self, sources: List[Union[str, Path, ByteStream]], whisper_params: Optional[Dict[str, Any]] = None):
         """
-        Transcribes the audio files into a list of Documents, one for each input file.
+        Transcribes a list of audio files into a list of documents.
 
         For the supported audio formats, languages, and other parameters, see the
         [Whisper API documentation](https://platform.openai.com/docs/guides/speech-to-text) and the official Whisper
-        [github repo](https://github.com/openai/whisper).
+        [GitHup repo](https://github.com/openai/whisper).
 
         :param audio_files:
             A list of paths or binary streams to transcribe.
 
         :returns: A dictionary with the following keys:
-            - `documents`: A list of Documents, one for each file. The content of the document is the transcription
-                text, while the document's metadata contains the values returned by the Whisper model, such as the
-                alignment data and the path to the audio file used for the transcription.
+            - `documents`: A list of documents where each document is a transcribed audio file. The content of
+                the document is the transcription text, and the document's metadata contains the values returned by
+                the Whisper model, such as the alignment data and the path to the audio file used
+                for the transcription.
         """
         if self._model is None:
             raise RuntimeError(

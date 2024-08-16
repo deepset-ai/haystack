@@ -11,9 +11,13 @@ from haystack.utils.filters import convert, document_matches_filter
 @component
 class MetadataRouter:
     """
-    A component that routes documents to different connections based on the content of their metadata fields.
+    Routes documents to different connections based on their metadata fields.
 
-    Usage example:
+    Specify the routing rules in the `init` method.
+    If a document does not match any of the rules, it's routed to a connection named "unmatched".
+
+    ### Usage example
+
     ```python
     from haystack import Document
     from haystack.components.routers import MetadataRouter
@@ -32,12 +36,11 @@ class MetadataRouter:
 
     def __init__(self, rules: Dict[str, Dict]):
         """
-        Initialize the MetadataRouter.
+        Initializes the MetadataRouter component.
 
-        :param rules: A dictionary of rules that specify which output connection to route a document to based on its
-            metadata. The keys of the dictionary are the names of the output connections, and the values are
-            dictionaries that follow the format of
-            [filtering expressions in Haystack](https://docs.haystack.deepset.ai/v2.0/docs/metadata-filtering).
+        :param rules: A dictionary defining how to route documents to output connections based on their metadata.
+            Keys are output connection names, and values are dictionaries of
+            [filtering expressions](https://docs.haystack.deepset.ai/docs/metadata-filtering) in Haystack.
             For example:
             ```python
             {
@@ -77,12 +80,11 @@ class MetadataRouter:
 
     def run(self, documents: List[Document]):
         """
-        Route the documents.
+        Routes the documents.
 
-        Route the documents to different edges based on their fields content and the rules specified during
-        initialization. If a document does not match any of the rules, it is routed to a connection named "unmatched".
+        If a document does not match any of the rules, it's routed to a connection named "unmatched".
 
-        :param documents: A list of documents to route to different edges.
+        :param documents: A list of documents to route.
 
         :returns: A dictionary where the keys are the names of the output connections (including `"unmatched"`)
             and the values are lists of routed documents.

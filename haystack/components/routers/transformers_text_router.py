@@ -24,13 +24,11 @@ with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'") a
 @component
 class TransformersTextRouter:
     """
-    Routes a text input onto different output connections depending on which label it has been categorized into.
+    Routes the text strings to different connections based on a category label.
 
-    This is useful for routing queries to different models in a pipeline depending on their categorization.
-    The set of labels to be used for categorization are provided by the selected model.
+    The labels are specific to each model and can be found it its description on Hugging Face.
 
-    Example usage in a query pipeline that routes english queries to a text generator optimized for english text and
-    german queries to a text generator optimized for german text.
+    ### Usage example
 
     ```python
     from haystack.core.pipeline import Pipeline
@@ -83,19 +81,19 @@ class TransformersTextRouter:
         huggingface_pipeline_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
-        Initializes the TransformersTextRouter.
+        Initializes the TransformersTextRouter component.
 
         :param model: The name or path of a Hugging Face model for text classification.
-        :param labels: The list of labels that the model has been trained to predict. If not provided, the labels
-            are fetched from the model configuration file hosted on the HuggingFace Hub using
+        :param labels: The list of labels. If not provided, the component fetches the labels
+            from the model configuration file hosted on the Hugging Face Hub using
             `transformers.AutoConfig.from_pretrained`.
-        :param device: The device on which the model is loaded. If `None`, the default device is automatically
-            selected. If a device/device map is specified in `huggingface_pipeline_kwargs`, it overrides this parameter.
+        :param device: The device for loading the model. If `None`, automatically selects the default device.
+            If a device or device map is specified in `huggingface_pipeline_kwargs`, it overrides this parameter.
         :param token: The API token used to download private models from Hugging Face.
-            If `token` is set to `True`, the token generated when running
-            `transformers-cli login` (stored in ~/.huggingface) is used.
-        :param huggingface_pipeline_kwargs: Dictionary containing keyword arguments used to initialize the
-            Hugging Face pipeline for text classification.
+            If `True`, uses either `HF_API_TOKEN` or `HF_TOKEN` environment variables.
+            To generate these tokens, run `transformers-cli login`.
+        :param huggingface_pipeline_kwargs: A dictionary of keyword arguments for initializing the Hugging Face
+            text classification pipeline.
         """
         torch_and_transformers_import.check()
 
@@ -184,11 +182,9 @@ class TransformersTextRouter:
     @component.output_types(documents=Dict[str, str])
     def run(self, text: str):
         """
-        Run the TransformersTextRouter.
+        Routes the text strings to different connections based on a category label.
 
-        This method routes the text to one of the different edges based on which label it has been categorized into.
-
-        :param text: A str to route to one of the different edges.
+        :param text: A string of text to route.
         :returns:
             A dictionary with the label as key and the text as value.
 

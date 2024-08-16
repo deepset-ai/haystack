@@ -14,9 +14,10 @@ from haystack.utils import Secret, deserialize_secrets_inplace
 @component
 class AzureOpenAITextEmbedder:
     """
-    A component for embedding strings using OpenAI models on Azure.
+    Embeds strings using OpenAI models deployed on Azure.
 
-    Usage example:
+    ### Usage example
+
     ```python
     from haystack.components.embedders import AzureOpenAITextEmbedder
 
@@ -47,32 +48,36 @@ class AzureOpenAITextEmbedder:
         suffix: str = "",
     ):
         """
-        Create an AzureOpenAITextEmbedder component.
+        Creates an AzureOpenAITextEmbedder component.
 
         :param azure_endpoint:
-            The endpoint of the deployed model.
+            The endpoint of the model deployed on Azure.
         :param api_version:
             The version of the API to use.
         :param azure_deployment:
-            The deployment of the model, usually matches the model name.
+            The name of the model deployed on Azure. The default model is text-embedding-ada-002.
         :param dimensions:
             The number of dimensions the resulting output embeddings should have. Only supported in text-embedding-3
             and later models.
         :param api_key:
-            The API key used for authentication.
+            The Azure OpenAI API key.
+            You can set it with an environment variable `AZURE_OPENAI_API_KEY`, or pass with this
+            parameter during initialization.
         :param azure_ad_token:
-            Microsoft Entra ID token, see Microsoft's official
+            Microsoft Entra ID token, see Microsoft's
             [Entra ID](https://www.microsoft.com/en-us/security/business/identity-access/microsoft-entra-id)
-            documentation for more information.
-            Used to be called Azure Active Directory.
+            documentation for more information. You can set it with an environment variable
+            `AZURE_OPENAI_AD_TOKEN`, or pass with this parameter during initialization.
+            Previously called Azure Active Directory.
         :param organization:
-            The Organization ID. See OpenAI's
-            [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization)
+            Your organization ID. See OpenAI's
+            [Setting Up Your Organization](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization)
             for more information.
-        :param timeout: The timeout in seconds to be passed to the underlying `AzureOpenAI` client, if not set it is
-            inferred from the `OPENAI_TIMEOUT` environment variable or set to 30.
-        :param max_retries: Maximum retries to establish a connection with AzureOpenAI if it returns an internal error,
-            if not set it is inferred from the `OPENAI_MAX_RETRIES` environment variable or set to 5.
+        :param timeout: The timeout for `AzureOpenAI` client calls, in seconds.
+            If not set, defaults to either the
+            `OPENAI_TIMEOUT` environment variable, or 30 seconds.
+        :param max_retries: Maximum number of retries to contact AzureOpenAI after an internal error.
+            If not set, defaults to either the `OPENAI_MAX_RETRIES` environment variable, or to 5 retries.
         :param prefix:
             A string to add at the beginning of each text.
         :param suffix:
@@ -156,7 +161,7 @@ class AzureOpenAITextEmbedder:
     @component.output_types(embedding=List[float], meta=Dict[str, Any])
     def run(self, text: str):
         """
-        Embed a single string.
+        Embeds a single string.
 
         :param text:
             Text to embed.

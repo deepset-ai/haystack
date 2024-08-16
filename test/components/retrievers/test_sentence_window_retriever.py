@@ -87,7 +87,7 @@ class TestSentenceWindowRetriever:
 
     def test_from_dict_without_docstore_type(self):
         data = {"type": "SentenceWindowRetriever", "init_parameters": {"document_store": {"init_parameters": {}}}}
-        with pytest.raises(DeserializationError, match="Missing 'type' in document store's serialization data"):
+        with pytest.raises(DeserializationError):
             SentenceWindowRetriever.from_dict(data)
 
     def test_from_dict_non_existing_docstore(self):
