@@ -4,6 +4,8 @@
 
 import hashlib
 import io
+from datetime import datetime
+import json
 from dataclasses import asdict, dataclass, field, fields
 from typing import Any, Dict, List, Optional
 
@@ -137,11 +139,19 @@ class Document(metaclass=_BackwardCompatible):
         :param flatten:
             Whether to flatten `meta` field or not. Defaults to `True` to be backward-compatible with Haystack 1.x.
         """
+        def json_serial(obj):
+            """JSON serializer for objects not serializable by default json code"""
+            if isinstance(obj, datetime):
+                return obj.isoformat()
+            raise TypeError(f"Type {type(obj)} not serializable")
+    
         data = asdict(self)
         if (dataframe := data.get("dataframe")) is not None:
             data["dataframe"] = dataframe.to_json()
         if (blob := data.get("blob")) is not None:
             data["blob"] = {"data": list(blob["data"]), "mime_type": blob["mime_type"]}
+
+        data = json.loads(json.dumps(data, default=json_serial))
 
         if flatten:
             meta = data.pop("meta")
