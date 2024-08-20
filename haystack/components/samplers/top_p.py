@@ -89,8 +89,7 @@ class TopPSampler:
             return {"documents": documents}
 
         sorted_docs_with_scores = sorted(zip(documents_with_scores, scores), key=lambda x: x[1], reverse=True)
-        sorted_documents = [doc for doc, _ in sorted_docs_with_scores]
-        sorted_scores = [score for _, score in sorted_docs_with_scores]
+        sorted_documents, sorted_scores = list(zip(*sorted_docs_with_scores))
 
         tensor_scores = torch.tensor(sorted_scores, dtype=torch.float32)
         probs = torch.nn.functional.softmax(tensor_scores, dim=-1)
