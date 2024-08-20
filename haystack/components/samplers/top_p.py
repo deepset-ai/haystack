@@ -89,8 +89,7 @@ class TopPSampler:
             return {"documents": documents}
 
         sorted_docs_with_scores = sorted(zip(documents_with_scores, scores), key=lambda x: x[1], reverse=True)
-        sorted_documents = [doc for doc, _ in sorted_docs_with_scores]
-        sorted_scores = [score for _, score in sorted_docs_with_scores]
+        sorted_documents, sorted_scores = [list(t) for t in zip(*sorted_docs_with_scores)]
 
         tensor_scores = torch.tensor(sorted_scores, dtype=torch.float32)
         probs = torch.nn.functional.softmax(tensor_scores, dim=-1)
@@ -122,26 +121,24 @@ class TopPSampler:
 
         return {"documents": selected_docs}
 
-    def _get_doc_score_from_meta(self, doc: Document) -> Optional[float]:
-        """
-        Get the score of a document from its metadata.
-
-        :param doc: Document object.
-        :return: Score of the document.
-        """
-        score: Optional[float] = doc.meta.get(self.score_field)  # type: ignore
-        if not isinstance(score, float):
-            score = None
-        return score
-
-    def _get_doc_score(self, doc: Document) -> Optional[float]:
+    @staticmethod
+    def _get_doc_score(doc: Document, score_field: Optional[str] = None) -> Optional[float]:
         """
         Get the score of a document.
 
         :param doc: Document object.
+        :param meta_field: Name of the field in the document's metadata that contains the score.
+            If None, the document score field is used.
+
         :return: Score of the document.
         """
-        score: Optional[float] = doc.score
+        if score_field:
+            score = doc.meta.get(score_field)
+        else:
+            score = doc.score
+
+        if not isinstance(score, float):
+            score = None
         return score
 
     def _get_documents_and_scores(self, documents: List[Document]) -> Tuple[List[Document], List[float]]:
@@ -151,16 +148,11 @@ class TopPSampler:
         :param documents: List of Documents.
         :return: List of scores.
         """
-        if self.score_field:
-            get_score_fxn = self._get_doc_score_from_meta
-        else:
-            get_score_fxn = self._get_doc_score
-
         docs_with_scores = []
         scores = []
         docs_missing_scores = []
         for doc in documents:
-            score = get_score_fxn(doc)
+            score = self._get_doc_score(doc=doc, score_field=self.score_field)
             if score is None:
                 docs_missing_scores.append(doc)
             else:
