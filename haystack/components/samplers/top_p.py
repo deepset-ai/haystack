@@ -71,6 +71,10 @@ class TopPSampler:
 
         :param documents: List of Document objects to be filtered.
         :param top_p: If specified, a float to override the cumulative probability threshold set during initialization.
+
+        :returns: A dictionary with the following key:
+            - `documents`: List of Document objects that have been selected based on the top-p sampling.
+        :raises ValueError: If the top_p value is not within the range [0, 1].
         """
         if not documents:
             return {"documents": []}
@@ -137,7 +141,8 @@ class TopPSampler:
         :param doc: Document object.
         :return: Score of the document.
         """
-        return doc.score  # type: ignore
+        score: Optional[float] = doc.score
+        return score
 
     def _get_documents_and_scores(self, documents: List[Document]) -> Tuple[List[Document], List[float]]:
         """
