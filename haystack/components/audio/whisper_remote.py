@@ -18,14 +18,15 @@ logger = logging.getLogger(__name__)
 @component
 class RemoteWhisperTranscriber:
     """
-    Transcribes audio files using the Whisper API from OpenAI.
+    Transcribes audio files using the OpenAI's Whisper API.
 
-    The component requires an API key, see the relative
+    The component requires an OpenAI API key, see the
     [OpenAI documentation](https://platform.openai.com/docs/api-reference/authentication) for more details.
     For the supported audio formats, languages, and other parameters, see the
-    [Whisper API documentation](https://platform.openai.com/docs/guides/speech-to-text)
+    [Whisper API documentation](https://platform.openai.com/docs/guides/speech-to-text).
 
-    Usage example:
+    ### Usage example
+
     ```python
     from haystack.components.audio import RemoteWhisperTranscriber
 
@@ -47,31 +48,33 @@ class RemoteWhisperTranscriber:
 
         :param api_key:
             OpenAI API key.
+            You can set it with an environment variable `OPENAI_API_KEY`, or pass with this parameter
+            during initialization.
         :param model:
-            Name of the model to use. It now accepts only `whisper-1`.
+            Name of the model to use. Currently accepts only `whisper-1`.
         :param organization:
-            The Organization ID. See
-        [production best practices](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization).
+            Your OpenAI organization ID. See OpenAI's documentation on
+            [Setting Up Your Organization](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization).
         :param api_base:
-            An optional URL to use as the API base. See OpenAI [docs](https://platform.openai.com/docs/api-reference/audio).
+            An optional URL to use as the API base. For details, see the
+            OpenAI [documentation](https://platform.openai.com/docs/api-reference/audio).
         :param kwargs:
-            Other parameters to use for the model. These parameters are all sent directly to the OpenAI
+            Other optional parameters for the model. These are sent directly to the OpenAI
             endpoint. See OpenAI [documentation](https://platform.openai.com/docs/api-reference/audio) for more details.
-            Some of the supported parameters:
+            Some of the supported parameters are:
             - `language`: The language of the input audio.
-            Supplying the input language in ISO-639-1 format
-              will improve accuracy and latency.
+              Provide the input language in ISO-639-1 format
+              to improve transcription accuracy and latency.
             - `prompt`: An optional text to guide the model's
               style or continue a previous audio segment.
               The prompt should match the audio language.
             - `response_format`: The format of the transcript
-              output, in one of these options: json, text, srt,
-               verbose_json, or vtt. Defaults to "json". Currently only "json" is supported.
+              output. This component only supports `json`.
             - `temperature`: The sampling temperature, between 0
-            and 1. Higher values like 0.8 will make the output more
-            random, while lower values like 0.2 will make it more
-            focused and deterministic. If set to 0, the model will
-            use log probability to automatically increase the
+            and 1. Higher values like 0.8 make the output more
+            random, while lower values like 0.2 make it more
+            focused and deterministic. If set to 0, the model
+            uses log probability to automatically increase the
             temperature until certain thresholds are hit.
         """
 
@@ -123,13 +126,14 @@ class RemoteWhisperTranscriber:
     @component.output_types(documents=List[Document])
     def run(self, sources: List[Union[str, Path, ByteStream]]):
         """
-        Transcribes the audio files into a list of Documents, one for each input file.
+        Transcribes the list of audio files into a list of documents.
 
         :param sources:
-            A list of file paths or ByteStreams containing the audio files to transcribe.
+            A list of file paths or `ByteStream` objects containing the audio files to transcribe.
 
         :returns: A dictionary with the following keys:
-            - `documents`: A list of Documents, one for each file. The content of the document is the transcribed text.
+            - `documents`: A list of documents, one document for each file.
+                The content of each document is the transcribed text.
         """
         documents = []
 
