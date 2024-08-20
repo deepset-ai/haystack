@@ -191,7 +191,6 @@ colab = [
 dev = [
   "pre-commit",
   # Type check
-  "types-requests<2.31.0.7", # use urllib3 < 2.0
   "mypy==1.10.0",
   # Test
   "pytest",
