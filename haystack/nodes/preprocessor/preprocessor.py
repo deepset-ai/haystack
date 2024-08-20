@@ -120,7 +120,7 @@ class PreProcessor(BasePreProcessor):
             nltk.data.find("tokenizers/punkt")
         except LookupError:
             try:
-                nltk.download("punkt")
+                nltk.download("punkt_tab")
             except FileExistsError as error:
                 logger.debug("NLTK punkt tokenizer seems to be already downloaded. Error message: %s", error)
                 pass
