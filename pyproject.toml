@@ -46,6 +46,7 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
+  "urllib3<2.0.0",
   "requests",
   "httpx",
   "pydantic<2",
