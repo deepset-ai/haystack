@@ -120,7 +120,7 @@ class DOCXToDocument:
                 continue
             try:
                 file = docx.Document(io.BytesIO(bytestream.data))
-                paragraphs = self._extract_paragraphs_w_page_breaks(file.paragraphs)
+                paragraphs = self._extract_paragraphs_with_page_breaks(file.paragraphs)
                 text = "\n".join(paragraphs)
             except Exception as e:
                 logger.warning(
@@ -137,7 +137,7 @@ class DOCXToDocument:
 
         return {"documents": documents}
 
-    def _extract_paragraphs_w_page_breaks(self, paragraphs: List[Paragraph]) -> List[str]:
+    def _extract_paragraphs_with_page_breaks(self, paragraphs: List[Paragraph]) -> List[str]:
         """
         Extracts paragraphs from a DOCX file, including page breaks.
 
