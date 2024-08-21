@@ -6,6 +6,8 @@ from copy import deepcopy
 from typing import Any, Dict, List, Mapping, Optional, Set, Tuple
 from warnings import warn
 
+import networkx as nx
+
 from haystack import logging, tracing
 from haystack.core.component import Component
 from haystack.core.errors import PipelineMaxComponentRuns, PipelineRuntimeError
@@ -83,6 +85,139 @@ class Pipeline(PipelineBase):
             span.set_content_tag("haystack.component.output", res)
 
             return res
+
+    def _run_subgraph(
+        self,
+        execution_graph: nx.MultiDiGraph,
+        start_component: str,
+        end_component: str,
+        components_inputs: Dict[str, Dict[str, Any]],
+    ):
+        simple_paths = nx.all_simple_paths(execution_graph, start_component, end_component)
+        nodes = set()
+        for paths in simple_paths:
+            nodes.update(paths)
+        before_last_waiting_queue: Optional[Set[str]] = None
+        last_waiting_queue: Optional[Set[str]] = None
+        cycle_graph = execution_graph.subgraph(nodes)
+        if not nx.is_directed_acyclic_graph(cycle_graph):
+            # TODO: This must not happen, we'll see how to handle this
+            raise PipelineRuntimeError("Cycle detected in the subgraph")
+        sorted_graph = nx.topological_sort(cycle_graph)
+
+        waiting_queue: List[Tuple[str, Component]] = []
+        run_queue: List[Tuple[str, Component]] = []
+        for node in sorted_graph:
+            run_queue.append((node, self.graph.nodes[node]["instance"]))
+
+        # Find all the connections to Components that are not part of the cycle subgraph
+        # TODO: Do we really need this? Let's see.
+        exit_edges = {}
+        for component_name, comp in run_queue:
+            for socket_name, socket in comp.__haystack_output__._sockets_dict.items():
+                for receiver in socket.receivers:
+                    if receiver not in nodes:
+                        if component_name not in exit_edges:
+                            exit_edges[component_name] = []
+                        exit_edges[component_name].append(socket_name)
+
+        cycle_edges = {}
+        for component_name, comp in run_queue:
+            for socket_name, socket in comp.__haystack_output__._sockets_dict.items():
+                for receiver in socket.receivers:
+                    if receiver in nodes:
+                        if component_name not in cycle_edges:
+                            cycle_edges[component_name] = []
+                        cycle_edges[component_name].append(socket_name)
+
+        subgraph_outputs = {}
+
+        # This variable is used to keep track if we style need to run the cycle or not.
+        # TODO: Find a nicer name
+        exit_edge_reached = False
+        while not exit_edge_reached:
+            # Here we run the Components
+            name, comp = run_queue.pop(0)
+            if _is_lazy_variadic(comp) and not all(_is_lazy_variadic(comp) for _, comp in run_queue):
+                # We run Components with lazy variadic inputs only if there only Components with
+                # lazy variadic inputs left to run
+                _enqueue_waiting_component((name, comp), waiting_queue)
+                continue
+            # Whenever a Component is run we get its outpur edges
+
+            # As soon as a Component returns only output that is not part of the cycle, we can stop
+            if self._component_has_enough_inputs_to_run(name, components_inputs):
+                if self.graph.nodes[name]["visits"] > self.max_loops_allowed:
+                    msg = f"Maximum loops count ({self.max_loops_allowed}) exceeded for component '{name}'"
+                    raise PipelineMaxLoops(msg)
+
+                res: Dict[str, Any] = self._run_component(name, components_inputs[name])
+
+                # TODO: Handle `include_outputs_from` here
+
+                # Reset the waiting for input previous states, we managed to run a component
+                before_last_waiting_queue = None
+                last_waiting_queue = None
+
+                component_exits_cycle = True
+                for output_socket in res.keys():
+                    if output_socket in cycle_edges.get(name, []):
+                        component_exits_cycle = False
+                        break
+
+                if component_exits_cycle:
+                    # We stop only if the Component we just ran doesn't send any output to sockets that
+                    # are part of the cycle.
+                    exit_edge_reached = True
+
+                # for output_socket in res.keys():
+                #     if output_socket in exit_edges.get(name, []):
+                #         # We reached an edge that goes out of the cycle, we'll stop after this
+                #         exit_edge_reached = True
+                # We manage to run this component that was in the waiting list, we can remove it.
+                # This happens when a component was put in the waiting list but we reached it from another edge.
+                _dequeue_waiting_component((name, comp), waiting_queue)
+                for pair in self._find_components_that_will_receive_no_input(name, res):
+                    _dequeue_component(pair, run_queue, waiting_queue)
+                res = self._distribute_output(name, res, components_inputs, run_queue, waiting_queue)
+
+                if len(res) > 0:
+                    subgraph_outputs[name] = res
+            else:
+                # This component doesn't have enough inputs so we can't run it yet
+                _enqueue_waiting_component((name, comp), waiting_queue)
+
+            if len(run_queue) == 0 and len(waiting_queue) > 0:
+                # Check if we're stuck in a loop.
+                # It's important to check whether previous waitings are None as it could be that no
+                # Component has actually been run yet.
+                if (
+                    before_last_waiting_queue is not None
+                    and last_waiting_queue is not None
+                    and before_last_waiting_queue == last_waiting_queue
+                ):
+                    if self._is_stuck_in_a_loop(waiting_queue):
+                        # We're stuck! We can't make any progress.
+                        msg = (
+                            "Pipeline is stuck running in a loop. Partial outputs will be returned. "
+                            "Check the Pipeline graph for possible issues."
+                        )
+                        warn(RuntimeWarning(msg))
+                        break
+
+                    (name, comp) = self._find_next_runnable_lazy_variadic_or_default_component(waiting_queue)
+                    _add_missing_input_defaults(name, comp, components_inputs)
+                    _enqueue_component((name, comp), run_queue, waiting_queue)
+                    continue
+
+                before_last_waiting_queue = last_waiting_queue.copy() if last_waiting_queue is not None else None
+                last_waiting_queue = {item[0] for item in waiting_queue}
+
+                (name, comp) = self._find_next_runnable_component(components_inputs, waiting_queue)
+                _add_missing_input_defaults(name, comp, components_inputs)
+                _enqueue_component((name, comp), run_queue, waiting_queue)
+
+        return subgraph_outputs
 
     def run(  # noqa: PLR0915
         self, data: Dict[str, Any], include_outputs_from: Optional[Set[str]] = None
@@ -176,7 +311,7 @@ class Pipeline(PipelineBase):
         # - receive input from the user
         # - have at least one input not connected
         # - have at least one input that is variadic
-        run_queue: List[Tuple[str, Component]] = self._init_run_queue(data)
+        # run_queue: List[Tuple[str, Component]] = self._init_run_queue(data)
 
         # These variables are used to detect when we're stuck in a loop.
         # Stuck loops can happen when one or more components are waiting for input but
@@ -198,6 +333,39 @@ class Pipeline(PipelineBase):
 
         # This is what we'll return at the end
         final_outputs: Dict[Any, Any] = {}
+
+        execution_graph = deepcopy(self.graph)
+        cycles = nx.recursive_simple_cycles(self.graph)
+        # edges_removed = []
+        edges_removed = {}
+        for cycle in cycles:
+            cycle = zip(cycle, cycle[1:] + cycle[:1])
+            for sender_comp, receiver_comp in cycle:
+                edge = execution_graph.get_edge_data(sender_comp, receiver_comp)
+                # TODO: This is a bad assumption to make but for the time being it makes things easier.
+                # We need to find all the variadic edges and remove them.
+                assert len(edge.keys()) == 1
+                # It's just one in any case
+                edge_key = list(edge.keys())[0]
+                edge = list(edge.values())[0]
+                # For fucks sake these are still called like shit, we need to change this in `connect`
+                if edge["to_socket"].is_variadic:
+                    break
+            else:
+                continue
+            # We found the variadic edge
+            if sender_comp not in edges_removed:
+                edges_removed[sender_comp] = []
+            edges_removed[sender_comp].append(edge["from_socket"].name)
+            # edges_removed.append(edge)
+            execution_graph.remove_edge(sender_comp, receiver_comp, edge_key)
+            if nx.is_directed_acyclic_graph(execution_graph):
+                # We removed all the cycles, nice
+                break
+
+        run_queue: List[Tuple[str, Component]] = []
+        for node in nx.topological_sort(execution_graph):
+            run_queue.append((node, self.graph.nodes[node]["instance"]))
 
         with tracing.tracer.trace(
             "haystack.pipeline.run",
@@ -231,6 +399,12 @@ class Pipeline(PipelineBase):
                         # Deepcopy the outputs to prevent downstream nodes from modifying them
                         # We don't care about loops - Always store the last output.
                         extra_outputs[name] = deepcopy(res)
+
+                    for output_socket in res.keys():
+                        if output_socket in edges_removed.get(name, []):
+                            # TODO: This is a bad assumption to make but for the time being it makes things easier.
+                            receiver = comp.__haystack_output__._sockets_dict[output_socket].receivers[0]
+                            self._run_subgraph(execution_graph, name, receiver, components_inputs)
 
                     # Reset the waiting for input previous states, we managed to run a component
                     before_last_waiting_queue = None

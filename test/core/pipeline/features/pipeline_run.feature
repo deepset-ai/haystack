@@ -37,6 +37,7 @@ Feature: Pipeline running
         | that has a loop and a component with default inputs that doesn't receive anything from its sender but receives input from user |
         | that has multiple components with only default inputs and are added in a different order from the order of execution |
         | that is linear with conditional branching and multiple joins |
+        | that is a simple agent |
         | that has a variadic component that receives partial inputs |
         | that has an answer joiner variadic component |
 
