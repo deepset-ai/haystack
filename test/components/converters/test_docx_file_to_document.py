@@ -91,6 +91,16 @@ class TestDOCXToDocument:
             docx_converter.run(sources=paths)
             assert "Could not read non_existing_file.docx" in caplog.text
 
+    def test_run_page_breaks(self, test_files_path, docx_converter):
+        """
+        Test if the component correctly parses page breaks.
+        """
+        paths = [test_files_path / "docx" / "sample_docx_2_page_breaks.docx"]
+        output = docx_converter.run(sources=paths)
+        docs = output["documents"]
+        assert len(docs) == 1
+        assert docs[0].content.count("\f") == 4
+
     def test_mixed_sources_run(self, test_files_path, docx_converter):
         """
         Test if the component runs correctly when mixed sources are provided.
