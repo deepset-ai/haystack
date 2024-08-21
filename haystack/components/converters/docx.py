@@ -137,7 +137,7 @@ class DOCXToDocument:
 
         return {"documents": documents}
 
-    def _extract_paragraphs_with_page_breaks(self, paragraphs: List[Paragraph]) -> List[str]:
+    def _extract_paragraphs_with_page_breaks(self, paragraphs: List["Paragraph"]) -> List[str]:
         """
         Extracts paragraphs from a DOCX file, including page breaks.
 
