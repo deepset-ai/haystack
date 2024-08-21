@@ -50,8 +50,8 @@ class TopPSampler:
             A value of 1.0 indicates no filtering (all documents are retained).
         :param score_field: Name of the field in each document's metadata that contains the score. If None, the default
             document score field is used.
-        :param min_top_k: If specified, the minimum number of documents to be returned. If the top_p results in fewer
-            documents being selected, the documents with the next highest scores are added to the selection.
+        :param min_top_k: If specified, the minimum number of documents to return. If the top_p selects
+            fewer documents, additional ones with the next highest scores are added to the selection.
         """
         torch_import.check()
 
