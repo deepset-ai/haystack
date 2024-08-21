@@ -1,0 +1,4 @@
+---
+upgrade:
+  - |
+    Remove `ChatMessage.to_openai_format` method. Use `haystack.components.generators.openai_utils._convert_message_to_openai_format` instead.

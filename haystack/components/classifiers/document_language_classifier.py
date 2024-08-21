@@ -16,14 +16,14 @@ with LazyImport("Run 'pip install langdetect'") as langdetect_import:
 @component
 class DocumentLanguageClassifier:
     """
-    Classify the language of documents and add the detected language to their metadata.
+    Classifies the language of each document and adds it to its metadata.
 
-    A `MetadataRouter` can then route them onto different output connections depending on their language.
-    The set of supported languages can be specified.
-    For routing plain text using the same logic, use the related `TextLanguageRouter` component instead.
+    Provide a list of languages during initialization. If the document's text doesn't match any of the
+    specified languages, the metadata value is set to "unmatched".
+    To route documents based on their language, use the MetadataRouter component after DocumentLanguageClassifier.
+    For routing plain text, use the TextLanguageRouter component instead.
 
-    Usage example within an indexing pipeline, storing in a Document Store
-    only documents written in English:
+    ### Usage example
 
     ```python
     from haystack import Document, Pipeline
@@ -54,11 +54,11 @@ class DocumentLanguageClassifier:
 
     def __init__(self, languages: Optional[List[str]] = None):
         """
-        Initialize the DocumentLanguageClassifier.
+        Initializes the DocumentLanguageClassifier component.
 
-        :param languages: A list of languages in ISO code, each corresponding to a different output connection.
-            For supported languages, see the [`langdetect` documentation](https://github.com/Mimino666/langdetect#languages).
-            If not specified, the default is ["en"].
+        :param languages: A list of ISO language codes.
+            See the supported languages in [`langdetect` documentation](https://github.com/Mimino666/langdetect#languages).
+            If not specified, defaults to ["en"].
         """
         langdetect_import.check()
         if not languages:
@@ -68,15 +68,15 @@ class DocumentLanguageClassifier:
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document]):
         """
-        This method classifies the documents' language and adds it to their metadata.
+        Classifies the language of each document and adds it to its metadata.
 
-        If a Document's text does not match any of the languages specified at initialization,
-        the metadata value "unmatched" will be stored.
+        If the document's text doesn't match any of the languages specified at initialization,
+        sets the metadata value to "unmatched".
 
-        :param documents: A list of documents to classify their language.
+        :param documents: A list of documents for language classification.
 
         :returns: A dictionary with the following key:
-            - `documents`: List of Documents with an added metadata field called `language`.
+            - `documents`: A list of documents with an added `language` metadata field.
 
         :raises TypeError: if the input is not a list of Documents.
         """

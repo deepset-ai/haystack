@@ -5,6 +5,7 @@ import pytest
 from transformers import AutoTokenizer
 
 from haystack.dataclasses import ChatMessage, ChatRole
+from haystack.components.generators.openai_utils import _convert_message_to_openai_format
 
 
 def test_from_assistant_with_valid_content():
@@ -42,20 +43,24 @@ def test_from_function_with_empty_name():
 
 def test_to_openai_format():
     message = ChatMessage.from_system("You are good assistant")
-    assert message.to_openai_format() == {"role": "system", "content": "You are good assistant"}
+    assert _convert_message_to_openai_format(message) == {"role": "system", "content": "You are good assistant"}
 
     message = ChatMessage.from_user("I have a question")
-    assert message.to_openai_format() == {"role": "user", "content": "I have a question"}
+    assert _convert_message_to_openai_format(message) == {"role": "user", "content": "I have a question"}
 
     message = ChatMessage.from_function("Function call", "function_name")
-    assert message.to_openai_format() == {"role": "function", "content": "Function call", "name": "function_name"}
+    assert _convert_message_to_openai_format(message) == {
+        "role": "function",
+        "content": "Function call",
+        "name": "function_name",
+    }
 
 
 @pytest.mark.integration
 def test_apply_chat_templating_on_chat_message():
     messages = [ChatMessage.from_system("You are good assistant"), ChatMessage.from_user("I have a question")]
     tokenizer = AutoTokenizer.from_pretrained("HuggingFaceH4/zephyr-7b-beta")
-    formatted_messages = [m.to_openai_format() for m in messages]
+    formatted_messages = [_convert_message_to_openai_format(m) for m in messages]
     tokenized_messages = tokenizer.apply_chat_template(formatted_messages, tokenize=False)
     assert tokenized_messages == "<|system|>\nYou are good assistant</s>\n<|user|>\nI have a question</s>\n"
 
@@ -76,7 +81,7 @@ def test_apply_custom_chat_templating_on_chat_message():
     messages = [ChatMessage.from_system("You are good assistant"), ChatMessage.from_user("I have a question")]
     # could be any tokenizer, let's use the one we already likely have in cache
     tokenizer = AutoTokenizer.from_pretrained("HuggingFaceH4/zephyr-7b-beta")
-    formatted_messages = [m.to_openai_format() for m in messages]
+    formatted_messages = [_convert_message_to_openai_format(m) for m in messages]
     tokenized_messages = tokenizer.apply_chat_template(
         formatted_messages, chat_template=anthropic_template, tokenize=False
     )

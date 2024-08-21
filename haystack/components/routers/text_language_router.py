@@ -16,13 +16,14 @@ with LazyImport("Run 'pip install langdetect'") as langdetect_import:
 @component
 class TextLanguageRouter:
     """
-    Routes a text input onto one of different output connections depending on its language.
+    Routes text strings to different output connections based on their language.
 
-    The set of supported languages can be specified.
-    For routing Documents based on their language use the `DocumentLanguageClassifier` component to first
-    classify the documents and then the `MetaDataRouter` to route them.
+    Provide a list of languages during initialization. If the document's text doesn't match any of the
+    specified languages, the metadata value is set to "unmatched".
+    For routing documents based on their language, use the DocumentLanguageClassifier component,
+    followed by the MetaDataRouter.
 
-    Usage example in a retrieval pipeline that passes only English language queries to the retriever:
+    ### Usage example
 
     ```python
     from haystack import Pipeline, Document
@@ -50,10 +51,9 @@ class TextLanguageRouter:
         """
         Initialize the TextLanguageRouter component.
 
-        :param languages: A list of languages in ISO code, each corresponding to a different output connection.
-            For supported languages, see the
-            [`langdetect` documentation](https://github.com/Mimino666/langdetect#languages).
-            If not specified, the default is `["en"]`.
+        :param languages: A list of ISO language codes.
+            See the supported languages in [`langdetect` documentation](https://github.com/Mimino666/langdetect#languages).
+            If not specified, defaults to ["en"].
         """
         langdetect_import.check()
         if not languages:
@@ -63,14 +63,13 @@ class TextLanguageRouter:
 
     def run(self, text: str) -> Dict[str, str]:
         """
-        Route the text to one of different output connections based on its language.
+        Routes the text strings to different output connections based on their language.
 
-        If the text does not match any of the languages specified at initialization, it is routed to
-        a connection named "unmatched".
+        If the document's text doesn't match any of the specified languages, the metadata value is set to "unmatched".
 
-        :param text: A string to route to different edges based on its language.
+        :param text: A text string to route.
 
-        :returns: A dictionary of length one in which the key is the language (or `"unmatched"`)
+        :returns: A dictionary in which the key is the language (or `"unmatched"`),
             and the value is the text.
 
         :raises TypeError: If the input is not a string.

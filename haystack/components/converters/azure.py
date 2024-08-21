@@ -27,16 +27,16 @@ with LazyImport(message="Run 'pip install \"azure-ai-formrecognizer>=3.2.0b2\"'"
 @component
 class AzureOCRDocumentConverter:
     """
-    Convert files to documents using Azure's Document Intelligence service.
+    Converts files to documents using Azure's Document Intelligence service.
 
     Supported file formats are: PDF, JPEG, PNG, BMP, TIFF, DOCX, XLSX, PPTX, and HTML.
 
-    In order to be able to use this component, you need an active Azure account
-    and a Document Intelligence or Cognitive Services resource. Follow the steps described in the [Azure documentation]
-    (https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/quickstarts/get-started-sdks-rest-api)
-    to set up your resource.
+    To use this component, you need an active Azure account
+    and a Document Intelligence or Cognitive Services resource. For help with setting up your resource, see
+    [Azure documentation](https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/quickstarts/get-started-sdks-rest-api).
 
-    Usage example:
+    ### Usage example
+
     ```python
     from haystack.components.converters import AzureOCRDocumentConverter
     from haystack.utils import Secret
@@ -61,30 +61,28 @@ class AzureOCRDocumentConverter:
         threshold_y: Optional[float] = 0.05,
     ):
         """
-        Create an AzureOCRDocumentConverter component.
+        Creates an AzureOCRDocumentConverter component.
 
         :param endpoint:
             The endpoint of your Azure resource.
         :param api_key:
-            The key of your Azure resource.
+            The API key of your Azure resource.
         :param model_id:
-            The model ID of the model you want to use. Please refer to [Azure documentation]
-            (https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/choose-model-feature)
-            for a list of available models. Default: `"prebuilt-read"`.
-        :param preceding_context_len: Number of lines before a table to extract as preceding context
-            (will be returned as part of metadata).
-        :param following_context_len: Number of lines after a table to extract as subsequent context (
-            will be returned as part of metadata).
-        :param merge_multiple_column_headers: Some tables contain more than one row as a column header
-            (i.e., column description).
-            This parameter lets you choose, whether to merge multiple column header rows to a single row.
-        :param page_layout: The type reading order to follow. If "natural" is chosen then the natural reading order
-            determined by Azure will be used. If "single_column" is chosen then all lines with the same height on the
-            page will be grouped together based on a threshold determined by `threshold_y`.
-        :param threshold_y: The threshold to determine if two recognized elements in a PDF should be grouped into a
-            single line. This is especially relevant for section headers or numbers which may be spacially separated
-            on the horizontal axis from the remaining text. The threshold is specified in units of inches.
-            This is only relevant if "single_column" is chosen for `page_layout`.
+            The ID of the model you want to use. For a list of available models, see [Azure documentation]
+            (https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/choose-model-feature).
+        :param preceding_context_len: Number of lines before a table to include as preceding context
+            (this will be added to the metadata).
+        :param following_context_len: Number of lines after a table to include as subsequent context (
+            this will be added to the metadata).
+        :param merge_multiple_column_headers: If `True`, merges multiple column header rows into a single row.
+        :param page_layout: The type reading order to follow. Possible options:
+            - `natural`: Uses the natural reading order determined by Azure.
+            - `single_column`: Groups all lines with the same height on the page based on a threshold
+            determined by `threshold_y`.
+        :param threshold_y: Only relevant if `single_column` is set to `page_layout`.
+            The threshold, in inches, to determine if two recognized PDF elements are grouped into a
+            single line. This is crucial for section headers or numbers which may be spatially separated
+            from the remaining text on the horizontal axis.
         """
         azure_import.check()
 
