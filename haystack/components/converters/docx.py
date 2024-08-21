@@ -47,13 +47,13 @@ class DOCXMetadata:
     category: str
     comments: str
     content_status: str
-    created: Optional[datetime]
+    created: Optional[str]
     identifier: str
     keywords: str
     language: str
     last_modified_by: str
-    last_printed: Optional[datetime]
-    modified: Optional[datetime]
+    last_printed: Optional[str]
+    modified: Optional[str]
     revision: int
     subject: str
     title: str
@@ -192,13 +192,15 @@ class DOCXToDocument:
             category=document.core_properties.category,
             comments=document.core_properties.comments,
             content_status=document.core_properties.content_status,
-            created=document.core_properties.created,
+            created=document.core_properties.created.isoformat() if document.core_properties.created else None,
             identifier=document.core_properties.identifier,
             keywords=document.core_properties.keywords,
             language=document.core_properties.language,
             last_modified_by=document.core_properties.last_modified_by,
-            last_printed=document.core_properties.last_printed,
-            modified=document.core_properties.modified,
+            last_printed=document.core_properties.last_printed.isoformat()
+            if document.core_properties.last_printed
+            else None,
+            modified=document.core_properties.modified.isoformat() if document.core_properties.modified else None,
             revision=document.core_properties.revision,
             subject=document.core_properties.subject,
             title=document.core_properties.title,

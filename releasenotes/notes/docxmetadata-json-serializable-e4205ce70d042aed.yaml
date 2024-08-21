@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    The metadata produced by `DOCXToDocument` component is now JSON serializable.
+    Previously, it contained `datetime` objects automatically extracted from DOCX files, which are not JSON serializable.
+    Now, the `datetime` objects are converted to strings.
