@@ -127,7 +127,7 @@ class TopPSampler:
         Get the score of a document.
 
         :param doc: Document object.
-        :param meta_field: Name of the field in the document's metadata that contains the score.
+        :param score_field: Name of the field in the document's metadata that contains the score.
             If None, the document score field is used.
 
         :return: Score of the document.
