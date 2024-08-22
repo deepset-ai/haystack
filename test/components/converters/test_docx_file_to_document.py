@@ -1,5 +1,5 @@
 import logging
-import datetime
+import json
 
 import pytest
 
@@ -34,13 +34,13 @@ class TestDOCXToDocument:
                 category="",
                 comments="",
                 content_status="",
-                created=datetime.datetime(2024, 6, 9, 21, 17, tzinfo=datetime.timezone.utc),
+                created="2024-06-09T21:17:00+00:00",
                 identifier="",
                 keywords="",
                 language="",
                 last_modified_by="Carlos Fernández Lorán",
                 last_printed=None,
-                modified=datetime.datetime(2024, 6, 9, 21, 27, tzinfo=datetime.timezone.utc),
+                modified="2024-06-09T21:27:00+00:00",
                 revision=2,
                 subject="",
                 title="",
@@ -48,7 +48,7 @@ class TestDOCXToDocument:
             ),
         }
 
-    def test_run_with_meta_overwrites(self, test_files_path, docx_converter):
+    def test_run_with_additional_meta(self, test_files_path, docx_converter):
         paths = [test_files_path / "docx" / "sample_docx_1.docx"]
         output = docx_converter.run(sources=paths, meta={"language": "it", "author": "test_author"})
         doc = output["documents"][0]
@@ -59,13 +59,13 @@ class TestDOCXToDocument:
                 category="",
                 comments="",
                 content_status="",
-                created=datetime.datetime(2024, 6, 9, 21, 17, tzinfo=datetime.timezone.utc),
+                created="2024-06-09T21:17:00+00:00",
                 identifier="",
                 keywords="",
                 language="",
                 last_modified_by="Carlos Fernández Lorán",
                 last_printed=None,
-                modified=datetime.datetime(2024, 6, 9, 21, 27, tzinfo=datetime.timezone.utc),
+                modified="2024-06-09T21:27:00+00:00",
                 revision=2,
                 subject="",
                 title="",
@@ -82,7 +82,7 @@ class TestDOCXToDocument:
             assert "doc_1.txt and convert it" in caplog.text
             assert results["documents"] == []
 
-    def test_run_error_non_existent_file(self, test_files_path, docx_converter, caplog):
+    def test_run_error_non_existent_file(self, docx_converter, caplog):
         """
         Test if the component correctly handles errors.
         """
@@ -121,13 +121,13 @@ class TestDOCXToDocument:
             category="category",
             comments="comments",
             content_status="",
-            created=datetime.datetime(2024, 6, 9, 21, 17, tzinfo=datetime.timezone.utc),
+            created="2024-06-09T21:17:00+00:00",
             identifier="",
             keywords="",
             language="",
             last_modified_by="Carlos Fernández Lorán",
             last_printed=None,
-            modified=datetime.datetime(2024, 6, 9, 21, 27, tzinfo=datetime.timezone.utc),
+            modified="2024-06-09T21:27:00+00:00",
             revision=2,
             subject="",
             title="",
@@ -149,13 +149,13 @@ class TestDOCXToDocument:
                     "category": "category",
                     "comments": "comments",
                     "content_status": "",
-                    "created": datetime.datetime(2024, 6, 9, 21, 17, tzinfo=datetime.timezone.utc),
+                    "created": "2024-06-09T21:17:00+00:00",
                     "identifier": "",
                     "keywords": "",
                     "language": "",
                     "last_modified_by": "Carlos Fernández Lorán",
                     "last_printed": None,
-                    "modified": datetime.datetime(2024, 6, 9, 21, 27, tzinfo=datetime.timezone.utc),
+                    "modified": "2024-06-09T21:27:00+00:00",
                     "revision": 2,
                     "subject": "",
                     "title": "",
@@ -163,3 +163,7 @@ class TestDOCXToDocument:
                 },
             },
         }
+
+        # check it is JSON serializable
+        json_str = json.dumps(doc.to_dict(flatten=False))
+        assert json.loads(json_str) == doc.to_dict(flatten=False)
