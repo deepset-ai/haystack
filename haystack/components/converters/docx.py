@@ -4,7 +4,6 @@
 
 import io
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
@@ -30,13 +29,13 @@ class DOCXMetadata:
     :param category: The category
     :param comments: The comments
     :param content_status: The content status
-    :param created: The creation date
+    :param created: The creation date (ISO formatted string)
     :param identifier: The identifier
     :param keywords: Available keywords
     :param language: The language of the document
-    :param last_modified_by: The last modified by user date
-    :param last_printed: The last printed date
-    :param modified: The last modification date
+    :param last_modified_by: User who last modified the document
+    :param last_printed: The last printed date (ISO formatted string)
+    :param modified: The last modification date (ISO formatted string)
     :param revision: The revision number
     :param subject: The subject
     :param title: The title
@@ -47,13 +46,13 @@ class DOCXMetadata:
     category: str
     comments: str
     content_status: str
-    created: Optional[datetime]
+    created: Optional[str]
     identifier: str
     keywords: str
     language: str
     last_modified_by: str
-    last_printed: Optional[datetime]
-    modified: Optional[datetime]
+    last_printed: Optional[str]
+    modified: Optional[str]
     revision: int
     subject: str
     title: str
@@ -192,13 +191,15 @@ class DOCXToDocument:
             category=document.core_properties.category,
             comments=document.core_properties.comments,
             content_status=document.core_properties.content_status,
-            created=document.core_properties.created,
+            created=document.core_properties.created.isoformat() if document.core_properties.created else None,
             identifier=document.core_properties.identifier,
             keywords=document.core_properties.keywords,
             language=document.core_properties.language,
             last_modified_by=document.core_properties.last_modified_by,
-            last_printed=document.core_properties.last_printed,
-            modified=document.core_properties.modified,
+            last_printed=document.core_properties.last_printed.isoformat()
+            if document.core_properties.last_printed
+            else None,
+            modified=document.core_properties.modified.isoformat() if document.core_properties.modified else None,
             revision=document.core_properties.revision,
             subject=document.core_properties.subject,
             title=document.core_properties.title,
