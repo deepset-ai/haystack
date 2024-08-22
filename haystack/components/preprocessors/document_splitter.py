@@ -21,6 +21,8 @@ class DocumentSplitter:
 
     The DocumentSplitter is only compatible with the following DocumentStores:
     - (Astra)[https://docs.haystack.deepset.ai/docs/astradocumentstore]
+    - (Chroma)[https://docs.haystack.deepset.ai/docs/chromadocumentstore] limited support, overlapping information is
+      not stored
     - (ElasticSearch)[https://docs.haystack.deepset.ai/docs/elasticsearch-document-store]
     - (OpenSearch)[https://docs.haystack.deepset.ai/docs/opensearch-document-store]
     - (PGVector)[https://docs.haystack.deepset.ai/docs/pgvectordocumentstore]
