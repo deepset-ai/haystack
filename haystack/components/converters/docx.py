@@ -29,13 +29,13 @@ class DOCXMetadata:
     :param category: The category
     :param comments: The comments
     :param content_status: The content status
-    :param created: The creation date
+    :param created: The creation date (ISO formatted string)
     :param identifier: The identifier
     :param keywords: Available keywords
     :param language: The language of the document
-    :param last_modified_by: The last modified by user date
-    :param last_printed: The last printed date
-    :param modified: The last modification date
+    :param last_modified_by: User who last modified the document
+    :param last_printed: The last printed date (ISO formatted string)
+    :param modified: The last modification date (ISO formatted string)
     :param revision: The revision number
     :param subject: The subject
     :param title: The title
