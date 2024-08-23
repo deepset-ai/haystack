@@ -132,7 +132,7 @@ class Component(Protocol):
     Note this is only used by type checking tools.
 
     In order to implement the `Component` protocol, custom components need to
-    have a `run` or `async_run` method. The signature of the method and its return value
+    have a `run` method. The signature of the method and its return value
     won't be checked, i.e. classes with the following methods:
 
         def run(self, param: str) -> Dict[str, Any]:
