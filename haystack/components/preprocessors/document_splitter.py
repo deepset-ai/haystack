@@ -25,7 +25,7 @@ class DocumentSplitter:
       not stored
     - (ElasticSearch)[https://docs.haystack.deepset.ai/docs/elasticsearch-document-store]
     - (OpenSearch)[https://docs.haystack.deepset.ai/docs/opensearch-document-store]
-    - (PGVector)[https://docs.haystack.deepset.ai/docs/pgvectordocumentstore]
+    - (Pgvector)[https://docs.haystack.deepset.ai/docs/pgvectordocumentstore]
     - (PineCone)[https://docs.haystack.deepset.ai/docs/pinecone-document-store]
     - (Qdrant)[https://docs.haystack.deepset.ai/docs/qdrant-document-store]
     - (Weaviate)[https://docs.haystack.deepset.ai/docs/weaviatedocumentstore]
