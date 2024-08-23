@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple, Union
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.document_stores.types import DocumentStore
@@ -123,7 +123,7 @@ class SentenceWindowRetriever:
         # deserialize the component
         return default_from_dict(cls, data)
 
-    @component.output_types(context_windows=List[str])
+    @component.output_types(context_windows=List[str], context_documents=List[List[Document]])
     def run(self, retrieved_documents: List[Document]):
         """
         Based on the `source_id` and on the `doc.meta['split_id']` get surrounding documents from the document store.
@@ -134,7 +134,9 @@ class SentenceWindowRetriever:
         :param retrieved_documents: List of retrieved documents from the previous retriever.
         :returns:
             A dictionary with the following keys:
-            - `context_windows`:  List of strings representing the context windows of the retrieved documents.
+            - `context_windows`:  Strings representing the context windows text of the retrieved documents.
+            - `context_documents`: The retrieved context window documents.
+
         """
 
         if not all("split_id" in doc.meta for doc in retrieved_documents):
@@ -143,7 +145,8 @@ class SentenceWindowRetriever:
         if not all("source_id" in doc.meta for doc in retrieved_documents):
             raise ValueError("The retrieved documents must have 'source_id' in the metadata.")
 
-        context_windows = []
+        context_text = []
+        context_documents = []
         for doc in retrieved_documents:
             source_id = doc.meta["source_id"]
             split_id = doc.meta["split_id"]
@@ -159,6 +162,7 @@ class SentenceWindowRetriever:
                     ],
                 }
             )
-            context_windows.append(self.merge_documents_text(context_docs))
+            context_text.append(self.merge_documents_text(context_docs))
+            context_documents.append(context_docs)
 
-        return {"context_windows": context_windows}
+        return {"context_windows": context_text, "context_documents": context_documents}
