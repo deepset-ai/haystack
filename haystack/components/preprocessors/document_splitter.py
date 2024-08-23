@@ -19,6 +19,18 @@ class DocumentSplitter:
     It helps Embedders create meaningful semantic representations
     and prevents exceeding language model context limits.
 
+    The DocumentSplitter is compatible with the following DocumentStores:
+    - (Astra)[https://docs.haystack.deepset.ai/docs/astradocumentstore]
+    - (Chroma)[https://docs.haystack.deepset.ai/docs/chromadocumentstore] limited support, overlapping information is
+      not stored
+    - (Elasticsearch)[https://docs.haystack.deepset.ai/docs/elasticsearch-document-store]
+    - (OpenSearch)[https://docs.haystack.deepset.ai/docs/opensearch-document-store]
+    - (Pgvector)[https://docs.haystack.deepset.ai/docs/pgvectordocumentstore]
+    - (Pinecone)[https://docs.haystack.deepset.ai/docs/pinecone-document-store] limited support, overlapping
+       information is not stored
+    - (Qdrant)[https://docs.haystack.deepset.ai/docs/qdrant-document-store]
+    - (Weaviate)[https://docs.haystack.deepset.ai/docs/weaviatedocumentstore]
+
     ### Usage example
 
     ```python
