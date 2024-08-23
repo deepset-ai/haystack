@@ -428,7 +428,7 @@ class Pipeline(PipelineBase):
         # This is what we'll return at the end
         final_outputs: Dict[Any, Any] = {}
 
-        execution_graph = deepcopy(self.graph)
+        execution_graph = self.graph.copy()
         cycles = nx.recursive_simple_cycles(self.graph)
         # edges_removed = []
         edges_removed = {}
@@ -468,6 +468,25 @@ class Pipeline(PipelineBase):
         for node in nx.topological_sort(execution_graph):
             run_queue.append((node, self.graph.nodes[node]["instance"]))
 
+
+        # Set defaults inputs for those sockets that don't receive input neither from the user
+        # nor from other Components.
+        # If they have no default nothing is done.
+        # This is important to ensure correct order execution, otherwise some variadic
+        # Components that receive input from the user might be run before than they should.
+        for name, comp in self.graph.nodes(data="instance"):
+            if name not in components_inputs:
+                components_inputs[name] = {}
+            for socket_name, socket in comp.__haystack_input__._sockets_dict.items():
+                if socket_name in components_inputs[name]:
+                    continue
+                if not socket.senders:
+                    value = socket.default_value
+                    if socket.is_variadic:
+                        value = [value]
+                    components_inputs[name][socket_name] = value
+
+
         with tracing.tracer.trace(
             "haystack.pipeline.run",
             tags={
@@ -482,6 +501,7 @@ class Pipeline(PipelineBase):
 
             while len(run_queue) > 0:
                 name, comp = run_queue.pop(0)
+                pass
 
                 if _is_lazy_variadic(comp) and not all(_is_lazy_variadic(comp) for _, comp in run_queue):
                     # We run Components with lazy variadic inputs only if there only Components with
@@ -498,10 +518,10 @@ class Pipeline(PipelineBase):
                     subgraph_output = self._run_subgraph(execution_graph, cycles[0], name, components_inputs)
 
                     run_queue = []
-                    waiting_queue = []
+                    # waiting_queue = []
 
                     for component_name, component_output in subgraph_output.items():
-                        self._distribute_output(
+                        component_output = self._distribute_output(
                             component_name, component_output, components_inputs, run_queue, waiting_queue
                         )
 

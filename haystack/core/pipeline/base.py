@@ -929,7 +929,8 @@ class PipelineBase:
                         run_queue.remove(pair)
                     if pair in waiting_queue:
                         waiting_queue.remove(pair)
-                    run_queue.append(pair)
+                    # run_queue.append(pair)
+                    run_queue.insert(0, pair)
                 else:
                     # If the receiver Component has a variadic input that is not greedy
                     # we put it in the waiting queue.
@@ -1078,7 +1079,15 @@ class PipelineBase:
                 # This is fine even if the Pipeline will merge back into a single Component
                 # at a certain point. The merging Component will be put back into the run
                 # queue at a later stage.
-                components |= {(d, self.graph.nodes[d]["instance"]) for d in networkx.descendants(self.graph, receiver)}
+                for descendant_name in networkx.descendants(self.graph, receiver):
+                    descendant = self.graph.nodes[descendant_name]["instance"]
+                    is_variadic = any(s.is_variadic for s in descendant.__haystack_input__._sockets_dict.values())
+                    if is_variadic:
+                        continue
+                    components.add((descendant_name, descendant))
+
+
+                # components |= {(d, self.graph.nodes[d]["instance"]) for d in networkx.descendants(self.graph, receiver)}
 
         return components
 
