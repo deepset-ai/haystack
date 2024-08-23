@@ -19,7 +19,7 @@ class DocumentSplitter:
     It helps Embedders create meaningful semantic representations
     and prevents exceeding language model context limits.
 
-    The DocumentSplitter is only compatible with the following DocumentStores:
+    The DocumentSplitter is compatible with the following DocumentStores:
     - (Astra)[https://docs.haystack.deepset.ai/docs/astradocumentstore]
     - (Chroma)[https://docs.haystack.deepset.ai/docs/chromadocumentstore] limited support, overlapping information is
       not stored
