@@ -51,7 +51,7 @@ def test_correct_declaration_with_async():
 
         @component.output_types(output_value=int)
         async def async_run(self, input_value: int):
-            yield {"output_value": input_value}
+            return {"output_value": input_value}
 
     # Verifies also instantiation works with no issues
     assert MockComponent()
@@ -122,7 +122,7 @@ def test_missing_run():
                 return {"output_value": input_value}
 
 
-def test_async_run_not_coroutine():
+def test_async_run_not_async():
     @component
     class MockComponent:
         @component.output_types(value=int)
@@ -137,7 +137,7 @@ def test_async_run_not_coroutine():
         comp = MockComponent()
 
 
-def test_async_run_not_generator():
+def test_async_run_not_coroutine():
     @component
     class MockComponent:
         @component.output_types(value=int)
@@ -146,7 +146,7 @@ def test_async_run_not_generator():
 
         @component.output_types(value=int)
         async def async_run(self, value: int):
-            return {"value": 1}
+            yield {"value": 1}
 
     with pytest.raises(ComponentError):
         comp = MockComponent()

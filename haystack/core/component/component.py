@@ -270,10 +270,8 @@ class ComponentMeta(type):
         # Before returning, we have the chance to modify the newly created
         # Component instance, so we take the chance and set up the I/O sockets
         has_async_run = hasattr(instance, "async_run")
-        if has_async_run and not inspect.isasyncgenfunction(instance.async_run):
-            raise ComponentError(
-                f"Method 'async_run' of component '{cls.__name__}' must be an async generator function"
-            )
+        if has_async_run and not inspect.iscoroutinefunction(instance.async_run):
+            raise ComponentError(f"Method 'async_run' of component '{cls.__name__}' must be a coroutine")
         instance.supports_async = has_async_run
 
         ComponentMeta._parse_and_set_input_sockets(cls, instance)
