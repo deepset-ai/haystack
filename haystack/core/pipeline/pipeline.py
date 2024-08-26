@@ -245,7 +245,7 @@ class Pipeline(PipelineBase):
                         # for input or already ready to run.
                         run_queue.append(pair)
 
-                    res = {k: v for k, v in res.items() if k not in to_remove_from_component_result}
+                res = {k: v for k, v in res.items() if k not in to_remove_from_component_result}
 
                 # THE SNIPPET ABOVE HAS BEEN COPIED FROM _distribute_output WITH SOME CHANGES
 
