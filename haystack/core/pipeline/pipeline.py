@@ -85,7 +85,7 @@ class Pipeline(PipelineBase):
             return res
 
     def run(  # noqa: PLR0915
-        self, data: Dict[str, Any], debug: bool = False, include_outputs_from: Optional[Set[str]] = None
+        self, data: Dict[str, Any], include_outputs_from: Optional[Set[str]] = None
     ) -> Dict[str, Any]:
         """
         Runs the pipeline with given input data.
@@ -105,8 +105,6 @@ class Pipeline(PipelineBase):
             }
             ```
 
-        :param debug:
-            Set to True to collect and return debug information.
         :param include_outputs_from:
             Set of component names whose individual outputs are to be
             included in the pipeline's output. For components that are
@@ -155,8 +153,6 @@ class Pipeline(PipelineBase):
         The pipeline resolves inputs to the correct components, returning
         {'hello2': {'output': 'Hello, Hello, world!!'}}.
         """
-        warn("The 'debug' parameter is deprecated and will be removed in Haystack 2.5.0.", DeprecationWarning)
-
         pipeline_running(self)
 
         # Reset the visits count for each component
@@ -208,7 +204,6 @@ class Pipeline(PipelineBase):
             tags={
                 "haystack.pipeline.input_data": data,
                 "haystack.pipeline.output_data": final_outputs,
-                "haystack.pipeline.debug": debug,
                 "haystack.pipeline.metadata": self.metadata,
                 "haystack.pipeline.max_loops_allowed": self.max_loops_allowed,
             },

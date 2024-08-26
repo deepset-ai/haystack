@@ -1,0 +1,4 @@
+---
+upgrade:
+  - |
+    Remove unused `debug` parameter from `Pipeline.run` method.
