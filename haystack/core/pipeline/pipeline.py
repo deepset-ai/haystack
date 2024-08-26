@@ -427,9 +427,11 @@ class Pipeline(PipelineBase):
                 edge_key = list(edge.keys())[0]
                 edge = list(edge.values())[0]
                 # For fucks sake these are still called like shit, we need to change this in `connect`
-                if edge["to_socket"].is_variadic:
+                if edge["to_socket"].is_variadic or not edge["to_socket"].is_mandatory:
+                    # We found a breakable edge
                     break
             else:
+                # TODO: We didn't find a breakable connection. We must fail here, this Pipeline will get stuck
                 continue
             # We found the variadic edge
             if sender_comp not in edges_removed:
