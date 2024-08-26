@@ -88,11 +88,11 @@ class Pipeline(PipelineBase):
 
     def _run_subgraph(
         self,
-        execution_graph: nx.MultiDiGraph,
         cycle: List[str],
         component_name: str,
         components_inputs: Dict[str, Dict[str, Any]],
-    ):
+        include_outputs_from: Optional[Set[str]] = None,
+    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         # simple_paths = nx.all_simple_paths(execution_graph, start_component, end_component)
         # nodes = set()
         # for paths in simple_paths:
@@ -113,27 +113,12 @@ class Pipeline(PipelineBase):
         for node in cycle[start_index:]:
             run_queue.append((node, self.graph.nodes[node]["instance"]))
 
-        # Find all the connections to Components that are not part of the cycle subgraph
-        # TODO: Do we really need this? Let's see.
-        # exit_edges = {}
-        # for component_name, comp in run_queue:
-        #     for socket_name, socket in comp.__haystack_output__._sockets_dict.items():
-        #         for receiver in socket.receivers:
-        #             if receiver not in nodes:
-        #                 if component_name not in exit_edges:
-        #                     exit_edges[component_name] = []
-        #                 exit_edges[component_name].append(socket_name)
-
-        # cycle_edges = {}
-        # for component_name, comp in run_queue:
-        #     for socket_name, socket in comp.__haystack_output__._sockets_dict.items():
-        #         for receiver in socket.receivers:
-        #             if receiver in nodes:
-        #                 if component_name not in cycle_edges:
-        #                     cycle_edges[component_name] = []
-        #                 cycle_edges[component_name].append(socket_name)
+        include_outputs_from = set() if include_outputs_from is None else include_outputs_from
 
         subgraph_outputs = {}
+        # These are outputs that are sent to other Components but the user explicitly
+        # asked to include them in the final output.
+        extra_outputs = {}
 
         # This variable is used to keep track if we style need to run the cycle or not.
         # TODO: Find a nicer name
@@ -155,6 +140,11 @@ class Pipeline(PipelineBase):
                     raise PipelineMaxComponentRuns(msg)
 
                 res: Dict[str, Any] = self._run_component(name, components_inputs[name])
+
+                if name in include_outputs_from:
+                    # Deepcopy the outputs to prevent downstream nodes from modifying them
+                    # We don't care about loops - Always store the last output.
+                    extra_outputs[name] = deepcopy(res)
 
                 # TODO: Handle `include_outputs_from` here
 
@@ -185,6 +175,7 @@ class Pipeline(PipelineBase):
 
                 # - Add the output from the Component that just ran to components_inputs
 
+                # THE SNIPPET BELOW HAS BEEN COPIED FROM _distribute_output WITH SOME CHANGES
                 to_remove_from_component_result = set()
                 for _, receiver_name, connection in self.graph.edges(nbunch=name, data=True):
                     sender_socket: OutputSocket = connection["from_socket"]
@@ -256,23 +247,7 @@ class Pipeline(PipelineBase):
 
                     res = {k: v for k, v in res.items() if k not in to_remove_from_component_result}
 
-                # - Remove the Components that are not part of the cycle from the run_queue and waiting_queue
-                # We do this just to avoid duplicating code for the time being.
-                # to_remove = []
-                # for pair in run_queue:
-                #     if pair[0] not in cycle:
-                #         to_remove.append(pair)
-
-                # for pair in to_remove:
-                #     run_queue.remove(pair)
-
-                # to_remove = []
-                # for pair in waiting_queue:
-                #     if pair[0] not in cycle:
-                #         to_remove.append(pair)
-
-                # for pair in to_remove:
-                #     waiting_queue.remove(pair)
+                # THE SNIPPET ABOVE HAS BEEN COPIED FROM _distribute_output WITH SOME CHANGES
 
                 # - Add remaining Component output to the subgraph output
                 if len(res) > 0:
@@ -311,7 +286,7 @@ class Pipeline(PipelineBase):
                 _add_missing_input_defaults(name, comp, components_inputs)
                 _enqueue_component((name, comp), run_queue, waiting_queue)
 
-        return subgraph_outputs
+        return subgraph_outputs, extra_outputs
 
     def run(  # noqa: PLR0915
         self, data: Dict[str, Any], include_outputs_from: Optional[Set[str]] = None
@@ -428,7 +403,9 @@ class Pipeline(PipelineBase):
         # This is what we'll return at the end
         final_outputs: Dict[Any, Any] = {}
 
-        execution_graph = self.graph.copy()
+        # We need this temporary graph to remove some edges if there are cycles in it.
+        # TODO: We could actually avoid all this stuff if there are no cycles in the graph.
+        temp_graph = self.graph.copy()
         cycles = nx.recursive_simple_cycles(self.graph)
         # edges_removed = []
         edges_removed = {}
@@ -442,7 +419,7 @@ class Pipeline(PipelineBase):
 
             cycle = zip(cycle, cycle[1:] + cycle[:1])
             for sender_comp, receiver_comp in cycle:
-                edge = execution_graph.get_edge_data(sender_comp, receiver_comp)
+                edge = temp_graph.get_edge_data(sender_comp, receiver_comp)
                 # TODO: This is a bad assumption to make but for the time being it makes things easier.
                 # We need to find all the variadic edges and remove them.
                 assert len(edge.keys()) == 1
@@ -459,15 +436,14 @@ class Pipeline(PipelineBase):
                 edges_removed[sender_comp] = []
             edges_removed[sender_comp].append(edge["from_socket"].name)
 
-            execution_graph.remove_edge(sender_comp, receiver_comp, edge_key)
-            if nx.is_directed_acyclic_graph(execution_graph):
+            temp_graph.remove_edge(sender_comp, receiver_comp, edge_key)
+            if nx.is_directed_acyclic_graph(temp_graph):
                 # We removed all the cycles, nice
                 break
 
         run_queue: List[Tuple[str, Component]] = []
-        for node in nx.topological_sort(execution_graph):
+        for node in nx.topological_sort(temp_graph):
             run_queue.append((node, self.graph.nodes[node]["instance"]))
-
 
         # Set defaults inputs for those sockets that don't receive input neither from the user
         # nor from other Components.
@@ -485,7 +461,6 @@ class Pipeline(PipelineBase):
                     if socket.is_variadic:
                         value = [value]
                     components_inputs[name][socket_name] = value
-
 
         with tracing.tracer.trace(
             "haystack.pipeline.run",
@@ -515,10 +490,14 @@ class Pipeline(PipelineBase):
 
                     # This component is part of one or more cycles, let's get the first one and run it.
                     # TODO: Explain why it's fine taking the first one
-                    subgraph_output = self._run_subgraph(execution_graph, cycles[0], name, components_inputs)
+                    subgraph_output, subgraph_extra_output = self._run_subgraph(
+                        cycles[0], name, components_inputs, include_outputs_from
+                    )
 
                     run_queue = []
-                    # waiting_queue = []
+
+                    # Merge the extra outputs
+                    extra_outputs.update(subgraph_extra_output)
 
                     for component_name, component_output in subgraph_output.items():
                         component_output = self._distribute_output(
@@ -527,27 +506,6 @@ class Pipeline(PipelineBase):
 
                         if len(component_output) > 0:
                             final_outputs[component_name] = component_output
-
-                    # for component_name, component_output in subgraph_output.items():
-                    #     comp = self.graph.nodes[component_name]["instance"]
-                    #     for socket_name, value in component_output.items():
-                    #         receivers = comp.__haystack_output__._sockets_dict[socket_name].receivers
-                    #         if not receivers:
-                    #             if component_name not in final_outputs:
-                    #                 final_outputs[component_name] = {}
-                    #             final_outputs[component_name][socket_name] = value
-                    #             continue
-                    #         for receiver in receivers:
-                    #             if receiver not in components_inputs:
-                    #                 components_inputs[receiver] = {}
-                    #             components_inputs[receiver][socket_name] = value
-
-                    #             if receiver in run_queue:
-                    #                 continue
-                    #             run_queue.append((receiver, self.graph.nodes[receiver]["instance"]))
-
-                    # TODO: Given the subgraph output we should understand which components need to run next.
-                    # We also need to understand if the subgraph output is actually an output of the Pipeline or not.
 
                 elif self._component_has_enough_inputs_to_run(name, components_inputs):
                     if self.graph.nodes[name]["visits"] > self._max_runs_per_component:
