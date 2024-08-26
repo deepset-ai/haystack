@@ -419,26 +419,24 @@ class Pipeline(PipelineBase):
 
             cycle = zip(cycle, cycle[1:] + cycle[:1])
             for sender_comp, receiver_comp in cycle:
-                edge = temp_graph.get_edge_data(sender_comp, receiver_comp)
-                # TODO: This is a bad assumption to make but for the time being it makes things easier.
-                # We need to find all the variadic edges and remove them.
-                assert len(edge.keys()) == 1
-                # It's just one in any case
-                edge_key = list(edge.keys())[0]
-                edge = list(edge.values())[0]
-                # For fucks sake these are still called like shit, we need to change this in `connect`
-                if edge["to_socket"].is_variadic or not edge["to_socket"].is_mandatory:
-                    # We found a breakable edge
-                    break
-            else:
+                breakable_edge_found = False
+                edge_keys = list(temp_graph.get_edge_data(sender_comp, receiver_comp).keys())
+                for edge_key in edge_keys:
+                    edge_data = temp_graph.get_edge_data(sender_comp, receiver_comp)[edge_key]
+                    receiver_socket = edge_data["to_socket"]
+                    if receiver_socket.is_variadic or not receiver_socket.is_mandatory:
+                        # We found a breakable edge
+                        if sender_comp not in edges_removed:
+                            edges_removed[sender_comp] = []
+                        sender_socket = edge_data["from_socket"]
+                        edges_removed[sender_comp].append(sender_socket.name)
+                        temp_graph.remove_edge(sender_comp, receiver_comp, edge_key)
+                        breakable_edge_found = True
+
+            if not breakable_edge_found:
                 # TODO: We didn't find a breakable connection. We must fail here, this Pipeline will get stuck
                 continue
-            # We found the variadic edge
-            if sender_comp not in edges_removed:
-                edges_removed[sender_comp] = []
-            edges_removed[sender_comp].append(edge["from_socket"].name)
 
-            temp_graph.remove_edge(sender_comp, receiver_comp, edge_key)
             if nx.is_directed_acyclic_graph(temp_graph):
                 # We removed all the cycles, nice
                 break
