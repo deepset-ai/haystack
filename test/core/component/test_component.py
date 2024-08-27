@@ -31,6 +31,33 @@ def test_correct_declaration():
     # Verifies also instantiation works with no issues
     assert MockComponent()
     assert component.registry["test_component.MockComponent"] == MockComponent
+    assert isinstance(MockComponent(), Component)
+    assert MockComponent().__haystack_supports_async__ is False
+
+
+def test_correct_declaration_with_async():
+    @component
+    class MockComponent:
+        def to_dict(self):
+            return {}
+
+        @classmethod
+        def from_dict(cls, data):
+            return cls()
+
+        @component.output_types(output_value=int)
+        def run(self, input_value: int):
+            return {"output_value": input_value}
+
+        @component.output_types(output_value=int)
+        async def async_run(self, input_value: int):
+            return {"output_value": input_value}
+
+    # Verifies also instantiation works with no issues
+    assert MockComponent()
+    assert component.registry["test_component.MockComponent"] == MockComponent
+    assert isinstance(MockComponent(), Component)
+    assert MockComponent().__haystack_supports_async__ is True
 
 
 def test_correct_declaration_with_additional_readonly_property():
@@ -95,6 +122,50 @@ def test_missing_run():
                 return {"output_value": input_value}
 
 
+def test_async_run_not_async():
+    @component
+    class MockComponent:
+        @component.output_types(value=int)
+        def run(self, value: int):
+            return {"value": 1}
+
+        @component.output_types(value=int)
+        def async_run(self, value: int):
+            return {"value": 1}
+
+    with pytest.raises(ComponentError):
+        comp = MockComponent()
+
+
+def test_async_run_not_coroutine():
+    @component
+    class MockComponent:
+        @component.output_types(value=int)
+        def run(self, value: int):
+            return {"value": 1}
+
+        @component.output_types(value=int)
+        async def async_run(self, value: int):
+            yield {"value": 1}
+
+    with pytest.raises(ComponentError):
+        comp = MockComponent()
+
+
+def test_parameters_mismatch_run_and_async_run():
+    @component
+    class MockComponent:
+        @component.output_types(value=int)
+        def run(self, value: int):
+            return {"value": 1}
+
+        async def async_run(self, value: str):
+            yield {"value": "1"}
+
+    with pytest.raises(ComponentError):
+        comp = MockComponent()
+
+
 def test_set_input_types():
     @component
     class MockComponent:
@@ -153,6 +224,52 @@ def test_output_types_decorator_with_compatible_type():
 
     comp = MockComponent()
     assert comp.__haystack_output__._sockets_dict == {"value": OutputSocket("value", int)}
+
+
+def test_output_types_decorator_wrong_method():
+    with pytest.raises(ComponentError):
+
+        @component
+        class MockComponent:
+            def run(self, value: int):
+                return {"value": 1}
+
+            @component.output_types(value=int)
+            def to_dict(self):
+                return {}
+
+            @classmethod
+            def from_dict(cls, data):
+                return cls()
+
+
+def test_output_types_decorator_mismatch_run_async_run():
+    @component
+    class MockComponent:
+        @component.output_types(value=int)
+        def run(self, value: int):
+            return {"value": 1}
+
+        @component.output_types(value=str)
+        async def async_run(self, value: int):
+            return {"value": "1"}
+
+    with pytest.raises(ComponentError):
+        comp = MockComponent()
+
+
+def test_output_types_decorator_missing_async_run():
+    @component
+    class MockComponent:
+        @component.output_types(value=int)
+        def run(self, value: int):
+            return {"value": 1}
+
+        async def async_run(self, value: int):
+            return {"value": "1"}
+
+    with pytest.raises(ComponentError):
+        comp = MockComponent()
 
 
 def test_component_decorator_set_it_as_component():
