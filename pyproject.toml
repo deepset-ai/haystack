@@ -82,7 +82,7 @@ format-check = "ruff format --check {args}"
 extra-dependencies = [
   "transformers[torch,sentencepiece]==4.41.2", # ExtractiveReader, TransformersSimilarityRanker, LocalWhisperTranscriber, HFGenerators...
   "huggingface_hub>=0.23.0",                   # Hugging Face API Generators and Embedders
-  "sentence-transformers>=2.3.0",              # SentenceTransformersTextEmbedder and SentenceTransformersDocumentEmbedder
+  "sentence-transformers>=3.0.0",              # SentenceTransformersTextEmbedder and SentenceTransformersDocumentEmbedder
   "langdetect",                                # TextLanguageRouter and DocumentLanguageClassifier
   "openai-whisper>=20231106",                  # LocalWhisperTranscriber
 
