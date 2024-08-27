@@ -140,8 +140,20 @@ class Pipeline(PipelineBase):
                     raise PipelineMaxComponentRuns(msg)
 
                 res: Dict[str, Any] = self._run_component(name, components_inputs[name])
-                # Delete all the inputs that were consumed by the component.
-                components_inputs[name] = {}
+
+                # Delete the inputs that were consumed by the Component and are not received from
+                # the user or from Components that are part of this cycle
+                sockets = list(components_inputs[name].keys())
+                for socket_name in sockets:
+                    senders = comp.__haystack_input__._sockets_dict[socket_name].senders
+                    if not senders:
+                        # We keep inputs that came from the user
+                        continue
+                    all_senders_in_cycle = all(sender in cycle for sender in senders)
+                    if all_senders_in_cycle:
+                        # All senders are in the cycle, we can remove the input.
+                        # We'll receive it later at a certain point.
+                        del components_inputs[name][socket_name]
 
                 if name in include_outputs_from:
                     # Deepcopy the outputs to prevent downstream nodes from modifying them
@@ -498,6 +510,10 @@ class Pipeline(PipelineBase):
 
                     run_queue = []
 
+                    # Reset the waiting for input previous states, we managed to run at least one component
+                    before_last_waiting_queue = None
+                    last_waiting_queue = None
+
                     # Merge the extra outputs
                     extra_outputs.update(subgraph_extra_output)
 
@@ -515,8 +531,15 @@ class Pipeline(PipelineBase):
                         raise PipelineMaxComponentRuns(msg)
 
                     res: Dict[str, Any] = self._run_component(name, components_inputs[name])
-                    # Delete all the inputs that were consumed by the component.
-                    components_inputs[name] = {}
+
+                    # Delete the inputs that were consumed by the Component and are not received from the user
+                    sockets = list(components_inputs[name].keys())
+                    for socket_name in sockets:
+                        senders = comp.__haystack_input__._sockets_dict[socket_name].senders
+                        if senders:
+                            # Delete all inputs that are received from other Components
+                            del components_inputs[name][socket_name]
+                        # We keep inputs that came from the user
 
                     if name in include_outputs_from:
                         # Deepcopy the outputs to prevent downstream nodes from modifying them
