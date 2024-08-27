@@ -134,8 +134,8 @@ class SentenceWindowRetriever:
         :param retrieved_documents: List of retrieved documents from the previous retriever.
         :returns:
             A dictionary with the following keys:
-            - `context_windows`:  Strings representing the context windows text of the retrieved documents.
-            - `context_documents`: The retrieved context window documents.
+            - `context_windows`:  Strings representing the concatenated text of the retrieved documents context window.
+            - `context_documents`: Documents representing the retrieved documents context window.
 
         """
 

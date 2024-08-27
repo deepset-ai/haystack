@@ -1,5 +1,4 @@
 ---
 enhancements:
   - |
-    The output of the `SentenceWindowRetriever` now includes the document text and the document metadata.
-    This makes it easier to understand the context of the retrieved sentences.
+    The SentenceWindowRetriever has now an extra output key containing all the documents belonging to the context window.

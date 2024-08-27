@@ -146,16 +146,7 @@ class TestSentenceWindowRetriever:
 
     @pytest.mark.integration
     def test_serialization_deserialization_in_pipeline(self):
-        splitter = DocumentSplitter(split_length=10, split_overlap=5, split_by="word")
-        text = (
-            "This is a text with some words. There is a second sentence. And there is also a third sentence. "
-            "It also contains a fourth sentence. And a fifth sentence. And a sixth sentence. And a seventh sentence"
-        )
-        doc = Document(content=text)
-        docs = splitter.run([doc])
         doc_store = InMemoryDocumentStore()
-        doc_store.write_documents(docs["documents"])
-
         pipe = Pipeline()
         pipe.add_component("bm25_retriever", InMemoryBM25Retriever(doc_store, top_k=1))
         pipe.add_component(
