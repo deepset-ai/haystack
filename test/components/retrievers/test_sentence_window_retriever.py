@@ -130,19 +130,31 @@ class TestSentenceWindowRetriever:
         doc_store = InMemoryDocumentStore()
         doc_store.write_documents(docs["documents"])
 
-        rag = Pipeline()
-        rag.add_component("bm25_retriever", InMemoryBM25Retriever(doc_store, top_k=1))
-        rag.add_component("sentence_window_retriever", SentenceWindowRetriever(document_store=doc_store, window_size=2))
-        rag.connect("bm25_retriever", "sentence_window_retriever")
-        result = rag.run({"bm25_retriever": {"query": "third"}})
+        pipe = Pipeline()
+        pipe.add_component("bm25_retriever", InMemoryBM25Retriever(doc_store, top_k=1))
+        pipe.add_component(
+            "sentence_window_retriever", SentenceWindowRetriever(document_store=doc_store, window_size=2)
+        )
+        pipe.connect("bm25_retriever", "sentence_window_retriever")
+        result = pipe.run({"bm25_retriever": {"query": "third"}})
 
-        expected = {
-            "sentence_window_retriever": {
-                "context_windows": [
-                    "some words. There is a second sentence. And there is also a third sentence. It also "
-                    "contains a fourth sentence. And a fifth sentence. And a sixth sentence. And a "
-                ]
-            }
-        }
+        assert result["sentence_window_retriever"]["context_windows"] == [
+            "some words. There is a second sentence. And there is also a third sentence. It also "
+            "contains a fourth sentence. And a fifth sentence. And a sixth sentence. And a "
+        ]
+        assert len(result["sentence_window_retriever"]["context_documents"][0]) == 5
 
-        assert result == expected
+    @pytest.mark.integration
+    def test_serialization_deserialization_in_pipeline(self):
+        doc_store = InMemoryDocumentStore()
+        pipe = Pipeline()
+        pipe.add_component("bm25_retriever", InMemoryBM25Retriever(doc_store, top_k=1))
+        pipe.add_component(
+            "sentence_window_retriever", SentenceWindowRetriever(document_store=doc_store, window_size=2)
+        )
+        pipe.connect("bm25_retriever", "sentence_window_retriever")
+
+        serialized = pipe.to_dict()
+        deserialized = Pipeline.from_dict(serialized)
+
+        assert deserialized == pipe
