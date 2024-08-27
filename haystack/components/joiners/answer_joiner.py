@@ -68,7 +68,7 @@ class AnswerJoiner:
 
     pipe = Pipeline()
     pipe.add_component("gpt-4o", OpenAIChatGenerator(model="gpt-4o"))
-    pipe.add_component("llama", OpenAIChatGenerator(model="gpt-3.5-turbo"))
+    pipe.add_component("llama", OpenAIChatGenerator(model="gpt-4o-mini"))
     pipe.add_component("aba", AnswerBuilder())
     pipe.add_component("abb", AnswerBuilder())
     pipe.add_component("joiner", AnswerJoiner())

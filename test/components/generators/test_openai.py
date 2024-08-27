@@ -19,7 +19,7 @@ class TestOpenAIGenerator:
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = OpenAIGenerator()
         assert component.client.api_key == "test-api-key"
-        assert component.model == "gpt-3.5-turbo"
+        assert component.model == "gpt-4o-mini"
         assert component.streaming_callback is None
         assert not component.generation_kwargs
         assert component.client.timeout == 30
@@ -74,7 +74,7 @@ class TestOpenAIGenerator:
             "type": "haystack.components.generators.openai.OpenAIGenerator",
             "init_parameters": {
                 "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
-                "model": "gpt-3.5-turbo",
+                "model": "gpt-4o-mini",
                 "streaming_callback": None,
                 "system_prompt": None,
                 "api_base_url": None,

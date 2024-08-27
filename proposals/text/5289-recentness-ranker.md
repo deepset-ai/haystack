@@ -73,7 +73,7 @@ components:
     max_length: 300
     model_kwargs:
       temperature: 0
-    model_name_or_path: gpt-3.5-turbo
+    model_name_or_path: gpt-4o-mini 
 - name: FileTypeClassifier
   type: FileTypeClassifier
 - name: TextConverter
