@@ -80,6 +80,16 @@ class Sockets:
         self._sockets_dict = sockets_dict
         self.__dict__.update(sockets_dict)
 
+    def __eq__(self, value: object) -> bool:
+        if not isinstance(value, Sockets):
+            return False
+
+        return (
+            self._sockets_io_type == value._sockets_io_type
+            and self._component == value._component
+            and self._sockets_dict == value._sockets_dict
+        )
+
     def __setitem__(self, key: str, socket: Union[InputSocket, OutputSocket]):
         """
         Adds a new socket to this Sockets object.
