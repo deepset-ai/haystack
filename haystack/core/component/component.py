@@ -163,8 +163,6 @@ class Component(Protocol):
     else:
         run: Callable
 
-    supports_async: bool
-
 
 class ComponentMeta(type):
     @staticmethod
@@ -272,7 +270,7 @@ class ComponentMeta(type):
         has_async_run = hasattr(instance, "async_run")
         if has_async_run and not inspect.iscoroutinefunction(instance.async_run):
             raise ComponentError(f"Method 'async_run' of component '{cls.__name__}' must be a coroutine")
-        instance.supports_async = has_async_run
+        instance.__haystack_supports_async__ = has_async_run
 
         ComponentMeta._parse_and_set_input_sockets(cls, instance)
         ComponentMeta._parse_and_set_output_sockets(instance)

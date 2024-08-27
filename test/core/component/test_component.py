@@ -32,7 +32,7 @@ def test_correct_declaration():
     assert MockComponent()
     assert component.registry["test_component.MockComponent"] == MockComponent
     assert isinstance(MockComponent(), Component)
-    assert MockComponent().supports_async is False
+    assert MockComponent().__haystack_supports_async__ is False
 
 
 def test_correct_declaration_with_async():
@@ -57,7 +57,7 @@ def test_correct_declaration_with_async():
     assert MockComponent()
     assert component.registry["test_component.MockComponent"] == MockComponent
     assert isinstance(MockComponent(), Component)
-    assert MockComponent().supports_async is True
+    assert MockComponent().__haystack_supports_async__ is True
 
 
 def test_correct_declaration_with_additional_readonly_property():
