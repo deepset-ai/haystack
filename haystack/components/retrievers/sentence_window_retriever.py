@@ -163,9 +163,18 @@ class SentenceWindowRetriever:
 
         context_text = []
         context_documents = []
+        merge_text = False
+
+        if all(isinstance(doc.meta["split_idx_start"], range) for doc in retrieved_documents):
+            merge_text = True
+
         for doc in retrieved_documents:
             source_id = doc.meta["source_id"]
             split_id = doc.meta["split_id"]
+
+            # PineCone store numbers as float, we need to convert them back to integers
+            split_id = int(split_id) if isinstance(split_id, float) else split_id
+
             min_before = min(list(range(split_id - 1, split_id - self.window_size - 1, -1)))
             max_after = max(list(range(split_id + 1, split_id + self.window_size + 1, 1)))
             context_docs = self.document_store.filter_documents(
@@ -178,7 +187,9 @@ class SentenceWindowRetriever:
                     ],
                 }
             )
-            context_text.append(self.merge_documents_text(context_docs))
+
+            if merge_text:
+                context_text.append(self.merge_documents_text(context_docs))
             context_documents.append(context_docs)
 
         return {"context_windows": context_text, "context_documents": context_documents}
