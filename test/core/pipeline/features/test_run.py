@@ -68,18 +68,25 @@ def pipeline_that_is_linear():
 
 @given("a pipeline that has an infinite loop", target_fixture="pipeline_data")
 def pipeline_that_has_an_infinite_loop():
-    def custom_init(self):
-        component.set_input_type(self, "x", int)
-        component.set_input_type(self, "y", int, 1)
-        component.set_output_types(self, a=int, b=int)
+    routes = [
+        {"condition": "{{number > 2}}", "output": "{{number}}", "output_name": "big_number", "output_type": int},
+        {"condition": "{{number <= 2}}", "output": "{{number + 2}}", "output_name": "small_number", "output_type": int},
+    ]
 
-    FakeComponent = component_class("FakeComponent", output={"a": 1, "b": 1}, extra_fields={"__init__": custom_init})
+    main_input = BranchJoiner(int)
+    first_router = ConditionalRouter(routes=routes)
+    second_router = ConditionalRouter(routes=routes)
+
     pipe = Pipeline(max_runs_per_component=1)
-    pipe.add_component("first", FakeComponent())
-    pipe.add_component("second", FakeComponent())
-    pipe.connect("first.a", "second.x")
-    pipe.connect("second.b", "first.y")
-    return pipe, [PipelineRunData({"first": {"x": 1}})]
+    pipe.add_component("main_input", main_input)
+    pipe.add_component("first_router", first_router)
+    pipe.add_component("second_router", second_router)
+
+    pipe.connect("main_input", "first_router.number")
+    pipe.connect("first_router.big_number", "second_router.number")
+    pipe.connect("second_router.big_number", "main_input")
+
+    return pipe, [PipelineRunData({"main_input": {"value": 3}})]
 
 
 @given("a pipeline that is really complex with lots of components, forks, and loops", target_fixture="pipeline_data")
