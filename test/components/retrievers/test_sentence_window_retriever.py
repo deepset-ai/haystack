@@ -159,7 +159,7 @@ class TestSentenceWindowRetriever:
 
         assert deserialized == pipe
 
-    def test_metadata_invalid_but_still_return_documents(self):
+    def test_metadata_float_but_still_return_documents(self):
         splitter = DocumentSplitter(split_length=10, split_overlap=5, split_by="word")
         text = (
             "This is a text with some words. There is a second sentence. And there is also a third sentence. "
@@ -167,6 +167,13 @@ class TestSentenceWindowRetriever:
         )
         doc = Document(content=text)
         docs = splitter.run([doc])
+
+        # convert to float
+        for doc in docs["documents"]:
+            doc.meta["split_id"] = float(doc.meta["split_id"])
+            doc.meta["split_idx_start"] = float(doc.meta["split_idx_start"])
+            doc.meta["page_number"] = float(doc.meta["page_number"])
+
         doc_store = InMemoryDocumentStore()
         doc_store.write_documents(docs["documents"])
 

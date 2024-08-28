@@ -118,14 +118,12 @@ class SentenceWindowRetriever:
         Convert metadata original int values back to integers again, since PineCone store numbers as float.
         """
 
-        values_to_convert = ["split_id", "split_idx_start"]
+        values_to_convert = ["split_id", "split_idx_start", "page_number"]
 
         for doc in context_docs:
             for value in values_to_convert:
                 if value in doc.meta:
-                    print("before: ", doc.meta[value])
                     doc.meta[value] = int(doc.meta[value]) if isinstance(doc.meta[value], float) else doc.meta[value]
-                    print("after: ", doc.meta[value])
 
         return context_docs
 
