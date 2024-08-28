@@ -5,8 +5,8 @@
 import copy
 import json
 import os
-from typing import Any, Callable, Dict, List, Optional, Union
 import warnings
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from openai import OpenAI, Stream
 from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletionMessage
@@ -122,7 +122,7 @@ class OpenAIChatGenerator:
             "In the upcoming releases 'gpt-3.5-turbo' will be replaced by 'gpt-4o-mini' as the default model",
             DeprecationWarning,
         )
-        
+
         self.api_key = api_key
         self.model = model
         self.generation_kwargs = generation_kwargs or {}
