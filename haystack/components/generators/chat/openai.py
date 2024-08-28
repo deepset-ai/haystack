@@ -118,12 +118,10 @@ class OpenAIChatGenerator:
             Maximum number of retries to contact OpenAI after an internal error.
             If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
         """
-
-        if model == "gpt-3.5-turbo":
-            warnings.warn(
-                "The 'model' parameter gpt-4o-mini should be used in place of gpt-3.5-turbo.",
-                DeprecationWarning,
-            )
+        warnings.warn(
+            "The 'model' parameter gpt-4o-mini should be used in place of gpt-3.5-turbo.",
+            DeprecationWarning,
+        )
         
         self.api_key = api_key
         self.model = model
