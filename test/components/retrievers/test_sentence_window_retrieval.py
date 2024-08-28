@@ -3,7 +3,7 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 from unittest.mock import patch
 
 
-class TestSentenceWindowRetrieval:
+class TestSentenceWindowRetriever:
     def test_init_default(self):
         retriever = SentenceWindowRetriever(InMemoryDocumentStore())
         assert retriever.window_size == 3
