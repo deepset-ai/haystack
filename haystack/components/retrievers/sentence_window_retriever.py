@@ -131,7 +131,7 @@ class SentenceWindowRetriever:
             Deserialized component.
         """
         # deserialize the document store
-        data = deserialize_document_store_in_init_parameters(data)
+        deserialize_document_store_in_init_parameters(data)
 
         # deserialize the component
         return default_from_dict(cls, data)

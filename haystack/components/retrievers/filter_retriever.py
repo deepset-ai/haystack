@@ -78,7 +78,7 @@ class FilterRetriever:
             The deserialized component.
         """
         # deserialize the document store
-        data = deserialize_document_store_in_init_parameters(data)
+        deserialize_document_store_in_init_parameters(data)
 
         return default_from_dict(cls, data)
 

@@ -74,7 +74,7 @@ class DocumentWriter:
             If the document store is not properly specified in the serialization data or its type cannot be imported.
         """
         # deserialize the document store
-        data = deserialize_document_store_in_init_parameters(data)
+        deserialize_document_store_in_init_parameters(data)
 
         data["init_parameters"]["policy"] = DuplicatePolicy[data["init_parameters"]["policy"]]
 

@@ -8,7 +8,7 @@ from haystack import DeserializationError
 from haystack.core.serialization import default_from_dict, import_class_by_name
 
 
-def deserialize_document_store_in_init_parameters(data: Dict[str, Any], key: str = "document_store") -> Dict[str, Any]:
+def deserialize_document_store_in_init_parameters(data: Dict[str, Any], key: str = "document_store"):
     """
     Deserializes a generic document store from the init_parameters of a serialized component.
 
@@ -37,5 +37,3 @@ def deserialize_document_store_in_init_parameters(data: Dict[str, Any], key: str
         data["init_parameters"][key] = doc_store_class.from_dict(doc_store_data)
     else:
         data["init_parameters"][key] = default_from_dict(doc_store_class, doc_store_data)
-
-    return data

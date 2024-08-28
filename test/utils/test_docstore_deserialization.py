@@ -25,8 +25,8 @@ def test_deserialize_document_store_in_init_parameters():
         },
     }
 
-    result = deserialize_document_store_in_init_parameters(data)
-    assert isinstance(result["init_parameters"]["document_store"], InMemoryDocumentStore)
+    deserialize_document_store_in_init_parameters(data)
+    assert isinstance(data["init_parameters"]["document_store"], InMemoryDocumentStore)
 
 
 def test_from_dict_is_called():
