@@ -104,7 +104,7 @@ class OpenAIGenerator:
 
         """
         warnings.warn(
-            "The 'model' parameter gpt-4o-mini should be used in place of gpt-3.5-turbo.",
+            "In the upcoming releases 'gpt-3.5-turbo' will be replaced by 'gpt-4o-mini' as the default model",
             DeprecationWarning,
         )
         
