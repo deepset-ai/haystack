@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import logging
 import os
+import warnings
 
 import pytest
 from openai import OpenAIError
@@ -27,6 +28,12 @@ class TestOpenAIChatGenerator:
         component = OpenAIChatGenerator()
         assert component.client.api_key == "test-api-key"
         assert component.model == "gpt-3.5-turbo"
+        
+        warnings.warn(
+            "As of July 2024, gpt-4o-mini should be used in place of gpt-3.5-turbo"
+            DeprecationWarning,
+        )
+        
         assert component.streaming_callback is None
         assert not component.generation_kwargs
         assert component.client.timeout == 30
