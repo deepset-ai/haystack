@@ -38,10 +38,10 @@ template: |
 
 sections:
   # The prelude section is implicitly included.
-  - [upgrade, ⬆️ Upgrade Notes]
-  - [features, 🚀 New Features]
-  - [enhancements, ⚡️ Enhancement Notes]
+  - [upgrade, Upgrade Notes]
+  - [features, New Features]
+  - [enhancements, Enhancement Notes]
   - [issues, Known Issues]
-  - [deprecations, ⚠️ Deprecation Notes]
+  - [deprecations, Deprecation Notes]
   - [security, Security Notes]
-  - [fixes, 🐛 Bug Fixes]
+  - [fixes, Bug Fixes]
