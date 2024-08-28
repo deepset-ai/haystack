@@ -4,7 +4,6 @@
 import os
 
 import pytest
-import warnings
 
 from haystack.components.builders import AnswerBuilder
 
@@ -120,12 +119,6 @@ class TestAnswerJoiner:
         pipe = Pipeline()
         pipe.add_component("gpt-4o", OpenAIChatGenerator(model="gpt-4o"))
         pipe.add_component("llama", OpenAIChatGenerator(model="gpt-3.5-turbo"))
-
-        warnings.warn(
-            "As of July 2024, gpt-4o-mini should be used in place of gpt-3.5-turbo"
-            DeprecationWarning,
-        )
-        
         pipe.add_component("aba", AnswerBuilder())
         pipe.add_component("abb", AnswerBuilder())
         pipe.add_component("joiner", AnswerJoiner())

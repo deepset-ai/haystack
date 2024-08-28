@@ -4,7 +4,6 @@
 
 import os
 from typing import List
-import warnings
 
 import pytest
 
@@ -61,12 +60,6 @@ def rag_pipeline(document_store: InMemoryDocumentStore, top_k: int):  # type: ig
     rag.add_component("retriever", InMemoryEmbeddingRetriever(document_store, top_k=top_k))  # type: ignore
     rag.add_component("prompt_builder", PromptBuilder(template=template))  # type: ignore
     rag.add_component("generator", OpenAIGenerator(model="gpt-3.5-turbo"))  # type: ignore
-
-    warnings.warn(
-        "As of July 2024, gpt-4o-mini should be used in place of gpt-3.5-turbo"
-        DeprecationWarning,
-    )
-    
     rag.add_component("answer_builder", AnswerBuilder())  # type: ignore
     rag.connect("embedder", "retriever.query_embedding")
     rag.connect("retriever", "prompt_builder.documents")
