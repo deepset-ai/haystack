@@ -158,3 +158,28 @@ class TestSentenceWindowRetriever:
         deserialized = Pipeline.from_dict(serialized)
 
         assert deserialized == pipe
+
+    def test_metadata_invalid_but_still_return_documents(self):
+        splitter = DocumentSplitter(split_length=10, split_overlap=5, split_by="word")
+        text = (
+            "This is a text with some words. There is a second sentence. And there is also a third sentence. "
+            "It also contains a fourth sentence. And a fifth sentence. And a sixth sentence. And a seventh sentence"
+        )
+        doc = Document(content=text)
+        docs = splitter.run([doc])
+        doc_store = InMemoryDocumentStore()
+        doc_store.write_documents(docs["documents"])
+
+        pipe = Pipeline()
+        pipe.add_component("bm25_retriever", InMemoryBM25Retriever(doc_store, top_k=1))
+        pipe.add_component(
+            "sentence_window_retriever", SentenceWindowRetriever(document_store=doc_store, window_size=2)
+        )
+        pipe.connect("bm25_retriever", "sentence_window_retriever")
+        result = pipe.run({"bm25_retriever": {"query": "third"}})
+
+        assert result["sentence_window_retriever"]["context_windows"] == [
+            "some words. There is a second sentence. And there is also a third sentence. It also "
+            "contains a fourth sentence. And a fifth sentence. And a sixth sentence. And a "
+        ]
+        assert len(result["sentence_window_retriever"]["context_documents"][0]) == 5

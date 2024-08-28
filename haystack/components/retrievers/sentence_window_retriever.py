@@ -112,6 +112,23 @@ class SentenceWindowRetriever:
 
         return merged_text
 
+    @staticmethod
+    def _convert_to_int(context_docs: List[Document]) -> List[Document]:
+        """
+        Convert metadata original int values back to integers again, since PineCone store numbers as float.
+        """
+
+        values_to_convert = ["split_id", "split_idx_start"]
+
+        for doc in context_docs:
+            for value in values_to_convert:
+                if value in doc.meta:
+                    print("before: ", doc.meta[value])
+                    doc.meta[value] = int(doc.meta[value]) if isinstance(doc.meta[value], float) else doc.meta[value]
+                    print("after: ", doc.meta[value])
+
+        return context_docs
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Serializes the component to a dictionary.
@@ -163,16 +180,13 @@ class SentenceWindowRetriever:
 
         context_text = []
         context_documents = []
-        merge_text = False
-
-        if all(isinstance(doc.meta["split_idx_start"], range) for doc in retrieved_documents):
-            merge_text = True
 
         for doc in retrieved_documents:
             source_id = doc.meta["source_id"]
             split_id = doc.meta["split_id"]
 
-            # PineCone store numbers as float, we need to convert them back to integers
+            # PineCone store numbers as float, convert back to integers
+            source_id = int(source_id) if isinstance(source_id, float) else source_id
             split_id = int(split_id) if isinstance(split_id, float) else split_id
 
             min_before = min(list(range(split_id - 1, split_id - self.window_size - 1, -1)))
@@ -188,8 +202,8 @@ class SentenceWindowRetriever:
                 }
             )
 
-            if merge_text:
-                context_text.append(self.merge_documents_text(context_docs))
+            context_docs = self._convert_to_int(context_docs)  # PineCone stores int as float, convert back to int
+            context_text.append(self.merge_documents_text(context_docs))
             context_documents.append(context_docs)
 
         return {"context_windows": context_text, "context_documents": context_documents}
