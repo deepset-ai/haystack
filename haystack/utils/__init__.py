@@ -5,7 +5,7 @@
 from .auth import Secret, deserialize_secrets_inplace
 from .callable_serialization import deserialize_callable, serialize_callable
 from .device import ComponentDevice, Device, DeviceMap, DeviceType
-from .docstore_deserialization import deserialize_document_store_in_init_parameters
+from .docstore_deserialization import update_document_store_in_init_parameters
 from .expit import expit
 from .filters import document_matches_filter
 from .jupyter import is_in_jupyter
@@ -27,5 +27,5 @@ __all__ = [
     "deserialize_callable",
     "serialize_type",
     "deserialize_type",
-    "deserialize_document_store_in_init_parameters",
+    "update_document_store_in_init_parameters",
 ]
