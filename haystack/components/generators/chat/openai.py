@@ -5,6 +5,7 @@
 import copy
 import json
 import os
+import warnings
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from openai import OpenAI, Stream
@@ -117,6 +118,11 @@ class OpenAIChatGenerator:
             Maximum number of retries to contact OpenAI after an internal error.
             If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
         """
+        warnings.warn(
+            "In the upcoming releases 'gpt-3.5-turbo' will be replaced by 'gpt-4o-mini' as the default model",
+            DeprecationWarning,
+        )
+
         self.api_key = api_key
         self.model = model
         self.generation_kwargs = generation_kwargs or {}
