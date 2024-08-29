@@ -131,7 +131,7 @@ class PreProcessor(BasePreProcessor):
                 "The 'tokenizer_model_folder' parameter will be ignored. "
                 "Please use the built-in nltk tokenizers instead by specifying the `language` parameter."
             )
-
+        self.tokenizer_model_folder = None
         self.clean_whitespace = clean_whitespace
         self.clean_header_footer = clean_header_footer
         self.clean_empty_lines = clean_empty_lines
