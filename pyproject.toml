@@ -147,7 +147,7 @@ crawler = [
   "selenium>=4.11.0"
 ]
 preprocessing = [
-  "nltk>=3.9",
+  "nltk>=3.9.1",
   "langdetect",  # for language classification
 ]
 file-conversion = [
