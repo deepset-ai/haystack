@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 
 with LazyImport("Run 'pip install farm-haystack[preprocessing]' or 'pip install nltk'") as nltk_import:
     import nltk
+    from nltk.tokenize.punkt import PunktTokenizer
 
 iso639_to_nltk = {
     "ru": "russian",
@@ -929,14 +930,14 @@ class PreProcessor(BasePreProcessor):
 
         # Use a default NLTK model
         elif language_name is not None:
-            sentence_tokenizer = nltk.data.load(f"tokenizers/punkt/{language_name}.pickle")
+            sentence_tokenizer = PunktTokenizer(language_name)
         else:
             logger.error(
                 "PreProcessor couldn't find the default sentence tokenizer model for %s. "
                 " Using English instead. You may train your own model and use the 'tokenizer_model_folder' parameter.",
                 self.language,
             )
-            sentence_tokenizer = nltk.data.load("tokenizers/punkt/english.pickle")
+            sentence_tokenizer = PunktTokenizer()  # default english model
 
         return sentence_tokenizer
 
