@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 
 with LazyImport("Run 'pip install farm-haystack[preprocessing]' or 'pip install nltk'") as nltk_import:
     import nltk
+    from nltk.tokenize.punkt import PunktTokenizer
 
 iso639_to_nltk = {
     "ru": "russian",
@@ -120,10 +121,18 @@ class PreProcessor(BasePreProcessor):
             nltk.data.find("tokenizers/punkt")
         except LookupError:
             try:
-                nltk.download("punkt")
+                nltk.download("punkt_tab")
             except FileExistsError as error:
                 logger.debug("NLTK punkt tokenizer seems to be already downloaded. Error message: %s", error)
                 pass
+
+        if tokenizer_model_folder is not None:
+            warnings.warn(
+                "Custom NLTK tokenizers are no longer allowed. "
+                "The 'tokenizer_model_folder' parameter will be ignored. "
+                "Please use the built-in nltk tokenizers instead by specifying the `language` parameter."
+            )
+        self.tokenizer_model_folder = None
         self.clean_whitespace = clean_whitespace
         self.clean_header_footer = clean_header_footer
         self.clean_empty_lines = clean_empty_lines
@@ -134,7 +143,6 @@ class PreProcessor(BasePreProcessor):
         self.split_respect_sentence_boundary = split_respect_sentence_boundary
         self.tokenizer = tokenizer
         self.language = language
-        self.tokenizer_model_folder = tokenizer_model_folder
         self.print_log: Set[str] = set()
         self.id_hash_keys = id_hash_keys
         self.progress_bar = progress_bar
@@ -922,14 +930,14 @@ class PreProcessor(BasePreProcessor):
 
         # Use a default NLTK model
         elif language_name is not None:
-            sentence_tokenizer = nltk.data.load(f"tokenizers/punkt/{language_name}.pickle")
+            sentence_tokenizer = PunktTokenizer(language_name)
         else:
             logger.error(
                 "PreProcessor couldn't find the default sentence tokenizer model for %s. "
                 " Using English instead. You may train your own model and use the 'tokenizer_model_folder' parameter.",
                 self.language,
             )
-            sentence_tokenizer = nltk.data.load("tokenizers/punkt/english.pickle")
+            sentence_tokenizer = PunktTokenizer()  # default english model
 
         return sentence_tokenizer
 

@@ -1,0 +1,9 @@
+fixes:
+  - |
+    Upgrades ntlk to 3.9.1 as prior versions are affect by https://nvd.nist.gov/vuln/detail/CVE-2024-39705.
+upgrade:
+  - |
+    Upgrades ntlk to 3.9.1 as prior versions are affect by https://nvd.nist.gov/vuln/detail/CVE-2024-39705. Due to these security vulnerabilities, it is not possible to use custom NLTK tokenizer models with the new version (for example in PreProcessor). Users can still use built-in nltk tokenizers by specifying the language parameter in the PreProcessor. See PreProcessor documentation for more details.
+enhancements:
+  - |
+    Pins sentence-transformers<=3.0.0,>=2.3.1 and python-pptx<=1.0 to avoid some minor typing incompatibilities with the newer version of the respective libraries.

@@ -87,7 +87,7 @@ dependencies = [
 [project.optional-dependencies]
 inference = [
   "transformers[torch,sentencepiece]==4.39.3",
-  "sentence-transformers>=2.3.1",  # See haystack/nodes/retriever/_embedding_encoder.py, _SentenceTransformersEmbeddingEncoder
+  "sentence-transformers<=3.0.0,>=2.3.1",  # See haystack/nodes/retriever/_embedding_encoder.py, _SentenceTransformersEmbeddingEncoder
   "huggingface-hub>=0.5.0",
 ]
 elasticsearch = [
@@ -147,13 +147,13 @@ crawler = [
   "selenium>=4.11.0"
 ]
 preprocessing = [
-  "nltk",
+  "nltk>=3.9.1",
   "langdetect",  # for language classification
 ]
 file-conversion = [
   "azure-ai-formrecognizer>=3.2.0b2",  # Microsoft Azure's Form Recognizer service (text and table exctrator)
   "python-docx",
-  "python-pptx",
+  "python-pptx<=1.0",
   "tika",  # Apache Tika (text & metadata extractor)
   "beautifulsoup4",
   "markdown",
@@ -191,7 +191,7 @@ colab = [
 dev = [
   "pre-commit",
   # Type check
-  "mypy",
+  "mypy==1.10.0",
   # Test
   "pytest",
   "pytest-cov",
