@@ -172,9 +172,9 @@ class SentenceWindowRetriever:
                 {
                     "operator": "AND",
                     "conditions": [
-                        {"field": "source_id", "operator": "==", "value": source_id},
-                        {"field": "split_id", "operator": ">=", "value": min_before},
-                        {"field": "split_id", "operator": "<=", "value": max_after},
+                        {"field": "meta.source_id", "operator": "==", "value": source_id},
+                        {"field": "meta.split_id", "operator": ">=", "value": min_before},
+                        {"field": "meta.split_id", "operator": "<=", "value": max_after},
                     ],
                 }
             )
