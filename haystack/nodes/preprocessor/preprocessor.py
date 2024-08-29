@@ -124,6 +124,14 @@ class PreProcessor(BasePreProcessor):
             except FileExistsError as error:
                 logger.debug("NLTK punkt tokenizer seems to be already downloaded. Error message: %s", error)
                 pass
+
+        if tokenizer_model_folder is not None:
+            warnings.warn(
+                "Custom NLTK tokenizers are no longer allowed. "
+                "The 'tokenizer_model_folder' parameter will be ignored. "
+                "Please use the built-in nltk tokenizers instead by specifying the `language` parameter."
+            )
+
         self.clean_whitespace = clean_whitespace
         self.clean_header_footer = clean_header_footer
         self.clean_empty_lines = clean_empty_lines
@@ -134,7 +142,6 @@ class PreProcessor(BasePreProcessor):
         self.split_respect_sentence_boundary = split_respect_sentence_boundary
         self.tokenizer = tokenizer
         self.language = language
-        self.tokenizer_model_folder = tokenizer_model_folder
         self.print_log: Set[str] = set()
         self.id_hash_keys = id_hash_keys
         self.progress_bar = progress_bar
