@@ -1,9 +1,13 @@
 from dataclasses import dataclass, field
 from typing import Tuple, List, Dict, Any, Set, Union
+from pathlib import Path
+import re
 
 from pytest_bdd import when, then, parsers
 
 from haystack import Pipeline
+
+PIPELINE_NAME_REGEX = re.compile(r"\[(.*)\]")
 
 
 @dataclass
@@ -58,6 +62,19 @@ def run_pipeline(
         except Exception as e:
             return e
     return [e for e in zip(results, pipeline_run_data)]
+
+
+@then("draw it to file")
+def draw_pipeline(pipeline_data: Tuple[Pipeline, List[PipelineRunData]], request):
+    """
+    Draw the pipeline to a file with the same name as the test.
+    """
+    if m := PIPELINE_NAME_REGEX.search(request.node.name):
+        name = m.group(1).replace(" ", "_")
+        pipeline = pipeline_data[0]
+        graphs_dir = Path(request.config.rootpath) / "test_pipeline_graphs"
+        graphs_dir.mkdir(exist_ok=True)
+        pipeline.draw(graphs_dir / f"{name}.png")
 
 
 @then("it should return the expected result")

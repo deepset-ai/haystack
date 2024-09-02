@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+import warnings
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from openai import OpenAI, Stream
@@ -102,6 +103,11 @@ class OpenAIGenerator:
             from the `OPENAI_MAX_RETRIES` environment variable or set to 5.
 
         """
+        warnings.warn(
+            "In the upcoming releases 'gpt-3.5-turbo' will be replaced by 'gpt-4o-mini' as the default model",
+            DeprecationWarning,
+        )
+
         self.api_key = api_key
         self.model = model
         self.generation_kwargs = generation_kwargs or {}

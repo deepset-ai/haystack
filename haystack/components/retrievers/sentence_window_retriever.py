@@ -4,9 +4,9 @@
 
 from typing import Any, Dict, List
 
-from haystack import DeserializationError, Document, component, default_from_dict, default_to_dict
-from haystack.core.serialization import import_class_by_name
+from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.document_stores.types import DocumentStore
+from haystack.utils import deserialize_document_store_in_init_params_inplace
 
 
 @component
@@ -54,7 +54,20 @@ class SentenceWindowRetriever:
 
     >> {'sentence_window_retriever': {'context_windows': ['some words. There is a second sentence.
     >> And there is also a third sentence. It also contains a fourth sentence. And a fifth sentence. And a sixth
-    >> sentence. And a']}}
+    >> sentence. And a'], 'context_documents': [[Document(id=..., content: 'some words. There is a second sentence.
+    >> And there is ', meta: {'source_id': '...', 'page_number': 1, 'split_id': 1, 'split_idx_start': 20,
+    >> '_split_overlap': [{'doc_id': '...', 'range': (20, 43)}, {'doc_id': '...', 'range': (0, 30)}]}),
+    >> Document(id=..., content: 'second sentence. And there is also a third sentence. It ',
+    >> meta: {'source_id': '74ea87deb38012873cf8c07e...f19d01a26a098447113e1d7b83efd30c02987114', 'page_number': 1,
+    >> 'split_id': 2, 'split_idx_start': 43, '_split_overlap': [{'doc_id': '...', 'range': (23, 53)}, {'doc_id': '...',
+    >> 'range': (0, 26)}]}), Document(id=..., content: 'also a third sentence. It also contains a fourth sentence. ',
+    >> meta: {'source_id': '...', 'page_number': 1, 'split_id': 3, 'split_idx_start': 73, '_split_overlap':
+    >> [{'doc_id': '...', 'range': (30, 56)}, {'doc_id': '...', 'range': (0, 33)}]}), Document(id=..., content:
+    >> 'also contains a fourth sentence. And a fifth sentence. And ', meta: {'source_id': '...', 'page_number': 1,
+    >> 'split_id': 4, 'split_idx_start': 99, '_split_overlap': [{'doc_id': '...', 'range': (26, 59)},
+    >> {'doc_id': '...', 'range': (0, 26)}]}), Document(id=..., content: 'And a fifth sentence. And a sixth sentence.
+    >> And a ', meta: {'source_id': '...', 'page_number': 1, 'split_id': 5, 'split_idx_start': 132,
+    >> '_split_overlap': [{'doc_id': '...', 'range': (33, 59)}, {'doc_id': '...', 'range': (0, 24)}]})]]}}}}
     ```
     """
 
@@ -117,26 +130,13 @@ class SentenceWindowRetriever:
         :returns:
             Deserialized component.
         """
-        init_params = data.get("init_parameters", {})
-
-        if "document_store" not in init_params:
-            raise DeserializationError("Missing 'document_store' in serialization data")
-        if "type" not in init_params["document_store"]:
-            raise DeserializationError("Missing 'type' in document store's serialization data")
-
         # deserialize the document store
-        doc_store_data = data["init_parameters"]["document_store"]
-        try:
-            doc_store_class = import_class_by_name(doc_store_data["type"])
-        except ImportError as e:
-            raise DeserializationError(f"Class '{doc_store_data['type']}' not correctly imported") from e
-
-        data["init_parameters"]["document_store"] = default_from_dict(doc_store_class, doc_store_data)
+        deserialize_document_store_in_init_params_inplace(data)
 
         # deserialize the component
         return default_from_dict(cls, data)
 
-    @component.output_types(context_windows=List[str])
+    @component.output_types(context_windows=List[str], context_documents=List[List[Document]])
     def run(self, retrieved_documents: List[Document]):
         """
         Based on the `source_id` and on the `doc.meta['split_id']` get surrounding documents from the document store.
@@ -147,7 +147,12 @@ class SentenceWindowRetriever:
         :param retrieved_documents: List of retrieved documents from the previous retriever.
         :returns:
             A dictionary with the following keys:
-            - `context_windows`:  List of strings representing the context windows of the retrieved documents.
+                - `context_windows`: A list of strings, where each string represents the concatenated text from the
+                                     context window of the corresponding document in `retrieved_documents`.
+                - `context_documents`: A list of lists of `Document` objects, where each inner list contains the
+                                     documents that form the context window for the corresponding document in
+                                     `retrieved_documents`.
+
         """
 
         if not all("split_id" in doc.meta for doc in retrieved_documents):
@@ -156,7 +161,8 @@ class SentenceWindowRetriever:
         if not all("source_id" in doc.meta for doc in retrieved_documents):
             raise ValueError("The retrieved documents must have 'source_id' in the metadata.")
 
-        context_windows = []
+        context_text = []
+        context_documents = []
         for doc in retrieved_documents:
             source_id = doc.meta["source_id"]
             split_id = doc.meta["split_id"]
@@ -172,6 +178,7 @@ class SentenceWindowRetriever:
                     ],
                 }
             )
-            context_windows.append(self.merge_documents_text(context_docs))
+            context_text.append(self.merge_documents_text(context_docs))
+            context_documents.append(context_docs)
 
-        return {"context_windows": context_windows}
+        return {"context_windows": context_text, "context_documents": context_documents}

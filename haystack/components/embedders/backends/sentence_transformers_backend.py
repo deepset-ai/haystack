@@ -9,7 +9,7 @@ import numpy as np
 from haystack.lazy_imports import LazyImport
 from haystack.utils.auth import Secret
 
-with LazyImport(message="Run 'pip install \"sentence-transformers>=2.3.0\"'") as sentence_transformers_import:
+with LazyImport(message="Run 'pip install \"sentence-transformers>=3.0.0\"'") as sentence_transformers_import:
     from sentence_transformers import SentenceTransformer
 
 

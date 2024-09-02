@@ -12,14 +12,14 @@ from haystack import component
 @component
 class TextCleaner:
     """
-    A PreProcessor component to clean text data.
+    Cleans text strings.
 
-    It can remove substrings matching a list of regular expressions, convert text to lowercase, remove punctuation,
-    and remove numbers.
+    It can remove substrings matching a list of regular expressions, convert text to lowercase,
+    remove punctuation, and remove numbers.
+    Use it to clean up text data before evaluation.
 
-    This is useful to clean up text data before evaluation.
+    ### Usage example
 
-    Usage example:
     ```python
     from haystack.components.preprocessors import TextCleaner
 
@@ -38,13 +38,12 @@ class TextCleaner:
         remove_numbers: bool = False,
     ):
         """
-        Initialize the TextCleaner component.
+        Initializes the TextCleaner component.
 
-        :param remove_regexps: A list of regular expressions. If provided, it removes substrings
-            matching these regular expressions from the text.
-        :param convert_to_lowercase: If True, converts all characters to lowercase.
-        :param remove_punctuation: If True, removes punctuation from the text.
-        :param remove_numbers: If True, removes numerical digits from the text.
+        :param remove_regexps: A list of regex patterns to remove matching substrings from the text.
+        :param convert_to_lowercase: If `True`, converts all characters to lowercase.
+        :param remove_punctuation: If `True`, removes punctuation from the text.
+        :param remove_numbers: If `True`, removes numerical digits from the text.
         """
         self._remove_regexps = remove_regexps
         self._convert_to_lowercase = convert_to_lowercase
