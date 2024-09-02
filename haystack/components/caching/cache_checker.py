@@ -6,7 +6,7 @@ from typing import Any, Dict, List
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.document_stores.types import DocumentStore
-from haystack.utils import deserialize_document_store_in_init_parameters
+from haystack.utils import deserialize_document_store_in_init_params_inplace
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +73,7 @@ class CacheChecker:
             Deserialized component.
         """
         # deserialize the document store
-        data = deserialize_document_store_in_init_parameters(data)
+        deserialize_document_store_in_init_params_inplace(data)
 
         return default_from_dict(cls, data)
 
