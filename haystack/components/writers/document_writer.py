@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.document_stores.types import DocumentStore, DuplicatePolicy
-from haystack.utils import deserialize_document_store_in_init_parameters
+from haystack.utils import deserialize_document_store_in_init_params_inplace
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +74,7 @@ class DocumentWriter:
             If the document store is not properly specified in the serialization data or its type cannot be imported.
         """
         # deserialize the document store
-        data = deserialize_document_store_in_init_parameters(data)
+        deserialize_document_store_in_init_params_inplace(data)
 
         data["init_parameters"]["policy"] = DuplicatePolicy[data["init_parameters"]["policy"]]
 
