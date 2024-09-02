@@ -1,8 +1,6 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-import copy
-
 import pytest
 from transformers import AutoTokenizer
 
@@ -107,31 +105,3 @@ def test_from_dict_with_meta():
     assert ChatMessage.from_dict(
         data={"content": "text", "role": "user", "name": None, "meta": {"something": "something"}}
     ) == ChatMessage(content="text", role=ChatRole("user"), name=None, meta={"something": "something"})
-
-
-def test_deepcopy():
-    message = ChatMessage(content="text", role=ChatRole.USER, name="name", meta={"meta": "meta"})
-    copied_message = copy.deepcopy(message)
-    assert copied_message == message
-
-    # verify deepcopy of meta
-    assert copied_message.meta == message.meta
-    assert copied_message.meta is not message.meta
-
-    # kinda superfluous but test it anyway to contrast with copy (below)
-    copied_message.meta["meta"] = "theta"
-    assert message.meta["meta"] != "theta" and message.meta["meta"] == "meta" and copied_message.meta["meta"] == "theta"
-
-
-def test_copy():
-    message = ChatMessage(content="text", role=ChatRole.USER, name="name", meta={"meta": "meta"})
-    copied_message = copy.copy(message)
-    assert copied_message == message
-
-    # verify copy of meta
-    assert copied_message.meta == message.meta
-    assert copied_message.meta is message.meta
-
-    # note the difference with deepcopy
-    copied_message.meta["meta"] = "theta"
-    assert message.meta["meta"] == "theta" and copied_message.meta["meta"] == "theta"

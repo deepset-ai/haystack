@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import copy
 from dataclasses import asdict, dataclass, field
 from enum import Enum
 from typing import Any, Dict, Optional
@@ -109,25 +108,3 @@ class ChatMessage:
         data["role"] = ChatRole(data["role"])
 
         return cls(**data)
-
-    def __deepcopy__(self, memo):
-        """
-        Custom implementation of deepcopy for ChatMessage.
-
-        :param memo: A dictionary of objects already copied during the current deepcopy pass.
-        :returns: A deep copy of the ChatMessage instance.
-        """
-        return ChatMessage(
-            content=self.content,
-            role=self.role,
-            name=self.name,
-            meta=copy.deepcopy(self.meta, memo),  # Deep copy of the mutable meta dict
-        )
-
-    def __copy__(self):
-        """
-        Custom implementation of copy for ChatMessage.
-
-        :returns: A shallow copy of the ChatMessage instance.
-        """
-        return ChatMessage(content=self.content, role=self.role, name=self.name, meta=self.meta)
