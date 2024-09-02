@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-
+from copy import deepcopy
 from typing import Any, Dict, List, Optional, Set
 
 from jinja2 import meta
@@ -194,11 +194,9 @@ class ChatPromptBuilder:
 
                 compiled_template = self._env.from_string(message.content)
                 rendered_content = compiled_template.render(template_variables_combined)
-                rendered_message = (
-                    ChatMessage.from_user(rendered_content)
-                    if message.is_from(ChatRole.USER)
-                    else ChatMessage.from_system(rendered_content)
-                )
+                # deep copy the message to avoid modifying the original message
+                rendered_message: ChatMessage = deepcopy(message)
+                rendered_message.content = rendered_content
                 processed_messages.append(rendered_message)
             else:
                 processed_messages.append(message)
