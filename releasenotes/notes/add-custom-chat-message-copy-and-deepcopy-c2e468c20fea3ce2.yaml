@@ -1,0 +1,4 @@
+---
+enhancements:
+ - |
+   Add ChatMessage copy and deep copy internal methods.
