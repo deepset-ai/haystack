@@ -5,7 +5,7 @@ import pytest
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
 from haystack import component
 from haystack.core.pipeline.pipeline import Pipeline
-from haystack.dataclasses.chat_message import ChatMessage
+from haystack.dataclasses.chat_message import ChatMessage, ChatRole
 from haystack.dataclasses.document import Document
 
 
@@ -193,6 +193,17 @@ class TestChatPromptBuilder:
         expected_result = {"prompt": [ChatMessage.from_user("Hello, Big John!")]}
 
         assert builder.run(template, name="John", var1="Big") == expected_result
+
+    def test_run_with_meta(self):
+        """
+        Test that the ChatPromptBuilder correctly handles meta data.
+        It should render the message and copy the meta data from the original message.
+        """
+        m = ChatMessage(content="This is a {{ variable }}", role=ChatRole.USER, name=None, meta={"test": "test"})
+        builder = ChatPromptBuilder(template=[m])
+        res = builder.run(variable="test")
+        res_msg = ChatMessage(content="This is a test", role=ChatRole.USER, name=None, meta={"test": "test"})
+        assert res == {"prompt": [res_msg]}
 
     def test_run_with_invalid_template(self):
         builder = ChatPromptBuilder()
