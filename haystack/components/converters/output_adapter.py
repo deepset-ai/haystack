@@ -5,9 +5,11 @@
 import ast
 import contextlib
 from typing import Any, Callable, Dict, Optional, Set
+from warnings import warn
 
 import jinja2.runtime
-from jinja2 import TemplateSyntaxError, meta
+from jinja2 import Environment, TemplateSyntaxError, meta
+from jinja2.nativetypes import NativeEnvironment
 from jinja2.sandbox import SandboxedEnvironment
 from typing_extensions import TypeAlias
 
@@ -37,7 +39,13 @@ class OutputAdapter:
     ```
     """
 
-    def __init__(self, template: str, output_type: TypeAlias, custom_filters: Optional[Dict[str, Callable]] = None):
+    def __init__(
+        self,
+        template: str,
+        output_type: TypeAlias,
+        custom_filters: Optional[Dict[str, Callable]] = None,
+        unsafe: bool = False,
+    ):
         """
         Create an OutputAdapter component.
 
@@ -54,13 +62,25 @@ class OutputAdapter:
             The type of output this instance will return.
         :param custom_filters:
             A dictionary of custom Jinja filters used in the template.
+        :param unsafe:
+            Enable execution of arbitrary code in the Jinja template.
+            This should only be used if you trust the source of the template as it can be lead to remote code execution.
         """
         self.custom_filters = {**(custom_filters or {})}
         input_types: Set[str] = set()
 
-        # Create a Jinja native environment, we need it to:
-        # a) add custom filters to the environment for filter compilation stage
-        self._env = SandboxedEnvironment(undefined=jinja2.runtime.StrictUndefined)
+        self._unsafe = unsafe
+
+        if self._unsafe:
+            msg = (
+                "Unsafe mode is enabled. This allows execution of arbitrary code in the Jinja template. "
+                "Use this only if you trust the source of the template."
+            )
+            warn(msg)
+        self._env = (
+            NativeEnvironment() if self._unsafe else SandboxedEnvironment(undefined=jinja2.runtime.StrictUndefined)
+        )
+
         try:
             self._env.parse(template)  # Validate template syntax
             self.template = template
@@ -108,7 +128,8 @@ class OutputAdapter:
             # This must be done cause the output could be different literal structures.
             # This doesn't support any user types.
             with contextlib.suppress(Exception):
-                output_result = ast.literal_eval(output_result)
+                if not self._unsafe:
+                    output_result = ast.literal_eval(output_result)
 
             adapted_outputs["output"] = output_result
         except Exception as e:
@@ -124,7 +145,11 @@ class OutputAdapter:
         """
         se_filters = {name: serialize_callable(filter_func) for name, filter_func in self.custom_filters.items()}
         return default_to_dict(
-            self, template=self.template, output_type=serialize_type(self.output_type), custom_filters=se_filters
+            self,
+            template=self.template,
+            output_type=serialize_type(self.output_type),
+            custom_filters=se_filters,
+            unsafe=self._unsafe,
         )
 
     @classmethod
@@ -148,11 +173,11 @@ class OutputAdapter:
             }
         return default_from_dict(cls, data)
 
-    def _extract_variables(self, env: SandboxedEnvironment) -> Set[str]:
+    def _extract_variables(self, env: Environment) -> Set[str]:
         """
         Extracts all variables from a list of Jinja template strings.
 
-        :param env: A Jinja native environment.
+        :param env: A Jinja environment.
         :return: A set of variable names extracted from the template strings.
         """
         ast = env.parse(self.template)
