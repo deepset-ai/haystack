@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fixing the filters in the `SentenceWindowRetriever` allowing now support for 3 more DocumentStores: Astra, PGVector, Qdrant
