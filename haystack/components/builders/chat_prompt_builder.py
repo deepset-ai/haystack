@@ -89,7 +89,7 @@ class ChatPromptBuilder:
 
     print(res)
     >> {'llm': {'replies': [ChatMessage(content="Here is the weather forecast for Berlin in the next 5
-    days:\n\nDay 1: Mostly cloudy with a high of 22°C (72°F) and...so it's always a good idea to check for updates
+    days:\\n\\nDay 1: Mostly cloudy with a high of 22°C (72°F) and...so it's always a good idea to check for updates
     closer to your visit.", role=<ChatRole.ASSISTANT: 'assistant'>, name=None, meta={'model': 'gpt-3.5-turbo-0613',
     'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 37, 'completion_tokens': 201,
     'total_tokens': 238}})]}}
