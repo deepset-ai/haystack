@@ -42,11 +42,11 @@ class TransformersTextRouter:
         name="text_router"
     )
     p.add_component(
-        instance=PromptBuilder(template="Answer the question: {{query}}\nAnswer:"),
+        instance=PromptBuilder(template="Answer the question: {{query}}\\nAnswer:"),
         name="english_prompt_builder"
     )
     p.add_component(
-        instance=PromptBuilder(template="Beantworte die Frage: {{query}}\nAntwort:"),
+        instance=PromptBuilder(template="Beantworte die Frage: {{query}}\\nAntwort:"),
         name="german_prompt_builder"
     )
 

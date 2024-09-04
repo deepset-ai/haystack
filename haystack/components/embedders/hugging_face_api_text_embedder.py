@@ -23,7 +23,7 @@ class HuggingFaceAPITextEmbedder:
     Embeds strings using Hugging Face APIs.
 
     Use it with the following Hugging Face APIs:
-    - [Free Serverless Inference API]((https://huggingface.co/inference-api)
+    - [Free Serverless Inference API](https://huggingface.co/inference-api)
     - [Paid Inference Endpoints](https://huggingface.co/inference-endpoints)
     - [Self-hosted Text Embeddings Inference](https://github.com/huggingface/text-embeddings-inference)
 

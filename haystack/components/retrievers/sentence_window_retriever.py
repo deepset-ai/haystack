@@ -25,12 +25,12 @@ class SentenceWindowRetriever:
     SentenceWindowRetriever to get the surrounding documents for context.
 
     The SentenceWindowRetriever is compatible with the following DocumentStores:
-    - (Astra)[https://docs.haystack.deepset.ai/docs/astradocumentstore]
-    - (Elasticsearch)[https://docs.haystack.deepset.ai/docs/elasticsearch-document-store]
-    - (OpenSearch)[https://docs.haystack.deepset.ai/docs/opensearch-document-store]
-    - (Pgvector)[https://docs.haystack.deepset.ai/docs/pgvectordocumentstore]
-    - (Pinecone)[https://docs.haystack.deepset.ai/docs/pinecone-document-store]
-    - (Qdrant)[https://docs.haystack.deepset.ai/docs/qdrant-document-store]
+    - [Astra](https://docs.haystack.deepset.ai/docs/astradocumentstore)
+    - [Elasticsearch](https://docs.haystack.deepset.ai/docs/elasticsearch-document-store)
+    - [OpenSearch](https://docs.haystack.deepset.ai/docs/opensearch-document-store)
+    - [Pgvector](https://docs.haystack.deepset.ai/docs/pgvectordocumentstore)
+    - [Pinecone](https://docs.haystack.deepset.ai/docs/pinecone-document-store)
+    - [Qdrant](https://docs.haystack.deepset.ai/docs/qdrant-document-store)
 
     ### Usage example
 
