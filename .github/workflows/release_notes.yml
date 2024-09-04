@@ -43,6 +43,6 @@ jobs:
           fi
 
       - name: Verify release notes formatting
-        if: steps.changed-files.outputs.any_changed == 'false' && !contains( github.event.pull_request.labels.*.name, 'ignore-for-release-notes')
+        if: steps.changed-files.outputs.any_changed == 'true' && !contains( github.event.pull_request.labels.*.name, 'ignore-for-release-notes')
         run: |
           yamllint -d "{extends: default, rules: {line-length: {max: 1200}}}" ${{ steps.changed-files.outputs.all_changed_files }}
