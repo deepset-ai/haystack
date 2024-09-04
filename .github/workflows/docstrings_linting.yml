@@ -1,9 +1,14 @@
 name: run docstrings linting
 
 on:
-  push:
-    branches:
-      - docstrings-linting
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+    paths:
+      - "**.py"
 
 jobs:
   docstrings-linting:
