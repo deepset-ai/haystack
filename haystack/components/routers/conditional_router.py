@@ -5,6 +5,7 @@
 import ast
 import contextlib
 from typing import Any, Callable, Dict, List, Optional, Set
+from warnings import warn
 
 from jinja2 import Environment, TemplateSyntaxError, meta
 from jinja2.nativetypes import NativeEnvironment
@@ -106,7 +107,7 @@ class ConditionalRouter:
     ```
     """
 
-    def __init__(self, routes: List[Dict], custom_filters: Optional[Dict[str, Callable]] = None):
+    def __init__(self, routes: List[Dict], custom_filters: Optional[Dict[str, Callable]] = None, unsafe: bool = False):
         """
         Initializes the `ConditionalRouter` with a list of routes detailing the conditions for routing.
 
@@ -123,15 +124,26 @@ class ConditionalRouter:
             - `my_filter_fcn` is a callable that takes `my_var:str` and returns `my_var[:3]`.
               `{{ my_var|my_filter }}` can then be used inside a route condition expression:
                 `"condition": "{{ my_var|my_filter == 'foo' }}"`.
+        :param unsafe:
+            Enable execution of arbitrary code in the Jinja template.
+            This should only be used if you trust the source of the template as it can be lead to remote code execution.
         """
-        self._validate_routes(routes)
         self.routes: List[dict] = routes
         self.custom_filters = custom_filters or {}
+        self._unsafe = unsafe
 
-        # Create a Jinja native environment to inspect variables in the condition templates
-        self._env = SandboxedEnvironment()
+        # Create a Jinja environment to inspect variables in the condition templates
+        if self._unsafe:
+            msg = (
+                "Unsafe mode is enabled. This allows execution of arbitrary code in the Jinja template. "
+                "Use this only if you trust the source of the template."
+            )
+            warn(msg)
+
+        self._env = NativeEnvironment() if self._unsafe else SandboxedEnvironment()
         self._env.filters.update(self.custom_filters)
 
+        self._validate_routes(routes)
         # Inspect the routes to determine input and output types.
         input_types: Set[str] = set()  # let's just store the name, type will always be Any
         output_types: Dict[str, str] = {}
@@ -158,7 +170,7 @@ class ConditionalRouter:
             # output_type needs to be serialized to a string
             route["output_type"] = serialize_type(route["output_type"])
         se_filters = {name: serialize_callable(filter_func) for name, filter_func in self.custom_filters.items()}
-        return default_to_dict(self, routes=self.routes, custom_filters=se_filters)
+        return default_to_dict(self, routes=self.routes, custom_filters=se_filters, unsafe=self._unsafe)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ConditionalRouter":
@@ -202,7 +214,9 @@ class ConditionalRouter:
             try:
                 t = self._env.from_string(route["condition"])
                 rendered = t.render(**kwargs)
-                if ast.literal_eval(rendered):
+                if not self._unsafe:
+                    rendered = ast.literal_eval(rendered)
+                if rendered:
                     # We now evaluate the `output` expression to determine the route output
                     t_output = self._env.from_string(route["output"])
                     output = t_output.render(**kwargs)
@@ -211,7 +225,8 @@ class ConditionalRouter:
                     # This must be done cause the output could be different literal structures.
                     # This doesn't support any user types.
                     with contextlib.suppress(Exception):
-                        output = ast.literal_eval(output)
+                        if not self._unsafe:
+                            output = ast.literal_eval(output)
                     # and return the output as a dictionary under the output_name key
                     return {route["output_name"]: output}
             except Exception as e:
@@ -225,7 +240,6 @@ class ConditionalRouter:
 
         :param routes: A list of routes.
         """
-        env = NativeEnvironment()
         for route in routes:
             try:
                 keys = set(route.keys())
@@ -239,10 +253,10 @@ class ConditionalRouter:
                     f"Route must contain 'condition', 'output', 'output_type' and 'output_name' fields: {route}"
                 )
             for field in ["condition", "output"]:
-                if not self._validate_template(env, route[field]):
+                if not self._validate_template(self._env, route[field]):
                     raise ValueError(f"Invalid template for field '{field}': {route[field]}")
 
-    def _extract_variables(self, env: SandboxedEnvironment, templates: List[str]) -> Set[str]:
+    def _extract_variables(self, env: Environment, templates: List[str]) -> Set[str]:
         """
         Extracts all variables from a list of Jinja template strings.
 

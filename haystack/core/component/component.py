@@ -77,7 +77,7 @@ from contextvars import ContextVar
 from copy import deepcopy
 from dataclasses import dataclass
 from types import new_class
-from typing import Any, Dict, Optional, Protocol, runtime_checkable
+from typing import Any, Dict, Optional, Protocol, Type, runtime_checkable
 
 from haystack import logging
 from haystack.core.errors import ComponentError
@@ -166,7 +166,7 @@ class Component(Protocol):
 
 class ComponentMeta(type):
     @staticmethod
-    def positional_to_kwargs(cls_type, args) -> Dict[str, Any]:
+    def _positional_to_kwargs(cls_type, args) -> Dict[str, Any]:
         """
         Convert positional arguments to keyword arguments based on the signature of the `__init__` method.
         """
@@ -184,6 +184,66 @@ class ComponentMeta(type):
             out[name] = arg
         return out
 
+    @staticmethod
+    def _parse_and_set_output_sockets(instance: Any):
+        has_async_run = hasattr(instance, "async_run")
+
+        # If `component.set_output_types()` was called in the component constructor,
+        # `__haystack_output__` is already populated, no need to do anything.
+        if not hasattr(instance, "__haystack_output__"):
+            # If that's not the case, we need to populate `__haystack_output__`
+            #
+            # If either of the run methods were decorated, they'll have a field assigned that
+            # stores the output specification. If both run methods were decorated, we ensure that
+            # outputs are the same. We deepcopy the content of the cache to transfer ownership from
+            # the class method to the actual instance, so that different instances of the same class
+            # won't share this data.
+
+            run_output_types = getattr(instance.run, "_output_types_cache", {})
+            async_run_output_types = getattr(instance.async_run, "_output_types_cache", {}) if has_async_run else {}
+
+            if has_async_run and run_output_types != async_run_output_types:
+                raise ComponentError("Output type specifications of 'run' and 'async_run' methods must be the same")
+            output_types_cache = run_output_types
+
+            instance.__haystack_output__ = Sockets(instance, deepcopy(output_types_cache), OutputSocket)
+
+    @staticmethod
+    def _parse_and_set_input_sockets(component_cls: Type, instance: Any):
+        def inner(method, sockets):
+            run_signature = inspect.signature(method)
+
+            # First is 'self' and it doesn't matter.
+            for param in list(run_signature.parameters)[1:]:
+                if run_signature.parameters[param].kind not in (
+                    inspect.Parameter.VAR_POSITIONAL,
+                    inspect.Parameter.VAR_KEYWORD,
+                ):  # ignore variable args
+                    socket_kwargs = {"name": param, "type": run_signature.parameters[param].annotation}
+                    if run_signature.parameters[param].default != inspect.Parameter.empty:
+                        socket_kwargs["default_value"] = run_signature.parameters[param].default
+                    sockets[param] = InputSocket(**socket_kwargs)
+
+        # Create the sockets if set_input_types() wasn't called in the constructor.
+        # If it was called and there are some parameters also in the `run()` method, these take precedence.
+        if not hasattr(instance, "__haystack_input__"):
+            instance.__haystack_input__ = Sockets(instance, {}, InputSocket)
+
+        inner(getattr(component_cls, "run"), instance.__haystack_input__)
+
+        # Ensure that the sockets are the same for the async method, if it exists.
+        async_run = getattr(component_cls, "async_run", None)
+        if async_run is not None:
+            run_sockets = Sockets(instance, {}, InputSocket)
+            async_run_sockets = Sockets(instance, {}, InputSocket)
+
+            # Can't use the sockets from above as they might contain
+            # values set with set_input_types().
+            inner(getattr(component_cls, "run"), run_sockets)
+            inner(async_run, async_run_sockets)
+            if async_run_sockets != run_sockets:
+                raise ComponentError("Parameters of 'run' and 'async_run' methods must be the same")
+
     def __call__(cls, *args, **kwargs):
         """
         This method is called when clients instantiate a Component and runs before __new__ and __init__.
@@ -195,7 +255,7 @@ class ComponentMeta(type):
         else:
             try:
                 pre_init_hook.in_progress = True
-                named_positional_args = ComponentMeta.positional_to_kwargs(cls, args)
+                named_positional_args = ComponentMeta._positional_to_kwargs(cls, args)
                 assert (
                     set(named_positional_args.keys()).intersection(kwargs.keys()) == set()
                 ), "positional and keyword arguments overlap"
@@ -207,34 +267,13 @@ class ComponentMeta(type):
 
         # Before returning, we have the chance to modify the newly created
         # Component instance, so we take the chance and set up the I/O sockets
+        has_async_run = hasattr(instance, "async_run")
+        if has_async_run and not inspect.iscoroutinefunction(instance.async_run):
+            raise ComponentError(f"Method 'async_run' of component '{cls.__name__}' must be a coroutine")
+        instance.__haystack_supports_async__ = has_async_run
 
-        # If `component.set_output_types()` was called in the component constructor,
-        # `__haystack_output__` is already populated, no need to do anything.
-        if not hasattr(instance, "__haystack_output__"):
-            # If that's not the case, we need to populate `__haystack_output__`
-            #
-            # If the `run` method was decorated, it has a `_output_types_cache` field assigned
-            # that stores the output specification.
-            # We deepcopy the content of the cache to transfer ownership from the class method
-            # to the actual instance, so that different instances of the same class won't share this data.
-            instance.__haystack_output__ = Sockets(
-                instance, deepcopy(getattr(instance.run, "_output_types_cache", {})), OutputSocket
-            )
-
-        # Create the sockets if set_input_types() wasn't called in the constructor.
-        # If it was called and there are some parameters also in the `run()` method, these take precedence.
-        if not hasattr(instance, "__haystack_input__"):
-            instance.__haystack_input__ = Sockets(instance, {}, InputSocket)
-        run_signature = inspect.signature(getattr(cls, "run"))
-        for param in list(run_signature.parameters)[1:]:  # First is 'self' and it doesn't matter.
-            if run_signature.parameters[param].kind not in (
-                inspect.Parameter.VAR_POSITIONAL,
-                inspect.Parameter.VAR_KEYWORD,
-            ):  # ignore variable args
-                socket_kwargs = {"name": param, "type": run_signature.parameters[param].annotation}
-                if run_signature.parameters[param].default != inspect.Parameter.empty:
-                    socket_kwargs["default_value"] = run_signature.parameters[param].default
-                instance.__haystack_input__[param] = InputSocket(**socket_kwargs)
+        ComponentMeta._parse_and_set_input_sockets(cls, instance)
+        ComponentMeta._parse_and_set_output_sockets(instance)
 
         # Since a Component can't be used in multiple Pipelines at the same time
         # we need to know if it's already owned by a Pipeline when adding it to one.
@@ -290,7 +329,13 @@ class _Component:
     def __init__(self):
         self.registry = {}
 
-    def set_input_type(self, instance, name: str, type: Any, default: Any = _empty):  # noqa: A002
+    def set_input_type(
+        self,
+        instance,
+        name: str,
+        type: Any,  # noqa: A002
+        default: Any = _empty,
+    ):
         """
         Add a single input socket to the component instance.
 
@@ -395,6 +440,10 @@ class _Component:
             the decorated method. The ComponentMeta metaclass will use this data to create
             sockets at instance creation time.
             """
+            method_name = run_method.__name__
+            if method_name not in ("run", "async_run"):
+                raise ComponentError("'output_types' decorator can only be used on 'run' and `async_run` methods")
+
             setattr(
                 run_method,
                 "_output_types_cache",

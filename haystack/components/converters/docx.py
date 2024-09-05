@@ -4,7 +4,6 @@
 
 import io
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
@@ -18,6 +17,7 @@ logger = logging.getLogger(__name__)
 with LazyImport("Run 'pip install python-docx'") as docx_import:
     import docx
     from docx.document import Document as DocxDocument
+    from docx.text.paragraph import Paragraph
 
 
 @dataclass
@@ -29,13 +29,13 @@ class DOCXMetadata:
     :param category: The category
     :param comments: The comments
     :param content_status: The content status
-    :param created: The creation date
+    :param created: The creation date (ISO formatted string)
     :param identifier: The identifier
     :param keywords: Available keywords
     :param language: The language of the document
-    :param last_modified_by: The last modified by user date
-    :param last_printed: The last printed date
-    :param modified: The last modification date
+    :param last_modified_by: User who last modified the document
+    :param last_printed: The last printed date (ISO formatted string)
+    :param modified: The last modification date (ISO formatted string)
     :param revision: The revision number
     :param subject: The subject
     :param title: The title
@@ -46,13 +46,13 @@ class DOCXMetadata:
     category: str
     comments: str
     content_status: str
-    created: Optional[datetime]
+    created: Optional[str]
     identifier: str
     keywords: str
     language: str
     last_modified_by: str
-    last_printed: Optional[datetime]
-    modified: Optional[datetime]
+    last_printed: Optional[str]
+    modified: Optional[str]
     revision: int
     subject: str
     title: str
@@ -119,7 +119,7 @@ class DOCXToDocument:
                 continue
             try:
                 file = docx.Document(io.BytesIO(bytestream.data))
-                paragraphs = [para.text for para in file.paragraphs]
+                paragraphs = self._extract_paragraphs_with_page_breaks(file.paragraphs)
                 text = "\n".join(paragraphs)
             except Exception as e:
                 logger.warning(
@@ -136,6 +136,46 @@ class DOCXToDocument:
 
         return {"documents": documents}
 
+    def _extract_paragraphs_with_page_breaks(self, paragraphs: List["Paragraph"]) -> List[str]:
+        """
+        Extracts paragraphs from a DOCX file, including page breaks.
+
+        Page breaks (both soft and hard page breaks) are not automatically extracted by python-docx as '\f' chars.
+        This means we need to add them in ourselves, as done here. This allows the correct page number
+        to be associated with each document if the file contents are split, e.g. by DocumentSplitter.
+
+        :param paragraphs:
+            List of paragraphs from a DOCX file.
+
+        :returns:
+            List of strings (paragraph text fields) with all page breaks added in as '\f' characters.
+        """
+        paragraph_texts = []
+        for para in paragraphs:
+            if para.contains_page_break:
+                para_text_w_page_breaks = ""
+                # Usually, just 1 page break exists, but could be more if paragraph is really long, so we loop over them
+                for pb_index, page_break in enumerate(para.rendered_page_breaks):
+                    # Can only extract text from first paragraph page break, unfortunately
+                    if pb_index == 0:
+                        if page_break.preceding_paragraph_fragment:
+                            para_text_w_page_breaks += page_break.preceding_paragraph_fragment.text
+                        para_text_w_page_breaks += "\f"
+                        if page_break.following_paragraph_fragment:
+                            # following_paragraph_fragment contains all text for remainder of paragraph.
+                            # However, if the remainder of the paragraph spans multiple page breaks, it won't include
+                            # those later page breaks so we have to add them at end of text in the `else` block below.
+                            # This is not ideal, but this case should be very rare and this is likely good enough.
+                            para_text_w_page_breaks += page_break.following_paragraph_fragment.text
+                    else:
+                        para_text_w_page_breaks += "\f"
+
+                paragraph_texts.append(para_text_w_page_breaks)
+            else:
+                paragraph_texts.append(para.text)
+
+        return paragraph_texts
+
     def _get_docx_metadata(self, document: "DocxDocument") -> DOCXMetadata:
         """
         Get all relevant data from the 'core_properties' attribute from a DOCX Document.
@@ -151,13 +191,15 @@ class DOCXToDocument:
             category=document.core_properties.category,
             comments=document.core_properties.comments,
             content_status=document.core_properties.content_status,
-            created=document.core_properties.created,
+            created=document.core_properties.created.isoformat() if document.core_properties.created else None,
             identifier=document.core_properties.identifier,
             keywords=document.core_properties.keywords,
             language=document.core_properties.language,
             last_modified_by=document.core_properties.last_modified_by,
-            last_printed=document.core_properties.last_printed,
-            modified=document.core_properties.modified,
+            last_printed=document.core_properties.last_printed.isoformat()
+            if document.core_properties.last_printed
+            else None,
+            modified=document.core_properties.modified.isoformat() if document.core_properties.modified else None,
             revision=document.core_properties.revision,
             subject=document.core_properties.subject,
             title=document.core_properties.title,
