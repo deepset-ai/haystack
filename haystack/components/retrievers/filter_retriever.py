@@ -4,9 +4,9 @@
 
 from typing import Any, Dict, List, Optional
 
-from haystack import DeserializationError, Document, component, default_from_dict, default_to_dict, logging
-from haystack.core.serialization import import_class_by_name
+from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.document_stores.types import DocumentStore
+from haystack.utils import deserialize_document_store_in_init_parameters
 
 logger = logging.getLogger(__name__)
 
@@ -77,18 +77,8 @@ class FilterRetriever:
         :returns:
             The deserialized component.
         """
-        init_params = data.get("init_parameters", {})
-        if "document_store" not in init_params:
-            raise DeserializationError("Missing 'document_store' in serialization data")
-        if "type" not in init_params["document_store"]:
-            raise DeserializationError("Missing 'type' in document store's serialization data")
-
-        doc_store_data = data["init_parameters"]["document_store"]
-        try:
-            doc_store_class = import_class_by_name(doc_store_data["type"])
-        except ImportError as e:
-            raise DeserializationError(f"Class '{doc_store_data['type']}' not correctly imported") from e
-        data["init_parameters"]["document_store"] = default_from_dict(doc_store_class, doc_store_data)
+        # deserialize the document store
+        data = deserialize_document_store_in_init_parameters(data)
 
         return default_from_dict(cls, data)
 

@@ -4,9 +4,9 @@
 
 from typing import Any, Dict, List
 
-from haystack import DeserializationError, Document, component, default_from_dict, default_to_dict, logging
-from haystack.core.serialization import import_class_by_name
+from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.document_stores.types import DocumentStore
+from haystack.utils import deserialize_document_store_in_init_parameters
 
 logger = logging.getLogger(__name__)
 
@@ -16,10 +16,11 @@ class CacheChecker:
     """
     Checks for the presence of documents in a Document Store based on a specified field in each document's metadata.
 
-    If matching documents are found, they are returned as hits. If not, the items
-    are returned as misses, indicating they are not in the cache.
+    If matching documents are found, they are returned as "hits". If not found in the cache, the items
+    are returned as "misses".
 
-    Usage example:
+    ### Usage example
+
     ```python
     from haystack import Document
     from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -41,12 +42,12 @@ class CacheChecker:
 
     def __init__(self, document_store: DocumentStore, cache_field: str):
         """
-        Create a CacheChecker component.
+        Creates a CacheChecker component.
 
         :param document_store:
-            Document store to check.
+            Document Store to check for the presence of specific documents.
         :param cache_field:
-            Name of the Document metadata field
+            Name of the document's metadata field
             to check for cache hits.
         """
         self.document_store = document_store
@@ -71,18 +72,8 @@ class CacheChecker:
         :returns:
             Deserialized component.
         """
-        init_params = data.get("init_parameters", {})
-        if "document_store" not in init_params:
-            raise DeserializationError("Missing 'document_store' in serialization data")
-        if "type" not in init_params["document_store"]:
-            raise DeserializationError("Missing 'type' in document store's serialization data")
-
-        doc_store_data = data["init_parameters"]["document_store"]
-        try:
-            doc_store_class = import_class_by_name(doc_store_data["type"])
-        except ImportError as e:
-            raise DeserializationError(f"Class '{doc_store_data['type']}' not correctly imported") from e
-        data["init_parameters"]["document_store"] = default_from_dict(doc_store_class, doc_store_data)
+        # deserialize the document store
+        data = deserialize_document_store_in_init_parameters(data)
 
         return default_from_dict(cls, data)
 
@@ -95,7 +86,7 @@ class CacheChecker:
             Values to be checked against the cache field.
         :return:
             A dictionary with two keys:
-            - `hits` - Documents that matched with any of the items.
+            - `hits` - Documents that matched with at least one of the items.
             - `misses` - Items that were not present in any documents.
         """
         found_documents = []
