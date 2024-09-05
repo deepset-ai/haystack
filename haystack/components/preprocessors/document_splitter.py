@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from copy import deepcopy
-from typing import Dict, List, Literal, Tuple
+from typing import Dict, List, Literal, Tuple, Optional, Callable
 
 from more_itertools import windowed
 
@@ -46,10 +46,11 @@ class DocumentSplitter:
 
     def __init__(
         self,
-        split_by: Literal["word", "sentence", "page", "passage"] = "word",
+        split_by: Literal["function", "page", "passage", "sentence", "word"] = "word",
         split_length: int = 200,
         split_overlap: int = 0,
         split_threshold: int = 0,
+        splitting_function: Optional[Callable[[str], List[str]]] = None
     ):
         """
         Initialize DocumentSplitter.
@@ -61,11 +62,16 @@ class DocumentSplitter:
         :param split_overlap: The number of overlapping units for each split.
         :param split_threshold: The minimum number of units per split. If a split has fewer units
             than the threshold, it's attached to the previous split.
+        :param splitting_function: Necessary when `split_by` is set to "function".
+            This is a function which must accept a single `str` as input and return a `list` of `str` as output,
+            representing the chunks after splitting.
         """
 
         self.split_by = split_by
-        if split_by not in ["word", "sentence", "page", "passage"]:
+        if split_by not in ["function", "page", "passage", "sentence", "word"]:
             raise ValueError("split_by must be one of 'word', 'sentence', 'page' or 'passage'.")
+        if split_by == "function" and splitting_function is None:
+            raise ValueError("When 'split_by' is set to 'function', a valid 'splitting_function' must be provided.")
         if split_length <= 0:
             raise ValueError("split_length must be greater than 0.")
         self.split_length = split_length
@@ -73,6 +79,8 @@ class DocumentSplitter:
             raise ValueError("split_overlap must be greater than or equal to 0.")
         self.split_overlap = split_overlap
         self.split_threshold = split_threshold
+        self.splitting_function = splitting_function
+
 
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document]):
@@ -114,7 +122,8 @@ class DocumentSplitter:
             )
         return {"documents": split_docs}
 
-    def _split_into_units(self, text: str, split_by: Literal["word", "sentence", "passage", "page"]) -> List[str]:
+    def _split_into_units(self, text: str,
+                          split_by: Literal["function", "page", "passage", "sentence", "word"]) -> List[str]:
         if split_by == "page":
             self.split_at = "\f"
         elif split_by == "passage":
@@ -123,6 +132,8 @@ class DocumentSplitter:
             self.split_at = "."
         elif split_by == "word":
             self.split_at = " "
+        elif split_by == "function":
+            return self.splitting_function(text)
         else:
             raise NotImplementedError(
                 "DocumentSplitter only supports 'word', 'sentence', 'page' or 'passage' split_by options."
