@@ -7,18 +7,13 @@ from typing import Any, Dict, List, Optional
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
+from haystack.utils.hf import deserialize_hf_model_kwargs, resolve_hf_pipeline_kwargs, serialize_hf_model_kwargs
 
 logger = logging.getLogger(__name__)
 
 
 with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
     from transformers import pipeline
-
-    from haystack.utils.hf import (  # pylint: disable=ungrouped-imports
-        deserialize_hf_model_kwargs,
-        resolve_hf_pipeline_kwargs,
-        serialize_hf_model_kwargs,
-    )
 
 
 @component
@@ -32,6 +27,11 @@ class TransformersZeroShotDocumentClassifier:
 
     Classification is run on document's content field by default. If you want it to run on another field, set the
     `classification_field` to one of document's meta fields.
+
+    Available models for the task of zero-shot-classification include:
+        - ``'valhalla/distilbart-mnli-12-3'``
+        - ``'cross-encoder/nli-distilroberta-base'``
+        - ``'cross-encoder/nli-deberta-v3-xsmall'``
 
     Example usage in a pipeline that classifies documents based on predefined classification labels,
     retrieved from a search pipeline:
@@ -49,7 +49,7 @@ class TransformersZeroShotDocumentClassifier:
     document_store = InMemoryDocumentStore()
     retriever = InMemoryBM25Retriever(document_store=document_store)
     document_classifier = TransformersZeroShotDocumentClassifier(
-        model="cross-encoder/nli-distilroberta-base",
+        model="cross-encoder/nli-deberta-v3-xsmall",
         labels=["positive", "negative"],
     )
 
@@ -65,8 +65,8 @@ class TransformersZeroShotDocumentClassifier:
 
     for idx, query in enumerate(queries):
         result = pipeline.run({"retriever": {"query": query, "top_k": 1}})
-        assert result["document_classifier"]['documents'][0].to_dict()["id"] == str(idx)
-        assert (result["document_classifier"]['documents'][0].to_dict()["classification"]["label"]
+        assert result["document_classifier"]["documents"][0].to_dict()["id"] == str(idx)
+        assert (result["document_classifier"]["documents"][0].to_dict()["classification"]["label"]
                 == expected_predictions[idx])
     ```
     """
@@ -84,10 +84,6 @@ class TransformersZeroShotDocumentClassifier:
         """
         Initializes the TransformersZeroShotDocumentClassifier.
 
-        Available models for the task of zero-shot-classification include:
-        - ``'valhalla/distilbart-mnli-12-3'``
-        - ``'cross-encoder/nli-distilroberta-base'``
-
         See https://huggingface.co/models for full list of available models.
         Filter for zero-shot classification models (NLI): https://huggingface.co/models?pipeline_tag=zero-shot-classification&sort=downloads&search=nli
 
@@ -95,9 +91,7 @@ class TransformersZeroShotDocumentClassifier:
             The name or path of a Hugging Face model for zero shot document classification.
         :param labels:
             The set of possible class labels to classify each document into, e.g.,
-            ["positive", "negative"] otherwise None. Given a LABEL, the sequence fed to the model is "<cls> sequence to
-            classify <sep> This example is LABEL . <sep>" and the model predicts whether that sequence is a
-            contradiction or an entailment.
+            ["positive", "negative"]. The labels to be used are model dependent.
         :param multi_label:
             Whether or not multiple candidate labels can be true.
             If `False`, the scores are normalized such that
@@ -111,8 +105,8 @@ class TransformersZeroShotDocumentClassifier:
             The device on which the model is loaded. If `None`, the default device is automatically
             selected. If a device/device map is specified in `huggingface_pipeline_kwargs`, it overrides this parameter.
         :param token:
-            The API token used to download private models from Hugging Face. If `token` is set to `True`, the token
-            generated when running `transformers-cli login` (stored in ~/.huggingface) is used.
+            The Hugging Face token to use as HTTP bearer authorization.
+            Check your HF token in your [account settings](https://huggingface.co/settings/tokens).
         :param huggingface_pipeline_kwargs:
             Dictionary containing keyword arguments used to initialize the
             Hugging Face pipeline for text classification.
@@ -180,7 +174,7 @@ class TransformersZeroShotDocumentClassifier:
             deserialize_hf_model_kwargs(data["init_parameters"]["huggingface_pipeline_kwargs"])
         return default_from_dict(cls, data)
 
-    @component.output_types(documents=Dict[str, List[Document]])
+    @component.output_types(documents=List[Document])
     def run(self, documents: List[Document], batch_size: int = 1):
         """
         This method classifies the documents based on the provided labels and adds it to their metadata.
@@ -193,6 +187,9 @@ class TransformersZeroShotDocumentClassifier:
             Documents to process.
         :param batch_size:
             Batch size used for processing the content in each document.
+        :returns:
+            A dictionary with the following key:
+            - `documents`: List of Documents with an added metadata field called `classification`.
         """
 
         if self.pipeline is None:
@@ -205,6 +202,18 @@ class TransformersZeroShotDocumentClassifier:
             raise TypeError(
                 "DocumentLanguageClassifier expects a list of Document as input. "
                 "In case you want to classify a text, please use the TextLanguageClassifier."
+            )
+
+        invalid_doc_ids = []
+
+        for doc in documents:
+            if self.classification_field is not None and self.classification_field not in doc.meta:
+                invalid_doc_ids.append(doc.id)
+
+        if invalid_doc_ids:
+            raise ValueError(
+                f"The following documents do not have the classification field '{self.classification_field}': "
+                f"{', '.join(invalid_doc_ids)}"
             )
 
         texts = [

@@ -12,19 +12,33 @@ from haystack.utils import ComponentDevice, Secret
 
 
 class TestTransformersZeroShotDocumentClassifier:
+    def test_init(self):
+        component = TransformersZeroShotDocumentClassifier(
+            model="cross-encoder/nli-deberta-v3-xsmall", labels=["positive", "negative"]
+        )
+        assert component.labels == ["positive", "negative"]
+        assert component.multi_label is False
+        assert component.pipeline is None
+        assert component.huggingface_pipeline_kwargs == {
+            "model": "cross-encoder/nli-deberta-v3-xsmall",
+            "token": None,
+            "device": ComponentDevice.resolve_device(None).to_hf(),
+            "task": "zero-shot-classification",
+        }
+
     def test_to_dict(self):
         component = TransformersZeroShotDocumentClassifier(
-            model="cross-encoder/nli-distilroberta-base", labels=["positive", "negative"]
+            model="cross-encoder/nli-deberta-v3-xsmall", labels=["positive", "negative"]
         )
         component_dict = component.to_dict()
         assert component_dict == {
             "type": "haystack.components.classifiers.zero_shot_document_classifier.TransformersZeroShotDocumentClassifier",
             "init_parameters": {
-                "model": "cross-encoder/nli-distilroberta-base",
+                "model": "cross-encoder/nli-deberta-v3-xsmall",
                 "labels": ["positive", "negative"],
                 "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
                 "huggingface_pipeline_kwargs": {
-                    "model": "cross-encoder/nli-distilroberta-base",
+                    "model": "cross-encoder/nli-deberta-v3-xsmall",
                     "device": ComponentDevice.resolve_device(None).to_hf(),
                     "task": "zero-shot-classification",
                 },
@@ -36,11 +50,11 @@ class TestTransformersZeroShotDocumentClassifier:
         data = {
             "type": "haystack.components.classifiers.zero_shot_document_classifier.TransformersZeroShotDocumentClassifier",
             "init_parameters": {
-                "model": "cross-encoder/nli-distilroberta-base",
+                "model": "cross-encoder/nli-deberta-v3-xsmall",
                 "labels": ["positive", "negative"],
                 "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
                 "huggingface_pipeline_kwargs": {
-                    "model": "cross-encoder/nli-distilroberta-base",
+                    "model": "cross-encoder/nli-deberta-v3-xsmall",
                     "device": ComponentDevice.resolve_device(None).to_hf(),
                     "task": "zero-shot-classification",
                 },
@@ -54,7 +68,7 @@ class TestTransformersZeroShotDocumentClassifier:
             {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"}
         )
         assert component.huggingface_pipeline_kwargs == {
-            "model": "cross-encoder/nli-distilroberta-base",
+            "model": "cross-encoder/nli-deberta-v3-xsmall",
             "device": ComponentDevice.resolve_device(None).to_hf(),
             "task": "zero-shot-classification",
             "token": None,
@@ -64,7 +78,7 @@ class TestTransformersZeroShotDocumentClassifier:
         monkeypatch.delenv("HF_API_TOKEN", raising=False)
         data = {
             "type": "haystack.components.classifiers.zero_shot_document_classifier.TransformersZeroShotDocumentClassifier",
-            "init_parameters": {"model": "cross-encoder/nli-distilroberta-base", "labels": ["positive", "negative"]},
+            "init_parameters": {"model": "cross-encoder/nli-deberta-v3-xsmall", "labels": ["positive", "negative"]},
         }
         component = TransformersZeroShotDocumentClassifier.from_dict(data)
         assert component.labels == ["positive", "negative"]
@@ -73,7 +87,7 @@ class TestTransformersZeroShotDocumentClassifier:
             {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"}
         )
         assert component.huggingface_pipeline_kwargs == {
-            "model": "cross-encoder/nli-distilroberta-base",
+            "model": "cross-encoder/nli-deberta-v3-xsmall",
             "device": ComponentDevice.resolve_device(None).to_hf(),
             "task": "zero-shot-classification",
             "token": None,
@@ -82,14 +96,14 @@ class TestTransformersZeroShotDocumentClassifier:
     @patch("haystack.components.classifiers.zero_shot_document_classifier.pipeline")
     def test_warm_up(self, hf_pipeline_mock):
         component = TransformersZeroShotDocumentClassifier(
-            model="cross-encoder/nli-distilroberta-base", labels=["positive", "negative"]
+            model="cross-encoder/nli-deberta-v3-xsmall", labels=["positive", "negative"]
         )
         component.warm_up()
         assert component.pipeline is not None
 
     def test_run_fails_without_warm_up(self):
         component = TransformersZeroShotDocumentClassifier(
-            model="cross-encoder/nli-distilroberta-base", labels=["positive", "negative"]
+            model="cross-encoder/nli-deberta-v3-xsmall", labels=["positive", "negative"]
         )
         positive_documents = [Document(content="That's good. I like it.")]
         with pytest.raises(RuntimeError):
@@ -99,7 +113,7 @@ class TestTransformersZeroShotDocumentClassifier:
     def test_run_fails_with_non_document_input(self, hf_pipeline_mock):
         hf_pipeline_mock.return_value = " "
         component = TransformersZeroShotDocumentClassifier(
-            model="cross-encoder/nli-distilroberta-base", labels=["positive", "negative"]
+            model="cross-encoder/nli-deberta-v3-xsmall", labels=["positive", "negative"]
         )
         component.warm_up()
         text_list = ["That's good. I like it.", "That's bad. I don't like it."]
@@ -113,7 +127,7 @@ class TestTransformersZeroShotDocumentClassifier:
             {"sequence": "That's bad. I don't like it.", "labels": ["negative", "positive"], "scores": [0.99, 0.01]},
         ]
         component = TransformersZeroShotDocumentClassifier(
-            model="cross-encoder/nli-distilroberta-base", labels=["positive", "negative"]
+            model="cross-encoder/nli-deberta-v3-xsmall", labels=["positive", "negative"]
         )
         component.pipeline = hf_pipeline_mock
         positive_document = Document(content="That's good. I like it.")
@@ -126,7 +140,7 @@ class TestTransformersZeroShotDocumentClassifier:
     @pytest.mark.integration
     def test_run(self):
         component = TransformersZeroShotDocumentClassifier(
-            model="cross-encoder/nli-distilroberta-base", labels=["positive", "negative"]
+            model="cross-encoder/nli-deberta-v3-xsmall", labels=["positive", "negative"]
         )
         component.warm_up()
         positive_document = Document(content="That's good. I like it. " * 1000)
