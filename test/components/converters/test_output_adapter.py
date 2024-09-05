@@ -8,6 +8,7 @@ import json
 import pytest
 
 from haystack import Pipeline, component
+from haystack.dataclasses import Document
 from haystack.components.converters import OutputAdapter
 from haystack.components.converters.output_adapter import OutputAdaptationException
 
@@ -150,6 +151,7 @@ class TestOutputAdapter:
                     "template": "{{ documents[0].content}}",
                     "output_type": "str",
                     "custom_filters": None,
+                    "unsafe": False,
                 },
             }
         )
@@ -157,6 +159,7 @@ class TestOutputAdapter:
         assert component.template == "{{ documents[0].content}}"
         assert component.output_type == str
         assert component.custom_filters == {}
+        assert not component._unsafe
 
     def test_output_adapter_in_pipeline(self):
         @component
@@ -179,3 +182,13 @@ class TestOutputAdapter:
         result = pipe.run(data={})
         assert result
         assert result["output_adapter"]["output"] == {"framework": "Haystack"}
+
+    def test_unsafe(self):
+        adapter = OutputAdapter(template="{{ documents[0] }}", output_type=Document, unsafe=True)
+        documents = [
+            Document(content="Test document"),
+            Document(content="Another test document"),
+            Document(content="Yet another test document"),
+        ]
+        res = adapter.run(documents=documents)
+        assert res["output"] == documents[0]

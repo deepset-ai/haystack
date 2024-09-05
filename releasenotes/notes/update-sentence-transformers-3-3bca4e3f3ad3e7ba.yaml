@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Starting from `haystack-ai==2.4.0`, Haystack is compatible with `sentence-transformers>=3.0.0`;
+    earlier versions of `sentence-transformers` are not supported.
+    We are updating the test dependency and the LazyImport messages to reflect that.
