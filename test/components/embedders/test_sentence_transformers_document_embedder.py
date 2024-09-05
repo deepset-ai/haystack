@@ -226,10 +226,14 @@ class TestSentenceTransformersDocumentEmbedder:
     )
     def test_warmup(self, mocked_factory):
         embedder = SentenceTransformersDocumentEmbedder(
-            model="model", token=None, device=ComponentDevice.from_str("cpu")
+            model="model",
+            token=None,
+            device=ComponentDevice.from_str("cpu"),
+            tokenizer_kwargs={"model_max_length": 512},
         )
         mocked_factory.get_embedding_backend.assert_not_called()
         embedder.warm_up()
+        embedder.embedding_backend.model.max_seq_length = 512
         mocked_factory.get_embedding_backend.assert_called_once_with(
             model="model",
             device="cpu",
@@ -237,7 +241,7 @@ class TestSentenceTransformersDocumentEmbedder:
             trust_remote_code=False,
             truncate_dim=None,
             model_kwargs=None,
-            tokenizer_kwargs=None,
+            tokenizer_kwargs={"model_max_length": 512},
         )
 
     @patch(
