@@ -19,7 +19,7 @@ class CSVToDocument:
     Converts CSV files to Documents.
 
     By default, it uses UTF-8 encoding when converting files but
-    you can also set custom encoding.
+    you can also set a custom encoding.
     It can attach metadata to the resulting documents.
 
     Usage example:
@@ -29,7 +29,7 @@ class CSVToDocument:
     results = converter.run(sources=["sample.csv"], meta={"date_added": datetime.now().isoformat()})
     documents = results["documents"]
     print(documents[0].content)
-    # b'col1,col2\n\nrow1,row1\n\nrow2row2\n\n'
+    # 'col1,col2\now1,row1\nrow2row2\n'
     ```
     """
 
