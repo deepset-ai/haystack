@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+import re
+
 import pytest
 
 from haystack import Document
@@ -164,6 +166,27 @@ class TestDocumentSplitter:
         assert docs[2].meta["split_id"] == 2
         assert docs[2].meta["split_idx_start"] == text.index(docs[2].content)
         assert docs[2].meta["page_number"] == 3
+
+    def test_split_by_function(self):
+        splitting_function = lambda input_str: input_str.split(".")
+        splitter = DocumentSplitter(split_by="function", splitting_function=splitting_function, split_length=1)
+        text = "This.Is.A.Test"
+        result = splitter.run(documents=[Document(content=text)])
+        docs = result["documents"]
+
+        word_list = ["This", "Is", "A", "Test"]
+        assert len(docs) == 4
+        for w_target, w_split in zip(word_list, docs):
+            assert w_split.content == w_target
+
+        splitting_function = lambda input_str: re.split("[\s]{2,}", input_str)
+        splitter = DocumentSplitter(split_by="function", splitting_function=splitting_function, split_length=1)
+        text = "This       Is\n  A  Test"
+        result = splitter.run(documents=[Document(content=text)])
+        docs = result["documents"]
+        assert len(docs) == 4
+        for w_target, w_split in zip(word_list, docs):
+            assert w_split.content == w_target
 
     def test_split_by_word_with_overlap(self):
         splitter = DocumentSplitter(split_by="word", split_length=10, split_overlap=2)

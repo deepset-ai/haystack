@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from copy import deepcopy
-from typing import Dict, List, Literal, Tuple, Optional, Callable
+from typing import Callable, Dict, List, Literal, Optional, Tuple
 
 from more_itertools import windowed
 
@@ -50,7 +50,7 @@ class DocumentSplitter:
         split_length: int = 200,
         split_overlap: int = 0,
         split_threshold: int = 0,
-        splitting_function: Optional[Callable[[str], List[str]]] = None
+        splitting_function: Optional[Callable[[str], List[str]]] = None,
     ):
         """
         Initialize DocumentSplitter.
@@ -80,7 +80,6 @@ class DocumentSplitter:
         self.split_overlap = split_overlap
         self.split_threshold = split_threshold
         self.splitting_function = splitting_function
-
 
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document]):
@@ -122,8 +121,9 @@ class DocumentSplitter:
             )
         return {"documents": split_docs}
 
-    def _split_into_units(self, text: str,
-                          split_by: Literal["function", "page", "passage", "sentence", "word"]) -> List[str]:
+    def _split_into_units(
+        self, text: str, split_by: Literal["function", "page", "passage", "sentence", "word"]
+    ) -> List[str]:
         if split_by == "page":
             self.split_at = "\f"
         elif split_by == "passage":
