@@ -4,8 +4,6 @@
 
 from typing import Any, Dict, List, Literal, Optional
 
-from sentence_transformers import SentenceTransformer
-
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.embedders.backends.sentence_transformers_backend import (
     _SentenceTransformersEmbeddingBackendFactory,
