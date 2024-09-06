@@ -24,7 +24,7 @@ class Jinja2TimeExtension(Extension):
 
     @staticmethod
     def _get_datetime(
-        timezone: str,
+        timezone: str = "UTC",
         operator: Optional[str] = None,
         offset: Optional[str] = None,
         datetime_format: Optional[str] = None,
@@ -33,7 +33,7 @@ class Jinja2TimeExtension(Extension):
         Get the current datetime based on timezone, apply any offset if provided, and format the result.
 
         :param timezone: The timezone string (e.g., 'UTC' or 'America/New_York') for which the current
-            time should be fetched.
+            time should be fetched. Default is 'UTC'.
         :param operator: The operator ('+' or '-') to apply to the offset (used for adding/subtracting intervals).
             Defaults to None if no offset is applied.
         :param offset: The offset string in the format 'interval=value' (e.g., 'hours=2,days=1') specifying how much
@@ -47,7 +47,7 @@ class Jinja2TimeExtension(Extension):
         except Exception as e:
             raise ValueError(f"Invalid timezone {timezone}: {e}")
 
-        if offset:
+        if offset is not None and operator is not None:
             try:
                 # Parse the offset and apply it to the datetime object
                 replace_params = {
