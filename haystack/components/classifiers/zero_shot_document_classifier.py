@@ -19,21 +19,24 @@ with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'") a
 @component
 class TransformersZeroShotDocumentClassifier:
     """
-    Zero-shot classification of documents based on given labels and add the predicted label to their metadata.
+    Performs zero-shot classification of documents based on provided labels and adds the predicted label
+    to their metadata.
 
-    The component uses a Hugging Face pipeline for zero-shot classification. This is useful for classifying documents
-    based on a set of labels. The model and the set of labels to be used for categorization are to be specified.
-    Additionally, the component can be configured to allow multiple labels to be true.
+    The component uses a Hugging Face pipeline for zero-shot classification.
+    Provide the model and the set of labels to be used for categorization during initialization.
+    Additionally, you can configure the component to allow multiple labels to be true.
 
-    Classification is run on document's content field by default. If you want it to run on another field, set the
-    `classification_field` to one of document's meta fields.
+    Classification is run on the document's content field by default. If you want it to run on another field, set the
+    `classification_field` to one of the document's metadata fields.
 
     Available models for the task of zero-shot-classification include:
-        - ``'valhalla/distilbart-mnli-12-3'``
-        - ``'cross-encoder/nli-distilroberta-base'``
-        - ``'cross-encoder/nli-deberta-v3-xsmall'``
+        - `valhalla/distilbart-mnli-12-3`
+        - `cross-encoder/nli-distilroberta-base`
+        - `cross-encoder/nli-deberta-v3-xsmall`
 
-    Example usage in a pipeline that classifies documents based on predefined classification labels,
+    ### Usage example
+    
+    The following is a pipeline that classifies documents based on predefined classification labels
     retrieved from a search pipeline:
 
     ```python
@@ -84,14 +87,14 @@ class TransformersZeroShotDocumentClassifier:
         """
         Initializes the TransformersZeroShotDocumentClassifier.
 
-        See https://huggingface.co/models for full list of available models.
-        Filter for zero-shot classification models (NLI): https://huggingface.co/models?pipeline_tag=zero-shot-classification&sort=downloads&search=nli
+        See the Hugging Face [website](https://huggingface.co/models?pipeline_tag=zero-shot-classification&sort=downloads&search=nli)
+        for the full list of zero-shot classification models (NLI) models.
 
         :param model:
             The name or path of a Hugging Face model for zero shot document classification.
         :param labels:
-            The set of possible class labels to classify each document into, e.g.,
-            ["positive", "negative"]. The labels to be used are model dependent.
+            The set of possible class labels to classify each document into, for example,
+            ["positive", "negative"]. The labels depend on the selected model.
         :param multi_label:
             Whether or not multiple candidate labels can be true.
             If `False`, the scores are normalized such that
@@ -100,7 +103,7 @@ class TransformersZeroShotDocumentClassifier:
             score vs. the contradiction score.
         :param classification_field:
             Name of document's meta field to be used for classification.
-            If left unset, `Document.content` is used by default.
+            If not set, `Document.content` is used by default.
         :param device:
             The device on which the model is loaded. If `None`, the default device is automatically
             selected. If a device/device map is specified in `huggingface_pipeline_kwargs`, it overrides this parameter.
@@ -177,9 +180,9 @@ class TransformersZeroShotDocumentClassifier:
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document], batch_size: int = 1):
         """
-        This method classifies the documents based on the provided labels and adds it to their metadata.
+        Classifies the documents based on the provided labels and adds them to their metadata.
 
-        Documents are updated in place. The classification results are stored in the `classification` dict within
+        The classification results are stored in the `classification` dict within
         each document's metadata. If `multi_label` is set to `True`, the scores for each label are available under
         the `details` key within the `classification` dictionary.
 
@@ -189,7 +192,7 @@ class TransformersZeroShotDocumentClassifier:
             Batch size used for processing the content in each document.
         :returns:
             A dictionary with the following key:
-            - `documents`: List of Documents with an added metadata field called `classification`.
+            - `documents`: A list of documents with an added metadata field called `classification`.
         """
 
         if self.pipeline is None:
@@ -200,7 +203,7 @@ class TransformersZeroShotDocumentClassifier:
 
         if not isinstance(documents, list) or documents and not isinstance(documents[0], Document):
             raise TypeError(
-                "DocumentLanguageClassifier expects a list of Document as input. "
+                "DocumentLanguageClassifier expects a list of documents as input. "
                 "In case you want to classify a text, please use the TextLanguageClassifier."
             )
 
