@@ -13,7 +13,8 @@ loaders:
         "txt",
         "output_adapter",
         "openapi_functions",
-        "docx"
+        "docx",
+        "csv"
       ]
     ignore_when_discovered: ["__init__"]
 processors:
