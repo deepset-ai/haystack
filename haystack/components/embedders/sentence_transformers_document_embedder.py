@@ -187,6 +187,8 @@ class SentenceTransformersDocumentEmbedder:
                 model_kwargs=self.model_kwargs,
                 tokenizer_kwargs=self.tokenizer_kwargs,
             )
+            if self.tokenizer_kwargs and self.tokenizer_kwargs.get("model_max_length"):
+                self.embedding_backend.model.max_seq_length = self.tokenizer_kwargs["model_max_length"]
 
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document]):
