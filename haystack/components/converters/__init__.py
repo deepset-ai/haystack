@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from haystack.components.converters.azure import AzureOCRDocumentConverter
+from haystack.components.converters.csv import CSVToDocument
 from haystack.components.converters.docx import DOCXMetadata, DOCXToDocument
 from haystack.components.converters.html import HTMLToDocument
 from haystack.components.converters.markdown import MarkdownToDocument
@@ -27,4 +28,5 @@ __all__ = [
     "DOCXToDocument",
     "DOCXMetadata",
     "PPTXToDocument",
+    "CSVToDocument",
 ]
