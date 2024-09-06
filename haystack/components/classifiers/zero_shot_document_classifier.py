@@ -19,8 +19,7 @@ with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'") a
 @component
 class TransformersZeroShotDocumentClassifier:
     """
-    Performs zero-shot classification of documents based on provided labels and adds the predicted label
-    to their metadata.
+    Performs zero-shot classification of documents based on given labels and adds the predicted label to their metadata.
 
     The component uses a Hugging Face pipeline for zero-shot classification.
     Provide the model and the set of labels to be used for categorization during initialization.
@@ -35,7 +34,7 @@ class TransformersZeroShotDocumentClassifier:
         - `cross-encoder/nli-deberta-v3-xsmall`
 
     ### Usage example
-    
+
     The following is a pipeline that classifies documents based on predefined classification labels
     retrieved from a search pipeline:
 
@@ -114,6 +113,7 @@ class TransformersZeroShotDocumentClassifier:
             Dictionary containing keyword arguments used to initialize the
             Hugging Face pipeline for text classification.
         """
+
         torch_and_transformers_import.check()
 
         self.classification_field = classification_field

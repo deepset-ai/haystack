@@ -17,14 +17,10 @@ class TestTransformersZeroShotDocumentClassifier:
             model="cross-encoder/nli-deberta-v3-xsmall", labels=["positive", "negative"]
         )
         assert component.labels == ["positive", "negative"]
+        assert component.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
         assert component.multi_label is False
         assert component.pipeline is None
-        assert component.huggingface_pipeline_kwargs == {
-            "model": "cross-encoder/nli-deberta-v3-xsmall",
-            "token": None,
-            "device": ComponentDevice.resolve_device(None).to_hf(),
-            "task": "zero-shot-classification",
-        }
+        assert component.classification_field is None
 
     def test_to_dict(self):
         component = TransformersZeroShotDocumentClassifier(
