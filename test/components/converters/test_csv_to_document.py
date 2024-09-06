@@ -33,7 +33,7 @@ class TestCSVToDocument:
         output = converter.run(sources=files)
         docs = output["documents"]
         assert len(docs) == 3
-        assert "Name,Age\r\nJohn Doe,27\r\nJane Smith,37\r\nMike Johnson,47" == docs[0].content
+        assert "Name,Age\r\nJohn Doe,27\r\nJane Smith,37\r\nMike Johnson,47\r\n" == docs[0].content
         assert isinstance(docs[0].content, str)
         assert docs[0].meta == bytestream.meta
         assert docs[1].meta["file_path"] == str(files[1])
