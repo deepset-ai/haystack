@@ -56,9 +56,9 @@ class TestJinja2TimeExtension:
         assert result == expected
 
     def test_get_datetime_new_york_timezone(self, jinja_env: Environment) -> None:
-        template = jinja_env.from_string("{% now 'America/New York', '%d-%m-%Y' %}")
+        template = jinja_env.from_string("{% now 'America/New_York' %}")
         result = template.render()
-        expected = arrow.now("America/New York").strftime("%d-%m-%Y")
+        expected = arrow.now("America/New_York").strftime("%Y-%m-%d %H:%M:%S")
         assert result == expected
 
     def test_parse_no_operator(self, jinja_env: Environment) -> None:
