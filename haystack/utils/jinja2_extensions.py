@@ -63,7 +63,7 @@ class Jinja2TimeExtension(Extension):
         # Use the provided format or fallback to the default one
         datetime_format = datetime_format or "%Y-%m-%d %H:%M:%S"
 
-        return dt.strftime(datetime_format)  # Return the formatted datetime string
+        return dt.strftime(datetime_format)
 
     def parse(self, parser: Any) -> Union[nodes.Node, List[nodes.Node]]:
         """
@@ -73,7 +73,7 @@ class Jinja2TimeExtension(Extension):
             It's used to interpret the template's structure.
         """
         lineno = next(parser.stream).lineno
-        # Parse the expression
+
         node = parser.parse_expression()
 
         # Check if a custom datetime format is provided after a comma
