@@ -33,7 +33,7 @@ class TestCSVToDocument:
         output = converter.run(sources=files)
         docs = output["documents"]
         assert len(docs) == 3
-        assert "Name,Age\nJohn Doe,28\nJane Smith,24\nMike Johnson,47\n" == docs[0].content
+        assert "Name,Age\r\nJohn Doe,27\r\nJane Smith,37\r\nMike Johnson,47" == docs[0].content
         assert isinstance(docs[0].content, str)
         assert docs[0].meta == bytestream.meta
         assert docs[1].meta["file_path"] == str(files[1])
@@ -71,11 +71,11 @@ class TestCSVToDocument:
 
         converter = CSVToDocument(encoding="utf-8")
         output = converter.run(sources=[bytestream])
-        assert "Name,Age\n" in output["documents"][0].content
+        assert "Name,Age\r\n" in output["documents"][0].content
 
     def test_run_with_meta(self):
         bytestream = ByteStream(
-            data=b"Name,Age,City\nAlice,30,New York\nBob,25,Los Angeles\nCharlie,35,Chicago\n",
+            data=b"Name,Age,City\r\nAlice,30,New York\r\nBob,25,Los Angeles\r\nCharlie,35,Chicago\r\n",
             meta={"name": "test_name", "language": "en"},
         )
         converter = CSVToDocument()
