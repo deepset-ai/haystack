@@ -2,13 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import datetime
 from typing import Any, Dict, List, Optional, Set
 
 from jinja2 import meta
 from jinja2.sandbox import SandboxedEnvironment
 
 from haystack import component, default_to_dict
+from haystack.utils import Jinja2TimeExtension
 
 
 @component
@@ -161,12 +161,10 @@ class PromptBuilder:
         self._required_variables = required_variables
         self.required_variables = required_variables or []
 
-        self._env = SandboxedEnvironment()
+        self._env = SandboxedEnvironment(extensions=[Jinja2TimeExtension])
         self.template = self._env.from_string(template)
-        self._env.globals["utc_now"] = self._utc_now
-
         if not variables:
-            # infere variables from template
+            # infer variables from template
             ast = self._env.parse(template)
             template_variables = meta.find_undeclared_variables(ast)
             variables = list(template_variables)
@@ -244,21 +242,3 @@ class PromptBuilder:
                 f"Missing required input variables in PromptBuilder: {missing_vars_str}. "
                 f"Required variables: {self.required_variables}. Provided variables: {provided_variables}."
             )
-
-    @staticmethod
-    def _utc_now(date_format: str = "%Y-%m-%d %H:%M:%S.%f") -> str:
-        """
-        Return current date in UTC timezone as string.
-
-        :param date_format: Date format to display.
-            Default format is "%Y-%m-%d %H:%M:%S.%f".
-        """
-        if not isinstance(date_format, str):
-            raise TypeError("Date format must be a string")
-
-        try:
-            datetime.date.fromisoformat(date_format)
-        except ValueError:
-            raise ValueError(f"Provided date format {date_format} is not valid.")
-
-        return datetime.datetime.now(tz=datetime.timezone.utc).strftime(date_format)

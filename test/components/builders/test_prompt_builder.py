@@ -5,8 +5,7 @@ from typing import Any, Dict, List, Optional
 from jinja2 import TemplateSyntaxError
 import pytest
 from unittest.mock import patch, MagicMock
-import datetime
-
+import arrow
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack import component
 from haystack.core.pipeline.pipeline import Pipeline
@@ -257,95 +256,58 @@ class TestPromptBuilder:
         }
         assert result == expected_dynamic
 
-    @patch("haystack.components.builders.prompt_builder.datetime")  # Mock datetime to control the current date and time
-    def test_template_with_default_date_format(self, mock_datetime: MagicMock) -> None:
-        mock_datetime.datetime.now.return_value = datetime.datetime(
-            2024, 8, 14, 12, 30, 45, 123456, tzinfo=datetime.timezone.utc
-        )
-
-        template = "Today's date is {{ utc_now() }}"
+    def test_with_custom_dateformat(self) -> None:
+        template = "Formatted date: {% now 'UTC', '%Y-%m-%d' %}"
         builder = PromptBuilder(template=template)
 
-        result = builder.run()
+        result = builder.run()["prompt"]
 
-        expected_prompt = "Today's date is 2024-08-14 12:30:45.123456"
-        assert result["prompt"] == expected_prompt
+        now_formatted = f"Formatted date: {arrow.now('UTC').strftime('%Y-%m-%d')}"
 
-    @patch("haystack.components.builders.prompt_builder.datetime")
-    def test_template_with_custom_date_format(self, mock_datetime: MagicMock) -> None:
-        mock_datetime.datetime.now.return_value = datetime.datetime(
-            2024, 8, 14, 12, 30, 45, 123456, tzinfo=datetime.timezone.utc
-        )
+        assert now_formatted == result
 
-        template = "The date today is {{ utc_now('%Y/%m/%d') }}"
+    def test_with_different_timezone(self) -> None:
+        template = "Current time in New York is: {% now 'America/New_York' %}"
         builder = PromptBuilder(template=template)
 
-        result = builder.run()
+        result = builder.run()["prompt"]
 
-        expected_prompt = "The date today is 2024/08/14"
-        assert result["prompt"] == expected_prompt
+        now_ny = f"Current time in New York is: {arrow.now('America/New_York').strftime('%Y-%m-%d %H:%M:%S')}"
 
-    @patch("haystack.components.builders.prompt_builder.datetime")
-    def test_template_with_time_only_format(self, mock_datetime: MagicMock) -> None:
-        mock_datetime.datetime.now.return_value = datetime.datetime(
-            2024, 8, 14, 12, 30, 45, 123456, tzinfo=datetime.timezone.utc
-        )
+        assert now_ny == result
 
-        template = "Current time is {{ utc_now('%H:%M:%S') }}"
+    def test_date_with_addition_offset(self) -> None:
+        template = "Time after 2 hours is: {% now 'UTC' + 'hours=2' %}"
         builder = PromptBuilder(template=template)
 
-        result = builder.run()
+        result = builder.run()["prompt"]
 
-        expected_prompt = "Current time is 12:30:45"
-        assert result["prompt"] == expected_prompt
+        now_plus_2 = f"Time after 2 hours is: {(arrow.now('UTC').shift(hours=+2)).strftime('%Y-%m-%d %H:%M:%S')}"
 
-    @patch("haystack.components.builders.prompt_builder.datetime")
-    def test_template_with_multiple_date_formats(self, mock_datetime: MagicMock) -> None:
-        mock_datetime.datetime.now.return_value = datetime.datetime(
-            2024, 8, 14, 12, 30, 45, 123456, tzinfo=datetime.timezone.utc
-        )
+        assert now_plus_2 == result
 
-        template = "Today is {{ utc_now('%Y-%m-%d') }}, and the current time is {{ utc_now('%H:%M') }}"
+    def test_date_with_substraction_offset(self) -> None:
+        template = "Time after 12 days is: {% now 'UTC' - 'days=12' %}"
         builder = PromptBuilder(template=template)
 
-        result = builder.run()
+        result = builder.run()["prompt"]
 
-        expected_prompt = "Today is 2024-08-14, and the current time is 12:30"
-        assert result["prompt"] == expected_prompt
+        now_plus_2 = f"Time after 12 days is: {(arrow.now('UTC').shift(days=-12)).strftime('%Y-%m-%d %H:%M:%S')}"
 
-    def test_template_without_utc_now(self):
-        template = "Hello, this is a static template."
+        assert now_plus_2 == result
+
+    def test_invalid_timezone(self):
+        template = "Current time is: {% now 'Invalid/Timezone' %}"
         builder = PromptBuilder(template=template)
 
-        result = builder.run()
-
-        expected_prompt = "Hello, this is a static template."
-        assert result["prompt"] == expected_prompt
-
-    def test_utc_now_empty_format(self):
-        with pytest.raises(ValueError):
-            template = "Hello, this is an empty date: {{ utc_now('') }}"
-            builder = PromptBuilder(template=template)
-
+        # Expect ValueError for invalid timezone
+        with pytest.raises(ValueError, match="Invalid timezone"):
             builder.run()
 
-    def test_utc_now_invalid_format(self):
-        with pytest.raises(ValueError):
-            template = "Hello, this is an invalid date: {{ utc_now('%Q-%W-%R') }}"
-            builder = PromptBuilder(template=template)
+    def test_invalid_offset(self):
+        template = "Time after invalid offset is: {% now 'UTC' + 'invalid_offset' %}"
+        builder = PromptBuilder(template=template)
 
-            builder.run()
-
-    def test_utc_now_none(self):
-        with pytest.raises(TypeError):
-            template = "Hello, this is an invalid date: {{ utc_now(None) }}"
-            builder = PromptBuilder(template=template)
-
-            builder.run()
-
-    def test_current_typeerror(self):
-        with pytest.raises(TypeError):
-            template = "Hello, this is an invalid date: {{ utc_now(10) }}"
-            builder = PromptBuilder(template=template)
-
+        # Expect ValueError for invalid offset
+        with pytest.raises(ValueError, match="Invalid offset or operator"):
             builder.run()
