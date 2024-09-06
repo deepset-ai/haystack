@@ -5,7 +5,7 @@
 from typing import Any, List, Optional, Union
 
 import arrow
-from jinja2 import nodes
+from jinja2 import Environment, nodes
 from jinja2.ext import Extension
 
 
@@ -13,20 +13,17 @@ class Jinja2TimeExtension(Extension):
     # Syntax for current date
     tags = {"now"}
 
-    def __init__(self, environment):
+    def __init__(self, environment: Environment):  # pylint: disable=useless-parent-delegation
         """
         Initializes the JinjaTimeExtension object.
 
         :param environment: The Jinja2 environment to initialize the extension with.
             It provides the context where the extension will operate.
         """
-        super(Jinja2TimeExtension, self).__init__(environment)
+        super().__init__(environment)
 
-        # add the defaults to the environment
-        environment.extend(datetime_format="%Y-%m-%d %H:%M:%S", timezone="UTC")
-
+    @staticmethod
     def _get_datetime(
-        self,
         timezone: Optional[str] = None,
         operator: Optional[str] = None,
         offset: Optional[str] = None,
@@ -46,7 +43,7 @@ class Jinja2TimeExtension(Extension):
             Defaults to the environment's format if not provided.
         """
         try:
-            dt = arrow.now(timezone or self.environment.timezone)
+            dt = arrow.now(timezone or "UTC")
         except Exception as e:
             raise ValueError(f"Invalid timezone {timezone}: {e}")
 
@@ -64,8 +61,8 @@ class Jinja2TimeExtension(Extension):
                 raise ValueError(f"Invalid offset or operator {offset}, {operator}: {e}")
 
         # Use the provided format or fallback to the default one
-        datetime_format = datetime_format or self.environment.datetime_format
-        print(dt.strftime(datetime_format))
+        datetime_format = datetime_format or "%Y-%m-%d %H:%M:%S"
+
         return dt.strftime(datetime_format)
 
     def parse(self, parser: Any) -> Union[nodes.Node, List[nodes.Node]]:
