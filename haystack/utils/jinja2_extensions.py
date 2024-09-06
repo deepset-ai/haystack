@@ -20,11 +20,14 @@ class Jinja2TimeExtension(Extension):
         :param environment: The Jinja2 environment to initialize the extension with.
             It provides the context where the extension will operate.
         """
-        super().__init__(environment)
+        super(Jinja2TimeExtension, self).__init__(environment)
 
-    @staticmethod
+        # add the defaults to the environment
+        environment.extend(datetime_format="%Y-%m-%d %H:%M:%S", timezone="UTC")
+
     def _get_datetime(
-        timezone: str = "UTC",
+        self,
+        timezone: Optional[str] = None,
         operator: Optional[str] = None,
         offset: Optional[str] = None,
         datetime_format: Optional[str] = None,
@@ -43,7 +46,7 @@ class Jinja2TimeExtension(Extension):
             Defaults to the environment's format if not provided.
         """
         try:
-            dt = arrow.now(timezone)  # Get the current time in the specified timezone
+            dt = arrow.now(timezone or self.environment.timezone)
         except Exception as e:
             raise ValueError(f"Invalid timezone {timezone}: {e}")
 
@@ -61,8 +64,8 @@ class Jinja2TimeExtension(Extension):
                 raise ValueError(f"Invalid offset or operator {offset}, {operator}: {e}")
 
         # Use the provided format or fallback to the default one
-        datetime_format = datetime_format or "%Y-%m-%d %H:%M:%S"
-
+        datetime_format = datetime_format or self.environment.datetime_format
+        print(dt.strftime(datetime_format))
         return dt.strftime(datetime_format)
 
     def parse(self, parser: Any) -> Union[nodes.Node, List[nodes.Node]]:

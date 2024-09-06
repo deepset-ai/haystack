@@ -256,6 +256,13 @@ class TestPromptBuilder:
         }
         assert result == expected_dynamic
 
+    def test_default_date(self) -> None:
+        template = "Default date is: {% now() %}"
+        builder = PromptBuilder(template=template)
+        result = builder.run()["prompt"]
+        now = f"Default date is: {arrow.now('UTC').strftime('%Y-%m-%d %H:%M:%S')}"
+        assert now == result
+
     def test_with_custom_dateformat(self) -> None:
         template = "Formatted date: {% now 'UTC', '%Y-%m-%d' %}"
         builder = PromptBuilder(template=template)
@@ -296,7 +303,7 @@ class TestPromptBuilder:
 
         assert now_plus_2 == result
 
-    def test_invalid_timezone(self):
+    def test_invalid_timezone(self) -> None:
         template = "Current time is: {% now 'Invalid/Timezone' %}"
         builder = PromptBuilder(template=template)
 
@@ -304,7 +311,7 @@ class TestPromptBuilder:
         with pytest.raises(ValueError, match="Invalid timezone"):
             builder.run()
 
-    def test_invalid_offset(self):
+    def test_invalid_offset(self) -> None:
         template = "Time after invalid offset is: {% now 'UTC' + 'invalid_offset' %}"
         builder = PromptBuilder(template=template)
 
