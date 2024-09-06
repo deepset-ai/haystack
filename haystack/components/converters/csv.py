@@ -65,7 +65,7 @@ class CSVToDocument:
             If `sources` contains ByteStream objects, their `meta` will be added to the output documents.
         :returns:
             A dictionary with the following keys:
-            - `documents`: Created Documents
+            - `documents`: Created documents
         """
         documents = []
 
