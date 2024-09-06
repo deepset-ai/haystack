@@ -22,7 +22,8 @@ class CSVToDocument:
     you can also set a custom encoding.
     It can attach metadata to the resulting documents.
 
-    Usage example:
+    ### Usage example
+
     ```python
     from haystack.components.converters.csv import CSVToDocument
     converter = CSVToDocument()
@@ -35,7 +36,7 @@ class CSVToDocument:
 
     def __init__(self, encoding: str = "utf-8"):
         """
-        Create a CSVToDocument component.
+        Creates a CSVToDocument component.
 
         :param encoding:
             The encoding of the csv files to convert.
@@ -51,17 +52,17 @@ class CSVToDocument:
         meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
     ):
         """
-        Convert a CSV file to a Document.
+        Converts a CSV file to a Document.
 
         :param sources:
             List of file paths or ByteStream objects.
         :param meta:
-            Optional metadata to attach to the Documents.
+            Optional metadata to attach to the documents.
             This value can be either a list of dictionaries or a single dictionary.
-            If it's a single dictionary, its content is added to the metadata of all produced Documents.
+            If it's a single dictionary, its content is added to the metadata of all produced documents.
             If it's a list, the length of the list must match the number of sources, because the two lists will
             be zipped.
-            If `sources` contains ByteStream objects, their `meta` will be added to the output Documents.
+            If `sources` contains ByteStream objects, their `meta` will be added to the output documents.
         :returns:
             A dictionary with the following keys:
             - `documents`: Created Documents
