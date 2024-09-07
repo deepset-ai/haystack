@@ -84,7 +84,7 @@ class LLMEvaluator:
             The API to use for calling an LLM through a Generator.
             Supported APIs: "openai".
         :param api_key:
-            The API key. Made Optional to support locally hosted model.
+            The API key. Optional to support if using a locally hosted model.
         :param api_params:
             Parameters for an OpenAI API compatible completions call.
 
