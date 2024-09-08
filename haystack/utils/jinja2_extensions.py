@@ -24,7 +24,7 @@ class Jinja2TimeExtension(Extension):
 
     @staticmethod
     def _get_datetime(
-        timezone: Optional[str] = None,
+        timezone: str,
         operator: Optional[str] = None,
         offset: Optional[str] = None,
         datetime_format: Optional[str] = None,
@@ -33,17 +33,17 @@ class Jinja2TimeExtension(Extension):
         Get the current datetime based on timezone, apply any offset if provided, and format the result.
 
         :param timezone: The timezone string (e.g., 'UTC' or 'America/New_York') for which the current
-            time should be fetched. Default is 'UTC'.
+            time should be fetched.
         :param operator: The operator ('+' or '-') to apply to the offset (used for adding/subtracting intervals).
             Defaults to None if no offset is applied.
         :param offset: The offset string in the format 'interval=value' (e.g., 'hours=2,days=1') specifying how much
             to adjust the datetime. The intervals can be any valid interval accepted
             by Arrow (e.g., hours, days, weeks, months). Defaults to None if no adjustment is needed.
         :param datetime_format: The format string to use for formatting the output datetime.
-            Defaults to the environment's format if not provided.
+            Defaults to '%Y-%m-%d %H:%M:%S' if not provided.
         """
         try:
-            dt = arrow.now(timezone or "UTC")
+            dt = arrow.now(timezone)
         except Exception as e:
             raise ValueError(f"Invalid timezone {timezone}: {e}")
 

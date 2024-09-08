@@ -102,10 +102,3 @@ class TestJinja2TimeExtension:
     def test_invalid_operator(self, jinja_extension: Jinja2TimeExtension) -> None:
         with pytest.raises(ValueError, match="Invalid offset or operator"):
             jinja_extension._get_datetime("UTC", operator="*", offset="hours=2")
-
-    def test_now(self, jinja_env: Environment) -> None:
-        template = jinja_env.from_string("{% now() %}")
-        result = template.render()
-        expected = arrow.now("UTC").strftime("%Y-%m-%d %H:%M:%S")
-
-        assert result == expected
