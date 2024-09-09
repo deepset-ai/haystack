@@ -1,0 +1,4 @@
+---
+upgrade:
+  - |
+    The legacy filter syntax support has been completely removed. Users need to use the new filter syntax. See the [docs](https://docs.haystack.deepset.ai/docs/metadata-filtering) for more details.
