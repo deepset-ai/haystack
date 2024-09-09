@@ -21,7 +21,12 @@ class TestRouter:
     @pytest.fixture
     def routes(self):
         return [
-            {"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str, "output_name": "query"},
+            {
+                "condition": "{{streams|length < 2}}",
+                "output": "{{query}}",
+                "output_type": str,
+                "output_name": "query",
+            },
             {
                 "condition": "{{streams|length >= 2}}",
                 "output": "{{streams}}",
@@ -50,7 +55,14 @@ class TestRouter:
         ConditionalRouter init raises a ValueError if one of the routes contains invalid condition
         """
         # invalid condition field
-        routes = [{"condition": "{{streams|length < 2", "output": "query", "output_type": str, "output_name": "test"}]
+        routes = [
+            {
+                "condition": "{{streams|length < 2",
+                "output": "query",
+                "output_type": str,
+                "output_name": "test",
+            }
+        ]
         with pytest.raises(ValueError, match="Invalid template"):
             ConditionalRouter(routes)
 
@@ -84,7 +96,11 @@ class TestRouter:
                 "output_name": "test",
                 "bla": "bla",
             },
-            {"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str},
+            {
+                "condition": "{{streams|length < 2}}",
+                "output": "{{query}}",
+                "output_type": str,
+            },
         ]
 
         with pytest.raises(ValueError):
@@ -94,8 +110,14 @@ class TestRouter:
         router = ConditionalRouter(routes)
 
         assert router.routes == routes
-        assert set(router.__haystack_input__._sockets_dict.keys()) == {"query", "streams"}
-        assert set(router.__haystack_output__._sockets_dict.keys()) == {"query", "streams"}
+        assert set(router.__haystack_input__._sockets_dict.keys()) == {
+            "query",
+            "streams",
+        }
+        assert set(router.__haystack_output__._sockets_dict.keys()) == {
+            "query",
+            "streams",
+        }
 
     def test_router_evaluate_condition_expressions(self):
         router = ConditionalRouter(
@@ -194,7 +216,12 @@ class TestRouter:
         Router raises a ValueError if each route is not a dictionary
         """
         routes = [
-            {"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str, "output_name": "query"},
+            {
+                "condition": "{{streams|length < 2}}",
+                "output": "{{query}}",
+                "output_type": str,
+                "output_name": "query",
+            },
             ["{{streams|length >= 2}}", "streams", List[int]],
         ]
 
@@ -215,7 +242,12 @@ class TestRouter:
 
     def test_router_de_serialization(self):
         routes = [
-            {"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str, "output_name": "query"},
+            {
+                "condition": "{{streams|length < 2}}",
+                "output": "{{query}}",
+                "output_type": str,
+                "output_name": "query",
+            },
             {
                 "condition": "{{streams|length >= 2}}",
                 "output": "{{streams}}",
@@ -242,6 +274,36 @@ class TestRouter:
 
         # check that the result is the same and correct
         assert result1 == result2 and result1 == {"streams": [1, 2, 3]}
+
+    def test_router_de_serialization_with_none_argument(self):
+        new_router = ConditionalRouter.from_dict(
+            {
+                "type": "haystack.components.routers.conditional_router.ConditionalRouter",
+                "init_parameters": {
+                    "routes": [
+                        {
+                            "condition": "{{streams|length < 2}}",
+                            "output": "{{query}}",
+                            "output_type": "str",
+                            "output_name": "query",
+                        },
+                        {
+                            "condition": "{{streams|length >= 2}}",
+                            "output": "{{streams}}",
+                            "output_type": "typing.List[int]",
+                            "output_name": "streams",
+                        },
+                    ],
+                    "custom_filters": None,
+                    "unsafe": False,
+                },
+            }
+        )
+
+        # now use both routers with the same input
+        kwargs = {"streams": [1, 2, 3], "query": "Haystack"}
+        result2 = new_router.run(**kwargs)
+        assert result2 == {"streams": [1, 2, 3]}
 
     def test_router_serialization_idempotence(self):
         routes = [
@@ -280,7 +342,9 @@ class TestRouter:
             },
         ]
 
-        router = ConditionalRouter(routes, custom_filters={"get_area_code": custom_filter_to_sede})
+        router = ConditionalRouter(
+            routes, custom_filters={"get_area_code": custom_filter_to_sede}
+        )
         kwargs = {"phone_num": "123-456-7890"}
         result = router.run(**kwargs)
         assert result == {"good_phone_num": "Phone number has a 123 area code"}
@@ -305,7 +369,10 @@ class TestRouter:
         serialized_router = router.to_dict()
         deserialized_router = ConditionalRouter.from_dict(serialized_router)
         assert deserialized_router.custom_filters == router.custom_filters
-        assert deserialized_router.custom_filters["custom_filter_to_sede"]("123-456-789") == 123
+        assert (
+            deserialized_router.custom_filters["custom_filter_to_sede"]("123-456-789")
+            == 123
+        )
         assert result == deserialized_router.run(**kwargs)
 
     def test_unsafe(self):
