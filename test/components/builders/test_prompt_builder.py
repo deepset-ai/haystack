@@ -2,12 +2,14 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 from typing import Any, Dict, List, Optional
-from jinja2 import TemplateSyntaxError
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
+
 import arrow
-from haystack.components.builders.prompt_builder import PromptBuilder
+import pytest
+from jinja2 import TemplateSyntaxError
+
 from haystack import component
+from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.core.pipeline.pipeline import Pipeline
 from haystack.dataclasses.document import Document
 
@@ -76,6 +78,14 @@ class TestPromptBuilder:
         outputs = builder.__haystack_output__._sockets_dict
         assert set(outputs.keys()) == {"prompt"}
         assert outputs["prompt"].type == str
+
+    @patch("haystack.components.builders.prompt_builder.Jinja2TimeExtension")
+    def test_init_with_missing_extension_dependency(self, extension_mock):
+        extension_mock.side_effect = ImportError
+        builder = PromptBuilder(template="This is a {{ variable }}")
+        assert builder._env.extensions == {}
+        res = builder.run(variable="test")
+        assert res == {"prompt": "This is a test"}
 
     def test_to_dict(self):
         builder = PromptBuilder(
