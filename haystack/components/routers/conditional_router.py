@@ -12,12 +12,7 @@ from jinja2.nativetypes import NativeEnvironment
 from jinja2.sandbox import SandboxedEnvironment
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.utils import (
-    deserialize_callable,
-    deserialize_type,
-    serialize_callable,
-    serialize_type,
-)
+from haystack.utils import deserialize_callable, deserialize_type, serialize_callable, serialize_type
 
 logger = logging.getLogger(__name__)
 
@@ -112,12 +107,7 @@ class ConditionalRouter:
     ```
     """
 
-    def __init__(
-        self,
-        routes: List[Dict],
-        custom_filters: Optional[Dict[str, Callable]] = None,
-        unsafe: bool = False,
-    ):
+    def __init__(self, routes: List[Dict], custom_filters: Optional[Dict[str, Callable]] = None, unsafe: bool = False):
         """
         Initializes the `ConditionalRouter` with a list of routes detailing the conditions for routing.
 
@@ -155,16 +145,12 @@ class ConditionalRouter:
 
         self._validate_routes(routes)
         # Inspect the routes to determine input and output types.
-        input_types: Set[str] = (
-            set()
-        )  # let's just store the name, type will always be Any
+        input_types: Set[str] = set()  # let's just store the name, type will always be Any
         output_types: Dict[str, str] = {}
 
         for route in routes:
             # extract inputs
-            route_input_names = self._extract_variables(
-                self._env, [route["output"], route["condition"]]
-            )
+            route_input_names = self._extract_variables(self._env, [route["output"], route["condition"]])
             input_types.update(route_input_names)
 
             # extract outputs
@@ -183,13 +169,8 @@ class ConditionalRouter:
         for route in self.routes:
             # output_type needs to be serialized to a string
             route["output_type"] = serialize_type(route["output_type"])
-        se_filters = {
-            name: serialize_callable(filter_func)
-            for name, filter_func in self.custom_filters.items()
-        }
-        return default_to_dict(
-            self, routes=self.routes, custom_filters=se_filters, unsafe=self._unsafe
-        )
+        se_filters = {name: serialize_callable(filter_func) for name, filter_func in self.custom_filters.items()}
+        return default_to_dict(self, routes=self.routes, custom_filters=se_filters, unsafe=self._unsafe)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ConditionalRouter":
@@ -212,9 +193,7 @@ class ConditionalRouter:
         custom_filters = init_params.get("custom_filters", {})
         if custom_filters is not None:
             for name, filter_func in custom_filters.items():
-                init_params["custom_filters"][name] = (
-                    deserialize_callable(filter_func) if filter_func else None
-                )
+                init_params["custom_filters"][name] = deserialize_callable(filter_func) if filter_func else None
         return default_from_dict(cls, data)
 
     def run(self, **kwargs):
@@ -256,9 +235,7 @@ class ConditionalRouter:
                     # and return the output as a dictionary under the output_name key
                     return {route["output_name"]: output}
             except Exception as e:
-                raise RouteConditionException(
-                    f"Error evaluating condition for route '{route}': {e}"
-                ) from e
+                raise RouteConditionException(f"Error evaluating condition for route '{route}': {e}") from e
 
         raise NoRouteSelectedException(f"No route fired. Routes: {self.routes}")
 
@@ -282,9 +259,7 @@ class ConditionalRouter:
                 )
             for field in ["condition", "output"]:
                 if not self._validate_template(self._env, route[field]):
-                    raise ValueError(
-                        f"Invalid template for field '{field}': {route[field]}"
-                    )
+                    raise ValueError(f"Invalid template for field '{field}': {route[field]}")
 
     def _extract_variables(self, env: Environment, templates: List[str]) -> Set[str]:
         """
