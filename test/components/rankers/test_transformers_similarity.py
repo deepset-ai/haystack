@@ -8,7 +8,7 @@ import pytest
 import torch
 from transformers.modeling_outputs import SequenceClassifierOutput
 
-from haystack import ComponentError, Document
+from haystack import Document
 from haystack.components.rankers.transformers_similarity import TransformersSimilarityRanker
 from haystack.utils.auth import Secret
 from haystack.utils.device import ComponentDevice, DeviceMap
@@ -202,7 +202,9 @@ class TestSimilarityRanker:
 
     @patch("torch.sigmoid")
     @patch("torch.sort")
-    def test_embed_meta(self, mocked_sort, mocked_sigmoid):
+    @patch("torch.stack")
+    def test_embed_meta(self, mocked_stack, mocked_sort, mocked_sigmoid):
+        mocked_stack.return_value = torch.tensor([0])
         mocked_sort.return_value = (None, torch.tensor([0]))
         mocked_sigmoid.return_value = torch.tensor([0])
         embedder = TransformersSimilarityRanker(
@@ -232,7 +234,9 @@ class TestSimilarityRanker:
 
     @patch("torch.sigmoid")
     @patch("torch.sort")
-    def test_prefix(self, mocked_sort, mocked_sigmoid):
+    @patch("torch.stack")
+    def test_prefix(self, mocked_stack, mocked_sort, mocked_sigmoid):
+        mocked_stack.return_value = torch.tensor([0])
         mocked_sort.return_value = (None, torch.tensor([0]))
         mocked_sigmoid.return_value = torch.tensor([0])
         embedder = TransformersSimilarityRanker(
@@ -261,7 +265,9 @@ class TestSimilarityRanker:
         )
 
     @patch("torch.sort")
-    def test_scale_score_false(self, mocked_sort):
+    @patch("torch.stack")
+    def test_scale_score_false(self, mocked_stack, mocked_sort):
+        mocked_stack.return_value = torch.FloatTensor([-10.6859, -8.9874])
         mocked_sort.return_value = (None, torch.tensor([0, 1]))
         embedder = TransformersSimilarityRanker(model="model", scale_score=False)
         embedder.model = MagicMock()
@@ -277,7 +283,9 @@ class TestSimilarityRanker:
         assert out["documents"][1].score == pytest.approx(-8.9874, abs=1e-4)
 
     @patch("torch.sort")
-    def test_score_threshold(self, mocked_sort):
+    @patch("torch.stack")
+    def test_score_threshold(self, mocked_stack, mocked_sort):
+        mocked_stack.return_value = torch.FloatTensor([0.955, 0.001])
         mocked_sort.return_value = (None, torch.tensor([0, 1]))
         embedder = TransformersSimilarityRanker(model="model", scale_score=False, score_threshold=0.1)
         embedder.model = MagicMock()

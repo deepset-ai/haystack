@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
     import accelerate  # pylint: disable=unused-import # the library is used but not directly referenced
     import torch
+    from torch.utils.data import DataLoader, Dataset
     from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 
@@ -42,7 +43,7 @@ class TransformersSimilarityRanker:
     ```
     """
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         model: Union[str, Path] = "cross-encoder/ms-marco-MiniLM-L-6-v2",
         device: Optional[ComponentDevice] = None,
@@ -57,6 +58,7 @@ class TransformersSimilarityRanker:
         score_threshold: Optional[float] = None,
         model_kwargs: Optional[Dict[str, Any]] = None,
         tokenizer_kwargs: Optional[Dict[str, Any]] = None,
+        batch_size: int = 16,
     ):
         """
         Creates an instance of TransformersSimilarityRanker.
@@ -93,6 +95,9 @@ class TransformersSimilarityRanker:
         :param tokenizer_kwargs:
             Additional keyword arguments for `AutoTokenizer.from_pretrained` when loading the tokenizer.
             Refer to specific model documentation for available kwargs.
+        :param batch_size:
+            The batch size to use for inference. The higher the batch size, the more memory is required.
+            If you run into memory issues, reduce the batch size.
 
         :raises ValueError:
             If `top_k` is not > 0.
@@ -117,6 +122,7 @@ class TransformersSimilarityRanker:
         model_kwargs = resolve_hf_device_map(device=device, model_kwargs=model_kwargs)
         self.model_kwargs = model_kwargs
         self.tokenizer_kwargs = tokenizer_kwargs or {}
+        self.batch_size = batch_size
 
         # Parameter validation
         if self.scale_score and self.calibration_factor is None:
@@ -261,11 +267,28 @@ class TransformersSimilarityRanker:
             text_to_embed = self.embedding_separator.join(meta_values_to_embed + [doc.content or ""])
             query_doc_pairs.append([self.query_prefix + query, self.document_prefix + text_to_embed])
 
-        features = self.tokenizer(query_doc_pairs, padding=True, truncation=True, return_tensors="pt").to(  # type: ignore
+        class _Dataset(Dataset):
+            def __init__(self, batch_encoding):
+                self.batch_encoding = batch_encoding
+
+            def __len__(self):
+                return len(self.batch_encoding["input_ids"])
+
+            def __getitem__(self, item):
+                return {key: self.batch_encoding.data[key][item] for key in self.batch_encoding.data.keys()}
+
+        batch_enc = self.tokenizer(query_doc_pairs, padding=True, truncation=True, return_tensors="pt").to(  # type: ignore
             self.device.first_device.to_torch()
         )
+        dataset = _Dataset(batch_enc)
+        inp_dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False)
+
+        similarity_scores = []
         with torch.inference_mode():
-            similarity_scores = self.model(**features).logits.squeeze(dim=1)  # type: ignore
+            for features in inp_dataloader:
+                model_preds = self.model(**features).logits.squeeze(dim=1)  # type: ignore
+                similarity_scores.extend(model_preds)
+        similarity_scores = torch.stack(similarity_scores)
 
         if scale_score:
             similarity_scores = torch.sigmoid(similarity_scores * calibration_factor)
