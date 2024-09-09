@@ -121,6 +121,7 @@ class TransformersZeroShotDocumentClassifier:
         self.token = token
         self.labels = labels
         self.multi_label = multi_label
+        component.set_output_types(self, **{label: str for label in labels})
 
         huggingface_pipeline_kwargs = resolve_hf_pipeline_kwargs(
             huggingface_pipeline_kwargs=huggingface_pipeline_kwargs or {},
@@ -133,6 +134,14 @@ class TransformersZeroShotDocumentClassifier:
 
         self.huggingface_pipeline_kwargs = huggingface_pipeline_kwargs
         self.pipeline = None
+
+    def _get_telemetry_data(self) -> Dict[str, Any]:
+        """
+        Data that is sent to Posthog for usage analytics.
+        """
+        if isinstance(self.huggingface_pipeline_kwargs["model"], str):
+            return {"model": self.huggingface_pipeline_kwargs["model"]}
+        return {"model": f"[object of type {type(self.huggingface_pipeline_kwargs['model'])}]"}
 
     def warm_up(self):
         """
