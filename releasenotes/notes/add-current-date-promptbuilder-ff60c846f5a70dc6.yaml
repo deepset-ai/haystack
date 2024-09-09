@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Add the current date inside a template in `PromptBuilder` using the `utc_now()`.
+    Users can also specify the date format, such as `utc_now("%Y-%m-%d")`.
