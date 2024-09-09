@@ -4,13 +4,13 @@
 
 from typing import Any, List, Optional, Union
 
+from jinja2 import Environment, nodes
+from jinja2.ext import Extension
+
 from haystack.lazy_imports import LazyImport
 
 with LazyImport(message='Run "pip install arrow>=1.3.0"') as arrow_import:
     import arrow
-
-from jinja2 import Environment, nodes
-from jinja2.ext import Extension
 
 
 class Jinja2TimeExtension(Extension):
