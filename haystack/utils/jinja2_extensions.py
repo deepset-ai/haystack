@@ -35,7 +35,7 @@ class Jinja2TimeExtension(Extension):
         :param timezone: The timezone string (e.g., 'UTC' or 'America/New_York') for which the current
             time should be fetched.
         :param operator: The operator ('+' or '-') to apply to the offset (used for adding/subtracting intervals).
-            Defaults to None if no offset is applied.
+            Defaults to None if no offset is applied, otherwise default is '+'.
         :param offset: The offset string in the format 'interval=value' (e.g., 'hours=2,days=1') specifying how much
             to adjust the datetime. The intervals can be any valid interval accepted
             by Arrow (e.g., hours, days, weeks, months). Defaults to None if no adjustment is needed.
@@ -47,7 +47,7 @@ class Jinja2TimeExtension(Extension):
         except Exception as e:
             raise ValueError(f"Invalid timezone {timezone}: {e}")
 
-        if offset is not None and operator is not None:
+        if offset and operator:
             try:
                 # Parse the offset and apply it to the datetime object
                 replace_params = {
@@ -73,22 +73,19 @@ class Jinja2TimeExtension(Extension):
             It's used to interpret the template's structure.
         """
         lineno = next(parser.stream).lineno
-
         node = parser.parse_expression()
-
         # Check if a custom datetime format is provided after a comma
         datetime_format = parser.parse_expression() if parser.stream.skip_if("comma") else nodes.Const(None)
 
-        if isinstance(node, (nodes.Add, nodes.Sub)):
-            operator = "+" if isinstance(node, nodes.Add) else "-"
-            # Call the _get_datetime method with the appropriate operator and offset
-            call_method = self.call_method(
-                "_get_datetime", [node.left, nodes.Const(operator), node.right, datetime_format], lineno=lineno
-            )
-        else:
-            # If no Add/Subtract, just call _get_datetime for the current time without offsets
-            call_method = self.call_method(
-                "_get_datetime", [node, nodes.Const(None), nodes.Const(None), datetime_format], lineno=lineno
-            )
+        # Default Add when no operator is provided
+        operator = "+" if isinstance(node, nodes.Add) else "-"
+        # Call the _get_datetime method with the appropriate operator and offset, if exist
+        call_method = self.call_method(
+            "_get_datetime",
+            [node.left, nodes.Const(operator), node.right, datetime_format]
+            if isinstance(node, (nodes.Add, nodes.Sub))
+            else [node, nodes.Const(None), nodes.Const(None), datetime_format],
+            lineno=lineno,
+        )
 
         return nodes.Output([call_method], lineno=lineno)
