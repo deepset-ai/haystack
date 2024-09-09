@@ -6,8 +6,10 @@ import pytest
 
 from unittest.mock import patch
 
-from haystack import Document
+from haystack import Document, Pipeline
 from haystack.components.classifiers import TransformersZeroShotDocumentClassifier
+from haystack.components.retrievers import InMemoryBM25Retriever
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.utils import ComponentDevice, Secret
 
 
@@ -56,7 +58,6 @@ class TestTransformersZeroShotDocumentClassifier:
                 },
             },
         }
-
         component = TransformersZeroShotDocumentClassifier.from_dict(data)
         assert component.labels == ["positive", "negative"]
         assert component.pipeline is None
@@ -145,3 +146,20 @@ class TestTransformersZeroShotDocumentClassifier:
         assert component.pipeline is not None
         assert result["documents"][0].to_dict()["classification"]["label"] == "positive"
         assert result["documents"][1].to_dict()["classification"]["label"] == "negative"
+
+    def test_serialization_and_deserialization_pipeline(self):
+        pipeline = Pipeline()
+        document_store = InMemoryDocumentStore()
+        retriever = InMemoryBM25Retriever(document_store=document_store)
+        document_classifier = TransformersZeroShotDocumentClassifier(
+            model="cross-encoder/nli-deberta-v3-xsmall", labels=["positive", "negative"]
+        )
+
+        pipeline.add_component(instance=retriever, name="retriever")
+        pipeline.add_component(instance=document_classifier, name="document_classifier")
+        pipeline.connect("retriever", "document_classifier")
+        pipeline_dump = pipeline.dumps()
+
+        new_pipeline = Pipeline.loads(pipeline_dump)
+
+        assert new_pipeline == pipeline
