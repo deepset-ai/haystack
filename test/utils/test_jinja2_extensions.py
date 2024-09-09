@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from unittest.mock import patch
+
 import pytest
 from jinja2 import Environment
 import arrow
@@ -16,6 +18,12 @@ class TestJinja2TimeExtension:
     @pytest.fixture
     def jinja_extension(self, jinja_env: Environment) -> Jinja2TimeExtension:
         return Jinja2TimeExtension(jinja_env)
+
+    @patch("haystack.utils.jinja2_extensions.arrow_import")
+    def test_init_fails_without_arrow(self, arrow_import_mock) -> None:
+        arrow_import_mock.check.side_effect = ImportError
+        with pytest.raises(ImportError):
+            Jinja2TimeExtension(Environment())
 
     def test_valid_datetime(self, jinja_extension: Jinja2TimeExtension) -> None:
         result = jinja_extension._get_datetime(
