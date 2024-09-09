@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Add `precision` parameter to Sentence Transformers Embedders, which allows quantized
+    embeddings. Especially useful for reducing the size of the embeddings of a corpus for semantic search, among other tasks.

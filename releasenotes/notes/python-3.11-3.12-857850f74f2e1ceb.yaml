@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Document Python 3.11 and 3.12 support in project configuration.

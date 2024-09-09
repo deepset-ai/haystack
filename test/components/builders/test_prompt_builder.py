@@ -4,7 +4,8 @@
 from typing import Any, Dict, List, Optional
 from jinja2 import TemplateSyntaxError
 import pytest
-
+from unittest.mock import patch, MagicMock
+import arrow
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack import component
 from haystack.core.pipeline.pipeline import Pipeline
@@ -254,3 +255,59 @@ class TestPromptBuilder:
             "prompt_builder": {"prompt": "This is the dynamic prompt:\n Query: Where does the speaker live?"}
         }
         assert result == expected_dynamic
+
+    def test_with_custom_dateformat(self) -> None:
+        template = "Formatted date: {% now 'UTC', '%Y-%m-%d' %}"
+        builder = PromptBuilder(template=template)
+
+        result = builder.run()["prompt"]
+
+        now_formatted = f"Formatted date: {arrow.now('UTC').strftime('%Y-%m-%d')}"
+
+        assert now_formatted == result
+
+    def test_with_different_timezone(self) -> None:
+        template = "Current time in New York is: {% now 'America/New_York' %}"
+        builder = PromptBuilder(template=template)
+
+        result = builder.run()["prompt"]
+
+        now_ny = f"Current time in New York is: {arrow.now('America/New_York').strftime('%Y-%m-%d %H:%M:%S')}"
+
+        assert now_ny == result
+
+    def test_date_with_addition_offset(self) -> None:
+        template = "Time after 2 hours is: {% now 'UTC' + 'hours=2' %}"
+        builder = PromptBuilder(template=template)
+
+        result = builder.run()["prompt"]
+
+        now_plus_2 = f"Time after 2 hours is: {(arrow.now('UTC').shift(hours=+2)).strftime('%Y-%m-%d %H:%M:%S')}"
+
+        assert now_plus_2 == result
+
+    def test_date_with_substraction_offset(self) -> None:
+        template = "Time after 12 days is: {% now 'UTC' - 'days=12' %}"
+        builder = PromptBuilder(template=template)
+
+        result = builder.run()["prompt"]
+
+        now_plus_2 = f"Time after 12 days is: {(arrow.now('UTC').shift(days=-12)).strftime('%Y-%m-%d %H:%M:%S')}"
+
+        assert now_plus_2 == result
+
+    def test_invalid_timezone(self) -> None:
+        template = "Current time is: {% now 'Invalid/Timezone' %}"
+        builder = PromptBuilder(template=template)
+
+        # Expect ValueError for invalid timezone
+        with pytest.raises(ValueError, match="Invalid timezone"):
+            builder.run()
+
+    def test_invalid_offset(self) -> None:
+        template = "Time after invalid offset is: {% now 'UTC' + 'invalid_offset' %}"
+        builder = PromptBuilder(template=template)
+
+        # Expect ValueError for invalid offset
+        with pytest.raises(ValueError, match="Invalid offset or operator"):
+            builder.run()

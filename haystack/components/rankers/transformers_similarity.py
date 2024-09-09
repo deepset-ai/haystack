@@ -56,6 +56,7 @@ class TransformersSimilarityRanker:
         calibration_factor: Optional[float] = 1.0,
         score_threshold: Optional[float] = None,
         model_kwargs: Optional[Dict[str, Any]] = None,
+        tokenizer_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
         Creates an instance of TransformersSimilarityRanker.
@@ -89,6 +90,9 @@ class TransformersSimilarityRanker:
         :param model_kwargs:
             Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
             when loading the model. Refer to specific model documentation for available kwargs.
+        :param tokenizer_kwargs:
+            Additional keyword arguments for `AutoTokenizer.from_pretrained` when loading the tokenizer.
+            Refer to specific model documentation for available kwargs.
 
         :raises ValueError:
             If `top_k` is not > 0.
@@ -112,6 +116,7 @@ class TransformersSimilarityRanker:
 
         model_kwargs = resolve_hf_device_map(device=device, model_kwargs=model_kwargs)
         self.model_kwargs = model_kwargs
+        self.tokenizer_kwargs = tokenizer_kwargs or {}
 
         # Parameter validation
         if self.scale_score and self.calibration_factor is None:
@@ -137,7 +142,9 @@ class TransformersSimilarityRanker:
                 self.model_name_or_path, token=self.token.resolve_value() if self.token else None, **self.model_kwargs
             )
             self.tokenizer = AutoTokenizer.from_pretrained(
-                self.model_name_or_path, token=self.token.resolve_value() if self.token else None
+                self.model_name_or_path,
+                token=self.token.resolve_value() if self.token else None,
+                **self.tokenizer_kwargs,
             )
             self.device = ComponentDevice.from_multiple(device_map=DeviceMap.from_hf(self.model.hf_device_map))
 
@@ -162,6 +169,7 @@ class TransformersSimilarityRanker:
             calibration_factor=self.calibration_factor,
             score_threshold=self.score_threshold,
             model_kwargs=self.model_kwargs,
+            tokenizer_kwargs=self.tokenizer_kwargs,
         )
 
         serialize_hf_model_kwargs(serialization_dict["init_parameters"]["model_kwargs"])

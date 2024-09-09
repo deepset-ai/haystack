@@ -243,6 +243,36 @@ class TestRouter:
         # check that the result is the same and correct
         assert result1 == result2 and result1 == {"streams": [1, 2, 3]}
 
+    def test_router_de_serialization_with_none_argument(self):
+        new_router = ConditionalRouter.from_dict(
+            {
+                "type": "haystack.components.routers.conditional_router.ConditionalRouter",
+                "init_parameters": {
+                    "routes": [
+                        {
+                            "condition": "{{streams|length < 2}}",
+                            "output": "{{query}}",
+                            "output_type": "str",
+                            "output_name": "query",
+                        },
+                        {
+                            "condition": "{{streams|length >= 2}}",
+                            "output": "{{streams}}",
+                            "output_type": "typing.List[int]",
+                            "output_name": "streams",
+                        },
+                    ],
+                    "custom_filters": None,
+                    "unsafe": False,
+                },
+            }
+        )
+
+        # now use both routers with the same input
+        kwargs = {"streams": [1, 2, 3], "query": "Haystack"}
+        result2 = new_router.run(**kwargs)
+        assert result2 == {"streams": [1, 2, 3]}
+
     def test_router_serialization_idempotence(self):
         routes = [
             {
@@ -307,3 +337,24 @@ class TestRouter:
         assert deserialized_router.custom_filters == router.custom_filters
         assert deserialized_router.custom_filters["custom_filter_to_sede"]("123-456-789") == 123
         assert result == deserialized_router.run(**kwargs)
+
+    def test_unsafe(self):
+        routes = [
+            {
+                "condition": "{{streams|length < 2}}",
+                "output": "{{message}}",
+                "output_type": ChatMessage,
+                "output_name": "message",
+            },
+            {
+                "condition": "{{streams|length >= 2}}",
+                "output": "{{streams}}",
+                "output_type": List[int],
+                "output_name": "streams",
+            },
+        ]
+        router = ConditionalRouter(routes, unsafe=True)
+        streams = [1]
+        message = ChatMessage.from_user(content="This is a message")
+        res = router.run(streams=streams, message=message)
+        assert res == {"message": message}

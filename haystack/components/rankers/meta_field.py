@@ -20,7 +20,8 @@ class MetaFieldRanker:
     The ranking can be performed in descending order or ascending order.
 
     Usage example:
-    ```
+
+    ```python
     from haystack import Document
     from haystack.components.rankers import MetaFieldRanker
 
@@ -34,6 +35,7 @@ class MetaFieldRanker:
     output = ranker.run(documents=docs)
     docs = output["documents"]
     assert docs[0].content == "Barcelona"
+    ```
     """
 
     def __init__(
@@ -69,11 +71,11 @@ class MetaFieldRanker:
         :param missing_meta:
             What to do with documents that are missing the sorting metadata field.
             Possible values are:
-            - 'drop' will drop the documents entirely.
-            - 'top' will place the documents at the top of the metadata-sorted list
-                (regardless of 'ascending' or 'descending').
-            - 'bottom' will place the documents at the bottom of metadata-sorted list
-                (regardless of 'ascending' or 'descending').
+                - 'drop' will drop the documents entirely.
+                - 'top' will place the documents at the top of the metadata-sorted list
+                    (regardless of 'ascending' or 'descending').
+                - 'bottom' will place the documents at the bottom of metadata-sorted list
+                    (regardless of 'ascending' or 'descending').
         :param meta_value_type:
             Parse the meta value into the data type specified before sorting.
             This will only work if all meta values stored under `meta_field` in the provided documents are strings.

@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    For components that support multiple Document Stores, prioritize using the specific `from_dict` class method
+    for deserialization when available. Otherwise, fall back to the generic `default_from_dict` method.
+    This impacts the following generic components: `CacheChecker`, `DocumentWriter`, `FilterRetriever`, and
+    `SentenceWindowRetriever`.

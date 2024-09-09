@@ -4,9 +4,9 @@
 
 from typing import Any, Dict, List, Optional
 
-from haystack import DeserializationError, Document, component, default_from_dict, default_to_dict, logging
-from haystack.core.serialization import import_class_by_name
+from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.document_stores.types import DocumentStore
+from haystack.utils import deserialize_document_store_in_init_params_inplace
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,8 @@ class FilterRetriever:
     """
     Retrieves documents that match the provided filters.
 
-    Usage example:
+    ### Usage example
+
     ```python
     from haystack import Document
     from haystack.components.retrievers import FilterRetriever
@@ -31,7 +32,7 @@ class FilterRetriever:
     doc_store.write_documents(docs)
     retriever = FilterRetriever(doc_store, filters={"field": "lang", "operator": "==", "value": "en"})
 
-    # if passed in the run method, filters will override those provided at initialization
+    # if passed in the run method, filters override those provided at initialization
     result = retriever.run(filters={"field": "lang", "operator": "==", "value": "de"})
 
     print(result["documents"])
@@ -43,7 +44,7 @@ class FilterRetriever:
         Create the FilterRetriever component.
 
         :param document_store:
-            An instance of a DocumentStore.
+            An instance of a Document Store to use with the Retriever.
         :param filters:
             A dictionary with filters to narrow down the search space.
         """
@@ -76,18 +77,8 @@ class FilterRetriever:
         :returns:
             The deserialized component.
         """
-        init_params = data.get("init_parameters", {})
-        if "document_store" not in init_params:
-            raise DeserializationError("Missing 'document_store' in serialization data")
-        if "type" not in init_params["document_store"]:
-            raise DeserializationError("Missing 'type' in document store's serialization data")
-
-        doc_store_data = data["init_parameters"]["document_store"]
-        try:
-            doc_store_class = import_class_by_name(doc_store_data["type"])
-        except ImportError as e:
-            raise DeserializationError(f"Class '{doc_store_data['type']}' not correctly imported") from e
-        data["init_parameters"]["document_store"] = default_from_dict(doc_store_class, doc_store_data)
+        # deserialize the document store
+        deserialize_document_store_in_init_params_inplace(data)
 
         return default_from_dict(cls, data)
 
@@ -98,8 +89,8 @@ class FilterRetriever:
 
         :param filters:
             A dictionary with filters to narrow down the search space.
-            If not specified, the FilterRetriever uses the value provided at initialization.
+            If not specified, the FilterRetriever uses the values provided at initialization.
         :returns:
-            The retrieved documents.
+            A list of retrieved documents.
         """
         return {"documents": self.document_store.filter_documents(filters=filters or self.filters)}

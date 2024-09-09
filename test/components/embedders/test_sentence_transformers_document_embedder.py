@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
+import torch
 
 from haystack import Document
 from haystack.components.embedders.sentence_transformers_document_embedder import SentenceTransformersDocumentEmbedder
@@ -26,6 +27,7 @@ class TestSentenceTransformersDocumentEmbedder:
         assert embedder.embedding_separator == "\n"
         assert embedder.trust_remote_code is False
         assert embedder.truncate_dim is None
+        assert embedder.precision == "float32"
 
     def test_init_with_parameters(self):
         embedder = SentenceTransformersDocumentEmbedder(
@@ -41,6 +43,7 @@ class TestSentenceTransformersDocumentEmbedder:
             embedding_separator=" | ",
             trust_remote_code=True,
             truncate_dim=256,
+            precision="int8",
         )
         assert embedder.model == "model"
         assert embedder.device == ComponentDevice.from_str("cuda:0")
@@ -54,6 +57,7 @@ class TestSentenceTransformersDocumentEmbedder:
         assert embedder.embedding_separator == " | "
         assert embedder.trust_remote_code
         assert embedder.truncate_dim == 256
+        assert embedder.precision == "int8"
 
     def test_to_dict(self):
         component = SentenceTransformersDocumentEmbedder(model="model", device=ComponentDevice.from_str("cpu"))
@@ -73,6 +77,9 @@ class TestSentenceTransformersDocumentEmbedder:
                 "meta_fields_to_embed": [],
                 "trust_remote_code": False,
                 "truncate_dim": None,
+                "model_kwargs": None,
+                "tokenizer_kwargs": None,
+                "precision": "float32",
             },
         }
 
@@ -90,6 +97,9 @@ class TestSentenceTransformersDocumentEmbedder:
             embedding_separator=" - ",
             trust_remote_code=True,
             truncate_dim=256,
+            model_kwargs={"torch_dtype": torch.float32},
+            tokenizer_kwargs={"model_max_length": 512},
+            precision="int8",
         )
         data = component.to_dict()
 
@@ -108,6 +118,9 @@ class TestSentenceTransformersDocumentEmbedder:
                 "trust_remote_code": True,
                 "meta_fields_to_embed": ["meta_field"],
                 "truncate_dim": 256,
+                "model_kwargs": {"torch_dtype": "torch.float32"},
+                "tokenizer_kwargs": {"model_max_length": 512},
+                "precision": "int8",
             },
         }
 
@@ -125,6 +138,9 @@ class TestSentenceTransformersDocumentEmbedder:
             "meta_fields_to_embed": ["meta_field"],
             "trust_remote_code": True,
             "truncate_dim": 256,
+            "model_kwargs": {"torch_dtype": "torch.float32"},
+            "tokenizer_kwargs": {"model_max_length": 512},
+            "precision": "int8",
         }
         component = SentenceTransformersDocumentEmbedder.from_dict(
             {
@@ -144,6 +160,9 @@ class TestSentenceTransformersDocumentEmbedder:
         assert component.trust_remote_code
         assert component.meta_fields_to_embed == ["meta_field"]
         assert component.truncate_dim == 256
+        assert component.model_kwargs == {"torch_dtype": torch.float32}
+        assert component.tokenizer_kwargs == {"model_max_length": 512}
+        assert component.precision == "int8"
 
     def test_from_dict_no_default_parameters(self):
         component = SentenceTransformersDocumentEmbedder.from_dict(
@@ -164,6 +183,7 @@ class TestSentenceTransformersDocumentEmbedder:
         assert component.trust_remote_code is False
         assert component.meta_fields_to_embed == []
         assert component.truncate_dim is None
+        assert component.precision == "float32"
 
     def test_from_dict_none_device(self):
         init_parameters = {
@@ -179,6 +199,7 @@ class TestSentenceTransformersDocumentEmbedder:
             "meta_fields_to_embed": ["meta_field"],
             "trust_remote_code": True,
             "truncate_dim": None,
+            "precision": "float32",
         }
         component = SentenceTransformersDocumentEmbedder.from_dict(
             {
@@ -198,18 +219,29 @@ class TestSentenceTransformersDocumentEmbedder:
         assert component.trust_remote_code
         assert component.meta_fields_to_embed == ["meta_field"]
         assert component.truncate_dim is None
+        assert component.precision == "float32"
 
     @patch(
         "haystack.components.embedders.sentence_transformers_document_embedder._SentenceTransformersEmbeddingBackendFactory"
     )
     def test_warmup(self, mocked_factory):
         embedder = SentenceTransformersDocumentEmbedder(
-            model="model", token=None, device=ComponentDevice.from_str("cpu")
+            model="model",
+            token=None,
+            device=ComponentDevice.from_str("cpu"),
+            tokenizer_kwargs={"model_max_length": 512},
         )
         mocked_factory.get_embedding_backend.assert_not_called()
         embedder.warm_up()
+        embedder.embedding_backend.model.max_seq_length = 512
         mocked_factory.get_embedding_backend.assert_called_once_with(
-            model="model", device="cpu", auth_token=None, trust_remote_code=False, truncate_dim=None
+            model="model",
+            device="cpu",
+            auth_token=None,
+            trust_remote_code=False,
+            truncate_dim=None,
+            model_kwargs=None,
+            tokenizer_kwargs={"model_max_length": 512},
         )
 
     @patch(
@@ -275,6 +307,7 @@ class TestSentenceTransformersDocumentEmbedder:
             batch_size=32,
             show_progress_bar=True,
             normalize_embeddings=False,
+            precision="float32",
         )
 
     def test_prefix_suffix(self):
@@ -302,4 +335,5 @@ class TestSentenceTransformersDocumentEmbedder:
             batch_size=32,
             show_progress_bar=True,
             normalize_embeddings=False,
+            precision="float32",
         )

@@ -15,7 +15,10 @@ from huggingface_hub import (
 )
 from huggingface_hub.utils import RepositoryNotFoundError
 
-from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
+from haystack.components.generators.chat.hugging_face_api import (
+    HuggingFaceAPIChatGenerator,
+    _convert_message_to_hfapi_format,
+)
 from haystack.dataclasses import ChatMessage, StreamingChunk
 from haystack.utils.auth import Secret
 from haystack.utils.hf import HFGenerationAPIType
@@ -56,6 +59,21 @@ def mock_chat_completion():
 # used to test serialization of streaming_callback
 def streaming_callback_handler(x):
     return x
+
+
+def test_convert_message_to_hfapi_format():
+    message = ChatMessage.from_system("You are good assistant")
+    assert _convert_message_to_hfapi_format(message) == {"role": "system", "content": "You are good assistant"}
+
+    message = ChatMessage.from_user("I have a question")
+    assert _convert_message_to_hfapi_format(message) == {"role": "user", "content": "I have a question"}
+
+    message = ChatMessage.from_function("Function call", "function_name")
+    assert _convert_message_to_hfapi_format(message) == {
+        "role": "function",
+        "content": "Function call",
+        "name": "function_name",
+    }
 
 
 class TestHuggingFaceAPIGenerator:
