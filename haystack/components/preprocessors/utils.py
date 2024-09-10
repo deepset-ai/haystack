@@ -157,6 +157,13 @@ class SentenceSplitter:  # pylint: disable=too-few-public-methods
         return sentences
 
     def _apply_split_rules(self, text: str, sentence_spans: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
+        """
+        Applies additional split rules to the sentence spans.
+
+        :param text: The text to split.
+        :param sentence_spans: The list of sentence spans to split.
+        :returns: The list of sentence spans after applying the split rules.
+        """
         new_sentence_spans = []
         quote_spans = [match.span() for match in re.finditer(r"\W(\"+|\'+).*?\1", text)]
         while sentence_spans:

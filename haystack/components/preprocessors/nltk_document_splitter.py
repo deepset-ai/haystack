@@ -70,6 +70,14 @@ class NLTKDocumentSplitter(DocumentSplitter):
         self.language = language
 
     def _split_into_units(self, text: str, split_by: Literal["word", "sentence", "passage", "page"]) -> List[str]:
+        """
+        Splits the text into units based on the specified split_by parameter.
+
+        :param text: The text to split.
+        :param split_by: The unit to split the text by. Choose from "word", "sentence", "passage", or "page".
+        :returns: A list of units.
+        """
+
         if split_by == "page":
             self.split_at = "\f"
             units = text.split(self.split_at)
@@ -148,6 +156,11 @@ class NLTKDocumentSplitter(DocumentSplitter):
     def _number_of_sentences_to_keep(sentences: List[str], split_length: int, split_overlap: int) -> int:
         """
         Returns the number of sentences to keep in the next chunk based on the `split_overlap` and `split_length`.
+
+        :param sentences: The list of sentences to split.
+        :param split_length: The maximum number of words in each split.
+        :param split_overlap: The number of overlapping words in each split.
+        :returns: The number of sentences to keep in the next chunk.
         """
         # If the split_overlap is 0, we don't need to keep any sentences
         if split_overlap == 0:
@@ -170,6 +183,11 @@ class NLTKDocumentSplitter(DocumentSplitter):
     ) -> Tuple[List[str], List[int], List[int]]:
         """
         Groups the sentences into chunks of `split_length` words while respecting sentence boundaries.
+
+        :param sentences: The list of sentences to split.
+        :param split_length: The maximum number of words in each split.
+        :param split_overlap: The number of overlapping words in each split.
+        :returns: A tuple containing the concatenated sentences, the start page numbers, and the start indices.
         """
         # Chunk information
         chunk_word_count = 0
