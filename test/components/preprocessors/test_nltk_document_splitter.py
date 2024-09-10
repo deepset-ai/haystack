@@ -12,7 +12,7 @@ def test_init_warning_message(caplog: LogCaptureFixture) -> None:
     assert "The 'respect_sentence_boundary' option is only supported for" in caplog.text
 
 
-class TestDocumentSplitterSplitIntoUnits:
+class TestNLTKDocumentSplitterSplitIntoUnits:
     def test_document_splitter_split_into_units_word(self) -> None:
         document_splitter = NLTKDocumentSplitter(
             split_by="word", split_length=3, split_overlap=0, split_threshold=0, language="en"
@@ -83,7 +83,7 @@ class TestDocumentSplitterSplitIntoUnits:
             document_splitter._split_into_units(text=text, split_by="invalid")  # type: ignore
 
 
-class TestDocumentSplitterNumberOfSentencesToKeep:
+class TestNLTKDocumentSplitterNumberOfSentencesToKeep:
     @pytest.mark.parametrize(
         "sentences, expected_num_sentences",
         [
@@ -110,7 +110,7 @@ class TestDocumentSplitterNumberOfSentencesToKeep:
         assert num_sentences == 0
 
 
-class TestDocumentSplitterRun:
+class TestNLTKDocumentSplitterRun:
     def test_run_type_error(self) -> None:
         document_splitter = NLTKDocumentSplitter()
         with pytest.raises(TypeError):
@@ -245,7 +245,7 @@ class TestDocumentSplitterRun:
         assert documents[2].meta["split_idx_start"] == text.index(documents[2].content)
 
 
-class TestDocumentSplitterRespectSentenceBoundary:
+class TestNLTKDocumentSplitterRespectSentenceBoundary:
     def test_run_split_by_word_respect_sentence_boundary(self) -> None:
         document_splitter = NLTKDocumentSplitter(
             split_by="word",

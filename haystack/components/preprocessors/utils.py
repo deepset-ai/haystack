@@ -92,17 +92,17 @@ def load_sentence_tokenizer(
         try:
             nltk.download("punkt_tab")
         except FileExistsError as error:
-            logger.debug("NLTK punkt tokenizer seems to be already downloaded. Error message: %s", error)
+            logger.debug("NLTK punkt tokenizer seems to be already downloaded. Error message: {error}", error=error)
 
     language_name = ISO639_TO_NLTK.get(language)
 
     if language_name is not None:
         sentence_tokenizer = nltk.data.load(f"tokenizers/punkt_tab/{language_name}.pickle")
     else:
-        logger.error(
-            "PreProcessor couldn't find the default sentence tokenizer model for %s. "
+        logger.warning(
+            "PreProcessor couldn't find the default sentence tokenizer model for {language}. "
             " Using English instead. You may train your own model and use the 'tokenizer_model_folder' parameter.",
-            language,
+            language=language,
         )
         sentence_tokenizer = nltk.data.load("tokenizers/punkt_tab/english.pickle")
 
@@ -221,7 +221,7 @@ class SentenceSplitter:  # pylint: disable=too-few-public-methods
         """
         abbreviations_file = Path(__file__).parent.parent / f"data/abbreviations/{language}.txt"
         if not abbreviations_file.exists():
-            logger.warning("No abbreviations file found for language %s. Using default abbreviations.", language)
+            logger.warning("No abbreviations file found for {language}.Using default abbreviations.", language=language)
             return []
 
         abbreviations = abbreviations_file.read_text().split("\n")
