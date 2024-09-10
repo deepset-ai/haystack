@@ -1138,24 +1138,43 @@ class TestPipeline:
 
     def test__find_components_that_will_receive_no_input(self):
         sentence_builder = component_class(
-            "SentenceBuilder", input_types={"words": List[str]}, output={"text": "some words"}
+            "SentenceBuilder", input_types={"words": List[str]}, output_types={"text": str}
         )()
         document_builder = component_class(
-            "DocumentBuilder", input_types={"text": str}, output={"doc": Document(content="some words")}
+            "DocumentBuilder", input_types={"text": str}, output_types={"doc": Document}
         )()
+        conditional_document_builder = component_class(
+            "ConditionalDocumentBuilder", output_types={"doc": Document, "noop": None}
+        )()
+
         document_joiner = component_class("DocumentJoiner", input_types={"docs": Variadic[Document]})()
 
         pipe = Pipeline()
         pipe.add_component("sentence_builder", sentence_builder)
         pipe.add_component("document_builder", document_builder)
         pipe.add_component("document_joiner", document_joiner)
+        pipe.add_component("conditional_document_builder", conditional_document_builder)
         pipe.connect("sentence_builder.text", "document_builder.text")
         pipe.connect("document_builder.doc", "document_joiner.docs")
+        pipe.connect("conditional_document_builder.doc", "document_joiner.docs")
 
-        res = pipe._find_components_that_will_receive_no_input("sentence_builder", {})
+        res = pipe._find_components_that_will_receive_no_input("sentence_builder", {}, {})
         assert res == {("document_builder", document_builder), ("document_joiner", document_joiner)}
 
-        res = pipe._find_components_that_will_receive_no_input("sentence_builder", {"text": "some text"})
+        res = pipe._find_components_that_will_receive_no_input("sentence_builder", {"text": "some text"}, {})
+        assert res == set()
+
+        res = pipe._find_components_that_will_receive_no_input("conditional_document_builder", {"noop": None}, {})
+        assert res == {("document_joiner", document_joiner)}
+
+        res = pipe._find_components_that_will_receive_no_input(
+            "conditional_document_builder", {"noop": None}, {"document_joiner": {"docs": []}}
+        )
+        assert res == {("document_joiner", document_joiner)}
+
+        res = pipe._find_components_that_will_receive_no_input(
+            "conditional_document_builder", {"noop": None}, {"document_joiner": {"docs": [Document("some text")]}}
+        )
         assert res == set()
 
     def test__distribute_output(self):
