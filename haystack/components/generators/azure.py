@@ -69,7 +69,6 @@ class AzureOpenAIGenerator(OpenAIGenerator):
         max_retries: Optional[int] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
         default_headers: Optional[Dict[str, str]] = None,
-        azure_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
         Initialize the Azure OpenAI Generator.
@@ -110,8 +109,6 @@ class AzureOpenAIGenerator(OpenAIGenerator):
             - `logit_bias`: Adds a logit bias to specific tokens. The keys of the dictionary are tokens, and the
                 values are the bias to add to that token.
         :param default_headers: Default headers to use for the AzureOpenAI client.
-        :param azure_kwargs: Other parameters to use for the AzureOpenAI class. See the [AzureOpenAI class](https://github.com/openai/openai-python/blob/main/src/openai/lib/azure.py)
-            for supported parameters.
         """
         # We intentionally do not call super().__init__ here because we only need to instantiate the client to interact
         # with the API.
@@ -142,7 +139,6 @@ class AzureOpenAIGenerator(OpenAIGenerator):
         self.timeout = timeout or float(os.environ.get("OPENAI_TIMEOUT", 30.0))
         self.max_retries = max_retries or int(os.environ.get("OPENAI_MAX_RETRIES", 5))
         self.default_headers = default_headers or {}
-        self.azure_kwargs = azure_kwargs or {}
 
         self.client = AzureOpenAI(
             api_version=api_version,
@@ -154,7 +150,6 @@ class AzureOpenAIGenerator(OpenAIGenerator):
             timeout=self.timeout,
             max_retries=self.max_retries,
             default_headers=self.default_headers,
-            **self.azure_kwargs,
         )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -179,7 +174,6 @@ class AzureOpenAIGenerator(OpenAIGenerator):
             timeout=self.timeout,
             max_retries=self.max_retries,
             default_headers=self.default_headers,
-            azure_kwargs=self.azure_kwargs,
         )
 
     @classmethod
