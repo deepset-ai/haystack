@@ -210,7 +210,7 @@ class SentenceSplitter:  # pylint: disable=too-few-public-methods
             return True
 
         # next sentence starts with a bracket or we return False
-        return re.search(r"^\s*[\(\[]", text[next_start:next_end])
+        return re.search(r"^\s*[\(\[]", text[next_start:next_end]) is not None
 
     def _read_abbreviations(self, language: Language) -> List[str]:
         """
