@@ -2,11 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import logging
 import re
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Tuple
 
+from haystack import logging
 from haystack.lazy_imports import LazyImport
 
 with LazyImport("Run 'pip install nltk'") as nltk_imports:
