@@ -139,11 +139,11 @@ def _to_mermaid_text(graph: networkx.MultiDiGraph) -> str:
             connections_list.append(conn_string)
 
     input_connections = [
-        f"i{{*}} -- \"{conn_data['label']}<br><small><i>{conn_data['conn_type']}</i></small>\" --> {states[to_comp]}"
+        f"i{{&ast;}}--\"{conn_data['label']}<br><small><i>{conn_data['conn_type']}</i></small>\"--> {states[to_comp]}"
         for _, to_comp, conn_data in graph.out_edges("input", data=True)
     ]
     output_connections = [
-        f"{states[from_comp]} -- \"{conn_data['label']}<br><small><i>{conn_data['conn_type']}</i></small>\"--> o{{*}}"
+        f"{states[from_comp]}--\"{conn_data['label']}<br><small><i>{conn_data['conn_type']}</i></small>\"--> o{{&ast;}}"
         for from_comp, _, conn_data in graph.in_edges("output", data=True)
     ]
     connections = "\n".join(connections_list + input_connections + output_connections)
