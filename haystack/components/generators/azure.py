@@ -68,6 +68,7 @@ class AzureOpenAIGenerator(OpenAIGenerator):
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
+        default_headers: Optional[Dict[str, str]] = None,
     ):
         """
         Initialize the Azure OpenAI Generator.
@@ -107,6 +108,7 @@ class AzureOpenAIGenerator(OpenAIGenerator):
                 Higher values make the model less likely to repeat the token.
             - `logit_bias`: Adds a logit bias to specific tokens. The keys of the dictionary are tokens, and the
                 values are the bias to add to that token.
+        :param default_headers: Default headers to use for the AzureOpenAI client.
         """
         # We intentionally do not call super().__init__ here because we only need to instantiate the client to interact
         # with the API.
@@ -136,6 +138,7 @@ class AzureOpenAIGenerator(OpenAIGenerator):
         self.model: str = azure_deployment or "gpt-35-turbo"
         self.timeout = timeout or float(os.environ.get("OPENAI_TIMEOUT", 30.0))
         self.max_retries = max_retries or int(os.environ.get("OPENAI_MAX_RETRIES", 5))
+        self.default_headers = default_headers or {}
 
         self.client = AzureOpenAI(
             api_version=api_version,
@@ -146,6 +149,7 @@ class AzureOpenAIGenerator(OpenAIGenerator):
             organization=organization,
             timeout=self.timeout,
             max_retries=self.max_retries,
+            default_headers=self.default_headers,
         )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -169,6 +173,7 @@ class AzureOpenAIGenerator(OpenAIGenerator):
             azure_ad_token=self.azure_ad_token.to_dict() if self.azure_ad_token is not None else None,
             timeout=self.timeout,
             max_retries=self.max_retries,
+            default_headers=self.default_headers,
         )
 
     @classmethod

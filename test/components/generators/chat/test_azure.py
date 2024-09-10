@@ -57,6 +57,7 @@ class TestOpenAIChatGenerator:
                 "generation_kwargs": {},
                 "timeout": 30.0,
                 "max_retries": 5,
+                "default_headers": {},
             },
         }
 
@@ -84,6 +85,7 @@ class TestOpenAIChatGenerator:
                 "timeout": 2.5,
                 "max_retries": 10,
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
+                "default_headers": {},
             },
         }
 
@@ -98,7 +100,7 @@ class TestOpenAIChatGenerator:
 
     @pytest.mark.integration
     @pytest.mark.skipif(
-        not os.environ.get("AZURE_OPENAI_API_KEY", None) and not os.environ.get("AZURE_OPENAI_ENDPOINT", None),
+        not os.environ.get("AZURE_OPENAI_API_KEY", None) or not os.environ.get("AZURE_OPENAI_ENDPOINT", None),
         reason=(
             "Please export env variables called AZURE_OPENAI_API_KEY containing "
             "the Azure OpenAI key, AZURE_OPENAI_ENDPOINT containing "
