@@ -1,6 +1,4 @@
 ---
-highlights: >
-    Added the option to split text using a user-provided function in `DocumentSplitter`.
 features:
   - |
     Added the option to use a custom splitting function in DocumentSplitter. The function must accept a string as
