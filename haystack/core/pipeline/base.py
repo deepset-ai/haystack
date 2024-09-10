@@ -1053,6 +1053,21 @@ class PipelineBase:
         :param components_inputs: The current state of the inputs divided by Component name
         :return: A set of Components that didn't receive any input from component_name
         """
+
+        # Simplifies the check if a Component is Variadic and received some input from other Components.
+        def is_variadic_with_existing_inputs(comp: Component) -> bool:
+            for receiver_socket in comp.__haystack_input__._sockets_dict.values():  # type: ignore
+                if component_name not in receiver_socket.senders:
+                    continue
+                if (
+                    receiver_socket.is_variadic
+                    and len(components_inputs.get(receiver, {}).get(receiver_socket.name, [])) > 0
+                ):
+                    # This Component already received some input to its Variadic socket from other Components.
+                    # It should be able to run even if it doesn't receive any input from component_name.
+                    return True
+            return False
+
         components = set()
         instance: Component = self.graph.nodes[component_name]["instance"]
         for socket_name, socket in instance.__haystack_output__._sockets_dict.items():  # type: ignore
@@ -1061,19 +1076,7 @@ class PipelineBase:
             for receiver in socket.receivers:
                 receiver_instance: Component = self.graph.nodes[receiver]["instance"]
 
-                is_variadic_with_existing_inputs = False
-                for receiver_socket in receiver_instance.__haystack_input__._sockets_dict.values():  # type: ignore
-                    if component_name not in receiver_socket.senders:
-                        continue
-                    if (
-                        receiver_socket.is_variadic
-                        and len(components_inputs.get(receiver, {}).get(receiver_socket.name, [])) > 0
-                    ):
-                        # This Component already received some input to its Variadic socket from other Components.
-                        # It should be able to run even if it doesn't receive any input from component_name.
-                        is_variadic_with_existing_inputs = True
-                        break
-                if is_variadic_with_existing_inputs:
+                if is_variadic_with_existing_inputs(receiver_instance):
                     continue
 
                 components.add((receiver, receiver_instance))
