@@ -1579,3 +1579,59 @@ def that_is_linear_with_conditional_branching_and_multiple_joins():
             ),
         ],
     )
+
+
+@given("a pipeline that has a variadic component that receives partial inputs", target_fixture="pipeline_data")
+def that_has_a_variadic_component_that_receives_partial_inputs():
+    @component
+    class ConditionalDocumentCreator:
+        def __init__(self, content: str):
+            self._content = content
+
+        @component.output_types(documents=List[Document], noop=None)
+        def run(self, create_document: bool = False):
+            if create_document:
+                return {"documents": [Document(id=self._content, content=self._content)]}
+            return {"noop": None}
+
+    pipeline = Pipeline()
+    pipeline.add_component("first_creator", ConditionalDocumentCreator(content="First document"))
+    pipeline.add_component("second_creator", ConditionalDocumentCreator(content="Second document"))
+    pipeline.add_component("third_creator", ConditionalDocumentCreator(content="Third document"))
+    pipeline.add_component("documents_joiner", DocumentJoiner())
+
+    pipeline.connect("first_creator.documents", "documents_joiner.documents")
+    pipeline.connect("second_creator.documents", "documents_joiner.documents")
+    pipeline.connect("third_creator.documents", "documents_joiner.documents")
+
+    return (
+        pipeline,
+        [
+            PipelineRunData(
+                inputs={"first_creator": {"create_document": True}, "third_creator": {"create_document": True}},
+                expected_outputs={
+                    "second_creator": {"noop": None},
+                    "documents_joiner": {
+                        "documents": [
+                            Document(id="First document", content="First document"),
+                            Document(id="Third document", content="Third document"),
+                        ]
+                    },
+                },
+                expected_run_order=["first_creator", "third_creator", "second_creator", "documents_joiner"],
+            ),
+            PipelineRunData(
+                inputs={"first_creator": {"create_document": True}, "second_creator": {"create_document": True}},
+                expected_outputs={
+                    "third_creator": {"noop": None},
+                    "documents_joiner": {
+                        "documents": [
+                            Document(id="First document", content="First document"),
+                            Document(id="Second document", content="Second document"),
+                        ]
+                    },
+                },
+                expected_run_order=["first_creator", "second_creator", "third_creator", "documents_joiner"],
+            ),
+        ],
+    )

@@ -1037,18 +1037,37 @@ class PipelineBase:
         return name, comp
 
     def _find_components_that_will_receive_no_input(
-        self, component_name: str, component_result: Dict[str, Any]
+        self, component_name: str, component_result: Dict[str, Any], components_inputs: Dict[str, Dict[str, Any]]
     ) -> Set[Tuple[str, Component]]:
         """
         Find all the Components that are connected to component_name and didn't receive any input from it.
+
+        Components that have a Variadic input and received already some input from other Components
+        but not from component_name won't be returned as they have enough inputs to run.
 
         This includes the descendants of the Components that didn't receive any input from component_name.
         That is necessary to avoid getting stuck into infinite loops waiting for inputs that will never arrive.
 
         :param component_name: Name of the Component that created the output
         :param component_result: Output of the Component
+        :param components_inputs: The current state of the inputs divided by Component name
         :return: A set of Components that didn't receive any input from component_name
         """
+
+        # Simplifies the check if a Component is Variadic and received some input from other Components.
+        def is_variadic_with_existing_inputs(comp: Component) -> bool:
+            for receiver_socket in comp.__haystack_input__._sockets_dict.values():  # type: ignore
+                if component_name not in receiver_socket.senders:
+                    continue
+                if (
+                    receiver_socket.is_variadic
+                    and len(components_inputs.get(receiver, {}).get(receiver_socket.name, [])) > 0
+                ):
+                    # This Component already received some input to its Variadic socket from other Components.
+                    # It should be able to run even if it doesn't receive any input from component_name.
+                    return True
+            return False
+
         components = set()
         instance: Component = self.graph.nodes[component_name]["instance"]
         for socket_name, socket in instance.__haystack_output__._sockets_dict.items():  # type: ignore
@@ -1056,6 +1075,10 @@ class PipelineBase:
                 continue
             for receiver in socket.receivers:
                 receiver_instance: Component = self.graph.nodes[receiver]["instance"]
+
+                if is_variadic_with_existing_inputs(receiver_instance):
+                    continue
+
                 components.add((receiver, receiver_instance))
                 # Get the descendants too. When we remove a Component that received no input
                 # it's extremely likely that its descendants will receive no input as well.

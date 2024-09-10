@@ -8,6 +8,7 @@ from jinja2 import meta
 from jinja2.sandbox import SandboxedEnvironment
 
 from haystack import component, default_to_dict
+from haystack.utils import Jinja2TimeExtension
 
 
 @component
@@ -159,11 +160,16 @@ class PromptBuilder:
         self._variables = variables
         self._required_variables = required_variables
         self.required_variables = required_variables or []
+        try:
+            # The Jinja2TimeExtension needs an optional dependency to be installed.
+            # If it's not available we can do without it and use the PromptBuilder as is.
+            self._env = SandboxedEnvironment(extensions=[Jinja2TimeExtension])
+        except ImportError:
+            self._env = SandboxedEnvironment()
 
-        self._env = SandboxedEnvironment()
         self.template = self._env.from_string(template)
         if not variables:
-            # infere variables from template
+            # infer variables from template
             ast = self._env.parse(template)
             template_variables = meta.find_undeclared_variables(ast)
             variables = list(template_variables)
