@@ -8,12 +8,8 @@ from typing import Dict, List, Literal, Tuple
 from haystack import Document, component, logging
 from haystack.components.preprocessors.document_splitter import DocumentSplitter
 from haystack.components.preprocessors.utils import Language, SentenceSplitter
-from haystack.lazy_imports import LazyImport
 
 logger = logging.getLogger(__name__)
-
-with LazyImport("Run 'pip install nltk'") as nltk_imports:
-    import nltk
 
 
 @component
@@ -52,7 +48,6 @@ class NLTKDocumentSplitter(DocumentSplitter):
         super(NLTKDocumentSplitter, self).__init__(
             split_by=split_by, split_length=split_length, split_overlap=split_overlap, split_threshold=split_threshold
         )
-        nltk_imports.check()
 
         if respect_sentence_boundary and split_by != "word":
             logger.warning(
@@ -226,7 +221,7 @@ class NLTKDocumentSplitter(DocumentSplitter):
                     chunk_start_idx += len("".join(processed_sentences))
                     # Next chunk starts with the sentences that were overlapping with the previous chunk
                     current_chunk = current_chunk[-num_sentences_to_keep:]
-                    chunk_word_count = sum([len(s.split()) for s in current_chunk])
+                    chunk_word_count = sum(len(s.split()) for s in current_chunk)
                 else:
                     # Here processed_sentences is the same as current_chunk since there is no overlap
                     chunk_starting_page_number += sum(sent.count("\f") for sent in current_chunk)
