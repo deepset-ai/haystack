@@ -205,8 +205,8 @@ class Pipeline(PipelineBase):
                 "haystack.pipeline.input_data": data,
                 "haystack.pipeline.output_data": final_outputs,
                 "haystack.pipeline.metadata": self.metadata,
-                "haystack.pipeline.max_loops_allowed": self.max_runs_per_component,
-                "haystack.pipeline.max_runs_per_component": self.max_runs_per_component,
+                "haystack.pipeline.max_loops_allowed": self._max_runs_per_component,
+                "haystack.pipeline.max_runs_per_component": self._max_runs_per_component,
             },
         ):
             # Cache for extra outputs, if enabled.
@@ -222,8 +222,8 @@ class Pipeline(PipelineBase):
                     continue
 
                 if self._component_has_enough_inputs_to_run(name, components_inputs):
-                    if self.graph.nodes[name]["visits"] > self.max_runs_per_component:
-                        msg = f"Maximum run count {self.max_runs_per_component} reached for component '{name}'"
+                    if self.graph.nodes[name]["visits"] > self._max_runs_per_component:
+                        msg = f"Maximum run count {self._max_runs_per_component} reached for component '{name}'"
                         raise PipelineMaxComponentRuns(msg)
 
                     res: Dict[str, Any] = self._run_component(name, components_inputs[name])

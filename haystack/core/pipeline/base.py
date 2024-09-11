@@ -53,9 +53,9 @@ class PipelineBase:
     def __init__(
         self,
         metadata: Optional[Dict[str, Any]] = None,
-        max_loops_allowed: int = 100,
+        max_loops_allowed: Optional[int] = None,
         debug_path: Union[Path, str] = Path(".haystack_debug/"),
-        max_runs_per_component: Optional[int] = None,
+        max_runs_per_component: int = 100,
     ):
         """
         Creates the Pipeline.
@@ -65,6 +65,7 @@ class PipelineBase:
             this dictionary can be serialized and deserialized if you wish to save this `Pipeline` to file.
         :param max_loops_allowed:
             How many times the `Pipeline` can run the same node before throwing an exception.
+            This is deprecated, use `max_runs_per_component` instead.
         :param debug_path:
             When debug is enabled in `run()`, where to save the debug data.
         :param max_runs_per_component:
@@ -79,13 +80,12 @@ class PipelineBase:
         self._debug: Dict[int, Dict[str, Any]] = {}
         self._debug_path = Path(debug_path)
 
-        # TODO: Change max_loops_allowed to 100 when it's removed
-        if max_runs_per_component is not None:
-            self.max_runs_per_component = max_runs_per_component
-        else:
+        if max_loops_allowed is not None:
             msg = "'max_loops_allowed' argument is deprecated. Use 'max_runs_per_component' instead."
             warnings.warn(msg, DeprecationWarning)
-            self.max_runs_per_component = max_loops_allowed
+            self._max_runs_per_component = max_loops_allowed
+        else:
+            self._max_runs_per_component = max_runs_per_component
 
     @property
     def max_loops_allowed(self) -> int:
@@ -96,9 +96,9 @@ class PipelineBase:
 
         :return: Maximum number of runs per Component
         """
-        msg = "'max_loops_allowed' argument is deprecated. Use 'max_runs_per_component' instead."
+        msg = "'max_loops_allowed' argument is deprecated. Set 'max_runs_per_component' when initialising the Pipeline."
         warnings.warn(msg, DeprecationWarning)
-        return self.max_runs_per_component
+        return self._max_runs_per_component
 
     @max_loops_allowed.setter
     def max_loops_allowed(self, value: int):
@@ -109,9 +109,9 @@ class PipelineBase:
 
         :param value: Maximum number of runs per Component
         """
-        msg = "'max_loops_allowed' argument is deprecated. Use 'max_runs_per_component' instead."
+        msg = "'max_loops_allowed' argument is deprecated. Set 'max_runs_per_component' when initialising the Pipeline."
         warnings.warn(msg, DeprecationWarning)
-        self.max_runs_per_component = value
+        self._max_runs_per_component = value
 
     def __eq__(self, other) -> bool:
         """
@@ -166,7 +166,7 @@ class PipelineBase:
             connections.append({"sender": f"{sender}.{sender_socket}", "receiver": f"{receiver}.{receiver_socket}"})
         return {
             "metadata": self.metadata,
-            "max_runs_per_component": self.max_runs_per_component,
+            "max_runs_per_component": self._max_runs_per_component,
             "components": components,
             "connections": connections,
         }
@@ -190,8 +190,8 @@ class PipelineBase:
         """
         data_copy = deepcopy(data)  # to prevent modification of original data
         metadata = data_copy.get("metadata", {})
-        max_runs_per_component = data_copy.get("max_runs_per_component", None)
-        max_loops_allowed = data_copy.get("max_loops_allowed", 100)
+        max_runs_per_component = data_copy.get("max_runs_per_component", 100)
+        max_loops_allowed = data_copy.get("max_loops_allowed", None)
         debug_path = Path(data_copy.get("debug_path", ".haystack_debug/"))
         pipe = cls(
             metadata=metadata,

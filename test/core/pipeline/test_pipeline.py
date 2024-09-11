@@ -77,7 +77,7 @@ class TestPipeline:
         with open(f"{test_files_path}/yaml/test_pipeline_deprecated.yaml", "r") as f:
             pipeline = Pipeline.loads(f.read())
             assert pipeline.max_loops_allowed == 99
-            assert pipeline.max_runs_per_component == 99
+            assert pipeline._max_runs_per_component == 99
             assert isinstance(pipeline.get_component("Comp1"), FakeComponent)
             assert isinstance(pipeline.get_component("Comp2"), FakeComponent)
 
@@ -146,7 +146,7 @@ class TestPipeline:
         with open(f"{test_files_path}/yaml/test_pipeline_deprecated.yaml", "r") as f:
             pipeline = Pipeline.load(f)
             assert pipeline.max_loops_allowed == 99
-            assert pipeline.max_runs_per_component == 99
+            assert pipeline._max_runs_per_component == 99
             assert isinstance(pipeline.get_component("Comp1"), FakeComponent)
             assert isinstance(pipeline.get_component("Comp2"), FakeComponent)
 
@@ -154,7 +154,7 @@ class TestPipeline:
         with open(f"{test_files_path}/yaml/test_pipeline.yaml", "r") as f:
             pipeline = Pipeline.load(f)
             assert pipeline.max_loops_allowed == 99
-            assert pipeline.max_runs_per_component == 99
+            assert pipeline._max_runs_per_component == 99
             assert isinstance(pipeline.get_component("Comp1"), FakeComponent)
             assert isinstance(pipeline.get_component("Comp2"), FakeComponent)
 
@@ -368,7 +368,7 @@ class TestPipeline:
 
         assert pipe.metadata == {"test": "test"}
         assert pipe.max_loops_allowed == 101
-        assert pipe.max_runs_per_component == 101
+        assert pipe._max_runs_per_component == 101
 
         # Components
         assert len(pipe.graph.nodes) == 3
@@ -447,7 +447,7 @@ class TestPipeline:
 
         assert pipe.metadata == {"test": "test"}
         assert pipe.max_loops_allowed == 101
-        assert pipe.max_runs_per_component == 101
+        assert pipe._max_runs_per_component == 101
 
         # Components
         assert len(pipe.graph.nodes) == 3
