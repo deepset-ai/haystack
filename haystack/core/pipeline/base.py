@@ -42,6 +42,11 @@ T = TypeVar("T", bound="PipelineBase")
 
 logger = logging.getLogger(__name__)
 
+_MAX_LOOPS_ALLOWED_DEPRECATION_MESSAGE = (
+    "'max_loops_allowed' argument is deprecated and will be removed in version '2.7.0'. "
+    "Use 'max_runs_per_component' instead."
+)
+
 
 class PipelineBase:
     """
@@ -65,7 +70,7 @@ class PipelineBase:
             this dictionary can be serialized and deserialized if you wish to save this `Pipeline` to file.
         :param max_loops_allowed:
             How many times the `Pipeline` can run the same node before throwing an exception.
-            This is deprecated, use `max_runs_per_component` instead.
+            This is deprecated and will be removed in version 2.7.0, use `max_runs_per_component` instead.
         :param debug_path:
             When debug is enabled in `run()`, where to save the debug data.
         :param max_runs_per_component:
@@ -81,8 +86,7 @@ class PipelineBase:
         self._debug_path = Path(debug_path)
 
         if max_loops_allowed is not None:
-            msg = "'max_loops_allowed' argument is deprecated. Use 'max_runs_per_component' instead."
-            warnings.warn(msg, DeprecationWarning)
+            warnings.warn(_MAX_LOOPS_ALLOWED_DEPRECATION_MESSAGE, DeprecationWarning)
             self._max_runs_per_component = max_loops_allowed
         else:
             self._max_runs_per_component = max_runs_per_component
@@ -96,8 +100,7 @@ class PipelineBase:
 
         :return: Maximum number of runs per Component
         """
-        msg = "'max_loops_allowed' argument is deprecated. Set 'max_runs_per_component' when initialising the Pipeline."
-        warnings.warn(msg, DeprecationWarning)
+        warnings.warn(_MAX_LOOPS_ALLOWED_DEPRECATION_MESSAGE, DeprecationWarning)
         return self._max_runs_per_component
 
     @max_loops_allowed.setter
@@ -109,8 +112,7 @@ class PipelineBase:
 
         :param value: Maximum number of runs per Component
         """
-        msg = "'max_loops_allowed' argument is deprecated. Set 'max_runs_per_component' when initialising the Pipeline."
-        warnings.warn(msg, DeprecationWarning)
+        warnings.warn(_MAX_LOOPS_ALLOWED_DEPRECATION_MESSAGE, DeprecationWarning)
         self._max_runs_per_component = value
 
     def __eq__(self, other) -> bool:

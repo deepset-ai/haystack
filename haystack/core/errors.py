@@ -31,7 +31,10 @@ class PipelineDrawingError(PipelineError):
 class PipelineMaxLoops(PipelineError):
     # NOTE: This is shown also when importing PipelineMaxComponentRuns, I can't find an easy
     # way to fix this, so I will ignore that case.
-    warnings.warn("PipelineMaxLoops is deprecated; use PipelineMaxComponentRuns instead.", DeprecationWarning)
+    warnings.warn(
+        "PipelineMaxLoops is deprecated and will be remove in version '2.7.0'; use PipelineMaxComponentRuns instead.",
+        DeprecationWarning,
+    )
 
 
 class PipelineMaxComponentRuns(PipelineMaxLoops):
