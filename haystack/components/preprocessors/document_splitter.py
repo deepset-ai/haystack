@@ -132,7 +132,7 @@ class DocumentSplitter:
             self.split_at = "."
         elif split_by == "word":
             self.split_at = " "
-        elif split_by == "function":
+        elif split_by == "function" and self.splitting_function is not None:
             return self.splitting_function(text)
         else:
             raise NotImplementedError(
