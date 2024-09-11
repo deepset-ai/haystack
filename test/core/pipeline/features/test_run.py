@@ -73,7 +73,7 @@ def pipeline_that_has_an_infinite_loop():
         component.set_output_types(self, a=int, b=int)
 
     FakeComponent = component_class("FakeComponent", output={"a": 1, "b": 1}, extra_fields={"__init__": custom_init})
-    pipe = Pipeline(max_loops_allowed=1)
+    pipe = Pipeline(max_runs_per_component=1)
     pipe.add_component("first", FakeComponent())
     pipe.add_component("second", FakeComponent())
     pipe.connect("first.a", "second.x")
@@ -83,7 +83,7 @@ def pipeline_that_has_an_infinite_loop():
 
 @given("a pipeline that is really complex with lots of components, forks, and loops", target_fixture="pipeline_data")
 def pipeline_complex():
-    pipeline = Pipeline(max_loops_allowed=2)
+    pipeline = Pipeline(max_runs_per_component=2)
     pipeline.add_component("greet_first", Greet(message="Hello, the value is {value}."))
     pipeline.add_component("accumulate_1", Accumulate())
     pipeline.add_component("add_two", AddFixedValue(add=2))
@@ -205,7 +205,7 @@ def pipeline_that_has_a_single_component_with_a_default_input():
 
 @given("a pipeline that has two loops of identical lengths", target_fixture="pipeline_data")
 def pipeline_that_has_two_loops_of_identical_lengths():
-    pipeline = Pipeline(max_loops_allowed=10)
+    pipeline = Pipeline(max_runs_per_component=10)
     pipeline.add_component("branch_joiner", BranchJoiner(type_=int))
     pipeline.add_component("remainder", Remainder(divisor=3))
     pipeline.add_component("add_one", AddFixedValue(add=1))
@@ -250,7 +250,7 @@ def pipeline_that_has_two_loops_of_identical_lengths():
 
 @given("a pipeline that has two loops of different lengths", target_fixture="pipeline_data")
 def pipeline_that_has_two_loops_of_different_lengths():
-    pipeline = Pipeline(max_loops_allowed=10)
+    pipeline = Pipeline(max_runs_per_component=10)
     pipeline.add_component("branch_joiner", BranchJoiner(type_=int))
     pipeline.add_component("remainder", Remainder(divisor=3))
     pipeline.add_component("add_one", AddFixedValue(add=1))
@@ -306,7 +306,7 @@ def pipeline_that_has_two_loops_of_different_lengths():
 @given("a pipeline that has a single loop with two conditional branches", target_fixture="pipeline_data")
 def pipeline_that_has_a_single_loop_with_two_conditional_branches():
     accumulator = Accumulate()
-    pipeline = Pipeline(max_loops_allowed=10)
+    pipeline = Pipeline(max_runs_per_component=10)
 
     pipeline.add_component("add_one", AddFixedValue(add=1))
     pipeline.add_component("branch_joiner", BranchJoiner(type_=int))
@@ -503,7 +503,7 @@ def pipeline_that_has_different_combinations_of_branches_that_merge_and_do_not_m
 
 @given("a pipeline that has two branches, one of which loops back", target_fixture="pipeline_data")
 def pipeline_that_has_two_branches_one_of_which_loops_back():
-    pipeline = Pipeline(max_loops_allowed=10)
+    pipeline = Pipeline(max_runs_per_component=10)
     pipeline.add_component("add_zero", AddFixedValue(add=0))
     pipeline.add_component("branch_joiner", BranchJoiner(type_=int))
     pipeline.add_component("sum", Sum())
@@ -704,7 +704,7 @@ def pipeline_that_has_a_component_that_doesnt_return_a_dictionary():
         output=1,  # type:ignore
     )
 
-    pipe = Pipeline(max_loops_allowed=10)
+    pipe = Pipeline(max_runs_per_component=10)
     pipe.add_component("comp", BrokenComponent())
     return pipe, [PipelineRunData({"comp": {"a": 1}})]
 
@@ -916,7 +916,7 @@ def pipeline_that_has_a_component_with_only_default_inputs_as_first_to_run():
     target_fixture="pipeline_data",
 )
 def pipeline_that_has_a_single_component_that_send_one_of_outputs_to_itself():
-    pipeline = Pipeline(max_loops_allowed=10)
+    pipeline = Pipeline(max_runs_per_component=10)
     pipeline.add_component("self_loop", SelfLoop())
     pipeline.connect("self_loop.current_value", "self_loop.values")
 
@@ -934,7 +934,7 @@ def pipeline_that_has_a_single_component_that_send_one_of_outputs_to_itself():
 
 @given("a pipeline that has a component that sends one of its outputs to itself", target_fixture="pipeline_data")
 def pipeline_that_has_a_component_that_sends_one_of_its_outputs_to_itself():
-    pipeline = Pipeline(max_loops_allowed=10)
+    pipeline = Pipeline(max_runs_per_component=10)
     pipeline.add_component("add_1", AddFixedValue())
     pipeline.add_component("self_loop", SelfLoop())
     pipeline.add_component("add_2", AddFixedValue())
@@ -1068,7 +1068,7 @@ def pipeline_that_is_linear_and_returns_intermediate_outputs():
 
 @given("a pipeline that has a loop and returns intermediate outputs from it", target_fixture="pipeline_data")
 def pipeline_that_has_a_loop_and_returns_intermediate_outputs_from_it():
-    pipeline = Pipeline(max_loops_allowed=10)
+    pipeline = Pipeline(max_runs_per_component=10)
     pipeline.add_component("add_one", AddFixedValue(add=1))
     pipeline.add_component("branch_joiner", BranchJoiner(type_=int))
     pipeline.add_component("below_10", Threshold(threshold=10))
