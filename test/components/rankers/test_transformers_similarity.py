@@ -8,7 +8,7 @@ import pytest
 import torch
 from transformers.modeling_outputs import SequenceClassifierOutput
 
-from haystack import ComponentError, Document
+from haystack import Document
 from haystack.components.rankers.transformers_similarity import TransformersSimilarityRanker
 from haystack.utils.auth import Secret
 from haystack.utils.device import ComponentDevice, DeviceMap
@@ -202,7 +202,9 @@ class TestSimilarityRanker:
 
     @patch("torch.sigmoid")
     @patch("torch.sort")
-    def test_embed_meta(self, mocked_sort, mocked_sigmoid):
+    @patch("torch.stack")
+    def test_embed_meta(self, mocked_stack, mocked_sort, mocked_sigmoid):
+        mocked_stack.return_value = torch.tensor([0])
         mocked_sort.return_value = (None, torch.tensor([0]))
         mocked_sigmoid.return_value = torch.tensor([0])
         embedder = TransformersSimilarityRanker(
@@ -232,7 +234,9 @@ class TestSimilarityRanker:
 
     @patch("torch.sigmoid")
     @patch("torch.sort")
-    def test_prefix(self, mocked_sort, mocked_sigmoid):
+    @patch("torch.stack")
+    def test_prefix(self, mocked_stack, mocked_sort, mocked_sigmoid):
+        mocked_stack.return_value = torch.tensor([0])
         mocked_sort.return_value = (None, torch.tensor([0]))
         mocked_sigmoid.return_value = torch.tensor([0])
         embedder = TransformersSimilarityRanker(
@@ -261,7 +265,9 @@ class TestSimilarityRanker:
         )
 
     @patch("torch.sort")
-    def test_scale_score_false(self, mocked_sort):
+    @patch("torch.stack")
+    def test_scale_score_false(self, mocked_stack, mocked_sort):
+        mocked_stack.return_value = torch.FloatTensor([-10.6859, -8.9874])
         mocked_sort.return_value = (None, torch.tensor([0, 1]))
         embedder = TransformersSimilarityRanker(model="model", scale_score=False)
         embedder.model = MagicMock()
@@ -277,7 +283,9 @@ class TestSimilarityRanker:
         assert out["documents"][1].score == pytest.approx(-8.9874, abs=1e-4)
 
     @patch("torch.sort")
-    def test_score_threshold(self, mocked_sort):
+    @patch("torch.stack")
+    def test_score_threshold(self, mocked_stack, mocked_sort):
+        mocked_stack.return_value = torch.FloatTensor([0.955, 0.001])
         mocked_sort.return_value = (None, torch.tensor([0, 1]))
         embedder = TransformersSimilarityRanker(model="model", scale_score=False, score_threshold=0.1)
         embedder.model = MagicMock()
@@ -346,6 +354,48 @@ class TestSimilarityRanker:
         Test if the component ranks documents correctly.
         """
         ranker = TransformersSimilarityRanker(model="cross-encoder/ms-marco-MiniLM-L-6-v2")
+        ranker.warm_up()
+        docs_before = [Document(content=text) for text in docs_before_texts]
+        output = ranker.run(query=query, documents=docs_before)
+        docs_after = output["documents"]
+
+        assert len(docs_after) == 3
+        assert docs_after[0].content == expected_first_text
+
+        sorted_scores = sorted(scores, reverse=True)
+        assert docs_after[0].score == pytest.approx(sorted_scores[0], abs=1e-6)
+        assert docs_after[1].score == pytest.approx(sorted_scores[1], abs=1e-6)
+        assert docs_after[2].score == pytest.approx(sorted_scores[2], abs=1e-6)
+
+    @pytest.mark.integration
+    @pytest.mark.parametrize(
+        "query,docs_before_texts,expected_first_text,scores",
+        [
+            (
+                "City in Bosnia and Herzegovina",
+                ["Berlin", "Belgrade", "Sarajevo"],
+                "Sarajevo",
+                [2.2864143829792738e-05, 0.00012495707778725773, 0.009869757108390331],
+            ),
+            (
+                "Machine learning",
+                ["Python", "Bakery in Paris", "Tesla Giga Berlin"],
+                "Python",
+                [1.9063229046878405e-05, 1.434577916370472e-05, 1.3049247172602918e-05],
+            ),
+            (
+                "Cubist movement",
+                ["Nirvana", "Pablo Picasso", "Coffee"],
+                "Pablo Picasso",
+                [1.3313065210240893e-05, 9.90335684036836e-05, 1.3518535524781328e-05],
+            ),
+        ],
+    )
+    def test_run_small_batch_size(self, query, docs_before_texts, expected_first_text, scores):
+        """
+        Test if the component ranks documents correctly.
+        """
+        ranker = TransformersSimilarityRanker(model="cross-encoder/ms-marco-MiniLM-L-6-v2", batch_size=2)
         ranker.warm_up()
         docs_before = [Document(content=text) for text in docs_before_texts]
         output = ranker.run(query=query, documents=docs_before)
