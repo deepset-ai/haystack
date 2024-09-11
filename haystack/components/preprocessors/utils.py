@@ -138,7 +138,7 @@ class SentenceSplitter:  # pylint: disable=too-few-public-methods
         self.sentence_tokenizer = load_sentence_tokenizer(language, keep_white_spaces=keep_white_spaces)
         self.use_split_rules = use_split_rules
         if extend_abbreviations:
-            abbreviations = self._read_abbreviations(language)
+            abbreviations = SentenceSplitter._read_abbreviations(language)
             self.sentence_tokenizer._params.abbrev_types.update(abbreviations)
         self.keep_white_spaces = keep_white_spaces
 
@@ -169,7 +169,7 @@ class SentenceSplitter:  # pylint: disable=too-few-public-methods
         while sentence_spans:
             span = sentence_spans.pop(0)
             next_span = sentence_spans[0] if len(sentence_spans) > 0 else None
-            while next_span and self._needs_join(text, span, next_span, quote_spans):
+            while next_span and SentenceSplitter._needs_join(text, span, next_span, quote_spans):
                 sentence_spans.pop(0)
                 span = (span[0], next_span[1])
                 next_span = sentence_spans[0] if len(sentence_spans) > 0 else None
@@ -177,8 +177,9 @@ class SentenceSplitter:  # pylint: disable=too-few-public-methods
             new_sentence_spans.append((start, end))
         return new_sentence_spans
 
+    @staticmethod
     def _needs_join(
-        self, text: str, span: Tuple[int, int], next_span: Tuple[int, int], quote_spans: List[Tuple[int, int]]
+        text: str, span: Tuple[int, int], next_span: Tuple[int, int], quote_spans: List[Tuple[int, int]]
     ) -> bool:
         """
         Checks if the spans need to be joined as parts of one sentence.
@@ -212,7 +213,8 @@ class SentenceSplitter:  # pylint: disable=too-few-public-methods
         # next sentence starts with a bracket or we return False
         return re.search(r"^\s*[\(\[]", text[next_start:next_end]) is not None
 
-    def _read_abbreviations(self, language: Language) -> List[str]:
+    @staticmethod
+    def _read_abbreviations(language: Language) -> List[str]:
         """
         Reads the abbreviations for a given language from the abbreviations file.
 
