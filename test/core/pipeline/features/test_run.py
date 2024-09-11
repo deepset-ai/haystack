@@ -1799,7 +1799,7 @@ def that_has_a_variadic_component_that_receives_partial_inputs():
                         ]
                     },
                 },
-                expected_run_order=["first_creator", "third_creator", "second_creator", "documents_joiner"],
+                expected_run_order=["first_creator", "second_creator", "third_creator", "documents_joiner"],
             ),
             PipelineRunData(
                 inputs={"first_creator": {"create_document": True}, "second_creator": {"create_document": True}},

@@ -184,7 +184,7 @@ class Pipeline(PipelineBase):
                 # We manage to run this component that was in the waiting list, we can remove it.
                 # This happens when a component was put in the waiting list but we reached it from another edge.
                 _dequeue_waiting_component((name, comp), waiting_queue)
-                for pair in self._find_components_that_will_receive_no_input(name, res):
+                for pair in self._find_components_that_will_receive_no_input(name, res, components_inputs):
                     _dequeue_component(pair, run_queue, waiting_queue)
 
                 # - Add the output from the Component that just ran to components_inputs
