@@ -160,7 +160,7 @@ class TestAnswerBuilder:
                 role=ChatRole.ASSISTANT,
                 name=None,
                 meta={
-                    "model": "gpt-3.5-turbo-0613",
+                    "model": "gpt-4o-mini",
                     "index": 0,
                     "finish_reason": "stop",
                     "usage": {"prompt_tokens": 32, "completion_tokens": 153, "total_tokens": 185},
@@ -172,7 +172,7 @@ class TestAnswerBuilder:
         assert len(answers) == 1
         assert answers[0].data == "Answer: AnswerString"
         assert answers[0].meta == {
-            "model": "gpt-3.5-turbo-0613",
+            "model": "gpt-4o-mini",
             "index": 0,
             "finish_reason": "stop",
             "usage": {"prompt_tokens": 32, "completion_tokens": 153, "total_tokens": 185},
@@ -189,7 +189,7 @@ class TestAnswerBuilder:
                 role=ChatRole.ASSISTANT,
                 name=None,
                 meta={
-                    "model": "gpt-3.5-turbo-0613",
+                    "model": "gpt-4o-mini",
                     "index": 0,
                     "finish_reason": "stop",
                     "usage": {"prompt_tokens": 32, "completion_tokens": 153, "total_tokens": 185},
@@ -201,7 +201,7 @@ class TestAnswerBuilder:
         assert len(answers) == 1
         assert answers[0].data == "AnswerString"
         assert answers[0].meta == {
-            "model": "gpt-3.5-turbo-0613",
+            "model": "gpt-4o-mini",
             "index": 0,
             "finish_reason": "stop",
             "usage": {"prompt_tokens": 32, "completion_tokens": 153, "total_tokens": 185},
@@ -218,7 +218,7 @@ class TestAnswerBuilder:
                 role=ChatRole.ASSISTANT,
                 name=None,
                 meta={
-                    "model": "gpt-3.5-turbo-0613",
+                    "model": "gpt-4o-mini",
                     "index": 0,
                     "finish_reason": "stop",
                     "usage": {"prompt_tokens": 32, "completion_tokens": 153, "total_tokens": 185},
@@ -235,7 +235,7 @@ class TestAnswerBuilder:
         assert len(answers) == 1
         assert answers[0].data == "Answer: AnswerString[2]"
         assert answers[0].meta == {
-            "model": "gpt-3.5-turbo-0613",
+            "model": "gpt-4o-mini",
             "index": 0,
             "finish_reason": "stop",
             "usage": {"prompt_tokens": 32, "completion_tokens": 153, "total_tokens": 185},
@@ -252,7 +252,7 @@ class TestAnswerBuilder:
                 role=ChatRole.ASSISTANT,
                 name=None,
                 meta={
-                    "model": "gpt-3.5-turbo-0613",
+                    "model": "gpt-4o-mini",
                     "index": 0,
                     "finish_reason": "stop",
                     "usage": {"prompt_tokens": 32, "completion_tokens": 153, "total_tokens": 185},
@@ -264,7 +264,7 @@ class TestAnswerBuilder:
         assert len(answers) == 1
         assert answers[0].data == "AnswerString"
         assert answers[0].meta == {
-            "model": "gpt-3.5-turbo-0613",
+            "model": "gpt-4o-mini",
             "index": 0,
             "finish_reason": "stop",
             "usage": {"prompt_tokens": 32, "completion_tokens": 153, "total_tokens": 185},

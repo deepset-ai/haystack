@@ -26,7 +26,7 @@ class TestOpenAIChatGenerator:
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = OpenAIChatGenerator()
         assert component.client.api_key == "test-api-key"
-        assert component.model == "gpt-3.5-turbo"
+        assert component.model == "gpt-4o-mini"
         assert component.streaming_callback is None
         assert not component.generation_kwargs
         assert component.client.timeout == 30
@@ -61,7 +61,7 @@ class TestOpenAIChatGenerator:
         monkeypatch.setenv("OPENAI_MAX_RETRIES", "10")
         component = OpenAIChatGenerator(
             api_key=Secret.from_token("test-api-key"),
-            model="gpt-4",
+            model="gpt-4o-mini",
             streaming_callback=print_streaming_chunk,
             api_base_url="test-base-url",
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
@@ -81,7 +81,7 @@ class TestOpenAIChatGenerator:
             "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
             "init_parameters": {
                 "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
-                "model": "gpt-3.5-turbo",
+                "model": "gpt-4o-mini",
                 "organization": None,
                 "streaming_callback": None,
                 "api_base_url": None,
@@ -279,7 +279,7 @@ class TestOpenAIChatGenerator:
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert "Paris" in message.content
-        assert "gpt-3.5" in message.meta["model"]
+        assert "gpt-4o-mini" in message.meta["model"]
         assert message.meta["finish_reason"] == "stop"
 
     @pytest.mark.skipif(
@@ -315,7 +315,7 @@ class TestOpenAIChatGenerator:
         message: ChatMessage = results["replies"][0]
         assert "Paris" in message.content
 
-        assert "gpt-3.5" in message.meta["model"]
+        assert "gpt-4o-mini" in message.meta["model"]
         assert message.meta["finish_reason"] == "stop"
 
         assert callback.counter > 1

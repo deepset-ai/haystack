@@ -58,7 +58,7 @@ class ChatPromptBuilder:
 
     # no parameter init, we don't use any runtime template variables
     prompt_builder = ChatPromptBuilder()
-    llm = OpenAIChatGenerator(api_key=Secret.from_token("<your-api-key>"), model="gpt-3.5-turbo")
+    llm = OpenAIChatGenerator(api_key=Secret.from_token("<your-api-key>"), model="gpt-4o-mini")
 
     pipe = Pipeline()
     pipe.add_component("prompt_builder", prompt_builder)
@@ -76,7 +76,7 @@ class ChatPromptBuilder:
 
     >> {'llm': {'replies': [ChatMessage(content="Berlin is the capital city of Germany and one of the most vibrant
     and diverse cities in Europe. Here are some key things to know...Enjoy your time exploring the vibrant and dynamic
-    capital of Germany!", role=<ChatRole.ASSISTANT: 'assistant'>, name=None, meta={'model': 'gpt-3.5-turbo-0613',
+    capital of Germany!", role=<ChatRole.ASSISTANT: 'assistant'>, name=None, meta={'model': 'gpt-4o-mini',
     'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 27, 'completion_tokens': 681, 'total_tokens':
     708}})]}}
 
@@ -90,7 +90,7 @@ class ChatPromptBuilder:
     print(res)
     >> {'llm': {'replies': [ChatMessage(content="Here is the weather forecast for Berlin in the next 5
     days:\\n\\nDay 1: Mostly cloudy with a high of 22°C (72°F) and...so it's always a good idea to check for updates
-    closer to your visit.", role=<ChatRole.ASSISTANT: 'assistant'>, name=None, meta={'model': 'gpt-3.5-turbo-0613',
+    closer to your visit.", role=<ChatRole.ASSISTANT: 'assistant'>, name=None, meta={'model': 'gpt-4o-mini',
     'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 37, 'completion_tokens': 201,
     'total_tokens': 238}})]}}
     ```
