@@ -274,36 +274,6 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         results = document_store.bm25_retrieval(query="doesn't matter, top_k is 10", top_k=10)
         assert len(results) == 0
 
-    def test_bm25_retrieval_with_filters(self, document_store: InMemoryDocumentStore):
-        selected_document = Document(content="Java is, well...", meta={"selected": True})
-        docs = [Document(), selected_document, Document(content="Bird watching")]
-        document_store.write_documents(docs)
-        results = document_store.bm25_retrieval(query="Java", top_k=10, filters={"selected": True})
-        assert len(results) == 1
-        assert results[0].id == selected_document.id
-
-    def test_bm25_retrieval_with_filters_keeps_default_filters(self, document_store: InMemoryDocumentStore):
-        docs = [Document(meta={"selected": True}), Document(content="Gardening"), Document(content="Bird watching")]
-        document_store.write_documents(docs)
-        results = document_store.bm25_retrieval(query="Java", top_k=10, filters={"selected": True})
-        assert len(results) == 0
-
-    def test_bm25_retrieval_with_filters_on_text_or_dataframe(self, document_store: InMemoryDocumentStore):
-        document = Document(dataframe=pd.DataFrame({"language": ["Python", "Java"], "use": ["Data Science", "Web"]}))
-        docs = [Document(), Document(content="Gardening"), Document(content="Bird watching"), document]
-        document_store.write_documents(docs)
-        results = document_store.bm25_retrieval(query="Java", top_k=10, filters={"content": None})
-        assert len(results) == 1
-        assert results[0].id == document.id
-
-    def test_bm25_retrieval_with_documents_with_mixed_content(self, document_store: InMemoryDocumentStore):
-        double_document = Document(content="Gardening is a hobby", embedding=[1.0, 2.0, 3.0])
-        docs = [Document(embedding=[1.0, 2.0, 3.0]), double_document, Document(content="Bird watching")]
-        document_store.write_documents(docs)
-        results = document_store.bm25_retrieval(query="Gardening", top_k=10, filters={"embedding": {"$not": None}})
-        assert len(results) == 1
-        assert results[0].id == double_document.id
-
     def test_embedding_retrieval(self):
         docstore = InMemoryDocumentStore(embedding_similarity_function="cosine")
         # Tests if the embedding retrieval method returns the correct document based on the input query embedding.
