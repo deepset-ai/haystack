@@ -223,7 +223,7 @@ class TestFaithfulnessEvaluator:
     def test_run_missing_parameters(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = FaithfulnessEvaluator()
-        with pytest.raises(TypeError, match="missing 3 required positional arguments"):
+        with pytest.raises(ValueError, match="LLM evaluator expected input parameter"):
             component.run()
 
     def test_run_returns_nan_raise_on_failure_false(self, monkeypatch):

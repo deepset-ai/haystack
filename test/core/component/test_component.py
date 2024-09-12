@@ -133,7 +133,7 @@ def test_async_run_not_async():
         def async_run(self, value: int):
             return {"value": 1}
 
-    with pytest.raises(ComponentError):
+    with pytest.raises(ComponentError, match=r"must be a coroutine"):
         comp = MockComponent()
 
 
@@ -148,44 +148,116 @@ def test_async_run_not_coroutine():
         async def async_run(self, value: int):
             yield {"value": 1}
 
-    with pytest.raises(ComponentError):
+    with pytest.raises(ComponentError, match=r"must be a coroutine"):
         comp = MockComponent()
 
 
 def test_parameters_mismatch_run_and_async_run():
+    err_msg = r"Parameters of 'run' and 'async_run' methods must be the same"
+
     @component
-    class MockComponent:
+    class MockComponentMismatchingInputTypes:
         @component.output_types(value=int)
         def run(self, value: int):
             return {"value": 1}
 
+        @component.output_types(value=int)
         async def async_run(self, value: str):
-            yield {"value": "1"}
+            return {"value": "1"}
 
-    with pytest.raises(ComponentError):
-        comp = MockComponent()
+    with pytest.raises(ComponentError, match=err_msg):
+        comp = MockComponentMismatchingInputTypes()
+
+    @component
+    class MockComponentMismatchingInputs:
+        @component.output_types(value=int)
+        def run(self, value: int, **kwargs):
+            return {"value": 1}
+
+        @component.output_types(value=int)
+        async def async_run(self, value: int):
+            return {"value": "1"}
+
+    with pytest.raises(ComponentError, match=err_msg):
+        comp = MockComponentMismatchingInputs()
+
+    @component
+    class MockComponentMismatchingInputOrder:
+        @component.output_types(value=int)
+        def run(self, value: int, another: str):
+            return {"value": 1}
+
+        @component.output_types(value=int)
+        async def async_run(self, another: str, value: int):
+            return {"value": "1"}
+
+    with pytest.raises(ComponentError, match=err_msg):
+        comp = MockComponentMismatchingInputOrder()
 
 
 def test_set_input_types():
     @component
     class MockComponent:
-        def __init__(self):
+        def __init__(self, flag: bool):
             component.set_input_types(self, value=Any)
-
-        def to_dict(self):
-            return {}
-
-        @classmethod
-        def from_dict(cls, data):
-            return cls()
+            if flag:
+                component.set_input_type(self, name="another", type=str)
 
         @component.output_types(value=int)
         def run(self, **kwargs):
             return {"value": 1}
 
-    comp = MockComponent()
+    comp = MockComponent(False)
     assert comp.__haystack_input__._sockets_dict == {"value": InputSocket("value", Any)}
     assert comp.run() == {"value": 1}
+
+    comp = MockComponent(True)
+    assert comp.__haystack_input__._sockets_dict == {
+        "value": InputSocket("value", Any),
+        "another": InputSocket("another", str),
+    }
+    assert comp.run() == {"value": 1}
+
+
+def test_set_input_types_no_kwarg():
+    @component
+    class MockComponent:
+        def __init__(self, flag: bool):
+            if flag:
+                component.set_input_type(self, name="another", type=str)
+            else:
+                component.set_input_types(self, value=Any)
+
+        @component.output_types(value=int)
+        def run(self, fini: bool):
+            return {"value": 1}
+
+    with pytest.raises(ComponentError, match=r"doesn't have a kwargs parameter"):
+        comp = MockComponent(False)
+
+    with pytest.raises(ComponentError, match=r"doesn't have a kwargs parameter"):
+        comp = MockComponent(True)
+
+
+def test_set_input_types_overrides_run():
+    @component
+    class MockComponent:
+        def __init__(self, state: bool):
+            if state:
+                component.set_input_type(self, name="fini", type=str)
+            else:
+                component.set_input_types(self, fini=Any)
+
+        @component.output_types(value=int)
+        def run(self, fini: bool, **kwargs):
+            return {"value": 1}
+
+    err_msg = "cannot override the parameters of the 'run' method"
+    with pytest.raises(ComponentError, match=err_msg):
+        comp = MockComponent(False)
+
+    with pytest.raises(ComponentError, match=err_msg):
+        comp = MockComponent(True)
 
 
 def test_set_output_types():
@@ -254,7 +326,7 @@ def test_output_types_decorator_mismatch_run_async_run():
         async def async_run(self, value: int):
             return {"value": "1"}
 
-    with pytest.raises(ComponentError):
+    with pytest.raises(ComponentError, match=r"Output type specifications .* must be the same"):
         comp = MockComponent()
 
 
@@ -268,7 +340,7 @@ def test_output_types_decorator_missing_async_run():
         async def async_run(self, value: int):
             return {"value": "1"}
 
-    with pytest.raises(ComponentError):
+    with pytest.raises(ComponentError, match=r"Output type specifications .* must be the same"):
         comp = MockComponent()
 
 
