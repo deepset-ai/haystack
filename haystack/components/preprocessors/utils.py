@@ -151,12 +151,13 @@ class SentenceSplitter:  # pylint: disable=too-few-public-methods
         """
         sentence_spans = list(self.sentence_tokenizer.span_tokenize(text))
         if self.use_split_rules:
-            sentence_spans = self._apply_split_rules(text, sentence_spans)
+            sentence_spans = SentenceSplitter._apply_split_rules(text, sentence_spans)
 
         sentences = [{"sentence": text[start:end], "start": start, "end": end} for start, end in sentence_spans]
         return sentences
 
-    def _apply_split_rules(self, text: str, sentence_spans: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
+    @staticmethod
+    def _apply_split_rules(text: str, sentence_spans: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
         """
         Applies additional split rules to the sentence spans.
 
