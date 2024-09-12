@@ -46,6 +46,7 @@ class TestTracing:
                     "haystack.pipeline.output_data": {"hello2": {"output": "Hello, Hello, world!!"}},
                     "haystack.pipeline.metadata": {},
                     "haystack.pipeline.max_loops_allowed": 100,
+                    "haystack.pipeline.max_runs_per_component": 100,
                 },
                 trace_id=ANY,
                 span_id=ANY,
@@ -100,6 +101,7 @@ class TestTracing:
                 tags={
                     "haystack.pipeline.metadata": {},
                     "haystack.pipeline.max_loops_allowed": 100,
+                    "haystack.pipeline.max_runs_per_component": 100,
                     "haystack.pipeline.input_data": {"hello": {"word": "world"}},
                     "haystack.pipeline.output_data": {"hello2": {"output": "Hello, Hello, world!!"}},
                 },

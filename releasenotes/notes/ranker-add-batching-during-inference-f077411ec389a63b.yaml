@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    We added batching during inference time to the TransformerSimilarityRanker to help prevent OOMs when ranking large amounts of Documents.
