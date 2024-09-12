@@ -41,6 +41,8 @@ ISO639_TO_NLTK = {
     "ml": "malayalam",
 }
 
+QUOTE_SPANS_RE = re.compile(r"\W(\"+|\'+).*?\1")
+
 
 class CustomPunktLanguageVars(nltk.tokenize.punkt.PunktLanguageVars):
     # The following adjustment of PunktSentenceTokenizer is inspired by:
@@ -166,7 +168,7 @@ class SentenceSplitter:  # pylint: disable=too-few-public-methods
         :returns: The list of sentence spans after applying the split rules.
         """
         new_sentence_spans = []
-        quote_spans = [match.span() for match in re.finditer(r"\W(\"+|\'+).*?\1", text)]
+        quote_spans = [match.span() for match in QUOTE_SPANS_RE.finditer(text)]
         while sentence_spans:
             span = sentence_spans.pop(0)
             next_span = sentence_spans[0] if len(sentence_spans) > 0 else None
