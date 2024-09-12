@@ -16,7 +16,7 @@ class StringJoiner:
     """
 
     @component.output_types(strings=List[str])
-    def run(self, strings: Variadic[str]) -> Dict[str, List[str]]:
+    def run(self, strings: Variadic[str]):
         """
         Joins strings into a list of strings
 
