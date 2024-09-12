@@ -200,8 +200,7 @@ def test_evaluation_pipeline(samples_path):
     for article in os.listdir(full_path):
         with open(f"{full_path}/{article}", "r") as f:
             for text in f.read().split("\n"):
-                doc = Document(content=text, meta={"name": article}) if text else None
-                if doc:
+                if doc := Document(content=text, meta={"name": article}) if text else None:
                     docs.append(doc)
     doc_store = indexing_pipeline(docs)
 
