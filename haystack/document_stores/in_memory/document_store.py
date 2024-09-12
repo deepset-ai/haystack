@@ -395,7 +395,10 @@ class InMemoryDocumentStore:
         """
         if filters:
             if "operator" not in filters and "conditions" not in filters:
-                raise ValueError("Please use the new filter syntax, see the documentation for details.")
+                raise ValueError(
+                    "Invalid filter syntax. See https://docs.haystack.deepset.ai/docs/metadata-filtering "
+                    "for details."
+                )
             return [doc for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc)]
         return list(self.storage.values())
 
@@ -502,7 +505,10 @@ class InMemoryDocumentStore:
         }
         if filters:
             if "operator" not in filters:
-                raise ValueError("Please use the new filter syntax, see the documentation for details.")
+                raise ValueError(
+                    "Invalid filter syntax. See https://docs.haystack.deepset.ai/docs/metadata-filtering "
+                    "for details."
+                )
             filters = {"operator": "AND", "conditions": [content_type_filter, filters]}
         else:
             filters = content_type_filter
