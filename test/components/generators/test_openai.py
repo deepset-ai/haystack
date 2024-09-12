@@ -144,7 +144,7 @@ class TestOpenAIGenerator:
             },
         }
         component = OpenAIGenerator.from_dict(data)
-        assert component.model == "gpt-4"
+        assert component.model == "gpt-4o-mini"
         assert component.streaming_callback is print_streaming_chunk
         assert component.api_base_url == "test-base-url"
         assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
