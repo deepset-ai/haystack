@@ -5,7 +5,7 @@
 from typing import Dict, List
 
 from haystack import Document, component
-from haystack.utils.filters import convert, document_matches_filter
+from haystack.utils.filters import document_matches_filter
 
 
 @component
@@ -96,8 +96,10 @@ class MetadataRouter:
             cur_document_matched = False
             for edge, rule in self.rules.items():
                 if "operator" not in rule:
-                    # Must be a legacy filter, convert it
-                    rule = convert(rule)
+                    raise ValueError(
+                        "Invalid filter syntax. "
+                        "See https://docs.haystack.deepset.ai/docs/metadata-filtering for details."
+                    )
                 if document_matches_filter(rule, document):
                     output[edge].append(document)
                     cur_document_matched = True
