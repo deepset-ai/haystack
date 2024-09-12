@@ -12,7 +12,7 @@ from haystack import ComponentError, DeserializationError, Document, component, 
 from haystack.lazy_imports import LazyImport
 from haystack.utils.device import ComponentDevice
 
-with LazyImport(message="Run 'pip install transformers[torch]'") as transformers_import:
+with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transformers_import:
     from transformers import AutoModelForTokenClassification, AutoTokenizer, pipeline
     from transformers import Pipeline as HfPipeline
 
