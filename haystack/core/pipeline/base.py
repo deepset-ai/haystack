@@ -4,6 +4,7 @@
 
 import importlib
 import itertools
+import warnings
 from collections import defaultdict
 from copy import copy, deepcopy
 from datetime import datetime
@@ -41,6 +42,11 @@ T = TypeVar("T", bound="PipelineBase")
 
 logger = logging.getLogger(__name__)
 
+_MAX_LOOPS_ALLOWED_DEPRECATION_MESSAGE = (
+    "'max_loops_allowed' argument is deprecated and will be removed in version '2.7.0'. "
+    "Use 'max_runs_per_component' instead."
+)
+
 
 class PipelineBase:
     """
@@ -52,28 +58,62 @@ class PipelineBase:
     def __init__(
         self,
         metadata: Optional[Dict[str, Any]] = None,
-        max_loops_allowed: int = 100,
+        max_loops_allowed: Optional[int] = None,
         debug_path: Union[Path, str] = Path(".haystack_debug/"),
+        max_runs_per_component: int = 100,
     ):
         """
         Creates the Pipeline.
 
         :param metadata:
-            Arbitrary dictionary to store metadata about this pipeline. Make sure all the values contained in
-            this dictionary can be serialized and deserialized if you wish to save this pipeline to file with
-            `save_pipelines()/load_pipelines()`.
+            Arbitrary dictionary to store metadata about this `Pipeline`. Make sure all the values contained in
+            this dictionary can be serialized and deserialized if you wish to save this `Pipeline` to file.
         :param max_loops_allowed:
-            How many times the pipeline can run the same node before throwing an exception.
+            How many times the `Pipeline` can run the same node before throwing an exception.
+            This is deprecated and will be removed in version 2.7.0, use `max_runs_per_component` instead.
         :param debug_path:
             When debug is enabled in `run()`, where to save the debug data.
+        :param max_runs_per_component:
+            How many times the `Pipeline` can run the same Component.
+            If this limit is reached a `PipelineMaxComponentRuns` exception is raised.
+            If not set defaults to 100 runs per Component.
         """
         self._telemetry_runs = 0
         self._last_telemetry_sent: Optional[datetime] = None
         self.metadata = metadata or {}
-        self.max_loops_allowed = max_loops_allowed
         self.graph = networkx.MultiDiGraph()
         self._debug: Dict[int, Dict[str, Any]] = {}
         self._debug_path = Path(debug_path)
+
+        if max_loops_allowed is not None:
+            warnings.warn(_MAX_LOOPS_ALLOWED_DEPRECATION_MESSAGE, DeprecationWarning)
+            self._max_runs_per_component = max_loops_allowed
+        else:
+            self._max_runs_per_component = max_runs_per_component
+
+    @property
+    def max_loops_allowed(self) -> int:
+        """
+        Returns the maximum number of runs per Component allowed in this Pipeline.
+
+        This is a deprecated field, use `max_runs_per_component` instead.
+
+        :return: Maximum number of runs per Component
+        """
+        warnings.warn(_MAX_LOOPS_ALLOWED_DEPRECATION_MESSAGE, DeprecationWarning)
+        return self._max_runs_per_component
+
+    @max_loops_allowed.setter
+    def max_loops_allowed(self, value: int):
+        """
+        Sets the maximum number of runs per Component allowed in this Pipeline.
+
+        This is a deprecated property, use `max_runs_per_component` instead.
+
+        :param value: Maximum number of runs per Component
+        """
+        warnings.warn(_MAX_LOOPS_ALLOWED_DEPRECATION_MESSAGE, DeprecationWarning)
+        self._max_runs_per_component = value
 
     def __eq__(self, other) -> bool:
         """
@@ -128,7 +168,7 @@ class PipelineBase:
             connections.append({"sender": f"{sender}.{sender_socket}", "receiver": f"{receiver}.{receiver_socket}"})
         return {
             "metadata": self.metadata,
-            "max_loops_allowed": self.max_loops_allowed,
+            "max_runs_per_component": self._max_runs_per_component,
             "components": components,
             "connections": connections,
         }
@@ -152,9 +192,15 @@ class PipelineBase:
         """
         data_copy = deepcopy(data)  # to prevent modification of original data
         metadata = data_copy.get("metadata", {})
-        max_loops_allowed = data_copy.get("max_loops_allowed", 100)
+        max_runs_per_component = data_copy.get("max_runs_per_component", 100)
+        max_loops_allowed = data_copy.get("max_loops_allowed", None)
         debug_path = Path(data_copy.get("debug_path", ".haystack_debug/"))
-        pipe = cls(metadata=metadata, max_loops_allowed=max_loops_allowed, debug_path=debug_path)
+        pipe = cls(
+            metadata=metadata,
+            max_loops_allowed=max_loops_allowed,
+            max_runs_per_component=max_runs_per_component,
+            debug_path=debug_path,
+        )
         components_to_reuse = kwargs.get("components", {})
         for name, component_data in data_copy.get("components", {}).items():
             if name in components_to_reuse:

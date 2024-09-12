@@ -48,5 +48,5 @@ Feature: Pipeline running
 
         Examples:
         | kind | exception |
-        | that has an infinite loop | PipelineMaxLoops |
+        | that has an infinite loop | PipelineMaxComponentRuns |
         | that has a component that doesn't return a dictionary | PipelineRuntimeError |
