@@ -59,7 +59,7 @@ class PipelineBase:
         self,
         metadata: Optional[Dict[str, Any]] = None,
         max_loops_allowed: Optional[int] = None,
-        debug_path: Union[Path, str] = Path(".haystack_debug/"),
+        debug_path: Optional[Union[Path, str]] = None,
         max_runs_per_component: int = 100,
     ):
         """
@@ -83,7 +83,13 @@ class PipelineBase:
         self.metadata = metadata or {}
         self.graph = networkx.MultiDiGraph()
         self._debug: Dict[int, Dict[str, Any]] = {}
-        self._debug_path = Path(debug_path)
+        if debug_path is None:
+            self._debug_path = Path(".haystack_debug/")
+        else:
+            warnings.warn(
+                "The 'debug_path' argument is deprecated and will be removed in version '2.7.0'.", DeprecationWarning
+            )
+            self._debug_path = Path(debug_path)
 
         if max_loops_allowed is not None:
             warnings.warn(_MAX_LOOPS_ALLOWED_DEPRECATION_MESSAGE, DeprecationWarning)
