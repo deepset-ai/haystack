@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-import warnings
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from openai import OpenAI, Stream
