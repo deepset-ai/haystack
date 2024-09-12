@@ -18,7 +18,7 @@ from haystack.dataclasses import Document
 from haystack.document_stores.errors import DocumentStoreError, DuplicateDocumentError
 from haystack.document_stores.types import DuplicatePolicy
 from haystack.utils import expit
-from haystack.utils.filters import convert, document_matches_filter
+from haystack.utils.filters import document_matches_filter
 
 logger = logging.getLogger(__name__)
 
@@ -395,7 +395,10 @@ class InMemoryDocumentStore:
         """
         if filters:
             if "operator" not in filters and "conditions" not in filters:
-                filters = convert(filters)
+                raise ValueError(
+                    "Invalid filter syntax. See https://docs.haystack.deepset.ai/docs/metadata-filtering "
+                    "for details."
+                )
             return [doc for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc)]
         return list(self.storage.values())
 
@@ -502,7 +505,10 @@ class InMemoryDocumentStore:
         }
         if filters:
             if "operator" not in filters:
-                filters = convert(filters)
+                raise ValueError(
+                    "Invalid filter syntax. See https://docs.haystack.deepset.ai/docs/metadata-filtering "
+                    "for details."
+                )
             filters = {"operator": "AND", "conditions": [content_type_filter, filters]}
         else:
             filters = content_type_filter
