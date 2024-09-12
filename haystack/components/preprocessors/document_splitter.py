@@ -3,11 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from copy import deepcopy
-from typing import Callable, Dict, List, Literal, Optional, Tuple
+from typing import Any, Callable, Dict, List, Literal, Optional, Tuple
 
 from more_itertools import windowed
 
 from haystack import Document, component
+from haystack.core.serialization import default_from_dict, default_to_dict
+from haystack.utils import deserialize_callable, serialize_callable
 
 
 @component
@@ -243,3 +245,31 @@ class DocumentSplitter:
                 # add split overlap information to previous Document regarding this Document
                 overlapping_range = (0, overlapping_range[1] - overlapping_range[0])
                 previous_doc.meta["_split_overlap"].append({"doc_id": current_doc.id, "range": overlapping_range})
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serializes the component to a dictionary.
+        """
+        serialized = default_to_dict(
+            self,
+            split_by=self.split_by,
+            split_length=self.split_length,
+            split_overlap=self.split_overlap,
+            split_threshold=self.split_threshold,
+        )
+        if self.splitting_function:
+            serialized["init_parameters"]["splitting_function"] = serialize_callable(self.splitting_function)
+        return serialized
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "DocumentSplitter":
+        """
+        Deserializes the component from a dictionary.
+        """
+        init_params = data.get("init_parameters", {})
+
+        splitting_function = init_params.get("splitting_function", None)
+        if splitting_function:
+            init_params["splitting_function"] = deserialize_callable(splitting_function)
+
+        return default_from_dict(cls, data)
