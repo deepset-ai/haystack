@@ -48,7 +48,7 @@ class LocalWhisperTranscriber:
 
     whisper = LocalWhisperTranscriber(model="small")
     whisper.warm_up()
-    transcription = whisper.run(audio_files=["path/to/audio/file"])
+    transcription = whisper.run(sources=["path/to/audio/file"])
     ```
     """
 
@@ -119,7 +119,7 @@ class LocalWhisperTranscriber:
         [Whisper API documentation](https://platform.openai.com/docs/guides/speech-to-text) and the official Whisper
         [GitHup repo](https://github.com/openai/whisper).
 
-        :param audio_files:
+        :param sources:
             A list of paths or binary streams to transcribe.
 
         :returns: A dictionary with the following keys:
@@ -147,7 +147,7 @@ class LocalWhisperTranscriber:
         [Whisper API documentation](https://platform.openai.com/docs/guides/speech-to-text) and the official Whisper
         [github repo](https://github.com/openai/whisper).
 
-        :param audio_files:
+        :param sources:
             A list of paths or binary streams to transcribe.
         :returns:
             A list of Documents, one for each file.
@@ -168,7 +168,7 @@ class LocalWhisperTranscriber:
         [Whisper API documentation](https://platform.openai.com/docs/guides/speech-to-text) and the official Whisper
         [github repo](https://github.com/openai/whisper).
 
-        :param audio_files:
+        :param sources:
             A list of paths or binary streams to transcribe.
         :returns:
             A dictionary mapping 'file_path' to 'transcription'.
