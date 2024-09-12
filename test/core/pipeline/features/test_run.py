@@ -848,7 +848,7 @@ def pipeline_that_has_a_component_with_only_default_inputs_as_first_to_run():
     - The second Component has at least one default input
     """
 
-    def fake_generator_run(self, prompt: str, generation_kwargs: Optional[Dict[str, Any]] = None):
+    def fake_generator_run(self, generation_kwargs: Optional[Dict[str, Any]] = None, **kwargs):
         # Simple hack to simulate a model returning a different reply after the
         # the first time it's called
         if getattr(fake_generator_run, "called", False):
@@ -858,7 +858,7 @@ def pipeline_that_has_a_component_with_only_default_inputs_as_first_to_run():
 
     FakeGenerator = component_class(
         "FakeGenerator",
-        input_types={"prompt": str, "generation_kwargs": Optional[Dict[str, Any]]},
+        input_types={"prompt": str},
         output_types={"replies": List[str]},
         extra_fields={"run": fake_generator_run},
     )

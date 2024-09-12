@@ -45,3 +45,20 @@ class TestSockets:
         io = Sockets(component=comp, sockets_dict=comp.__haystack_input__._sockets_dict, sockets_io_type=InputSocket)
         res = repr(io)
         assert res == "Inputs:\n  - input_1: int\n  - input_2: int"
+
+    def test_get(self):
+        comp = component_class("SomeComponent", input_types={"input_1": int, "input_2": int})()
+        io = Sockets(component=comp, sockets_dict=comp.__haystack_input__._sockets_dict, sockets_io_type=InputSocket)
+
+        assert io.get("input_1") == comp.__haystack_input__._sockets_dict["input_1"]
+        assert io.get("input_2") == comp.__haystack_input__._sockets_dict["input_2"]
+        assert io.get("invalid") == None
+        assert io.get("invalid", InputSocket("input_2", int)) == InputSocket("input_2", int)
+
+    def test_contains(self):
+        comp = component_class("SomeComponent", input_types={"input_1": int, "input_2": int})()
+        io = Sockets(component=comp, sockets_dict=comp.__haystack_input__._sockets_dict, sockets_io_type=InputSocket)
+
+        assert "input_1" in io
+        assert "input_2" in io
+        assert "invalid" not in io
