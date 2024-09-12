@@ -200,7 +200,9 @@ def test_evaluation_pipeline(samples_path):
     for article in os.listdir(full_path):
         with open(f"{full_path}/{article}", "r") as f:
             for text in f.read().split("\n"):
-                docs.append(Document(content=text, meta={"name": article})) if text else None
+                doc = Document(content=text, meta={"name": article}) if text else None
+                if doc:
+                    docs.append(doc)
     doc_store = indexing_pipeline(docs)
 
     # running the RAG pipeline A + evaluation pipeline
