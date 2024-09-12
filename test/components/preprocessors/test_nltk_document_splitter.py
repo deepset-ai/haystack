@@ -5,6 +5,7 @@ from haystack import Document
 from pytest import LogCaptureFixture
 
 from haystack.components.preprocessors.nltk_document_splitter import NLTKDocumentSplitter
+from haystack.components.preprocessors.utils import SentenceSplitter
 
 
 def test_init_warning_message(caplog: LogCaptureFixture) -> None:
@@ -333,3 +334,30 @@ class TestNLTKDocumentSplitterRespectSentenceBoundary:
         assert documents[3].meta["page_number"] == 3
         assert documents[3].meta["split_id"] == 3
         assert documents[3].meta["split_idx_start"] == text.index(documents[3].content)
+
+
+class TestSentenceSplitter:
+    def test_apply_split_rules_second_while_loop(self) -> None:
+        text = "This is a test. (With a parenthetical statement.) And another sentence."
+        spans = [(0, 15), (16, 50), (51, 74)]
+        result = SentenceSplitter._apply_split_rules(text, spans)
+        assert len(result) == 2
+        assert result == [(0, 50), (51, 74)]
+
+    def test_apply_split_rules_no_join(self) -> None:
+        text = "This is a test. This is another test. And a third test."
+        spans = [(0, 15), (16, 36), (37, 54)]
+        result = SentenceSplitter._apply_split_rules(text, spans)
+        assert len(result) == 3
+        assert result == [(0, 15), (16, 36), (37, 54)]
+
+    @pytest.mark.parametrize(
+        "text,span,next_span,quote_spans,expected",
+        [
+            # triggers sentence boundary is inside a quote
+            ('He said, "Hello World." Then left.', (0, 15), (16, 23), [(9, 23)], True)
+        ],
+    )
+    def test_needs_join_cases(self, text, span, next_span, quote_spans, expected):
+        result = SentenceSplitter._needs_join(text, span, next_span, quote_spans)
+        assert result == expected, f"Expected {expected} for input: {text}, {span}, {next_span}, {quote_spans}"
