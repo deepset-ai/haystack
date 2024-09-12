@@ -136,7 +136,7 @@ class DocumentSplitter:
             return self.splitting_function(text)
         else:
             raise NotImplementedError(
-                "DocumentSplitter only supports 'word', 'sentence', 'page' or 'passage' split_by options."
+                "DocumentSplitter only supports 'function', 'page', 'passage', 'sentence' or 'word' split_by options."
             )
         units = text.split(self.split_at)
         # Add the delimiter back to all units except the last one
