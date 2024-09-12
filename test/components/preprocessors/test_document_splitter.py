@@ -1,10 +1,18 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+import re
+
 import pytest
 
 from haystack import Document
 from haystack.components.preprocessors import DocumentSplitter
+from haystack.utils import deserialize_callable, serialize_callable
+
+
+# custom split function for testing
+def custom_split(text):
+    return text.split(".")
 
 
 def merge_documents(documents):
@@ -164,6 +172,27 @@ class TestDocumentSplitter:
         assert docs[2].meta["split_id"] == 2
         assert docs[2].meta["split_idx_start"] == text.index(docs[2].content)
         assert docs[2].meta["page_number"] == 3
+
+    def test_split_by_function(self):
+        splitting_function = lambda input_str: input_str.split(".")
+        splitter = DocumentSplitter(split_by="function", splitting_function=splitting_function, split_length=1)
+        text = "This.Is.A.Test"
+        result = splitter.run(documents=[Document(content=text)])
+        docs = result["documents"]
+
+        word_list = ["This", "Is", "A", "Test"]
+        assert len(docs) == 4
+        for w_target, w_split in zip(word_list, docs):
+            assert w_split.content == w_target
+
+        splitting_function = lambda input_str: re.split("[\s]{2,}", input_str)
+        splitter = DocumentSplitter(split_by="function", splitting_function=splitting_function, split_length=1)
+        text = "This       Is\n  A  Test"
+        result = splitter.run(documents=[Document(content=text)])
+        docs = result["documents"]
+        assert len(docs) == 4
+        for w_target, w_split in zip(word_list, docs):
+            assert w_split.content == w_target
 
     def test_split_by_word_with_overlap(self):
         splitter = DocumentSplitter(split_by="word", split_length=10, split_overlap=2)
@@ -329,3 +358,90 @@ class TestDocumentSplitter:
 
         # reconstruct the original document content from the split documents
         assert doc.content == merge_documents(docs)
+
+    def test_to_dict(self):
+        """
+        Test the to_dict method of the DocumentSplitter class.
+        """
+        splitter = DocumentSplitter(split_by="word", split_length=10, split_overlap=2, split_threshold=5)
+        serialized = splitter.to_dict()
+
+        assert serialized["type"] == "haystack.components.preprocessors.document_splitter.DocumentSplitter"
+        assert serialized["init_parameters"]["split_by"] == "word"
+        assert serialized["init_parameters"]["split_length"] == 10
+        assert serialized["init_parameters"]["split_overlap"] == 2
+        assert serialized["init_parameters"]["split_threshold"] == 5
+        assert "splitting_function" not in serialized["init_parameters"]
+
+    def test_to_dict_with_splitting_function(self):
+        """
+        Test the to_dict method of the DocumentSplitter class when a custom splitting function is provided.
+        """
+
+        splitter = DocumentSplitter(split_by="function", splitting_function=custom_split)
+        serialized = splitter.to_dict()
+
+        assert serialized["type"] == "haystack.components.preprocessors.document_splitter.DocumentSplitter"
+        assert serialized["init_parameters"]["split_by"] == "function"
+        assert "splitting_function" in serialized["init_parameters"]
+        assert callable(deserialize_callable(serialized["init_parameters"]["splitting_function"]))
+
+    def test_from_dict(self):
+        """
+        Test the from_dict class method of the DocumentSplitter class.
+        """
+        data = {
+            "type": "haystack.components.preprocessors.document_splitter.DocumentSplitter",
+            "init_parameters": {"split_by": "word", "split_length": 10, "split_overlap": 2, "split_threshold": 5},
+        }
+        splitter = DocumentSplitter.from_dict(data)
+
+        assert splitter.split_by == "word"
+        assert splitter.split_length == 10
+        assert splitter.split_overlap == 2
+        assert splitter.split_threshold == 5
+        assert splitter.splitting_function is None
+
+    def test_from_dict_with_splitting_function(self):
+        """
+        Test the from_dict class method of the DocumentSplitter class when a custom splitting function is provided.
+        """
+
+        def custom_split(text):
+            return text.split(".")
+
+        data = {
+            "type": "haystack.components.preprocessors.document_splitter.DocumentSplitter",
+            "init_parameters": {"split_by": "function", "splitting_function": serialize_callable(custom_split)},
+        }
+        splitter = DocumentSplitter.from_dict(data)
+
+        assert splitter.split_by == "function"
+        assert callable(splitter.splitting_function)
+        assert splitter.splitting_function("a.b.c") == ["a", "b", "c"]
+
+    def test_roundtrip_serialization(self):
+        """
+        Test the round-trip serialization of the DocumentSplitter class.
+        """
+        original_splitter = DocumentSplitter(split_by="word", split_length=10, split_overlap=2, split_threshold=5)
+        serialized = original_splitter.to_dict()
+        deserialized_splitter = DocumentSplitter.from_dict(serialized)
+
+        assert original_splitter.split_by == deserialized_splitter.split_by
+        assert original_splitter.split_length == deserialized_splitter.split_length
+        assert original_splitter.split_overlap == deserialized_splitter.split_overlap
+        assert original_splitter.split_threshold == deserialized_splitter.split_threshold
+
+    def test_roundtrip_serialization_with_splitting_function(self):
+        """
+        Test the round-trip serialization of the DocumentSplitter class when a custom splitting function is provided.
+        """
+
+        original_splitter = DocumentSplitter(split_by="function", splitting_function=custom_split)
+        serialized = original_splitter.to_dict()
+        deserialized_splitter = DocumentSplitter.from_dict(serialized)
+
+        assert original_splitter.split_by == deserialized_splitter.split_by
+        assert callable(deserialized_splitter.splitting_function)
+        assert deserialized_splitter.splitting_function("a.b.c") == ["a", "b", "c"]
