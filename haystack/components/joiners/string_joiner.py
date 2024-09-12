@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from typing import Dict, List
+from typing import List
 
 from haystack import component, logging
 from haystack.core.component.types import Variadic
