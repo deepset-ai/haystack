@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Dict, Type, Union
+from typing import Dict, Optional, Type, Union
 
 from haystack import logging
 from haystack.core.type_utils import _type_name
@@ -99,6 +99,24 @@ class Sockets:
         """
         self._sockets_dict[key] = socket
         self.__dict__[key] = socket
+
+    def __contains__(self, key: str) -> bool:
+        return key in self._sockets_dict
+
+    def get(
+        self, key: str, default: Optional[Union[InputSocket, OutputSocket]] = None
+    ) -> Optional[Union[InputSocket, OutputSocket]]:
+        """
+        Get a socket from the Sockets object.
+
+        :param key:
+            The name of the socket to get.
+        :param default:
+            The value to return if the key is not found.
+        :returns:
+            The socket with the given key or `default` if the key is not found.
+        """
+        return self._sockets_dict.get(key, default)
 
     def _component_name(self) -> str:
         if pipeline := getattr(self._component, "__haystack_added_to_pipeline__"):

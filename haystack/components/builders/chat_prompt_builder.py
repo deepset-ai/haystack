@@ -133,8 +133,6 @@ class ChatPromptBuilder:
                     variables += list(template_variables)
 
         # setup inputs
-        static_input_slots = {"template": Optional[str], "template_variables": Optional[Dict[str, Any]]}
-        component.set_input_types(self, **static_input_slots)
         for var in variables:
             if var in self.required_variables:
                 component.set_input_type(self, var, Any)
