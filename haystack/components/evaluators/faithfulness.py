@@ -151,7 +151,7 @@ class FaithfulnessEvaluator(LLMEvaluator):
         )
 
     @component.output_types(individual_scores=List[int], score=float, results=List[Dict[str, Any]])
-    def run(self, questions: List[str], contexts: List[List[str]], predicted_answers: List[str]) -> Dict[str, Any]:
+    def run(self, **inputs) -> Dict[str, Any]:
         """
         Run the LLM evaluator.
 
@@ -167,9 +167,7 @@ class FaithfulnessEvaluator(LLMEvaluator):
                 - `individual_scores`: A list of faithfulness scores for each input answer.
                 - `results`: A list of dictionaries with `statements` and `statement_scores` for each input answer.
         """
-        result = super(FaithfulnessEvaluator, self).run(
-            questions=questions, contexts=contexts, predicted_answers=predicted_answers
-        )
+        result = super(FaithfulnessEvaluator, self).run(**inputs)
 
         # calculate average statement faithfulness score per query
         for idx, res in enumerate(result["results"]):
