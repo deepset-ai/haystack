@@ -2,14 +2,6 @@ name: Minor Version Release
 
 on:
   workflow_dispatch:
-    inputs:
-      version:
-        description: "Version to release"
-        required: true
-        type: choice
-        options:
-          - v1.x
-          - v2.x
 
 env:
   PYTHON_VERSION: "3.8"
@@ -18,20 +10,10 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Get branch name
-        id: branch
-        shell: python
-        run: |
-          import os
-          version = "${{ inputs.version }}"
-          branch = "v1.x" if version == "v1.x" else "main"
-          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            print(f"name={branch}", file=f)
-
       - name: Checkout this repo
         uses: actions/checkout@v4
         with:
-          ref: "${{ steps.branch.outputs.name }}"
+          ref: main
 
       - name: Define all versions
         id: versions
@@ -40,7 +22,7 @@ jobs:
         run: |
           echo "current_release_minor=$(cut -d "." -f 1,2 < VERSION.txt)" >> "$GITHUB_OUTPUT"
 
-      - name: Bump version on ${{ steps.branch.outputs.name }}
+      - name: Bump version on main
         shell: bash
         env:
           # We use the HAYSTACK_BOT_TOKEN here so the PR created by the step will
@@ -50,7 +32,7 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-          git checkout "${{ steps.branch.outputs.name }}"
+          git checkout main
 
           # Create the release branch from the current unstable
           git checkout -b v${{ steps.versions.outputs.current_release_minor }}.x
@@ -74,11 +56,11 @@ jobs:
           git push -u origin bump-version
 
           # Create the PR
-          gh pr create -B "${{ steps.branch.outputs.name }}" \
+          gh pr create -B main \
             -H bump-version \
             --title "Bump unstable version" \
-            --body "This PR bumps the unstable version for ${{ inputs.version }}.\n \
-          The release branch \`v${{ steps.versions.outputs.current_release_minor }}.x\` has been correctly created.\n\
+            --body "This PR bumps the unstable version for \`v2.x\`. \
+          The release branch \`v${{ steps.versions.outputs.current_release_minor }}.x\` has been correctly created. \
           Verify documentation on Readme has been correctly updated before approving and merging this PR." \
             --label "ignore-for-release-notes"
 
@@ -93,5 +75,5 @@ jobs:
         env:
           RDME_API_KEY: ${{ secrets.README_API_KEY }}
         run: |
-          git checkout ${{ steps.branch.outputs.name }}
+          git checkout main
           python ./.github/utils/release_docs.py --new-version ${{ steps.versions.outputs.current_release_minor }}
