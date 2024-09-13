@@ -291,8 +291,7 @@ class LLMEvaluator:
             outputs=self.outputs,
             examples=self.examples,
             api=self.api,
-            api_key = self.api_key and self.api_key.to_dict()
-
+            api_key=self.api_key and self.api_key.to_dict(),
             api_params=self.api_params,
             progress_bar=self.progress_bar,
         )
