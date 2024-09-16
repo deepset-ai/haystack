@@ -8,7 +8,7 @@ from readme_api import get_versions, create_new_unstable
 VERSION_VALIDATOR = re.compile(r"^[0-9]+\.[0-9]+$")
 
 
-def calculate_new_unstable(version):
+def calculate_new_unstable(version: str):
     # version must be formatted like so <major>.<minor>
     major, minor = version.split(".")
     return f"{major}.{int(minor) + 1}-unstable"

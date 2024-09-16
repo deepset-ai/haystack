@@ -5,7 +5,7 @@ import requests
 
 
 class ReadmeAuth(requests.auth.AuthBase):
-    def __call__(self, r):
+    def __call__(self, r: requests.Request):
         r.headers["authorization"] = f"Basic {readme_token()}"
         return r
 
@@ -29,7 +29,7 @@ def get_versions():
     return [v["version"] for v in res.json()]
 
 
-def create_new_unstable(current, new):
+def create_new_unstable(current: str, new: str):
     """
     Create new version by copying current.
 
@@ -42,7 +42,7 @@ def create_new_unstable(current, new):
     res.raise_for_status()
 
 
-def promote_unstable_to_stable(unstable, stable):
+def promote_unstable_to_stable(unstable: str, stable: str):
     """
     Rename the current unstable to stable and set it as stable.
 
