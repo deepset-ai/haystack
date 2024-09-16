@@ -5,7 +5,7 @@ import requests
 
 
 class ReadmeAuth(requests.auth.AuthBase):
-    def __call__(self, r: requests.Request):
+    def __call__(self, r):
         r.headers["authorization"] = f"Basic {readme_token()}"
         return r
 
