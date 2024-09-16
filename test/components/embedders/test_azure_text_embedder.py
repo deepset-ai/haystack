@@ -59,4 +59,4 @@ class TestAzureOpenAITextEmbedder:
 
         assert len(result["embedding"]) == 1536
         assert all(isinstance(x, float) for x in result["embedding"])
-        assert result["meta"] == {"model": "ada", "usage": {"prompt_tokens": 6, "total_tokens": 6}}
+        assert result["meta"] == {"model": "text-embedding-ada-002", "usage": {"prompt_tokens": 6, "total_tokens": 6}}
