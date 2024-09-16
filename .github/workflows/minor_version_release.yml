@@ -68,7 +68,7 @@ jobs:
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
 
-      - name: Install release_docs.py dependencies
+      - name: Install create_unstable_docs.py dependencies
         run: pip install requests
 
       - name: Release Readme version
@@ -76,4 +76,4 @@ jobs:
           RDME_API_KEY: ${{ secrets.README_API_KEY }}
         run: |
           git checkout main
-          python ./.github/utils/release_docs.py --new-version ${{ steps.versions.outputs.current_release_minor }}
+          python ./.github/utils/create_unstable_docs.py --new-version ${{ steps.versions.outputs.current_release_minor }}
