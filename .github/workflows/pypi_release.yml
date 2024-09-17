@@ -29,14 +29,3 @@ jobs:
           HATCH_INDEX_USER: __token__
           HATCH_INDEX_AUTH: ${{ secrets.HAYSTACK_AI_PYPI_TOKEN }}
         run: hatch publish -y
-
-      - name: Notify Slack
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          VERSION: ${{ github.ref_name }}
-        if: always()
-        uses: act10ns/slack@v2
-        with:
-          status: ${{ job.status }}
-          channel: "#haystack-notifications"
-          config: .github/config/pypi-release-slack-notification.yml

@@ -157,7 +157,7 @@ class SentenceWindowRetriever:
                 - `context_windows`: A list of strings, where each string represents the concatenated text from the
                                      context window of the corresponding document in `retrieved_documents`.
                 - `context_documents`: A list of lists of `Document` objects, where each inner list contains the
-                                     documents that form the context window for the corresponding document in
+                                     documents that come from the context window for the corresponding document in
                                      `retrieved_documents`.
 
         """

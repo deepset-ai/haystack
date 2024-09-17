@@ -18,7 +18,7 @@ class TestOpenAIChatGenerator:
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         component = AzureOpenAIChatGenerator(azure_endpoint="some-non-existing-endpoint")
         assert component.client.api_key == "test-api-key"
-        assert component.azure_deployment == "gpt-35-turbo"
+        assert component.azure_deployment == "gpt-4o-mini"
         assert component.streaming_callback is None
         assert not component.generation_kwargs
 
@@ -36,7 +36,7 @@ class TestOpenAIChatGenerator:
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
         )
         assert component.client.api_key == "test-api-key"
-        assert component.azure_deployment == "gpt-35-turbo"
+        assert component.azure_deployment == "gpt-4o-mini"
         assert component.streaming_callback is print_streaming_chunk
         assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
 
@@ -51,12 +51,13 @@ class TestOpenAIChatGenerator:
                 "azure_ad_token": {"env_vars": ["AZURE_OPENAI_AD_TOKEN"], "strict": False, "type": "env_var"},
                 "api_version": "2023-05-15",
                 "azure_endpoint": "some-non-existing-endpoint",
-                "azure_deployment": "gpt-35-turbo",
+                "azure_deployment": "gpt-4o-mini",
                 "organization": None,
                 "streaming_callback": None,
                 "generation_kwargs": {},
                 "timeout": 30.0,
                 "max_retries": 5,
+                "default_headers": {},
             },
         }
 
@@ -78,12 +79,13 @@ class TestOpenAIChatGenerator:
                 "azure_ad_token": {"env_vars": ["ENV_VAR1"], "strict": False, "type": "env_var"},
                 "api_version": "2023-05-15",
                 "azure_endpoint": "some-non-existing-endpoint",
-                "azure_deployment": "gpt-35-turbo",
+                "azure_deployment": "gpt-4o-mini",
                 "organization": None,
                 "streaming_callback": None,
                 "timeout": 2.5,
                 "max_retries": 10,
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
+                "default_headers": {},
             },
         }
 
@@ -98,7 +100,7 @@ class TestOpenAIChatGenerator:
 
     @pytest.mark.integration
     @pytest.mark.skipif(
-        not os.environ.get("AZURE_OPENAI_API_KEY", None) and not os.environ.get("AZURE_OPENAI_ENDPOINT", None),
+        not os.environ.get("AZURE_OPENAI_API_KEY", None) or not os.environ.get("AZURE_OPENAI_ENDPOINT", None),
         reason=(
             "Please export env variables called AZURE_OPENAI_API_KEY containing "
             "the Azure OpenAI key, AZURE_OPENAI_ENDPOINT containing "
@@ -112,7 +114,7 @@ class TestOpenAIChatGenerator:
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert "Paris" in message.content
-        assert "gpt-35-turbo" in message.meta["model"]
+        assert "gpt-4o-mini" in message.meta["model"]
         assert message.meta["finish_reason"] == "stop"
 
     # additional tests intentionally omitted as they are covered by test_openai.py

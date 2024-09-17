@@ -8,7 +8,7 @@ from warnings import warn
 
 from haystack import logging, tracing
 from haystack.core.component import Component
-from haystack.core.errors import PipelineMaxLoops, PipelineRuntimeError
+from haystack.core.errors import PipelineMaxComponentRuns, PipelineRuntimeError
 from haystack.core.pipeline.base import (
     _dequeue_component,
     _dequeue_waiting_component,
@@ -205,7 +205,8 @@ class Pipeline(PipelineBase):
                 "haystack.pipeline.input_data": data,
                 "haystack.pipeline.output_data": final_outputs,
                 "haystack.pipeline.metadata": self.metadata,
-                "haystack.pipeline.max_loops_allowed": self.max_loops_allowed,
+                "haystack.pipeline.max_loops_allowed": self._max_runs_per_component,
+                "haystack.pipeline.max_runs_per_component": self._max_runs_per_component,
             },
         ):
             # Cache for extra outputs, if enabled.
@@ -221,9 +222,9 @@ class Pipeline(PipelineBase):
                     continue
 
                 if self._component_has_enough_inputs_to_run(name, components_inputs):
-                    if self.graph.nodes[name]["visits"] > self.max_loops_allowed:
-                        msg = f"Maximum loops count ({self.max_loops_allowed}) exceeded for component '{name}'"
-                        raise PipelineMaxLoops(msg)
+                    if self.graph.nodes[name]["visits"] > self._max_runs_per_component:
+                        msg = f"Maximum run count {self._max_runs_per_component} reached for component '{name}'"
+                        raise PipelineMaxComponentRuns(msg)
 
                     res: Dict[str, Any] = self._run_component(name, components_inputs[name])
 
@@ -240,7 +241,7 @@ class Pipeline(PipelineBase):
                     # This happens when a component was put in the waiting list but we reached it from another edge.
                     _dequeue_waiting_component((name, comp), waiting_queue)
 
-                    for pair in self._find_components_that_will_receive_no_input(name, res):
+                    for pair in self._find_components_that_will_receive_no_input(name, res, components_inputs):
                         _dequeue_component(pair, run_queue, waiting_queue)
                     res = self._distribute_output(name, res, components_inputs, run_queue, waiting_queue)
 

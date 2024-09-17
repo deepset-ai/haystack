@@ -3,11 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from copy import deepcopy
-from typing import Dict, List, Literal, Tuple
+from typing import Any, Callable, Dict, List, Literal, Optional, Tuple
 
 from more_itertools import windowed
 
 from haystack import Document, component
+from haystack.core.serialization import default_from_dict, default_to_dict
+from haystack.utils import deserialize_callable, serialize_callable
 
 
 @component
@@ -46,10 +48,11 @@ class DocumentSplitter:
 
     def __init__(
         self,
-        split_by: Literal["word", "sentence", "page", "passage"] = "word",
+        split_by: Literal["function", "page", "passage", "sentence", "word"] = "word",
         split_length: int = 200,
         split_overlap: int = 0,
         split_threshold: int = 0,
+        splitting_function: Optional[Callable[[str], List[str]]] = None,
     ):
         """
         Initialize DocumentSplitter.
@@ -61,11 +64,16 @@ class DocumentSplitter:
         :param split_overlap: The number of overlapping units for each split.
         :param split_threshold: The minimum number of units per split. If a split has fewer units
             than the threshold, it's attached to the previous split.
+        :param splitting_function: Necessary when `split_by` is set to "function".
+            This is a function which must accept a single `str` as input and return a `list` of `str` as output,
+            representing the chunks after splitting.
         """
 
         self.split_by = split_by
-        if split_by not in ["word", "sentence", "page", "passage"]:
+        if split_by not in ["function", "page", "passage", "sentence", "word"]:
             raise ValueError("split_by must be one of 'word', 'sentence', 'page' or 'passage'.")
+        if split_by == "function" and splitting_function is None:
+            raise ValueError("When 'split_by' is set to 'function', a valid 'splitting_function' must be provided.")
         if split_length <= 0:
             raise ValueError("split_length must be greater than 0.")
         self.split_length = split_length
@@ -73,6 +81,7 @@ class DocumentSplitter:
             raise ValueError("split_overlap must be greater than or equal to 0.")
         self.split_overlap = split_overlap
         self.split_threshold = split_threshold
+        self.splitting_function = splitting_function
 
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document]):
@@ -114,7 +123,9 @@ class DocumentSplitter:
             )
         return {"documents": split_docs}
 
-    def _split_into_units(self, text: str, split_by: Literal["word", "sentence", "passage", "page"]) -> List[str]:
+    def _split_into_units(
+        self, text: str, split_by: Literal["function", "page", "passage", "sentence", "word"]
+    ) -> List[str]:
         if split_by == "page":
             self.split_at = "\f"
         elif split_by == "passage":
@@ -123,9 +134,11 @@ class DocumentSplitter:
             self.split_at = "."
         elif split_by == "word":
             self.split_at = " "
+        elif split_by == "function" and self.splitting_function is not None:
+            return self.splitting_function(text)
         else:
             raise NotImplementedError(
-                "DocumentSplitter only supports 'word', 'sentence', 'page' or 'passage' split_by options."
+                "DocumentSplitter only supports 'function', 'page', 'passage', 'sentence' or 'word' split_by options."
             )
         units = text.split(self.split_at)
         # Add the delimiter back to all units except the last one
@@ -232,3 +245,31 @@ class DocumentSplitter:
                 # add split overlap information to previous Document regarding this Document
                 overlapping_range = (0, overlapping_range[1] - overlapping_range[0])
                 previous_doc.meta["_split_overlap"].append({"doc_id": current_doc.id, "range": overlapping_range})
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serializes the component to a dictionary.
+        """
+        serialized = default_to_dict(
+            self,
+            split_by=self.split_by,
+            split_length=self.split_length,
+            split_overlap=self.split_overlap,
+            split_threshold=self.split_threshold,
+        )
+        if self.splitting_function:
+            serialized["init_parameters"]["splitting_function"] = serialize_callable(self.splitting_function)
+        return serialized
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "DocumentSplitter":
+        """
+        Deserializes the component from a dictionary.
+        """
+        init_params = data.get("init_parameters", {})
+
+        splitting_function = init_params.get("splitting_function", None)
+        if splitting_function:
+            init_params["splitting_function"] = deserialize_callable(splitting_function)
+
+        return default_from_dict(cls, data)

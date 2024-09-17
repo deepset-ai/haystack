@@ -1,0 +1,38 @@
+name: Release new minor version docs
+
+on:
+  push:
+    tags:
+      # Trigger this only for the first patch release of the new minor
+      - "v[0-9]+.[0-9]+.0"
+      # Exclude 1.x tags
+      - "!v1.[0-9]+.[0-9]+"
+env:
+  PYTHON_VERSION: "3.8"
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v4
+
+      - name: Get version to release
+        id: version
+        shell: bash
+        # We only need `major.minor` in Readme so we cut the full version string to the first two tokens
+        run: |
+          echo "version=$(cut -d "." -f 1,2 < VERSION.txt)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "${{ env.PYTHON_VERSION }}"
+
+      - name: Install promote_unstable_docs.py dependencies
+        run: pip install requests
+
+      - name: Release Readme version
+        env:
+          RDME_API_KEY: ${{ secrets.README_API_KEY }}
+        run: |
+          python ./.github/utils/promote_unstable_docs.py --version ${{ steps.version.outputs.version }}

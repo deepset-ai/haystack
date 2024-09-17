@@ -187,8 +187,13 @@ class ConditionalRouter:
         for route in routes:
             # output_type needs to be deserialized from a string to a type
             route["output_type"] = deserialize_type(route["output_type"])
-        for name, filter_func in init_params.get("custom_filters", {}).items():
-            init_params["custom_filters"][name] = deserialize_callable(filter_func) if filter_func else None
+
+        # Since the custom_filters are typed as optional in the init signature, we catch the
+        # case where they are not present in the serialized data and set them to an empty dict.
+        custom_filters = init_params.get("custom_filters", {})
+        if custom_filters is not None:
+            for name, filter_func in custom_filters.items():
+                init_params["custom_filters"][name] = deserialize_callable(filter_func) if filter_func else None
         return default_from_dict(cls, data)
 
     def run(self, **kwargs):

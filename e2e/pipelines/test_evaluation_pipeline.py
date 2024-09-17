@@ -59,7 +59,7 @@ def rag_pipeline(document_store: InMemoryDocumentStore, top_k: int):  # type: ig
     rag.add_component("embedder", SentenceTransformersTextEmbedder(model=EMBEDDINGS_MODEL, progress_bar=False))  # type: ignore
     rag.add_component("retriever", InMemoryEmbeddingRetriever(document_store, top_k=top_k))  # type: ignore
     rag.add_component("prompt_builder", PromptBuilder(template=template))  # type: ignore
-    rag.add_component("generator", OpenAIGenerator(model="gpt-3.5-turbo"))  # type: ignore
+    rag.add_component("generator", OpenAIGenerator(model="gpt-4o-mini"))  # type: ignore
     rag.add_component("answer_builder", AnswerBuilder())  # type: ignore
     rag.connect("embedder", "retriever.query_embedding")
     rag.connect("retriever", "prompt_builder.documents")
@@ -200,7 +200,8 @@ def test_evaluation_pipeline(samples_path):
     for article in os.listdir(full_path):
         with open(f"{full_path}/{article}", "r") as f:
             for text in f.read().split("\n"):
-                docs.append(Document(content=text, meta={"name": article})) if text else None
+                if doc := Document(content=text, meta={"name": article}) if text else None:
+                    docs.append(doc)
     doc_store = indexing_pipeline(docs)
 
     # running the RAG pipeline A + evaluation pipeline

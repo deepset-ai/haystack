@@ -55,20 +55,29 @@ class TestPipeline:
     It doesn't test Pipeline.run(), that is done separately in a different way.
     """
 
-    def test_pipeline_dumps(self, test_files_path):
-        pipeline = Pipeline()
+    def test_pipeline_dumps_with_deprecated_max_loops_allowed(self, test_files_path):
+        pipeline = Pipeline(max_loops_allowed=99)
         pipeline.add_component("Comp1", FakeComponent("Foo"))
         pipeline.add_component("Comp2", FakeComponent())
         pipeline.connect("Comp1.value", "Comp2.input_")
-        pipeline.max_loops_allowed = 99
         result = pipeline.dumps()
         with open(f"{test_files_path}/yaml/test_pipeline.yaml", "r") as f:
             assert f.read() == result
 
-    def test_pipeline_loads(self, test_files_path):
+    def test_pipeline_dumps(self, test_files_path):
+        pipeline = Pipeline(max_runs_per_component=99)
+        pipeline.add_component("Comp1", FakeComponent("Foo"))
+        pipeline.add_component("Comp2", FakeComponent())
+        pipeline.connect("Comp1.value", "Comp2.input_")
+        result = pipeline.dumps()
         with open(f"{test_files_path}/yaml/test_pipeline.yaml", "r") as f:
+            assert f.read() == result
+
+    def test_pipeline_loads_with_deprecated_max_loops_allowed(self, test_files_path):
+        with open(f"{test_files_path}/yaml/test_pipeline_deprecated.yaml", "r") as f:
             pipeline = Pipeline.loads(f.read())
             assert pipeline.max_loops_allowed == 99
+            assert pipeline._max_runs_per_component == 99
             assert isinstance(pipeline.get_component("Comp1"), FakeComponent)
             assert isinstance(pipeline.get_component("Comp2"), FakeComponent)
 
@@ -111,22 +120,41 @@ class TestPipeline:
         with pytest.raises(DeserializationError, match=".*Comp1.*unknown.*"):
             pipeline = Pipeline.loads(invalid_init_parameter_yaml)
 
-    def test_pipeline_dump(self, test_files_path, tmp_path):
-        pipeline = Pipeline()
+    def test_pipeline_dump_with_deprecated_max_loops_allowed(self, test_files_path, tmp_path):
+        pipeline = Pipeline(max_loops_allowed=99)
         pipeline.add_component("Comp1", FakeComponent("Foo"))
         pipeline.add_component("Comp2", FakeComponent())
         pipeline.connect("Comp1.value", "Comp2.input_")
-        pipeline.max_loops_allowed = 99
         with open(tmp_path / "out.yaml", "w") as f:
             pipeline.dump(f)
         # re-open and ensure it's the same data as the test file
         with open(f"{test_files_path}/yaml/test_pipeline.yaml", "r") as test_f, open(tmp_path / "out.yaml", "r") as f:
             assert f.read() == test_f.read()
 
+    def test_pipeline_dump(self, test_files_path, tmp_path):
+        pipeline = Pipeline(max_runs_per_component=99)
+        pipeline.add_component("Comp1", FakeComponent("Foo"))
+        pipeline.add_component("Comp2", FakeComponent())
+        pipeline.connect("Comp1.value", "Comp2.input_")
+        with open(tmp_path / "out.yaml", "w") as f:
+            pipeline.dump(f)
+        # re-open and ensure it's the same data as the test file
+        with open(f"{test_files_path}/yaml/test_pipeline.yaml", "r") as test_f, open(tmp_path / "out.yaml", "r") as f:
+            assert f.read() == test_f.read()
+
+    def test_pipeline_load_with_deprecated_max_loops_allowed(self, test_files_path):
+        with open(f"{test_files_path}/yaml/test_pipeline_deprecated.yaml", "r") as f:
+            pipeline = Pipeline.load(f)
+            assert pipeline.max_loops_allowed == 99
+            assert pipeline._max_runs_per_component == 99
+            assert isinstance(pipeline.get_component("Comp1"), FakeComponent)
+            assert isinstance(pipeline.get_component("Comp2"), FakeComponent)
+
     def test_pipeline_load(self, test_files_path):
         with open(f"{test_files_path}/yaml/test_pipeline.yaml", "r") as f:
             pipeline = Pipeline.load(f)
             assert pipeline.max_loops_allowed == 99
+            assert pipeline._max_runs_per_component == 99
             assert isinstance(pipeline.get_component("Comp1"), FakeComponent)
             assert isinstance(pipeline.get_component("Comp2"), FakeComponent)
 
@@ -296,7 +324,7 @@ class TestPipeline:
         res = pipe.to_dict()
         expected = {
             "metadata": {"test": "test"},
-            "max_loops_allowed": 42,
+            "max_runs_per_component": 42,
             "components": {
                 "add_two": {
                     "type": "haystack.testing.sample_components.add_value.AddFixedValue",
@@ -316,7 +344,7 @@ class TestPipeline:
         assert res == expected
 
     # UNIT
-    def test_from_dict(self):
+    def test_from_dict_with_deprecated_max_loops_allowed(self):
         data = {
             "metadata": {"test": "test"},
             "max_loops_allowed": 101,
@@ -340,6 +368,86 @@ class TestPipeline:
 
         assert pipe.metadata == {"test": "test"}
         assert pipe.max_loops_allowed == 101
+        assert pipe._max_runs_per_component == 101
+
+        # Components
+        assert len(pipe.graph.nodes) == 3
+        ## add_two
+        add_two = pipe.graph.nodes["add_two"]
+        assert add_two["instance"].add == 2
+        assert add_two["input_sockets"] == {
+            "value": InputSocket(name="value", type=int),
+            "add": InputSocket(name="add", type=Optional[int], default_value=None),
+        }
+        assert add_two["output_sockets"] == {"result": OutputSocket(name="result", type=int, receivers=["double"])}
+        assert add_two["visits"] == 0
+
+        ## add_default
+        add_default = pipe.graph.nodes["add_default"]
+        assert add_default["instance"].add == 1
+        assert add_default["input_sockets"] == {
+            "value": InputSocket(name="value", type=int, senders=["double"]),
+            "add": InputSocket(name="add", type=Optional[int], default_value=None),
+        }
+        assert add_default["output_sockets"] == {"result": OutputSocket(name="result", type=int)}
+        assert add_default["visits"] == 0
+
+        ## double
+        double = pipe.graph.nodes["double"]
+        assert double["instance"]
+        assert double["input_sockets"] == {"value": InputSocket(name="value", type=int, senders=["add_two"])}
+        assert double["output_sockets"] == {"value": OutputSocket(name="value", type=int, receivers=["add_default"])}
+        assert double["visits"] == 0
+
+        # Connections
+        connections = list(pipe.graph.edges(data=True))
+        assert len(connections) == 2
+        assert connections[0] == (
+            "add_two",
+            "double",
+            {
+                "conn_type": "int",
+                "from_socket": OutputSocket(name="result", type=int, receivers=["double"]),
+                "to_socket": InputSocket(name="value", type=int, senders=["add_two"]),
+                "mandatory": True,
+            },
+        )
+        assert connections[1] == (
+            "double",
+            "add_default",
+            {
+                "conn_type": "int",
+                "from_socket": OutputSocket(name="value", type=int, receivers=["add_default"]),
+                "to_socket": InputSocket(name="value", type=int, senders=["double"]),
+                "mandatory": True,
+            },
+        )
+
+    def test_from_dict(self):
+        data = {
+            "metadata": {"test": "test"},
+            "max_runs_per_component": 101,
+            "components": {
+                "add_two": {
+                    "type": "haystack.testing.sample_components.add_value.AddFixedValue",
+                    "init_parameters": {"add": 2},
+                },
+                "add_default": {
+                    "type": "haystack.testing.sample_components.add_value.AddFixedValue",
+                    "init_parameters": {"add": 1},
+                },
+                "double": {"type": "haystack.testing.sample_components.double.Double", "init_parameters": {}},
+            },
+            "connections": [
+                {"sender": "add_two.result", "receiver": "double.value"},
+                {"sender": "double.value", "receiver": "add_default.value"},
+            ],
+        }
+        pipe = Pipeline.from_dict(data)
+
+        assert pipe.metadata == {"test": "test"}
+        assert pipe.max_loops_allowed == 101
+        assert pipe._max_runs_per_component == 101
 
         # Components
         assert len(pipe.graph.nodes) == 3
@@ -1138,24 +1246,43 @@ class TestPipeline:
 
     def test__find_components_that_will_receive_no_input(self):
         sentence_builder = component_class(
-            "SentenceBuilder", input_types={"words": List[str]}, output={"text": "some words"}
+            "SentenceBuilder", input_types={"words": List[str]}, output_types={"text": str}
         )()
         document_builder = component_class(
-            "DocumentBuilder", input_types={"text": str}, output={"doc": Document(content="some words")}
+            "DocumentBuilder", input_types={"text": str}, output_types={"doc": Document}
         )()
+        conditional_document_builder = component_class(
+            "ConditionalDocumentBuilder", output_types={"doc": Document, "noop": None}
+        )()
+
         document_joiner = component_class("DocumentJoiner", input_types={"docs": Variadic[Document]})()
 
         pipe = Pipeline()
         pipe.add_component("sentence_builder", sentence_builder)
         pipe.add_component("document_builder", document_builder)
         pipe.add_component("document_joiner", document_joiner)
+        pipe.add_component("conditional_document_builder", conditional_document_builder)
         pipe.connect("sentence_builder.text", "document_builder.text")
         pipe.connect("document_builder.doc", "document_joiner.docs")
+        pipe.connect("conditional_document_builder.doc", "document_joiner.docs")
 
-        res = pipe._find_components_that_will_receive_no_input("sentence_builder", {})
+        res = pipe._find_components_that_will_receive_no_input("sentence_builder", {}, {})
         assert res == {("document_builder", document_builder), ("document_joiner", document_joiner)}
 
-        res = pipe._find_components_that_will_receive_no_input("sentence_builder", {"text": "some text"})
+        res = pipe._find_components_that_will_receive_no_input("sentence_builder", {"text": "some text"}, {})
+        assert res == set()
+
+        res = pipe._find_components_that_will_receive_no_input("conditional_document_builder", {"noop": None}, {})
+        assert res == {("document_joiner", document_joiner)}
+
+        res = pipe._find_components_that_will_receive_no_input(
+            "conditional_document_builder", {"noop": None}, {"document_joiner": {"docs": []}}
+        )
+        assert res == {("document_joiner", document_joiner)}
+
+        res = pipe._find_components_that_will_receive_no_input(
+            "conditional_document_builder", {"noop": None}, {"document_joiner": {"docs": [Document("some text")]}}
+        )
         assert res == set()
 
     def test__distribute_output(self):

@@ -62,7 +62,7 @@ class BranchJoiner:
 
     # Add components to the pipeline
     pipe.add_component('joiner', BranchJoiner(List[ChatMessage]))
-    pipe.add_component('fc_llm', OpenAIChatGenerator(model="gpt-3.5-turbo-0125"))
+    pipe.add_component('fc_llm', OpenAIChatGenerator(model="gpt-4o-mini"))
     pipe.add_component('validator', JsonSchemaValidator(json_schema=person_schema))
     pipe.add_component('adapter', OutputAdapter("{{chat_message}}", List[ChatMessage])),
     # And connect them
