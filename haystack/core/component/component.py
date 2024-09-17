@@ -186,7 +186,7 @@ class ComponentMeta(type):
 
     @staticmethod
     def _parse_and_set_output_sockets(instance: Any):
-        has_async_run = hasattr(instance, "async_run")
+        has_async_run = hasattr(instance, "run_async")
 
         # If `component.set_output_types()` was called in the component constructor,
         # `__haystack_output__` is already populated, no need to do anything.
@@ -200,10 +200,10 @@ class ComponentMeta(type):
             # won't share this data.
 
             run_output_types = getattr(instance.run, "_output_types_cache", {})
-            async_run_output_types = getattr(instance.async_run, "_output_types_cache", {}) if has_async_run else {}
+            async_run_output_types = getattr(instance.run_async, "_output_types_cache", {}) if has_async_run else {}
 
             if has_async_run and run_output_types != async_run_output_types:
-                raise ComponentError("Output type specifications of 'run' and 'async_run' methods must be the same")
+                raise ComponentError("Output type specifications of 'run' and 'run_async' methods must be the same")
             output_types_cache = run_output_types
 
             instance.__haystack_output__ = Sockets(instance, deepcopy(output_types_cache), OutputSocket)
@@ -243,7 +243,7 @@ class ComponentMeta(type):
         inner(getattr(component_cls, "run"), instance.__haystack_input__)
 
         # Ensure that the sockets are the same for the async method, if it exists.
-        async_run = getattr(component_cls, "async_run", None)
+        async_run = getattr(component_cls, "run_async", None)
         if async_run is not None:
             run_sockets = Sockets(instance, {}, InputSocket)
             async_run_sockets = Sockets(instance, {}, InputSocket)
@@ -254,7 +254,7 @@ class ComponentMeta(type):
             async_run_sig = inner(async_run, async_run_sockets)
 
             if async_run_sockets != run_sockets or run_sig != async_run_sig:
-                raise ComponentError("Parameters of 'run' and 'async_run' methods must be the same")
+                raise ComponentError("Parameters of 'run' and 'run_async' methods must be the same")
 
     def __call__(cls, *args, **kwargs):
         """
@@ -279,9 +279,9 @@ class ComponentMeta(type):
 
         # Before returning, we have the chance to modify the newly created
         # Component instance, so we take the chance and set up the I/O sockets
-        has_async_run = hasattr(instance, "async_run")
-        if has_async_run and not inspect.iscoroutinefunction(instance.async_run):
-            raise ComponentError(f"Method 'async_run' of component '{cls.__name__}' must be a coroutine")
+        has_async_run = hasattr(instance, "run_async")
+        if has_async_run and not inspect.iscoroutinefunction(instance.run_async):
+            raise ComponentError(f"Method 'run_async' of component '{cls.__name__}' must be a coroutine")
         instance.__haystack_supports_async__ = has_async_run
 
         ComponentMeta._parse_and_set_input_sockets(cls, instance)
@@ -478,8 +478,8 @@ class _Component:
             sockets at instance creation time.
             """
             method_name = run_method.__name__
-            if method_name not in ("run", "async_run"):
-                raise ComponentError("'output_types' decorator can only be used on 'run' and `async_run` methods")
+            if method_name not in ("run", "run_async"):
+                raise ComponentError("'output_types' decorator can only be used on 'run' and 'run_async' methods")
 
             setattr(
                 run_method,
