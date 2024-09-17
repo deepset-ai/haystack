@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    The util function `deserialize_document_store_in_init_params_inplace` was renamed to deserialize_component_in_init_params_inplace
