@@ -50,7 +50,7 @@ def test_correct_declaration_with_async():
             return {"output_value": input_value}
 
         @component.output_types(output_value=int)
-        async def async_run(self, input_value: int):
+        async def run_async(self, input_value: int):
             return {"output_value": input_value}
 
     # Verifies also instantiation works with no issues
@@ -130,7 +130,7 @@ def test_async_run_not_async():
             return {"value": 1}
 
         @component.output_types(value=int)
-        def async_run(self, value: int):
+        def run_async(self, value: int):
             return {"value": 1}
 
     with pytest.raises(ComponentError, match=r"must be a coroutine"):
@@ -145,7 +145,7 @@ def test_async_run_not_coroutine():
             return {"value": 1}
 
         @component.output_types(value=int)
-        async def async_run(self, value: int):
+        async def run_async(self, value: int):
             yield {"value": 1}
 
     with pytest.raises(ComponentError, match=r"must be a coroutine"):
@@ -153,7 +153,7 @@ def test_async_run_not_coroutine():
 
 
 def test_parameters_mismatch_run_and_async_run():
-    err_msg = r"Parameters of 'run' and 'async_run' methods must be the same"
+    err_msg = r"Parameters of 'run' and 'run_async' methods must be the same"
 
     @component
     class MockComponentMismatchingInputTypes:
@@ -162,7 +162,7 @@ def test_parameters_mismatch_run_and_async_run():
             return {"value": 1}
 
         @component.output_types(value=int)
-        async def async_run(self, value: str):
+        async def run_async(self, value: str):
             return {"value": "1"}
 
     with pytest.raises(ComponentError, match=err_msg):
@@ -175,7 +175,7 @@ def test_parameters_mismatch_run_and_async_run():
             return {"value": 1}
 
         @component.output_types(value=int)
-        async def async_run(self, value: int):
+        async def run_async(self, value: int):
             return {"value": "1"}
 
     with pytest.raises(ComponentError, match=err_msg):
@@ -188,7 +188,7 @@ def test_parameters_mismatch_run_and_async_run():
             return {"value": 1}
 
         @component.output_types(value=int)
-        async def async_run(self, another: str, value: int):
+        async def run_async(self, another: str, value: int):
             return {"value": "1"}
 
     with pytest.raises(ComponentError, match=err_msg):
@@ -323,7 +323,7 @@ def test_output_types_decorator_mismatch_run_async_run():
             return {"value": 1}
 
         @component.output_types(value=str)
-        async def async_run(self, value: int):
+        async def run_async(self, value: int):
             return {"value": "1"}
 
     with pytest.raises(ComponentError, match=r"Output type specifications .* must be the same"):
@@ -337,7 +337,7 @@ def test_output_types_decorator_missing_async_run():
         def run(self, value: int):
             return {"value": 1}
 
-        async def async_run(self, value: int):
+        async def run_async(self, value: int):
             return {"value": "1"}
 
     with pytest.raises(ComponentError, match=r"Output type specifications .* must be the same"):
