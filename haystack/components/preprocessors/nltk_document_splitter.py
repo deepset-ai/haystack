@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class NLTKDocumentSplitter(DocumentSplitter):
     def __init__(
         self,
-        split_by: Literal["word", "sentence", "page", "passage"] = "word",
+        split_by: Literal["word", "sentence", "page", "passage", "function"] = "word",
         split_length: int = 200,
         split_overlap: int = 0,
         split_threshold: int = 0,
@@ -64,7 +64,9 @@ class NLTKDocumentSplitter(DocumentSplitter):
         )
         self.language = language
 
-    def _split_into_units(self, text: str, split_by: Literal["word", "sentence", "passage", "page"]) -> List[str]:
+    def _split_into_units(
+        self, text: str, split_by: Literal["word", "sentence", "passage", "page", "function"]
+    ) -> List[str]:
         """
         Splits the text into units based on the specified split_by parameter.
 
