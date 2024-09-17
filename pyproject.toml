@@ -103,6 +103,8 @@ extra-dependencies = [
   "python-pptx",                      # PPTXToDocument
   "python-docx",                      # DocxToDocument
 
+  "nltk",                             # NLTKDocumentSplitter
+
   # OpenAPI
   "jsonref",  # OpenAPIServiceConnector, OpenAPIServiceToFunctions
   "openapi3",
