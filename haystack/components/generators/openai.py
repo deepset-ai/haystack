@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-import warnings
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from openai import OpenAI, Stream
@@ -45,7 +44,7 @@ class OpenAIGenerator:
     >> {'replies': ['Natural Language Processing (NLP) is a branch of artificial intelligence that focuses on
     >> the interaction between computers and human language. It involves enabling computers to understand, interpret,
     >> and respond to natural human language in a way that is both meaningful and useful.'], 'meta': [{'model':
-    >> 'gpt-3.5-turbo-0613', 'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 16,
+    >> 'gpt-4o-mini', 'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 16,
     >> 'completion_tokens': 49, 'total_tokens': 65}}]}
     ```
     """
@@ -53,7 +52,7 @@ class OpenAIGenerator:
     def __init__(
         self,
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
-        model: str = "gpt-3.5-turbo",
+        model: str = "gpt-4o-mini",
         streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
         api_base_url: Optional[str] = None,
         organization: Optional[str] = None,
@@ -63,7 +62,7 @@ class OpenAIGenerator:
         max_retries: Optional[int] = None,
     ):
         """
-        Creates an instance of OpenAIGenerator. Unless specified otherwise in `model`, uses OpenAI's GPT-3.5.
+        Creates an instance of OpenAIGenerator. Unless specified otherwise in `model`, uses OpenAI's gpt-4o-mini
 
         By setting the 'OPENAI_TIMEOUT' and 'OPENAI_MAX_RETRIES' you can change the timeout and max_retries parameters
         in the OpenAI client.
@@ -103,11 +102,6 @@ class OpenAIGenerator:
             from the `OPENAI_MAX_RETRIES` environment variable or set to 5.
 
         """
-        warnings.warn(
-            "In the upcoming releases 'gpt-3.5-turbo' will be replaced by 'gpt-4o-mini' as the default model",
-            DeprecationWarning,
-        )
-
         self.api_key = api_key
         self.model = model
         self.generation_kwargs = generation_kwargs or {}

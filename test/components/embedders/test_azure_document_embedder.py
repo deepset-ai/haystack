@@ -81,4 +81,4 @@ class TestAzureOpenAIDocumentEmbedder:
             assert isinstance(doc.embedding, list)
             assert len(doc.embedding) == 1536
             assert all(isinstance(x, float) for x in doc.embedding)
-        assert metadata == {"model": "ada", "usage": {"prompt_tokens": 15, "total_tokens": 15}}
+        assert metadata == {"model": "text-embedding-ada-002", "usage": {"prompt_tokens": 15, "total_tokens": 15}}

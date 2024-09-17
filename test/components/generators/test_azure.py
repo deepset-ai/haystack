@@ -18,7 +18,7 @@ class TestAzureOpenAIGenerator:
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         component = AzureOpenAIGenerator(azure_endpoint="some-non-existing-endpoint")
         assert component.client.api_key == "test-api-key"
-        assert component.azure_deployment == "gpt-35-turbo"
+        assert component.azure_deployment == "gpt-4o-mini"
         assert component.streaming_callback is None
         assert not component.generation_kwargs
 
@@ -32,12 +32,12 @@ class TestAzureOpenAIGenerator:
         component = AzureOpenAIGenerator(
             api_key=Secret.from_token("fake-api-key"),
             azure_endpoint="some-non-existing-endpoint",
-            azure_deployment="gpt-35-turbo",
+            azure_deployment="gpt-4o-mini",
             streaming_callback=print_streaming_chunk,
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
         )
         assert component.client.api_key == "fake-api-key"
-        assert component.azure_deployment == "gpt-35-turbo"
+        assert component.azure_deployment == "gpt-4o-mini"
         assert component.streaming_callback is print_streaming_chunk
         assert component.timeout == 30.0
         assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
@@ -51,7 +51,7 @@ class TestAzureOpenAIGenerator:
             "init_parameters": {
                 "api_key": {"env_vars": ["AZURE_OPENAI_API_KEY"], "strict": False, "type": "env_var"},
                 "azure_ad_token": {"env_vars": ["AZURE_OPENAI_AD_TOKEN"], "strict": False, "type": "env_var"},
-                "azure_deployment": "gpt-35-turbo",
+                "azure_deployment": "gpt-4o-mini",
                 "api_version": "2023-05-15",
                 "streaming_callback": None,
                 "azure_endpoint": "some-non-existing-endpoint",
@@ -81,7 +81,7 @@ class TestAzureOpenAIGenerator:
             "init_parameters": {
                 "api_key": {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"},
                 "azure_ad_token": {"env_vars": ["ENV_VAR1"], "strict": False, "type": "env_var"},
-                "azure_deployment": "gpt-35-turbo",
+                "azure_deployment": "gpt-4o-mini",
                 "api_version": "2023-05-15",
                 "streaming_callback": None,
                 "azure_endpoint": "some-non-existing-endpoint",
@@ -121,7 +121,7 @@ class TestAzureOpenAIGenerator:
         assert "Paris" in response
 
         metadata = results["meta"][0]
-        assert "gpt-35-turbo" in metadata["model"]
+        assert "gpt-4o-mini" in metadata["model"]
         assert metadata["finish_reason"] == "stop"
 
         assert "usage" in metadata
