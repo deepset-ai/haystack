@@ -37,7 +37,7 @@ class TestAnswerJoiner:
     def test_two_strings(self):
         joiner = StringJoiner()
         result = joiner.run(["a", "b"])
-        assert result == {"answers": ["a", "b"]}
+        assert result == {"strings": ["a", "b"]}
 
     @pytest.mark.integration
     def test_with_pipeline(self):
