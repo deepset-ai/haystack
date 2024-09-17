@@ -248,7 +248,14 @@ class HuggingFaceAPIChatGenerator:
             self.streaming_callback(stream_chunk)  # type: ignore # streaming_callback is not None (verified in the run method)
 
         message = ChatMessage.from_assistant(generated_text)
-        message.meta.update({"model": self._client.model, "finish_reason": finish_reason, "index": 0})
+        message.meta.update(
+            {
+                "model": self._client.model,
+                "finish_reason": finish_reason,
+                "index": 0,
+                "usage": {"prompt_tokens": 0, "completion_tokens": 0},  # not available in streaming
+            }
+        )
         return {"replies": [message]}
 
     def _run_non_streaming(
@@ -257,11 +264,16 @@ class HuggingFaceAPIChatGenerator:
         chat_messages: List[ChatMessage] = []
 
         api_chat_output: ChatCompletionOutput = self._client.chat_completion(messages, **generation_kwargs)
-
         for choice in api_chat_output.choices:
             message = ChatMessage.from_assistant(choice.message.content)
             message.meta.update(
-                {"model": self._client.model, "finish_reason": choice.finish_reason, "index": choice.index}
+                {
+                    "model": self._client.model,
+                    "finish_reason": choice.finish_reason,
+                    "index": choice.index,
+                    "usage": api_chat_output.usage or {"prompt_tokens": 0, "completion_tokens": 0},
+                }
             )
             chat_messages.append(message)
+
         return {"replies": chat_messages}
