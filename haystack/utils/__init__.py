@@ -5,7 +5,7 @@
 from .auth import Secret, deserialize_secrets_inplace
 from .callable_serialization import deserialize_callable, serialize_callable
 from .device import ComponentDevice, Device, DeviceMap, DeviceType
-from .docstore_deserialization import deserialize_document_store_in_init_params_inplace
+from .docstore_deserialization import deserialize_component_in_init_params_inplace
 from .expit import expit
 from .filters import document_matches_filter
 from .jinja2_extensions import Jinja2TimeExtension
@@ -28,6 +28,6 @@ __all__ = [
     "deserialize_callable",
     "serialize_type",
     "deserialize_type",
-    "deserialize_document_store_in_init_params_inplace",
+    "deserialize_component_in_init_params_inplace",
     "Jinja2TimeExtension",
 ]
