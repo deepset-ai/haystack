@@ -45,7 +45,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
     client = AzureOpenAIGenerator(
         azure_endpoint="<Your Azure endpoint e.g. `https://your-company.azure.openai.com/>",
         api_key=Secret.from_token("<your-api-key>"),
-        azure_deployment="<this a model name, e.g. gpt-35-turbo>")
+        azure_deployment="<this a model name, e.g. gpt-4o-mini>")
     response = client.run(messages)
     print(response)
     ```
@@ -55,7 +55,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         [ChatMessage(content='Natural Language Processing (NLP) is a branch of artificial intelligence that focuses on
          enabling computers to understand, interpret, and generate human language in a way that is useful.',
          role=<ChatRole.ASSISTANT: 'assistant'>, name=None,
-         meta={'model': 'gpt-3.5-turbo-0613', 'index': 0, 'finish_reason': 'stop',
+         meta={'model': 'gpt-4o-mini', 'index': 0, 'finish_reason': 'stop',
          'usage': {'prompt_tokens': 15, 'completion_tokens': 36, 'total_tokens': 51}})]
     }
     ```
@@ -66,7 +66,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         self,
         azure_endpoint: Optional[str] = None,
         api_version: Optional[str] = "2023-05-15",
-        azure_deployment: Optional[str] = "gpt-35-turbo",
+        azure_deployment: Optional[str] = "gpt-4o-mini",
         api_key: Optional[Secret] = Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=False),
         azure_ad_token: Optional[Secret] = Secret.from_env_var("AZURE_OPENAI_AD_TOKEN", strict=False),
         organization: Optional[str] = None,
@@ -137,7 +137,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         self.azure_endpoint = azure_endpoint
         self.azure_deployment = azure_deployment
         self.organization = organization
-        self.model = azure_deployment or "gpt-35-turbo"
+        self.model = azure_deployment or "gpt-4o-mini"
         self.timeout = timeout or float(os.environ.get("OPENAI_TIMEOUT", 30.0))
         self.max_retries = max_retries or int(os.environ.get("OPENAI_MAX_RETRIES", 5))
         self.default_headers = default_headers or {}
