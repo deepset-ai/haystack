@@ -449,6 +449,13 @@ class _Component:
                 return {"output_1": 1, "output_2": "2"}
         ```
         """
+        has_decorator = hasattr(instance.run, "_output_types_cache")
+        if has_decorator:
+            raise ComponentError(
+                "Cannot call `set_output_types` on a component that already has "
+                "the 'output_types' decorator on its `run` method"
+            )
+
         instance.__haystack_output__ = Sockets(
             instance, {name: OutputSocket(name=name, type=type_) for name, type_ in types.items()}, OutputSocket
         )
