@@ -11,7 +11,7 @@ from haystack.components.preprocessors.types import Language
 from haystack.lazy_imports import LazyImport
 
 with LazyImport("Run 'pip install nltk'") as nltk_imports:
-    from haystack.components.preprocessors.utils import SentenceSplitter
+    from haystack.components.preprocessors._nltk_document_splitter_utils import SentenceSplitter
 
 logger = logging.getLogger(__name__)
 
