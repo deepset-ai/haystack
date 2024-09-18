@@ -7,7 +7,11 @@ from typing import Dict, List, Literal, Tuple
 
 from haystack import Document, component, logging
 from haystack.components.preprocessors.document_splitter import DocumentSplitter
-from haystack.components.preprocessors.utils import Language, SentenceSplitter
+from haystack.components.preprocessors.types import Language
+from haystack.lazy_imports import LazyImport
+
+with LazyImport("Run 'pip install nltk'") as nltk_imports:
+    from haystack.components.preprocessors.utils import SentenceSplitter
 
 logger = logging.getLogger(__name__)
 
@@ -45,10 +49,11 @@ class NLTKDocumentSplitter(DocumentSplitter):
             of curated abbreviations, if available.
             This is currently supported for English ("en") and German ("de").
         """
+
         super(NLTKDocumentSplitter, self).__init__(
             split_by=split_by, split_length=split_length, split_overlap=split_overlap, split_threshold=split_threshold
         )
-
+        nltk_imports.check()
         if respect_sentence_boundary and split_by != "word":
             logger.warning(
                 "The 'respect_sentence_boundary' option is only supported for `split_by='word'`. "
