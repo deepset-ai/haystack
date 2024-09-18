@@ -4,8 +4,7 @@ import pytest
 from haystack import Document
 from pytest import LogCaptureFixture
 
-from haystack.components.preprocessors.nltk_document_splitter import NLTKDocumentSplitter
-from haystack.components.preprocessors.utils import SentenceSplitter
+from haystack.components.preprocessors.nltk_document_splitter import NLTKDocumentSplitter, SentenceSplitter
 
 
 def test_init_warning_message(caplog: LogCaptureFixture) -> None:
