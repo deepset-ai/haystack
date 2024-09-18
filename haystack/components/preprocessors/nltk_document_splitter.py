@@ -16,6 +16,10 @@ with LazyImport("Run 'pip install nltk'") as nltk_imports:
 
 logger = logging.getLogger(__name__)
 
+Language = Literal[
+    "ru", "sl", "es", "sv", "tr", "cs", "da", "nl", "en", "et", "fi", "fr", "de", "el", "it", "no", "pl", "pt", "ml"
+]
+
 
 @component
 class NLTKDocumentSplitter(DocumentSplitter):
@@ -26,7 +30,7 @@ class NLTKDocumentSplitter(DocumentSplitter):
         split_overlap: int = 0,
         split_threshold: int = 0,
         respect_sentence_boundary: bool = False,
-        language: "Language" = "en",
+        language: Language = "en",
         use_split_rules: bool = True,
         extend_abbreviations: bool = True,
     ):
@@ -248,9 +252,6 @@ class NLTKDocumentSplitter(DocumentSplitter):
 
 
 if nltk_imports.is_successful():
-    Language = Literal[
-        "ru", "sl", "es", "sv", "tr", "cs", "da", "nl", "en", "et", "fi", "fr", "de", "el", "it", "no", "pl", "pt", "ml"
-    ]
     ISO639_TO_NLTK = {
         "ru": "russian",
         "sl": "slovene",
