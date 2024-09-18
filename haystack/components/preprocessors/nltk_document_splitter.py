@@ -6,8 +6,8 @@ from copy import deepcopy
 from typing import Dict, List, Literal, Tuple
 
 from haystack import Document, component, logging
+from haystack.components.preprocessors._nltk_document_splitter_utils import Language
 from haystack.components.preprocessors.document_splitter import DocumentSplitter
-from haystack.components.preprocessors.types import Language
 from haystack.lazy_imports import LazyImport
 
 with LazyImport("Run 'pip install nltk'") as nltk_imports:
