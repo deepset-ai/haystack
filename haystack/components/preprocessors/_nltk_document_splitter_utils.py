@@ -6,15 +6,13 @@ import re
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
+from haystack import logging
+from haystack.components.preprocessors.types import ISO639_TO_NLTK, QUOTE_SPANS_RE, Language
 from haystack.lazy_imports import LazyImport
 
 # this lazy import is pretty useless here but we have test checks (test_import.py) to make sure it is used this way
 with LazyImport(message="Run 'pip install nltk'") as nltk_imports:
     import nltk
-
-from haystack import logging
-from haystack.components.preprocessors.types import ISO639_TO_NLTK, QUOTE_SPANS_RE, Language
-
 logger = logging.getLogger(__name__)
 
 
