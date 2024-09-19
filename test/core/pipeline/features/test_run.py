@@ -9,7 +9,7 @@ from haystack.components.routers import ConditionalRouter
 from haystack.components.builders import PromptBuilder, AnswerBuilder
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.components.joiners import BranchJoiner, DocumentJoiner
+from haystack.components.joiners import BranchJoiner, DocumentJoiner, AnswerJoiner
 from haystack.testing.sample_components import (
     Accumulate,
     AddFixedValue,
@@ -1633,5 +1633,49 @@ def that_has_a_variadic_component_that_receives_partial_inputs():
                 },
                 expected_run_order=["first_creator", "second_creator", "third_creator", "documents_joiner"],
             ),
+        ],
+    )
+
+
+@given("a pipeline that has an answer joiner variadic component", target_fixture="pipeline_data")
+def that_has_an_answer_joiner_variadic_component():
+    query = "What's Natural Language Processing?"
+
+    pipeline = Pipeline()
+    pipeline.add_component("answer_builder_1", AnswerBuilder())
+    pipeline.add_component("answer_builder_2", AnswerBuilder())
+    pipeline.add_component("answer_joiner", AnswerJoiner())
+
+    pipeline.connect("answer_builder_1.answers", "answer_joiner")
+    pipeline.connect("answer_builder_2.answers", "answer_joiner")
+
+    return (
+        pipeline,
+        [
+            PipelineRunData(
+                inputs={
+                    "answer_builder_1": {"query": query, "replies": ["This is a test answer"]},
+                    "answer_builder_2": {"query": query, "replies": ["This is a second test answer"]},
+                },
+                expected_outputs={
+                    "answer_joiner": {
+                        "answers": [
+                            GeneratedAnswer(
+                                data="This is a test answer",
+                                query="What's Natural Language Processing?",
+                                documents=[],
+                                meta={},
+                            ),
+                            GeneratedAnswer(
+                                data="This is a second test answer",
+                                query="What's Natural Language Processing?",
+                                documents=[],
+                                meta={},
+                            ),
+                        ]
+                    }
+                },
+                expected_run_order=["answer_builder_1", "answer_builder_2", "answer_joiner"],
+            )
         ],
     )
