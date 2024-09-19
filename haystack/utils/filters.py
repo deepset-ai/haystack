@@ -4,12 +4,21 @@
 
 from dataclasses import fields
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import pandas as pd
 
 from haystack.dataclasses import Document
 from haystack.errors import FilterError
+
+
+def raise_on_invalid_filter_syntax(filters: Optional[Dict[str, Any]] = None):
+    """
+    Raise an error if the filter syntax is invalid.
+    """
+    if filters and "operator" not in filters and "conditions" not in filters:
+        msg = "Invalid filter syntax. See https://docs.haystack.deepset.ai/docs/metadata-filtering for details."
+        raise ValueError(msg)
 
 
 def document_matches_filter(filters: Dict[str, Any], document: Document) -> bool:
