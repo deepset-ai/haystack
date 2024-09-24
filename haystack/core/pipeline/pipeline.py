@@ -77,7 +77,7 @@ class Pipeline(PipelineBase):
             if not isinstance(res, Mapping):
                 raise PipelineRuntimeError(
                     f"Component '{name}' didn't return a dictionary. "
-                    "Components must always return dictionaries: check the the documentation."
+                    "Components must always return dictionaries: check the documentation."
                 )
             span.set_tag("haystack.component.visits", self.graph.nodes[name]["visits"])
             span.set_content_tag("haystack.component.output", res)
