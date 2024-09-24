@@ -4,7 +4,7 @@
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
@@ -91,7 +91,7 @@ class JSONConverter:
         self,
         jq_schema: Optional[str] = None,
         content_key: Optional[str] = None,
-        extra_meta_fields: Optional[List[str]] = None,
+        extra_meta_fields: Optional[Set[str]] = None,
     ):
         """
         Creates a JSONConverter Component.
@@ -111,7 +111,7 @@ class JSONConverter:
 
         If only `content_key` is set the source JSON file must be a JSON object, else it will be skipped.
 
-        `extra_meta_fields` is an optional list of strings that specifies fields in the extracted objects
+        `extra_meta_fields` is an optional set of strings that specifies fields in the extracted objects
         that must be set in the extracted Documents. If a field is not found the meta value will be `None`.
 
         Initialization will fail if neither `jq_schema` nor `content_key` are set.
@@ -123,7 +123,7 @@ class JSONConverter:
             Optional key to extract Document content.
             If `jq_schema` is specified `content_key` will be extracted from that object.
         :param extra_meta_fields:
-            Optional list of meta key to extract from the content.
+            Optional set of meta key to extract from the content.
             If `jq_schema` is specified all keys will be extracted from that object.
         """
         self._compiled_filter = None
@@ -165,9 +165,23 @@ class JSONConverter:
     def _get_content_and_meta(self, source: ByteStream) -> List[Tuple[str, Dict[str, Any]]]:
         """
         Utility function to extract text and metadata from a JSON file.
+
+        :param source:
+            UTF-8 byte stream.
+        :returns:
+            Collection of text and metadata dict tuples, each corresponding
+            to a different document.
         """
-        file_content = source.data.decode("utf-8")
-        meta_fields = self._meta_fields or []
+        try:
+            file_content = source.data.decode("utf-8")
+        except UnicodeError as exc:
+            logger.warning(
+                "Failed to extract text from {source}. Skipping it. Error: {error}",
+                source=source.meta["file_path"],
+                error=exc,
+            )
+
+        meta_fields = self._meta_fields or set()
 
         if self._compiled_filter is not None:
             try:
@@ -190,7 +204,17 @@ class JSONConverter:
                 if not isinstance(obj, dict):
                     logger.warning("Expected a dictionary but got {obj}. Skipping it.", obj=obj)
                     continue
-                text = obj.get(self._content_key, None)
+                if self._content_key not in obj:
+                    logger.warning(
+                        "'{content_key}' not found in {obj}. Skipping it.", content_key=self._content_key, obj=obj
+                    )
+                    continue
+
+                text = obj[self._content_key]
+                if isinstance(text, (dict, list)):
+                    logger.warning("Expected a scalar value but got {obj}. Skipping it.", obj=obj)
+                    continue
+
                 meta = {}
                 for field in meta_fields:
                     meta[field] = obj.get(field, None)
@@ -200,7 +224,7 @@ class JSONConverter:
                 if isinstance(obj, (dict, list)):
                     logger.warning("Expected a scalar value but got {obj}. Skipping it.", obj=obj)
                     continue
-                result.append((obj, {}))
+                result.append((str(obj), {}))
 
         return result
 
