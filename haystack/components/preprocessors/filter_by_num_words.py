@@ -22,7 +22,7 @@ class FilterByNumWords:
     ```python
     from haystack.document_stores.in_memory import InMemoryDocumentStore
     from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
-    from haystack.components.preprocessors.word_count_filter import FilterByNumWords
+    from haystack.components.preprocessors.filter_by_num_words import FilterByNumWords
 
     rag_pipeline = Pipeline()
     rag_pipeline.add_component(instance=InMemoryBM25Retriever(document_store=InMemoryDocumentStore()), name="retriever")
