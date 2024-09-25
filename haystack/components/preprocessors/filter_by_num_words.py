@@ -6,6 +6,7 @@ from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 # Initialize a logger for the component
 logger = logging.getLogger(__name__)
 
+
 @component
 class FilterByNumWords:
     """
