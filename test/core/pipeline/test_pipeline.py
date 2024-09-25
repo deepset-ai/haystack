@@ -907,9 +907,12 @@ class TestPipeline:
 
         pipeline = Pipeline()
         hello = Hello()
+        hello_again = Hello()
         pipeline.add_component("hello", hello)
-        pipeline.connect("hello.intermediate", "hello.intermediate")
-        assert [("hello", hello)] == list(pipeline.walk())
+        pipeline.add_component("hello_again", hello_again)
+        pipeline.connect("hello.intermediate", "hello_again.intermediate")
+        pipeline.connect("hello_again.intermediate", "hello.intermediate")
+        assert {("hello", hello), ("hello_again", hello_again)} == set(pipeline.walk())
 
     def test__init_graph(self):
         pipe = Pipeline()
