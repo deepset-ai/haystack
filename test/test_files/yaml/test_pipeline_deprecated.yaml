@@ -10,5 +10,4 @@ components:
 connections:
 - receiver: Comp2.input_
   sender: Comp1.value
-max_loops_allowed: 99
 metadata: {}
