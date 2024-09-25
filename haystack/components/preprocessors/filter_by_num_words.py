@@ -9,7 +9,8 @@ logger = logging.getLogger(__name__)
 @component
 class FilterByNumWords:
     """
-    FilterByNumWords is a component that filters a list of documents based on the maximum number of words allowed.
+    FilterByNumWords is a component that filters a list of documents
+    based on the maximum number of words allowed.
 
     This component iterates through a list of Document objects, counting the total number of words.
     It stops adding documents to the final list once the cumulative word count exceeds a specified maximum (max_size).
@@ -46,8 +47,10 @@ class FilterByNumWords:
 
         :param documents: A list of Document objects to be filtered.
         :raises TypeError: if documents is not a list of Documents.
-        :returns: A dictionary with a single key "documents", containing the filtered list of Document objects.
-                  The list includes only those documents that keep the cumulative word count within the specified max_size.
+        :returns: A dictionary with a single key "documents",
+        containing the filtered list of Document objects.
+        The list includes only those documents that keep
+        the cumulative word count within the specified max_size.
         """
 
         if not isinstance(documents, list) or documents and not isinstance(documents[0], Document):
@@ -59,7 +62,7 @@ class FilterByNumWords:
         # Iterate over each document in the input list
         for doc in documents:
             # Increment the word count by the number of words in the current document
-            current_tokens += len(doc.content.split(' '))
+            current_tokens += len(doc.content.split(" "))
 
             # If adding the current document exceeds the max_size, stop the iteration
             if current_tokens > self.max_size:
