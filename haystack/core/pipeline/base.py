@@ -1213,7 +1213,7 @@ def _connections_status(
 
 def _is_lazy_variadic(c: Component) -> bool:
     """
-    Small utility function to check if a Component has a Variadic input
+    Small utility function to check if a Component has at least a Variadic input and no GreedyVariadic input.
     """
     is_variadic = any(
         socket.is_variadic

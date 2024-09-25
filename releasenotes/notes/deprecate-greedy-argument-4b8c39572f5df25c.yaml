@@ -9,5 +9,5 @@ enhancements:
     to change the type to `GreedyVariadic` and remove `is_greedy=true` from `@component`.
 deprecations:
   - |
-    `@component` decorator `is_greedy` argument is deprecated and will be remove in version `2.7.0`.
+    `@component` decorator `is_greedy` argument is deprecated and will be removed in version `2.7.0`.
     Use `GreedyVariadic` type instead.

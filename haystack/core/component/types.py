@@ -25,7 +25,7 @@ Variadic: TypeAlias = Annotated[Iterable[T], HAYSTACK_VARIADIC_ANNOTATION]
 # in a socket with this type.
 # Instead of waiting for other inputs to be received, Components that have a GreedyVariadic
 # input will be run right after receiving the first input.
-# Even if there multiple connection to that socket.
+# Even if there are multiple connections to that socket.
 GreedyVariadic: TypeAlias = Annotated[Iterable[T], HAYSTACK_GREEDY_VARIADIC_ANNOTATION]
 
 
