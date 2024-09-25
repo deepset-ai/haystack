@@ -287,3 +287,31 @@ class TestHuggingFaceAPIGenerator:
         assert isinstance(response["replies"], list)
         assert len(response["replies"]) > 0
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
+        assert "usage" in response["replies"][0].meta
+        assert "prompt_tokens" in response["replies"][0].meta["usage"]
+        assert "completion_tokens" in response["replies"][0].meta["usage"]
+
+    @pytest.mark.flaky(reruns=5, reruns_delay=5)
+    @pytest.mark.integration
+    @pytest.mark.skipif(
+        not os.environ.get("HF_API_TOKEN", None),
+        reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
+    )
+    def test_run_serverless_streaming(self):
+        generator = HuggingFaceAPIChatGenerator(
+            api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
+            api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
+            generation_kwargs={"max_tokens": 20},
+            streaming_callback=streaming_callback_handler,
+        )
+
+        messages = [ChatMessage.from_user("What is the capital of France?")]
+        response = generator.run(messages=messages)
+
+        assert "replies" in response
+        assert isinstance(response["replies"], list)
+        assert len(response["replies"]) > 0
+        assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
+        assert "usage" in response["replies"][0].meta
+        assert "prompt_tokens" in response["replies"][0].meta["usage"]
+        assert "completion_tokens" in response["replies"][0].meta["usage"]
