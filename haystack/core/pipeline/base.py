@@ -428,7 +428,7 @@ class PipelineBase:
 
         return instance
 
-    def connect(self, sender: str, receiver: str) -> "PipelineBase":
+    def connect(self, sender: str, receiver: str) -> "PipelineBase":  # noqa: PLR0915
         """
         Connects two components together.
 
@@ -455,6 +455,7 @@ class PipelineBase:
 
         if sender_component_name == receiver_component_name:
             raise PipelineConnectError("Connecting a Component to itself is not supported.")
+
         # Get the nodes data.
         try:
             from_sockets = self.graph.nodes[sender_component_name]["output_sockets"]
