@@ -11,7 +11,7 @@ from haystack import Document
 from haystack.components.builders import PromptBuilder, AnswerBuilder
 from haystack.components.joiners import BranchJoiner
 from haystack.core.component import component
-from haystack.core.component.types import InputSocket, OutputSocket, Variadic
+from haystack.core.component.types import InputSocket, OutputSocket, Variadic, GreedyVariadic
 from haystack.core.errors import DeserializationError, PipelineConnectError, PipelineDrawingError, PipelineError
 from haystack.core.pipeline import Pipeline, PredefinedPipeline
 from haystack.core.pipeline.base import (
@@ -20,6 +20,7 @@ from haystack.core.pipeline.base import (
     _dequeue_component,
     _enqueue_waiting_component,
     _dequeue_waiting_component,
+    _is_lazy_variadic,
 )
 from haystack.core.serialization import DeserializationCallbacks
 from haystack.testing.factory import component_class
@@ -1628,3 +1629,19 @@ class TestPipeline:
         waiting_queue = [("document_builder", document_builder), ("document_joiner", document_joiner)]
         _dequeue_waiting_component(("document_builder", document_builder), waiting_queue)
         assert waiting_queue == [("document_joiner", document_joiner)]
+
+    def test__is_lazy_variadic(self):
+        VariadicAndGreedyVariadic = component_class(
+            "VariadicAndGreedyVariadic", input_types={"variadic": Variadic[int], "greedy_variadic": GreedyVariadic[int]}
+        )
+        NonVariadic = component_class("NonVariadic", input_types={"value": int})
+        VariadicNonGreedyVariadic = component_class(
+            "VariadicNonGreedyVariadic", input_types={"variadic": Variadic[int]}
+        )
+        NonVariadicAndGreedyVariadic = component_class(
+            "NonVariadicAndGreedyVariadic", input_types={"greedy_variadic": GreedyVariadic[int]}
+        )
+        assert not _is_lazy_variadic(VariadicAndGreedyVariadic())
+        assert not _is_lazy_variadic(NonVariadic())
+        assert _is_lazy_variadic(VariadicNonGreedyVariadic())
+        assert not _is_lazy_variadic(NonVariadicAndGreedyVariadic())

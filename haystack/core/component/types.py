@@ -8,6 +8,7 @@ from typing import Any, Iterable, List, Type, TypeVar, get_args
 from typing_extensions import Annotated, TypeAlias  # Python 3.8 compatibility
 
 HAYSTACK_VARIADIC_ANNOTATION = "__haystack__variadic_t"
+HAYSTACK_GREEDY_VARIADIC_ANNOTATION = "__haystack__greedy_variadic_t"
 
 # # Generic type variable used in the Variadic container
 T = TypeVar("T")
@@ -16,8 +17,16 @@ T = TypeVar("T")
 # Variadic is a custom annotation type we use to mark input types.
 # This type doesn't do anything else than "marking" the contained
 # type so it can be used in the `InputSocket` creation where we
-# check that its annotation equals to CANALS_VARIADIC_ANNOTATION
+# check that its annotation equals to HAYSTACK_VARIADIC_ANNOTATION
 Variadic: TypeAlias = Annotated[Iterable[T], HAYSTACK_VARIADIC_ANNOTATION]
+
+# GreedyVariadic type is similar to Variadic.
+# The only difference is the way it's treated by the Pipeline when input is received
+# in a socket with this type.
+# Instead of waiting for other inputs to be received, Components that have a GreedyVariadic
+# input will be run right after receiving the first input.
+# Even if there are multiple connections to that socket.
+GreedyVariadic: TypeAlias = Annotated[Iterable[T], HAYSTACK_GREEDY_VARIADIC_ANNOTATION]
 
 
 class _empty:
@@ -37,6 +46,8 @@ class InputSocket:
         The default value of the input. If not set, the input is mandatory.
     :param is_variadic:
         Whether the input is variadic or not.
+    :param is_greedy
+        Whether the input is a greedy variadic or not.
     :param senders:
         The list of components that send data to this input.
     """
@@ -45,6 +56,7 @@ class InputSocket:
     type: Type
     default_value: Any = _empty
     is_variadic: bool = field(init=False)
+    is_greedy: bool = field(init=False)
     senders: List[str] = field(default_factory=list)
 
     @property
@@ -55,9 +67,14 @@ class InputSocket:
     def __post_init__(self):
         try:
             # __metadata__ is a tuple
-            self.is_variadic = self.type.__metadata__[0] == HAYSTACK_VARIADIC_ANNOTATION
+            self.is_variadic = self.type.__metadata__[0] in [
+                HAYSTACK_VARIADIC_ANNOTATION,
+                HAYSTACK_GREEDY_VARIADIC_ANNOTATION,
+            ]
+            self.is_greedy = self.type.__metadata__[0] == HAYSTACK_GREEDY_VARIADIC_ANNOTATION
         except AttributeError:
             self.is_variadic = False
+            self.is_greedy = False
         if self.is_variadic:
             # We need to "unpack" the type inside the Variadic annotation,
             # otherwise the pipeline connection api will try to match

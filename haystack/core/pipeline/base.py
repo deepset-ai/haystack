@@ -978,9 +978,8 @@ class PipelineBase:
             receiver = self.graph.nodes[receiver_name]["instance"]
             pair = (receiver_name, receiver)
 
-            is_greedy = getattr(receiver, "__haystack_is_greedy__", False)
             if receiver_socket.is_variadic:
-                if is_greedy:
+                if receiver_socket.is_greedy:
                     # If the receiver is greedy, we can run it as soon as possible.
                     # First we remove it from the status lists it's in if it's there or
                     # we risk running it multiple times.
@@ -1214,7 +1213,7 @@ def _connections_status(
 
 def _is_lazy_variadic(c: Component) -> bool:
     """
-    Small utility function to check if a Component has a Variadic input that is not greedy
+    Small utility function to check if a Component has at least a Variadic input and no GreedyVariadic input.
     """
     is_variadic = any(
         socket.is_variadic
@@ -1222,7 +1221,10 @@ def _is_lazy_variadic(c: Component) -> bool:
     )
     if not is_variadic:
         return False
-    return not getattr(c, "__haystack_is_greedy__", False)
+    return not any(
+        socket.is_greedy
+        for socket in c.__haystack_input__._sockets_dict.values()  # type: ignore
+    )
 
 
 def _has_all_inputs_with_defaults(c: Component) -> bool:
