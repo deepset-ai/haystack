@@ -20,9 +20,10 @@ with LazyImport("Run 'pip install jq'") as jq_import:
 @component
 class JSONConverter:
     """
-    Converts one or more JSON files into a text Document.
+    Converts one or more JSON files into a text document.
 
-    Usage example:
+    ### Usage examples
+    
     ```python
     import json
 
@@ -38,7 +39,7 @@ class JSONConverter:
     # 'This is the content of my document'
     ```
 
-    Optionally one can also provide a `jq_schema` string to filter the JSON source files, and `extra_meta_fields`
+    Optionally, you can also provide a `jq_schema` string to filter the JSON source files and `extra_meta_fields`
     to extract from the filtered data:
 
     ```python
@@ -94,40 +95,40 @@ class JSONConverter:
         extra_meta_fields: Optional[Union[Set[str], Literal["*"]]] = None,
     ):
         """
-        Creates a JSONConverter Component.
+        Creates a JSONConverter component.
 
         An optional `jq_schema` can be provided to extract nested data in the JSON source files.
-        See the official jq documentation for more info on the filters syntax: https://jqlang.github.io/jq/
-        If `jq_schema` is not set the whole JSON source files will be used to extract content.
+        See the [official jq documentation](https://jqlang.github.io/jq/) for more info on the filters syntax.
+        If `jq_schema` is not set, whole JSON source files will be used to extract content.
 
-        Optionally a `content_key` can be provided to specify which key in the extracted object must
-        be set as Document's content.
+        Optionally, you can provide a `content_key` to specify which key in the extracted object must
+        be set as the document's content.
 
-        If both `jq_schema` and `content_key` are set the Component will search for the `content_key` in
-        the JSON object extracted by `jq_schema`. If the extracted data is not a JSON object it will be skipped.
+        If both `jq_schema` and `content_key` are set, the component will search for the `content_key` in
+        the JSON object extracted by `jq_schema`. If the extracted data is not a JSON object, it will be skipped.
 
-        If only `jq_schema` is set the extracted data must be a scalar value, if it's a JSON object or array
+        If only `jq_schema` is set, the extracted data must be a scalar value. If it's a JSON object or array,
         it will be skipped.
 
-        If only `content_key` is set the source JSON file must be a JSON object, else it will be skipped.
+        If only `content_key` is set, the source JSON file must be a JSON object, else it will be skipped.
 
-        `extra_meta_fields` can either be set to a set of strings, or a literal `"*"` string.
-        If it's set of strings it must specify fields in the extracted objects that must be set in
-        the extracted Documents. If a field is not found the meta value will be `None`.
-        If set to `"*"` all fields that are not `content_key` found in the filtered JSON object will
+        `extra_meta_fields` can either be set to a set of strings or a literal `"*"` string.
+        If it's a set of strings, it must specify fields in the extracted objects that must be set in
+        the extracted documents. If a field is not found, the meta value will be `None`.
+        If set to `"*"`, all fields that are not `content_key` found in the filtered JSON object will
         be saved as metadata.
 
         Initialization will fail if neither `jq_schema` nor `content_key` are set.
 
         :param jq_schema:
             Optional jq filter string to extract content.
-            If not specified whole JSON object will be used to extract information
+            If not specified, whole JSON object will be used to extract information.
         :param content_key:
-            Optional key to extract Document content.
-            If `jq_schema` is specified `content_key` will be extracted from that object.
+            Optional key to extract document content.
+            If `jq_schema` is specified, the `content_key` will be extracted from that object.
         :param extra_meta_fields:
-            Optional set of meta key to extract from the content.
-            If `jq_schema` is specified all keys will be extracted from that object.
+            An optional set of meta keys to extract from the content.
+            If `jq_schema` is specified, all keys will be extracted from that object.
         """
         self._compiled_filter = None
         if jq_schema:
@@ -241,20 +242,20 @@ class JSONConverter:
         meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
     ):
         """
-        Converts a list of JSON files to Documents.
+        Converts a list of JSON files to documents.
 
         :param sources:
-            List of file paths or ByteStream objects.
+            A list of file paths or ByteStream objects.
         :param meta:
-            Optional metadata to attach to the Documents.
+            Optional metadata to attach to the documents.
             This value can be either a list of dictionaries or a single dictionary.
-            If it's a single dictionary, its content is added to the metadata of all produced Documents.
+            If it's a single dictionary, its content is added to the metadata of all produced documents.
             If it's a list, the length of the list must match the number of sources.
-            If `sources` contains ByteStream objects, their `meta` will be added to the output Documents.
+            If `sources` contain ByteStream objects, their `meta` will be added to the output documents.
 
         :returns:
             A dictionary with the following keys:
-            - `documents`: List of created Documents
+            - `documents`: A list of created documents.
         """
         documents = []
         meta_list = normalize_metadata(meta=meta, sources_count=len(sources))
