@@ -23,7 +23,7 @@ class JSONConverter:
     Converts one or more JSON files into a text document.
 
     ### Usage examples
-    
+
     ```python
     import json
 
