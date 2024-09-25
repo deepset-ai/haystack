@@ -5,13 +5,13 @@
 from typing import Any, Dict, Type
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.core.component.types import Variadic
+from haystack.core.component.types import GreedyVariadic
 from haystack.utils import deserialize_type, serialize_type
 
 logger = logging.getLogger(__name__)
 
 
-@component(is_greedy=True)
+@component()
 class BranchJoiner:
     """
     A component to join different branches of a pipeline into one single output.
@@ -100,7 +100,7 @@ class BranchJoiner:
         """
         self.type_ = type_
         # type_'s type can't be determined statically
-        component.set_input_types(self, value=Variadic[type_])  # type: ignore
+        component.set_input_types(self, value=GreedyVariadic[type_])  # type: ignore
         component.set_output_types(self, value=type_)
 
     def to_dict(self):

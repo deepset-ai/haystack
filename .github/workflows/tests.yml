@@ -94,7 +94,7 @@ jobs:
         os:
           - ubuntu-latest
           - windows-latest
-          - macos-12
+          - macos-latest
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -305,9 +305,9 @@ jobs:
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
   integration-tests-macos:
-    name: Integration / macos-12
+    name: Integration / macos-latest
     needs: unit-tests
-    runs-on: macos-12
+    runs-on: macos-latest
     env:
       HAYSTACK_MPS_ENABLED: false
 
