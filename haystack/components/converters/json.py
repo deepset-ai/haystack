@@ -65,7 +65,7 @@ class JSONConverter:
     }
     source = ByteStream.from_string(json.dumps(data))
     converter = JSONConverter(
-        jq_schema=".laureates[]", content_key="motivation", extra_meta_fields=["firstname", "surname"]
+        jq_schema=".laureates[]", content_key="motivation", extra_meta_fields={"firstname", "surname"}
     )
 
     results = converter.run(sources=[source])
