@@ -453,6 +453,8 @@ class PipelineBase:
         sender_component_name, sender_socket_name = parse_connect_string(sender)
         receiver_component_name, receiver_socket_name = parse_connect_string(receiver)
 
+        if sender_component_name == receiver_component_name:
+            raise PipelineConnectError("Connecting a Component to itself is not supported.")
         # Get the nodes data.
         try:
             from_sockets = self.graph.nodes[sender_component_name]["output_sockets"]
