@@ -1,0 +1,4 @@
+---
+upgrade:
+  - |
+    Remove deprecated parameter 'max_loops_allowed' from Pipeline init method.
