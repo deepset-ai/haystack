@@ -102,8 +102,9 @@ extra-dependencies = [
   "trafilatura",                      # HTMLToDocument
   "python-pptx",                      # PPTXToDocument
   "python-docx",                      # DocxToDocument
+  "jq",                               #JSONConverter
 
-  "nltk",                             # NLTKDocumentSplitter
+  "nltk", # NLTKDocumentSplitter
 
   # OpenAPI
   "jsonref",  # OpenAPIServiceConnector, OpenAPIServiceToFunctions
