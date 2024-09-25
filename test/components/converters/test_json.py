@@ -95,7 +95,7 @@ def test_init_with_jq_schema():
 
 def test_to_dict():
     converter = JSONConverter(
-        jq_schema=".laureates[]", content_key="motivation", extra_meta_fields=set("firstname", "surname")
+        jq_schema=".laureates[]", content_key="motivation", extra_meta_fields={"firstname", "surname"}
     )
 
     assert converter.to_dict() == {
@@ -103,7 +103,7 @@ def test_to_dict():
         "init_parameters": {
             "content_key": "motivation",
             "jq_schema": ".laureates[]",
-            "extra_meta_fields": ["firstname", "surname"],
+            "extra_meta_fields": {"firstname", "surname"},
         },
     }
 
@@ -313,7 +313,7 @@ def test_run_with_jq_schema_content_key_and_extra_meta_fields(tmpdir):
 
     sources = [str(first_test_file), second_test_file, byte_stream]
     converter = JSONConverter(
-        jq_schema=".laureates[]", content_key="motivation", extra_meta_fields=set("firstname", "surname")
+        jq_schema=".laureates[]", content_key="motivation", extra_meta_fields={"firstname", "surname"}
     )
     result = converter.run(sources=sources)
     assert len(result) == 1
@@ -373,7 +373,7 @@ def test_run_with_content_key_and_extra_meta_fields(tmpdir):
     byte_stream = ByteStream.from_string(json.dumps(test_data[2]))
 
     sources = [str(first_test_file), second_test_file, byte_stream]
-    converter = JSONConverter(content_key="category", extra_meta_fields=set("year"))
+    converter = JSONConverter(content_key="category", extra_meta_fields={"year"})
     result = converter.run(sources=sources)
     assert len(result) == 1
     assert len(result["documents"]) == 3
