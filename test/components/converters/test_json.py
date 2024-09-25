@@ -95,7 +95,7 @@ def test_init_with_jq_schema():
 
 def test_to_dict():
     converter = JSONConverter(
-        jq_schema=".laureates[]", content_key="motivation", extra_meta_fields=["firstname", "surname"]
+        jq_schema=".laureates[]", content_key="motivation", extra_meta_fields=set("firstname", "surname")
     )
 
     assert converter.to_dict() == {
@@ -313,7 +313,7 @@ def test_run_with_jq_schema_content_key_and_extra_meta_fields(tmpdir):
 
     sources = [str(first_test_file), second_test_file, byte_stream]
     converter = JSONConverter(
-        jq_schema=".laureates[]", content_key="motivation", extra_meta_fields=["firstname", "surname"]
+        jq_schema=".laureates[]", content_key="motivation", extra_meta_fields=set("firstname", "surname")
     )
     result = converter.run(sources=sources)
     assert len(result) == 1
@@ -373,7 +373,7 @@ def test_run_with_content_key_and_extra_meta_fields(tmpdir):
     byte_stream = ByteStream.from_string(json.dumps(test_data[2]))
 
     sources = [str(first_test_file), second_test_file, byte_stream]
-    converter = JSONConverter(content_key="category", extra_meta_fields=["year"])
+    converter = JSONConverter(content_key="category", extra_meta_fields=set("year"))
     result = converter.run(sources=sources)
     assert len(result) == 1
     assert len(result["documents"]) == 3
@@ -383,3 +383,51 @@ def test_run_with_content_key_and_extra_meta_fields(tmpdir):
     assert result["documents"][1].meta == {"file_path": str(second_test_file), "year": "1986"}
     assert result["documents"][2].content == "physics"
     assert result["documents"][2].meta == {"year": "1938"}
+
+
+def test_run_with_jq_schema_content_key_and_extra_meta_fields_literal(tmpdir):
+    first_test_file = Path(tmpdir / "first_test_file.json")
+    second_test_file = Path(tmpdir / "second_test_file.json")
+
+    first_test_file.write_text(json.dumps(test_data[0]), "utf-8")
+    second_test_file.write_text(json.dumps(test_data[1]), "utf-8")
+    byte_stream = ByteStream.from_string(json.dumps(test_data[2]))
+
+    sources = [str(first_test_file), second_test_file, byte_stream]
+    converter = JSONConverter(jq_schema=".laureates[]", content_key="motivation", extra_meta_fields="*")
+    result = converter.run(sources=sources)
+    assert len(result) == 1
+    assert len(result["documents"]) == 4
+    assert (
+        result["documents"][0].content
+        == "who emulates the jesters of the Middle Ages in scourging authority and upholding the dignity of the downtrodden"
+    )
+    assert result["documents"][0].meta == {
+        "file_path": str(first_test_file),
+        "id": "674",
+        "firstname": "Dario",
+        "surname": "Fo",
+        "share": "1",
+    }
+    assert result["documents"][1].content == "for their discoveries of growth factors"
+    assert result["documents"][1].meta == {
+        "file_path": str(second_test_file),
+        "id": "434",
+        "firstname": "Stanley",
+        "surname": "Cohen",
+        "share": "2",
+    }
+    assert result["documents"][2].content == "for their discoveries of growth factors"
+    assert result["documents"][2].meta == {
+        "file_path": str(second_test_file),
+        "id": "435",
+        "firstname": "Rita",
+        "surname": "Levi-Montalcini",
+        "share": "2",
+    }
+    assert (
+        result["documents"][3].content
+        == "for his demonstrations of the existence of new radioactive elements produced by neutron irradiation, "
+        "and for his related discovery of nuclear reactions brought about by slow neutrons"
+    )
+    assert result["documents"][3].meta == {"id": "46", "firstname": "Enrico", "surname": "Fermi", "share": "1"}

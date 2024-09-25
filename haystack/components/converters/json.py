@@ -4,7 +4,7 @@
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, List, Literal, Optional, Set, Tuple, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
@@ -91,7 +91,7 @@ class JSONConverter:
         self,
         jq_schema: Optional[str] = None,
         content_key: Optional[str] = None,
-        extra_meta_fields: Optional[Set[str]] = None,
+        extra_meta_fields: Optional[Union[Set[str], Literal["*"]]] = None,
     ):
         """
         Creates a JSONConverter Component.
@@ -111,8 +111,11 @@ class JSONConverter:
 
         If only `content_key` is set the source JSON file must be a JSON object, else it will be skipped.
 
-        `extra_meta_fields` is an optional set of strings that specifies fields in the extracted objects
-        that must be set in the extracted Documents. If a field is not found the meta value will be `None`.
+        `extra_meta_fields` can either be set to a set of strings, or a literal `"*"` string.
+        If it's set of strings it must specify fields in the extracted objects that must be set in
+        the extracted Documents. If a field is not found the meta value will be `None`.
+        If set to `"*"` all fields that are not `content_key` found in the filtered JSON object will
+        be saved as metadata.
 
         Initialization will fail if neither `jq_schema` nor `content_key` are set.
 
@@ -216,8 +219,11 @@ class JSONConverter:
                     continue
 
                 meta = {}
-                for field in meta_fields:
-                    meta[field] = obj.get(field, None)
+                if meta_fields == "*":
+                    meta = {k: v for k, v in obj.items() if k != self._content_key}
+                else:
+                    for field in meta_fields:
+                        meta[field] = obj.get(field, None)
                 result.append((text, meta))
         else:
             for obj in objects:
