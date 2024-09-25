@@ -71,6 +71,7 @@ method decorated with `@component.input`. This dataclass contains:
 
 import inspect
 import sys
+import warnings
 from collections.abc import Callable
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -292,17 +293,6 @@ class ComponentMeta(type):
         # We use this flag to check that.
         instance.__haystack_added_to_pipeline__ = None
 
-        # Only Components with variadic inputs can be greedy. If the user set the greedy flag
-        # to True, but the component doesn't have a variadic input, we set it to False.
-        # We can have this information only at instance creation time, so we do it here.
-        is_variadic = any(socket.is_variadic for socket in instance.__haystack_input__._sockets_dict.values())
-        if not is_variadic and cls.__haystack_is_greedy__:
-            logger.warning(
-                "Component '{component}' has no variadic input, but it's marked as greedy. "
-                "This is not supported and can lead to unexpected behavior.",
-                component=cls.__name__,
-            )
-
         return instance
 
 
@@ -497,11 +487,20 @@ class _Component:
 
         return output_types_decorator
 
-    def _component(self, cls, is_greedy: bool = False):
+    def _component(self, cls, is_greedy: Optional[bool] = None):
         """
         Decorator validating the structure of the component and registering it in the components registry.
         """
         logger.debug("Registering {component} as a component", component=cls)
+
+        if is_greedy is not None:
+            msg = (
+                "The 'is_greedy' argument is deprecated and will be removed in version '2.7.0'. "
+                "Change the 'Variadic' input of your Component to 'GreedyVariadic' instead."
+            )
+            warnings.warn(msg, DeprecationWarning)
+        else:
+            is_greedy = False
 
         # Check for required methods and fail as soon as possible
         if not hasattr(cls, "run"):
@@ -542,15 +541,9 @@ class _Component:
         # Override the __repr__ method with a default one
         cls.__repr__ = _component_repr
 
-        # The greedy flag can be True only if the component has a variadic input.
-        # At this point of the lifetime of the component, we can't reliably know if it has a variadic input.
-        # So we set it to whatever the user specified, during the instance creation we'll change it if needed
-        # since we'll have access to the input sockets and check if any of them is variadic.
-        setattr(cls, "__haystack_is_greedy__", is_greedy)
-
         return cls
 
-    def __call__(self, cls: Optional[type] = None, is_greedy: bool = False):
+    def __call__(self, cls: Optional[type] = None, is_greedy: Optional[bool] = None):
         # We must wrap the call to the decorator in a function for it to work
         # correctly with or without parens
         def wrap(cls):
