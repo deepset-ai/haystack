@@ -428,7 +428,7 @@ class PipelineBase:
 
         return instance
 
-    def connect(self, sender: str, receiver: str) -> "PipelineBase":
+    def connect(self, sender: str, receiver: str) -> "PipelineBase":  # noqa: PLR0915
         """
         Connects two components together.
 
@@ -452,6 +452,10 @@ class PipelineBase:
         # Edges may be named explicitly by passing 'node_name.edge_name' to connect().
         sender_component_name, sender_socket_name = parse_connect_string(sender)
         receiver_component_name, receiver_socket_name = parse_connect_string(receiver)
+
+        if sender_component_name == receiver_component_name:
+            msg = "Connecting a Component to itself is deprecated and will raise an error from version '2.7.0' onwards."
+            warnings.warn(msg, DeprecationWarning)
 
         # Get the nodes data.
         try:
