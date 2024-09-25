@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 @component
 class FilterByNumWords:
     """
+
     FilterByNumWords is a component that filters a list of documents
     based on the maximum number of words allowed.
 
@@ -31,6 +32,7 @@ class FilterByNumWords:
     rag_pipeline.add_component(instance=FilterByNumWords(), name="filter_by_num_words")
     rag_pipeline.connect("retriever", "filter_by_num_words.documents")
     ```
+
     """
 
     def __init__(self, max_size: int = 40000):
