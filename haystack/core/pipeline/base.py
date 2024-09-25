@@ -454,7 +454,7 @@ class PipelineBase:
         receiver_component_name, receiver_socket_name = parse_connect_string(receiver)
 
         if sender_component_name == receiver_component_name:
-            msg = "Connecting a Component to itself is deprecated and will be removed in version '2.7.0'."
+            msg = "Connecting a Component to itself is deprecated and will raise an error from version '2.7.0' onwards."
             warnings.warn(msg, DeprecationWarning)
 
         # Get the nodes data.
