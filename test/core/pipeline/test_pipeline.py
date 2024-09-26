@@ -56,6 +56,20 @@ class TestPipeline:
     It doesn't test Pipeline.run(), that is done separately in a different way.
     """
 
+    def test_pipeline_if_components_serde(self):
+        from haystack.components.builders.answer_builder import AnswerBuilder
+        from haystack.components.audio import LocalWhisperTranscriber
+        from haystack.components.evaluators import AnswerExactMatchEvaluator
+
+        pipeline = Pipeline()
+        pipeline.add_component("Comp1", AnswerBuilder())
+        pipeline.add_component("Comp2", AnswerExactMatchEvaluator())
+        pipeline.add_component("Comp3", LocalWhisperTranscriber())
+        serialized_pipeline = pipeline.dumps()
+        deserialized_pipeline = Pipeline.loads(serialized_pipeline)
+
+        assert True
+
     def test_pipeline_dumps_with_deprecated_max_loops_allowed(self, test_files_path):
         pipeline = Pipeline(max_loops_allowed=99)
         pipeline.add_component("Comp1", FakeComponent("Foo"))
