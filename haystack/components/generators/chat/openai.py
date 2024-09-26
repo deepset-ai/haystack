@@ -5,6 +5,7 @@
 import copy
 import json
 import os
+from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from openai import OpenAI, Stream
@@ -223,10 +224,14 @@ class OpenAIChatGenerator:
             chunks: List[StreamingChunk] = []
             chunk = None
 
+            first_chunk = True
             # pylint: disable=not-an-iterable
             for chunk in chat_completion:
                 if chunk.choices and streaming_callback:
                     chunk_delta: StreamingChunk = self._build_chunk(chunk)
+                    if first_chunk:
+                        first_chunk = False
+                        chunk_delta.meta["completion_start_time"] = datetime.now()
                     chunks.append(chunk_delta)
                     streaming_callback(chunk_delta)  # invoke callback with the chunk_delta
             completions = [self._connect_chunks(chunk, chunks)]
@@ -249,6 +254,8 @@ class OpenAIChatGenerator:
         """
         is_tools_call = bool(chunks[0].meta.get("tool_calls"))
         is_function_call = bool(chunks[0].meta.get("function_call"))
+        # Initialize total_meta
+        total_meta = {}
         # if it's a tool call or function call, we need to build the payload dict from all the chunks
         if is_tools_call or is_function_call:
             tools_len = 1 if is_function_call else len(chunks[0].meta.get("tool_calls", []))
@@ -280,13 +287,17 @@ class OpenAIChatGenerator:
                         payload["function"]["arguments"] += delta.arguments or ""
             complete_response = ChatMessage.from_assistant(json.dumps(payloads))
         else:
+            # Merge meta from all chunks
+            for partial_chunk in chunks:
+                total_meta.update(partial_chunk.meta)
+
             complete_response = ChatMessage.from_assistant("".join([chunk.content for chunk in chunks]))
         complete_response.meta.update(
             {
                 "model": chunk.model,
                 "index": 0,
                 "finish_reason": chunk.choices[0].finish_reason,
-                "usage": {},  # we don't have usage data for streaming responses
+                "usage": {**total_meta, **{"prompt_tokens": 0, "completion_tokens": 0}},
             }
         )
         return complete_response
