@@ -57,7 +57,7 @@ class LLMEvaluator:
         *,
         raise_on_failure: bool = True,
         api: str = "openai",
-        api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
+        api_key: Optional[Secret] = None,
         api_params: Optional[Dict[str, Any]] = None,
     ):
         """
@@ -84,7 +84,7 @@ class LLMEvaluator:
             The API to use for calling an LLM through a Generator.
             Supported APIs: "openai".
         :param api_key:
-            The API key.
+            The API key to be passed to a LLM provider. It may not be necessary when using a locally hosted model.
         :param api_params:
             Parameters for an OpenAI API compatible completions call.
 
@@ -106,7 +106,10 @@ class LLMEvaluator:
         self.api_params["generation_kwargs"] = merged_generation_kwargs
 
         if api == "openai":
-            self.generator = OpenAIGenerator(api_key=api_key, **self.api_params)
+            generator_kwargs = {**self.api_params}
+            if api_key:
+                generator_kwargs["api_key"] = api_key
+            self.generator = OpenAIGenerator(**generator_kwargs)
         else:
             raise ValueError(f"Unsupported API: {api}")
 
@@ -288,7 +291,7 @@ class LLMEvaluator:
             outputs=self.outputs,
             examples=self.examples,
             api=self.api,
-            api_key=self.api_key.to_dict(),
+            api_key=self.api_key and self.api_key.to_dict(),
             api_params=self.api_params,
             progress_bar=self.progress_bar,
         )

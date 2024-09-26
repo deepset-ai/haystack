@@ -1,0 +1,13 @@
+---
+enhancements:
+  - |
+    Add new `GreedyVariadic` input type. This has a similar behaviour to `Variadic` input type
+    as it can be connected to multiple output sockets, though the Pipeline will run it as soon
+    as it receives an input without waiting for others.
+    This replaces the `is_greedy` argument in the `@component` decorator.
+    If you had a Component with a `Variadic` input type and `@component(is_greedy=True)` you need
+    to change the type to `GreedyVariadic` and remove `is_greedy=true` from `@component`.
+deprecations:
+  - |
+    `@component` decorator `is_greedy` argument is deprecated and will be removed in version `2.7.0`.
+    Use `GreedyVariadic` type instead.

@@ -315,6 +315,20 @@ def test_output_types_decorator_wrong_method():
                 return cls()
 
 
+def test_output_types_decorator_and_set_output_types():
+    @component
+    class MockComponent:
+        def __init__(self) -> None:
+            component.set_output_types(self, value=int)
+
+        @component.output_types(value=int)
+        def run(self, value: int):
+            return {"value": 1}
+
+    with pytest.raises(ComponentError, match="Cannot call `set_output_types`"):
+        comp = MockComponent()
+
+
 def test_output_types_decorator_mismatch_run_async_run():
     @component
     class MockComponent:
@@ -414,57 +428,6 @@ def test_repr_added_to_pipeline():
     comp = MockComponent()
     pipe.add_component("my_component", comp)
     assert repr(comp) == f"{object.__repr__(comp)}\nmy_component\nInputs:\n  - value: int\nOutputs:\n  - value: int"
-
-
-def test_is_greedy_default_with_variadic_input():
-    @component
-    class MockComponent:
-        @component.output_types(value=int)
-        def run(self, value: Variadic[int]):
-            return {"value": value}
-
-    assert not MockComponent.__haystack_is_greedy__
-    assert not MockComponent().__haystack_is_greedy__
-
-
-def test_is_greedy_default_without_variadic_input():
-    @component
-    class MockComponent:
-        @component.output_types(value=int)
-        def run(self, value: int):
-            return {"value": value}
-
-    assert not MockComponent.__haystack_is_greedy__
-    assert not MockComponent().__haystack_is_greedy__
-
-
-def test_is_greedy_flag_with_variadic_input():
-    @component(is_greedy=True)
-    class MockComponent:
-        @component.output_types(value=int)
-        def run(self, value: Variadic[int]):
-            return {"value": value}
-
-    assert MockComponent.__haystack_is_greedy__
-    assert MockComponent().__haystack_is_greedy__
-
-
-def test_is_greedy_flag_without_variadic_input(caplog):
-    caplog.set_level(logging.WARNING)
-
-    @component(is_greedy=True)
-    class MockComponent:
-        @component.output_types(value=int)
-        def run(self, value: int):
-            return {"value": value}
-
-    assert MockComponent.__haystack_is_greedy__
-    assert caplog.text == ""
-    assert MockComponent().__haystack_is_greedy__
-    assert (
-        "Component 'MockComponent' has no variadic input, but it's marked as greedy."
-        " This is not supported and can lead to unexpected behavior.\n" in caplog.text
-    )
 
 
 def test_pre_init_hooking():

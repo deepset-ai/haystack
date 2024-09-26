@@ -121,7 +121,6 @@ class TransformersZeroShotDocumentClassifier:
         self.token = token
         self.labels = labels
         self.multi_label = multi_label
-        component.set_output_types(self, **{label: str for label in labels})
 
         huggingface_pipeline_kwargs = resolve_hf_pipeline_kwargs(
             huggingface_pipeline_kwargs=huggingface_pipeline_kwargs or {},
@@ -229,7 +228,7 @@ class TransformersZeroShotDocumentClassifier:
             )
 
         texts = [
-            doc.content if self.classification_field is None else doc.meta[self.classification_field]
+            (doc.content if self.classification_field is None else doc.meta[self.classification_field])
             for doc in documents
         ]
 

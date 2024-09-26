@@ -102,6 +102,9 @@ extra-dependencies = [
   "trafilatura",                      # HTMLToDocument
   "python-pptx",                      # PPTXToDocument
   "python-docx",                      # DocxToDocument
+  "jq",                               #JSONConverter
+
+  "nltk", # NLTKDocumentSplitter
 
   # OpenAPI
   "jsonref",  # OpenAPIServiceConnector, OpenAPIServiceToFunctions
@@ -178,7 +181,7 @@ packages = ["haystack"]
 [tool.codespell]
 ignore-words-list = "ans,astroid,nd,ned,nin,ue,rouge,ist"
 quiet-level = 3
-skip = "test/nodes/*,test/others/*,test/samples/*,e2e/*"
+skip = "./test,./e2e"
 
 [tool.pylint.'MESSAGES CONTROL']
 max-line-length = 120
