@@ -1,9 +1,11 @@
+import json
 from typing import List, Optional, Dict, Any
 
 from pytest_bdd import scenarios, given
 import pytest
 
 from haystack import Pipeline, Document, component
+from haystack.document_stores.types import DuplicatePolicy
 from haystack.dataclasses import ChatMessage, GeneratedAnswer
 from haystack.components.routers import ConditionalRouter
 from haystack.components.builders import PromptBuilder, AnswerBuilder
@@ -1676,6 +1678,79 @@ def that_has_an_answer_joiner_variadic_component():
                     }
                 },
                 expected_run_order=["answer_builder_1", "answer_builder_2", "answer_joiner"],
+            )
+        ],
+    )
+
+
+@given("a pipeline that has a builder and retriever and doc joiner variadic component", target_fixture="pipeline_data")
+def that_has_a_builder_and_retriever_and_doc_joiner_variadic_component():
+    @component
+    class QueryMetadataExtractor:
+        @component.output_types(filters=Dict[str, str])
+        def run(self, prompt: str):
+            metadata = json.loads(prompt)
+            filters = []
+            for key, value in metadata.items():
+                field = f"meta.{key}"
+                filters.append({f"field": field, "operator": "==", "value": value})
+
+            return {"filters": {"operator": "AND", "conditions": filters}}
+
+    documents = [
+        Document(
+            content="some publication about Alzheimer prevention research done over 2023 patients study",
+            meta={"year": 2022, "disease": "Alzheimer", "author": "Michael Butter"},
+            id="doc1",
+        ),
+        Document(
+            content="some text about investigation and treatment of Alzheimer disease",
+            meta={"year": 2023, "disease": "Alzheimer", "author": "John Bread"},
+            id="doc2",
+        ),
+        Document(
+            content="A study on the effectiveness of new therapies for Parkinson's disease",
+            meta={"year": 2022, "disease": "Parkinson", "author": "Alice Smith"},
+            id="doc3",
+        ),
+        Document(
+            content="An overview of the latest research on the genetics of Parkinson's disease and its implications for treatment",
+            meta={"year": 2023, "disease": "Parkinson", "author": "David Jones"},
+            id="doc4",
+        ),
+    ]
+    document_store = InMemoryDocumentStore(bm25_algorithm="BM25Plus")
+    document_store.write_documents(documents=documents, policy=DuplicatePolicy.OVERWRITE)
+
+    pipeline = Pipeline()
+    pipeline.add_component(instance=PromptBuilder('{"disease": "Alzheimer", "year": 2023}'), name="builder")
+    pipeline.add_component(instance=QueryMetadataExtractor(), name="metadata_extractor")
+    pipeline.add_component(instance=InMemoryBM25Retriever(document_store=document_store), name="retriever")
+    pipeline.add_component(instance=DocumentJoiner(), name="document_joiner")
+
+    pipeline.connect("builder.prompt", "metadata_extractor.prompt")
+    pipeline.connect("metadata_extractor.filters", "retriever.filters")
+    pipeline.connect("retriever.documents", "document_joiner.documents")
+
+    query = "publications 2023 Alzheimer's disease"
+
+    return (
+        pipeline,
+        [
+            PipelineRunData(
+                inputs={"retriever": {"query": query}},
+                expected_outputs={
+                    "document_joiner": {
+                        "documents": [
+                            Document(
+                                content="some text about investigation and treatment of Alzheimer disease",
+                                meta={"year": 2023, "disease": "Alzheimer", "author": "John Bread"},
+                                id="doc2",
+                            )
+                        ]
+                    }
+                },
+                expected_run_order=["retriever", "document_joiner", "metadata_extractor"],
             )
         ],
     )
