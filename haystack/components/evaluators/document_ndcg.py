@@ -11,35 +11,26 @@ from haystack import Document, component
 @component
 class DocumentNDCGEvaluator:
     """
-    Evaluator that calculates the normalized discounted cumulative gain of the retrieved documents.
+    Evaluator that calculates the normalized discounted cumulative gain (NDCG) of retrieved documents.
 
     Each question can have multiple ground truth documents and multiple retrieved documents.
-    If the ground truth documents have relevance scores, the NDCG is calculated using the relevance scores.
-    Otherwise, the NDCG is calculated using the document ranks.
-
-    `DocumentNDCGEvaluator` doesn't normalize its inputs, the `DocumentCleaner` component
-    should be used to clean and normalize the documents before passing them to this evaluator.
+    If the ground truth documents have relevance scores, the NDCG calculation uses these scores.
+    Otherwise, it uses the inverse of the document ranks as scores.
 
     Usage example:
     ```python
     from haystack import Document
-    from haystack.components.evaluators import DocumentMRREvaluator
+    from haystack.components.evaluators import DocumentNDCGEvaluator
 
     evaluator = DocumentNDCGEvaluator()
     result = evaluator.run(
-        ground_truth_documents=[
-            [Document(content="France")],
-            [Document(content="9th century"), Document(content="9th")],
-        ],
-        retrieved_documents=[
-            [Document(content="France")],
-            [Document(content="9th century"), Document(content="10th century"), Document(content="9th")],
-        ],
+        ground_truth_documents=[[Document(content="France"), Document(content="Paris")]],
+        retrieved_documents=[[Document(content="France"), Document(content="Germany"), Document(content="Paris")]],
     )
     print(result["individual_scores"])
-    #
+    # [0.8869]
     print(result["score"])
-    #
+    # 0.8869
     ```
     """
 
@@ -53,7 +44,7 @@ class DocumentNDCGEvaluator:
         `ground_truth_documents` and `retrieved_documents` must have the same length.
 
         :param ground_truth_documents:
-            A list of expected documents for each question sorted by relevance.
+            A list of expected documents for each question with relevance scores or sorted by relevance.
         :param retrieved_documents:
             A list of retrieved documents for each question.
         :returns:
@@ -68,13 +59,8 @@ class DocumentNDCGEvaluator:
         individual_scores = []
 
         for gt_docs, ret_docs in zip(ground_truth_documents, retrieved_documents):
-            # Calculate discounted cumulative gain (DCG)
             dcg = self._calculate_dcg(gt_docs, ret_docs)
-
-            # Calculate ideal discounted cumulative gain (IDCG)
             idcg = self._calculate_idcg(gt_docs)
-
-            # Calculate NDCG
             ndcg = dcg / idcg if idcg > 0 else 0
             individual_scores.append(ndcg)
 
