@@ -886,8 +886,8 @@ class TestPipeline:
 
     def test_walk_pipeline_with_cycles(self):
         """
-        This pipeline consists of one component, which would run three times in a loop.
-        pipeline.walk() should return this component exactly once. The order is not guaranteed.
+        This pipeline consists of two components, which would run three times in a loop.
+        pipeline.walk() should return these components exactly once. The order is not guaranteed.
         """
 
         @component
@@ -907,9 +907,12 @@ class TestPipeline:
 
         pipeline = Pipeline()
         hello = Hello()
+        hello_again = Hello()
         pipeline.add_component("hello", hello)
-        pipeline.connect("hello.intermediate", "hello.intermediate")
-        assert [("hello", hello)] == list(pipeline.walk())
+        pipeline.add_component("hello_again", hello_again)
+        pipeline.connect("hello.intermediate", "hello_again.intermediate")
+        pipeline.connect("hello_again.intermediate", "hello.intermediate")
+        assert {("hello", hello), ("hello_again", hello_again)} == set(pipeline.walk())
 
     def test__init_graph(self):
         pipe = Pipeline()
@@ -1184,6 +1187,17 @@ class TestPipeline:
         assert comp2.__haystack_output__.value.receivers == ["comp3"]
         assert comp3.__haystack_input__.value.senders == ["comp1", "comp2"]
         assert list(pipe.graph.edges) == [("comp1", "comp3", "value/value"), ("comp2", "comp3", "value/value")]
+
+    def test_connect_same_component_as_sender_and_receiver(self):
+        """
+        This pipeline consists of one component, which would be connected to itself.
+        Connecting a component to itself is raises PipelineConnectError.
+        """
+        pipe = Pipeline()
+        single_component = FakeComponent()
+        pipe.add_component("single_component", single_component)
+        with pytest.raises(PipelineConnectError):
+            pipe.connect("single_component.out", "single_component.in")
 
     def test__run_component(self, spying_tracer, caplog):
         caplog.set_level(logging.INFO)
