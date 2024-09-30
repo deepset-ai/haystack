@@ -40,8 +40,7 @@ class DefaultConverter:
     The default converter class that extracts text from a PdfReader object's pages and returns a Document.
     """
 
-    @staticmethod
-    def convert(reader: "PdfReader") -> Document:
+    def convert(self, reader: "PdfReader") -> Document:
         """Extract text from the PDF and return a Document object with the text content."""
         text = "\f".join(page.extract_text() for page in reader.pages)
         return Document(content=text)
