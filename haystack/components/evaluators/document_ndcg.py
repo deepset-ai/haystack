@@ -84,17 +84,18 @@ class DocumentNDCGEvaluator:
 
     def _calculate_dcg(self, gt_docs: List[Document], ret_docs: List[Document]) -> float:
         dcg = 0
+        id_to_score = {doc.id: doc.score for doc in gt_docs}
         for i, doc in enumerate(ret_docs):
-            if doc in gt_docs:
-                # If the document has a score, use it; otherwise, use the inverse of the rank
-                relevance = getattr(doc, "score", 1 / (i + 1))
+            if doc.id in id_to_score:  # TODO Related to https://github.com/deepset-ai/haystack/issues/8412
+                # If the gt document has a score, use it; otherwise, use the inverse of the rank
+                relevance = id_to_score[doc.id] if id_to_score[doc.id] is not None else 1 / (i + 1)
                 dcg += relevance / log2(i + 2)  # i + 2 because i is 0-indexed
         return dcg
 
     def _calculate_idcg(self, gt_docs: List[Document]) -> float:
         idcg = 0
-        for i, doc in enumerate(sorted(gt_docs, key=lambda x: getattr(x, "score", 1), reverse=True)):
+        for i, doc in enumerate(sorted(gt_docs, key=lambda x: x.score if x.score is not None else 1, reverse=True)):
             # If the document has a score, use it; otherwise, use the inverse of the rank
-            relevance = getattr(doc, "score", 1 / (i + 1))
+            relevance = doc.score if doc.score is not None else 1 / (i + 1)
             idcg += relevance / log2(i + 2)
         return idcg
