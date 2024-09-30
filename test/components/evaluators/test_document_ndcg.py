@@ -44,6 +44,36 @@ def test_run_without_scores():
     assert result["score"] == pytest.approx(0.8869, abs=1e-4)
 
 
+def test_run_with_multiple_lists_of_docs():
+    evaluator = DocumentNDCGEvaluator()
+    result = evaluator.run(
+        ground_truth_documents=[
+            [Document(content="France"), Document(content="Paris")],
+            [
+                Document(content="doc1", score=3),
+                Document(content="doc2", score=2),
+                Document(content="doc3", score=3),
+                Document(content="doc6", score=2),
+                Document(content="doc7", score=3),
+                Document(content="doc8", score=2),
+            ],
+        ],
+        retrieved_documents=[
+            [Document(content="France"), Document(content="Germany"), Document(content="Paris")],
+            [
+                Document(content="doc1"),
+                Document(content="doc2"),
+                Document(content="doc3"),
+                Document(content="doc4"),
+                Document(content="doc5"),
+            ],
+        ],
+    )
+    assert result["individual_scores"][0] == pytest.approx(0.8869, abs=1e-4)
+    assert result["individual_scores"][1] == pytest.approx(0.6592, abs=1e-4)
+    assert result["score"] == pytest.approx(0.7731, abs=1e-4)
+
+
 def test_run_with_different_lengths():
     evaluator = DocumentNDCGEvaluator()
     with pytest.raises(ValueError):

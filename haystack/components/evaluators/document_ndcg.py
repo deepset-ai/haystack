@@ -42,11 +42,12 @@ class DocumentNDCGEvaluator:
         Run the DocumentNDCGEvaluator on the given inputs.
 
         `ground_truth_documents` and `retrieved_documents` must have the same length.
+        The list items within `ground_truth_documents` and `retrieved_documents` can differ in length.
 
         :param ground_truth_documents:
-            A list of expected documents for each question with relevance scores or sorted by relevance.
+            Lists of expected documents, one list per question, either with relevance scores or sorted by relevance.
         :param retrieved_documents:
-            A list of retrieved documents for each question.
+            Lists of retrieved documents, one list per question.
         :returns:
             A dictionary with the following outputs:
             - `score` - The average of calculated scores.
