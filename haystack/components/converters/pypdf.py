@@ -40,7 +40,8 @@ class DefaultConverter:
     The default converter class that extracts text from a PdfReader object's pages and returns a Document.
     """
 
-    def convert(self, reader: "PdfReader") -> Document:
+    @staticmethod
+    def convert(reader: "PdfReader") -> Document:
         """Extract text from the PDF and return a Document object with the text content."""
         text = "\f".join(page.extract_text() for page in reader.pages)
         return Document(content=text)
@@ -108,8 +109,7 @@ class PyPDFToDocument:
         :returns:
             Deserialized component.
         """
-        # the constructor has a default value for the converter of `None`. To keep the `from_dict` method in line with
-        # that default value, we need to check if the key is present.
+        # the converter default is `None`, check if it was defined before deserializing
         if "converter" in data["init_parameters"]:
             converter_class = deserialize_type(data["init_parameters"]["converter"]["type"])
             data["init_parameters"]["converter"] = converter_class.from_dict(data["init_parameters"]["converter"])
