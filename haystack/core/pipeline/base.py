@@ -4,7 +4,6 @@
 
 import importlib
 import itertools
-import warnings
 from collections import defaultdict
 from copy import copy, deepcopy
 from datetime import datetime
