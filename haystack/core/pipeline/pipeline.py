@@ -205,7 +205,6 @@ class Pipeline(PipelineBase):
                 "haystack.pipeline.input_data": data,
                 "haystack.pipeline.output_data": final_outputs,
                 "haystack.pipeline.metadata": self.metadata,
-                "haystack.pipeline.max_loops_allowed": self._max_runs_per_component,
                 "haystack.pipeline.max_runs_per_component": self._max_runs_per_component,
             },
         ):
