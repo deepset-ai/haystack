@@ -4,7 +4,6 @@
 
 import importlib
 import itertools
-import warnings
 from collections import defaultdict
 from copy import copy, deepcopy
 from datetime import datetime
@@ -50,20 +49,13 @@ class PipelineBase:
     Builds a graph of components and orchestrates their execution according to the execution graph.
     """
 
-    def __init__(
-        self,
-        metadata: Optional[Dict[str, Any]] = None,
-        debug_path: Optional[Union[Path, str]] = None,
-        max_runs_per_component: int = 100,
-    ):
+    def __init__(self, metadata: Optional[Dict[str, Any]] = None, max_runs_per_component: int = 100):
         """
         Creates the Pipeline.
 
         :param metadata:
             Arbitrary dictionary to store metadata about this `Pipeline`. Make sure all the values contained in
             this dictionary can be serialized and deserialized if you wish to save this `Pipeline` to file.
-        :param debug_path:
-            When debug is enabled in `run()`, where to save the debug data.
         :param max_runs_per_component:
             How many times the `Pipeline` can run the same Component.
             If this limit is reached a `PipelineMaxComponentRuns` exception is raised.
@@ -73,15 +65,6 @@ class PipelineBase:
         self._last_telemetry_sent: Optional[datetime] = None
         self.metadata = metadata or {}
         self.graph = networkx.MultiDiGraph()
-        self._debug: Dict[int, Dict[str, Any]] = {}
-        if debug_path is None:
-            self._debug_path = Path(".haystack_debug/")
-        else:
-            warnings.warn(
-                "The 'debug_path' argument is deprecated and will be removed in version '2.7.0'.", DeprecationWarning
-            )
-            self._debug_path = Path(debug_path)
-
         self._max_runs_per_component = max_runs_per_component
 
     def __eq__(self, other) -> bool:
@@ -162,8 +145,7 @@ class PipelineBase:
         data_copy = deepcopy(data)  # to prevent modification of original data
         metadata = data_copy.get("metadata", {})
         max_runs_per_component = data_copy.get("max_runs_per_component", 100)
-        debug_path = Path(data_copy.get("debug_path", ".haystack_debug/"))
-        pipe = cls(metadata=metadata, max_runs_per_component=max_runs_per_component, debug_path=debug_path)
+        pipe = cls(metadata=metadata, max_runs_per_component=max_runs_per_component)
         components_to_reuse = kwargs.get("components", {})
         for name, component_data in data_copy.get("components", {}).items():
             if name in components_to_reuse:
