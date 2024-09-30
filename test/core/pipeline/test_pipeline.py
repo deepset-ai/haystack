@@ -914,18 +914,6 @@ class TestPipeline:
         pipeline.connect("hello_again.intermediate", "hello.intermediate")
         assert {("hello", hello), ("hello_again", hello_again)} == set(pipeline.walk())
 
-    def test_component_connecting_to_itself(self):
-        """
-        This pipeline consists of one component, which would be connected to itself.
-        Connecting a component to itself is supposed to raise PipelineConnectError.
-        """
-
-        pipe = Pipeline()
-        single_component = FakeComponent()
-        pipe.add_component("single_component", single_component)
-        with pytest.raises(PipelineConnectError):
-            pipe.connect("single_component.out", "single_component.in")
-
     def test__init_graph(self):
         pipe = Pipeline()
         pipe.add_component("greet", Greet())
@@ -1199,6 +1187,17 @@ class TestPipeline:
         assert comp2.__haystack_output__.value.receivers == ["comp3"]
         assert comp3.__haystack_input__.value.senders == ["comp1", "comp2"]
         assert list(pipe.graph.edges) == [("comp1", "comp3", "value/value"), ("comp2", "comp3", "value/value")]
+
+    def test_connect_same_component_as_sender_and_receiver(self):
+        """
+        This pipeline consists of one component, which would be connected to itself.
+        Connecting a component to itself is raises PipelineConnectError.
+        """
+        pipe = Pipeline()
+        single_component = FakeComponent()
+        pipe.add_component("single_component", single_component)
+        with pytest.raises(PipelineConnectError):
+            pipe.connect("single_component.out", "single_component.in")
 
     def test__run_component(self, spying_tracer, caplog):
         caplog.set_level(logging.INFO)
