@@ -56,6 +56,11 @@ class DocumentNDCGEvaluator:
             msg = "The length of ground_truth_documents and retrieved_documents must be the same."
             raise ValueError(msg)
 
+        for gt_docs in ground_truth_documents:
+            if any(doc.score is not None for doc in gt_docs) and any(doc.score is None for doc in gt_docs):
+                msg = "Either none or all documents in each list of ground_truth_documents must have a score."
+                raise ValueError(msg)
+
         individual_scores = []
 
         for gt_docs, ret_docs in zip(ground_truth_documents, retrieved_documents):
@@ -69,17 +74,19 @@ class DocumentNDCGEvaluator:
         return {"score": score, "individual_scores": individual_scores}
 
     def _calculate_dcg(self, gt_docs: List[Document], ret_docs: List[Document]) -> float:
-        dcg = 0
-        id_to_score = {doc.id: doc.score for doc in gt_docs}
+        dcg = 0.0
+        relevant_id_to_score = {doc.id: doc.score for doc in gt_docs}
         for i, doc in enumerate(ret_docs):
-            if doc.id in id_to_score:  # TODO Related to https://github.com/deepset-ai/haystack/issues/8412
-                # If the gt document has a score, use it; otherwise, use the inverse of the rank
-                relevance = id_to_score[doc.id] if id_to_score[doc.id] is not None else 1 / (i + 1)
+            if doc.id in relevant_id_to_score:  # TODO Related to https://github.com/deepset-ai/haystack/issues/8412
+                # If the gt document has a float score, use it; otherwise, use the inverse of the rank
+                relevance = relevant_id_to_score[doc.id]
+                if relevance is None:
+                    relevance = 1 / (i + 1)
                 dcg += relevance / log2(i + 2)  # i + 2 because i is 0-indexed
         return dcg
 
     def _calculate_idcg(self, gt_docs: List[Document]) -> float:
-        idcg = 0
+        idcg = 0.0
         for i, doc in enumerate(sorted(gt_docs, key=lambda x: x.score if x.score is not None else 1, reverse=True)):
             # If the document has a score, use it; otherwise, use the inverse of the rank
             relevance = doc.score if doc.score is not None else 1 / (i + 1)

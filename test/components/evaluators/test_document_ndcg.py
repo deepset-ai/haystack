@@ -58,6 +58,15 @@ def test_run_with_different_lengths():
         )
 
 
+def test_run_with_mixed_documents_with_and_without_scores():
+    evaluator = DocumentNDCGEvaluator()
+    with pytest.raises(ValueError):
+        evaluator.run(
+            ground_truth_documents=[[Document(content="France", score=3), Document(content="Paris")]],
+            retrieved_documents=[[Document(content="France"), Document(content="Germany"), Document(content="Paris")]],
+        )
+
+
 def test_run_empty_retrieved():
     evaluator = DocumentNDCGEvaluator()
     result = evaluator.run(ground_truth_documents=[[Document(content="France")]], retrieved_documents=[[]])
