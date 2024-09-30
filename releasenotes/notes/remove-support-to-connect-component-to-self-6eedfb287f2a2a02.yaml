@@ -1,3 +1,5 @@
 ---
-preview:
-  - Remove Pipeline ability to a component to itself
+upgrade:
+  - |
+    `Pipeline.connect()` will now raise a `PipelineConnectError` if `sender` and `receiver` are the same Component.
+    We do not support this use case anymore.
