@@ -108,8 +108,10 @@ class PyPDFToDocument:
         :returns:
             Deserialized component.
         """
-        converter_class = deserialize_type(data["init_parameters"]["converter"]["type"])
-        data["init_parameters"]["converter"] = converter_class.from_dict(data["init_parameters"]["converter"])
+        # the converter default is `None`, check if it was defined before deserializing
+        if "converter" in data["init_parameters"]:
+            converter_class = deserialize_type(data["init_parameters"]["converter"]["type"])
+            data["init_parameters"]["converter"] = converter_class.from_dict(data["init_parameters"]["converter"])
         return default_from_dict(cls, data)
 
     @component.output_types(documents=List[Document])
