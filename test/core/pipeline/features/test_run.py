@@ -1650,20 +1650,6 @@ def that_is_a_simple_agent():
     pipeline.add_component("prompt_builder", ChatPromptBuilder(variables=["query"]))
     pipeline.add_component("llm", FakeThoughtActionOpenAIChatGenerator())
 
-    # tools
-    def find_last_action(chat_messages: List[ChatMessage]):
-        prompt: str = chat_messages[-1].content
-        lines = prompt.strip().split("\n")
-        for line in reversed(lines):
-            pattern = r"Action:\s*(\w+)\[(.*?)\]"
-
-            match = re.search(pattern, line)
-            if match:
-                action_name = match.group(1)
-                parameter = match.group(2)
-                return [action_name, parameter]
-        return [None, None]
-
     @component
     class ToolExtractor:
         @component.output_types(output=List[str])
