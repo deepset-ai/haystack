@@ -1850,8 +1850,11 @@ def that_has_an_answer_joiner_variadic_component():
     )
 
 
-@given("a pipeline that has a builder and retriever and doc joiner variadic component", target_fixture="pipeline_data")
-def that_has_a_builder_and_retriever_and_doc_joiner_variadic_component():
+@given(
+    "a pipeline that is linear and a component in the middle receives optional input from other components and input from the user",
+    target_fixture="pipeline_data",
+)
+def that_is_linear_and_a_component_in_the_middle_receives_optional_input_from_other_components_and_input_from_the_user():
     @component
     class QueryMetadataExtractor:
         @component.output_types(filters=Dict[str, str])
@@ -1859,8 +1862,7 @@ def that_has_a_builder_and_retriever_and_doc_joiner_variadic_component():
             metadata = json.loads(prompt)
             filters = []
             for key, value in metadata.items():
-                field = f"meta.{key}"
-                filters.append({f"field": field, "operator": "==", "value": value})
+                filters.append({"field": f"meta.{key}", "operator": "==", "value": value})
 
             return {"filters": {"operator": "AND", "conditions": filters}}
 
@@ -1913,11 +1915,12 @@ def that_has_a_builder_and_retriever_and_doc_joiner_variadic_component():
                                 content="some text about investigation and treatment of Alzheimer disease",
                                 meta={"year": 2023, "disease": "Alzheimer", "author": "John Bread"},
                                 id="doc2",
+                                score=3.324112496100923,
                             )
                         ]
                     }
                 },
-                expected_run_order=["retriever", "document_joiner", "metadata_extractor"],
+                expected_run_order=["builder", "metadata_extractor", "retriever", "document_joiner"],
             )
         ],
     )

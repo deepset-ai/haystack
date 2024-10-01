@@ -40,7 +40,7 @@ Feature: Pipeline running
         | that is a simple agent |
         | that has a variadic component that receives partial inputs |
         | that has an answer joiner variadic component |
-        | that has a builder and retriever and doc joiner variadic component |
+        | that is linear and a component in the middle receives optional input from other components and input from the user |
 
     Scenario Outline: Running a bad Pipeline
         Given a pipeline <kind>
