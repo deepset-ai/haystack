@@ -111,6 +111,31 @@ def test_run_empty_ground_truth():
     assert result["score"] == 0.0
 
 
+def test_run_empty_retrieved_and_empty_ground_truth():
+    evaluator = DocumentNDCGEvaluator()
+    result = evaluator.run(ground_truth_documents=[[]], retrieved_documents=[[]])
+    assert result["individual_scores"] == [0.0]
+    assert result["score"] == 0.0
+
+
+def test_run_no_retrieved():
+    evaluator = DocumentNDCGEvaluator()
+    with pytest.raises(ValueError):
+        result = evaluator.run(ground_truth_documents=[[Document(content="France")]], retrieved_documents=[])
+
+
+def test_run_no_ground_truth():
+    evaluator = DocumentNDCGEvaluator()
+    with pytest.raises(ValueError):
+        evaluator.run(ground_truth_documents=[], retrieved_documents=[[Document(content="France")]])
+
+
+def test_run_no_retrieved_and_no_ground_truth():
+    evaluator = DocumentNDCGEvaluator()
+    with pytest.raises(ValueError):
+        evaluator.run(ground_truth_documents=[], retrieved_documents=[])
+
+
 def test_calculate_dcg_with_scores():
     evaluator = DocumentNDCGEvaluator()
     gt_docs = [
@@ -129,7 +154,7 @@ def test_calculate_dcg_with_scores():
         Document(content="doc5"),
         Document(content="doc6"),
     ]
-    dcg = evaluator._calculate_dcg(gt_docs, ret_docs)
+    dcg = evaluator.calculate_dcg(gt_docs, ret_docs)
     assert dcg == pytest.approx(6.8611, abs=1e-4)
 
 
@@ -137,7 +162,7 @@ def test_calculate_dcg_without_scores():
     evaluator = DocumentNDCGEvaluator()
     gt_docs = [Document(content="doc1"), Document(content="doc2")]
     ret_docs = [Document(content="doc2"), Document(content="doc3"), Document(content="doc1")]
-    dcg = evaluator._calculate_dcg(gt_docs, ret_docs)
+    dcg = evaluator.calculate_dcg(gt_docs, ret_docs)
     assert dcg == pytest.approx(1.1667, abs=1e-4)
 
 
@@ -145,7 +170,7 @@ def test_calculate_dcg_empty():
     evaluator = DocumentNDCGEvaluator()
     gt_docs = [Document(content="doc1")]
     ret_docs = []
-    dcg = evaluator._calculate_dcg(gt_docs, ret_docs)
+    dcg = evaluator.calculate_dcg(gt_docs, ret_docs)
     assert dcg == 0
 
 
@@ -159,19 +184,19 @@ def test_calculate_idcg_with_scores():
         Document(content="doc5", score=2),
         Document(content="doc6", score=2),
     ]
-    idcg = evaluator._calculate_idcg(gt_docs)
+    idcg = evaluator.calculate_idcg(gt_docs)
     assert idcg == pytest.approx(8.7403, abs=1e-4)
 
 
 def test_calculate_idcg_without_scores():
     evaluator = DocumentNDCGEvaluator()
     gt_docs = [Document(content="doc1"), Document(content="doc2"), Document(content="doc3")]
-    idcg = evaluator._calculate_idcg(gt_docs)
+    idcg = evaluator.calculate_idcg(gt_docs)
     assert idcg == pytest.approx(1.4821, abs=1e-4)
 
 
 def test_calculate_idcg_empty():
     evaluator = DocumentNDCGEvaluator()
     gt_docs = []
-    idcg = evaluator._calculate_idcg(gt_docs)
+    idcg = evaluator.calculate_idcg(gt_docs)
     assert idcg == 0

@@ -53,20 +53,13 @@ class DocumentNDCGEvaluator:
             - `score` - The average of calculated scores.
             - `individual_scores` - A list of numbers from 0.0 to 1.0 that represents the NDCG for each question.
         """
-        if len(ground_truth_documents) != len(retrieved_documents):
-            msg = "The length of ground_truth_documents and retrieved_documents must be the same."
-            raise ValueError(msg)
-
-        for gt_docs in ground_truth_documents:
-            if any(doc.score is not None for doc in gt_docs) and any(doc.score is None for doc in gt_docs):
-                msg = "Either none or all documents in each list of ground_truth_documents must have a score."
-                raise ValueError(msg)
+        self.validate_init_parameters(ground_truth_documents, retrieved_documents)
 
         individual_scores = []
 
         for gt_docs, ret_docs in zip(ground_truth_documents, retrieved_documents):
-            dcg = self._calculate_dcg(gt_docs, ret_docs)
-            idcg = self._calculate_idcg(gt_docs)
+            dcg = self.calculate_dcg(gt_docs, ret_docs)
+            idcg = self.calculate_idcg(gt_docs)
             ndcg = dcg / idcg if idcg > 0 else 0
             individual_scores.append(ndcg)
 
@@ -74,7 +67,47 @@ class DocumentNDCGEvaluator:
 
         return {"score": score, "individual_scores": individual_scores}
 
-    def _calculate_dcg(self, gt_docs: List[Document], ret_docs: List[Document]) -> float:
+    @staticmethod
+    def validate_init_parameters(gt_docs: List[List[Document]], ret_docs: List[List[Document]]):
+        """
+        Validate the init parameters.
+
+        :param gt_docs:
+            The ground_truth_documents to validate.
+        :param ret_docs:
+            The retrieved_documents to validate.
+
+        :raises ValueError:
+            If the ground_truth_documents or the retrieved_documents are an empty a list.
+            If the length of ground_truth_documents and retrieved_documents differs.
+            If any list of documents in ground_truth_documents contains a mix of documents with and without a score.
+        """
+        if len(gt_docs) == 0 or len(ret_docs) == 0:
+            msg = "ground_truth_documents and retrieved_documents must be provided."
+            raise ValueError(msg)
+
+        if len(gt_docs) != len(ret_docs):
+            msg = "The length of ground_truth_documents and retrieved_documents must be the same."
+            raise ValueError(msg)
+
+        for docs in gt_docs:
+            if any(doc.score is not None for doc in docs) and any(doc.score is None for doc in docs):
+                msg = "Either none or all documents in each list of ground_truth_documents must have a score."
+                raise ValueError(msg)
+
+    @staticmethod
+    def calculate_dcg(gt_docs: List[Document], ret_docs: List[Document]) -> float:
+        """
+        Calculate the discounted cumulative gain (DCG) of the retrieved documents.
+
+        :param gt_docs:
+            The ground truth documents.
+        :param ret_docs:
+            The retrieved documents.
+        :returns:
+            The discounted cumulative gain (DCG) of the retrieved
+            documents based on the ground truth documents.
+        """
         dcg = 0.0
         relevant_id_to_score = {doc.id: doc.score for doc in gt_docs}
         for i, doc in enumerate(ret_docs):
@@ -86,7 +119,16 @@ class DocumentNDCGEvaluator:
                 dcg += relevance / log2(i + 2)  # i + 2 because i is 0-indexed
         return dcg
 
-    def _calculate_idcg(self, gt_docs: List[Document]) -> float:
+    @staticmethod
+    def calculate_idcg(gt_docs: List[Document]) -> float:
+        """
+        Calculate the ideal discounted cumulative gain (IDCG) of the ground truth documents.
+
+        :param gt_docs:
+            The ground truth documents.
+        :returns:
+            The ideal discounted cumulative gain (IDCG) of the ground truth documents.
+        """
         idcg = 0.0
         for i, doc in enumerate(sorted(gt_docs, key=lambda x: x.score if x.score is not None else 1, reverse=True)):
             # If the document has a score, use it; otherwise, use the inverse of the rank
