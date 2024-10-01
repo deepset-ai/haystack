@@ -7,7 +7,7 @@ from unittest.mock import patch
 import pytest
 
 from haystack import Document, default_from_dict, default_to_dict
-from haystack.components.converters.pypdf import DefaultConverter, PyPDFToDocument
+from haystack.components.converters.pypdf import PyPDFToDocument
 from haystack.dataclasses import ByteStream
 
 
@@ -16,29 +16,68 @@ def pypdf_converter():
     return PyPDFToDocument()
 
 
+class CustomConverter:
+    def convert(self, reader):
+        return Document(content="Custom converter")
+
+    def to_dict(self):
+        return {"key": "value", "more": False}
+
+    @classmethod
+    def from_dict(cls, data):
+        assert data == {"key": "value", "more": False}
+        return cls()
+
+
 class TestPyPDFToDocument:
     def test_init(self, pypdf_converter):
-        assert isinstance(pypdf_converter.converter, DefaultConverter)
+        assert pypdf_converter.converter is None
+
+    def test_init_params(self):
+        pypdf_converter = PyPDFToDocument(converter=CustomConverter())
+        assert isinstance(pypdf_converter.converter, CustomConverter)
 
     def test_to_dict(self, pypdf_converter):
         data = pypdf_converter.to_dict()
         assert data == {
             "type": "haystack.components.converters.pypdf.PyPDFToDocument",
+            "init_parameters": {"converter": None},
+        }
+
+    def test_to_dict_custom_converter(self):
+        pypdf_converter = PyPDFToDocument(converter=CustomConverter())
+        data = pypdf_converter.to_dict()
+        assert data == {
+            "type": "haystack.components.converters.pypdf.PyPDFToDocument",
             "init_parameters": {
-                "converter": {"type": "haystack.components.converters.pypdf.DefaultConverter", "init_parameters": {}}
+                "converter": {
+                    "data": {"key": "value", "more": False},
+                    "type": "converters.test_pypdf_to_document.CustomConverter",
+                }
             },
         }
 
     def test_from_dict(self):
+        data = {"type": "haystack.components.converters.pypdf.PyPDFToDocument", "init_parameters": {"converter": None}}
+        instance = PyPDFToDocument.from_dict(data)
+        assert isinstance(instance, PyPDFToDocument)
+        assert instance.converter is None
+
+    def test_from_dict_custom_converter(self):
+        pypdf_converter = PyPDFToDocument(converter=CustomConverter())
+        data = pypdf_converter.to_dict()
         data = {
             "type": "haystack.components.converters.pypdf.PyPDFToDocument",
             "init_parameters": {
-                "converter": {"type": "haystack.components.converters.pypdf.DefaultConverter", "init_parameters": {}}
+                "converter": {
+                    "data": {"key": "value", "more": False},
+                    "type": "converters.test_pypdf_to_document.CustomConverter",
+                }
             },
         }
         instance = PyPDFToDocument.from_dict(data)
         assert isinstance(instance, PyPDFToDocument)
-        assert isinstance(instance.converter, DefaultConverter)
+        assert isinstance(instance.converter, CustomConverter)
 
     @pytest.mark.integration
     def test_run(self, test_files_path, pypdf_converter):
