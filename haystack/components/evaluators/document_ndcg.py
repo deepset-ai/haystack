@@ -53,7 +53,7 @@ class DocumentNDCGEvaluator:
             - `score` - The average of calculated scores.
             - `individual_scores` - A list of numbers from 0.0 to 1.0 that represents the NDCG for each question.
         """
-        self.validate_init_parameters(ground_truth_documents, retrieved_documents)
+        self.validate_inputs(ground_truth_documents, retrieved_documents)
 
         individual_scores = []
 
@@ -68,9 +68,9 @@ class DocumentNDCGEvaluator:
         return {"score": score, "individual_scores": individual_scores}
 
     @staticmethod
-    def validate_init_parameters(gt_docs: List[List[Document]], ret_docs: List[List[Document]]):
+    def validate_inputs(gt_docs: List[List[Document]], ret_docs: List[List[Document]]):
         """
-        Validate the init parameters.
+        Validate the input parameters.
 
         :param gt_docs:
             The ground_truth_documents to validate.
