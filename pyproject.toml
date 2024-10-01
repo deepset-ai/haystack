@@ -327,6 +327,7 @@ ignore = [
   "SIM108",  # if-else-block-instead-of-if-exp
   "SIM115",  # open-file-with-context-handler
   "SIM118",  # in-dict-keys
+  "PLR0913", # Too many arguments in function definition
 ]
 
 [tool.ruff.lint.mccabe]
