@@ -6,6 +6,7 @@ from .answer_exact_match import AnswerExactMatchEvaluator
 from .context_relevance import ContextRelevanceEvaluator
 from .document_map import DocumentMAPEvaluator
 from .document_mrr import DocumentMRREvaluator
+from .document_ndcg import DocumentNDCGEvaluator
 from .document_recall import DocumentRecallEvaluator
 from .faithfulness import FaithfulnessEvaluator
 from .llm_evaluator import LLMEvaluator
@@ -16,6 +17,7 @@ __all__ = [
     "ContextRelevanceEvaluator",
     "DocumentMAPEvaluator",
     "DocumentMRREvaluator",
+    "DocumentNDCGEvaluator",
     "DocumentRecallEvaluator",
     "FaithfulnessEvaluator",
     "LLMEvaluator",
