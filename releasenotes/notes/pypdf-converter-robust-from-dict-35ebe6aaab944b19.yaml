@@ -1,5 +1,0 @@
----
-fixes:
-  - |
-    Make the `from_dict` method of the `PyPDFToDocument` more robust to cases when the converter is
-    not provided in the dictionary.
