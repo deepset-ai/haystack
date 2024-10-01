@@ -40,8 +40,8 @@ def test_run_without_scores():
         ground_truth_documents=[[Document(content="France"), Document(content="Paris")]],
         retrieved_documents=[[Document(content="France"), Document(content="Germany"), Document(content="Paris")]],
     )
-    assert result["individual_scores"][0] == pytest.approx(0.8869, abs=1e-4)
-    assert result["score"] == pytest.approx(0.8869, abs=1e-4)
+    assert result["individual_scores"][0] == pytest.approx(0.9197, abs=1e-4)
+    assert result["score"] == pytest.approx(0.9197, abs=1e-4)
 
 
 def test_run_with_multiple_lists_of_docs():
@@ -69,9 +69,9 @@ def test_run_with_multiple_lists_of_docs():
             ],
         ],
     )
-    assert result["individual_scores"][0] == pytest.approx(0.8869, abs=1e-4)
+    assert result["individual_scores"][0] == pytest.approx(0.9197, abs=1e-4)
     assert result["individual_scores"][1] == pytest.approx(0.6592, abs=1e-4)
-    assert result["score"] == pytest.approx(0.7731, abs=1e-4)
+    assert result["score"] == pytest.approx(0.7895, abs=1e-4)
 
 
 def test_run_with_different_lengths():
@@ -163,7 +163,7 @@ def test_calculate_dcg_without_scores():
     gt_docs = [Document(content="doc1"), Document(content="doc2")]
     ret_docs = [Document(content="doc2"), Document(content="doc3"), Document(content="doc1")]
     dcg = evaluator.calculate_dcg(gt_docs, ret_docs)
-    assert dcg == pytest.approx(1.1667, abs=1e-4)
+    assert dcg == pytest.approx(1.5, abs=1e-4)
 
 
 def test_calculate_dcg_empty():
@@ -192,7 +192,7 @@ def test_calculate_idcg_without_scores():
     evaluator = DocumentNDCGEvaluator()
     gt_docs = [Document(content="doc1"), Document(content="doc2"), Document(content="doc3")]
     idcg = evaluator.calculate_idcg(gt_docs)
-    assert idcg == pytest.approx(1.4821, abs=1e-4)
+    assert idcg == pytest.approx(2.1309, abs=1e-4)
 
 
 def test_calculate_idcg_empty():

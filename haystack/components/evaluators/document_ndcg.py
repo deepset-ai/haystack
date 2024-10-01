@@ -15,7 +15,7 @@ class DocumentNDCGEvaluator:
 
     Each question can have multiple ground truth documents and multiple retrieved documents.
     If the ground truth documents have relevance scores, the NDCG calculation uses these scores.
-    Otherwise, it uses the inverse of the document ranks as scores.
+    Otherwise, it assumes binary relevance of all ground truth documents.
 
     Usage example:
     ```python
@@ -24,7 +24,7 @@ class DocumentNDCGEvaluator:
 
     evaluator = DocumentNDCGEvaluator()
     result = evaluator.run(
-        ground_truth_documents=[[Document(content="France"), Document(content="Paris")]],
+        ground_truth_documents=[[Document(content="France", score=1.0), Document(content="Paris", score=0.5)]],
         retrieved_documents=[[Document(content="France"), Document(content="Germany"), Document(content="Paris")]],
     )
     print(result["individual_scores"])
@@ -45,7 +45,7 @@ class DocumentNDCGEvaluator:
         The list items within `ground_truth_documents` and `retrieved_documents` can differ in length.
 
         :param ground_truth_documents:
-            Lists of expected documents, one list per question, either with relevance scores or sorted by relevance.
+            Lists of expected documents, one list per question. Binary relevance is used if documents have no scores.
         :param retrieved_documents:
             Lists of retrieved documents, one list per question.
         :returns:
@@ -109,14 +109,10 @@ class DocumentNDCGEvaluator:
             documents based on the ground truth documents.
         """
         dcg = 0.0
-        relevant_id_to_score = {doc.id: doc.score for doc in gt_docs}
+        relevant_id_to_score = {doc.id: doc.score if doc.score is not None else 1 for doc in gt_docs}
         for i, doc in enumerate(ret_docs):
             if doc.id in relevant_id_to_score:  # TODO Related to https://github.com/deepset-ai/haystack/issues/8412
-                # If the gt document has a float score, use it; otherwise, use the inverse of the rank
-                relevance = relevant_id_to_score[doc.id]
-                if relevance is None:
-                    relevance = 1 / (i + 1)
-                dcg += relevance / log2(i + 2)  # i + 2 because i is 0-indexed
+                dcg += relevant_id_to_score[doc.id] / log2(i + 2)  # i + 2 because i is 0-indexed
         return dcg
 
     @staticmethod
@@ -131,7 +127,7 @@ class DocumentNDCGEvaluator:
         """
         idcg = 0.0
         for i, doc in enumerate(sorted(gt_docs, key=lambda x: x.score if x.score is not None else 1, reverse=True)):
-            # If the document has a score, use it; otherwise, use the inverse of the rank
-            relevance = doc.score if doc.score is not None else 1 / (i + 1)
-            idcg += relevance / log2(i + 2)
+            # If the document has a score, use it; otherwise, use 1 for binary relevance.
+            relevance = doc.score if doc.score is not None else 1
+            idcg += relevance / log2(i + 2)  # i + 2 because i is 0-indexed
         return idcg
