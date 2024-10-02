@@ -1148,12 +1148,20 @@ class TestPipeline:
         inputs = {"document_builder": {"text": "some text"}}
         run_queue = []
         waiting_queue = [("document_joiner", document_joiner)]
+        receivers = [
+            (
+                "document_cleaner",
+                OutputSocket("doc", Document, ["document_cleaner"]),
+                InputSocket("doc", Document, _empty, ["document_builder"]),
+            ),
+            (
+                "document_joiner",
+                OutputSocket("another_doc", Document, ["document_joiner"]),
+                InputSocket("docs", Variadic[Document], _empty, ["document_builder"]),
+            ),
+        ]
         res = pipe._distribute_output(
-            "document_builder",
-            {"doc": Document("some text"), "another_doc": Document()},
-            inputs,
-            run_queue,
-            waiting_queue,
+            receivers, {"doc": Document("some text"), "another_doc": Document()}, inputs, run_queue, waiting_queue
         )
 
         assert res == {}
