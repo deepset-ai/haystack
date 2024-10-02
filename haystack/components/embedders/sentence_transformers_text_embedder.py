@@ -34,7 +34,7 @@ class SentenceTransformersTextEmbedder:
     ```
     """
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         model: str = "sentence-transformers/all-mpnet-base-v2",
         device: Optional[ComponentDevice] = None,
