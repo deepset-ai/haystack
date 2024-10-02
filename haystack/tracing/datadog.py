@@ -62,11 +62,11 @@ class DatadogTracer(Tracer):
     def trace(self, operation_name: str, tags: Optional[Dict[str, Any]] = None) -> Iterator[Span]:
         """Activate and return a new span that inherits from the current active span."""
         with self._tracer.trace(operation_name) as span:
-            span = DatadogSpan(span)
+            custom_span = DatadogSpan(span)
             if tags:
-                span.set_tags(tags)
+                custom_span.set_tags(tags)
 
-            yield span
+            yield custom_span
 
     def current_span(self) -> Optional[Span]:
         """Return the current active span"""
