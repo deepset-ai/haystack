@@ -39,31 +39,46 @@ class Pipeline(PipelineBase):
         :return: The output of the Component.
         """
         instance: Component = self.graph.nodes[name]["instance"]
+        component_type = instance.__class__.__name__
+        input_types = {k: type(v).__name__ for k, v in inputs.items()}
+        input_lengths = {k: len(v) for k, v in inputs.items() if isinstance(v, (list, tuple, set))}
+        input_spec = {
+            key: {
+                "type": (value.type.__name__ if isinstance(value.type, type) else str(value.type)),
+                "senders": value.senders,
+            }
+            for key, value in instance.__haystack_input__._sockets_dict.items()  # type: ignore
+        }
+        output_spec = {
+            key: {
+                "type": (value.type.__name__ if isinstance(value.type, type) else str(value.type)),
+                "receivers": value.receivers,
+            }
+            for key, value in instance.__haystack_output__._sockets_dict.items()  # type: ignore
+        }
 
         with tracing.tracer.trace(
             "haystack.component.run",
             tags={
                 "haystack.component.name": name,
-                "haystack.component.type": instance.__class__.__name__,
-                "haystack.component.input_types": {k: type(v).__name__ for k, v in inputs.items()},
-                "haystack.component.input_spec": {
-                    key: {
-                        "type": (value.type.__name__ if isinstance(value.type, type) else str(value.type)),
-                        "senders": value.senders,
-                    }
-                    for key, value in instance.__haystack_input__._sockets_dict.items()  # type: ignore
-                },
-                "haystack.component.output_spec": {
-                    key: {
-                        "type": (value.type.__name__ if isinstance(value.type, type) else str(value.type)),
-                        "receivers": value.receivers,
-                    }
-                    for key, value in instance.__haystack_output__._sockets_dict.items()  # type: ignore
-                },
+                "haystack.component.type": component_type,
+                "haystack.component.input_types": input_types,
+                "haystack.component.input_lengths": input_lengths,
+                "haystack.component.input_spec": input_spec,
+                "haystack.component.output_spec": output_spec,
             },
         ) as span:
             span.set_content_tag("haystack.component.input", inputs)
-            logger.info("Running component {component_name}", component_name=name)
+            logger.info(
+                "Running component {component_name}",
+                component_name=name,
+                extra={
+                    "component_name": name,
+                    "component_type": component_type,
+                    "input_types": input_types,
+                    "input_lengths": input_lengths,
+                },
+            )
             res: Dict[str, Any] = instance.run(**inputs)
             self.graph.nodes[name]["visits"] += 1
 
@@ -79,8 +94,23 @@ class Pipeline(PipelineBase):
                     f"Component '{name}' didn't return a dictionary. "
                     "Components must always return dictionaries: check the documentation."
                 )
+            output_types = {k: type(v).__name__ for k, v in res.items()}
+            output_lengths = {k: len(v) for k, v in res.items() if isinstance(v, (list, tuple, set))}
+
             span.set_tag("haystack.component.visits", self.graph.nodes[name]["visits"])
+            span.set_tag("haystack.component.output_types", output_types)
+            span.set_tag("haystack.component.output_lengths", output_lengths)
             span.set_content_tag("haystack.component.output", res)
+            logger.info(
+                "Component {component_name} finished",
+                component_name=name,
+                extra={
+                    "component_name": name,
+                    "component_type": component_type,
+                    "output_types": output_types,
+                    "output_lengths": output_lengths,
+                },
+            )
 
             return res
 
