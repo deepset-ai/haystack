@@ -851,9 +851,25 @@ class PipelineBase:
         for node in self.graph.nodes:
             self.graph.nodes[node]["visits"] = 0
 
+    def _find_receivers_from(self, component_name: str) -> List[Tuple[str, OutputSocket, InputSocket]]:
+        """
+        Utility function to find all Components that receive input form `component_name`.
+
+        :param component_name: Name of the sender Component
+
+        :return: List of tuples containing name of the receiver Component and relative sender OutputSocket
+            and receiver InputSocket instances
+        """
+        res = []
+        for _, receiver_name, connection in self.graph.edges(nbunch=component_name, data=True):
+            sender_socket: OutputSocket = connection["from_socket"]
+            receiver_socket: InputSocket = connection["to_socket"]
+            res.append((receiver_name, sender_socket, receiver_socket))
+        return res
+
     def _distribute_output(
         self,
-        component_name: str,
+        receiver_components: List[Tuple[str, OutputSocket, InputSocket]],
         component_result: Dict[str, Any],
         components_inputs: Dict[str, Dict[str, Any]],
         run_queue: List[Tuple[str, Component]],
@@ -865,11 +881,17 @@ class PipelineBase:
         This also updates the queues that keep track of which Components are ready to run and which are waiting for
         input.
 
-        :param component_name: Name of the Component that created the output
-        :param component_result: The output of the Component
-        :paramt components_inputs: The current state of the inputs divided by Component name
-        :param run_queue: Queue of Components to run
-        :param waiting_queue: Queue of Components waiting for input
+        :param
+            receiver_components: List of tuples containing name of receiver Components and relative sender OutputSocket
+            and receiver InputSocket instances
+        :param
+            component_result: The output of the Component
+        :param
+            components_inputs: The current state of the inputs divided by Component name
+        :param
+            run_queue: Queue of Components to run
+        :param
+            waiting_queue: Queue of Components waiting for input
 
         :returns: The updated output of the Component without the keys that were distributed to other Components
         """
@@ -878,10 +900,7 @@ class PipelineBase:
         # we're sure all components that need this output have received it.
         to_remove_from_component_result = set()
 
-        for _, receiver_name, connection in self.graph.edges(nbunch=component_name, data=True):
-            sender_socket: OutputSocket = connection["from_socket"]
-            receiver_socket: InputSocket = connection["to_socket"]
-
+        for receiver_name, sender_socket, receiver_socket in receiver_components:
             if sender_socket.name not in component_result:
                 # This output wasn't created by the sender, nothing we can do.
                 #
@@ -1085,7 +1104,6 @@ class PipelineBase:
                     if is_variadic:
                         continue
                     components.add((descendant_name, descendant))
-
 
                 # components |= {(d, self.graph.nodes[d]["instance"]) for d in networkx.descendants(self.graph, receiver)}
 

@@ -93,18 +93,6 @@ class Pipeline(PipelineBase):
         components_inputs: Dict[str, Dict[str, Any]],
         include_outputs_from: Optional[Set[str]] = None,
     ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-        # simple_paths = nx.all_simple_paths(execution_graph, start_component, end_component)
-        # nodes = set()
-        # for paths in simple_paths:
-        #     nodes.update(paths)
-        # before_last_waiting_queue: Optional[Set[str]] = None
-        # last_waiting_queue: Optional[Set[str]] = None
-        # cycle_graph = execution_graph.subgraph(nodes)
-        # if not nx.is_directed_acyclic_graph(cycle_graph):
-        #     # TODO: This must not happen, we'll see how to handle this
-        #     raise PipelineRuntimeError("Cycle detected in the subgraph")
-        # sorted_graph = nx.topological_sort(cycle_graph)
-
         waiting_queue: List[Tuple[str, Component]] = []
         run_queue: List[Tuple[str, Component]] = []
 
@@ -115,12 +103,15 @@ class Pipeline(PipelineBase):
 
         include_outputs_from = set() if include_outputs_from is None else include_outputs_from
 
+        before_last_waiting_queue = None
+        last_waiting_queue = None
+
         subgraph_outputs = {}
         # These are outputs that are sent to other Components but the user explicitly
         # asked to include them in the final output.
         extra_outputs = {}
 
-        # This variable is used to keep track if we style need to run the cycle or not.
+        # This variable is used to keep track if we still need to run the cycle or not.
         # TODO: Find a nicer name
         exit_edge_reached = False
         while not exit_edge_reached:
@@ -160,8 +151,6 @@ class Pipeline(PipelineBase):
                     # We don't care about loops - Always store the last output.
                     extra_outputs[name] = deepcopy(res)
 
-                # TODO: Handle `include_outputs_from` here
-
                 # Reset the waiting for input previous states, we managed to run a component
                 before_last_waiting_queue = None
                 last_waiting_queue = None
@@ -187,81 +176,9 @@ class Pipeline(PipelineBase):
                 for pair in self._find_components_that_will_receive_no_input(name, res, components_inputs):
                     _dequeue_component(pair, run_queue, waiting_queue)
 
-                # - Add the output from the Component that just ran to components_inputs
+                receivers = [item for item in self._find_receivers_from(name) if item[0] in cycle]
 
-                # THE SNIPPET BELOW HAS BEEN COPIED FROM _distribute_output WITH SOME CHANGES
-                to_remove_from_component_result = set()
-                for _, receiver_name, connection in self.graph.edges(nbunch=name, data=True):
-                    sender_socket: OutputSocket = connection["from_socket"]
-                    receiver_socket: InputSocket = connection["to_socket"]
-                    if sender_socket.name not in res:
-                        # This output wasn't created by the sender, nothing we can do.
-                        #
-                        # Some Components might have conditional outputs, so we need to check if they actually returned
-                        # some output while iterating over their output sockets.
-                        #
-                        # A perfect example of this would be the ConditionalRouter, which will have an output for each
-                        # condition it has been initialized with.
-                        # Though it will return only one output at a time.
-                        continue
-
-                    if receiver_name not in cycle:
-                        # This receiver is not part of the cycle, we can ignore it
-                        continue
-
-                    if receiver_name not in components_inputs:
-                        components_inputs[receiver_name] = {}
-
-                    # We keep track of the keys that were distributed to other Components.
-                    # This key will be removed from component_result at the end of the loop.
-                    to_remove_from_component_result.add(sender_socket.name)
-
-                    value = res[sender_socket.name]
-
-                    if receiver_socket.is_variadic:
-                        # Usually Component inputs can only be received from one sender, the Variadic type allows
-                        # instead to receive inputs from multiple senders.
-                        #
-                        # To keep track of all the inputs received internally we always store them in a list.
-                        if receiver_socket.name not in components_inputs[receiver_name]:
-                            # Create the list if it doesn't exist
-                            components_inputs[receiver_name][receiver_socket.name] = []
-                        else:
-                            # Check if the value is actually a list
-                            assert isinstance(components_inputs[receiver_name][receiver_socket.name], list)
-                        components_inputs[receiver_name][receiver_socket.name].append(value)
-                    else:
-                        components_inputs[receiver_name][receiver_socket.name] = value
-
-                    receiver = self.graph.nodes[receiver_name]["instance"]
-                    pair = (receiver_name, receiver)
-                    is_greedy = getattr(receiver, "__haystack_is_greedy__", False)
-                    if receiver_socket.is_variadic:
-                        if is_greedy:
-                            # If the receiver is greedy, we can run it as soon as possible.
-                            # First we remove it from the status lists it's in if it's there or
-                            # we risk running it multiple times.
-                            if pair in run_queue:
-                                run_queue.remove(pair)
-                            if pair in waiting_queue:
-                                waiting_queue.remove(pair)
-                            run_queue.append(pair)
-                        else:
-                            # If the receiver Component has a variadic input that is not greedy
-                            # we put it in the waiting queue.
-                            # This make sure that we don't run it earlier than necessary and we can collect
-                            # as many inputs as we can before running it.
-                            if pair not in waiting_queue:
-                                waiting_queue.append(pair)
-
-                    if pair not in waiting_queue and pair not in run_queue:
-                        # Queue up the Component that received this input to run, only if it's not already waiting
-                        # for input or already ready to run.
-                        run_queue.append(pair)
-
-                res = {k: v for k, v in res.items() if k not in to_remove_from_component_result}
-
-                # THE SNIPPET ABOVE HAS BEEN COPIED FROM _distribute_output WITH SOME CHANGES
+                res = self._distribute_output(receivers, res, components_inputs, run_queue, waiting_queue)
 
                 # - Add remaining Component output to the subgraph output
                 if len(res) > 0:
@@ -518,8 +435,9 @@ class Pipeline(PipelineBase):
                     extra_outputs.update(subgraph_extra_output)
 
                     for component_name, component_output in subgraph_output.items():
+                        receivers = self._find_receivers_from(component_name)
                         component_output = self._distribute_output(
-                            component_name, component_output, components_inputs, run_queue, waiting_queue
+                            receivers, component_output, components_inputs, run_queue, waiting_queue
                         )
 
                         if len(component_output) > 0:
@@ -556,7 +474,8 @@ class Pipeline(PipelineBase):
 
                     for pair in self._find_components_that_will_receive_no_input(name, res, components_inputs):
                         _dequeue_component(pair, run_queue, waiting_queue)
-                    res = self._distribute_output(name, res, components_inputs, run_queue, waiting_queue)
+                    receivers = self._find_receivers_from(name)
+                    res = self._distribute_output(receivers, res, components_inputs, run_queue, waiting_queue)
 
                     if len(res) > 0:
                         final_outputs[name] = res

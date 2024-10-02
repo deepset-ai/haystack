@@ -11,7 +11,7 @@ from haystack import Document
 from haystack.components.builders import PromptBuilder, AnswerBuilder
 from haystack.components.joiners import BranchJoiner
 from haystack.core.component import component
-from haystack.core.component.types import InputSocket, OutputSocket, Variadic, GreedyVariadic
+from haystack.core.component.types import InputSocket, OutputSocket, Variadic, GreedyVariadic, _empty
 from haystack.core.errors import DeserializationError, PipelineConnectError, PipelineDrawingError, PipelineError
 from haystack.core.pipeline import Pipeline, PredefinedPipeline
 from haystack.core.pipeline.base import (
@@ -1524,3 +1524,65 @@ class TestPipeline:
         assert not _is_lazy_variadic(NonVariadic())
         assert _is_lazy_variadic(VariadicNonGreedyVariadic())
         assert not _is_lazy_variadic(NonVariadicAndGreedyVariadic())
+
+    def test__find_receivers_from(self):
+        sentence_builder = component_class(
+            "SentenceBuilder", input_types={"words": List[str]}, output_types={"text": str}
+        )()
+        document_builder = component_class(
+            "DocumentBuilder", input_types={"text": str}, output_types={"doc": Document}
+        )()
+        conditional_document_builder = component_class(
+            "ConditionalDocumentBuilder", output_types={"doc": Document, "noop": None}
+        )()
+
+        document_joiner = component_class("DocumentJoiner", input_types={"docs": Variadic[Document]})()
+
+        pipe = Pipeline()
+        pipe.add_component("sentence_builder", sentence_builder)
+        pipe.add_component("document_builder", document_builder)
+        pipe.add_component("document_joiner", document_joiner)
+        pipe.add_component("conditional_document_builder", conditional_document_builder)
+        pipe.connect("sentence_builder.text", "document_builder.text")
+        pipe.connect("document_builder.doc", "document_joiner.docs")
+        pipe.connect("conditional_document_builder.doc", "document_joiner.docs")
+
+        res = pipe._find_receivers_from("sentence_builder")
+        assert res == [
+            (
+                "document_builder",
+                OutputSocket(name="text", type=str, receivers=["document_builder"]),
+                InputSocket(name="text", type=str, default_value=_empty, senders=["sentence_builder"]),
+            )
+        ]
+
+        res = pipe._find_receivers_from("document_builder")
+        assert res == [
+            (
+                "document_joiner",
+                OutputSocket(name="doc", type=Document, receivers=["document_joiner"]),
+                InputSocket(
+                    name="docs",
+                    type=Variadic[Document],
+                    default_value=_empty,
+                    senders=["document_builder", "conditional_document_builder"],
+                ),
+            )
+        ]
+
+        res = pipe._find_receivers_from("document_joiner")
+        assert res == []
+
+        res = pipe._find_receivers_from("conditional_document_builder")
+        assert res == [
+            (
+                "document_joiner",
+                OutputSocket(name="doc", type=Document, receivers=["document_joiner"]),
+                InputSocket(
+                    name="docs",
+                    type=Variadic[Document],
+                    default_value=_empty,
+                    senders=["document_builder", "conditional_document_builder"],
+                ),
+            )
+        ]
