@@ -103,8 +103,8 @@ class Pipeline(PipelineBase):
 
         include_outputs_from = set() if include_outputs_from is None else include_outputs_from
 
-        before_last_waiting_queue = None
-        last_waiting_queue = None
+        before_last_waiting_queue: Optional[Set[str]] = None
+        last_waiting_queue: Optional[Set[str]] = None
 
         subgraph_outputs = {}
         # These are outputs that are sent to other Components but the user explicitly
