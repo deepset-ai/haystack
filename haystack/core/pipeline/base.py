@@ -1117,6 +1117,50 @@ class PipelineBase:
         current_inputs = inputs[name].keys()
         return expected_inputs == current_inputs
 
+    def _break_cycles_in_graph(self) -> Tuple[networkx.MultiDiGraph, Dict[str, List[List[str]]]]:
+        """
+        Utility function to remove cycles in the Pipeline's graph.
+
+        If the Pipeline's graph doesn't have any cycle it will just return that graph and an empty dictionary.
+
+        :return:
+            A tuple containing:
+                * A copy of the Pipeline's graph without cycles
+                * A dictionary of Component's names and all the cycles they were part of
+        """
+        if networkx.is_directed_acyclic_graph(self.graph):
+            return self.graph, {}
+
+        temp_graph: networkx.MultiDiGraph = self.graph.copy()
+        cycles: List[List[str]] = networkx.recursive_simple_cycles(self.graph)
+        edges_removed: Dict[str, List[str]] = {}
+        # This keeps track of all the cycles that a component is part of.
+        components_in_cycles: Dict[str, List[List[str]]] = {}
+        for cycle in cycles:
+            for comp in cycle:
+                if comp not in components_in_cycles:
+                    components_in_cycles[comp] = []
+                components_in_cycles[comp].append(cycle)
+
+            for sender_comp, receiver_comp in zip(cycle, cycle[1:] + cycle[:1]):
+                edge_keys = list(temp_graph.get_edge_data(sender_comp, receiver_comp).keys())
+                for edge_key in edge_keys:
+                    edge_data = temp_graph.get_edge_data(sender_comp, receiver_comp)[edge_key]
+                    receiver_socket = edge_data["to_socket"]
+                    if receiver_socket.is_variadic or not receiver_socket.is_mandatory:
+                        # We found a breakable edge
+                        if sender_comp not in edges_removed:
+                            edges_removed[sender_comp] = []
+                        sender_socket = edge_data["from_socket"]
+                        edges_removed[sender_comp].append(sender_socket.name)
+                        temp_graph.remove_edge(sender_comp, receiver_comp, edge_key)
+
+            if networkx.is_directed_acyclic_graph(temp_graph):
+                # We removed all the cycles, nice
+                break
+
+        return temp_graph, components_in_cycles
+
 
 def _connections_status(
     sender_node: str, receiver_node: str, sender_sockets: List[OutputSocket], receiver_sockets: List[InputSocket]

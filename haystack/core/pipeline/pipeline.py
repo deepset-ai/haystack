@@ -219,7 +219,7 @@ class Pipeline(PipelineBase):
 
         return subgraph_outputs, extra_outputs
 
-    def run(  # noqa: PLR0915
+    def run(  # noqa: PLR0915, PLR0912
         self, data: Dict[str, Any], include_outputs_from: Optional[Set[str]] = None
     ) -> Dict[str, Any]:
         """
@@ -327,46 +327,11 @@ class Pipeline(PipelineBase):
         # This is what we'll return at the end
         final_outputs: Dict[Any, Any] = {}
 
-        # We need this temporary graph to remove some edges if there are cycles in it.
-        # TODO: We could actually avoid all this stuff if there are no cycles in the graph.
-        temp_graph = self.graph.copy()
-        cycles = nx.recursive_simple_cycles(self.graph)
-        # edges_removed = []
-        edges_removed = {}
-        # This keeps track of all the cycles that a component is part of.
-        components_in_cycles = {}
-        for cycle in cycles:
-            for comp in cycle:
-                if comp not in components_in_cycles:
-                    components_in_cycles[comp] = []
-                components_in_cycles[comp].append(cycle)
-
-            cycle = zip(cycle, cycle[1:] + cycle[:1])
-            for sender_comp, receiver_comp in cycle:
-                breakable_edge_found = False
-                edge_keys = list(temp_graph.get_edge_data(sender_comp, receiver_comp).keys())
-                for edge_key in edge_keys:
-                    edge_data = temp_graph.get_edge_data(sender_comp, receiver_comp)[edge_key]
-                    receiver_socket = edge_data["to_socket"]
-                    if receiver_socket.is_variadic or not receiver_socket.is_mandatory:
-                        # We found a breakable edge
-                        if sender_comp not in edges_removed:
-                            edges_removed[sender_comp] = []
-                        sender_socket = edge_data["from_socket"]
-                        edges_removed[sender_comp].append(sender_socket.name)
-                        temp_graph.remove_edge(sender_comp, receiver_comp, edge_key)
-                        breakable_edge_found = True
-
-            if not breakable_edge_found:
-                # TODO: We didn't find a breakable connection. We must fail here, this Pipeline will get stuck
-                continue
-
-            if nx.is_directed_acyclic_graph(temp_graph):
-                # We removed all the cycles, nice
-                break
+        # Break cycles in case there are, this is a noop if no cycle is found
+        graph_without_cycles, components_in_cycles = self._break_cycles_in_graph()
 
         run_queue: List[Tuple[str, Component]] = []
-        for node in nx.topological_sort(temp_graph):
+        for node in nx.topological_sort(graph_without_cycles):
             run_queue.append((node, self.graph.nodes[node]["instance"]))
 
         # Set defaults inputs for those sockets that don't receive input neither from the user
