@@ -112,9 +112,12 @@ class Pipeline(PipelineBase):
         extra_outputs = {}
 
         # This variable is used to keep track if we still need to run the cycle or not.
-        # TODO: Find a nicer name
-        exit_edge_reached = False
-        while not exit_edge_reached:
+        # Whenever a Component that is part of a cycle doesn't send outputs to another Component
+        # that is part of the same cycle we stop running this subgraph.
+        # Then we resume normal execution.
+        cycle_received_inputs = False
+
+        while not cycle_received_inputs:
             # Here we run the Components
             name, comp = run_queue.pop(0)
             if _is_lazy_variadic(comp) and not all(_is_lazy_variadic(comp) for _, comp in run_queue):
@@ -155,20 +158,17 @@ class Pipeline(PipelineBase):
                 before_last_waiting_queue = None
                 last_waiting_queue = None
 
-                component_exits_cycle = True
                 for output_socket in res.keys():
                     for receiver in comp.__haystack_output__._sockets_dict[output_socket].receivers:
                         if receiver in cycle:
-                            component_exits_cycle = False
                             break
-                    if not component_exits_cycle:
-                        break
-
-                # TODO: This is redundant
-                if component_exits_cycle:
+                    else:
+                        continue
+                    break
+                else:
                     # We stop only if the Component we just ran doesn't send any output to sockets that
                     # are part of the cycle.
-                    exit_edge_reached = True
+                    cycle_received_inputs = True
 
                 # We manage to run this component that was in the waiting list, we can remove it.
                 # This happens when a component was put in the waiting list but we reached it from another edge.
