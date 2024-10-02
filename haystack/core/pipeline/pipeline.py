@@ -135,7 +135,7 @@ class Pipeline(PipelineBase):
 
             # As soon as a Component returns only output that is not part of the cycle, we can stop
             if self._component_has_enough_inputs_to_run(name, components_inputs):
-                if self.graph.nodes[name]["visits"] > self.max_loops_allowed:
+                if self.graph.nodes[name]["visits"] > self._max_runs_per_component:
                     msg = f"Maximum run count {self._max_runs_per_component} reached for component '{name}'"
                     raise PipelineMaxComponentRuns(msg)
 
