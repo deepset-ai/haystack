@@ -64,7 +64,9 @@ class Pipeline(PipelineBase):
                 },
             },
         ) as span:
-            span.set_content_tag("haystack.component.input", inputs)
+            # We deepcopy the inputs otherwise we might lose that information
+            # when we delete them in case they're sent to other Components
+            span.set_content_tag("haystack.component.input", deepcopy(inputs))
             logger.info("Running component {component_name}", component_name=name)
             res: Dict[str, Any] = instance.run(**inputs)
             self.graph.nodes[name]["visits"] += 1
