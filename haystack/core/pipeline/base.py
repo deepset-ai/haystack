@@ -784,41 +784,6 @@ class PipelineBase:
 
         return {**data}
 
-    def _init_run_queue(self, pipeline_inputs: Dict[str, Any]) -> List[Tuple[str, Component]]:
-        run_queue: List[Tuple[str, Component]] = []
-
-        # HACK: Quick workaround for the issue of execution order not being
-        # well-defined (NB - https://github.com/deepset-ai/haystack/issues/7985).
-        # We should fix the original execution logic instead.
-        if networkx.is_directed_acyclic_graph(self.graph):
-            # If the Pipeline is linear we can easily determine the order of execution with
-            # a topological sort.
-            # So use that to get the run order.
-            for node in networkx.topological_sort(self.graph):
-                run_queue.append((node, self.graph.nodes[node]["instance"]))
-            return run_queue
-
-        for node_name in self.graph.nodes:
-            component = self.graph.nodes[node_name]["instance"]
-
-            if len(component.__haystack_input__._sockets_dict) == 0:
-                # Component has no input, can run right away
-                run_queue.append((node_name, component))
-                continue
-
-            if node_name in pipeline_inputs:
-                # This component is in the input data, if it has enough inputs it can run right away
-                run_queue.append((node_name, component))
-                continue
-
-            for socket in component.__haystack_input__._sockets_dict.values():
-                if not socket.senders or socket.is_variadic:
-                    # Component has at least one input not connected or is variadic, can run right away.
-                    run_queue.append((node_name, component))
-                    break
-
-        return run_queue
-
     @classmethod
     def from_template(
         cls, predefined_pipeline: PredefinedPipeline, template_params: Optional[Dict[str, Any]] = None

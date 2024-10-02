@@ -788,42 +788,6 @@ class TestPipeline:
         for node in pipe.graph.nodes:
             assert pipe.graph.nodes[node]["visits"] == 0
 
-    def test__init_run_queue(self):
-        ComponentWithVariadic = component_class(
-            "ComponentWithVariadic", input_types={"in": Variadic[int]}, output_types={"out": int}
-        )
-        ComponentWithNoInputs = component_class("ComponentWithNoInputs", input_types={}, output_types={"out": int})
-        ComponentWithSingleInput = component_class(
-            "ComponentWithSingleInput", input_types={"in": int}, output_types={"out": int}
-        )
-        ComponentWithMultipleInputs = component_class(
-            "ComponentWithMultipleInputs", input_types={"in1": int, "in2": int}, output_types={"out": int}
-        )
-
-        pipe = Pipeline()
-        pipe.add_component("with_variadic", ComponentWithVariadic())
-        pipe.add_component("with_no_inputs", ComponentWithNoInputs())
-        pipe.add_component("with_single_input", ComponentWithSingleInput())
-        pipe.add_component("another_with_single_input", ComponentWithSingleInput())
-        pipe.add_component("yet_another_with_single_input", ComponentWithSingleInput())
-        pipe.add_component("with_multiple_inputs", ComponentWithMultipleInputs())
-
-        pipe.connect("yet_another_with_single_input.out", "with_variadic.in")
-        pipe.connect("with_no_inputs.out", "with_variadic.in")
-        pipe.connect("with_single_input.out", "another_with_single_input.in")
-        pipe.connect("another_with_single_input.out", "with_multiple_inputs.in1")
-        pipe.connect("with_multiple_inputs.out", "with_variadic.in")
-
-        data = {"yet_another_with_single_input": {"in": 1}}
-        run_queue = pipe._init_run_queue(data)
-        assert len(run_queue) == 6
-        assert run_queue[0][0] == "with_no_inputs"
-        assert run_queue[1][0] == "with_single_input"
-        assert run_queue[2][0] == "yet_another_with_single_input"
-        assert run_queue[3][0] == "another_with_single_input"
-        assert run_queue[4][0] == "with_multiple_inputs"
-        assert run_queue[5][0] == "with_variadic"
-
     def test__init_inputs_state(self):
         pipe = Pipeline()
         template = """

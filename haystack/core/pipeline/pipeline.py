@@ -306,13 +306,6 @@ class Pipeline(PipelineBase):
         # Initialize the inputs state
         components_inputs: Dict[str, Dict[str, Any]] = self._init_inputs_state(data)
 
-        # Take all components that:
-        # - have no inputs
-        # - receive input from the user
-        # - have at least one input not connected
-        # - have at least one input that is variadic
-        # run_queue: List[Tuple[str, Component]] = self._init_run_queue(data)
-
         # These variables are used to detect when we're stuck in a loop.
         # Stuck loops can happen when one or more components are waiting for input but
         # no other component is going to run.
