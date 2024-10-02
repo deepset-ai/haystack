@@ -1070,8 +1070,6 @@ class PipelineBase:
                         continue
                     components.add((descendant_name, descendant))
 
-                # components |= {(d, self.graph.nodes[d]["instance"]) for d in networkx.descendants(self.graph, receiver)}
-
         return components
 
     def _is_stuck_in_a_loop(self, waiting_queue: List[Tuple[str, Component]]) -> bool:
