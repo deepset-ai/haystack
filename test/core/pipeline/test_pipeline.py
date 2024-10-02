@@ -1111,7 +1111,7 @@ class TestPipeline:
         pipe.connect("conditional_document_builder.doc", "document_joiner.docs")
 
         res = pipe._find_components_that_will_receive_no_input("sentence_builder", {}, {})
-        assert res == {("document_builder", document_builder), ("document_joiner", document_joiner)}
+        assert res == {("document_builder", document_builder)}
 
         res = pipe._find_components_that_will_receive_no_input("sentence_builder", {"text": "some text"}, {})
         assert res == set()
