@@ -9,7 +9,7 @@ from warnings import warn
 import networkx as nx
 
 from haystack import logging, tracing
-from haystack.core.component import Component, InputSocket, OutputSocket
+from haystack.core.component import Component
 from haystack.core.errors import PipelineMaxComponentRuns, PipelineRuntimeError
 from haystack.core.pipeline.base import (
     _dequeue_component,
@@ -141,7 +141,7 @@ class Pipeline(PipelineBase):
                 # the user or from Components that are part of this cycle
                 sockets = list(components_inputs[name].keys())
                 for socket_name in sockets:
-                    senders = comp.__haystack_input__._sockets_dict[socket_name].senders
+                    senders = comp.__haystack_input__._sockets_dict[socket_name].senders  # type: ignore
                     if not senders:
                         # We keep inputs that came from the user
                         continue
@@ -161,7 +161,7 @@ class Pipeline(PipelineBase):
                 last_waiting_queue = None
 
                 for output_socket in res.keys():
-                    for receiver in comp.__haystack_output__._sockets_dict[output_socket].receivers:
+                    for receiver in comp.__haystack_output__._sockets_dict[output_socket].receivers:  # type: ignore
                         if receiver in cycle:
                             break
                     else:
