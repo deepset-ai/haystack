@@ -183,7 +183,6 @@ class TestTracing:
                     "haystack.pipeline.input_data": {"hello": {"words": ["happy", "world"]}},
                     "haystack.pipeline.output_data": {"hello": {"output": ["Hello, happy!", "Hello, world!"]}},
                     "haystack.pipeline.metadata": {},
-                    "haystack.pipeline.max_loops_allowed": 100,
                     "haystack.pipeline.max_runs_per_component": 100,
                 },
                 trace_id=ANY,
