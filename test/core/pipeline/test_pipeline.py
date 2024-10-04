@@ -1225,6 +1225,14 @@ class TestPipeline:
         }
 
         assert caplog.messages == ["Running component document_builder", "Component document_builder finished"]
+        assert caplog.records[0].component_name == "document_builder"
+        assert caplog.records[0].component_type == "DocumentBuilder"
+        assert caplog.records[0].input_lengths == {}
+        assert caplog.records[0].input_types == {"text": "str"}
+        assert caplog.records[1].component_name == "document_builder"
+        assert caplog.records[1].component_type == "DocumentBuilder"
+        assert caplog.records[1].output_lengths == {}
+        assert caplog.records[1].output_types == {"doc": "Document"}
 
     def test__run_component_with_variadic_input(self):
         document_joiner = component_class("DocumentJoiner", input_types={"docs": Variadic[Document]})()
