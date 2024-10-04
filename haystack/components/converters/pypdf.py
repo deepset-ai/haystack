@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import io
+import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Protocol, Union
 
@@ -10,7 +11,7 @@ from haystack import Document, component, default_from_dict, default_to_dict, lo
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
 from haystack.dataclasses import ByteStream
 from haystack.lazy_imports import LazyImport
-from haystack.utils.type_serialization import deserialize_type
+from haystack.utils.base_serialization import deserialize_class_instance, serialize_class_instance
 
 with LazyImport("Run 'pip install pypdf'") as pypdf_import:
     from pypdf import PdfReader
@@ -39,6 +40,11 @@ class DefaultConverter:
     """
     The default converter class that extracts text from a PdfReader object's pages and returns a Document.
     """
+
+    def __init__(self):
+        warnings.warn(
+            "This class is deprecated and will be merged into `PyPDFToDocument` in 2.7.0.", DeprecationWarning
+        )
 
     def convert(self, reader: "PdfReader") -> Document:
         """Extract text from the PDF and return a Document object with the text content."""
@@ -86,7 +92,7 @@ class PyPDFToDocument:
         """
         pypdf_import.check()
 
-        self.converter = converter or DefaultConverter()
+        self.converter = converter
 
     def to_dict(self):
         """
@@ -95,7 +101,9 @@ class PyPDFToDocument:
         :returns:
             Dictionary with serialized data.
         """
-        return default_to_dict(self, converter=self.converter.to_dict())
+        return default_to_dict(
+            self, converter=(serialize_class_instance(self.converter) if self.converter is not None else None)
+        )
 
     @classmethod
     def from_dict(cls, data):
@@ -108,9 +116,14 @@ class PyPDFToDocument:
         :returns:
             Deserialized component.
         """
-        converter_class = deserialize_type(data["init_parameters"]["converter"]["type"])
-        data["init_parameters"]["converter"] = converter_class.from_dict(data["init_parameters"]["converter"])
+        custom_converter_data = data["init_parameters"]["converter"]
+        if custom_converter_data is not None:
+            data["init_parameters"]["converter"] = deserialize_class_instance(custom_converter_data)
         return default_from_dict(cls, data)
+
+    def _default_convert(self, reader: "PdfReader") -> Document:
+        text = "\f".join(page.extract_text() for page in reader.pages)
+        return Document(content=text)
 
     @component.output_types(documents=List[Document])
     def run(
@@ -145,7 +158,9 @@ class PyPDFToDocument:
                 continue
             try:
                 pdf_reader = PdfReader(io.BytesIO(bytestream.data))
-                document = self.converter.convert(pdf_reader)
+                document = (
+                    self._default_convert(pdf_reader) if self.converter is None else self.converter.convert(pdf_reader)
+                )
             except Exception as e:
                 logger.warning(
                     "Could not read {source} and convert it to Document, skipping. {error}", source=source, error=e

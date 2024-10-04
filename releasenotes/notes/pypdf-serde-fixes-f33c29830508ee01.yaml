@@ -1,0 +1,7 @@
+---
+deprecations:
+  - |
+    The `DefaultConverter` class used by the `PyPDFToDocument` component has been deprecated. Its functionality will be merged into the component in 2.7.0.
+fixes:
+  - |
+    Fix the serialization of `PyPDFToDocument` component to prevent the default converter from being serialized unnecessarily.
