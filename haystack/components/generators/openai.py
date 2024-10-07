@@ -193,8 +193,9 @@ class OpenAIGenerator:
         for each response.
         """
         message = ChatMessage.from_user(prompt)
+        final_system_prompt = self.system_prompt
         if system_prompt is not None:
-            self.system_prompt = system_prompt
+           final_system_prompt = system_prompt
         if self.system_prompt:
             messages = [ChatMessage.from_system(self.system_prompt), message]
         else:
