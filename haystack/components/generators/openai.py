@@ -177,11 +177,11 @@ class OpenAIGenerator:
         """
         Invoke the text generation inference based on the provided messages and generation parameters.
 
+        :param prompt:
+            The string prompt to use for text generation.
         :param system_prompt:
             The system prompt to use for text generation. If this run time system prompt is omitted, the system
             prompt, if defined at initialisation time, is used.
-        :param prompt:
-            The string prompt to use for text generation.
         :param streaming_callback:
             A callback function that is called when a new token is received from the stream.
         :param generation_kwargs:
