@@ -28,6 +28,7 @@ class MarkdownToDocument:
     Usage example:
     ```python
     from haystack.components.converters import MarkdownToDocument
+    from datetime import datetime
 
     converter = MarkdownToDocument()
     results = converter.run(sources=["path/to/sample.md"], meta={"date_added": datetime.now().isoformat()})
