@@ -19,6 +19,7 @@ from haystack.core.errors import (
     PipelineConnectError,
     PipelineDrawingError,
     PipelineError,
+    PipelineRuntimeError,
     PipelineUnmarshalError,
     PipelineValidationError,
 )
@@ -1117,9 +1118,15 @@ class PipelineBase:
         current_inputs = inputs[name].keys()
         return expected_inputs == current_inputs
 
-    def _break_cycles_in_graph(self) -> Tuple[networkx.MultiDiGraph, Dict[str, List[List[str]]]]:
+    def _break_supported_cycles_in_graph(self) -> Tuple[networkx.MultiDiGraph, Dict[str, List[List[str]]]]:
         """
-        Utility function to remove cycles in the Pipeline's graph.
+        Utility function to remove supported cycles in the Pipeline's graph.
+
+        The way the Pipeline execution works we can only break connections in cycles that
+        have a Variadic or GreedyVariadic type or a default value.
+
+        This will raise a PipelineRuntimeError if we there are cycles that can't be broken.
+        That is bound to happen when all the inputs in a cycle are mandatory.
 
         If the Pipeline's graph doesn't have any cycle it will just return that graph and an empty dictionary.
 
@@ -1158,6 +1165,10 @@ class PipelineBase:
             if networkx.is_directed_acyclic_graph(temp_graph):
                 # We removed all the cycles, nice
                 break
+
+        if not networkx.is_directed_acyclic_graph(temp_graph):
+            msg = "Pipeline contains a cycle that we can't execute"
+            raise PipelineRuntimeError(msg)
 
         return temp_graph, components_in_cycles
 

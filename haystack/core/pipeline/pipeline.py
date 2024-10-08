@@ -329,8 +329,9 @@ class Pipeline(PipelineBase):
         # This is what we'll return at the end
         final_outputs: Dict[Any, Any] = {}
 
-        # Break cycles in case there are, this is a noop if no cycle is found
-        graph_without_cycles, components_in_cycles = self._break_cycles_in_graph()
+        # Break cycles in case there are, this is a noop if no cycle is found.
+        # This will raise if a cycle can't be broken.
+        graph_without_cycles, components_in_cycles = self._break_supported_cycles_in_graph()
 
         run_queue: List[Tuple[str, Component]] = []
         for node in nx.topological_sort(graph_without_cycles):
