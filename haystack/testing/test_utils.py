@@ -5,8 +5,6 @@
 import os
 import random
 
-import numpy as np
-
 from haystack import logging
 
 logger = logging.getLogger(__name__)
@@ -23,7 +21,6 @@ def set_all_seeds(seed: int, deterministic_cudnn: bool = False) -> None:
     :param deterministic_cudnn: Enable for full reproducibility when using CUDA. Caution: might slow down training.
     """
     random.seed(seed)
-    np.random.seed(seed)
     os.environ["PYTHONHASHSEED"] = str(seed)
 
     try:
