@@ -1923,3 +1923,71 @@ def that_is_linear_and_a_component_in_the_middle_receives_optional_input_from_ot
             )
         ],
     )
+
+
+@given("a pipeline that has a cycle that would get it stuck", target_fixture="pipeline_data")
+def that_has_a_cycle_that_would_get_it_stuck():
+    template = """
+    You are an experienced and accurate Turkish CX speacialist that classifies customer comments into pre-defined categories below:\n
+    Negative experience labels:
+    - Late delivery
+    - Rotten/spoilt item
+    - Bad Courier behavior
+
+    Positive experience labels:
+    - Good courier behavior
+    - Thanks & appreciation
+    - Love message to courier
+    - Fast delivery
+    - Quality of products
+
+    Create a JSON object as a response. The fields are: 'positive_experience', 'negative_experience'.
+    Assign at least one of the pre-defined labels to the given customer comment under positive and negative experience fields.
+    If the comment has a positive experience, list the label under 'positive_experience' field.
+    If the comments has a negative_experience, list it under the 'negative_experience' field.
+    Here is the comment:\n{{ comment }}\n. Just return the category names in the list. If there aren't any, return an empty list.
+
+    {% if invalid_replies and error_message %}
+    You already created the following output in a previous attempt: {{ invalid_replies }}
+    However, this doesn't comply with the format requirements from above and triggered this Python exception: {{ error_message }}
+    Correct the output and try again. Just return the corrected output without any extra explanations.
+    {% endif %}
+    """
+    prompt_builder = PromptBuilder(
+        template=template, required_variables=["comment", "invalid_replies", "error_message"]
+    )
+
+    @component
+    class FakeOutputValidator:
+        @component.output_types(
+            valid_replies=List[str], invalid_replies=Optional[List[str]], error_message=Optional[str]
+        )
+        def run(self, replies: List[str]):
+            if not getattr(self, "called", False):
+                self.called = True
+                return {"invalid_replies": ["This is an invalid reply"], "error_message": "this is an error message"}
+            return {"valid_replies": replies}
+
+    @component
+    class FakeGenerator:
+        @component.output_types(replies=List[str])
+        def run(self, prompt: str):
+            return {"replies": ["This is a valid reply"]}
+
+    llm = FakeGenerator()
+    validator = FakeOutputValidator()
+
+    pipeline = Pipeline(max_runs_per_component=1)
+    pipeline.add_component("prompt_builder", prompt_builder)
+
+    pipeline.add_component("llm", llm)
+    pipeline.add_component("output_validator", validator)
+
+    pipeline.connect("prompt_builder.prompt", "llm.prompt")
+    pipeline.connect("llm.replies", "output_validator.replies")
+    pipeline.connect("output_validator.invalid_replies", "prompt_builder.invalid_replies")
+
+    pipeline.connect("output_validator.error_message", "prompt_builder.error_message")
+
+    comment = "I loved the quality of the meal but the courier was rude"
+    return (pipeline, [PipelineRunData(inputs={"prompt_builder": {"comment": comment}})])
