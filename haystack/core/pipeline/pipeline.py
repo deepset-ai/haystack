@@ -426,7 +426,9 @@ class Pipeline(PipelineBase):
                     cycles = components_in_cycles.get(name, [])
 
                     # This component is part of one or more cycles, let's get the first one and run it.
-                    # TODO: Explain why it's fine taking the first one
+                    # We can reliably pick any of the cycles if there are multiple ones, the way cycles
+                    # are run doesn't make a different whether we pick the first or any of the others a
+                    # Component is part of.
                     subgraph_output, subgraph_extra_output = self._run_subgraph(
                         cycles[0], name, components_inputs, include_outputs_from
                     )
