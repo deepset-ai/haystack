@@ -69,7 +69,7 @@ class FileTypeRouter:
             raise ValueError("The list of mime types cannot be empty.")
 
         if additional_mimetypes:
-            for mime, ext in list(zip(additional_mimetypes.keys(), additional_mimetypes.values())):
+            for mime, ext in additional_mimetypes.items():
                 mimetypes.add_type(mime, ext)
 
         self.mime_type_patterns = []
