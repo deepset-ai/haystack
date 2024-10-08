@@ -113,13 +113,11 @@ class Pipeline(PipelineBase):
             Set of component names whose individual outputs are to be
             included in the cycle's output. In case a Component is executed multiple times
             only the last-produced output is included.
-
-        :raises PipelineMaxComponentRuns:
-            If a Component reaches the maximum number of times it can be run in this Pipeline
-
-        :return:
+        :returns:
             Outputs of all the Components that are not connected to other Components in `cycle`.
             If `include_outputs_from` is set those Components' outputs will be included.
+        :raises PipelineMaxComponentRuns:
+            If a Component reaches the maximum number of times it can be run in this Pipeline
         """
         waiting_queue: List[Tuple[str, Component]] = []
         run_queue: List[Tuple[str, Component]] = []
@@ -251,7 +249,59 @@ class Pipeline(PipelineBase):
         self, data: Dict[str, Any], include_outputs_from: Optional[Set[str]] = None
     ) -> Dict[str, Any]:
         """
-        Runs the pipeline with given input data.
+        Runs the Pipeline with given input data.
+
+        Usage:
+        ```python
+        from haystack import Pipeline, Document
+        from haystack.utils import Secret
+        from haystack.document_stores.in_memory import InMemoryDocumentStore
+        from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+        from haystack.components.generators import OpenAIGenerator
+        from haystack.components.builders.answer_builder import AnswerBuilder
+        from haystack.components.builders.prompt_builder import PromptBuilder
+
+        # Write documents to InMemoryDocumentStore
+        document_store = InMemoryDocumentStore()
+        document_store.write_documents([
+            Document(content="My name is Jean and I live in Paris."),
+            Document(content="My name is Mark and I live in Berlin."),
+            Document(content="My name is Giorgio and I live in Rome.")
+        ])
+
+        prompt_template = \"\"\"
+        Given these documents, answer the question.
+        Documents:
+        {% for doc in documents %}
+            {{ doc.content }}
+        {% endfor %}
+        Question: {{question}}
+        Answer:
+        \"\"\"
+
+        retriever = InMemoryBM25Retriever(document_store=document_store)
+        prompt_builder = PromptBuilder(template=prompt_template)
+        llm = OpenAIGenerator(api_key=Secret.from_token(api_key))
+
+        rag_pipeline = Pipeline()
+        rag_pipeline.add_component("retriever", retriever)
+        rag_pipeline.add_component("prompt_builder", prompt_builder)
+        rag_pipeline.add_component("llm", llm)
+        rag_pipeline.connect("retriever", "prompt_builder.documents")
+        rag_pipeline.connect("prompt_builder", "llm")
+
+        # Ask a question
+        question = "Who lives in Paris?"
+        results = rag_pipeline.run(
+            {
+                "retriever": {"query": question},
+                "prompt_builder": {"question": question},
+            }
+        )
+
+        print(results["llm"]["replies"])
+        # Jean lives in Paris
+        ```
 
         :param data:
             A dictionary of inputs for the pipeline's components. Each key is a component name
@@ -267,7 +317,6 @@ class Pipeline(PipelineBase):
                 "input1": 1, "input2": 2,
             }
             ```
-
         :param include_outputs_from:
             Set of component names whose individual outputs are to be
             included in the pipeline's output. For components that are
@@ -280,41 +329,11 @@ class Pipeline(PipelineBase):
             without outgoing connections.
 
         :raises PipelineRuntimeError:
-            If a component fails or returns unexpected output.
-
-        Example a - Using named components:
-        Consider a 'Hello' component that takes a 'word' input and outputs a greeting.
-
-        ```python
-        @component
-        class Hello:
-            @component.output_types(output=str)
-            def run(self, word: str):
-                return {"output": f"Hello, {word}!"}
-        ```
-
-        Create a pipeline with two 'Hello' components connected together:
-
-        ```python
-        pipeline = Pipeline()
-        pipeline.add_component("hello", Hello())
-        pipeline.add_component("hello2", Hello())
-        pipeline.connect("hello.output", "hello2.word")
-        result = pipeline.run(data={"hello": {"word": "world"}})
-        ```
-
-        This runs the pipeline with the specified input for 'hello', yielding
-        {'hello2': {'output': 'Hello, Hello, world!!'}}.
-
-        Example b - Using flat inputs:
-        You can also pass inputs directly without specifying component names:
-
-        ```python
-        result = pipeline.run(data={"word": "world"})
-        ```
-
-        The pipeline resolves inputs to the correct components, returning
-        {'hello2': {'output': 'Hello, Hello, world!!'}}.
+            If the Pipeline contains cycles with unsupported connections that would cause
+            it to get stuck and fail running.
+            Or if a Component fails or returns output in an unsupported type.
+        :raises PipelineMaxComponentRuns:
+            If a Component reaches the maximum number of times it can be run in this Pipeline.
         """
         pipeline_running(self)
 
