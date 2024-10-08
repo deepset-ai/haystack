@@ -28,7 +28,6 @@ from haystack.testing.sample_components import (
     Hello,
     TextSplitter,
     StringListJoiner,
-    SelfLoop,
 )
 from haystack.testing.factory import component_class
 
