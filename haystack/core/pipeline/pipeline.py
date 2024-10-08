@@ -95,6 +95,32 @@ class Pipeline(PipelineBase):
         components_inputs: Dict[str, Dict[str, Any]],
         include_outputs_from: Optional[Set[str]] = None,
     ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        """
+        Runs a `cycle` in the Pipeline starting from `component_name`.
+
+        As soon as no Component that is in `cycle` receives no input this will return.
+
+        This is an internal method meant to be used in `Pipeline.run()` only.
+
+        :param cycle:
+            List of Components that are part of the cycle being run
+        :param component_name:
+            Name of the Component that will start execution of the cycle
+        :param components_inputs:
+            Components inputs, this might include inputs for Components that are not part
+            of the cycle but part of the wider Pipeline's graph
+        :param include_outputs_from:
+            Set of component names whose individual outputs are to be
+            included in the cycle's output. In case a Component is executed multiple times
+            only the last-produced output is included.
+
+        :raises PipelineMaxComponentRuns:
+            If a Component reaches the maximum number of times it can be run in this Pipeline
+
+        :return:
+            Outputs of all the Components that are not connected to other Components in `cycle`.
+            If `include_outputs_from` is set those Components' outputs will be included.
+        """
         waiting_queue: List[Tuple[str, Component]] = []
         run_queue: List[Tuple[str, Component]] = []
 
