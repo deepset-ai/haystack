@@ -63,7 +63,7 @@ class FileTypeRouter:
 
         :param additional_mimetypes: A dictionary containing the MIME type to add to the mimetypes package to prevent
             unsupported or non native packages from being unclassified.
-            (for example: `{"application/vnd.openxmlformats-officedocument.wordprocessingml.document", ".docx"}`).
+            (for example: `{"application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx"}`).
         """
         if not mime_types:
             raise ValueError("The list of mime types cannot be empty.")
