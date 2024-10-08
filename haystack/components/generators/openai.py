@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from openai import OpenAI, Stream
@@ -208,6 +209,7 @@ class OpenAIGenerator:
             messages=openai_formatted_messages,  # type: ignore
             stream=streaming_callback is not None,
             **generation_kwargs,
+            # we will need to find a way to set streaming_options.include_usage for usage data if streaming is enabled
         )
 
         completions: List[ChatMessage] = []
@@ -217,11 +219,14 @@ class OpenAIGenerator:
                 raise ValueError("Cannot stream multiple responses, please set n=1.")
             chunks: List[StreamingChunk] = []
             chunk = None
-
+            _first_token = True
             # pylint: disable=not-an-iterable
             for chunk in completion:
                 if chunk.choices and streaming_callback:
                     chunk_delta: StreamingChunk = self._build_chunk(chunk)
+                    if _first_token:
+                        _first_token = False
+                        chunk_delta.meta["completion_start_time"] = datetime.now().isoformat()
                     chunks.append(chunk_delta)
                     streaming_callback(chunk_delta)  # invoke callback with the chunk_delta
             completions = [self._connect_chunks(chunk, chunks)]
@@ -241,7 +246,12 @@ class OpenAIGenerator:
         """
         Connects the streaming chunks into a single ChatMessage.
         """
-        complete_response = ChatMessage.from_assistant("".join([chunk.content for chunk in chunks]))
+        total_content = ""
+        total_meta = {}
+        for streaming_chunk in chunks:
+            total_content += streaming_chunk.content
+            total_meta.update(streaming_chunk.meta)
+        complete_response = ChatMessage.from_assistant(total_content, meta=total_meta)
         complete_response.meta.update(
             {
                 "model": chunk.model,

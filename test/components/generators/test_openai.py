@@ -4,6 +4,7 @@
 import logging
 import os
 from typing import List
+from unittest.mock import patch
 
 import pytest
 from openai import OpenAIError
@@ -196,7 +197,8 @@ class TestOpenAIGenerator:
         assert len(response["replies"]) == 1
         assert "Hello" in response["replies"][0]  # see mock_chat_completion_chunk
 
-    def test_run_with_streaming_callback_in_run_method(self, mock_chat_completion_chunk):
+    @patch("haystack.components.generators.openai.datetime")
+    def test_run_with_streaming_callback_in_run_method(self, mock_datetime, mock_chat_completion_chunk):
         streaming_callback_called = False
 
         def streaming_callback(chunk: StreamingChunk) -> None:
@@ -216,6 +218,12 @@ class TestOpenAIGenerator:
         assert isinstance(response["replies"], list)
         assert len(response["replies"]) == 1
         assert "Hello" in response["replies"][0]  # see mock_chat_completion_chunk
+
+        assert "meta" in response
+        assert isinstance(response["meta"], list)
+        assert len(response["meta"]) == 1
+        assert isinstance(response["meta"][0], dict)
+        assert response["meta"][0]["completion_start_time"] == mock_datetime.now.return_value.isoformat.return_value
 
     def test_run_with_params(self, mock_chat_completion):
         component = OpenAIGenerator(
