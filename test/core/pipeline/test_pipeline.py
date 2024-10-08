@@ -1094,13 +1094,24 @@ class TestPipeline:
         assert span.tags == {
             "haystack.component.name": "document_builder",
             "haystack.component.type": "DocumentBuilder",
+            "haystack.component.input_lengths": {},
             "haystack.component.input_types": {"text": "str"},
             "haystack.component.input_spec": {"text": {"type": "str", "senders": ["sentence_builder"]}},
             "haystack.component.output_spec": {"doc": {"type": "Document", "receivers": ["document_cleaner"]}},
+            "haystack.component.output_lengths": {},
+            "haystack.component.output_types": {"doc": "Document"},
             "haystack.component.visits": 1,
         }
 
-        assert caplog.messages == ["Running component document_builder"]
+        assert caplog.messages == ["Running component document_builder", "Component document_builder finished"]
+        assert caplog.records[0].component_name == "document_builder"
+        assert caplog.records[0].component_type == "DocumentBuilder"
+        assert caplog.records[0].input_lengths == {}
+        assert caplog.records[0].input_types == {"text": "str"}
+        assert caplog.records[1].component_name == "document_builder"
+        assert caplog.records[1].component_type == "DocumentBuilder"
+        assert caplog.records[1].output_lengths == {}
+        assert caplog.records[1].output_types == {"doc": "Document"}
 
     def test__run_component_with_variadic_input(self):
         document_joiner = component_class("DocumentJoiner", input_types={"docs": Variadic[Document]})()
