@@ -1,0 +1,9 @@
+---
+highlights: >
+  `Pipeline.run()` internal logic has been heavily reworked to be more robust and reliable
+  than before.
+  This new implementation makes it easier to run `Pipeline`s that have cycles in their graph.
+  It also fixes some corner cases in `Pipeline`s that don't have any cycle.
+features:
+  - |
+    Fundamentally rework the internal logic of `Pipeline.run()`
