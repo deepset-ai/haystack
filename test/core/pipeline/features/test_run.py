@@ -846,8 +846,11 @@ def pipeline_that_has_a_component_with_only_default_inputs():
     )
 
 
-@given("a pipeline that has a component with only default inputs as first to run", target_fixture="pipeline_data")
-def pipeline_that_has_a_component_with_only_default_inputs_as_first_to_run():
+@given(
+    "a pipeline that has a component with only default inputs as first to run and receives inputs from a loop",
+    target_fixture="pipeline_data",
+)
+def pipeline_that_has_a_component_with_only_default_inputs_as_first_to_run_and_receives_inputs_from_a_loop():
     """
     This tests verifies that a Pipeline doesn't get stuck running in a loop if
     it has all the following characterics:

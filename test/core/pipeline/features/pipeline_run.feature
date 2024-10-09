@@ -26,7 +26,7 @@ Feature: Pipeline running
         | that has a greedy and variadic component after a component with default input |
         | that has components added in a different order from the order of execution |
         | that has a component with only default inputs |
-        | that has a component with only default inputs as first to run |
+        | that has a component with only default inputs as first to run and receives inputs from a loop |
         | that has multiple branches that merge into a component with a single variadic input |
         | that has multiple branches of different lengths that merge into a component with a single variadic input |
         | that is linear and returns intermediate outputs |
