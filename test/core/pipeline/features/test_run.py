@@ -10,6 +10,7 @@ from haystack.document_stores.types import DuplicatePolicy
 from haystack.dataclasses import ChatMessage, GeneratedAnswer
 from haystack.components.routers import ConditionalRouter
 from haystack.components.builders import PromptBuilder, AnswerBuilder, ChatPromptBuilder
+from haystack.components.preprocessors import TextCleaner
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.joiners import BranchJoiner, DocumentJoiner, AnswerJoiner
@@ -1994,3 +1995,79 @@ def that_has_a_cycle_that_would_get_it_stuck():
 
     comment = "I loved the quality of the meal but the courier was rude"
     return (pipeline, [PipelineRunData(inputs={"prompt_builder": {"comment": comment}})])
+
+
+@given("a pipeline that has a loop in the middle", target_fixture="pipeline_data")
+def that_has_a_loop_in_the_middle():
+    @component
+    class FakeGenerator:
+        @component.output_types(replies=List[str])
+        def run(self, prompt: str):
+            replies = []
+            if getattr(self, "first_run", True):
+                self.first_run = False
+                replies.append("No answer")
+            else:
+                replies.append("42")
+            return {"replies": replies}
+
+    @component
+    class PromptCleaner:
+        @component.output_types(clean_prompt=str)
+        def run(self, prompt: str):
+            return {"clean_prompt": prompt.strip()}
+
+    routes = [
+        {
+            "condition": "{{ 'No answer' in replies }}",
+            "output": "{{ replies }}",
+            "output_name": "invalid_replies",
+            "output_type": List[str],
+        },
+        {
+            "condition": "{{ 'No answer' not in replies }}",
+            "output": "{{ replies }}",
+            "output_name": "valid_replies",
+            "output_type": List[str],
+        },
+    ]
+
+    pipeline = Pipeline(max_runs_per_component=20)
+    pipeline.add_component("prompt_cleaner", PromptCleaner())
+    pipeline.add_component("prompt_builder", PromptBuilder(template="", variables=["question", "invalid_replies"]))
+    pipeline.add_component("llm", FakeGenerator())
+    pipeline.add_component("answer_validator", ConditionalRouter(routes=routes))
+    pipeline.add_component("answer_builder", AnswerBuilder())
+
+    pipeline.connect("prompt_cleaner.clean_prompt", "prompt_builder.template")
+    pipeline.connect("prompt_builder.prompt", "llm.prompt")
+    pipeline.connect("llm.replies", "answer_validator.replies")
+    pipeline.connect("answer_validator.invalid_replies", "prompt_builder.invalid_replies")
+    pipeline.connect("answer_validator.valid_replies", "answer_builder.replies")
+
+    question = "What is the answer?"
+    return (
+        pipeline,
+        [
+            PipelineRunData(
+                inputs={
+                    "prompt_cleaner": {"prompt": "Random template"},
+                    "prompt_builder": {"question": question},
+                    "answer_builder": {"query": question},
+                },
+                expected_outputs={
+                    "answer_builder": {"answers": [GeneratedAnswer(data="42", query=question, documents=[])]}
+                },
+                expected_run_order=[
+                    "prompt_cleaner",
+                    "prompt_builder",
+                    "llm",
+                    "answer_validator",
+                    "prompt_builder",
+                    "llm",
+                    "answer_validator",
+                    "answer_builder",
+                ],
+            )
+        ],
+    )
