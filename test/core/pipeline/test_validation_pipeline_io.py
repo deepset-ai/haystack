@@ -6,9 +6,9 @@ from typing import Optional
 import pytest
 
 from haystack.core.component.types import InputSocket, OutputSocket, Variadic
-from haystack.core.errors import PipelineValidationError
 from haystack.core.pipeline import Pipeline
 from haystack.core.pipeline.descriptions import find_pipeline_inputs, find_pipeline_outputs
+from haystack.testing.factory import component_class
 from haystack.testing.sample_components import AddFixedValue, Double, Parity, Sum
 
 
@@ -119,10 +119,16 @@ def test_find_pipeline_some_outputs_different_components():
 
 def test_validate_pipeline_input_pipeline_with_no_inputs():
     pipe = Pipeline()
-    pipe.add_component("comp1", Double())
-    pipe.add_component("comp2", Double())
-    pipe.connect("comp1", "comp2")
-    pipe.connect("comp2", "comp1")
+    NoInputs = component_class("NoInputs", input_types={}, output={"value": 10})
+    pipe.add_component("no_inputs", NoInputs())
+    res = pipe.run({})
+    assert res == {"no_inputs": {"value": 10}}
+
+
+def test_validate_pipeline_input_pipeline_with_no_inputs_no_outputs():
+    pipe = Pipeline()
+    NoIO = component_class("NoIO", input_types={}, output={})
+    pipe.add_component("no_inputs", NoIO())
     res = pipe.run({})
     assert res == {}
 
