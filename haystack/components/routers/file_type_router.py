@@ -54,7 +54,7 @@ class FileTypeRouter:
     :param mime_types: A list of MIME types or regex patterns to classify the input files or byte streams.
     """
 
-    def __init__(self, mime_types: List[str], additional_mimetypes: Dict[str, str] = None):
+    def __init__(self, mime_types: List[str], additional_mimetypes: Optional[Dict[str, str]] = None):
         """
         Initialize the FileTypeRouter component.
 
