@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import os
 from typing import Any, Dict, List, Optional
 
@@ -13,7 +17,10 @@ logger = logging.getLogger(__name__)
 @component
 class DALLEImageGenerator:
     """
-    A component to generate images using OpenAI's DALL-E model.
+    Generates images using OpenAI's DALL-E model.
+
+    For details on OpenAI API parameters, see
+    https://platform.openai.com/docs/api-reference/images/create
     """
 
     def __init__(
