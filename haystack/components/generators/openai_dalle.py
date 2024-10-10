@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from openai import OpenAI
 from openai.types.image import Image
@@ -35,9 +35,9 @@ class DALLEImageGenerator:
     def __init__(
         self,
         model: str = "dall-e-3",
-        quality: str = "standard",
-        size: str = "1024x1024",
-        response_format: str = "url",
+        quality: Literal["standard", "hd"] = "standard",
+        size: Literal["256x256", "512x512", "1024x1024", "1792x1024", "1024x1792"] = "1024x1024",
+        response_format: Literal["url", "b64_json"] = "url",
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
         api_base_url: Optional[str] = None,
         organization: Optional[str] = None,
@@ -93,9 +93,9 @@ class DALLEImageGenerator:
     def run(
         self,
         prompt: str,
-        size: Optional[str] = None,
-        quality: Optional[str] = None,
-        response_format: Optional[str] = None,
+        size: Optional[Optional[Literal["256x256", "512x512", "1024x1024", "1792x1024", "1024x1792"]]] = None,
+        quality: Optional[Literal["standard", "hd"]] = None,
+        response_format: Optional[Optional[Literal["url", "b64_json"]]] = None,
     ):
         """
         Invoke the image generation inference based on the provided prompt and generation parameters.
