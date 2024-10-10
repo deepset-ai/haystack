@@ -21,6 +21,15 @@ class DALLEImageGenerator:
 
     For details on OpenAI API parameters, see
     https://platform.openai.com/docs/api-reference/images/create
+
+    ### Usage example
+
+    ```python
+    from haystack.components.generators import DALLEImageGenerator
+    image_generator = DALLEImageGenerator()
+    response = image_generator.run("Show me a picture of a black cat.")
+    print(response)
+    ```
     """
 
     def __init__(
@@ -36,7 +45,7 @@ class DALLEImageGenerator:
         max_retries: Optional[int] = None,
     ):
         """
-        Initialize the DALLEImageGenerator component.
+        Creates an instance of DALLEImageGenerator. Unless specified otherwise in `model`, uses OpenAI's dall-e-3
 
         :param model: The model to use for image generation. Can be "dall-e-2" or "dall-e-3".
         :param quality: The quality of the generated image. Can be "standard" or "hd".
@@ -87,7 +96,7 @@ class DALLEImageGenerator:
         size: Optional[str] = None,
         quality: Optional[str] = None,
         response_format: Optional[str] = None,
-    ) -> Dict[str, str]:
+    ):
         """
         Invoke the image generation inference based on the provided prompt and generation parameters.
 
