@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Added component StringJoiner to join strings from different components to a list of strings.
