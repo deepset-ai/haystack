@@ -170,6 +170,7 @@ class OpenAIGenerator:
     def run(
         self,
         prompt: str,
+        system_prompt: Optional[str] = None,
         streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
     ):
@@ -178,6 +179,9 @@ class OpenAIGenerator:
 
         :param prompt:
             The string prompt to use for text generation.
+        :param system_prompt:
+            The system prompt to use for text generation. If this run time system prompt is omitted, the system
+            prompt, if defined at initialisation time, is used.
         :param streaming_callback:
             A callback function that is called when a new token is received from the stream.
         :param generation_kwargs:
@@ -189,7 +193,9 @@ class OpenAIGenerator:
         for each response.
         """
         message = ChatMessage.from_user(prompt)
-        if self.system_prompt:
+        if system_prompt is not None:
+            messages = [ChatMessage.from_system(system_prompt), message]
+        elif self.system_prompt:
             messages = [ChatMessage.from_system(self.system_prompt), message]
         else:
             messages = [message]
