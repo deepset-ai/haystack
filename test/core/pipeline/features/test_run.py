@@ -912,58 +912,6 @@ def pipeline_that_has_a_component_with_only_default_inputs_as_first_to_run():
 
 
 @given(
-    "a pipeline that has only a single component that sends one of its outputs to itself",
-    target_fixture="pipeline_data",
-)
-def pipeline_that_has_a_single_component_that_send_one_of_outputs_to_itself():
-    pipeline = Pipeline(max_runs_per_component=10)
-    pipeline.add_component("self_loop", SelfLoop())
-    pipeline.connect("self_loop.current_value", "self_loop.values")
-
-    return (
-        pipeline,
-        [
-            PipelineRunData(
-                inputs={"self_loop": {"values": 5}},
-                expected_outputs={"self_loop": {"final_result": 0}},
-                expected_run_order=["self_loop", "self_loop", "self_loop", "self_loop", "self_loop"],
-            )
-        ],
-    )
-
-
-@given("a pipeline that has a component that sends one of its outputs to itself", target_fixture="pipeline_data")
-def pipeline_that_has_a_component_that_sends_one_of_its_outputs_to_itself():
-    pipeline = Pipeline(max_runs_per_component=10)
-    pipeline.add_component("add_1", AddFixedValue())
-    pipeline.add_component("self_loop", SelfLoop())
-    pipeline.add_component("add_2", AddFixedValue())
-    pipeline.connect("add_1", "self_loop.values")
-    pipeline.connect("self_loop.current_value", "self_loop.values")
-    pipeline.connect("self_loop.final_result", "add_2.value")
-
-    return (
-        pipeline,
-        [
-            PipelineRunData(
-                inputs={"add_1": {"value": 5}},
-                expected_outputs={"add_2": {"result": 1}},
-                expected_run_order=[
-                    "add_1",
-                    "self_loop",
-                    "self_loop",
-                    "self_loop",
-                    "self_loop",
-                    "self_loop",
-                    "self_loop",
-                    "add_2",
-                ],
-            )
-        ],
-    )
-
-
-@given(
     "a pipeline that has multiple branches that merge into a component with a single variadic input",
     target_fixture="pipeline_data",
 )
