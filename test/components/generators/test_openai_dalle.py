@@ -10,7 +10,7 @@ class TestDALLEImageGenerator:
         generator = DALLEImageGenerator()
         data = generator.to_dict()
         assert data == {
-            "type": "dc_custom_component.components.generators.image_generator.DALLEImageGenerator",
+            "type": "haystack.components.generators.image_generator.DALLEImageGenerator",
             "init_parameters": {
                 "model": "dall-e-3",
                 "quality": "standard",
@@ -24,7 +24,7 @@ class TestDALLEImageGenerator:
 
     def test_from_dict(self) -> None:
         data = {
-            "type": "dc_custom_component.components.generators.image_generator.DALLEImageGenerator",
+            "type": "haystack.components.generators.image_generator.DALLEImageGenerator",
             "init_parameters": {
                 "model": "dall-e-3",
                 "quality": "standard",
