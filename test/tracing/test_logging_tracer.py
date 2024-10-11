@@ -100,12 +100,15 @@ class TestLoggingTracer:
         assert any(record.tag_name == "haystack.component.name" for record in tags_records)
         assert any(record.tag_value == "hello" for record in tags_records)
 
+        tracing.disable_tracing()
+
     def test_logging_pipeline_with_content_tracing(self, caplog) -> None:
         pipeline = Pipeline()
         pipeline.add_component("hello", Hello())
 
         tracing.tracer.is_content_tracing_enabled = True
         tracing.enable_tracing(LoggingTracer())
+
         caplog.set_level(logging.DEBUG)
 
         pipeline.run(data={"word": "world"})
@@ -122,6 +125,9 @@ class TestLoggingTracer:
             record.tag_value for record in tags_records if record.tag_name == "haystack.component.output"
         ][0]
         assert output_tag_value == {"output": "Hello, world!"}
+
+        tracing.tracer.is_content_tracing_enabled = False
+        tracing.disable_tracing()
 
     def test_logging_pipeline_on_failure(self, caplog) -> None:
         """
@@ -150,3 +156,5 @@ class TestLoggingTracer:
         tags_records = [record for record in records if hasattr(record, "tag_name")]
         assert any(record.tag_name == "haystack.component.name" for record in tags_records)
         assert any(record.tag_value == "failing_component" for record in tags_records)
+
+        tracing.disable_tracing()
