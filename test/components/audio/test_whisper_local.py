@@ -204,3 +204,22 @@ class TestLocalWhisperTranscriber:
         assert docs[2].content.strip().lower() == "answer."
         # meta.audio_file should contain the temp path where we dumped the audio bytes
         assert docs[2].meta["audio_file"]
+
+    @pytest.mark.integration
+    @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="ffmpeg not installed on Windows CI")
+    def test_whisper_local_transcriber_pipeline_and_url_source(self):
+        pipe = Pipeline()
+        pipe.add_component("fetcher", LinkContentFetcher())
+        pipe.add_component("transcriber", LocalWhisperTranscriber(model="tiny"))
+
+        pipe.connect("fetcher", "transcriber")
+        result = pipe.run(
+            data={
+                "fetcher": {
+                    "urls": [
+                        "https://github.com/deepset-ai/haystack/raw/refs/heads/main/test/test_files/audio/MLK_Something_happening.mp3"  # noqa: E501
+                    ]
+                }
+            }
+        )
+        assert "masses of people" in result["transcriber"]["documents"][0].content
