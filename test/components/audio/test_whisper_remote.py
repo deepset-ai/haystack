@@ -100,7 +100,7 @@ class TestRemoteWhisperTranscriber:
             },
         }
 
-    def test_from_dict_with_defualt_parameters(self, monkeypatch):
+    def test_from_dict_with_default_parameters(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test_api_key")
 
         data = {
