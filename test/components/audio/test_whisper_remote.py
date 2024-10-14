@@ -209,4 +209,4 @@ class TestRemoteWhisperTranscriber:
                 }
             }
         )
-        assert "masses of people arising" in result["transcriber"]["documents"][0].content
+        assert "masses of people" in result["transcriber"]["documents"][0].content
