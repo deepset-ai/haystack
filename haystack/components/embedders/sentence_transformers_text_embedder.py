@@ -88,7 +88,7 @@ class SentenceTransformersTextEmbedder:
             Additional keyword arguments for `AutoTokenizer.from_pretrained` when loading the tokenizer.
             Refer to specific model documentation for available kwargs.
         :param config_kwargs:
-            Additional keyword arguments for model configuration parameters
+            Additional keyword arguments for `AutoConfig.from_pretrained` when loading the model configuration.
         :param precision:
             The precision to use for the embeddings.
             All non-float32 precisions are quantized embeddings.
