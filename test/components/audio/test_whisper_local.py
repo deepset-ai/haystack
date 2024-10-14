@@ -217,7 +217,7 @@ class TestLocalWhisperTranscriber:
             data={
                 "fetcher": {
                     "urls": [
-                        "https://github.com/deepset-ai/haystack/blob/main/test/test_files/audio/MLK_Something_happening.mp3"  # noqa: E501
+                        "https://github.com/deepset-ai/haystack/raw/refs/heads/main/test/test_files/audio/MLK_Something_happening.mp3"  # noqa: E501
                     ]
                 }
             }

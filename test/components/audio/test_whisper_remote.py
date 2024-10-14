@@ -5,7 +5,6 @@ import os
 import pytest
 
 from haystack import Pipeline
-from haystack.components.audio import LocalWhisperTranscriber
 from haystack.components.audio.whisper_remote import RemoteWhisperTranscriber
 from haystack.components.fetchers import LinkContentFetcher
 from haystack.dataclasses import ByteStream
@@ -205,7 +204,7 @@ class TestRemoteWhisperTranscriber:
             data={
                 "fetcher": {
                     "urls": [
-                        "https://github.com/deepset-ai/haystack/blob/main/test/test_files/audio/MLK_Something_happening.mp3"
+                        "https://github.com/deepset-ai/haystack/raw/refs/heads/main/test/test_files/audio/MLK_Something_happening.mp3"
                     ]  # noqa: E501
                 }
             }
