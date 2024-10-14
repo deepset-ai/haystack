@@ -217,9 +217,9 @@ class TestLocalWhisperTranscriber:
             data={
                 "fetcher": {
                     "urls": [
-                        "https://github.com/deepset-ai/haystack/blob/main/test/test_files/audio/MLK_Something_happening.mp3"
+                        "https://github.com/deepset-ai/haystack/blob/main/test/test_files/audio/MLK_Something_happening.mp3"  # noqa: E501
                     ]
                 }
             }
         )
-        assert "Massachusetts" in result["transcriber"]["documents"][0].content
+        assert "masses of people arising" in result["transcriber"]["documents"][0].content
