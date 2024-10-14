@@ -216,7 +216,9 @@ class TestLocalWhisperTranscriber:
         result = pipe.run(
             data={
                 "fetcher": {
-                    "urls": ["https://ia903102.us.archive.org/19/items/100-Best--Speeches/EK_19690725_64kb.mp3"]
+                    "urls": [
+                        "https://github.com/deepset-ai/haystack/blob/main/test/test_files/audio/MLK_Something_happening.mp3"
+                    ]
                 }
             }
         )
