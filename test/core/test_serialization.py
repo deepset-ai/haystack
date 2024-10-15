@@ -64,7 +64,6 @@ def test_default_component_from_dict_unregistered_component(request):
 def test_from_dict_import_type():
     pipeline_dict = {
         "metadata": {},
-        "max_loops_allowed": 100,
         "components": {
             "greeter": {
                 "type": "haystack.testing.sample_components.greet.Greet",

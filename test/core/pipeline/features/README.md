@@ -115,7 +115,6 @@ def pipeline_that_has_an_infinite_loop():
         component.set_output_types(self, a=int, b=int)
 
     FakeComponent = component_class("FakeComponent", output={"a": 1, "b": 1}, extra_fields={"__init__": custom_init})
-    pipe = Pipeline(max_loops_allowed=1)
     pipe.add_component("first", FakeComponent())
     pipe.add_component("second", FakeComponent())
     pipe.connect("first.a", "second.x")
