@@ -1,11 +1,11 @@
-import logging
 import json
+import logging
 
 import pytest
 
-from haystack.dataclasses import ByteStream
 from haystack import Document
-from haystack.components.converters.docx import DOCXToDocument, DOCXMetadata
+from haystack.components.converters.docx import DOCXMetadata, DOCXToDocument
+from haystack.dataclasses import ByteStream
 
 
 @pytest.fixture
@@ -47,6 +47,45 @@ class TestDOCXToDocument:
                 version="",
             ),
         }
+
+    def test_run_with_table(self, test_files_path, docx_converter):
+        """
+        Test if the component runs correctly
+        """
+        paths = [test_files_path / "docx" / "sample_docx.docx"]
+        output = docx_converter.run(sources=paths)
+        docs = output["documents"]
+        assert len(docs) == 1
+        assert "Donald Trump" in docs[0].content  ## :-)
+        assert docs[0].meta.keys() == {"file_path", "docx"}
+        assert docs[0].meta == {
+            "file_path": str(paths[0]),
+            "docx": DOCXMetadata(
+                author="Saha, Anirban",
+                category="",
+                comments="",
+                content_status="",
+                created="2020-07-14T08:14:00+00:00",
+                identifier="",
+                keywords="",
+                language="",
+                last_modified_by="Saha, Anirban",
+                last_printed=None,
+                modified="2020-07-14T08:16:00+00:00",
+                revision=1,
+                subject="",
+                title="",
+                version="",
+            ),
+        }
+        # let's now detect that the table markdown is correctly added and that order of elements is correct
+        content_parts = docs[0].content.split("\n\n")
+        table_index = next(i for i, part in enumerate(content_parts) if "| This | Is     | Just a |" in part)
+        # check that natural order of the document is preserved
+        assert any("Donald Trump" in part for part in content_parts[:table_index]), "Text before table not found"
+        assert any(
+            "Now we are in Page 2" in part for part in content_parts[table_index + 1 :]
+        ), "Text after table not found"
 
     def test_run_with_additional_meta(self, test_files_path, docx_converter):
         paths = [test_files_path / "docx" / "sample_docx_1.docx"]
