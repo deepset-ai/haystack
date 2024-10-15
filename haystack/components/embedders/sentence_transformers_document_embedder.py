@@ -54,6 +54,7 @@ class SentenceTransformersDocumentEmbedder:
         truncate_dim: Optional[int] = None,
         model_kwargs: Optional[Dict[str, Any]] = None,
         tokenizer_kwargs: Optional[Dict[str, Any]] = None,
+        config_kwargs: Optional[Dict[str, Any]] = None,
         precision: Literal["float32", "int8", "uint8", "binary", "ubinary"] = "float32",
     ):
         """
@@ -96,10 +97,12 @@ class SentenceTransformersDocumentEmbedder:
         :param tokenizer_kwargs:
             Additional keyword arguments for `AutoTokenizer.from_pretrained` when loading the tokenizer.
             Refer to specific model documentation for available kwargs.
+        :param config_kwargs:
+            Additional keyword arguments for `AutoConfig.from_pretrained` when loading the model configuration.
         :param precision:
             The precision to use for the embeddings.
             All non-float32 precisions are quantized embeddings.
-            Quantized embeddings are smaller in size and faster to compute, but may have a lower accuracy.
+            Quantized embeddings are smaller and faster to compute, but may have a lower accuracy.
             They are useful for reducing the size of the embeddings of a corpus for semantic search, among other tasks.
         """
 
@@ -117,6 +120,7 @@ class SentenceTransformersDocumentEmbedder:
         self.truncate_dim = truncate_dim
         self.model_kwargs = model_kwargs
         self.tokenizer_kwargs = tokenizer_kwargs
+        self.config_kwargs = config_kwargs
         self.embedding_backend = None
         self.precision = precision
 
@@ -149,6 +153,7 @@ class SentenceTransformersDocumentEmbedder:
             truncate_dim=self.truncate_dim,
             model_kwargs=self.model_kwargs,
             tokenizer_kwargs=self.tokenizer_kwargs,
+            config_kwargs=self.config_kwargs,
             precision=self.precision,
         )
         if serialization_dict["init_parameters"].get("model_kwargs") is not None:
@@ -186,6 +191,7 @@ class SentenceTransformersDocumentEmbedder:
                 truncate_dim=self.truncate_dim,
                 model_kwargs=self.model_kwargs,
                 tokenizer_kwargs=self.tokenizer_kwargs,
+                config_kwargs=self.config_kwargs,
             )
             if self.tokenizer_kwargs and self.tokenizer_kwargs.get("model_max_length"):
                 self.embedding_backend.model.max_seq_length = self.tokenizer_kwargs["model_max_length"]

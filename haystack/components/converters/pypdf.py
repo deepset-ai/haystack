@@ -12,6 +12,7 @@ from haystack.components.converters.utils import get_bytestream_from_source, nor
 from haystack.dataclasses import ByteStream
 from haystack.lazy_imports import LazyImport
 from haystack.utils.base_serialization import deserialize_class_instance, serialize_class_instance
+from haystack.utils.type_serialization import deserialize_type
 
 with LazyImport("Run 'pip install pypdf'") as pypdf_import:
     from pypdf import PdfReader
@@ -118,7 +119,12 @@ class PyPDFToDocument:
         """
         custom_converter_data = data["init_parameters"]["converter"]
         if custom_converter_data is not None:
-            data["init_parameters"]["converter"] = deserialize_class_instance(custom_converter_data)
+            if "data" in custom_converter_data:
+                data["init_parameters"]["converter"] = deserialize_class_instance(custom_converter_data)
+            else:
+                # TODO: Remove in 2.7.0
+                converter_class = deserialize_type(custom_converter_data["type"])
+                data["init_parameters"]["converter"] = converter_class.from_dict(custom_converter_data)
         return default_from_dict(cls, data)
 
     def _default_convert(self, reader: "PdfReader") -> Document:
