@@ -180,8 +180,8 @@ class DOCXToDocument:
         return para_text
 
     def _table_to_markdown(self, table: "Table") -> str:
-        markdown = []
-        max_col_widths = []
+        markdown: List[str] = []
+        max_col_widths: List[int] = []
 
         # Calculate max width for each column
         for row in table.rows:
