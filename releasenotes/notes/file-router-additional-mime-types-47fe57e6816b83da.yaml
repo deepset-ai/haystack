@@ -1,6 +1,6 @@
 ---
 features:
-  - >
+  - |
     Added a new parameter `additional_mimetypes` to the FileTypeRouter
     component.
 
