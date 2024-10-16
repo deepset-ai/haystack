@@ -914,7 +914,6 @@ class PipelineBase:
                         run_queue.remove(pair)
                     if pair in waiting_queue:
                         waiting_queue.remove(pair)
-                    # run_queue.append(pair)
                     run_queue.insert(0, pair)
                 else:
                     # If the receiver Component has a variadic input that is not greedy

@@ -413,7 +413,6 @@ class Pipeline(PipelineBase):
 
             while len(run_queue) > 0:
                 name, comp = run_queue.pop(0)
-                pass
 
                 if _is_lazy_variadic(comp) and not all(_is_lazy_variadic(comp) for _, comp in run_queue):
                     # We run Components with lazy variadic inputs only if there only Components with
