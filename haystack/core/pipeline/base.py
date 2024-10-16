@@ -821,9 +821,11 @@ class PipelineBase:
         """
         Utility function to find all Components that receive input form `component_name`.
 
-        :param component_name: Name of the sender Component
+        :param component_name:
+            Name of the sender Component
 
-        :return: List of tuples containing name of the receiver Component and relative sender OutputSocket
+        :returns:
+            List of tuples containing name of the receiver Component and sender OutputSocket
             and receiver InputSocket instances
         """
         res = []
