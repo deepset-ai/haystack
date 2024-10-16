@@ -1138,7 +1138,7 @@ class PipelineBase:
             return self.graph, {}
 
         temp_graph: networkx.MultiDiGraph = self.graph.copy()
-        cycles: List[List[str]] = networkx.recursive_simple_cycles(self.graph)
+        cycles: List[List[str]] = list(networkx.simple_cycles(self.graph))
         edges_removed: Dict[str, List[str]] = {}
         # This keeps track of all the cycles that a component is part of.
         components_in_cycles: Dict[str, List[List[str]]] = {}
