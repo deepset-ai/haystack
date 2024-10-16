@@ -55,7 +55,7 @@ class LoggingTracer(Tracer):
 
         :param operation_name: the name of the operation being traced.
         :param tags: tags to apply to the newly created span.
-        :return: the newly created span.
+        :returns: the newly created span.
         """
 
         custom_span = LoggingSpan(operation_name, tags=tags or {})
