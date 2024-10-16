@@ -1157,6 +1157,10 @@ class PipelineBase:
                         edges_removed[sender_comp].append(sender_socket.name)
                         temp_graph.remove_edge(sender_comp, receiver_comp, edge_key)
 
+                    if networkx.is_directed_acyclic_graph(temp_graph):
+                        # We removed all the cycles, we can stop
+                        break
+
             if networkx.is_directed_acyclic_graph(temp_graph):
                 # We removed all the cycles, nice
                 break
