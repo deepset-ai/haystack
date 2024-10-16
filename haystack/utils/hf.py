@@ -13,7 +13,7 @@ from haystack.lazy_imports import LazyImport
 from haystack.utils.auth import Secret
 from haystack.utils.device import ComponentDevice
 
-with LazyImport(message="Run 'pip install transformers[torch]'") as torch_import:
+with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as torch_import:
     import torch
 
 with LazyImport(message="Run 'pip install \"huggingface_hub>=0.23.0\"'") as huggingface_hub_import:
@@ -270,7 +270,7 @@ def check_generation_params(kwargs: Optional[Dict[str, Any]], additional_accepte
             )
 
 
-with LazyImport(message="Run 'pip install transformers[torch]'") as transformers_import:
+with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transformers_import:
     from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast, StoppingCriteria, TextStreamer
 
     torch_import.check()

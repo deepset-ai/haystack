@@ -18,7 +18,7 @@ from haystack.utils import (
 
 logger = logging.getLogger(__name__)
 
-with LazyImport(message="Run 'pip install transformers[torch]'") as torch_and_transformers_import:
+with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as torch_and_transformers_import:
     from huggingface_hub import model_info
     from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast, StoppingCriteriaList, pipeline
 

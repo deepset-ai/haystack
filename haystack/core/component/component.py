@@ -71,6 +71,7 @@ method decorated with `@component.input`. This dataclass contains:
 
 import inspect
 import sys
+import warnings
 from collections.abc import Callable
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -186,7 +187,7 @@ class ComponentMeta(type):
 
     @staticmethod
     def _parse_and_set_output_sockets(instance: Any):
-        has_async_run = hasattr(instance, "async_run")
+        has_async_run = hasattr(instance, "run_async")
 
         # If `component.set_output_types()` was called in the component constructor,
         # `__haystack_output__` is already populated, no need to do anything.
@@ -200,10 +201,10 @@ class ComponentMeta(type):
             # won't share this data.
 
             run_output_types = getattr(instance.run, "_output_types_cache", {})
-            async_run_output_types = getattr(instance.async_run, "_output_types_cache", {}) if has_async_run else {}
+            async_run_output_types = getattr(instance.run_async, "_output_types_cache", {}) if has_async_run else {}
 
             if has_async_run and run_output_types != async_run_output_types:
-                raise ComponentError("Output type specifications of 'run' and 'async_run' methods must be the same")
+                raise ComponentError("Output type specifications of 'run' and 'run_async' methods must be the same")
             output_types_cache = run_output_types
 
             instance.__haystack_output__ = Sockets(instance, deepcopy(output_types_cache), OutputSocket)
@@ -211,38 +212,50 @@ class ComponentMeta(type):
     @staticmethod
     def _parse_and_set_input_sockets(component_cls: Type, instance: Any):
         def inner(method, sockets):
+            from inspect import Parameter
+
             run_signature = inspect.signature(method)
 
-            # First is 'self' and it doesn't matter.
-            for param in list(run_signature.parameters)[1:]:
-                if run_signature.parameters[param].kind not in (
-                    inspect.Parameter.VAR_POSITIONAL,
-                    inspect.Parameter.VAR_KEYWORD,
-                ):  # ignore variable args
-                    socket_kwargs = {"name": param, "type": run_signature.parameters[param].annotation}
-                    if run_signature.parameters[param].default != inspect.Parameter.empty:
-                        socket_kwargs["default_value"] = run_signature.parameters[param].default
-                    sockets[param] = InputSocket(**socket_kwargs)
+            for param_name, param_info in run_signature.parameters.items():
+                if param_name == "self" or param_info.kind in (Parameter.VAR_POSITIONAL, Parameter.VAR_KEYWORD):
+                    continue
+
+                socket_kwargs = {"name": param_name, "type": param_info.annotation}
+                if param_info.default != Parameter.empty:
+                    socket_kwargs["default_value"] = param_info.default
+
+                new_socket = InputSocket(**socket_kwargs)
+
+                # Also ensure that new sockets don't override existing ones.
+                existing_socket = sockets.get(param_name)
+                if existing_socket is not None and existing_socket != new_socket:
+                    raise ComponentError(
+                        "set_input_types()/set_input_type() cannot override the parameters of the 'run' method"
+                    )
+
+                sockets[param_name] = new_socket
+
+            return run_signature
 
         # Create the sockets if set_input_types() wasn't called in the constructor.
-        # If it was called and there are some parameters also in the `run()` method, these take precedence.
         if not hasattr(instance, "__haystack_input__"):
             instance.__haystack_input__ = Sockets(instance, {}, InputSocket)
 
         inner(getattr(component_cls, "run"), instance.__haystack_input__)
 
         # Ensure that the sockets are the same for the async method, if it exists.
-        async_run = getattr(component_cls, "async_run", None)
+        async_run = getattr(component_cls, "run_async", None)
         if async_run is not None:
             run_sockets = Sockets(instance, {}, InputSocket)
             async_run_sockets = Sockets(instance, {}, InputSocket)
 
             # Can't use the sockets from above as they might contain
             # values set with set_input_types().
-            inner(getattr(component_cls, "run"), run_sockets)
-            inner(async_run, async_run_sockets)
-            if async_run_sockets != run_sockets:
-                raise ComponentError("Parameters of 'run' and 'async_run' methods must be the same")
+            run_sig = inner(getattr(component_cls, "run"), run_sockets)
+            async_run_sig = inner(async_run, async_run_sockets)
+
+            if async_run_sockets != run_sockets or run_sig != async_run_sig:
+                raise ComponentError("Parameters of 'run' and 'run_async' methods must be the same")
 
     def __call__(cls, *args, **kwargs):
         """
@@ -267,9 +280,9 @@ class ComponentMeta(type):
 
         # Before returning, we have the chance to modify the newly created
         # Component instance, so we take the chance and set up the I/O sockets
-        has_async_run = hasattr(instance, "async_run")
-        if has_async_run and not inspect.iscoroutinefunction(instance.async_run):
-            raise ComponentError(f"Method 'async_run' of component '{cls.__name__}' must be a coroutine")
+        has_async_run = hasattr(instance, "run_async")
+        if has_async_run and not inspect.iscoroutinefunction(instance.run_async):
+            raise ComponentError(f"Method 'run_async' of component '{cls.__name__}' must be a coroutine")
         instance.__haystack_supports_async__ = has_async_run
 
         ComponentMeta._parse_and_set_input_sockets(cls, instance)
@@ -279,17 +292,6 @@ class ComponentMeta(type):
         # we need to know if it's already owned by a Pipeline when adding it to one.
         # We use this flag to check that.
         instance.__haystack_added_to_pipeline__ = None
-
-        # Only Components with variadic inputs can be greedy. If the user set the greedy flag
-        # to True, but the component doesn't have a variadic input, we set it to False.
-        # We can have this information only at instance creation time, so we do it here.
-        is_variadic = any(socket.is_variadic for socket in instance.__haystack_input__._sockets_dict.values())
-        if not is_variadic and cls.__haystack_is_greedy__:
-            logger.warning(
-                "Component '{component}' has no variadic input, but it's marked as greedy. "
-                "This is not supported and can lead to unexpected behavior.",
-                component=cls.__name__,
-            )
 
         return instance
 
@@ -301,13 +303,26 @@ def _component_repr(component: Component) -> str:
     It prints the component name and the input/output sockets.
     """
     result = object.__repr__(component)
-    if pipeline := getattr(component, "__haystack_added_to_pipeline__"):
+    if pipeline := getattr(component, "__haystack_added_to_pipeline__", None):
         # This Component has been added in a Pipeline, let's get the name from there.
         result += f"\n{pipeline.get_component_name(component)}"
 
     # We're explicitly ignoring the type here because we're sure that the component
     # has the __haystack_input__ and __haystack_output__ attributes at this point
-    return f"{result}\n{component.__haystack_input__}\n{component.__haystack_output__}"  # type: ignore[attr-defined]
+    return (
+        f'{result}\n{getattr(component, "__haystack_input__", "<invalid_input_sockets>")}'
+        f'\n{getattr(component, "__haystack_output__", "<invalid_output_sockets>")}'
+    )
+
+
+def _component_run_has_kwargs(component_cls: Type) -> bool:
+    run_method = getattr(component_cls, "run", None)
+    if run_method is None:
+        return False
+    else:
+        return any(
+            param.kind == inspect.Parameter.VAR_KEYWORD for param in inspect.signature(run_method).parameters.values()
+        )
 
 
 class _Component:
@@ -339,11 +354,18 @@ class _Component:
         """
         Add a single input socket to the component instance.
 
+        Replaces any existing input socket with the same name.
+
         :param instance: Component instance where the input type will be added.
         :param name: name of the input socket.
         :param type: type of the input socket.
         :param default: default value of the input socket, defaults to _empty
         """
+        if not _component_run_has_kwargs(instance.__class__):
+            raise ComponentError(
+                "Cannot set input types on a component that doesn't have a kwargs parameter in the 'run' method"
+            )
+
         if not hasattr(instance, "__haystack_input__"):
             instance.__haystack_input__ = Sockets(instance, {}, InputSocket)
         instance.__haystack_input__[name] = InputSocket(name=name, type=type, default_value=default)
@@ -389,6 +411,11 @@ class _Component:
         parameter mandatory as specified in `set_input_types`.
 
         """
+        if not _component_run_has_kwargs(instance.__class__):
+            raise ComponentError(
+                "Cannot set input types on a component that doesn't have a kwargs parameter in the 'run' method"
+            )
+
         instance.__haystack_input__ = Sockets(
             instance, {name: InputSocket(name=name, type=type_) for name, type_ in types.items()}, InputSocket
         )
@@ -412,6 +439,13 @@ class _Component:
                 return {"output_1": 1, "output_2": "2"}
         ```
         """
+        has_decorator = hasattr(instance.run, "_output_types_cache")
+        if has_decorator:
+            raise ComponentError(
+                "Cannot call `set_output_types` on a component that already has "
+                "the 'output_types' decorator on its `run` method"
+            )
+
         instance.__haystack_output__ = Sockets(
             instance, {name: OutputSocket(name=name, type=type_) for name, type_ in types.items()}, OutputSocket
         )
@@ -441,8 +475,8 @@ class _Component:
             sockets at instance creation time.
             """
             method_name = run_method.__name__
-            if method_name not in ("run", "async_run"):
-                raise ComponentError("'output_types' decorator can only be used on 'run' and `async_run` methods")
+            if method_name not in ("run", "run_async"):
+                raise ComponentError("'output_types' decorator can only be used on 'run' and 'run_async' methods")
 
             setattr(
                 run_method,
@@ -453,11 +487,20 @@ class _Component:
 
         return output_types_decorator
 
-    def _component(self, cls, is_greedy: bool = False):
+    def _component(self, cls, is_greedy: Optional[bool] = None):
         """
         Decorator validating the structure of the component and registering it in the components registry.
         """
         logger.debug("Registering {component} as a component", component=cls)
+
+        if is_greedy is not None:
+            msg = (
+                "The 'is_greedy' argument is deprecated and will be removed in version '2.7.0'. "
+                "Change the 'Variadic' input of your Component to 'GreedyVariadic' instead."
+            )
+            warnings.warn(msg, DeprecationWarning)
+        else:
+            is_greedy = False
 
         # Check for required methods and fail as soon as possible
         if not hasattr(cls, "run"):
@@ -498,15 +541,9 @@ class _Component:
         # Override the __repr__ method with a default one
         cls.__repr__ = _component_repr
 
-        # The greedy flag can be True only if the component has a variadic input.
-        # At this point of the lifetime of the component, we can't reliably know if it has a variadic input.
-        # So we set it to whatever the user specified, during the instance creation we'll change it if needed
-        # since we'll have access to the input sockets and check if any of them is variadic.
-        setattr(cls, "__haystack_is_greedy__", is_greedy)
-
         return cls
 
-    def __call__(self, cls: Optional[type] = None, is_greedy: bool = False):
+    def __call__(self, cls: Optional[type] = None, is_greedy: Optional[bool] = None):
         # We must wrap the call to the decorator in a function for it to work
         # correctly with or without parens
         def wrap(cls):

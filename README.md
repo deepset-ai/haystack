@@ -31,7 +31,7 @@ If you're new to the project, check out ["What is Haystack?"](https://haystack.d
 through the ["Get Started Guide"](https://haystack.deepset.ai/overview/quick-start) and build your first LLM application
 in a matter of minutes. Keep learning with the [tutorials](https://haystack.deepset.ai/tutorials?v=2.0). For more advanced
 use cases, or just to get some inspiration, you can browse our Haystack recipes in the
-[Cookbook](https://github.com/deepset-ai/haystack-cookbook).
+[Cookbook](https://haystack.deepset.ai/cookbook).
 
 At any given point, hit the [documentation](https://docs.haystack.deepset.ai/v2.0/docs/intro) to learn more about Haystack, what can it do for you and the technology behind.
 
@@ -60,6 +60,15 @@ Some examples of what you can do with Haystack:
 ><img src="https://github.com/deepset-ai/haystack/raw/main/docs/img/deepset-cloud-logo-lightblue.png"  width=30% height=30%>
 >
 > Are you looking for a managed solution that benefits from Haystack? [deepset Cloud](https://www.deepset.ai/deepset-cloud?utm_campaign=developer-relations&utm_source=haystack&utm_medium=readme) is our fully managed, end-to-end platform to integrate LLMs with your data, which uses Haystack for the LLM pipelines architecture.
+
+## 🔜 Visual Pipeline Editor
+
+Use **deepset Studio** to visually create and export your Haystack pipeline architecture as a YAML or as Python code. Learn more about it in [our announcement post](https://haystack.deepset.ai/blog/announcing-studio).
+
+![studio](https://github.com/user-attachments/assets/e4f09746-20b5-433e-8261-eca224ac23b3)
+
+
+👉 [Join the waitlist](https://landing.deepset.ai/deepset-studio-waitlist?utm_campaign=2408%20-%20Campaign%20-%20Studio%20Launch&utm_source=github&utm_medium=referral)!
 
 ## Telemetry
 

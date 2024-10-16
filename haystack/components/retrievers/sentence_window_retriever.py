@@ -6,7 +6,7 @@ from typing import Any, Dict, List
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.document_stores.types import DocumentStore
-from haystack.utils import deserialize_document_store_in_init_parameters
+from haystack.utils import deserialize_document_store_in_init_params_inplace
 
 
 @component
@@ -24,6 +24,13 @@ class SentenceWindowRetriever:
     EmbeddingRetriever. First, use a Retriever to find documents based on a query and then use
     SentenceWindowRetriever to get the surrounding documents for context.
 
+    The SentenceWindowRetriever is compatible with the following DocumentStores:
+    - [Astra](https://docs.haystack.deepset.ai/docs/astradocumentstore)
+    - [Elasticsearch](https://docs.haystack.deepset.ai/docs/elasticsearch-document-store)
+    - [OpenSearch](https://docs.haystack.deepset.ai/docs/opensearch-document-store)
+    - [Pgvector](https://docs.haystack.deepset.ai/docs/pgvectordocumentstore)
+    - [Pinecone](https://docs.haystack.deepset.ai/docs/pinecone-document-store)
+    - [Qdrant](https://docs.haystack.deepset.ai/docs/qdrant-document-store)
 
     ### Usage example
 
@@ -131,7 +138,7 @@ class SentenceWindowRetriever:
             Deserialized component.
         """
         # deserialize the document store
-        data = deserialize_document_store_in_init_parameters(data)
+        deserialize_document_store_in_init_params_inplace(data)
 
         # deserialize the component
         return default_from_dict(cls, data)
@@ -150,7 +157,7 @@ class SentenceWindowRetriever:
                 - `context_windows`: A list of strings, where each string represents the concatenated text from the
                                      context window of the corresponding document in `retrieved_documents`.
                 - `context_documents`: A list of lists of `Document` objects, where each inner list contains the
-                                     documents that form the context window for the corresponding document in
+                                     documents that come from the context window for the corresponding document in
                                      `retrieved_documents`.
 
         """
@@ -172,9 +179,9 @@ class SentenceWindowRetriever:
                 {
                     "operator": "AND",
                     "conditions": [
-                        {"field": "source_id", "operator": "==", "value": source_id},
-                        {"field": "split_id", "operator": ">=", "value": min_before},
-                        {"field": "split_id", "operator": "<=", "value": max_after},
+                        {"field": "meta.source_id", "operator": "==", "value": source_id},
+                        {"field": "meta.split_id", "operator": ">=", "value": min_before},
+                        {"field": "meta.split_id", "operator": "<=", "value": max_after},
                     ],
                 }
             )

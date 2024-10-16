@@ -9,7 +9,7 @@ from haystack.components.routers import ConditionalRouter
 from haystack.components.builders import PromptBuilder, AnswerBuilder
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.components.joiners import BranchJoiner, DocumentJoiner
+from haystack.components.joiners import BranchJoiner, DocumentJoiner, AnswerJoiner
 from haystack.testing.sample_components import (
     Accumulate,
     AddFixedValue,
@@ -38,7 +38,7 @@ scenarios("pipeline_run.feature")
 
 @given("a pipeline that has no components", target_fixture="pipeline_data")
 def pipeline_that_has_no_components():
-    pipeline = Pipeline()
+    pipeline = Pipeline(max_runs_per_component=1)
     inputs = {}
     expected_outputs = {}
     return pipeline, [PipelineRunData(inputs=inputs, expected_outputs=expected_outputs)]
@@ -46,7 +46,7 @@ def pipeline_that_has_no_components():
 
 @given("a pipeline that is linear", target_fixture="pipeline_data")
 def pipeline_that_is_linear():
-    pipeline = Pipeline()
+    pipeline = Pipeline(max_runs_per_component=1)
     pipeline.add_component("first_addition", AddFixedValue(add=2))
     pipeline.add_component("second_addition", AddFixedValue())
     pipeline.add_component("double", Double())
@@ -73,7 +73,7 @@ def pipeline_that_has_an_infinite_loop():
         component.set_output_types(self, a=int, b=int)
 
     FakeComponent = component_class("FakeComponent", output={"a": 1, "b": 1}, extra_fields={"__init__": custom_init})
-    pipe = Pipeline(max_loops_allowed=1)
+    pipe = Pipeline(max_runs_per_component=1)
     pipe.add_component("first", FakeComponent())
     pipe.add_component("second", FakeComponent())
     pipe.connect("first.a", "second.x")
@@ -83,7 +83,7 @@ def pipeline_that_has_an_infinite_loop():
 
 @given("a pipeline that is really complex with lots of components, forks, and loops", target_fixture="pipeline_data")
 def pipeline_complex():
-    pipeline = Pipeline(max_loops_allowed=2)
+    pipeline = Pipeline(max_runs_per_component=2)
     pipeline.add_component("greet_first", Greet(message="Hello, the value is {value}."))
     pipeline.add_component("accumulate_1", Accumulate())
     pipeline.add_component("add_two", AddFixedValue(add=2))
@@ -183,7 +183,7 @@ def pipeline_that_has_a_single_component_with_a_default_input():
         def run(self, a: int, b: int = 2):
             return {"c": a + b}
 
-    pipeline = Pipeline()
+    pipeline = Pipeline(max_runs_per_component=1)
     pipeline.add_component("with_defaults", WithDefault())
 
     return (
@@ -205,7 +205,7 @@ def pipeline_that_has_a_single_component_with_a_default_input():
 
 @given("a pipeline that has two loops of identical lengths", target_fixture="pipeline_data")
 def pipeline_that_has_two_loops_of_identical_lengths():
-    pipeline = Pipeline(max_loops_allowed=10)
+    pipeline = Pipeline(max_runs_per_component=10)
     pipeline.add_component("branch_joiner", BranchJoiner(type_=int))
     pipeline.add_component("remainder", Remainder(divisor=3))
     pipeline.add_component("add_one", AddFixedValue(add=1))
@@ -250,7 +250,7 @@ def pipeline_that_has_two_loops_of_identical_lengths():
 
 @given("a pipeline that has two loops of different lengths", target_fixture="pipeline_data")
 def pipeline_that_has_two_loops_of_different_lengths():
-    pipeline = Pipeline(max_loops_allowed=10)
+    pipeline = Pipeline(max_runs_per_component=10)
     pipeline.add_component("branch_joiner", BranchJoiner(type_=int))
     pipeline.add_component("remainder", Remainder(divisor=3))
     pipeline.add_component("add_one", AddFixedValue(add=1))
@@ -306,7 +306,7 @@ def pipeline_that_has_two_loops_of_different_lengths():
 @given("a pipeline that has a single loop with two conditional branches", target_fixture="pipeline_data")
 def pipeline_that_has_a_single_loop_with_two_conditional_branches():
     accumulator = Accumulate()
-    pipeline = Pipeline(max_loops_allowed=10)
+    pipeline = Pipeline(max_runs_per_component=10)
 
     pipeline.add_component("add_one", AddFixedValue(add=1))
     pipeline.add_component("branch_joiner", BranchJoiner(type_=int))
@@ -353,7 +353,7 @@ def pipeline_that_has_a_single_loop_with_two_conditional_branches():
 
 @given("a pipeline that has a component with dynamic inputs defined in init", target_fixture="pipeline_data")
 def pipeline_that_has_a_component_with_dynamic_inputs_defined_in_init():
-    pipeline = Pipeline()
+    pipeline = Pipeline(max_runs_per_component=1)
     pipeline.add_component("hello", Hello())
     pipeline.add_component("fstring", FString(template="This is the greeting: {greeting}!", variables=["greeting"]))
     pipeline.add_component("splitter", TextSplitter())
@@ -379,7 +379,7 @@ def pipeline_that_has_a_component_with_dynamic_inputs_defined_in_init():
 
 @given("a pipeline that has two branches that don't merge", target_fixture="pipeline_data")
 def pipeline_that_has_two_branches_that_dont_merge():
-    pipeline = Pipeline()
+    pipeline = Pipeline(max_runs_per_component=1)
     pipeline.add_component("add_one", AddFixedValue(add=1))
     pipeline.add_component("parity", Parity())
     pipeline.add_component("add_ten", AddFixedValue(add=10))
@@ -410,7 +410,7 @@ def pipeline_that_has_two_branches_that_dont_merge():
 
 @given("a pipeline that has three branches that don't merge", target_fixture="pipeline_data")
 def pipeline_that_has_three_branches_that_dont_merge():
-    pipeline = Pipeline()
+    pipeline = Pipeline(max_runs_per_component=1)
     pipeline.add_component("add_one", AddFixedValue(add=1))
     pipeline.add_component("repeat", Repeat(outputs=["first", "second"]))
     pipeline.add_component("add_ten", AddFixedValue(add=10))
@@ -438,7 +438,7 @@ def pipeline_that_has_three_branches_that_dont_merge():
 
 @given("a pipeline that has two branches that merge", target_fixture="pipeline_data")
 def pipeline_that_has_two_branches_that_merge():
-    pipeline = Pipeline()
+    pipeline = Pipeline(max_runs_per_component=1)
     pipeline.add_component("first_addition", AddFixedValue(add=2))
     pipeline.add_component("second_addition", AddFixedValue(add=2))
     pipeline.add_component("third_addition", AddFixedValue(add=2))
@@ -465,7 +465,7 @@ def pipeline_that_has_two_branches_that_merge():
     "a pipeline that has different combinations of branches that merge and do not merge", target_fixture="pipeline_data"
 )
 def pipeline_that_has_different_combinations_of_branches_that_merge_and_do_not_merge():
-    pipeline = Pipeline()
+    pipeline = Pipeline(max_runs_per_component=1)
     pipeline.add_component("add_one", AddFixedValue())
     pipeline.add_component("parity", Parity())
     pipeline.add_component("add_ten", AddFixedValue(add=10))
@@ -503,7 +503,7 @@ def pipeline_that_has_different_combinations_of_branches_that_merge_and_do_not_m
 
 @given("a pipeline that has two branches, one of which loops back", target_fixture="pipeline_data")
 def pipeline_that_has_two_branches_one_of_which_loops_back():
-    pipeline = Pipeline(max_loops_allowed=10)
+    pipeline = Pipeline(max_runs_per_component=10)
     pipeline.add_component("add_zero", AddFixedValue(add=0))
     pipeline.add_component("branch_joiner", BranchJoiner(type_=int))
     pipeline.add_component("sum", Sum())
@@ -555,7 +555,7 @@ def pipeline_that_has_a_component_with_mutable_input():
             input_list.append("extra_item")
             return {"mangled_list": input_list}
 
-    pipe = Pipeline()
+    pipe = Pipeline(max_runs_per_component=1)
     pipe.add_component("mangler1", InputMangler())
     pipe.add_component("mangler2", InputMangler())
     pipe.add_component("concat1", StringListJoiner())
@@ -607,7 +607,7 @@ def pipeline_that_has_a_component_with_mutable_output_sent_to_multiple_inputs():
     mm1 = MessageMerger()
     mm2 = MessageMerger()
 
-    pipe = Pipeline()
+    pipe = Pipeline(max_runs_per_component=1)
     pipe.add_component("prompt_builder", prompt_builder)
     pipe.add_component("llm", llm)
     pipe.add_component("mm1", mm1)
@@ -663,7 +663,7 @@ def pipeline_that_has_a_greedy_and_variadic_component_after_a_component_with_def
     document_store = InMemoryDocumentStore()
     document_store.write_documents([Document(content="This is a simple document")])
 
-    pipeline = Pipeline()
+    pipeline = Pipeline(max_runs_per_component=1)
     template = "Given this documents: {{ documents|join(', ', attribute='content') }} Answer this question: {{ query }}"
     pipeline.add_component("retriever", InMemoryBM25Retriever(document_store=document_store))
     pipeline.add_component("prompt_builder", PromptBuilder(template=template))
@@ -704,7 +704,7 @@ def pipeline_that_has_a_component_that_doesnt_return_a_dictionary():
         output=1,  # type:ignore
     )
 
-    pipe = Pipeline(max_loops_allowed=10)
+    pipe = Pipeline(max_runs_per_component=10)
     pipe.add_component("comp", BrokenComponent())
     return pipe, [PipelineRunData({"comp": {"a": 1}})]
 
@@ -734,7 +734,7 @@ def pipeline_that_has_components_added_in_a_different_order_from_the_order_of_ex
         "Question: {{ query }}"
     )
 
-    pipe = Pipeline()
+    pipe = Pipeline(max_runs_per_component=1)
 
     # The order of this addition is important for the test
     # Do not edit them.
@@ -791,7 +791,7 @@ def pipeline_that_has_a_component_with_only_default_inputs():
         "Question: {{ query }}"
     )
 
-    pipe = Pipeline()
+    pipe = Pipeline(max_runs_per_component=1)
 
     pipe.add_component("retriever", InMemoryBM25Retriever(document_store=doc_store))
     pipe.add_component("prompt_builder", PromptBuilder(template=template))
@@ -848,7 +848,7 @@ def pipeline_that_has_a_component_with_only_default_inputs_as_first_to_run():
     - The second Component has at least one default input
     """
 
-    def fake_generator_run(self, prompt: str, generation_kwargs: Optional[Dict[str, Any]] = None):
+    def fake_generator_run(self, generation_kwargs: Optional[Dict[str, Any]] = None, **kwargs):
         # Simple hack to simulate a model returning a different reply after the
         # the first time it's called
         if getattr(fake_generator_run, "called", False):
@@ -858,7 +858,7 @@ def pipeline_that_has_a_component_with_only_default_inputs_as_first_to_run():
 
     FakeGenerator = component_class(
         "FakeGenerator",
-        input_types={"prompt": str, "generation_kwargs": Optional[Dict[str, Any]]},
+        input_types={"prompt": str},
         output_types={"replies": List[str]},
         extra_fields={"run": fake_generator_run},
     )
@@ -889,7 +889,7 @@ def pipeline_that_has_a_component_with_only_default_inputs_as_first_to_run():
         ]
     )
 
-    pipe = Pipeline()
+    pipe = Pipeline(max_runs_per_component=1)
 
     pipe.add_component("prompt_builder", PromptBuilder(template=template))
     pipe.add_component("generator", FakeGenerator())
@@ -912,63 +912,11 @@ def pipeline_that_has_a_component_with_only_default_inputs_as_first_to_run():
 
 
 @given(
-    "a pipeline that has only a single component that sends one of its outputs to itself",
-    target_fixture="pipeline_data",
-)
-def pipeline_that_has_a_single_component_that_send_one_of_outputs_to_itself():
-    pipeline = Pipeline(max_loops_allowed=10)
-    pipeline.add_component("self_loop", SelfLoop())
-    pipeline.connect("self_loop.current_value", "self_loop.values")
-
-    return (
-        pipeline,
-        [
-            PipelineRunData(
-                inputs={"self_loop": {"values": 5}},
-                expected_outputs={"self_loop": {"final_result": 0}},
-                expected_run_order=["self_loop", "self_loop", "self_loop", "self_loop", "self_loop"],
-            )
-        ],
-    )
-
-
-@given("a pipeline that has a component that sends one of its outputs to itself", target_fixture="pipeline_data")
-def pipeline_that_has_a_component_that_sends_one_of_its_outputs_to_itself():
-    pipeline = Pipeline(max_loops_allowed=10)
-    pipeline.add_component("add_1", AddFixedValue())
-    pipeline.add_component("self_loop", SelfLoop())
-    pipeline.add_component("add_2", AddFixedValue())
-    pipeline.connect("add_1", "self_loop.values")
-    pipeline.connect("self_loop.current_value", "self_loop.values")
-    pipeline.connect("self_loop.final_result", "add_2.value")
-
-    return (
-        pipeline,
-        [
-            PipelineRunData(
-                inputs={"add_1": {"value": 5}},
-                expected_outputs={"add_2": {"result": 1}},
-                expected_run_order=[
-                    "add_1",
-                    "self_loop",
-                    "self_loop",
-                    "self_loop",
-                    "self_loop",
-                    "self_loop",
-                    "self_loop",
-                    "add_2",
-                ],
-            )
-        ],
-    )
-
-
-@given(
     "a pipeline that has multiple branches that merge into a component with a single variadic input",
     target_fixture="pipeline_data",
 )
 def pipeline_that_has_multiple_branches_that_merge_into_a_component_with_a_single_variadic_input():
-    pipeline = Pipeline()
+    pipeline = Pipeline(max_runs_per_component=1)
     pipeline.add_component("add_one", AddFixedValue())
     pipeline.add_component("parity", Remainder(divisor=2))
     pipeline.add_component("add_ten", AddFixedValue(add=10))
@@ -1009,7 +957,7 @@ def pipeline_that_has_multiple_branches_that_merge_into_a_component_with_a_singl
     target_fixture="pipeline_data",
 )
 def pipeline_that_has_multiple_branches_of_different_lengths_that_merge_into_a_component_with_a_single_variadic_input():
-    pipeline = Pipeline()
+    pipeline = Pipeline(max_runs_per_component=1)
     pipeline.add_component("first_addition", AddFixedValue(add=2))
     pipeline.add_component("second_addition", AddFixedValue(add=2))
     pipeline.add_component("third_addition", AddFixedValue(add=2))
@@ -1036,7 +984,7 @@ def pipeline_that_has_multiple_branches_of_different_lengths_that_merge_into_a_c
 
 @given("a pipeline that is linear and returns intermediate outputs", target_fixture="pipeline_data")
 def pipeline_that_is_linear_and_returns_intermediate_outputs():
-    pipeline = Pipeline()
+    pipeline = Pipeline(max_runs_per_component=1)
     pipeline.add_component("first_addition", AddFixedValue(add=2))
     pipeline.add_component("second_addition", AddFixedValue())
     pipeline.add_component("double", Double())
@@ -1068,7 +1016,7 @@ def pipeline_that_is_linear_and_returns_intermediate_outputs():
 
 @given("a pipeline that has a loop and returns intermediate outputs from it", target_fixture="pipeline_data")
 def pipeline_that_has_a_loop_and_returns_intermediate_outputs_from_it():
-    pipeline = Pipeline(max_loops_allowed=10)
+    pipeline = Pipeline(max_runs_per_component=10)
     pipeline.add_component("add_one", AddFixedValue(add=1))
     pipeline.add_component("branch_joiner", BranchJoiner(type_=int))
     pipeline.add_component("below_10", Threshold(threshold=10))
@@ -1143,7 +1091,7 @@ def pipeline_that_is_linear_and_returns_intermediate_outputs_from_multiple_socke
         def run(self, value: int):
             return {"value": value * 2, "original": value}
 
-    pipeline = Pipeline()
+    pipeline = Pipeline(max_runs_per_component=1)
     pipeline.add_component("first_addition", AddFixedValue(add=2))
     pipeline.add_component("second_addition", AddFixedValue())
     pipeline.add_component("double", DoubleWithOriginal())
@@ -1184,7 +1132,7 @@ def pipeline_that_has_a_component_with_default_inputs_that_doesnt_receive_anythi
     ]
     router = ConditionalRouter(routes)
 
-    pipeline = Pipeline()
+    pipeline = Pipeline(max_runs_per_component=1)
     pipeline.add_component("router", router)
     pipeline.add_component("pb", PromptBuilder(template="Ok, I know, that's {{language}}"))
     pipeline.connect("router.language_2", "pb.language")
@@ -1260,7 +1208,7 @@ def pipeline_that_has_a_component_with_default_inputs_that_doesnt_receive_anythi
     )
     fallback_llm = FakeGenerator()
 
-    pipeline = Pipeline()
+    pipeline = Pipeline(max_runs_per_component=1)
     pipeline.add_component("prompt", prompt)
     pipeline.add_component("llm", llm)
     pipeline.add_component("router", router)
@@ -1353,7 +1301,7 @@ def pipeline_that_has_a_loop_and_a_component_with_default_inputs_that_doesnt_rec
     llm = FakeGenerator()
     validator = FakeOutputValidator()
 
-    pipeline = Pipeline()
+    pipeline = Pipeline(max_runs_per_component=1)
     pipeline.add_component("prompt_builder", prompt_builder)
 
     pipeline.add_component("llm", llm)
@@ -1450,7 +1398,7 @@ def pipeline_that_has_multiple_components_with_only_default_inputs_and_are_added
         def run(self, prompt: str, generation_kwargs: Optional[Dict[str, Any]] = None):
             return {"replies": ["This is a reply"], "meta": {"meta_key": "meta_value"}}
 
-    pipeline = Pipeline()
+    pipeline = Pipeline(max_runs_per_component=1)
     pipeline.add_component(name="retriever", instance=FakeRetriever())
     pipeline.add_component(name="ranker", instance=FakeRanker())
     pipeline.add_component(name="prompt_builder2", instance=prompt_builder2)
@@ -1577,5 +1525,105 @@ def that_is_linear_with_conditional_branching_and_multiple_joins():
                 expected_outputs={"joinerfinal": {"documents": []}},
                 expected_run_order=["router", "emptyretriever", "joinerfinal"],
             ),
+        ],
+    )
+
+
+@given("a pipeline that has a variadic component that receives partial inputs", target_fixture="pipeline_data")
+def that_has_a_variadic_component_that_receives_partial_inputs():
+    @component
+    class ConditionalDocumentCreator:
+        def __init__(self, content: str):
+            self._content = content
+
+        @component.output_types(documents=List[Document], noop=None)
+        def run(self, create_document: bool = False):
+            if create_document:
+                return {"documents": [Document(id=self._content, content=self._content)]}
+            return {"noop": None}
+
+    pipeline = Pipeline(max_runs_per_component=1)
+    pipeline.add_component("first_creator", ConditionalDocumentCreator(content="First document"))
+    pipeline.add_component("second_creator", ConditionalDocumentCreator(content="Second document"))
+    pipeline.add_component("third_creator", ConditionalDocumentCreator(content="Third document"))
+    pipeline.add_component("documents_joiner", DocumentJoiner())
+
+    pipeline.connect("first_creator.documents", "documents_joiner.documents")
+    pipeline.connect("second_creator.documents", "documents_joiner.documents")
+    pipeline.connect("third_creator.documents", "documents_joiner.documents")
+
+    return (
+        pipeline,
+        [
+            PipelineRunData(
+                inputs={"first_creator": {"create_document": True}, "third_creator": {"create_document": True}},
+                expected_outputs={
+                    "second_creator": {"noop": None},
+                    "documents_joiner": {
+                        "documents": [
+                            Document(id="First document", content="First document"),
+                            Document(id="Third document", content="Third document"),
+                        ]
+                    },
+                },
+                expected_run_order=["first_creator", "third_creator", "second_creator", "documents_joiner"],
+            ),
+            PipelineRunData(
+                inputs={"first_creator": {"create_document": True}, "second_creator": {"create_document": True}},
+                expected_outputs={
+                    "third_creator": {"noop": None},
+                    "documents_joiner": {
+                        "documents": [
+                            Document(id="First document", content="First document"),
+                            Document(id="Second document", content="Second document"),
+                        ]
+                    },
+                },
+                expected_run_order=["first_creator", "second_creator", "third_creator", "documents_joiner"],
+            ),
+        ],
+    )
+
+
+@given("a pipeline that has an answer joiner variadic component", target_fixture="pipeline_data")
+def that_has_an_answer_joiner_variadic_component():
+    query = "What's Natural Language Processing?"
+
+    pipeline = Pipeline(max_runs_per_component=1)
+    pipeline.add_component("answer_builder_1", AnswerBuilder())
+    pipeline.add_component("answer_builder_2", AnswerBuilder())
+    pipeline.add_component("answer_joiner", AnswerJoiner())
+
+    pipeline.connect("answer_builder_1.answers", "answer_joiner")
+    pipeline.connect("answer_builder_2.answers", "answer_joiner")
+
+    return (
+        pipeline,
+        [
+            PipelineRunData(
+                inputs={
+                    "answer_builder_1": {"query": query, "replies": ["This is a test answer"]},
+                    "answer_builder_2": {"query": query, "replies": ["This is a second test answer"]},
+                },
+                expected_outputs={
+                    "answer_joiner": {
+                        "answers": [
+                            GeneratedAnswer(
+                                data="This is a test answer",
+                                query="What's Natural Language Processing?",
+                                documents=[],
+                                meta={},
+                            ),
+                            GeneratedAnswer(
+                                data="This is a second test answer",
+                                query="What's Natural Language Processing?",
+                                documents=[],
+                                meta={},
+                            ),
+                        ]
+                    }
+                },
+                expected_run_order=["answer_builder_1", "answer_builder_2", "answer_joiner"],
+            )
         ],
     )

@@ -1,0 +1,16 @@
+---
+enhancements:
+  - |
+    Allow the ability to add the current date inside a template in `PromptBuilder` using the following syntax:
+    
+    - `{% now 'UTC' %}`: Get the current date for the UTC timezone.
+        
+    - `{% now 'America/Chicago' + 'hours=2' %}`: Add two hours to the current date in the Chicago timezone.
+        
+    - `{% now 'Europe/Berlin' - 'weeks=2' %}`: Subtract two weeks from the current date in the Berlin timezone.
+        
+    - `{% now 'Pacific/Fiji' + 'hours=2', '%H' %}`: Display only the number of hours after adding two hours to the Fiji timezone.
+        
+    - `{% now 'Etc/GMT-4', '%I:%M %p' %}`: Change the date format to AM/PM for the GMT-4 timezone.
+    
+    Note that if no date format is provided, the default will be `%Y-%m-%d %H:%M:%S`. Please refer to [list of tz database](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) for a list of timezones.

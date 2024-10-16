@@ -1,0 +1,22 @@
+---
+features:
+  - |
+    Added a new parameter `additional_mimetypes` to the FileTypeRouter
+    component.
+
+    This allows users to specify additional MIME type mappings, ensuring
+    correct
+
+    file classification across different runtime environments and Python
+    versions.
+enhancements:
+  - |
+    Improved file type detection in FileTypeRouter, particularly for Microsoft
+    Office file formats like .docx and .pptx. This enhancement ensures more
+    consistent behavior across different environments, including AWS Lambda
+    functions and systems without pre-installed office suites.
+fixes:
+  - |
+    Addressed an issue where certain file types (e.g., .docx, .pptx) were
+    incorrectly classified as 'unclassified' in environments with limited
+    MIME type definitions, such as AWS Lambda functions.

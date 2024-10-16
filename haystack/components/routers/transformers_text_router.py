@@ -42,11 +42,11 @@ class TransformersTextRouter:
         name="text_router"
     )
     p.add_component(
-        instance=PromptBuilder(template="Answer the question: {{query}}\nAnswer:"),
+        instance=PromptBuilder(template="Answer the question: {{query}}\\nAnswer:"),
         name="english_prompt_builder"
     )
     p.add_component(
-        instance=PromptBuilder(template="Beantworte die Frage: {{query}}\nAntwort:"),
+        instance=PromptBuilder(template="Beantworte die Frage: {{query}}\\nAntwort:"),
         name="german_prompt_builder"
     )
 
@@ -179,8 +179,7 @@ class TransformersTextRouter:
             deserialize_hf_model_kwargs(data["init_parameters"]["huggingface_pipeline_kwargs"])
         return default_from_dict(cls, data)
 
-    @component.output_types(documents=Dict[str, str])
-    def run(self, text: str):
+    def run(self, text: str) -> Dict[str, str]:
         """
         Routes the text strings to different connections based on a category label.
 

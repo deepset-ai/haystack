@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fix `Pipeline` not running Components with Variadic input even if it received inputs only from a subset of its senders

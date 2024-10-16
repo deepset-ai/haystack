@@ -1,0 +1,6 @@
+---
+upgrade:
+  - |
+    Removed `Pipeline` init argument `max_loops_allowed`. Use `max_runs_per_component` instead.
+  - |
+    Removed `PipelineMaxLoops` exception. Use `PipelineMaxComponentRuns` instead.

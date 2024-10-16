@@ -4,16 +4,18 @@ loaders:
     modules:
       [
         "azure",
+        "csv",
+        "docx",
         "html",
+        "json",
         "markdown",
+        "openapi_functions",
+        "output_adapter",
         "pdfminer",
-        "pypdf",
         "pptx",
+        "pypdf",
         "tika",
         "txt",
-        "output_adapter",
-        "openapi_functions",
-        "docx"
       ]
     ignore_when_discovered: ["__init__"]
 processors:

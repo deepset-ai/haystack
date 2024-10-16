@@ -11,7 +11,7 @@ from haystack import Document
 from haystack.components.builders import PromptBuilder, AnswerBuilder
 from haystack.components.joiners import BranchJoiner
 from haystack.core.component import component
-from haystack.core.component.types import InputSocket, OutputSocket, Variadic
+from haystack.core.component.types import InputSocket, OutputSocket, Variadic, GreedyVariadic
 from haystack.core.errors import DeserializationError, PipelineConnectError, PipelineDrawingError, PipelineError
 from haystack.core.pipeline import Pipeline, PredefinedPipeline
 from haystack.core.pipeline.base import (
@@ -20,6 +20,7 @@ from haystack.core.pipeline.base import (
     _dequeue_component,
     _enqueue_waiting_component,
     _dequeue_waiting_component,
+    _is_lazy_variadic,
 )
 from haystack.core.serialization import DeserializationCallbacks
 from haystack.testing.factory import component_class
@@ -56,21 +57,13 @@ class TestPipeline:
     """
 
     def test_pipeline_dumps(self, test_files_path):
-        pipeline = Pipeline()
+        pipeline = Pipeline(max_runs_per_component=99)
         pipeline.add_component("Comp1", FakeComponent("Foo"))
         pipeline.add_component("Comp2", FakeComponent())
         pipeline.connect("Comp1.value", "Comp2.input_")
-        pipeline.max_loops_allowed = 99
         result = pipeline.dumps()
         with open(f"{test_files_path}/yaml/test_pipeline.yaml", "r") as f:
             assert f.read() == result
-
-    def test_pipeline_loads(self, test_files_path):
-        with open(f"{test_files_path}/yaml/test_pipeline.yaml", "r") as f:
-            pipeline = Pipeline.loads(f.read())
-            assert pipeline.max_loops_allowed == 99
-            assert isinstance(pipeline.get_component("Comp1"), FakeComponent)
-            assert isinstance(pipeline.get_component("Comp2"), FakeComponent)
 
     def test_pipeline_loads_invalid_data(self):
         invalid_yaml = """components:
@@ -85,7 +78,6 @@ class TestPipeline:
         connections:
         * receiver: Comp2.input_
         sender: Comp1.value
-        max_loops_allowed: 99
         metadata:
         """
 
@@ -104,7 +96,6 @@ class TestPipeline:
         connections:
         - receiver: Comp2.input_
         sender: Comp1.value
-        max_loops_allowed: 99
         metadata: {}
         """
 
@@ -112,11 +103,10 @@ class TestPipeline:
             pipeline = Pipeline.loads(invalid_init_parameter_yaml)
 
     def test_pipeline_dump(self, test_files_path, tmp_path):
-        pipeline = Pipeline()
+        pipeline = Pipeline(max_runs_per_component=99)
         pipeline.add_component("Comp1", FakeComponent("Foo"))
         pipeline.add_component("Comp2", FakeComponent())
         pipeline.connect("Comp1.value", "Comp2.input_")
-        pipeline.max_loops_allowed = 99
         with open(tmp_path / "out.yaml", "w") as f:
             pipeline.dump(f)
         # re-open and ensure it's the same data as the test file
@@ -126,7 +116,7 @@ class TestPipeline:
     def test_pipeline_load(self, test_files_path):
         with open(f"{test_files_path}/yaml/test_pipeline.yaml", "r") as f:
             pipeline = Pipeline.load(f)
-            assert pipeline.max_loops_allowed == 99
+            assert pipeline._max_runs_per_component == 99
             assert isinstance(pipeline.get_component("Comp1"), FakeComponent)
             assert isinstance(pipeline.get_component("Comp2"), FakeComponent)
 
@@ -259,7 +249,7 @@ class TestPipeline:
 
     # UNIT
     def test_repr(self):
-        pipe = Pipeline(metadata={"test": "test"}, max_loops_allowed=42)
+        pipe = Pipeline(metadata={"test": "test"})
         pipe.add_component("add_two", AddFixedValue(add=2))
         pipe.add_component("add_default", AddFixedValue())
         pipe.add_component("double", Double())
@@ -286,7 +276,7 @@ class TestPipeline:
         add_two = AddFixedValue(add=2)
         add_default = AddFixedValue()
         double = Double()
-        pipe = Pipeline(metadata={"test": "test"}, max_loops_allowed=42)
+        pipe = Pipeline(metadata={"test": "test"}, max_runs_per_component=42)
         pipe.add_component("add_two", add_two)
         pipe.add_component("add_default", add_default)
         pipe.add_component("double", double)
@@ -296,7 +286,7 @@ class TestPipeline:
         res = pipe.to_dict()
         expected = {
             "metadata": {"test": "test"},
-            "max_loops_allowed": 42,
+            "max_runs_per_component": 42,
             "components": {
                 "add_two": {
                     "type": "haystack.testing.sample_components.add_value.AddFixedValue",
@@ -315,11 +305,10 @@ class TestPipeline:
         }
         assert res == expected
 
-    # UNIT
     def test_from_dict(self):
         data = {
             "metadata": {"test": "test"},
-            "max_loops_allowed": 101,
+            "max_runs_per_component": 101,
             "components": {
                 "add_two": {
                     "type": "haystack.testing.sample_components.add_value.AddFixedValue",
@@ -339,7 +328,7 @@ class TestPipeline:
         pipe = Pipeline.from_dict(data)
 
         assert pipe.metadata == {"test": "test"}
-        assert pipe.max_loops_allowed == 101
+        assert pipe._max_runs_per_component == 101
 
         # Components
         assert len(pipe.graph.nodes) == 3
@@ -399,7 +388,6 @@ class TestPipeline:
     def test_from_dict_with_callbacks(self):
         data = {
             "metadata": {"test": "test"},
-            "max_loops_allowed": 101,
             "components": {
                 "add_two": {
                     "type": "haystack.testing.sample_components.add_value.AddFixedValue",
@@ -495,7 +483,6 @@ class TestPipeline:
         components = {"add_two": add_two, "add_default": add_default}
         data = {
             "metadata": {"test": "test"},
-            "max_loops_allowed": 100,
             "components": {
                 "add_two": {},
                 "add_default": {},
@@ -508,7 +495,6 @@ class TestPipeline:
         }
         pipe = Pipeline.from_dict(data, components=components)
         assert pipe.metadata == {"test": "test"}
-        assert pipe.max_loops_allowed == 100
 
         # Components
         assert len(pipe.graph.nodes) == 3
@@ -569,7 +555,6 @@ class TestPipeline:
     def test_from_dict_without_component_type(self):
         data = {
             "metadata": {"test": "test"},
-            "max_loops_allowed": 100,
             "components": {"add_two": {"init_parameters": {"add": 2}}},
             "connections": [],
         }
@@ -582,7 +567,6 @@ class TestPipeline:
     def test_from_dict_without_registered_component_type(self, request):
         data = {
             "metadata": {"test": "test"},
-            "max_loops_allowed": 100,
             "components": {"add_two": {"type": "foo.bar.baz", "init_parameters": {"add": 2}}},
             "connections": [],
         }
@@ -593,12 +577,7 @@ class TestPipeline:
 
     # UNIT
     def test_from_dict_without_connection_sender(self):
-        data = {
-            "metadata": {"test": "test"},
-            "max_loops_allowed": 100,
-            "components": {},
-            "connections": [{"receiver": "some.receiver"}],
-        }
+        data = {"metadata": {"test": "test"}, "components": {}, "connections": [{"receiver": "some.receiver"}]}
         with pytest.raises(PipelineError) as err:
             Pipeline.from_dict(data)
 
@@ -606,12 +585,7 @@ class TestPipeline:
 
     # UNIT
     def test_from_dict_without_connection_receiver(self):
-        data = {
-            "metadata": {"test": "test"},
-            "max_loops_allowed": 100,
-            "components": {},
-            "connections": [{"sender": "some.sender"}],
-        }
+        data = {"metadata": {"test": "test"}, "components": {}, "connections": [{"sender": "some.sender"}]}
         with pytest.raises(PipelineError) as err:
             Pipeline.from_dict(data)
 
@@ -777,8 +751,8 @@ class TestPipeline:
 
     def test_walk_pipeline_with_cycles(self):
         """
-        This pipeline consists of one component, which would run three times in a loop.
-        pipeline.walk() should return this component exactly once. The order is not guaranteed.
+        This pipeline consists of two components, which would run three times in a loop.
+        pipeline.walk() should return these components exactly once. The order is not guaranteed.
         """
 
         @component
@@ -798,9 +772,12 @@ class TestPipeline:
 
         pipeline = Pipeline()
         hello = Hello()
+        hello_again = Hello()
         pipeline.add_component("hello", hello)
-        pipeline.connect("hello.intermediate", "hello.intermediate")
-        assert [("hello", hello)] == list(pipeline.walk())
+        pipeline.add_component("hello_again", hello_again)
+        pipeline.connect("hello.intermediate", "hello_again.intermediate")
+        pipeline.connect("hello_again.intermediate", "hello.intermediate")
+        assert {("hello", hello), ("hello_again", hello_again)} == set(pipeline.walk())
 
     def test__init_graph(self):
         pipe = Pipeline()
@@ -1076,6 +1053,17 @@ class TestPipeline:
         assert comp3.__haystack_input__.value.senders == ["comp1", "comp2"]
         assert list(pipe.graph.edges) == [("comp1", "comp3", "value/value"), ("comp2", "comp3", "value/value")]
 
+    def test_connect_same_component_as_sender_and_receiver(self):
+        """
+        This pipeline consists of one component, which would be connected to itself.
+        Connecting a component to itself is raises PipelineConnectError.
+        """
+        pipe = Pipeline()
+        single_component = FakeComponent()
+        pipe.add_component("single_component", single_component)
+        with pytest.raises(PipelineConnectError):
+            pipe.connect("single_component.out", "single_component.in")
+
     def test__run_component(self, spying_tracer, caplog):
         caplog.set_level(logging.INFO)
         sentence_builder = component_class(
@@ -1138,24 +1126,43 @@ class TestPipeline:
 
     def test__find_components_that_will_receive_no_input(self):
         sentence_builder = component_class(
-            "SentenceBuilder", input_types={"words": List[str]}, output={"text": "some words"}
+            "SentenceBuilder", input_types={"words": List[str]}, output_types={"text": str}
         )()
         document_builder = component_class(
-            "DocumentBuilder", input_types={"text": str}, output={"doc": Document(content="some words")}
+            "DocumentBuilder", input_types={"text": str}, output_types={"doc": Document}
         )()
+        conditional_document_builder = component_class(
+            "ConditionalDocumentBuilder", output_types={"doc": Document, "noop": None}
+        )()
+
         document_joiner = component_class("DocumentJoiner", input_types={"docs": Variadic[Document]})()
 
         pipe = Pipeline()
         pipe.add_component("sentence_builder", sentence_builder)
         pipe.add_component("document_builder", document_builder)
         pipe.add_component("document_joiner", document_joiner)
+        pipe.add_component("conditional_document_builder", conditional_document_builder)
         pipe.connect("sentence_builder.text", "document_builder.text")
         pipe.connect("document_builder.doc", "document_joiner.docs")
+        pipe.connect("conditional_document_builder.doc", "document_joiner.docs")
 
-        res = pipe._find_components_that_will_receive_no_input("sentence_builder", {})
+        res = pipe._find_components_that_will_receive_no_input("sentence_builder", {}, {})
         assert res == {("document_builder", document_builder), ("document_joiner", document_joiner)}
 
-        res = pipe._find_components_that_will_receive_no_input("sentence_builder", {"text": "some text"})
+        res = pipe._find_components_that_will_receive_no_input("sentence_builder", {"text": "some text"}, {})
+        assert res == set()
+
+        res = pipe._find_components_that_will_receive_no_input("conditional_document_builder", {"noop": None}, {})
+        assert res == {("document_joiner", document_joiner)}
+
+        res = pipe._find_components_that_will_receive_no_input(
+            "conditional_document_builder", {"noop": None}, {"document_joiner": {"docs": []}}
+        )
+        assert res == {("document_joiner", document_joiner)}
+
+        res = pipe._find_components_that_will_receive_no_input(
+            "conditional_document_builder", {"noop": None}, {"document_joiner": {"docs": [Document("some text")]}}
+        )
         assert res == set()
 
     def test__distribute_output(self):
@@ -1501,3 +1508,19 @@ class TestPipeline:
         waiting_queue = [("document_builder", document_builder), ("document_joiner", document_joiner)]
         _dequeue_waiting_component(("document_builder", document_builder), waiting_queue)
         assert waiting_queue == [("document_joiner", document_joiner)]
+
+    def test__is_lazy_variadic(self):
+        VariadicAndGreedyVariadic = component_class(
+            "VariadicAndGreedyVariadic", input_types={"variadic": Variadic[int], "greedy_variadic": GreedyVariadic[int]}
+        )
+        NonVariadic = component_class("NonVariadic", input_types={"value": int})
+        VariadicNonGreedyVariadic = component_class(
+            "VariadicNonGreedyVariadic", input_types={"variadic": Variadic[int]}
+        )
+        NonVariadicAndGreedyVariadic = component_class(
+            "NonVariadicAndGreedyVariadic", input_types={"greedy_variadic": GreedyVariadic[int]}
+        )
+        assert not _is_lazy_variadic(VariadicAndGreedyVariadic())
+        assert not _is_lazy_variadic(NonVariadic())
+        assert _is_lazy_variadic(VariadicNonGreedyVariadic())
+        assert not _is_lazy_variadic(NonVariadicAndGreedyVariadic())

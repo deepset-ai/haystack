@@ -161,7 +161,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
         )
 
     @component.output_types(score=float, results=List[Dict[str, Any]])
-    def run(self, questions: List[str], contexts: List[List[str]]) -> Dict[str, Any]:
+    def run(self, **inputs) -> Dict[str, Any]:
         """
         Run the LLM evaluator.
 
@@ -174,7 +174,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
                 - `score`: Mean context relevance score over all the provided input questions.
                 - `results`: A list of dictionaries with `relevant_statements` and `score` for each input context.
         """
-        result = super(ContextRelevanceEvaluator, self).run(questions=questions, contexts=contexts)
+        result = super(ContextRelevanceEvaluator, self).run(**inputs)
 
         for idx, res in enumerate(result["results"]):
             if res is None:

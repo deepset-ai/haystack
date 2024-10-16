@@ -50,7 +50,7 @@ def test_correct_declaration_with_async():
             return {"output_value": input_value}
 
         @component.output_types(output_value=int)
-        async def async_run(self, input_value: int):
+        async def run_async(self, input_value: int):
             return {"output_value": input_value}
 
     # Verifies also instantiation works with no issues
@@ -130,10 +130,10 @@ def test_async_run_not_async():
             return {"value": 1}
 
         @component.output_types(value=int)
-        def async_run(self, value: int):
+        def run_async(self, value: int):
             return {"value": 1}
 
-    with pytest.raises(ComponentError):
+    with pytest.raises(ComponentError, match=r"must be a coroutine"):
         comp = MockComponent()
 
 
@@ -145,47 +145,119 @@ def test_async_run_not_coroutine():
             return {"value": 1}
 
         @component.output_types(value=int)
-        async def async_run(self, value: int):
+        async def run_async(self, value: int):
             yield {"value": 1}
 
-    with pytest.raises(ComponentError):
+    with pytest.raises(ComponentError, match=r"must be a coroutine"):
         comp = MockComponent()
 
 
 def test_parameters_mismatch_run_and_async_run():
+    err_msg = r"Parameters of 'run' and 'run_async' methods must be the same"
+
     @component
-    class MockComponent:
+    class MockComponentMismatchingInputTypes:
         @component.output_types(value=int)
         def run(self, value: int):
             return {"value": 1}
 
-        async def async_run(self, value: str):
-            yield {"value": "1"}
+        @component.output_types(value=int)
+        async def run_async(self, value: str):
+            return {"value": "1"}
 
-    with pytest.raises(ComponentError):
-        comp = MockComponent()
+    with pytest.raises(ComponentError, match=err_msg):
+        comp = MockComponentMismatchingInputTypes()
+
+    @component
+    class MockComponentMismatchingInputs:
+        @component.output_types(value=int)
+        def run(self, value: int, **kwargs):
+            return {"value": 1}
+
+        @component.output_types(value=int)
+        async def run_async(self, value: int):
+            return {"value": "1"}
+
+    with pytest.raises(ComponentError, match=err_msg):
+        comp = MockComponentMismatchingInputs()
+
+    @component
+    class MockComponentMismatchingInputOrder:
+        @component.output_types(value=int)
+        def run(self, value: int, another: str):
+            return {"value": 1}
+
+        @component.output_types(value=int)
+        async def run_async(self, another: str, value: int):
+            return {"value": "1"}
+
+    with pytest.raises(ComponentError, match=err_msg):
+        comp = MockComponentMismatchingInputOrder()
 
 
 def test_set_input_types():
     @component
     class MockComponent:
-        def __init__(self):
+        def __init__(self, flag: bool):
             component.set_input_types(self, value=Any)
-
-        def to_dict(self):
-            return {}
-
-        @classmethod
-        def from_dict(cls, data):
-            return cls()
+            if flag:
+                component.set_input_type(self, name="another", type=str)
 
         @component.output_types(value=int)
         def run(self, **kwargs):
             return {"value": 1}
 
-    comp = MockComponent()
+    comp = MockComponent(False)
     assert comp.__haystack_input__._sockets_dict == {"value": InputSocket("value", Any)}
     assert comp.run() == {"value": 1}
+
+    comp = MockComponent(True)
+    assert comp.__haystack_input__._sockets_dict == {
+        "value": InputSocket("value", Any),
+        "another": InputSocket("another", str),
+    }
+    assert comp.run() == {"value": 1}
+
+
+def test_set_input_types_no_kwarg():
+    @component
+    class MockComponent:
+        def __init__(self, flag: bool):
+            if flag:
+                component.set_input_type(self, name="another", type=str)
+            else:
+                component.set_input_types(self, value=Any)
+
+        @component.output_types(value=int)
+        def run(self, fini: bool):
+            return {"value": 1}
+
+    with pytest.raises(ComponentError, match=r"doesn't have a kwargs parameter"):
+        comp = MockComponent(False)
+
+    with pytest.raises(ComponentError, match=r"doesn't have a kwargs parameter"):
+        comp = MockComponent(True)
+
+
+def test_set_input_types_overrides_run():
+    @component
+    class MockComponent:
+        def __init__(self, state: bool):
+            if state:
+                component.set_input_type(self, name="fini", type=str)
+            else:
+                component.set_input_types(self, fini=Any)
+
+        @component.output_types(value=int)
+        def run(self, fini: bool, **kwargs):
+            return {"value": 1}
+
+    err_msg = "cannot override the parameters of the 'run' method"
+    with pytest.raises(ComponentError, match=err_msg):
+        comp = MockComponent(False)
+
+    with pytest.raises(ComponentError, match=err_msg):
+        comp = MockComponent(True)
 
 
 def test_set_output_types():
@@ -243,6 +315,20 @@ def test_output_types_decorator_wrong_method():
                 return cls()
 
 
+def test_output_types_decorator_and_set_output_types():
+    @component
+    class MockComponent:
+        def __init__(self) -> None:
+            component.set_output_types(self, value=int)
+
+        @component.output_types(value=int)
+        def run(self, value: int):
+            return {"value": 1}
+
+    with pytest.raises(ComponentError, match="Cannot call `set_output_types`"):
+        comp = MockComponent()
+
+
 def test_output_types_decorator_mismatch_run_async_run():
     @component
     class MockComponent:
@@ -251,10 +337,10 @@ def test_output_types_decorator_mismatch_run_async_run():
             return {"value": 1}
 
         @component.output_types(value=str)
-        async def async_run(self, value: int):
+        async def run_async(self, value: int):
             return {"value": "1"}
 
-    with pytest.raises(ComponentError):
+    with pytest.raises(ComponentError, match=r"Output type specifications .* must be the same"):
         comp = MockComponent()
 
 
@@ -265,10 +351,10 @@ def test_output_types_decorator_missing_async_run():
         def run(self, value: int):
             return {"value": 1}
 
-        async def async_run(self, value: int):
+        async def run_async(self, value: int):
             return {"value": "1"}
 
-    with pytest.raises(ComponentError):
+    with pytest.raises(ComponentError, match=r"Output type specifications .* must be the same"):
         comp = MockComponent()
 
 
@@ -342,57 +428,6 @@ def test_repr_added_to_pipeline():
     comp = MockComponent()
     pipe.add_component("my_component", comp)
     assert repr(comp) == f"{object.__repr__(comp)}\nmy_component\nInputs:\n  - value: int\nOutputs:\n  - value: int"
-
-
-def test_is_greedy_default_with_variadic_input():
-    @component
-    class MockComponent:
-        @component.output_types(value=int)
-        def run(self, value: Variadic[int]):
-            return {"value": value}
-
-    assert not MockComponent.__haystack_is_greedy__
-    assert not MockComponent().__haystack_is_greedy__
-
-
-def test_is_greedy_default_without_variadic_input():
-    @component
-    class MockComponent:
-        @component.output_types(value=int)
-        def run(self, value: int):
-            return {"value": value}
-
-    assert not MockComponent.__haystack_is_greedy__
-    assert not MockComponent().__haystack_is_greedy__
-
-
-def test_is_greedy_flag_with_variadic_input():
-    @component(is_greedy=True)
-    class MockComponent:
-        @component.output_types(value=int)
-        def run(self, value: Variadic[int]):
-            return {"value": value}
-
-    assert MockComponent.__haystack_is_greedy__
-    assert MockComponent().__haystack_is_greedy__
-
-
-def test_is_greedy_flag_without_variadic_input(caplog):
-    caplog.set_level(logging.WARNING)
-
-    @component(is_greedy=True)
-    class MockComponent:
-        @component.output_types(value=int)
-        def run(self, value: int):
-            return {"value": value}
-
-    assert MockComponent.__haystack_is_greedy__
-    assert caplog.text == ""
-    assert MockComponent().__haystack_is_greedy__
-    assert (
-        "Component 'MockComponent' has no variadic input, but it's marked as greedy."
-        " This is not supported and can lead to unexpected behavior.\n" in caplog.text
-    )
 
 
 def test_pre_init_hooking():

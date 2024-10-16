@@ -27,8 +27,6 @@ Feature: Pipeline running
         | that has components added in a different order from the order of execution |
         | that has a component with only default inputs |
         | that has a component with only default inputs as first to run |
-        | that has only a single component that sends one of its outputs to itself |
-        | that has a component that sends one of its outputs to itself |
         | that has multiple branches that merge into a component with a single variadic input |
         | that has multiple branches of different lengths that merge into a component with a single variadic input |
         | that is linear and returns intermediate outputs |
@@ -39,6 +37,8 @@ Feature: Pipeline running
         | that has a loop and a component with default inputs that doesn't receive anything from its sender but receives input from user |
         | that has multiple components with only default inputs and are added in a different order from the order of execution |
         | that is linear with conditional branching and multiple joins |
+        | that has a variadic component that receives partial inputs |
+        | that has an answer joiner variadic component |
 
     Scenario Outline: Running a bad Pipeline
         Given a pipeline <kind>
@@ -47,5 +47,5 @@ Feature: Pipeline running
 
         Examples:
         | kind | exception |
-        | that has an infinite loop | PipelineMaxLoops |
+        | that has an infinite loop | PipelineMaxComponentRuns |
         | that has a component that doesn't return a dictionary | PipelineRuntimeError |

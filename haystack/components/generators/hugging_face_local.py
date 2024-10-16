@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 SUPPORTED_TASKS = ["text-generation", "text2text-generation"]
 
-with LazyImport(message="Run 'pip install transformers[torch]'") as transformers_import:
+with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transformers_import:
     from transformers import StoppingCriteriaList, pipeline
 
     from haystack.utils.hf import (  # pylint: disable=ungrouped-imports

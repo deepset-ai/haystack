@@ -191,8 +191,7 @@ class TransformersZeroShotTextRouter:
             deserialize_hf_model_kwargs(data["init_parameters"]["huggingface_pipeline_kwargs"])
         return default_from_dict(cls, data)
 
-    @component.output_types(documents=Dict[str, str])
-    def run(self, text: str):
+    def run(self, text: str) -> Dict[str, str]:
         """
         Routes the text strings to different connections based on a category label.
 

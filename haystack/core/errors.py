@@ -23,7 +23,7 @@ class PipelineDrawingError(PipelineError):
     pass
 
 
-class PipelineMaxLoops(PipelineError):
+class PipelineMaxComponentRuns(PipelineError):
     pass
 
 

@@ -1,8 +1,8 @@
 components:
   converter:
-    init_parameters:
-      extractor_type: DefaultExtractor
     type: haystack.components.converters.html.HTMLToDocument
+    init_parameters:
+      extraction_kwargs: null
 
   fetcher:
     init_parameters:
@@ -22,7 +22,7 @@ components:
         strict: true
         type: env_var
       generation_kwargs: {}
-      model: gpt-3.5-turbo
+      model: gpt-4o-mini
       streaming_callback: null
       system_prompt: null
     type: haystack.components.generators.openai.OpenAIGenerator

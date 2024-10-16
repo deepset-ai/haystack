@@ -197,6 +197,7 @@ class TestLLMEvaluator:
         component = LLMEvaluator(
             instructions="test-instruction",
             inputs=[("predicted_answers", List[str])],
+            api_key=Secret.from_env_var("OPENAI_API_KEY"),
             outputs=["score"],
             examples=[
                 {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
