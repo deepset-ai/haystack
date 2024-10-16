@@ -847,19 +847,20 @@ class PipelineBase:
         This also updates the queues that keep track of which Components are ready to run and which are waiting for
         input.
 
-        :param
-            receiver_components: List of tuples containing name of receiver Components and relative sender OutputSocket
+        :param receiver_components:
+            List of tuples containing name of receiver Components and relative sender OutputSocket
             and receiver InputSocket instances
-        :param
-            component_result: The output of the Component
-        :param
-            components_inputs: The current state of the inputs divided by Component name
-        :param
-            run_queue: Queue of Components to run
-        :param
-            waiting_queue: Queue of Components waiting for input
+        :param component_result:
+            The output of the Component
+        :param components_inputs:
+            The current state of the inputs divided by Component name
+        :param run_queue:
+            Queue of Components to run
+        :param waiting_queue:
+            Queue of Components waiting for input
 
-        :returns: The updated output of the Component without the keys that were distributed to other Components
+        :returns:
+            The updated output of the Component without the keys that were distributed to other Components
         """
         # We keep track of which keys to remove from component_result at the end of the loop.
         # This is done after the output has been distributed to the next components, so that
