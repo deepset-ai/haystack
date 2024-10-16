@@ -1121,32 +1121,50 @@ class PipelineBase:
         """
         Utility function to remove supported cycles in the Pipeline's graph.
 
-        The way the Pipeline execution works we can only break connections in cycles that
-        have a Variadic or GreedyVariadic type or a default value.
+        Given that the Pipeline execution would wait to run a Component until it has received
+        all its mandatory inputs, it doesn't make sense for us to try and break cycles by
+        removing a connection to a mandatory input. The Pipeline would just get stuck at a later time.
+
+        So we can only break connections in cycles that have a Variadic or GreedyVariadic type or a default value.
 
         This will raise a PipelineRuntimeError if we there are cycles that can't be broken.
-        That is bound to happen when all the inputs in a cycle are mandatory.
+        That is bound to happen when at least one of the inputs in a cycle is mandatory.
 
         If the Pipeline's graph doesn't have any cycle it will just return that graph and an empty dictionary.
 
-        :return:
+        :returns:
             A tuple containing:
                 * A copy of the Pipeline's graph without cycles
-                * A dictionary of Component's names and all the cycles they were part of
+                * A dictionary of Component's names and a list of all the cycles they were part of.
+                  The cycles are a list of Component's names that create that cycle.
         """
         if networkx.is_directed_acyclic_graph(self.graph):
             return self.graph, {}
 
         temp_graph: networkx.MultiDiGraph = self.graph.copy()
+        # A list of all the cycles that are found in the graph, each inner list contains
+        # the Component names that create that cycle.
         cycles: List[List[str]] = list(networkx.simple_cycles(self.graph))
+        # Maps a Component name to a list of its output socket names that have been broken
         edges_removed: Dict[str, List[str]] = defaultdict(list)
         # This keeps track of all the cycles that a component is part of.
+        # Maps a Component name to a list of cycles, each inner list contains
+        # the Component names that create that cycle.
         components_in_cycles: Dict[str, List[List[str]]] = defaultdict(list)
+
+        # Iterate all the cycles to find the least amount of connections that we can remove
+        # to make the Pipeline graph acyclic.
+        # As soon as the graph is acyclic we stop breaking connections and return.
         for cycle in cycles:
             for comp in cycle:
                 components_in_cycles[comp].append(cycle)
 
+            # Iterate this cycle, we zip the cycle with itself so that at the last iteration
+            # sender_comp will be the last element of cycle and receiver_comp will be the first.
+            # So if cycle is [1, 2, 3, 4] we would call zip([1, 2, 3, 4], [2, 3, 4, 1]).
             for sender_comp, receiver_comp in zip(cycle, cycle[1:] + cycle[:1]):
+                # We get the key and iterate those as we want to edit the graph data while
+                # iterating the edges and that would raise.
                 edge_keys = list(temp_graph.get_edge_data(sender_comp, receiver_comp).keys())
                 for edge_key in edge_keys:
                     edge_data = temp_graph.get_edge_data(sender_comp, receiver_comp)[edge_key]
