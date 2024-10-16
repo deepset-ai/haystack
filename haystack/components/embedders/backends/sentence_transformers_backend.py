@@ -29,6 +29,7 @@ class _SentenceTransformersEmbeddingBackendFactory:
         truncate_dim: Optional[int] = None,
         model_kwargs: Optional[Dict[str, Any]] = None,
         tokenizer_kwargs: Optional[Dict[str, Any]] = None,
+        config_kwargs: Optional[Dict[str, Any]] = None,
     ):
         embedding_backend_id = f"{model}{device}{auth_token}{truncate_dim}"
 
@@ -42,6 +43,7 @@ class _SentenceTransformersEmbeddingBackendFactory:
             truncate_dim=truncate_dim,
             model_kwargs=model_kwargs,
             tokenizer_kwargs=tokenizer_kwargs,
+            config_kwargs=config_kwargs,
         )
         _SentenceTransformersEmbeddingBackendFactory._instances[embedding_backend_id] = embedding_backend
         return embedding_backend
@@ -61,6 +63,7 @@ class _SentenceTransformersEmbeddingBackend:
         truncate_dim: Optional[int] = None,
         model_kwargs: Optional[Dict[str, Any]] = None,
         tokenizer_kwargs: Optional[Dict[str, Any]] = None,
+        config_kwargs: Optional[Dict[str, Any]] = None,
     ):
         sentence_transformers_import.check()
         self.model = SentenceTransformer(
@@ -71,6 +74,7 @@ class _SentenceTransformersEmbeddingBackend:
             truncate_dim=truncate_dim,
             model_kwargs=model_kwargs,
             tokenizer_kwargs=tokenizer_kwargs,
+            config_kwargs=config_kwargs,
         )
 
     def embed(self, data: List[str], **kwargs) -> List[List[float]]:
