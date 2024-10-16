@@ -1139,13 +1139,11 @@ class PipelineBase:
 
         temp_graph: networkx.MultiDiGraph = self.graph.copy()
         cycles: List[List[str]] = list(networkx.simple_cycles(self.graph))
-        edges_removed: Dict[str, List[str]] = {}
+        edges_removed: Dict[str, List[str]] = defaultdict(list)
         # This keeps track of all the cycles that a component is part of.
-        components_in_cycles: Dict[str, List[List[str]]] = {}
+        components_in_cycles: Dict[str, List[List[str]]] = defaultdict(list)
         for cycle in cycles:
             for comp in cycle:
-                if comp not in components_in_cycles:
-                    components_in_cycles[comp] = []
                 components_in_cycles[comp].append(cycle)
 
             for sender_comp, receiver_comp in zip(cycle, cycle[1:] + cycle[:1]):
@@ -1155,8 +1153,6 @@ class PipelineBase:
                     receiver_socket = edge_data["to_socket"]
                     if receiver_socket.is_variadic or not receiver_socket.is_mandatory:
                         # We found a breakable edge
-                        if sender_comp not in edges_removed:
-                            edges_removed[sender_comp] = []
                         sender_socket = edge_data["from_socket"]
                         edges_removed[sender_comp].append(sender_socket.name)
                         temp_graph.remove_edge(sender_comp, receiver_comp, edge_key)
