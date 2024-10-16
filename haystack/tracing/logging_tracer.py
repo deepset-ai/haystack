@@ -41,7 +41,7 @@ class LoggingTracer(Tracer):
         :param tags_color_strings:
             A dictionary that maps tag names to color strings that should be used when logging the tags.
             The color strings should be in the format of
-            [ANSI escape codes](https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797#color-codes).
+            [ANSI escape codes](https://en.wikipedia.org/wiki/ANSI_escape_code#Colors).
             For example, to color the tag "haystack.component.input" in red, you would pass
             `tags_color_strings={"haystack.component.input": "\x1b[1;31m"}`.
         """
@@ -50,7 +50,14 @@ class LoggingTracer(Tracer):
 
     @contextlib.contextmanager
     def trace(self, operation_name: str, tags: Optional[Dict[str, Any]] = None) -> Iterator[Span]:
-        """Activate and return a new span that inherits from the current active span."""
+        """
+        Trace the execution of a block of code.
+
+        :param operation_name: the name of the operation being traced.
+        :param tags: tags to apply to the newly created span.
+        :return: the newly created span.
+        """
+
         custom_span = LoggingSpan(operation_name, tags=tags or {})
 
         try:
@@ -70,6 +77,6 @@ class LoggingTracer(Tracer):
                 )
 
     def current_span(self) -> Optional[Span]:
-        """Return the current active span"""
+        """Return the current active span, if any."""
         # we don't store spans in this simple tracer
         return None
