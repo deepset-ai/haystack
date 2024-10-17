@@ -42,6 +42,7 @@ def test_model_initialization(mock_sentence_transformer):
         truncate_dim=256,
         model_kwargs=None,
         tokenizer_kwargs=None,
+        config_kwargs=None,
     )
 
 

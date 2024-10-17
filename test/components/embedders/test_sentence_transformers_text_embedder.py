@@ -70,6 +70,7 @@ class TestSentenceTransformersTextEmbedder:
                 "truncate_dim": None,
                 "model_kwargs": None,
                 "tokenizer_kwargs": None,
+                "config_kwargs": None,
                 "precision": "float32",
             },
         }
@@ -88,6 +89,7 @@ class TestSentenceTransformersTextEmbedder:
             truncate_dim=256,
             model_kwargs={"torch_dtype": torch.float32},
             tokenizer_kwargs={"model_max_length": 512},
+            config_kwargs={"use_memory_efficient_attention": False},
             precision="int8",
         )
         data = component.to_dict()
@@ -106,6 +108,7 @@ class TestSentenceTransformersTextEmbedder:
                 "truncate_dim": 256,
                 "model_kwargs": {"torch_dtype": "torch.float32"},
                 "tokenizer_kwargs": {"model_max_length": 512},
+                "config_kwargs": {"use_memory_efficient_attention": False},
                 "precision": "int8",
             },
         }
@@ -131,6 +134,7 @@ class TestSentenceTransformersTextEmbedder:
                 "truncate_dim": None,
                 "model_kwargs": {"torch_dtype": "torch.float32"},
                 "tokenizer_kwargs": {"model_max_length": 512},
+                "config_kwargs": {"use_memory_efficient_attention": False},
                 "precision": "float32",
             },
         }
@@ -147,6 +151,7 @@ class TestSentenceTransformersTextEmbedder:
         assert component.truncate_dim is None
         assert component.model_kwargs == {"torch_dtype": torch.float32}
         assert component.tokenizer_kwargs == {"model_max_length": 512}
+        assert component.config_kwargs == {"use_memory_efficient_attention": False}
         assert component.precision == "float32"
 
     def test_from_dict_no_default_parameters(self):
@@ -218,6 +223,7 @@ class TestSentenceTransformersTextEmbedder:
             truncate_dim=None,
             model_kwargs=None,
             tokenizer_kwargs={"model_max_length": 512},
+            config_kwargs=None,
         )
 
     @patch(
