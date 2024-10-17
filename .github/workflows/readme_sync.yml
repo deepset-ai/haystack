@@ -38,7 +38,7 @@ jobs:
           # in config files with their id.
           README_API_KEY: ${{ secrets.README_API_KEY }}
         # The command is a bit misleading, we're not actually syncing anything here,
-        # we're just generating the markdown files from the the yaml configs.
+        # we're just generating the markdown files from the yaml configs.
         run: hatch run readme:sync
 
       - name: Get version
