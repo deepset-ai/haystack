@@ -179,12 +179,19 @@ class HuggingFaceAPIGenerator:
         return default_from_dict(cls, data)
 
     @component.output_types(replies=List[str], meta=List[Dict[str, Any]])
-    def run(self, prompt: str, generation_kwargs: Optional[Dict[str, Any]] = None):
+    def run(
+        self,
+        prompt: str,
+        streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
+        generation_kwargs: Optional[Dict[str, Any]] = None,
+    ):
         """
         Invoke the text generation inference for the given prompt and generation parameters.
 
         :param prompt:
             A string representing the prompt.
+        :param streaming_callback:
+            A callback function that is called when a new token is received from the stream.
         :param generation_kwargs:
             Additional keyword arguments for text generation.
         :returns:
@@ -194,12 +201,17 @@ class HuggingFaceAPIGenerator:
         # update generation kwargs by merging with the default ones
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
 
-        if self.streaming_callback:
-            return self._run_streaming(prompt, generation_kwargs)
+        # check if streaming_callback is passed
+        streaming_callback = streaming_callback or self.streaming_callback
+
+        if streaming_callback:
+            return self._run_streaming(prompt, streaming_callback, generation_kwargs)
 
         return self._run_non_streaming(prompt, generation_kwargs)
 
-    def _run_streaming(self, prompt: str, generation_kwargs: Dict[str, Any]):
+    def _run_streaming(
+        self, prompt: str, streaming_callback: Callable[[StreamingChunk], None], generation_kwargs: Dict[str, Any]
+    ):
         res_chunk: Iterable[TextGenerationStreamOutput] = self._client.text_generation(
             prompt, details=True, stream=True, **generation_kwargs
         )
@@ -212,7 +224,7 @@ class HuggingFaceAPIGenerator:
             chunk_metadata = {**asdict(token), **(asdict(chunk.details) if chunk.details else {})}
             stream_chunk = StreamingChunk(token.text, chunk_metadata)
             chunks.append(stream_chunk)
-            self.streaming_callback(stream_chunk)  # type: ignore # streaming_callback is not None (verified in the run method)
+            streaming_callback(stream_chunk)  # type: ignore # streaming_callback is not None (verified in the run method)
         metadata = {
             "finish_reason": chunks[-1].meta.get("finish_reason", None),
             "model": self._client.model,
