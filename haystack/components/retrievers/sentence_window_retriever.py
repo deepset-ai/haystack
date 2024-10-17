@@ -17,7 +17,7 @@ class SentenceWindowRetriever:
     During indexing, documents are broken into smaller chunks, or sentences. When you submit a query,
     the Retriever fetches the most relevant sentence. To provide full context,
     SentenceWindowRetriever fetches a number of neighboring sentences before and after each
-    relevant one. You can set this number with the `window_size` parameter.
+    relevant one. You can set this number with the `window_size` parameter when calling the `run()` method.
     It uses `source_id` and `doc.meta['split_id']` to locate the surrounding documents.
 
     This component works with existing Retrievers, like BM25Retriever or
@@ -54,10 +54,10 @@ class SentenceWindowRetriever:
 
     rag = Pipeline()
     rag.add_component("bm25_retriever", InMemoryBM25Retriever(doc_store, top_k=1))
-    rag.add_component("sentence_window_retriever", SentenceWindowRetriever(document_store=doc_store, window_size=2))
+    rag.add_component("sentence_window_retriever", SentenceWindowRetriever(document_store=doc_store))
     rag.connect("bm25_retriever", "sentence_window_retriever")
 
-    rag.run({'bm25_retriever': {"query":"third"}})
+    rag.run({'bm25_retriever': {"query":"third"}, 'sentence_window_retriever': {'window_size': 2}})
 
     >> {'sentence_window_retriever': {'context_windows': ['some words. There is a second sentence.
     >> And there is also a third sentence. It also contains a fourth sentence. And a fifth sentence. And a sixth
@@ -78,18 +78,12 @@ class SentenceWindowRetriever:
     ```
     """
 
-    def __init__(self, document_store: DocumentStore, window_size: int = 3):
+    def __init__(self, document_store: DocumentStore):
         """
         Creates a new SentenceWindowRetriever component.
 
         :param document_store: The Document Store to retrieve the surrounding documents from.
-        :param window_size: The number of documents to retrieve before and after the relevant one.
-        For example, `window_size: 2` fetches 2 preceding and 2 following documents.
         """
-        if window_size < 1:
-            raise ValueError("The window_size parameter must be greater than 0.")
-
-        self.window_size = window_size
         self.document_store = document_store
 
     @staticmethod
@@ -127,7 +121,7 @@ class SentenceWindowRetriever:
             Dictionary with serialized data.
         """
         docstore = self.document_store.to_dict()
-        return default_to_dict(self, document_store=docstore, window_size=self.window_size)
+        return default_to_dict(self, document_store=docstore)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "SentenceWindowRetriever":
@@ -144,7 +138,7 @@ class SentenceWindowRetriever:
         return default_from_dict(cls, data)
 
     @component.output_types(context_windows=List[str], context_documents=List[List[Document]])
-    def run(self, retrieved_documents: List[Document]):
+    def run(self, retrieved_documents: List[Document], window_size: int = 3):
         """
         Based on the `source_id` and on the `doc.meta['split_id']` get surrounding documents from the document store.
 
@@ -152,6 +146,7 @@ class SentenceWindowRetriever:
         document from the document store.
 
         :param retrieved_documents: List of retrieved documents from the previous retriever.
+        :param window_size: The number of documents to retrieve before and after the relevant one.
         :returns:
             A dictionary with the following keys:
                 - `context_windows`: A list of strings, where each string represents the concatenated text from the
@@ -161,6 +156,9 @@ class SentenceWindowRetriever:
                                      `retrieved_documents`.
 
         """
+
+        if window_size < 1:
+            raise ValueError("The window_size parameter must be greater than 0.")
 
         if not all("split_id" in doc.meta for doc in retrieved_documents):
             raise ValueError("The retrieved documents must have 'split_id' in the metadata.")
@@ -173,8 +171,8 @@ class SentenceWindowRetriever:
         for doc in retrieved_documents:
             source_id = doc.meta["source_id"]
             split_id = doc.meta["split_id"]
-            min_before = min(list(range(split_id - 1, split_id - self.window_size - 1, -1)))
-            max_after = max(list(range(split_id + 1, split_id + self.window_size + 1, 1)))
+            min_before = min(list(range(split_id - 1, split_id - window_size - 1, -1)))
+            max_after = max(list(range(split_id + 1, split_id + window_size + 1, 1)))
             context_docs = self.document_store.filter_documents(
                 {
                     "operator": "AND",
