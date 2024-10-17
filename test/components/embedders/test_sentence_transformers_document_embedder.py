@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from unittest.mock import MagicMock, patch
 
-import numpy as np
+import random
 import pytest
 import torch
 
@@ -264,7 +264,9 @@ class TestSentenceTransformersDocumentEmbedder:
     def test_run(self):
         embedder = SentenceTransformersDocumentEmbedder(model="model")
         embedder.embedding_backend = MagicMock()
-        embedder.embedding_backend.embed = lambda x, **kwargs: np.random.rand(len(x), 16).tolist()
+        embedder.embedding_backend.embed = lambda x, **kwargs: [
+            [random.random() for _ in range(16)] for _ in range(len(x))
+        ]
 
         documents = [Document(content=f"document number {i}") for i in range(5)]
 

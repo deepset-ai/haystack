@@ -4,7 +4,7 @@
 from unittest.mock import MagicMock, patch
 
 import torch
-import numpy as np
+import random
 import pytest
 
 from haystack.components.embedders.sentence_transformers_text_embedder import SentenceTransformersTextEmbedder
@@ -239,7 +239,9 @@ class TestSentenceTransformersTextEmbedder:
     def test_run(self):
         embedder = SentenceTransformersTextEmbedder(model="model")
         embedder.embedding_backend = MagicMock()
-        embedder.embedding_backend.embed = lambda x, **kwargs: np.random.rand(len(x), 16).tolist()
+        embedder.embedding_backend.embed = lambda x, **kwargs: [
+            [random.random() for _ in range(16)] for _ in range(len(x))
+        ]
 
         text = "a nice text to embed"
 
