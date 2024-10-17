@@ -1,0 +1,20 @@
+---
+highlights: >
+    With the new Logging Tracer, users can inspect in the logs everything
+    that is happening in their Pipelines in real time. This feature aims to
+    improve the user experience during experimentation and prototyping.
+features:
+  - |
+    Introduce a Logging Tracer, that sends all traces to the logs.
+
+    It can enabled as follows:
+    ```python
+    import logging
+    from haystack import tracing
+    from haystack.tracing.logging_tracer import LoggingTracer
+
+    logging.basicConfig(format="%(levelname)s - %(name)s -  %(message)s", level=logging.WARNING)
+    logging.getLogger("haystack").setLevel(logging.DEBUG)
+    tracing.tracer.is_content_tracing_enabled = True # to enable tracing/logging content (inputs/outputs)
+    tracing.enable_tracing(LoggingTracer())
+    ```
