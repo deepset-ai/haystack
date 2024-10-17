@@ -103,6 +103,13 @@ jobs:
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
 
+      - name: Set up pip cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.pythonLocation }}
+          key: ${{ matrix.os }}-pip-${{ hashFiles('pyproject.toml') }}
+          restore-keys: ${{ matrix.os }}-pip-
+
       - name: Install Hatch
         id: hatch
         shell: bash
