@@ -6,4 +6,7 @@ highlights: >
   It also fixes some corner cases in `Pipeline`s that don't have any cycle.
 features:
   - |
-    Fundamentally rework the internal logic of `Pipeline.run()`
+    Fundamentally rework the internal logic of `Pipeline.run()`.
+    The rework makes it more reliable and covers more use cases.
+    We fixed some issues that made `Pipeline`s with cycles unpredictable
+    and with unclear Components execution order.
