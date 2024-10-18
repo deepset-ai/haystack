@@ -39,6 +39,7 @@ Feature: Pipeline running
         | that is linear with conditional branching and multiple joins |
         | that has a variadic component that receives partial inputs |
         | that has an answer joiner variadic component |
+        | that has a string variadic component |
 
     Scenario Outline: Running a bad Pipeline
         Given a pipeline <kind>
