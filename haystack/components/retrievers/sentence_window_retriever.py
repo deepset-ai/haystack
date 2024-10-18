@@ -6,7 +6,7 @@ from typing import Any, Dict, List
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.document_stores.types import DocumentStore
-from haystack.utils import deserialize_document_store_in_init_params_inplace
+from haystack.utils import deserialize_component_in_init_params_inplace
 
 
 @component
@@ -138,7 +138,7 @@ class SentenceWindowRetriever:
             Deserialized component.
         """
         # deserialize the document store
-        deserialize_document_store_in_init_params_inplace(data)
+        deserialize_component_in_init_params_inplace(data)
 
         # deserialize the component
         return default_from_dict(cls, data)
