@@ -1,4 +1,4 @@
 ---
 enhancements:
   - |
-    Reduced numpy dependency by using built-in libraries like math and random
+    Reduced numpy usage to speed up imports.
