@@ -3,9 +3,20 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import pytest
+from unittest.mock import Mock, patch
 from haystack.utils import Secret
 
+from openai.types.image import Image
+from openai.types import ImagesResponse
 from haystack.components.generators.openai_dalle import DALLEImageGenerator
+
+
+@pytest.fixture
+def mock_image_response():
+    with patch("openai.resources.images.Images.generate") as mock_image_generate:
+        image_response = ImagesResponse(created=1630000000, data=[Image(url="test-url", revised_prompt="test-prompt")])
+        mock_image_generate.return_value = image_response
+        yield mock_image_generate
 
 
 class TestDALLEImageGenerator:
@@ -125,3 +136,12 @@ class TestDALLEImageGenerator:
         assert generator.organization is None
         assert pytest.approx(generator.timeout) == 30.0
         assert generator.max_retries == 5
+
+    def test_run(self, mock_image_response):
+        generator = DALLEImageGenerator(api_key=Secret.from_token("test-api-key"))
+        generator.warm_up()
+        response = generator.run("Show me a picture of a black cat.")
+        assert isinstance(response, dict)
+        assert "images" in response and "revised_prompt" in response
+        assert response["images"] == ["test-url"]
+        assert response["revised_prompt"] == "test-prompt"
