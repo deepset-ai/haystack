@@ -1,10 +1,10 @@
 import pytest
 
-from haystack import Document, DeserializationError, Pipeline
+from haystack import DeserializationError, Document, Pipeline
+from haystack.components.preprocessors import DocumentSplitter
 from haystack.components.retrievers import InMemoryBM25Retriever
 from haystack.components.retrievers.sentence_window_retriever import SentenceWindowRetriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.components.preprocessors import DocumentSplitter
 
 
 class TestSentenceWindowRetriever:
@@ -118,8 +118,14 @@ class TestSentenceWindowRetriever:
             retriever = SentenceWindowRetriever(document_store=InMemoryDocumentStore(), window_size=3)
             retriever.run(retrieved_documents=docs)
 
+    def test_run_invalid_window_size(self):
+        docs = [Document(content="This is a text with some words. There is a ", meta={"id": "doc_0", "split_id": 0})]
+        with pytest.raises(ValueError):
+            retriever = SentenceWindowRetriever(document_store=InMemoryDocumentStore(), window_size=0)
+            retriever.run(retrieved_documents=docs)
+
     @pytest.mark.integration
-    def test_run_with_pipeline(self):
+    def test_run_with_pipeline_override_window_size(self):
         splitter = DocumentSplitter(split_length=10, split_overlap=5, split_by="word")
         text = (
             "This is a text with some words. There is a second sentence. And there is also a third sentence. "
@@ -132,17 +138,18 @@ class TestSentenceWindowRetriever:
 
         pipe = Pipeline()
         pipe.add_component("bm25_retriever", InMemoryBM25Retriever(doc_store, top_k=1))
-        pipe.add_component(
-            "sentence_window_retriever", SentenceWindowRetriever(document_store=doc_store, window_size=2)
-        )
+        pipe.add_component("sentence_window_retriever", SentenceWindowRetriever(document_store=doc_store))
         pipe.connect("bm25_retriever", "sentence_window_retriever")
-        result = pipe.run({"bm25_retriever": {"query": "third"}})
+        result = pipe.run({"bm25_retriever": {"query": "third"}, "sentence_window_retriever": {"window_size": 2}})
 
         assert result["sentence_window_retriever"]["context_windows"] == [
             "some words. There is a second sentence. And there is also a third sentence. It also "
             "contains a fourth sentence. And a fifth sentence. And a sixth sentence. And a "
         ]
         assert len(result["sentence_window_retriever"]["context_documents"][0]) == 5
+
+        result = pipe.run({"bm25_retriever": {"query": "third"}})
+        assert len(result["sentence_window_retriever"]["context_documents"][0]) == 7
 
     @pytest.mark.integration
     def test_serialization_deserialization_in_pipeline(self):
