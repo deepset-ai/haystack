@@ -1,16 +1,24 @@
 import pytest
 
-from haystack import Document, DeserializationError, Pipeline
+from haystack import DeserializationError, Document, Pipeline
+from haystack.components.preprocessors import DocumentSplitter
 from haystack.components.retrievers import InMemoryBM25Retriever
 from haystack.components.retrievers.sentence_window_retriever import SentenceWindowRetriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.components.preprocessors import DocumentSplitter
 
 
 class TestSentenceWindowRetriever:
     def test_init_default(self):
         retriever = SentenceWindowRetriever(InMemoryDocumentStore())
-        assert retriever.document_store is not None
+        assert retriever.window_size == 3
+
+    def test_init_with_parameters(self):
+        retriever = SentenceWindowRetriever(InMemoryDocumentStore(), window_size=5)
+        assert retriever.window_size == 5
+
+    def test_init_with_invalid_window_size_parameter(self):
+        with pytest.raises(ValueError):
+            SentenceWindowRetriever(InMemoryDocumentStore(), window_size=-2)
 
     def test_merge_documents(self):
         docs = [
@@ -51,6 +59,7 @@ class TestSentenceWindowRetriever:
         data = window_retriever.to_dict()
 
         assert data["type"] == "haystack.components.retrievers.sentence_window_retriever.SentenceWindowRetriever"
+        assert data["init_parameters"]["window_size"] == 3
         assert (
             data["init_parameters"]["document_store"]["type"]
             == "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore"
@@ -63,11 +72,13 @@ class TestSentenceWindowRetriever:
                 "document_store": {
                     "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore",
                     "init_parameters": {},
-                }
+                },
+                "window_size": 5,
             },
         }
         component = SentenceWindowRetriever.from_dict(data)
         assert isinstance(component.document_store, InMemoryDocumentStore)
+        assert component.window_size == 5
 
     def test_from_dict_without_docstore(self):
         data = {"type": "SentenceWindowRetriever", "init_parameters": {}}
@@ -93,7 +104,7 @@ class TestSentenceWindowRetriever:
             Document(content="some words. There is a second sentence. And there is ", meta={"id": "doc_1"}),
         ]
         with pytest.raises(ValueError):
-            retriever = SentenceWindowRetriever(document_store=InMemoryDocumentStore())
+            retriever = SentenceWindowRetriever(document_store=InMemoryDocumentStore(), window_size=3)
             retriever.run(retrieved_documents=docs)
 
     def test_document_without_source_id(self):
@@ -104,16 +115,17 @@ class TestSentenceWindowRetriever:
             ),
         ]
         with pytest.raises(ValueError):
-            retriever = SentenceWindowRetriever(document_store=InMemoryDocumentStore())
+            retriever = SentenceWindowRetriever(document_store=InMemoryDocumentStore(), window_size=3)
             retriever.run(retrieved_documents=docs)
 
-    def test_run_with_invalid_window_size_parameter(self):
-        retriever = SentenceWindowRetriever(document_store=InMemoryDocumentStore())
-        with pytest.raises(ValueError, match="The window_size parameter must be greater than 0."):
-            retriever.run(retrieved_documents=[], window_size=0)
+    def test_run_invalid_window_size(self):
+        docs = [Document(content="This is a text with some words. There is a ", meta={"id": "doc_0", "split_id": 0})]
+        with pytest.raises(ValueError):
+            retriever = SentenceWindowRetriever(document_store=InMemoryDocumentStore(), window_size=0)
+            retriever.run(retrieved_documents=docs)
 
     @pytest.mark.integration
-    def test_run_with_pipeline(self):
+    def test_run_with_pipeline_override_window_size(self):
         splitter = DocumentSplitter(split_length=10, split_overlap=5, split_by="word")
         text = (
             "This is a text with some words. There is a second sentence. And there is also a third sentence. "
@@ -127,8 +139,8 @@ class TestSentenceWindowRetriever:
         pipe = Pipeline()
         pipe.add_component("bm25_retriever", InMemoryBM25Retriever(doc_store, top_k=1))
         pipe.add_component("sentence_window_retriever", SentenceWindowRetriever(document_store=doc_store))
-        pipe.connect("bm25_retriever", "sentence_window_retriever: {'window_size': 2}")
-        result = pipe.run({"bm25_retriever": {"query": "third"}})
+        pipe.connect("bm25_retriever", "sentence_window_retriever")
+        result = pipe.run({"bm25_retriever": {"query": "third"}, "sentence_window_retriever": {"window_size": 2}})
 
         assert result["sentence_window_retriever"]["context_windows"] == [
             "some words. There is a second sentence. And there is also a third sentence. It also "
@@ -136,13 +148,18 @@ class TestSentenceWindowRetriever:
         ]
         assert len(result["sentence_window_retriever"]["context_documents"][0]) == 5
 
+        result = pipe.run({"bm25_retriever": {"query": "third"}})
+        assert len(result["sentence_window_retriever"]["context_documents"][0]) == 7
+
     @pytest.mark.integration
     def test_serialization_deserialization_in_pipeline(self):
         doc_store = InMemoryDocumentStore()
         pipe = Pipeline()
         pipe.add_component("bm25_retriever", InMemoryBM25Retriever(doc_store, top_k=1))
-        pipe.add_component("sentence_window_retriever", SentenceWindowRetriever(document_store=doc_store))
-        pipe.connect("bm25_retriever", "sentence_window_retriever: {'window_size': 2}")
+        pipe.add_component(
+            "sentence_window_retriever", SentenceWindowRetriever(document_store=doc_store, window_size=2)
+        )
+        pipe.connect("bm25_retriever", "sentence_window_retriever")
 
         serialized = pipe.to_dict()
         deserialized = Pipeline.from_dict(serialized)
