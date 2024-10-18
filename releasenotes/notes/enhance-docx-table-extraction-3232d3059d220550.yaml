@@ -1,0 +1,4 @@
+---
+features:
+ - |
+   Enhanced DOCX converter to support table extraction along with paragraph content, improving the versatility of content processing from DOCX files.
