@@ -113,12 +113,6 @@ jobs:
       - name: Run
         run: hatch run test:unit
 
-      - uses: actions/cache/save@v4
-        id: cache
-        with:
-          path: ${{ steps.hatch.outputs.env }}
-          key: ${{ runner.os }}-${{ github.sha }}
-
       - name: Coveralls
         # We upload only coverage for ubuntu as handling both os
         # complicates the workflow too much for little to no gain
@@ -188,12 +182,6 @@ jobs:
           pip install hatch==${{ env.HATCH_VERSION }}
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/cache/restore@v4
-        id: cache
-        with:
-          path: ${{ steps.hatch.outputs.env }}
-          key: ${{ runner.os }}-${{ github.sha }}
-
       - name: Mypy
         if: steps.files.outputs.any_changed == 'true'
         run: |
@@ -259,12 +247,6 @@ jobs:
           pip install hatch==${{ env.HATCH_VERSION }}
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/cache/restore@v4
-        id: cache
-        with:
-          path: ${{ steps.hatch.outputs.env }}
-          key: ${{ runner.os }}-${{ github.sha }}
-
       - name: Install dependencies
         run: |
           sudo apt update
@@ -325,12 +307,6 @@ jobs:
           pip install hatch==${{ env.HATCH_VERSION }}
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/cache/restore@v4
-        id: cache
-        with:
-          path: ${{ steps.hatch.outputs.env }}
-          key: ${{ runner.os }}-${{ github.sha }}
-
       - name: Install dependencies
         run: |
           brew install ffmpeg  # for local Whisper tests
@@ -386,12 +362,6 @@ jobs:
         run: |
           pip install hatch==${{ env.HATCH_VERSION }}
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
-
-      - uses: actions/cache/restore@v4
-        id: cache
-        with:
-          path: ${{ steps.hatch.outputs.env }}
-          key: ${{ runner.os }}-${{ github.sha }}
 
       - name: Run
         run: hatch run test:integration-windows
