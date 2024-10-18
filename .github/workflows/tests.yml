@@ -20,6 +20,7 @@ on:
       - "haystack/core/pipeline/predefined/*"
       - "test/**/*.py"
       - "pyproject.toml"
+      - ".github/workflows/tests.yml"
 
 env:
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
