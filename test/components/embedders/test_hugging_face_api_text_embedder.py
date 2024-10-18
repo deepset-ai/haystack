@@ -4,9 +4,9 @@
 import os
 from unittest.mock import MagicMock, patch
 
+import random
 import pytest
 from huggingface_hub.utils import RepositoryNotFoundError
-from numpy import array, random
 
 from haystack.components.embedders import HuggingFaceAPITextEmbedder
 from haystack.utils.auth import Secret
@@ -22,7 +22,7 @@ def mock_check_valid_model():
 
 
 def mock_embedding_generation(json, **kwargs):
-    response = str(array([random.rand(384) for i in range(len(json["inputs"]))]).tolist()).encode()
+    response = str([[random.random() for _ in range(384)] for _ in range(len(json["inputs"]))]).encode()
     return response
 
 
