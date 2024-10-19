@@ -87,6 +87,44 @@ class TestDOCXToDocument:
             "Now we are in Page 2" in part for part in content_parts[table_index + 1 :]
         ), "Text after table not found"
 
+    def test_table_between_two_paragraphs(self, test_files_path, docx_converter):
+        paths = [test_files_path / "docx" / "sample_docx_3.docx"]
+        output = docx_converter.run(sources=paths)
+
+        content = output["documents"][0].content
+
+        paragraphs_one = content.find("Table: AI Use Cases in Different Industries")
+        paragraphs_two = content.find("Paragraph 2:")
+        table = content[paragraphs_one + len("Table: AI Use Cases in Different Industries") + 1 : paragraphs_two]
+        split = list(filter(None, table.split("\n")))
+        expected_table_header = "| Industry   | AI Use Case                    | Impact                    |"
+        expected_last_row = "| Finance    | Fraud detection and prevention | Reduced financial losses  |"
+
+        assert split[0] == expected_table_header
+        assert split[-1] == expected_last_row
+
+    def test_table_content_correct_parsing(self, test_files_path, docx_converter):
+        paths = [test_files_path / "docx" / "sample_docx_3.docx"]
+        output = docx_converter.run(sources=paths)
+        content = output["documents"][0].content
+
+        paragraphs_one = content.find("Table: AI Use Cases in Different Industries")
+        paragraphs_two = content.find("Paragraph 2:")
+        table = content[paragraphs_one + len("Table: AI Use Cases in Different Industries") + 1 : paragraphs_two]
+        split = list(filter(None, table.split("\n")))
+
+        assert len(split) == 4
+
+        expected_table_header = "| Industry   | AI Use Case                    | Impact                    |"
+        expected_table_top_border = "| ---------- | ------------------------------ | ------------------------- |"
+        expected_table_row_one = "| Healthcare | Predictive diagnostics         | Improved patient outcomes |"
+        expected_table_row_two = "| Finance    | Fraud detection and prevention | Reduced financial losses  |"
+
+        assert split[0] == expected_table_header
+        assert split[1] == expected_table_top_border
+        assert split[2] == expected_table_row_one
+        assert split[3] == expected_table_row_two
+
     def test_run_with_additional_meta(self, test_files_path, docx_converter):
         paths = [test_files_path / "docx" / "sample_docx_1.docx"]
         output = docx_converter.run(sources=paths, meta={"language": "it", "author": "test_author"})
