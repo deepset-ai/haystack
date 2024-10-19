@@ -236,7 +236,7 @@ tested by the CI, but once again, running the checks locally will speed up the r
 
 To check your code type checking, run:
 ```sh
-hatch run test:type
+hatch run test:types
 ```
 
 

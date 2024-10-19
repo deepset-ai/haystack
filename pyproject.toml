@@ -60,6 +60,7 @@ dependencies = [
 ]
 
 [tool.hatch.envs.default]
+installer = "uv"
 dependencies = [
   "pre-commit",
   "ruff",
@@ -151,6 +152,7 @@ types = "mypy --install-types --non-interactive --cache-dir=.mypy_cache/ {args:h
 lint = "pylint -ry -j 0 {args:haystack}"
 
 [tool.hatch.envs.readme]
+installer = "uv"
 detached = true                         # To avoid installing the dependencies from the default environment
 dependencies = ["haystack-pydoc-tools"]
 

@@ -4,7 +4,6 @@
 from typing import Dict, Any
 
 import pytest
-import numpy as np
 
 from haystack import Pipeline, DeserializationError
 from haystack.document_stores.types import FilterPolicy
@@ -135,7 +134,7 @@ class TestMemoryEmbeddingRetriever:
 
         assert "documents" in result
         assert len(result["documents"]) == top_k
-        assert np.array_equal(result["documents"][0].embedding, [1.0, 1.0, 1.0, 1.0])
+        assert result["documents"][0].embedding == [1.0, 1.0, 1.0, 1.0]
 
     def test_invalid_run_wrong_store_type(self):
         SomeOtherDocumentStore = document_store_class("SomeOtherDocumentStore")
@@ -165,4 +164,4 @@ class TestMemoryEmbeddingRetriever:
         results_docs = result["retriever"]["documents"]
         assert results_docs
         assert len(results_docs) == top_k
-        assert np.array_equal(results_docs[0].embedding, [1.0, 1.0, 1.0, 1.0])
+        assert results_docs[0].embedding == [1.0, 1.0, 1.0, 1.0]
