@@ -243,7 +243,8 @@ class OpenAIGenerator:
             "meta": [message.meta for message in completions],
         }
 
-    def _connect_chunks(self, chunk: Any, chunks: List[StreamingChunk]) -> ChatMessage:
+    @staticmethod
+    def _connect_chunks(chunk: Any, chunks: List[StreamingChunk]) -> ChatMessage:
         """
         Connects the streaming chunks into a single ChatMessage.
         """
@@ -258,7 +259,8 @@ class OpenAIGenerator:
         )
         return complete_response
 
-    def _build_message(self, completion: Any, choice: Any) -> ChatMessage:
+    @staticmethod
+    def _build_message(completion: Any, choice: Any) -> ChatMessage:
         """
         Converts the response from the OpenAI API to a ChatMessage.
 
@@ -282,7 +284,8 @@ class OpenAIGenerator:
         )
         return chat_message
 
-    def _build_chunk(self, chunk: Any) -> StreamingChunk:
+    @staticmethod
+    def _build_chunk(chunk: Any) -> StreamingChunk:
         """
         Converts the response from the OpenAI API to a StreamingChunk.
 
@@ -299,7 +302,8 @@ class OpenAIGenerator:
         chunk_message.meta.update({"model": chunk.model, "index": choice.index, "finish_reason": choice.finish_reason})
         return chunk_message
 
-    def _check_finish_reason(self, message: ChatMessage) -> None:
+    @staticmethod
+    def _check_finish_reason(message: ChatMessage) -> None:
         """
         Check the `finish_reason` returned with the OpenAI completions.
 
