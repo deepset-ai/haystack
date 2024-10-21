@@ -1152,7 +1152,9 @@ class PipelineBase:
         edges_removed: Dict[str, List[str]] = defaultdict(list)
         # This keeps track of all the cycles that a component is part of.
         # Maps a Component name to a list of cycles, each inner list contains
-        # the Component names that create that cycle.
+        # the Component names that create that cycle (the key will also be
+        # an element in each list). The last Component in each list is implicitly
+        # connected to the first.
         components_in_cycles: Dict[str, List[List[str]]] = defaultdict(list)
 
         # Used to minimize the number of time we check whether the graph has any more
