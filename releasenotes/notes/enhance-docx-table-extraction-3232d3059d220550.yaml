@@ -1,4 +1,4 @@
 ---
 features:
  - |
-   Enhanced DOCX converter to support table extraction along with paragraph content, improving the versatility of content processing from DOCX files.
+   Enhanced DOCX converter to support table extraction in addition to paragraph content. The converter supports both CSV and Markdown table formats, providing flexible options for representing tabular data extracted from DOCX documents.
