@@ -5,7 +5,6 @@ import os
 import pytest
 
 from haystack import Pipeline
-from haystack.components.audio import LocalWhisperTranscriber
 from haystack.components.audio.whisper_remote import RemoteWhisperTranscriber
 from haystack.components.fetchers import LinkContentFetcher
 from haystack.dataclasses import ByteStream
@@ -100,7 +99,7 @@ class TestRemoteWhisperTranscriber:
             },
         }
 
-    def test_from_dict_with_defualt_parameters(self, monkeypatch):
+    def test_from_dict_with_default_parameters(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test_api_key")
 
         data = {
@@ -147,7 +146,7 @@ class TestRemoteWhisperTranscriber:
             "temperature": "0.5",
         }
 
-    def test_from_dict_with_defualt_parameters_no_env_var(self, monkeypatch):
+    def test_from_dict_with_default_parameters_no_env_var(self, monkeypatch):
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
 
         data = {
@@ -204,8 +203,10 @@ class TestRemoteWhisperTranscriber:
         result = pipe.run(
             data={
                 "fetcher": {
-                    "urls": ["https://ia903102.us.archive.org/19/items/100-Best--Speeches/EK_19690725_64kb.mp3"]
+                    "urls": [
+                        "https://github.com/deepset-ai/haystack/raw/refs/heads/main/test/test_files/audio/MLK_Something_happening.mp3"
+                    ]  # noqa: E501
                 }
             }
         )
-        assert "Massachusetts" in result["transcriber"]["documents"][0].content
+        assert "masses of people" in result["transcriber"]["documents"][0].content

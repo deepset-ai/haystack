@@ -250,7 +250,9 @@ class TestHuggingFaceAPIGenerator:
                 index=1,
                 generated_text=None,
                 token=TextGenerationOutputToken(id=1, text="Ok bye", logprob=0.0, special=False),
-                details=TextGenerationStreamOutputStreamDetails(finish_reason="length", generated_tokens=5, seed=None),
+                details=TextGenerationStreamOutputStreamDetails(
+                    finish_reason="length", generated_tokens=5, seed=None, input_length=10
+                ),
             )
 
         mock_response = Mock(**{"__iter__": mock_iter})

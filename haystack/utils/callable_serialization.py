@@ -40,7 +40,7 @@ def deserialize_callable(callable_handle: str) -> Optional[Callable]:
     module = sys.modules.get(module_name, None)
     if not module:
         raise DeserializationError(f"Could not locate the module of the callable: {module_name}")
-    streaming_callback = getattr(module, function_name, None)
-    if not streaming_callback:
+    deserialized_callable = getattr(module, function_name, None)
+    if not deserialized_callable:
         raise DeserializationError(f"Could not locate the callable: {function_name}")
-    return streaming_callback
+    return deserialized_callable

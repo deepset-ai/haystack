@@ -54,15 +54,23 @@ class FileTypeRouter:
     :param mime_types: A list of MIME types or regex patterns to classify the input files or byte streams.
     """
 
-    def __init__(self, mime_types: List[str]):
+    def __init__(self, mime_types: List[str], additional_mimetypes: Optional[Dict[str, str]] = None):
         """
         Initialize the FileTypeRouter component.
 
         :param mime_types: A list of MIME types or regex patterns to classify the input files or byte streams.
             (for example: `["text/plain", "audio/x-wav", "image/jpeg"]`).
+
+        :param additional_mimetypes: A dictionary containing the MIME type to add to the mimetypes package to prevent
+            unsupported or non native packages from being unclassified.
+            (for example: `{"application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx"}`).
         """
         if not mime_types:
             raise ValueError("The list of mime types cannot be empty.")
+
+        if additional_mimetypes:
+            for mime, ext in additional_mimetypes.items():
+                mimetypes.add_type(mime, ext)
 
         self.mime_type_patterns = []
         for mime_type in mime_types:

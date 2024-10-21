@@ -5,7 +5,7 @@ import os
 from typing import List
 from haystack.utils.auth import Secret
 
-import numpy as np
+import random
 import pytest
 
 from haystack import Document
@@ -16,7 +16,8 @@ def mock_openai_response(input: List[str], model: str = "text-embedding-ada-002"
     dict_response = {
         "object": "list",
         "data": [
-            {"object": "embedding", "index": i, "embedding": np.random.rand(1536).tolist()} for i in range(len(input))
+            {"object": "embedding", "index": i, "embedding": [random.random() for _ in range(1536)]}
+            for i in range(len(input))
         ],
         "model": model,
         "usage": {"prompt_tokens": 4, "total_tokens": 4},
