@@ -14,14 +14,33 @@ class YamlLoader(yaml.SafeLoader):  # pylint: disable=too-many-ancestors
         return tuple(self.construct_sequence(node))
 
 
+class YamlDumper(yaml.SafeDumper):  # pylint: disable=too-many-ancestors
+    def represent_tuple(self, data: tuple):
+        """Represent a Python tuple."""
+        return self.represent_sequence("tag:yaml.org,2002:python/tuple", data)
+
+
+YamlDumper.add_representer(tuple, YamlDumper.represent_tuple)
 YamlLoader.add_constructor("tag:yaml.org,2002:python/tuple", YamlLoader.construct_python_tuple)
 
 
 class YamlMarshaller:
     def marshal(self, dict_: Dict[str, Any]) -> str:
         """Return a YAML representation of the given dictionary."""
-        return yaml.dump(dict_)
+        try:
+            return yaml.dump(dict_, Dumper=YamlDumper)
+        except yaml.representer.RepresenterError as e:
+            raise TypeError(
+                "Error dumping pipeline to YAML - Ensure that all pipeline "
+                "components only serialize basic Python types"
+            ) from e
 
     def unmarshal(self, data_: Union[str, bytes, bytearray]) -> Dict[str, Any]:
         """Return a dictionary from the given YAML data."""
-        return yaml.load(data_, Loader=YamlLoader)
+        try:
+            return yaml.load(data_, Loader=YamlLoader)
+        except yaml.constructor.ConstructorError as e:
+            raise TypeError(
+                "Error loading pipeline from YAML - Ensure that all pipeline "
+                "components only serialize basic Python types"
+            ) from e
