@@ -2,10 +2,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import csv
 import io
 from dataclasses import dataclass
+from io import StringIO
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 
 from haystack import Document, component, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
@@ -80,11 +82,16 @@ class DOCXToDocument:
     ```
     """
 
-    def __init__(self):
+    def __init__(self, table_format: Literal["markdown", "csv"] = "markdown"):
         """
         Create a DOCXToDocument component.
+
+        :param table_format: The format for table output. Can be either "markdown" or "csv". Defaults to "markdown".
         """
         docx_import.check()
+        if table_format not in ["markdown", "csv"]:
+            raise ValueError("table_format must be either 'markdown' or 'csv'")
+        self.table_format = table_format
 
     @component.output_types(documents=List[Document])
     def run(
@@ -155,12 +162,20 @@ class DOCXToDocument:
                 elements.append(para_text)
             elif element.tag.endswith("tbl"):
                 table = docx.table.Table(element, document)
-                table_md = self._table_to_markdown(table)
-                elements.append(table_md)
+                table_str = (
+                    self._table_to_markdown(table) if self.table_format == "markdown" else self._table_to_csv(table)
+                )
+                elements.append(table_str)
 
         return elements
 
     def _process_paragraph_with_page_breaks(self, paragraph: "Paragraph") -> str:
+        """
+        Processes a paragraph with page breaks.
+
+        :param paragraph: The DOCX paragraph to process.
+        :returns: A string with page breaks added as '\f' characters.
+        """
         para_text = ""
         # Usually, just 1 page break exists, but could be more if paragraph is really long, so we loop over them
         for pb_index, page_break in enumerate(paragraph.rendered_page_breaks):
@@ -180,6 +195,12 @@ class DOCXToDocument:
         return para_text
 
     def _table_to_markdown(self, table: "Table") -> str:
+        """
+        Converts a DOCX table to a Markdown string.
+
+        :param table: The DOCX table to convert.
+        :returns: A Markdown string representation of the table.
+        """
         markdown: List[str] = []
         max_col_widths: List[int] = []
 
@@ -203,6 +224,27 @@ class DOCXToDocument:
                 markdown.append("| " + " | ".join(separator) + " |")
 
         return "\n".join(markdown)
+
+    def _table_to_csv(self, table: "Table") -> str:
+        """
+        Converts a DOCX table to a CSV string.
+
+        :param table: The DOCX table to convert.
+        :returns: A CSV string representation of the table.
+        """
+        csv_output = StringIO()
+        csv_writer = csv.writer(csv_output, quoting=csv.QUOTE_MINIMAL)
+
+        # Process rows
+        for row in table.rows:
+            csv_row = [cell.text.strip() for cell in row.cells]
+            csv_writer.writerow(csv_row)
+
+        # Get the CSV as a string and strip any trailing newlines
+        csv_string = csv_output.getvalue().strip()
+        csv_output.close()
+
+        return csv_string
 
     def _get_docx_metadata(self, document: "DocxDocument") -> DOCXMetadata:
         """
