@@ -1155,6 +1155,10 @@ class PipelineBase:
         # the Component names that create that cycle.
         components_in_cycles: Dict[str, List[List[str]]] = defaultdict(list)
 
+        # Used to minimize the number of time we check whether the graph has any more
+        # cycles left to break or not.
+        graph_has_cycles = True
+
         # Iterate all the cycles to find the least amount of connections that we can remove
         # to make the Pipeline graph acyclic.
         # As soon as the graph is acyclic we stop breaking connections and return.
@@ -1172,21 +1176,24 @@ class PipelineBase:
                 for edge_key in edge_keys:
                     edge_data = temp_graph.get_edge_data(sender_comp, receiver_comp)[edge_key]
                     receiver_socket = edge_data["to_socket"]
-                    if receiver_socket.is_variadic or not receiver_socket.is_mandatory:
-                        # We found a breakable edge
-                        sender_socket = edge_data["from_socket"]
-                        edges_removed[sender_comp].append(sender_socket.name)
-                        temp_graph.remove_edge(sender_comp, receiver_comp, edge_key)
+                    if not receiver_socket.is_variadic and receiver_socket.is_mandatory:
+                        continue
 
-                    if networkx.is_directed_acyclic_graph(temp_graph):
+                    # We found a breakable edge
+                    sender_socket = edge_data["from_socket"]
+                    edges_removed[sender_comp].append(sender_socket.name)
+                    temp_graph.remove_edge(sender_comp, receiver_comp, edge_key)
+
+                    graph_has_cycles = not networkx.is_directed_acyclic_graph(temp_graph)
+                    if not graph_has_cycles:
                         # We removed all the cycles, we can stop
                         break
 
-            if networkx.is_directed_acyclic_graph(temp_graph):
+            if not graph_has_cycles:
                 # We removed all the cycles, nice
                 break
 
-        if not networkx.is_directed_acyclic_graph(temp_graph):
+        if graph_has_cycles:
             msg = "Pipeline contains a cycle that we can't execute"
             raise PipelineRuntimeError(msg)
 
