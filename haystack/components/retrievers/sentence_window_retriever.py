@@ -152,7 +152,8 @@ class SentenceWindowRetriever:
         document from the document store.
 
         :param retrieved_documents: List of retrieved documents from the previous retriever.
-        :param window_size: The number of documents to retrieve before and after the relevant one.
+        :param window_size: The number of documents to retrieve before and after the relevant one. This will overwrite
+                            the `window_size` parameter set in the constructor.
         :returns:
             A dictionary with the following keys:
                 - `context_windows`: A list of strings, where each string represents the concatenated text from the
@@ -163,7 +164,6 @@ class SentenceWindowRetriever:
 
         """
         current_window_size = window_size if window_size is not None else self.window_size
-        print(current_window_size)
 
         if current_window_size < 1:
             raise ValueError("The window_size parameter must be greater than 0.")
