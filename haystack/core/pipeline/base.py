@@ -1172,6 +1172,9 @@ class PipelineBase:
             for sender_comp, receiver_comp in zip(cycle, cycle[1:] + cycle[:1]):
                 # We get the key and iterate those as we want to edit the graph data while
                 # iterating the edges and that would raise.
+                # Even though the connection key set in Pipeline.connect() uses only the
+                # sockets name we don't have clashes since it's only used to differentiate
+                # multiple edges between two nodes.
                 edge_keys = list(temp_graph.get_edge_data(sender_comp, receiver_comp).keys())
                 for edge_key in edge_keys:
                     edge_data = temp_graph.get_edge_data(sender_comp, receiver_comp)[edge_key]
