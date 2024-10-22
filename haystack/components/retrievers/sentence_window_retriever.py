@@ -165,7 +165,7 @@ class SentenceWindowRetriever:
         """
         window_size = window_size or self.window_size
 
-        if current_window_size < 1:
+        if window_size < 1:
             raise ValueError("The window_size parameter must be greater than 0.")
 
         if not all("split_id" in doc.meta for doc in retrieved_documents):
