@@ -116,7 +116,7 @@ extra-dependencies = [
 
   # Tracing
   "opentelemetry-sdk",
-  "ddtrace",
+  "ddtrace==2.15.0rc2",
 
   # Structured logging
   "structlog",
@@ -138,7 +138,7 @@ extra-dependencies = [
   "python-multipart",
   "psutil",
   "mypy",
-  "pip",  # mypy needs pip to install missing stub packages
+  "pip",                     # mypy needs pip to install missing stub packages
   "pylint",
   "ipython",
 ]
