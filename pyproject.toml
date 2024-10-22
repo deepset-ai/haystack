@@ -138,6 +138,7 @@ extra-dependencies = [
   "python-multipart",
   "psutil",
   "mypy",
+  "pip",  # mypy needs pip to install missing stub packages
   "pylint",
   "ipython",
 ]
