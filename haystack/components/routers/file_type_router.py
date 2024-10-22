@@ -14,9 +14,6 @@ from haystack.dataclasses import ByteStream
 logger = logging.getLogger(__name__)
 
 
-# COMMENT TO TRIGGER THE LINT/TYPING WORKFLOW
-
-
 @component
 class FileTypeRouter:
     """
