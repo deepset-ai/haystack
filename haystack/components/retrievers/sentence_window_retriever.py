@@ -179,8 +179,8 @@ class SentenceWindowRetriever:
         for doc in retrieved_documents:
             source_id = doc.meta["source_id"]
             split_id = doc.meta["split_id"]
-            min_before = min(list(range(split_id - 1, split_id - current_window_size - 1, -1)))
-            max_after = max(list(range(split_id + 1, split_id + current_window_size + 1, 1)))
+            min_before = min(list(range(split_id - 1, split_id - window_size - 1, -1)))
+            max_after = max(list(range(split_id + 1, split_id + window_size + 1, 1)))
             context_docs = self.document_store.filter_documents(
                 {
                     "operator": "AND",
