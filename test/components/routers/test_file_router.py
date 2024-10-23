@@ -8,7 +8,9 @@ from unittest.mock import mock_open, patch
 import pytest
 
 from haystack.components.routers.file_type_router import FileTypeRouter
+from haystack.components.converters import TextFileToDocument, PyPDFToDocument
 from haystack.dataclasses import ByteStream
+from haystack import Pipeline
 
 
 @pytest.mark.skipif(
@@ -34,6 +36,94 @@ class TestFileTypeRouter:
         assert len(output[r"audio/x-wav"]) == 1
         assert len(output[r"image/jpeg"]) == 1
         assert not output.get("unclassified")
+
+    def test_run_with_single_meta(self, test_files_path):
+        """
+        Test if the component runs correctly when a single metadata dictionary is provided.
+        """
+        file_paths = [
+            test_files_path / "txt" / "doc_1.txt",
+            test_files_path / "txt" / "doc_2.txt",
+            test_files_path / "audio" / "the context for this answer is here.wav",
+        ]
+
+        meta = {"meta_field": "meta_value"}
+
+        router = FileTypeRouter(mime_types=[r"text/plain", r"audio/x-wav"])
+        output = router.run(sources=file_paths, meta=meta)
+        assert output
+
+        assert len(output[r"text/plain"]) == 2
+        assert len(output[r"audio/x-wav"]) == 1
+        assert not output.get("unclassified")
+
+        for elements in output.values():
+            for el in elements:
+                assert isinstance(el, ByteStream)
+                assert el.meta["meta_field"] == "meta_value"
+
+    def test_run_with_meta_list(self, test_files_path):
+        """
+        Test if the component runs correctly when a list of metadata dictionaries is provided.
+        """
+        file_paths = [
+            test_files_path / "txt" / "doc_1.txt",
+            test_files_path / "images" / "apple.jpg",
+            test_files_path / "audio" / "the context for this answer is here.wav",
+        ]
+
+        meta = [{"key1": "value1"}, {"key2": "value2"}, {"key3": "value3"}]
+
+        router = FileTypeRouter(mime_types=[r"text/plain", r"audio/x-wav", r"image/jpeg"])
+        output = router.run(sources=file_paths, meta=meta)
+        assert output
+
+        assert len(output[r"text/plain"]) == 1
+        assert len(output[r"audio/x-wav"]) == 1
+        assert len(output[r"image/jpeg"]) == 1
+        assert not output.get("unclassified")
+
+        for i, elements in enumerate(output.values()):
+            for el in elements:
+                assert isinstance(el, ByteStream)
+
+                expected_meta_key, expected_meta_value = list(meta[i].items())[0]
+                assert el.meta[expected_meta_key] == expected_meta_value
+
+    def test_run_with_meta_and_bytestreams(self):
+        """
+        Test if the component runs correctly with ByteStream inputs and meta.
+        The original meta is preserved and the new meta is added.
+        """
+
+        bs = ByteStream.from_string("Haystack!", mime_type="text/plain", meta={"foo": "bar"})
+
+        meta = {"another_key": "another_value"}
+
+        router = FileTypeRouter(mime_types=[r"text/plain"])
+
+        output = router.run(sources=[bs], meta=meta)
+
+        assert output
+        assert len(output[r"text/plain"]) == 1
+        assert not output.get("unclassified")
+
+        assert isinstance(output[r"text/plain"][0], ByteStream)
+        assert output[r"text/plain"][0].meta["foo"] == "bar"
+        assert output[r"text/plain"][0].meta["another_key"] == "another_value"
+
+    def test_run_fails_if_meta_length_does_not_match_sources(self, test_files_path):
+        """
+        Test that the component raises an error if the length of the metadata list does not match the number of sources.
+        """
+        file_paths = [test_files_path / "txt" / "doc_1.txt"]
+
+        meta = [{"key1": "value1"}, {"key2": "value2"}, {"key3": "value3"}]
+
+        router = FileTypeRouter(mime_types=[r"text/plain"])
+
+        with pytest.raises(ValueError):
+            router.run(sources=file_paths, meta=meta)
 
     def test_run_with_bytestreams(self, test_files_path):
         """
@@ -186,3 +276,28 @@ class TestFileTypeRouter:
 
         assert len(output.get("unclassified")) == 1, "Failed to handle unclassified file types"
         assert mp3_stream in output["unclassified"], "'sound.mp3' ByteStream should be unclassified but is not"
+
+    @pytest.mark.integration
+    def test_pipeline_with_converters(self, test_files_path):
+        """
+        Test if the component runs correctly in a pipeline with converters and passes metadata correctly.
+        """
+        file_type_router = FileTypeRouter(mime_types=["text/plain", "application/pdf"])
+        text_file_converter = TextFileToDocument()
+        pdf_converter = PyPDFToDocument()
+
+        pipe = Pipeline()
+        pipe.add_component(instance=file_type_router, name="file_type_router")
+        pipe.add_component(instance=text_file_converter, name="text_file_converter")
+        pipe.add_component(instance=pdf_converter, name="pypdf_converter")
+        pipe.connect("file_type_router.text/plain", "text_file_converter.sources")
+        pipe.connect("file_type_router.application/pdf", "pypdf_converter.sources")
+
+        file_paths = [test_files_path / "txt" / "doc_1.txt", test_files_path / "pdf" / "sample_pdf_1.pdf"]
+
+        meta = [{"meta_field_1": "meta_value_1"}, {"meta_field_2": "meta_value_2"}]
+
+        output = pipe.run(data={"file_type_router": {"sources": file_paths, "meta": meta}})
+
+        assert output["text_file_converter"]["documents"][0].meta["meta_field_1"] == "meta_value_1"
+        assert output["pypdf_converter"]["documents"][0].meta["meta_field_2"] == "meta_value_2"
