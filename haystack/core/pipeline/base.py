@@ -111,7 +111,7 @@ class PipelineBase:
         """
         components = {}
         for name, instance in self.graph.nodes(data="instance"):  # type:ignore
-            components[name] = component_to_dict(instance)
+            components[name] = component_to_dict(instance, name)
 
         connections = []
         for sender, receiver, edge_data in self.graph.edges.data():

@@ -10,13 +10,14 @@ import pytest
 
 from haystack.core.pipeline import Pipeline
 from haystack.core.component import component
-from haystack.core.errors import DeserializationError
+from haystack.core.errors import DeserializationError, SerializationError
 from haystack.testing import factory
 from haystack.core.serialization import (
     default_to_dict,
     default_from_dict,
     generate_qualified_class_name,
     import_class_by_name,
+    component_to_dict,
 )
 
 
@@ -106,3 +107,25 @@ def test_import_class_by_name_no_valid_class():
     data = "some.invalid.class"
     with pytest.raises(ImportError):
         import_class_by_name(data)
+
+
+class CustomData:
+    def __init__(self, a: int, b: str) -> None:
+        self.a = a
+        self.b = b
+
+
+@component()
+class UnserializableClass:
+    def __init__(self, a: int, b: str, c: CustomData) -> None:
+        self.a = a
+        self.b = b
+        self.c = c
+
+    def run(self):
+        pass
+
+
+def test_component_to_dict_invalid_type():
+    with pytest.raises(SerializationError, match="unsupported value of type 'CustomData'"):
+        component_to_dict(UnserializableClass(1, "s", CustomData(99, "aa")), "invalid_component")

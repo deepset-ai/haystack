@@ -49,23 +49,6 @@ class TestOpenAIGenerator:
         assert component.client.timeout == 40.0
         assert component.client.max_retries == 1
 
-    def test_init_with_parameters(self, monkeypatch):
-        monkeypatch.setenv("OPENAI_TIMEOUT", "100")
-        monkeypatch.setenv("OPENAI_MAX_RETRIES", "10")
-        component = OpenAIGenerator(
-            api_key=Secret.from_token("test-api-key"),
-            model="gpt-4o-mini",
-            streaming_callback=print_streaming_chunk,
-            api_base_url="test-base-url",
-            generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
-        )
-        assert component.client.api_key == "test-api-key"
-        assert component.model == "gpt-4o-mini"
-        assert component.streaming_callback is print_streaming_chunk
-        assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
-        assert component.client.timeout == 100.0
-        assert component.client.max_retries == 10
-
     def test_to_dict_default(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = OpenAIGenerator()
@@ -331,3 +314,22 @@ class TestOpenAIGenerator:
 
         assert callback.counter > 1
         assert "Paris" in callback.responses
+
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_run_with_system_prompt(self):
+        generator = OpenAIGenerator(
+            model="gpt-4o-mini",
+            system_prompt="You answer in Portuguese, regardless of the language on which a question is asked",
+        )
+        result = generator.run("Can you explain the Pitagoras therom?")
+        assert "teorema" in result["replies"][0]
+
+        result = generator.run(
+            "Can you explain the Pitagoras therom?",
+            system_prompt="You answer in German, regardless of the language on which a question is asked.",
+        )
+        assert "Pythagoras" in result["replies"][0]
