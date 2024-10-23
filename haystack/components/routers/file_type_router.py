@@ -6,12 +6,19 @@ import mimetypes
 import re
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Any
 
 from haystack import component, logging
 from haystack.dataclasses import ByteStream
+from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
+
 
 logger = logging.getLogger(__name__)
+
+
+# we add markdown because it is not added by the mimetypes module
+# see https://github.com/python/cpython/pull/17995
+CUSTOM_MIMETYPES = {".md": "text/markdown", ".markdown": "text/markdown"}
 
 
 @component
@@ -50,8 +57,6 @@ class FileTypeRouter:
     #   PosixPath('song.mp3')], 'text/plain': [PosixPath('file.txt')], 'unclassified': [PosixPath('document.pdf')
     # ]}
     ```
-
-    :param mime_types: A list of MIME types or regex patterns to classify the input files or byte streams.
     """
 
     def __init__(self, mime_types: List[str], additional_mimetypes: Optional[Dict[str, str]] = None):
@@ -74,15 +79,24 @@ class FileTypeRouter:
 
         self.mime_type_patterns = []
         for mime_type in mime_types:
-            if not self._is_valid_mime_type_format(mime_type):
-                raise ValueError(f"Invalid mime type or regex pattern: '{mime_type}'.")
-            pattern = re.compile(mime_type)
+            try:
+                pattern = re.compile(mime_type)
+            except re.error:
+                raise ValueError(f"Invalid regex pattern '{mime_type}'.")
             self.mime_type_patterns.append(pattern)
 
-        component.set_output_types(self, unclassified=List[Path], **{mime_type: List[Path] for mime_type in mime_types})
+        component.set_output_types(
+            self,
+            unclassified=List[Union[Path, ByteStream]],
+            **{mime_type: List[Union[Path, ByteStream]] for mime_type in mime_types},
+        )
         self.mime_types = mime_types
 
-    def run(self, sources: List[Union[str, Path, ByteStream]]) -> Dict[str, List[Union[ByteStream, Path]]]:
+    def run(
+        self,
+        sources: List[Union[str, Path, ByteStream]],
+        meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+    ) -> Dict[str, List[Union[ByteStream, Path]]]:
         """
         Categorize files or byte streams according to their MIME types.
 
@@ -93,15 +107,24 @@ class FileTypeRouter:
         """
 
         mime_types = defaultdict(list)
-        for source in sources:
+
+        if meta:
+            meta_list = normalize_metadata(meta=meta, sources_count=len(sources))
+
+        for i, source in enumerate(sources):
             if isinstance(source, str):
                 source = Path(source)
+
             if isinstance(source, Path):
                 mime_type = self._get_mime_type(source)
             elif isinstance(source, ByteStream):
                 mime_type = source.mime_type
             else:
                 raise ValueError(f"Unsupported data source type: {type(source).__name__}")
+
+            if meta:
+                source = get_bytestream_from_source(source)
+                source.meta.update(meta_list[i])
 
             matched = False
             if mime_type:
@@ -126,27 +149,4 @@ class FileTypeRouter:
         extension = path.suffix.lower()
         mime_type = mimetypes.guess_type(path.as_posix())[0]
         # lookup custom mappings if the mime type is not found
-        return self._get_custom_mime_mappings().get(extension, mime_type)
-
-    def _is_valid_mime_type_format(self, mime_type: str) -> bool:
-        """
-        Checks if the provided MIME type string is a valid regex pattern.
-
-        :param mime_type: The MIME type or regex pattern to validate.
-        :raises ValueError: If the mime_type is not a valid regex pattern.
-        :returns: Always True because a ValueError is raised for invalid patterns.
-        """
-        try:
-            re.compile(mime_type)
-            return True
-        except re.error:
-            raise ValueError(f"Invalid regex pattern '{mime_type}'.")
-
-    @staticmethod
-    def _get_custom_mime_mappings() -> Dict[str, str]:
-        """
-        Returns a dictionary of custom file extension to MIME type mappings.
-        """
-        # we add markdown because it is not added by the mimetypes module
-        # see https://github.com/python/cpython/pull/17995
-        return {".md": "text/markdown", ".markdown": "text/markdown"}
+        return CUSTOM_MIMETYPES.get(extension, mime_type)
