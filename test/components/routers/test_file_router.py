@@ -24,14 +24,14 @@ class TestFileTypeRouter:
         """
         router = FileTypeRouter(mime_types=["text/plain", "audio/x-wav", "image/jpeg"])
         assert router.mime_types == ["text/plain", "audio/x-wav", "image/jpeg"]
-        assert router.additional_mimetypes is None
+        assert router._additional_mimetypes is None
 
         router = FileTypeRouter(
             mime_types=["text/plain"],
             additional_mimetypes={"application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx"},
         )
         assert router.mime_types == ["text/plain"]
-        assert router.additional_mimetypes == {
+        assert router._additional_mimetypes == {
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx"
         }
 
@@ -76,7 +76,7 @@ class TestFileTypeRouter:
         )
 
         assert loaded_router.mime_types == expected_router.mime_types
-        assert loaded_router.additional_mimetypes == expected_router.additional_mimetypes
+        assert loaded_router._additional_mimetypes == expected_router._additional_mimetypes
 
     def test_run(self, test_files_path):
         """

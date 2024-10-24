@@ -94,7 +94,7 @@ class FileTypeRouter:
             **{mime_type: List[Union[str, Path, ByteStream]] for mime_type in mime_types},
         )
         self.mime_types = mime_types
-        self.additional_mimetypes = additional_mimetypes
+        self._additional_mimetypes = additional_mimetypes
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -103,7 +103,7 @@ class FileTypeRouter:
         :returns:
             Dictionary with serialized data.
         """
-        return default_to_dict(self, mime_types=self.mime_types, additional_mimetypes=self.additional_mimetypes)
+        return default_to_dict(self, mime_types=self.mime_types, additional_mimetypes=self._additional_mimetypes)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "FileTypeRouter":
