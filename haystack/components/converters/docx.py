@@ -5,11 +5,12 @@
 import csv
 import io
 from dataclasses import dataclass
+from enum import Enum
 from io import StringIO
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
-from haystack import Document, component, logging
+from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
 from haystack.dataclasses import ByteStream
 from haystack.lazy_imports import LazyImport
@@ -62,6 +63,30 @@ class DOCXMetadata:
     version: str
 
 
+class TableFormat(Enum):
+    """
+    Enum for table format.
+    """
+
+    MARKDOWN = "markdown"
+    CSV = "csv"
+
+    def __str__(self):
+        return self.value
+
+    @staticmethod
+    def from_str(string: str) -> "TableFormat":
+        """
+        Convert a string to a TableFormat enum.
+        """
+        enum_map = {e.value: e for e in TableFormat}
+        table_format = enum_map.get(string.lower())
+        if table_format is None:
+            msg = f"Unknown table format '{string}'. Supported formats are: {list(enum_map.keys())}"
+            raise ValueError(msg)
+        return table_format
+
+
 @component
 class DOCXToDocument:
     """
@@ -72,9 +97,9 @@ class DOCXToDocument:
 
     Usage example:
     ```python
-    from haystack.components.converters.docx import DOCXToDocument
+    from haystack.components.converters.docx import DOCXToDocument, TableFormat
 
-    converter = DOCXToDocument()
+    converter = DOCXToDocument(table_format=TableFormat.CSV)
     results = converter.run(sources=["sample.docx"], meta={"date_added": datetime.now().isoformat()})
     documents = results["documents"]
     print(documents[0].content)
@@ -82,16 +107,40 @@ class DOCXToDocument:
     ```
     """
 
-    def __init__(self, table_format: Literal["markdown", "csv"] = "markdown"):
+    def __init__(self, table_format: TableFormat = TableFormat.CSV):
         """
         Create a DOCXToDocument component.
 
-        :param table_format: The format for table output. Can be either "markdown" or "csv". Defaults to "markdown".
+        :param table_format: The format for table output. Can be either TableFormat.MARKDOWN or
+            TableFormat.CSV. Defaults to TableFormat.CSV.
         """
         docx_import.check()
-        if table_format not in ["markdown", "csv"]:
-            raise ValueError("table_format must be either 'markdown' or 'csv'")
-        self.table_format = table_format
+        self.table_format = TableFormat.from_str(table_format) if isinstance(table_format, str) else table_format
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serializes the component to a dictionary.
+
+        :returns:
+            Dictionary with serialized data.
+        """
+        return default_to_dict(self, table_format=str(self.table_format))
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "DOCXToDocument":
+        """
+        Deserializes the component from a dictionary.
+
+        :param data:
+            The dictionary to deserialize from.
+        :returns:
+            The deserialized component.
+        """
+        # Convert the table_format string back to enum before passing to the constructor
+        if "init_parameters" in data and "table_format" in data["init_parameters"]:
+            data["init_parameters"]["table_format"] = TableFormat.from_str(data["init_parameters"]["table_format"])
+
+        return default_from_dict(cls, data)
 
     @component.output_types(documents=List[Document])
     def run(
@@ -163,7 +212,9 @@ class DOCXToDocument:
             elif element.tag.endswith("tbl"):
                 table = docx.table.Table(element, document)
                 table_str = (
-                    self._table_to_markdown(table) if self.table_format == "markdown" else self._table_to_csv(table)
+                    self._table_to_markdown(table)
+                    if self.table_format == TableFormat.MARKDOWN
+                    else self._table_to_csv(table)
                 )
                 elements.append(table_str)
 
@@ -261,15 +312,15 @@ class DOCXToDocument:
             category=document.core_properties.category,
             comments=document.core_properties.comments,
             content_status=document.core_properties.content_status,
-            created=document.core_properties.created.isoformat() if document.core_properties.created else None,
+            created=(document.core_properties.created.isoformat() if document.core_properties.created else None),
             identifier=document.core_properties.identifier,
             keywords=document.core_properties.keywords,
             language=document.core_properties.language,
             last_modified_by=document.core_properties.last_modified_by,
-            last_printed=document.core_properties.last_printed.isoformat()
-            if document.core_properties.last_printed
-            else None,
-            modified=document.core_properties.modified.isoformat() if document.core_properties.modified else None,
+            last_printed=(
+                document.core_properties.last_printed.isoformat() if document.core_properties.last_printed else None
+            ),
+            modified=(document.core_properties.modified.isoformat() if document.core_properties.modified else None),
             revision=document.core_properties.revision,
             subject=document.core_properties.subject,
             title=document.core_properties.title,

@@ -5,7 +5,7 @@ import csv
 from io import StringIO
 
 from haystack import Document
-from haystack.components.converters.docx import DOCXMetadata, DOCXToDocument
+from haystack.components.converters.docx import DOCXMetadata, DOCXToDocument, TableFormat
 from haystack.dataclasses import ByteStream
 
 
@@ -17,6 +17,43 @@ def docx_converter():
 class TestDOCXToDocument:
     def test_init(self, docx_converter):
         assert isinstance(docx_converter, DOCXToDocument)
+
+    def test_to_dict(self):
+        converter = DOCXToDocument()
+        data = converter.to_dict()
+        assert data == {
+            "type": "haystack.components.converters.docx.DOCXToDocument",
+            "init_parameters": {"table_format": "csv"},
+        }
+
+    def test_to_dict_custom_parameters(self):
+        converter = DOCXToDocument(table_format=TableFormat.MARKDOWN)
+        data = converter.to_dict()
+        assert data == {
+            "type": "haystack.components.converters.docx.DOCXToDocument",
+            "init_parameters": {"table_format": "markdown"},
+        }
+
+    def test_from_dict(self):
+        data = {"type": "haystack.components.converters.docx.DOCXToDocument", "init_parameters": {}}
+        converter = DOCXToDocument.from_dict(data)
+        assert converter.table_format == TableFormat.CSV
+
+    def test_from_dict_custom_parameters(self):
+        data = {
+            "type": "haystack.components.converters.docx.DOCXToDocument",
+            "init_parameters": {"table_format": "markdown"},
+        }
+        converter = DOCXToDocument.from_dict(data)
+        assert converter.table_format == TableFormat.MARKDOWN
+
+    def test_from_dict_invalid_table_format(self):
+        data = {
+            "type": "haystack.components.converters.docx.DOCXToDocument",
+            "init_parameters": {"table_format": "invalid_format"},
+        }
+        with pytest.raises(ValueError, match="Unknown table format 'invalid_format'"):
+            DOCXToDocument.from_dict(data)
 
     def test_run(self, test_files_path, docx_converter):
         """
@@ -49,10 +86,11 @@ class TestDOCXToDocument:
             ),
         }
 
-    def test_run_with_table(self, test_files_path, docx_converter):
+    def test_run_with_table(self, test_files_path):
         """
         Test if the component runs correctly
         """
+        docx_converter = DOCXToDocument(table_format=TableFormat.MARKDOWN)
         paths = [test_files_path / "docx" / "sample_docx.docx"]
         output = docx_converter.run(sources=paths)
         docs = output["documents"]
