@@ -107,12 +107,12 @@ class DOCXToDocument:
     ```
     """
 
-    def __init__(self, table_format: TableFormat = TableFormat.CSV):
+    def __init__(self, table_format: Union[str, TableFormat] = TableFormat.CSV):
         """
         Create a DOCXToDocument component.
 
-        :param table_format: The format for table output. Can be either TableFormat.MARKDOWN or
-            TableFormat.CSV. Defaults to TableFormat.CSV.
+        :param table_format: The format for table output. Can be either TableFormat.MARKDOWN,
+            TableFormat.CSV, "markdown", or "csv". Defaults to TableFormat.CSV.
         """
         docx_import.check()
         self.table_format = TableFormat.from_str(table_format) if isinstance(table_format, str) else table_format

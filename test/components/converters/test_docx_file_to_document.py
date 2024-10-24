@@ -18,6 +18,15 @@ class TestDOCXToDocument:
     def test_init(self, docx_converter):
         assert isinstance(docx_converter, DOCXToDocument)
 
+    def test_init_with_string(self):
+        converter = DOCXToDocument(table_format="markdown")
+        assert isinstance(converter, DOCXToDocument)
+        assert converter.table_format == TableFormat.MARKDOWN
+
+    def test_init_with_invalid_string(self):
+        with pytest.raises(ValueError, match="Unknown table format 'invalid_format'"):
+            DOCXToDocument(table_format="invalid_format")
+
     def test_to_dict(self):
         converter = DOCXToDocument()
         data = converter.to_dict()
@@ -27,11 +36,32 @@ class TestDOCXToDocument:
         }
 
     def test_to_dict_custom_parameters(self):
+        converter = DOCXToDocument(table_format="markdown")
+        data = converter.to_dict()
+        assert data == {
+            "type": "haystack.components.converters.docx.DOCXToDocument",
+            "init_parameters": {"table_format": "markdown"},
+        }
+
+        converter = DOCXToDocument(table_format="csv")
+        data = converter.to_dict()
+        assert data == {
+            "type": "haystack.components.converters.docx.DOCXToDocument",
+            "init_parameters": {"table_format": "csv"},
+        }
+
         converter = DOCXToDocument(table_format=TableFormat.MARKDOWN)
         data = converter.to_dict()
         assert data == {
             "type": "haystack.components.converters.docx.DOCXToDocument",
             "init_parameters": {"table_format": "markdown"},
+        }
+
+        converter = DOCXToDocument(table_format=TableFormat.CSV)
+        data = converter.to_dict()
+        assert data == {
+            "type": "haystack.components.converters.docx.DOCXToDocument",
+            "init_parameters": {"table_format": "csv"},
         }
 
     def test_from_dict(self):
