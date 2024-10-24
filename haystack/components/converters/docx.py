@@ -65,7 +65,7 @@ class DOCXMetadata:
 
 class TableFormat(Enum):
     """
-    Enum for table format.
+    Supported formats for storing DOCX tabular data in a Document.
     """
 
     MARKDOWN = "markdown"
