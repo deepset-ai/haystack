@@ -63,7 +63,7 @@ class DOCXMetadata:
     version: str
 
 
-class TableFormat(Enum):
+class DOCXTableFormat(Enum):
     """
     Supported formats for storing DOCX tabular data in a Document.
     """
@@ -75,11 +75,11 @@ class TableFormat(Enum):
         return self.value
 
     @staticmethod
-    def from_str(string: str) -> "TableFormat":
+    def from_str(string: str) -> "DOCXTableFormat":
         """
-        Convert a string to a TableFormat enum.
+        Convert a string to a DOCXTableFormat enum.
         """
-        enum_map = {e.value: e for e in TableFormat}
+        enum_map = {e.value: e for e in DOCXTableFormat}
         table_format = enum_map.get(string.lower())
         if table_format is None:
             msg = f"Unknown table format '{string}'. Supported formats are: {list(enum_map.keys())}"
@@ -97,9 +97,9 @@ class DOCXToDocument:
 
     Usage example:
     ```python
-    from haystack.components.converters.docx import DOCXToDocument, TableFormat
+    from haystack.components.converters.docx import DOCXToDocument, DOCXTableFormat
 
-    converter = DOCXToDocument(table_format=TableFormat.CSV)
+    converter = DOCXToDocument(table_format=DOCXTableFormat.CSV)
     results = converter.run(sources=["sample.docx"], meta={"date_added": datetime.now().isoformat()})
     documents = results["documents"]
     print(documents[0].content)
@@ -107,15 +107,15 @@ class DOCXToDocument:
     ```
     """
 
-    def __init__(self, table_format: Union[str, TableFormat] = TableFormat.CSV):
+    def __init__(self, table_format: Union[str, DOCXTableFormat] = DOCXTableFormat.CSV):
         """
         Create a DOCXToDocument component.
 
-        :param table_format: The format for table output. Can be either TableFormat.MARKDOWN,
-            TableFormat.CSV, "markdown", or "csv". Defaults to TableFormat.CSV.
+        :param table_format: The format for table output. Can be either DOCXTableFormat.MARKDOWN,
+            DOCXTableFormat.CSV, "markdown", or "csv". Defaults to DOCXTableFormat.CSV.
         """
         docx_import.check()
-        self.table_format = TableFormat.from_str(table_format) if isinstance(table_format, str) else table_format
+        self.table_format = DOCXTableFormat.from_str(table_format) if isinstance(table_format, str) else table_format
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -136,10 +136,7 @@ class DOCXToDocument:
         :returns:
             The deserialized component.
         """
-        # Convert the table_format string back to enum before passing to the constructor
-        if "init_parameters" in data and "table_format" in data["init_parameters"]:
-            data["init_parameters"]["table_format"] = TableFormat.from_str(data["init_parameters"]["table_format"])
-
+        data["init_parameters"]["table_format"] = DOCXTableFormat.from_str(data["init_parameters"]["table_format"])
         return default_from_dict(cls, data)
 
     @component.output_types(documents=List[Document])
@@ -213,7 +210,7 @@ class DOCXToDocument:
                 table = docx.table.Table(element, document)
                 table_str = (
                     self._table_to_markdown(table)
-                    if self.table_format == TableFormat.MARKDOWN
+                    if self.table_format == DOCXTableFormat.MARKDOWN
                     else self._table_to_csv(table)
                 )
                 elements.append(table_str)
