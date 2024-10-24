@@ -22,18 +22,23 @@ The simplest way to get Haystack is via pip:
 pip install haystack-ai
 ```
 
+Install from the `main` branch to try the newest features:
+```sh
+pip install git+https://github.com/deepset-ai/haystack.git@main 
+```
+
 Haystack supports multiple installation methods including Docker images. For a comprehensive guide please refer
-to the [documentation](https://docs.haystack.deepset.ai/v2.0/docs/installation).
+to the [documentation](https://docs.haystack.deepset.ai/docs/installation).
 
 ## Documentation
 
 If you're new to the project, check out ["What is Haystack?"](https://haystack.deepset.ai/overview/intro) then go
 through the ["Get Started Guide"](https://haystack.deepset.ai/overview/quick-start) and build your first LLM application
-in a matter of minutes. Keep learning with the [tutorials](https://haystack.deepset.ai/tutorials?v=2.0). For more advanced
+in a matter of minutes. Keep learning with the [tutorials](https://haystack.deepset.ai/tutorials). For more advanced
 use cases, or just to get some inspiration, you can browse our Haystack recipes in the
 [Cookbook](https://haystack.deepset.ai/cookbook).
 
-At any given point, hit the [documentation](https://docs.haystack.deepset.ai/v2.0/docs/intro) to learn more about Haystack, what can it do for you and the technology behind.
+At any given point, hit the [documentation](https://docs.haystack.deepset.ai/docs/intro) to learn more about Haystack, what can it do for you and the technology behind.
 
 ## Features
 
@@ -74,7 +79,7 @@ Use **deepset Studio** to visually create and export your Haystack pipeline arch
 
 Haystack collects **anonymous** usage statistics of pipeline components. We receive an event every time these components are initialized. This way, we know which components are most relevant to our community.
 
-Read more about telemetry in Haystack or how you can opt out in [Haystack docs](https://docs.haystack.deepset.ai/v2.0/docs/telemetry).
+Read more about telemetry in Haystack or how you can opt out in [Haystack docs](https://docs.haystack.deepset.ai/docs/telemetry).
 
 ## 🖖 Community
 
