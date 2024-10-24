@@ -54,7 +54,7 @@ dependencies = [
   "networkx",               # Pipeline graphs
   "typing_extensions>=4.7", # typing support for Python 3.8
   "requests",
-  "numpy<2",
+  "numpy",
   "python-dateutil",
   "haystack-experimental",
 ]
@@ -81,6 +81,8 @@ format-check = "ruff format --check {args}"
 
 [tool.hatch.envs.test]
 extra-dependencies = [
+  "numpy>=2",                                  # Haystack is compatible both with numpy 1.x and 2.x, but we test with 2.x
+
   "transformers[torch,sentencepiece]==4.44.2", # ExtractiveReader, TransformersSimilarityRanker, LocalWhisperTranscriber, HFGenerators...
   "huggingface_hub>=0.23.0",                   # Hugging Face API Generators and Embedders
   "sentence-transformers>=3.0.0",              # SentenceTransformersTextEmbedder and SentenceTransformersDocumentEmbedder
@@ -89,9 +91,9 @@ extra-dependencies = [
   "arrow>=1.3.0",                              # Jinja2TimeExtension
 
   # NamedEntityExtractor
-  "spacy>=3.7,<3.8",
+  "spacy>=3.8,<3.9",
   "spacy-curated-transformers>=0.2,<=0.3",
-  "en-core-web-trf @ https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.7.3/en_core_web_trf-3.7.3-py3-none-any.whl",
+  "en-core-web-trf @ https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.8.0/en_core_web_trf-3.8.0-py3-none-any.whl",
 
   # Converters
   "pypdf",                            # PyPDFToDocument
