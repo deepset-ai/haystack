@@ -8,7 +8,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-from haystack import component, logging
+from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
 from haystack.dataclasses import ByteStream
 
@@ -92,6 +92,28 @@ class FileTypeRouter:
             **{mime_type: List[Union[str, Path, ByteStream]] for mime_type in mime_types},
         )
         self.mime_types = mime_types
+        self.additional_mimetypes = additional_mimetypes
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serializes the component to a dictionary.
+
+        :returns:
+            Dictionary with serialized data.
+        """
+        return default_to_dict(self, mime_types=self.mime_types, additional_mimetypes=self.additional_mimetypes)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "FileTypeRouter":
+        """
+        Deserializes the component from a dictionary.
+
+        :param data:
+            The dictionary to deserialize from.
+        :returns:
+            The deserialized component.
+        """
+        return default_from_dict(cls, data)
 
     def run(
         self,
