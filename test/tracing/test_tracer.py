@@ -29,7 +29,7 @@ from haystack.tracing.tracer import (
     tracer,
     HAYSTACK_CONTENT_TRACING_ENABLED_ENV_VAR,
 )
-from test.tracing.utils import SpyingTracer
+from test.tracing.utils import SpyingTracer, SpyingSpan
 
 
 class TestNullTracer:
@@ -37,7 +37,7 @@ class TestNullTracer:
         assert isinstance(tracer.actual_tracer, NullTracer)
 
         # None of this raises
-        with tracer.trace("operation", {"key": "value"}) as span:
+        with tracer.trace("operation", {"key": "value"}, parent_span=None) as span:
             span.set_tag("key", "value")
             span.set_tags({"key": "value"})
 
@@ -50,12 +50,14 @@ class TestProxyTracer:
         spying_tracer = SpyingTracer()
         my_tracer = ProxyTracer(provided_tracer=spying_tracer)
 
-        with my_tracer.trace("operation", {"key": "value"}) as span:
+        parent_span = Mock(spec=SpyingSpan)
+        with my_tracer.trace("operation", {"key": "value"}, parent_span=parent_span) as span:
             span.set_tag("key", "value")
             span.set_tags({"key2": "value2"})
 
         assert len(spying_tracer.spans) == 1
         assert spying_tracer.spans[0].operation_name == "operation"
+        assert spying_tracer.spans[0].parent_span == parent_span
         assert spying_tracer.spans[0].tags == {"key": "value", "key2": "value2"}
 
 

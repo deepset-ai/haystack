@@ -12,6 +12,7 @@ from haystack.tracing import Span, Tracer
 @dataclasses.dataclass
 class SpyingSpan(Span):
     operation_name: str
+    parent_span: Optional[Span] = None
     tags: Dict[str, Any] = dataclasses.field(default_factory=dict)
 
     trace_id: Optional[str] = dataclasses.field(default_factory=lambda: str(uuid.uuid4()))
@@ -32,8 +33,10 @@ class SpyingTracer(Tracer):
         self.spans: List[SpyingSpan] = []
 
     @contextlib.contextmanager
-    def trace(self, operation_name: str, tags: Optional[Dict[str, Any]] = None) -> Iterator[Span]:
-        new_span = SpyingSpan(operation_name)
+    def trace(
+        self, operation_name: str, tags: Optional[Dict[str, Any]] = None, parent_span: Optional[Span] = None
+    ) -> Iterator[Span]:
+        new_span = SpyingSpan(operation_name, parent_span)
 
         for key, value in (tags or {}).items():
             new_span.set_tag(key, value)
