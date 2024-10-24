@@ -283,13 +283,11 @@ class TestFileTypeRouter:
         Test if the component runs correctly in a pipeline with converters and passes metadata correctly.
         """
         file_type_router = FileTypeRouter(mime_types=["text/plain", "application/pdf"])
-        text_file_converter = TextFileToDocument()
-        pdf_converter = PyPDFToDocument()
 
         pipe = Pipeline()
         pipe.add_component(instance=file_type_router, name="file_type_router")
-        pipe.add_component(instance=text_file_converter, name="text_file_converter")
-        pipe.add_component(instance=pdf_converter, name="pypdf_converter")
+        pipe.add_component(instance=TextFileToDocument(), name="text_file_converter")
+        pipe.add_component(instance=PyPDFToDocument(), name="pypdf_converter")
         pipe.connect("file_type_router.text/plain", "text_file_converter.sources")
         pipe.connect("file_type_router.application/pdf", "pypdf_converter.sources")
 

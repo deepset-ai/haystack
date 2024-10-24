@@ -6,12 +6,11 @@ import mimetypes
 import re
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Optional, Union, Any
+from typing import Any, Dict, List, Optional, Union
 
 from haystack import component, logging
-from haystack.dataclasses import ByteStream
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
-
+from haystack.dataclasses import ByteStream
 
 logger = logging.getLogger(__name__)
 
@@ -63,11 +62,13 @@ class FileTypeRouter:
         """
         Initialize the FileTypeRouter component.
 
-        :param mime_types: A list of MIME types or regex patterns to classify the input files or byte streams.
+        :param mime_types:
+            A list of MIME types or regex patterns to classify the input files or byte streams.
             (for example: `["text/plain", "audio/x-wav", "image/jpeg"]`).
 
-        :param additional_mimetypes: A dictionary containing the MIME type to add to the mimetypes package to prevent
-            unsupported or non native packages from being unclassified.
+        :param additional_mimetypes:
+            A dictionary containing the MIME type to add to the mimetypes package to prevent unsupported or non native
+            packages from being unclassified.
             (for example: `{"application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx"}`).
         """
         if not mime_types:
@@ -100,18 +101,24 @@ class FileTypeRouter:
         """
         Categorize files or byte streams according to their MIME types.
 
-        :param sources: A list of file paths or byte streams to categorize.
+        :param sources:
+            A list of file paths or byte streams to categorize.
+
+        :param meta:
+            Optional metadata to attach to the sources.
+            When provided, the sources are internally converted to ByteStream objects and the metadata is added.
+            This value can be a list of dictionaries or a single dictionary.
+            If it's a single dictionary, its content is added to the metadata of all ByteStream objects.
+            If it's a list, its length must match the number of sources, as they are zipped together.
 
         :returns: A dictionary where the keys are MIME types (or `"unclassified"`) and the values are lists of data
             sources.
         """
 
         mime_types = defaultdict(list)
+        meta_list = normalize_metadata(meta=meta, sources_count=len(sources))
 
-        if meta:
-            meta_list = normalize_metadata(meta=meta, sources_count=len(sources))
-
-        for i, source in enumerate(sources):
+        for source, meta_dict in zip(sources, meta_list):
             if isinstance(source, str):
                 source = Path(source)
 
@@ -122,9 +129,10 @@ class FileTypeRouter:
             else:
                 raise ValueError(f"Unsupported data source type: {type(source).__name__}")
 
-            if meta:
+            # If we have metadata, we convert the source to ByteStream and add the metadata
+            if meta_dict:
                 source = get_bytestream_from_source(source)
-                source.meta.update(meta_list[i])
+                source.meta.update(meta_dict)
 
             matched = False
             if mime_type:
