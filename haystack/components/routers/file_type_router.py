@@ -86,6 +86,8 @@ class FileTypeRouter:
                 raise ValueError(f"Invalid regex pattern '{mime_type}'.")
             self.mime_type_patterns.append(pattern)
 
+        # the actual output type is List[Union[Path, ByteStream]],
+        # but this would cause PipelineConnectError with Converters
         component.set_output_types(
             self,
             unclassified=List[Union[str, Path, ByteStream]],
