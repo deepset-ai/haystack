@@ -136,7 +136,8 @@ class DOCXToDocument:
         :returns:
             The deserialized component.
         """
-        data["init_parameters"]["table_format"] = DOCXTableFormat.from_str(data["init_parameters"]["table_format"])
+        if "table_format" in data["init_parameters"]:
+            data["init_parameters"]["table_format"] = DOCXTableFormat.from_str(data["init_parameters"]["table_format"])
         return default_from_dict(cls, data)
 
     @component.output_types(documents=List[Document])

@@ -88,24 +88,25 @@ class TestDOCXToDocument:
         with pytest.raises(ValueError, match="Unknown table format 'invalid_format'"):
             DOCXToDocument.from_dict(data)
 
+    def test_from_dict_empty_init_parameters(self):
+        data = {"type": "haystack.components.converters.docx.DOCXToDocument", "init_parameters": {}}
+        converter = DOCXToDocument.from_dict(data)
+        assert converter.table_format == DOCXTableFormat.CSV
+
     def test_pipeline_serde(self):
         pipeline = Pipeline()
         converter = DOCXToDocument(table_format=DOCXTableFormat.MARKDOWN)
         pipeline.add_component("converter", converter)
-        assert pipeline.to_dict() == {
-            "components": {
-                "converter": {
-                    "init_parameters": {"table_format": "markdown"},
-                    "type": "haystack.components.converters.docx.DOCXToDocument",
-                }
-            },
-            "connections": [],
-            "max_runs_per_component": 100,
-            "metadata": {},
-        }
 
-        new_pipeline = Pipeline.from_dict(pipeline.to_dict())
-        assert new_pipeline == pipeline
+        pipeline_str = pipeline.dumps()
+        assert "haystack.components.converters.docx.DOCXToDocument" in pipeline_str
+        assert "table_format" in pipeline_str
+        assert "markdown" in pipeline_str
+
+        new_pipeline = Pipeline.loads(pipeline_str)
+        new_converter = new_pipeline.get_component("converter")
+        assert isinstance(new_converter, DOCXToDocument)
+        assert new_converter.table_format == DOCXTableFormat.MARKDOWN
 
     def test_run(self, test_files_path, docx_converter):
         """
