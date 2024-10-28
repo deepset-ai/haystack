@@ -835,7 +835,7 @@ class PipelineBase:
             res.append((receiver_name, sender_socket, receiver_socket))
         return res
 
-    def _distribute_output(
+    def _distribute_output(  # pylint: disable=too-many-positional-arguments
         self,
         receiver_components: List[Tuple[str, OutputSocket, InputSocket]],
         component_result: Dict[str, Any],
