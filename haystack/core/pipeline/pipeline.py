@@ -432,6 +432,9 @@ class Pipeline(PipelineBase):
                         cycles[0], name, components_inputs, include_outputs_from
                     )
 
+                    # After a cycle is run the previous run_queue can't be correct anymore cause it's
+                    # not modified when running the subgraph.
+                    # So we reset it given the output returned by the subgraph.
                     run_queue = []
 
                     # Reset the waiting for input previous states, we managed to run at least one component
