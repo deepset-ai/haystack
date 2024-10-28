@@ -206,7 +206,11 @@ class Pipeline(PipelineBase):
 
                 res = self._distribute_output(receivers, res, components_inputs, run_queue, waiting_queue)
 
-                # - Add remaining Component output to the subgraph output
+                # We treat a cycle as a completely independent graph, so we keep track of output
+                # that is not sent inside the cycle.
+                # This output is going to get distribute to the wider graph after we finish running
+                # a cycle.
+                # All values that are left at this point go outside the cycle.
                 if len(res) > 0:
                     subgraph_outputs[name] = res
             else:
