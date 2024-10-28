@@ -788,7 +788,7 @@ class TestPipeline:
         for node in pipe.graph.nodes:
             assert pipe.graph.nodes[node]["visits"] == 0
 
-    def test__init_inputs_state(self):
+    def test__normalize_input_data(self):
         pipe = Pipeline()
         template = """
         Answer the following questions:
@@ -802,7 +802,7 @@ class TestPipeline:
             "branch_joiner": {"value": 1},
             "not_a_component": "some input data",
         }
-        res = pipe._init_inputs_state(data)
+        res = pipe._normalize_input_data(data)
         assert res == {
             "prompt_builder": {"questions": ["What is the capital of Italy?", "What is the capital of France?"]},
             "branch_joiner": {"value": [1]},

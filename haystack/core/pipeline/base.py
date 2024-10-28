@@ -766,7 +766,7 @@ class PipelineBase:
 
         return data
 
-    def _init_inputs_state(self, data: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+    def _normalize_input_data(self, data: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
         for component_name, component_inputs in data.items():
             if component_name not in self.graph.nodes:
                 # This is not a component name, it must be the name of one or more input sockets.

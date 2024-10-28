@@ -350,8 +350,8 @@ class Pipeline(PipelineBase):
         # Raise if input is malformed in some way
         self._validate_input(data)
 
-        # Initialize the inputs state
-        components_inputs: Dict[str, Dict[str, Any]] = self._init_inputs_state(data)
+        # Normalize the input data
+        components_inputs: Dict[str, Dict[str, Any]] = self._normalize_input_data(data)
 
         # These variables are used to detect when we're stuck in a loop.
         # Stuck loops can happen when one or more components are waiting for input but
