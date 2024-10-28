@@ -1036,16 +1036,33 @@ class PipelineBase:
         """
 
         # Simplifies the check if a Component is Variadic and received some input from other Components.
-        def is_variadic_with_existing_inputs(comp: Component) -> bool:
-            for receiver_socket in comp.__haystack_input__._sockets_dict.values():  # type: ignore
-                if component_name not in receiver_socket.senders:
+        def has_variadic_socket_with_existing_inputs(
+            component: Component, component_name: str, sender_name: str, components_inputs: Dict[str, Dict[str, Any]]
+        ) -> bool:
+            for socket in component.__haystack_input__._sockets_dict.values():  # type: ignore
+                if sender_name not in socket.senders:
                     continue
-                if (
-                    receiver_socket.is_variadic
-                    and len(components_inputs.get(receiver, {}).get(receiver_socket.name, [])) > 0
-                ):
-                    # This Component already received some input to its Variadic socket from other Components.
-                    # It should be able to run even if it doesn't receive any input from component_name.
+                if socket.is_variadic and len(components_inputs.get(component_name, {}).get(socket.name, [])) > 0:
+                    return True
+            return False
+
+        # Makes it easier to verify if all connections between two Components are optional
+        def all_connections_are_optional(sender_name: str, receiver: Component):
+            for socket in receiver.__haystack_input__._sockets_dict.values():  # type: ignore
+                if sender_name not in socket.senders:
+                    continue
+                if socket.is_mandatory:
+                    return False
+            return True
+
+        # Eases checking if other connections that are not between sender_name and receiver_name
+        # already received inputs
+        def other_connections_received_input(sender_name: str, receiver_name: str):
+            receiver: Component = self.graph.nodes[receiver_name]["instance"]
+            for receiver_socket in receiver.__haystack_input__._sockets_dict.values():  # type: ignore
+                if sender_name in receiver_socket.senders:
+                    continue
+                if components_inputs.get(receiver_name, {}).get(receiver_socket.name) is not None:
                     return True
             return False
 
@@ -1057,7 +1074,21 @@ class PipelineBase:
             for receiver in socket.receivers:
                 receiver_instance: Component = self.graph.nodes[receiver]["instance"]
 
-                if is_variadic_with_existing_inputs(receiver_instance):
+                if has_variadic_socket_with_existing_inputs(
+                    receiver_instance, receiver, component_name, components_inputs
+                ):
+                    # Components with Variadic input that already received some input
+                    # can still run, even if branch is skipped.
+                    # If we remove them they won't run.
+                    continue
+
+                if all_connections_are_optional(component_name, receiver_instance) and other_connections_received_input(
+                    component_name, receiver
+                ):
+                    # If all the connections between component_name and receiver are optional
+                    # and receiver received other inputs already it still has enough inputs to run.
+                    # Even if it didn't receive input from component_name, so we can't remove it or its
+                    # descendants.
                     continue
 
                 components.add((receiver, receiver_instance))
@@ -1068,9 +1099,15 @@ class PipelineBase:
                 # queue at a later stage.
                 for descendant_name in networkx.descendants(self.graph, receiver):
                     descendant = self.graph.nodes[descendant_name]["instance"]
-                    is_variadic = any(s.is_variadic for s in descendant.__haystack_input__._sockets_dict.values())
-                    if is_variadic:
+
+                    # Components with Variadic input that already received some input
+                    # can still run, even if branch is skipped.
+                    # If we remove them they won't run.
+                    if has_variadic_socket_with_existing_inputs(
+                        descendant, descendant_name, receiver, components_inputs
+                    ):
                         continue
+
                     components.add((descendant_name, descendant))
 
         return components

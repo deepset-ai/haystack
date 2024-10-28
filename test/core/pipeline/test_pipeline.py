@@ -1111,7 +1111,7 @@ class TestPipeline:
         pipe.connect("conditional_document_builder.doc", "document_joiner.docs")
 
         res = pipe._find_components_that_will_receive_no_input("sentence_builder", {}, {})
-        assert res == {("document_builder", document_builder)}
+        assert res == {("document_builder", document_builder), ("document_joiner", document_joiner)}
 
         res = pipe._find_components_that_will_receive_no_input("sentence_builder", {"text": "some text"}, {})
         assert res == set()
@@ -1127,6 +1127,30 @@ class TestPipeline:
         res = pipe._find_components_that_will_receive_no_input(
             "conditional_document_builder", {"noop": None}, {"document_joiner": {"docs": [Document("some text")]}}
         )
+        assert res == set()
+
+        multiple_outputs = component_class("MultipleOutputs", output_types={"first": int, "second": int})()
+
+        def custom_init(self):
+            component.set_input_type(self, "first", Optional[int], 1)
+            component.set_input_type(self, "second", Optional[int], 2)
+
+        multiple_optional_inputs = component_class("MultipleOptionalInputs", extra_fields={"__init__": custom_init})()
+
+        pipe = Pipeline()
+        pipe.add_component("multiple_outputs", multiple_outputs)
+        pipe.add_component("multiple_optional_inputs", multiple_optional_inputs)
+        pipe.connect("multiple_outputs.second", "multiple_optional_inputs.first")
+
+        res = pipe._find_components_that_will_receive_no_input("multiple_outputs", {"first": 1}, {})
+        assert res == {("multiple_optional_inputs", multiple_optional_inputs)}
+
+        res = pipe._find_components_that_will_receive_no_input(
+            "multiple_outputs", {"first": 1}, {"multiple_optional_inputs": {"second": 200}}
+        )
+        assert res == set()
+
+        res = pipe._find_components_that_will_receive_no_input("multiple_outputs", {"second": 1}, {})
         assert res == set()
 
     def test__distribute_output(self):
