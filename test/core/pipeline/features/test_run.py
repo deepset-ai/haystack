@@ -10,7 +10,7 @@ from haystack.document_stores.types import DuplicatePolicy
 from haystack.dataclasses import ChatMessage, GeneratedAnswer
 from haystack.components.routers import ConditionalRouter
 from haystack.components.builders import PromptBuilder, AnswerBuilder, ChatPromptBuilder
-from haystack.components.preprocessors import TextCleaner
+from haystack.components.preprocessors import DocumentCleaner, DocumentSplitter
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.joiners import BranchJoiner, DocumentJoiner, AnswerJoiner
@@ -2071,3 +2071,127 @@ def that_has_a_loop_in_the_middle():
             )
         ],
     )
+
+
+@given("a pipeline that has variadic component that receives a conditional input", target_fixture="pipeline_data")
+def that_has_variadic_component_that_receives_a_conditional_input():
+    pipe = Pipeline(max_runs_per_component=1)
+    routes = [
+        {
+            "condition": "{{ documents|length > 1 }}",
+            "output": "{{ documents }}",
+            "output_name": "long",
+            "output_type": List[Document],
+        },
+        {
+            "condition": "{{ documents|length <= 1 }}",
+            "output": "{{ documents }}",
+            "output_name": "short",
+            "output_type": List[Document],
+        },
+    ]
+
+    @component
+    class NoOp:
+        @component.output_types(documents=List[Document])
+        def run(self, documents: List[Document]):
+            return {"documents": documents}
+
+    @component
+    class CommaSplitter:
+        @component.output_types(documents=List[Document])
+        def run(self, documents: List[Document]):
+            res = []
+            current_id = 0
+            for doc in documents:
+                for split in doc.content.split(","):
+                    res.append(Document(content=split, id=str(current_id)))
+                    current_id += 1
+            return {"documents": res}
+
+    pipe.add_component("conditional_router", ConditionalRouter(routes, unsafe=True))
+    pipe.add_component(
+        "empty_lines_cleaner", DocumentCleaner(remove_empty_lines=True, remove_extra_whitespaces=False, keep_id=True)
+    )
+    pipe.add_component("comma_splitter", CommaSplitter())
+    pipe.add_component("document_cleaner", DocumentCleaner(keep_id=True))
+    pipe.add_component("document_joiner", DocumentJoiner())
+
+    pipe.add_component("noop2", NoOp())
+    pipe.add_component("noop3", NoOp())
+
+    pipe.connect("noop2", "noop3")
+    pipe.connect("noop3", "conditional_router")
+
+    pipe.connect("conditional_router.long", "empty_lines_cleaner")
+    pipe.connect("empty_lines_cleaner", "document_joiner")
+
+    pipe.connect("comma_splitter", "document_cleaner")
+    pipe.connect("document_cleaner", "document_joiner")
+    pipe.connect("comma_splitter", "document_joiner")
+
+    document = Document(
+        id="1000", content="This document has so many, sentences. Like this one, or this one. Or even this other one."
+    )
+
+    return pipe, [
+        PipelineRunData(
+            inputs={"noop2": {"documents": [document]}, "comma_splitter": {"documents": [document]}},
+            expected_outputs={
+                "conditional_router": {
+                    "short": [
+                        Document(
+                            id="1000",
+                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                        )
+                    ]
+                },
+                "document_joiner": {
+                    "documents": [
+                        Document(id="0", content="This document has so many"),
+                        Document(id="1", content=" sentences. Like this one"),
+                        Document(id="2", content=" or this one. Or even this other one."),
+                    ]
+                },
+            },
+            expected_run_order=[
+                "comma_splitter",
+                "noop2",
+                "document_cleaner",
+                "noop3",
+                "conditional_router",
+                "document_joiner",
+            ],
+        ),
+        PipelineRunData(
+            inputs={
+                "noop2": {"documents": [document, document]},
+                "comma_splitter": {"documents": [document, document]},
+            },
+            expected_outputs={
+                "document_joiner": {
+                    "documents": [
+                        Document(id="0", content="This document has so many"),
+                        Document(id="1", content=" sentences. Like this one"),
+                        Document(id="2", content=" or this one. Or even this other one."),
+                        Document(id="3", content="This document has so many"),
+                        Document(id="4", content=" sentences. Like this one"),
+                        Document(id="5", content=" or this one. Or even this other one."),
+                        Document(
+                            id="1000",
+                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                        ),
+                    ]
+                }
+            },
+            expected_run_order=[
+                "comma_splitter",
+                "noop2",
+                "document_cleaner",
+                "noop3",
+                "conditional_router",
+                "empty_lines_cleaner",
+                "document_joiner",
+            ],
+        ),
+    ]

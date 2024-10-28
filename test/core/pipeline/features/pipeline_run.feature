@@ -42,6 +42,7 @@ Feature: Pipeline running
         | that has an answer joiner variadic component |
         | that is linear and a component in the middle receives optional input from other components and input from the user |
         | that has a loop in the middle |
+        | that has variadic component that receives a conditional input |
 
     Scenario Outline: Running a bad Pipeline
         Given a pipeline <kind>
