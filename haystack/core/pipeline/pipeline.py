@@ -88,7 +88,7 @@ class Pipeline(PipelineBase):
 
             return res
 
-    def _run_subgraph(
+    def _run_subgraph(  # noqa: PLR0915
         self,
         cycle: List[str],
         component_name: str,
@@ -184,16 +184,19 @@ class Pipeline(PipelineBase):
                 before_last_waiting_queue = None
                 last_waiting_queue = None
 
+                # Check if a component doesn't send any output to components that are part of the cycle
+                final_output_reached = False
                 for output_socket in res.keys():
                     for receiver in comp.__haystack_output__._sockets_dict[output_socket].receivers:  # type: ignore
                         if receiver in cycle:
+                            final_output_reached = True
                             break
-                    else:
-                        continue
-                    break
-                else:
+                    if final_output_reached:
+                        break
+
+                if not final_output_reached:
                     # We stop only if the Component we just ran doesn't send any output to sockets that
-                    # are part of the cycle.
+                    # are part of the cycle
                     cycle_received_inputs = True
 
                 # We manage to run this component that was in the waiting list, we can remove it.
