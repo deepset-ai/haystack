@@ -98,7 +98,7 @@ class Pipeline(PipelineBase):
         """
         Runs a `cycle` in the Pipeline starting from `component_name`.
 
-        As soon as no Component that is in `cycle` receives no input this will return.
+        This will return once there are no inputs for the Components in `cycle`.
 
         This is an internal method meant to be used in `Pipeline.run()` only.
 
@@ -138,9 +138,8 @@ class Pipeline(PipelineBase):
         extra_outputs = {}
 
         # This variable is used to keep track if we still need to run the cycle or not.
-        # Whenever a Component that is part of a cycle doesn't send outputs to another Component
-        # that is part of the same cycle we stop running this subgraph.
-        # Then we resume normal execution.
+        # When a Component doesn't send outputs to another Component
+        # that's inside the subgraph, we stop running this subgraph.
         cycle_received_inputs = False
 
         while not cycle_received_inputs:
@@ -151,7 +150,6 @@ class Pipeline(PipelineBase):
                 # lazy variadic inputs left to run
                 _enqueue_waiting_component((name, comp), waiting_queue)
                 continue
-            # Whenever a Component is run we get its outpur edges
 
             # As soon as a Component returns only output that is not part of the cycle, we can stop
             if self._component_has_enough_inputs_to_run(name, components_inputs):
