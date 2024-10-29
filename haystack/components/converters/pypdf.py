@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import io
-import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Protocol, Union
 
@@ -12,7 +11,6 @@ from haystack.components.converters.utils import get_bytestream_from_source, nor
 from haystack.dataclasses import ByteStream
 from haystack.lazy_imports import LazyImport
 from haystack.utils.base_serialization import deserialize_class_instance, serialize_class_instance
-from haystack.utils.type_serialization import deserialize_type
 
 with LazyImport("Run 'pip install pypdf'") as pypdf_import:
     from pypdf import PdfReader
