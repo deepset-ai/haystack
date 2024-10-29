@@ -312,7 +312,7 @@ class ConditionalRouter:
         except TemplateSyntaxError:
             return False
 
-    def _output_matches_type(self, value: Any, expected_type: type):  # noqa: PLR0911
+    def _output_matches_type(self, value: Any, expected_type: type):  # noqa: PLR0911 # pylint: disable=too-many-return-statements
         """
         Checks whether `value` type matches the `expected_type`.
         """
