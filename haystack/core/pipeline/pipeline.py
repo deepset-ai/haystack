@@ -209,7 +209,7 @@ class Pipeline(PipelineBase):
 
                 # We treat a cycle as a completely independent graph, so we keep track of output
                 # that is not sent inside the cycle.
-                # This output is going to get distribute to the wider graph after we finish running
+                # This output is going to get distributed to the wider graph after we finish running
                 # a cycle.
                 # All values that are left at this point go outside the cycle.
                 if len(res) > 0:
