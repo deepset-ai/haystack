@@ -1047,7 +1047,7 @@ class PipelineBase:
             return False
 
         # Makes it easier to verify if all connections between two Components are optional
-        def all_connections_are_optional(sender_name: str, receiver: Component):
+        def all_connections_are_optional(sender_name: str, receiver: Component) -> bool:
             for socket in receiver.__haystack_input__._sockets_dict.values():  # type: ignore
                 if sender_name not in socket.senders:
                     continue
@@ -1057,7 +1057,7 @@ class PipelineBase:
 
         # Eases checking if other connections that are not between sender_name and receiver_name
         # already received inputs
-        def other_connections_received_input(sender_name: str, receiver_name: str):
+        def other_connections_received_input(sender_name: str, receiver_name: str) -> bool:
             receiver: Component = self.graph.nodes[receiver_name]["instance"]
             for receiver_socket in receiver.__haystack_input__._sockets_dict.values():  # type: ignore
                 if sender_name in receiver_socket.senders:
