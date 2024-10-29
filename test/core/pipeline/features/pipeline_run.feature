@@ -26,7 +26,7 @@ Feature: Pipeline running
         | that has a greedy and variadic component after a component with default input |
         | that has components added in a different order from the order of execution |
         | that has a component with only default inputs |
-        | that has a component with only default inputs as first to run |
+        | that has a component with only default inputs as first to run and receives inputs from a loop |
         | that has multiple branches that merge into a component with a single variadic input |
         | that has multiple branches of different lengths that merge into a component with a single variadic input |
         | that is linear and returns intermediate outputs |
@@ -37,8 +37,12 @@ Feature: Pipeline running
         | that has a loop and a component with default inputs that doesn't receive anything from its sender but receives input from user |
         | that has multiple components with only default inputs and are added in a different order from the order of execution |
         | that is linear with conditional branching and multiple joins |
+        | that is a simple agent |
         | that has a variadic component that receives partial inputs |
         | that has an answer joiner variadic component |
+        | that is linear and a component in the middle receives optional input from other components and input from the user |
+        | that has a loop in the middle |
+        | that has variadic component that receives a conditional input |
 
     Scenario Outline: Running a bad Pipeline
         Given a pipeline <kind>
@@ -49,3 +53,4 @@ Feature: Pipeline running
         | kind | exception |
         | that has an infinite loop | PipelineMaxComponentRuns |
         | that has a component that doesn't return a dictionary | PipelineRuntimeError |
+        | that has a cycle that would get it stuck | PipelineRuntimeError |
