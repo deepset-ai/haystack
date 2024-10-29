@@ -1,0 +1,25 @@
+---
+upgrade:
+  - |
+    The deprecated default converter class `haystack.components.converters.pypdf.DefaultConverter` used by `PyPDFToDocument` has been removed.
+
+    Pipeline YAMLs from `haystack<2.7.0` that use the default converter must be updated in the following manner:
+    ```yaml
+    # Old
+    components:
+      Comp1:
+        init_parameters:
+          converter:
+            type: haystack.components.converters.pypdf.DefaultConverter
+        type: haystack.components.converters.pypdf.PyPDFToDocument
+
+    # New
+    components:
+      Comp1:
+        init_parameters:
+          converter: null
+        type: haystack.components.converters.pdf.PDFToTextConverter
+    ```
+
+    Pipeline YAMLs from `haystack<2.7.0` that use custom converter classes can be upgraded by simply loading
+    them with `haystack==2.6.x` and saving them to YAML again.

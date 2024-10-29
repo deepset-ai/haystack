@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import io
-import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Protocol, Union
 
@@ -12,7 +11,6 @@ from haystack.components.converters.utils import get_bytestream_from_source, nor
 from haystack.dataclasses import ByteStream
 from haystack.lazy_imports import LazyImport
 from haystack.utils.base_serialization import deserialize_class_instance, serialize_class_instance
-from haystack.utils.type_serialization import deserialize_type
 
 with LazyImport("Run 'pip install pypdf'") as pypdf_import:
     from pypdf import PdfReader
@@ -35,31 +33,6 @@ class PyPDFConverter(Protocol):
     @classmethod
     def from_dict(cls, data):  # noqa: D102
         ...
-
-
-class DefaultConverter:
-    """
-    The default converter class that extracts text from a PdfReader object's pages and returns a Document.
-    """
-
-    def __init__(self):
-        warnings.warn(
-            "This class is deprecated and will be merged into `PyPDFToDocument` in 2.7.0.", DeprecationWarning
-        )
-
-    def convert(self, reader: "PdfReader") -> Document:
-        """Extract text from the PDF and return a Document object with the text content."""
-        text = "\f".join(page.extract_text() for page in reader.pages)
-        return Document(content=text)
-
-    def to_dict(self):
-        """Serialize the converter to a dictionary."""
-        return default_to_dict(self)
-
-    @classmethod
-    def from_dict(cls, data):
-        """Deserialize the converter from a dictionary."""
-        return default_from_dict(cls, data)
 
 
 @component
@@ -119,12 +92,8 @@ class PyPDFToDocument:
         """
         custom_converter_data = data["init_parameters"]["converter"]
         if custom_converter_data is not None:
-            if "data" in custom_converter_data:
-                data["init_parameters"]["converter"] = deserialize_class_instance(custom_converter_data)
-            else:
-                # TODO: Remove in 2.7.0
-                converter_class = deserialize_type(custom_converter_data["type"])
-                data["init_parameters"]["converter"] = converter_class.from_dict(custom_converter_data)
+            data["init_parameters"]["converter"] = deserialize_class_instance(custom_converter_data)
+
         return default_from_dict(cls, data)
 
     def _default_convert(self, reader: "PdfReader") -> Document:
