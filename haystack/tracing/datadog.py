@@ -59,7 +59,9 @@ class DatadogTracer(Tracer):
         self._tracer = tracer
 
     @contextlib.contextmanager
-    def trace(self, operation_name: str, tags: Optional[Dict[str, Any]] = None) -> Iterator[Span]:
+    def trace(
+        self, operation_name: str, tags: Optional[Dict[str, Any]] = None, parent_span: Optional[Span] = None
+    ) -> Iterator[Span]:
         """Activate and return a new span that inherits from the current active span."""
         with self._tracer.trace(operation_name) as span:
             custom_span = DatadogSpan(span)
