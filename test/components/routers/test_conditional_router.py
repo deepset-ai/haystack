@@ -18,22 +18,6 @@ def custom_filter_to_sede(value):
 
 
 class TestRouter:
-    @pytest.fixture
-    def routes(self):
-        return [
-            {"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str, "output_name": "query"},
-            {
-                "condition": "{{streams|length >= 2}}",
-                "output": "{{streams}}",
-                "output_type": List[int],
-                "output_name": "streams",
-            },
-        ]
-
-    @pytest.fixture
-    def router(self, routes):
-        return ConditionalRouter(routes)
-
     def test_missing_mandatory_fields(self):
         """
         Router raises a ValueError if each route does not contain 'condition', 'output', and 'output_type' keys
@@ -90,7 +74,16 @@ class TestRouter:
         with pytest.raises(ValueError):
             ConditionalRouter(routes)
 
-    def test_router_initialized(self, routes):
+    def test_router_initialized(self):
+        routes = [
+            {"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str, "output_name": "query"},
+            {
+                "condition": "{{streams|length >= 2}}",
+                "output": "{{streams}}",
+                "output_type": List[int],
+                "output_name": "streams",
+            },
+        ]
         router = ConditionalRouter(routes)
 
         assert router.routes == routes
@@ -166,7 +159,7 @@ class TestRouter:
         result = router.run(messages=[message], streams=[1, 2, 3], query="my query")
         assert result == {"streams": [1, 2, 3]}
 
-    def test_router_no_route(self, router):
+    def test_router_no_route(self):
         # should raise an exception
         router = ConditionalRouter(
             [
@@ -358,3 +351,49 @@ class TestRouter:
         message = ChatMessage.from_user(content="This is a message")
         res = router.run(streams=streams, message=message)
         assert res == {"message": message}
+
+    def test_validate_output_type_without_unsafe(self):
+        routes = [
+            {
+                "condition": "{{streams|length < 2}}",
+                "output": "{{message}}",
+                "output_type": ChatMessage,
+                "output_name": "message",
+            },
+            {
+                "condition": "{{streams|length >= 2}}",
+                "output": "{{streams}}",
+                "output_type": List[int],
+                "output_name": "streams",
+            },
+        ]
+        router = ConditionalRouter(routes, validate_output_type=True)
+        streams = [1]
+        message = ChatMessage.from_user(content="This is a message")
+        with pytest.raises(ValueError, match="Route 'message' type doesn't match expected type"):
+            router.run(streams=streams, message=message)
+
+    def test_validate_output_type_with_unsafe(self):
+        routes = [
+            {
+                "condition": "{{streams|length < 2}}",
+                "output": "{{message}}",
+                "output_type": ChatMessage,
+                "output_name": "message",
+            },
+            {
+                "condition": "{{streams|length >= 2}}",
+                "output": "{{streams}}",
+                "output_type": List[int],
+                "output_name": "streams",
+            },
+        ]
+        router = ConditionalRouter(routes, unsafe=True, validate_output_type=True)
+        streams = [1]
+        message = ChatMessage.from_user(content="This is a message")
+        res = router.run(streams=streams, message=message)
+        assert isinstance(res["message"], ChatMessage)
+
+        streams = ["1", "2", "3", "4"]
+        with pytest.raises(ValueError, match="Route 'streams' type doesn't match expected type"):
+            router.run(streams=streams, message=message)
