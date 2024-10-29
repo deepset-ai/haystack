@@ -204,20 +204,17 @@ class HuggingFaceAPIGenerator:
         # check if streaming_callback is passed
         streaming_callback = streaming_callback or self.streaming_callback
 
-        if streaming_callback:
-            return self._run_streaming(prompt, streaming_callback, generation_kwargs)
+        stream = streaming_callback is not None
+        response = self._client.text_generation(prompt, details=True, stream=stream, **generation_kwargs)
 
-        return self._run_non_streaming(prompt, generation_kwargs)
+        output = self._get_stream_response(response, streaming_callback) if stream else self._get_response(response)
+        return output
 
-    def _run_streaming(
-        self, prompt: str, streaming_callback: Callable[[StreamingChunk], None], generation_kwargs: Dict[str, Any]
+    def _get_stream_response(
+        self, response: Iterable[TextGenerationStreamOutput], streaming_callback: Callable[[StreamingChunk], None]
     ):
-        res_chunk: Iterable[TextGenerationStreamOutput] = self._client.text_generation(
-            prompt, details=True, stream=True, **generation_kwargs
-        )
         chunks: List[StreamingChunk] = []
-        # pylint: disable=not-an-iterable
-        for chunk in res_chunk:
+        for chunk in response:
             token: TextGenerationOutputToken = chunk.token
             if token.special:
                 continue
@@ -232,13 +229,12 @@ class HuggingFaceAPIGenerator:
         }
         return {"replies": ["".join([chunk.content for chunk in chunks])], "meta": [metadata]}
 
-    def _run_non_streaming(self, prompt: str, generation_kwargs: Dict[str, Any]):
-        tgr: TextGenerationOutput = self._client.text_generation(prompt, details=True, **generation_kwargs)
+    def _get_response(self, response: TextGenerationOutput):
         meta = [
             {
                 "model": self._client.model,
-                "finish_reason": tgr.details.finish_reason if tgr.details else None,
-                "usage": {"completion_tokens": len(tgr.details.tokens) if tgr.details else 0},
+                "finish_reason": response.details.finish_reason if response.details else None,
+                "usage": {"completion_tokens": len(response.details.tokens) if response.details else 0},
             }
         ]
-        return {"replies": [tgr.generated_text], "meta": meta}
+        return {"replies": [response.generated_text], "meta": meta}
