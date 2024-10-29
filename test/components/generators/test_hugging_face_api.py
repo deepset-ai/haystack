@@ -208,7 +208,13 @@ class TestHuggingFaceAPIGenerator:
 
         # check kwargs passed to text_generation
         _, kwargs = mock_text_generation.call_args
-        assert kwargs == {"details": True, "max_new_tokens": 100, "stop_sequences": [], "temperature": 0.8}
+        assert kwargs == {
+            "details": True,
+            "max_new_tokens": 100,
+            "stop_sequences": [],
+            "stream": False,
+            "temperature": 0.8,
+        }
 
         # Assert that the response contains the generated replies and the right response
         assert "replies" in response
