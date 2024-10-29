@@ -356,7 +356,7 @@ class Pipeline(PipelineBase):
         self._validate_input(data)
 
         # Normalize the input data
-        components_inputs: Dict[str, Dict[str, Any]] = self._normalize_input_data(data)
+        components_inputs: Dict[str, Dict[str, Any]] = self._normalize_varidiac_input_data(data)
 
         # These variables are used to detect when we're stuck in a loop.
         # Stuck loops can happen when one or more components are waiting for input but
