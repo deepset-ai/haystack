@@ -5,7 +5,7 @@
 import importlib
 import itertools
 from collections import defaultdict
-from copy import copy, deepcopy
+from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional, Set, TextIO, Tuple, Type, TypeVar, Union
