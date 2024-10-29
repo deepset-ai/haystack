@@ -207,7 +207,7 @@ class HuggingFaceAPIGenerator:
         stream = streaming_callback is not None
         response = self._client.text_generation(prompt, details=True, stream=stream, **generation_kwargs)
 
-        output = self._get_stream_response(response, streaming_callback) if stream else self._get_response(response)
+        output = self._get_stream_response(response, streaming_callback) if stream else self._get_response(response)  # type: ignore
         return output
 
     def _get_stream_response(
