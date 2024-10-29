@@ -1,12 +1,16 @@
+import json
 from typing import List, Optional, Dict, Any
+import re
 
 from pytest_bdd import scenarios, given
 import pytest
 
 from haystack import Pipeline, Document, component
+from haystack.document_stores.types import DuplicatePolicy
 from haystack.dataclasses import ChatMessage, GeneratedAnswer
 from haystack.components.routers import ConditionalRouter
-from haystack.components.builders import PromptBuilder, AnswerBuilder
+from haystack.components.builders import PromptBuilder, AnswerBuilder, ChatPromptBuilder
+from haystack.components.preprocessors import DocumentCleaner, DocumentSplitter
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.joiners import BranchJoiner, DocumentJoiner, AnswerJoiner
@@ -25,7 +29,6 @@ from haystack.testing.sample_components import (
     Hello,
     TextSplitter,
     StringListJoiner,
-    SelfLoop,
 )
 from haystack.testing.factory import component_class
 
@@ -67,18 +70,25 @@ def pipeline_that_is_linear():
 
 @given("a pipeline that has an infinite loop", target_fixture="pipeline_data")
 def pipeline_that_has_an_infinite_loop():
-    def custom_init(self):
-        component.set_input_type(self, "x", int)
-        component.set_input_type(self, "y", int, 1)
-        component.set_output_types(self, a=int, b=int)
+    routes = [
+        {"condition": "{{number > 2}}", "output": "{{number}}", "output_name": "big_number", "output_type": int},
+        {"condition": "{{number <= 2}}", "output": "{{number + 2}}", "output_name": "small_number", "output_type": int},
+    ]
 
-    FakeComponent = component_class("FakeComponent", output={"a": 1, "b": 1}, extra_fields={"__init__": custom_init})
+    main_input = BranchJoiner(int)
+    first_router = ConditionalRouter(routes=routes)
+    second_router = ConditionalRouter(routes=routes)
+
     pipe = Pipeline(max_runs_per_component=1)
-    pipe.add_component("first", FakeComponent())
-    pipe.add_component("second", FakeComponent())
-    pipe.connect("first.a", "second.x")
-    pipe.connect("second.b", "first.y")
-    return pipe, [PipelineRunData({"first": {"x": 1}})]
+    pipe.add_component("main_input", main_input)
+    pipe.add_component("first_router", first_router)
+    pipe.add_component("second_router", second_router)
+
+    pipe.connect("main_input", "first_router.number")
+    pipe.connect("first_router.big_number", "second_router.number")
+    pipe.connect("second_router.big_number", "main_input")
+
+    return pipe, [PipelineRunData({"main_input": {"value": 3}})]
 
 
 @given("a pipeline that is really complex with lots of components, forks, and loops", target_fixture="pipeline_data")
@@ -146,8 +156,11 @@ def pipeline_complex():
                 expected_outputs={"accumulate_3": {"value": -7}, "add_five": {"result": -6}},
                 expected_run_order=[
                     "greet_first",
+                    "greet_enumerator",
                     "accumulate_1",
+                    "enumerate",
                     "add_two",
+                    "add_three",
                     "parity",
                     "add_one",
                     "branch_joiner",
@@ -159,9 +172,6 @@ def pipeline_complex():
                     "branch_joiner",
                     "below_10",
                     "accumulate_2",
-                    "greet_enumerator",
-                    "enumerate",
-                    "add_three",
                     "sum",
                     "diff",
                     "greet_one_last_time",
@@ -837,8 +847,11 @@ def pipeline_that_has_a_component_with_only_default_inputs():
     )
 
 
-@given("a pipeline that has a component with only default inputs as first to run", target_fixture="pipeline_data")
-def pipeline_that_has_a_component_with_only_default_inputs_as_first_to_run():
+@given(
+    "a pipeline that has a component with only default inputs as first to run and receives inputs from a loop",
+    target_fixture="pipeline_data",
+)
+def pipeline_that_has_a_component_with_only_default_inputs_as_first_to_run_and_receives_inputs_from_a_loop():
     """
     This tests verifies that a Pipeline doesn't get stuck running in a loop if
     it has all the following characterics:
@@ -1529,6 +1542,217 @@ def that_is_linear_with_conditional_branching_and_multiple_joins():
     )
 
 
+@given("a pipeline that is a simple agent", target_fixture="pipeline_data")
+def that_is_a_simple_agent():
+    search_message_template = """
+    Given these web search results:
+
+    {% for doc in documents %}
+        {{ doc.content }}
+    {% endfor %}
+
+    Be as brief as possible, max one sentence.
+    Answer the question: {{search_query}}
+    """
+
+    react_message_template = """
+    Solve a question answering task with interleaving Thought, Action, Observation steps.
+
+    Thought reasons about the current situation
+
+    Action can be:
+    google_search - Searches Google for the exact concept/entity (given in square brackets) and returns the results for you to use
+    finish - Returns the final answer (given in square brackets) and finishes the task
+
+    Observation summarizes the Action outcome and helps in formulating the next
+    Thought in Thought, Action, Observation interleaving triplet of steps.
+
+    After each Observation, provide the next Thought and next Action.
+    Don't execute multiple steps even though you know the answer.
+    Only generate Thought and Action, never Observation, you'll get Observation from Action.
+    Follow the pattern in the example below.
+
+    Example:
+    ###########################
+    Question: Which magazine was started first Arthur’s Magazine or First for Women?
+    Thought: I need to search Arthur’s Magazine and First for Women, and find which was started
+    first.
+    Action: google_search[When was 'Arthur’s Magazine' started?]
+    Observation: Arthur’s Magazine was an American literary periodical ˘
+    published in Philadelphia and founded in 1844. Edited by Timothy Shay Arthur, it featured work by
+    Edgar A. Poe, J.H. Ingraham, Sarah Josepha Hale, Thomas G. Spear, and others. In May 1846
+    it was merged into Godey’s Lady’s Book.
+    Thought: Arthur’s Magazine was started in 1844. I need to search First for Women founding date next
+    Action: google_search[When was 'First for Women' magazine started?]
+    Observation: First for Women is a woman’s magazine published by Bauer Media Group in the
+    USA. The magazine was started in 1989. It is based in Englewood Cliffs, New Jersey. In 2011
+    the circulation of the magazine was 1,310,696 copies.
+    Thought: First for Women was started in 1989. 1844 (Arthur’s Magazine) ¡ 1989 (First for
+    Women), so Arthur’s Magazine was started first.
+    Action: finish[Arthur’s Magazine]
+    ############################
+
+    Let's start, the question is: {{query}}
+
+    Thought:
+    """
+
+    routes = [
+        {
+            "condition": "{{'search' in tool_id_and_param[0]}}",
+            "output": "{{tool_id_and_param[1]}}",
+            "output_name": "search",
+            "output_type": str,
+        },
+        {
+            "condition": "{{'finish' in tool_id_and_param[0]}}",
+            "output": "{{tool_id_and_param[1]}}",
+            "output_name": "finish",
+            "output_type": str,
+        },
+    ]
+
+    @component
+    class FakeThoughtActionOpenAIChatGenerator:
+        run_counter = 0
+
+        @component.output_types(replies=List[ChatMessage])
+        def run(self, messages: List[ChatMessage], generation_kwargs: Optional[Dict[str, Any]] = None):
+            if self.run_counter == 0:
+                self.run_counter += 1
+                return {
+                    "replies": [
+                        ChatMessage.from_assistant(
+                            "thinking\n Action: google_search[What is taller, Eiffel Tower or Leaning Tower of Pisa]\n"
+                        )
+                    ]
+                }
+
+            return {"replies": [ChatMessage.from_assistant("thinking\n Action: finish[Eiffel Tower]\n")]}
+
+    @component
+    class FakeConclusionOpenAIChatGenerator:
+        @component.output_types(replies=List[ChatMessage])
+        def run(self, messages: List[ChatMessage], generation_kwargs: Optional[Dict[str, Any]] = None):
+            return {"replies": [ChatMessage.from_assistant("Tower of Pisa is 55 meters tall\n")]}
+
+    @component
+    class FakeSerperDevWebSearch:
+        @component.output_types(documents=List[Document])
+        def run(self, query: str):
+            return {
+                "documents": [
+                    Document(content="Eiffel Tower is 300 meters tall"),
+                    Document(content="Tower of Pisa is 55 meters tall"),
+                ]
+            }
+
+    # main part
+    pipeline = Pipeline()
+    pipeline.add_component("main_input", BranchJoiner(List[ChatMessage]))
+    pipeline.add_component("prompt_builder", ChatPromptBuilder(variables=["query"]))
+    pipeline.add_component("llm", FakeThoughtActionOpenAIChatGenerator())
+
+    @component
+    class ToolExtractor:
+        @component.output_types(output=List[str])
+        def run(self, messages: List[ChatMessage]):
+            prompt: str = messages[-1].content
+            lines = prompt.strip().split("\n")
+            for line in reversed(lines):
+                pattern = r"Action:\s*(\w+)\[(.*?)\]"
+
+                match = re.search(pattern, line)
+                if match:
+                    action_name = match.group(1)
+                    parameter = match.group(2)
+                    return {"output": [action_name, parameter]}
+            return {"output": [None, None]}
+
+    pipeline.add_component("tool_extractor", ToolExtractor())
+
+    @component
+    class PromptConcatenator:
+        def __init__(self, suffix: str = ""):
+            self._suffix = suffix
+
+        @component.output_types(output=List[ChatMessage])
+        def run(self, replies: List[ChatMessage], current_prompt: List[ChatMessage]):
+            content = current_prompt[-1].content + replies[-1].content + self._suffix
+            return {"output": [ChatMessage.from_user(content)]}
+
+    @component
+    class SearchOutputAdapter:
+        @component.output_types(output=List[ChatMessage])
+        def run(self, replies: List[ChatMessage]):
+            content = f"Observation: {replies[-1].content}\n"
+            return {"output": [ChatMessage.from_assistant(content)]}
+
+    pipeline.add_component("prompt_concatenator_after_action", PromptConcatenator())
+
+    pipeline.add_component("router", ConditionalRouter(routes))
+    pipeline.add_component("router_search", FakeSerperDevWebSearch())
+    pipeline.add_component("search_prompt_builder", ChatPromptBuilder(variables=["documents", "search_query"]))
+    pipeline.add_component("search_llm", FakeConclusionOpenAIChatGenerator())
+
+    pipeline.add_component("search_output_adapter", SearchOutputAdapter())
+    pipeline.add_component("prompt_concatenator_after_observation", PromptConcatenator(suffix="\nThought: "))
+
+    # main
+    pipeline.connect("main_input", "prompt_builder.template")
+    pipeline.connect("prompt_builder.prompt", "llm.messages")
+    pipeline.connect("llm.replies", "prompt_concatenator_after_action.replies")
+
+    # tools
+    pipeline.connect("prompt_builder.prompt", "prompt_concatenator_after_action.current_prompt")
+    pipeline.connect("prompt_concatenator_after_action", "tool_extractor.messages")
+
+    pipeline.connect("tool_extractor", "router")
+    pipeline.connect("router.search", "router_search.query")
+    pipeline.connect("router_search.documents", "search_prompt_builder.documents")
+    pipeline.connect("router.search", "search_prompt_builder.search_query")
+    pipeline.connect("search_prompt_builder.prompt", "search_llm.messages")
+
+    pipeline.connect("search_llm.replies", "search_output_adapter.replies")
+    pipeline.connect("search_output_adapter", "prompt_concatenator_after_observation.replies")
+    pipeline.connect("prompt_concatenator_after_action", "prompt_concatenator_after_observation.current_prompt")
+    pipeline.connect("prompt_concatenator_after_observation", "main_input")
+
+    search_message = [ChatMessage.from_user(search_message_template)]
+    messages = [ChatMessage.from_user(react_message_template)]
+    question = "which tower is taller: eiffel tower or tower of pisa?"
+
+    return pipeline, [
+        PipelineRunData(
+            inputs={
+                "main_input": {"value": messages},
+                "prompt_builder": {"query": question},
+                "search_prompt_builder": {"template": search_message},
+            },
+            expected_outputs={"router": {"finish": "Eiffel Tower"}},
+            expected_run_order=[
+                "main_input",
+                "prompt_builder",
+                "llm",
+                "prompt_concatenator_after_action",
+                "tool_extractor",
+                "router",
+                "router_search",
+                "search_prompt_builder",
+                "search_llm",
+                "search_output_adapter",
+                "prompt_concatenator_after_observation",
+                "main_input",
+                "prompt_builder",
+                "llm",
+                "prompt_concatenator_after_action",
+                "tool_extractor",
+                "router",
+            ],
+        )
+    ]
+
+
 @given("a pipeline that has a variadic component that receives partial inputs", target_fixture="pipeline_data")
 def that_has_a_variadic_component_that_receives_partial_inputs():
     @component
@@ -1566,7 +1790,7 @@ def that_has_a_variadic_component_that_receives_partial_inputs():
                         ]
                     },
                 },
-                expected_run_order=["first_creator", "third_creator", "second_creator", "documents_joiner"],
+                expected_run_order=["first_creator", "second_creator", "third_creator", "documents_joiner"],
             ),
             PipelineRunData(
                 inputs={"first_creator": {"create_document": True}, "second_creator": {"create_document": True}},
@@ -1627,3 +1851,347 @@ def that_has_an_answer_joiner_variadic_component():
             )
         ],
     )
+
+
+@given(
+    "a pipeline that is linear and a component in the middle receives optional input from other components and input from the user",
+    target_fixture="pipeline_data",
+)
+def that_is_linear_and_a_component_in_the_middle_receives_optional_input_from_other_components_and_input_from_the_user():
+    @component
+    class QueryMetadataExtractor:
+        @component.output_types(filters=Dict[str, str])
+        def run(self, prompt: str):
+            metadata = json.loads(prompt)
+            filters = []
+            for key, value in metadata.items():
+                filters.append({"field": f"meta.{key}", "operator": "==", "value": value})
+
+            return {"filters": {"operator": "AND", "conditions": filters}}
+
+    documents = [
+        Document(
+            content="some publication about Alzheimer prevention research done over 2023 patients study",
+            meta={"year": 2022, "disease": "Alzheimer", "author": "Michael Butter"},
+            id="doc1",
+        ),
+        Document(
+            content="some text about investigation and treatment of Alzheimer disease",
+            meta={"year": 2023, "disease": "Alzheimer", "author": "John Bread"},
+            id="doc2",
+        ),
+        Document(
+            content="A study on the effectiveness of new therapies for Parkinson's disease",
+            meta={"year": 2022, "disease": "Parkinson", "author": "Alice Smith"},
+            id="doc3",
+        ),
+        Document(
+            content="An overview of the latest research on the genetics of Parkinson's disease and its implications for treatment",
+            meta={"year": 2023, "disease": "Parkinson", "author": "David Jones"},
+            id="doc4",
+        ),
+    ]
+    document_store = InMemoryDocumentStore(bm25_algorithm="BM25Plus")
+    document_store.write_documents(documents=documents, policy=DuplicatePolicy.OVERWRITE)
+
+    pipeline = Pipeline()
+    pipeline.add_component(instance=PromptBuilder('{"disease": "Alzheimer", "year": 2023}'), name="builder")
+    pipeline.add_component(instance=QueryMetadataExtractor(), name="metadata_extractor")
+    pipeline.add_component(instance=InMemoryBM25Retriever(document_store=document_store), name="retriever")
+    pipeline.add_component(instance=DocumentJoiner(), name="document_joiner")
+
+    pipeline.connect("builder.prompt", "metadata_extractor.prompt")
+    pipeline.connect("metadata_extractor.filters", "retriever.filters")
+    pipeline.connect("retriever.documents", "document_joiner.documents")
+
+    query = "publications 2023 Alzheimer's disease"
+
+    return (
+        pipeline,
+        [
+            PipelineRunData(
+                inputs={"retriever": {"query": query}},
+                expected_outputs={
+                    "document_joiner": {
+                        "documents": [
+                            Document(
+                                content="some text about investigation and treatment of Alzheimer disease",
+                                meta={"year": 2023, "disease": "Alzheimer", "author": "John Bread"},
+                                id="doc2",
+                                score=3.324112496100923,
+                            )
+                        ]
+                    }
+                },
+                expected_run_order=["builder", "metadata_extractor", "retriever", "document_joiner"],
+            )
+        ],
+    )
+
+
+@given("a pipeline that has a cycle that would get it stuck", target_fixture="pipeline_data")
+def that_has_a_cycle_that_would_get_it_stuck():
+    template = """
+    You are an experienced and accurate Turkish CX speacialist that classifies customer comments into pre-defined categories below:\n
+    Negative experience labels:
+    - Late delivery
+    - Rotten/spoilt item
+    - Bad Courier behavior
+
+    Positive experience labels:
+    - Good courier behavior
+    - Thanks & appreciation
+    - Love message to courier
+    - Fast delivery
+    - Quality of products
+
+    Create a JSON object as a response. The fields are: 'positive_experience', 'negative_experience'.
+    Assign at least one of the pre-defined labels to the given customer comment under positive and negative experience fields.
+    If the comment has a positive experience, list the label under 'positive_experience' field.
+    If the comments has a negative_experience, list it under the 'negative_experience' field.
+    Here is the comment:\n{{ comment }}\n. Just return the category names in the list. If there aren't any, return an empty list.
+
+    {% if invalid_replies and error_message %}
+    You already created the following output in a previous attempt: {{ invalid_replies }}
+    However, this doesn't comply with the format requirements from above and triggered this Python exception: {{ error_message }}
+    Correct the output and try again. Just return the corrected output without any extra explanations.
+    {% endif %}
+    """
+    prompt_builder = PromptBuilder(
+        template=template, required_variables=["comment", "invalid_replies", "error_message"]
+    )
+
+    @component
+    class FakeOutputValidator:
+        @component.output_types(
+            valid_replies=List[str], invalid_replies=Optional[List[str]], error_message=Optional[str]
+        )
+        def run(self, replies: List[str]):
+            if not getattr(self, "called", False):
+                self.called = True
+                return {"invalid_replies": ["This is an invalid reply"], "error_message": "this is an error message"}
+            return {"valid_replies": replies}
+
+    @component
+    class FakeGenerator:
+        @component.output_types(replies=List[str])
+        def run(self, prompt: str):
+            return {"replies": ["This is a valid reply"]}
+
+    llm = FakeGenerator()
+    validator = FakeOutputValidator()
+
+    pipeline = Pipeline(max_runs_per_component=1)
+    pipeline.add_component("prompt_builder", prompt_builder)
+
+    pipeline.add_component("llm", llm)
+    pipeline.add_component("output_validator", validator)
+
+    pipeline.connect("prompt_builder.prompt", "llm.prompt")
+    pipeline.connect("llm.replies", "output_validator.replies")
+    pipeline.connect("output_validator.invalid_replies", "prompt_builder.invalid_replies")
+
+    pipeline.connect("output_validator.error_message", "prompt_builder.error_message")
+
+    comment = "I loved the quality of the meal but the courier was rude"
+    return (pipeline, [PipelineRunData(inputs={"prompt_builder": {"comment": comment}})])
+
+
+@given("a pipeline that has a loop in the middle", target_fixture="pipeline_data")
+def that_has_a_loop_in_the_middle():
+    @component
+    class FakeGenerator:
+        @component.output_types(replies=List[str])
+        def run(self, prompt: str):
+            replies = []
+            if getattr(self, "first_run", True):
+                self.first_run = False
+                replies.append("No answer")
+            else:
+                replies.append("42")
+            return {"replies": replies}
+
+    @component
+    class PromptCleaner:
+        @component.output_types(clean_prompt=str)
+        def run(self, prompt: str):
+            return {"clean_prompt": prompt.strip()}
+
+    routes = [
+        {
+            "condition": "{{ 'No answer' in replies }}",
+            "output": "{{ replies }}",
+            "output_name": "invalid_replies",
+            "output_type": List[str],
+        },
+        {
+            "condition": "{{ 'No answer' not in replies }}",
+            "output": "{{ replies }}",
+            "output_name": "valid_replies",
+            "output_type": List[str],
+        },
+    ]
+
+    pipeline = Pipeline(max_runs_per_component=20)
+    pipeline.add_component("prompt_cleaner", PromptCleaner())
+    pipeline.add_component("prompt_builder", PromptBuilder(template="", variables=["question", "invalid_replies"]))
+    pipeline.add_component("llm", FakeGenerator())
+    pipeline.add_component("answer_validator", ConditionalRouter(routes=routes))
+    pipeline.add_component("answer_builder", AnswerBuilder())
+
+    pipeline.connect("prompt_cleaner.clean_prompt", "prompt_builder.template")
+    pipeline.connect("prompt_builder.prompt", "llm.prompt")
+    pipeline.connect("llm.replies", "answer_validator.replies")
+    pipeline.connect("answer_validator.invalid_replies", "prompt_builder.invalid_replies")
+    pipeline.connect("answer_validator.valid_replies", "answer_builder.replies")
+
+    question = "What is the answer?"
+    return (
+        pipeline,
+        [
+            PipelineRunData(
+                inputs={
+                    "prompt_cleaner": {"prompt": "Random template"},
+                    "prompt_builder": {"question": question},
+                    "answer_builder": {"query": question},
+                },
+                expected_outputs={
+                    "answer_builder": {"answers": [GeneratedAnswer(data="42", query=question, documents=[])]}
+                },
+                expected_run_order=[
+                    "prompt_cleaner",
+                    "prompt_builder",
+                    "llm",
+                    "answer_validator",
+                    "prompt_builder",
+                    "llm",
+                    "answer_validator",
+                    "answer_builder",
+                ],
+            )
+        ],
+    )
+
+
+@given("a pipeline that has variadic component that receives a conditional input", target_fixture="pipeline_data")
+def that_has_variadic_component_that_receives_a_conditional_input():
+    pipe = Pipeline(max_runs_per_component=1)
+    routes = [
+        {
+            "condition": "{{ documents|length > 1 }}",
+            "output": "{{ documents }}",
+            "output_name": "long",
+            "output_type": List[Document],
+        },
+        {
+            "condition": "{{ documents|length <= 1 }}",
+            "output": "{{ documents }}",
+            "output_name": "short",
+            "output_type": List[Document],
+        },
+    ]
+
+    @component
+    class NoOp:
+        @component.output_types(documents=List[Document])
+        def run(self, documents: List[Document]):
+            return {"documents": documents}
+
+    @component
+    class CommaSplitter:
+        @component.output_types(documents=List[Document])
+        def run(self, documents: List[Document]):
+            res = []
+            current_id = 0
+            for doc in documents:
+                for split in doc.content.split(","):
+                    res.append(Document(content=split, id=str(current_id)))
+                    current_id += 1
+            return {"documents": res}
+
+    pipe.add_component("conditional_router", ConditionalRouter(routes, unsafe=True))
+    pipe.add_component(
+        "empty_lines_cleaner", DocumentCleaner(remove_empty_lines=True, remove_extra_whitespaces=False, keep_id=True)
+    )
+    pipe.add_component("comma_splitter", CommaSplitter())
+    pipe.add_component("document_cleaner", DocumentCleaner(keep_id=True))
+    pipe.add_component("document_joiner", DocumentJoiner())
+
+    pipe.add_component("noop2", NoOp())
+    pipe.add_component("noop3", NoOp())
+
+    pipe.connect("noop2", "noop3")
+    pipe.connect("noop3", "conditional_router")
+
+    pipe.connect("conditional_router.long", "empty_lines_cleaner")
+    pipe.connect("empty_lines_cleaner", "document_joiner")
+
+    pipe.connect("comma_splitter", "document_cleaner")
+    pipe.connect("document_cleaner", "document_joiner")
+    pipe.connect("comma_splitter", "document_joiner")
+
+    document = Document(
+        id="1000", content="This document has so many, sentences. Like this one, or this one. Or even this other one."
+    )
+
+    return pipe, [
+        PipelineRunData(
+            inputs={"noop2": {"documents": [document]}, "comma_splitter": {"documents": [document]}},
+            expected_outputs={
+                "conditional_router": {
+                    "short": [
+                        Document(
+                            id="1000",
+                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                        )
+                    ]
+                },
+                "document_joiner": {
+                    "documents": [
+                        Document(id="0", content="This document has so many"),
+                        Document(id="1", content=" sentences. Like this one"),
+                        Document(id="2", content=" or this one. Or even this other one."),
+                    ]
+                },
+            },
+            expected_run_order=[
+                "comma_splitter",
+                "noop2",
+                "document_cleaner",
+                "noop3",
+                "conditional_router",
+                "document_joiner",
+            ],
+        ),
+        PipelineRunData(
+            inputs={
+                "noop2": {"documents": [document, document]},
+                "comma_splitter": {"documents": [document, document]},
+            },
+            expected_outputs={
+                "document_joiner": {
+                    "documents": [
+                        Document(id="0", content="This document has so many"),
+                        Document(id="1", content=" sentences. Like this one"),
+                        Document(id="2", content=" or this one. Or even this other one."),
+                        Document(id="3", content="This document has so many"),
+                        Document(id="4", content=" sentences. Like this one"),
+                        Document(id="5", content=" or this one. Or even this other one."),
+                        Document(
+                            id="1000",
+                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                        ),
+                    ]
+                }
+            },
+            expected_run_order=[
+                "comma_splitter",
+                "noop2",
+                "document_cleaner",
+                "noop3",
+                "conditional_router",
+                "empty_lines_cleaner",
+                "document_joiner",
+            ],
+        ),
+    ]

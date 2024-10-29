@@ -11,7 +11,7 @@ from haystack import Document
 from haystack.components.builders import PromptBuilder, AnswerBuilder
 from haystack.components.joiners import BranchJoiner
 from haystack.core.component import component
-from haystack.core.component.types import InputSocket, OutputSocket, Variadic, GreedyVariadic
+from haystack.core.component.types import InputSocket, OutputSocket, Variadic, GreedyVariadic, _empty
 from haystack.core.errors import DeserializationError, PipelineConnectError, PipelineDrawingError, PipelineError
 from haystack.core.pipeline import Pipeline, PredefinedPipeline
 from haystack.core.pipeline.base import (
@@ -788,43 +788,7 @@ class TestPipeline:
         for node in pipe.graph.nodes:
             assert pipe.graph.nodes[node]["visits"] == 0
 
-    def test__init_run_queue(self):
-        ComponentWithVariadic = component_class(
-            "ComponentWithVariadic", input_types={"in": Variadic[int]}, output_types={"out": int}
-        )
-        ComponentWithNoInputs = component_class("ComponentWithNoInputs", input_types={}, output_types={"out": int})
-        ComponentWithSingleInput = component_class(
-            "ComponentWithSingleInput", input_types={"in": int}, output_types={"out": int}
-        )
-        ComponentWithMultipleInputs = component_class(
-            "ComponentWithMultipleInputs", input_types={"in1": int, "in2": int}, output_types={"out": int}
-        )
-
-        pipe = Pipeline()
-        pipe.add_component("with_variadic", ComponentWithVariadic())
-        pipe.add_component("with_no_inputs", ComponentWithNoInputs())
-        pipe.add_component("with_single_input", ComponentWithSingleInput())
-        pipe.add_component("another_with_single_input", ComponentWithSingleInput())
-        pipe.add_component("yet_another_with_single_input", ComponentWithSingleInput())
-        pipe.add_component("with_multiple_inputs", ComponentWithMultipleInputs())
-
-        pipe.connect("yet_another_with_single_input.out", "with_variadic.in")
-        pipe.connect("with_no_inputs.out", "with_variadic.in")
-        pipe.connect("with_single_input.out", "another_with_single_input.in")
-        pipe.connect("another_with_single_input.out", "with_multiple_inputs.in1")
-        pipe.connect("with_multiple_inputs.out", "with_variadic.in")
-
-        data = {"yet_another_with_single_input": {"in": 1}}
-        run_queue = pipe._init_run_queue(data)
-        assert len(run_queue) == 6
-        assert run_queue[0][0] == "with_no_inputs"
-        assert run_queue[1][0] == "with_single_input"
-        assert run_queue[2][0] == "yet_another_with_single_input"
-        assert run_queue[3][0] == "another_with_single_input"
-        assert run_queue[4][0] == "with_multiple_inputs"
-        assert run_queue[5][0] == "with_variadic"
-
-    def test__init_inputs_state(self):
+    def test__normalize_varidiac_input_data(self):
         pipe = Pipeline()
         template = """
         Answer the following questions:
@@ -838,13 +802,12 @@ class TestPipeline:
             "branch_joiner": {"value": 1},
             "not_a_component": "some input data",
         }
-        res = pipe._init_inputs_state(data)
+        res = pipe._normalize_varidiac_input_data(data)
         assert res == {
             "prompt_builder": {"questions": ["What is the capital of Italy?", "What is the capital of France?"]},
             "branch_joiner": {"value": [1]},
             "not_a_component": "some input data",
         }
-        assert id(questions) != id(res["prompt_builder"]["questions"])
 
     def test__prepare_component_input_data(self):
         MockComponent = component_class("MockComponent", input_types={"x": List[str], "y": str})
@@ -1165,6 +1128,30 @@ class TestPipeline:
         )
         assert res == set()
 
+        multiple_outputs = component_class("MultipleOutputs", output_types={"first": int, "second": int})()
+
+        def custom_init(self):
+            component.set_input_type(self, "first", Optional[int], 1)
+            component.set_input_type(self, "second", Optional[int], 2)
+
+        multiple_optional_inputs = component_class("MultipleOptionalInputs", extra_fields={"__init__": custom_init})()
+
+        pipe = Pipeline()
+        pipe.add_component("multiple_outputs", multiple_outputs)
+        pipe.add_component("multiple_optional_inputs", multiple_optional_inputs)
+        pipe.connect("multiple_outputs.second", "multiple_optional_inputs.first")
+
+        res = pipe._find_components_that_will_receive_no_input("multiple_outputs", {"first": 1}, {})
+        assert res == {("multiple_optional_inputs", multiple_optional_inputs)}
+
+        res = pipe._find_components_that_will_receive_no_input(
+            "multiple_outputs", {"first": 1}, {"multiple_optional_inputs": {"second": 200}}
+        )
+        assert res == set()
+
+        res = pipe._find_components_that_will_receive_no_input("multiple_outputs", {"second": 1}, {})
+        assert res == set()
+
     def test__distribute_output(self):
         document_builder = component_class(
             "DocumentBuilder", input_types={"text": str}, output_types={"doc": Document, "another_doc": Document}
@@ -1184,12 +1171,20 @@ class TestPipeline:
         inputs = {"document_builder": {"text": "some text"}}
         run_queue = []
         waiting_queue = [("document_joiner", document_joiner)]
+        receivers = [
+            (
+                "document_cleaner",
+                OutputSocket("doc", Document, ["document_cleaner"]),
+                InputSocket("doc", Document, _empty, ["document_builder"]),
+            ),
+            (
+                "document_joiner",
+                OutputSocket("another_doc", Document, ["document_joiner"]),
+                InputSocket("docs", Variadic[Document], _empty, ["document_builder"]),
+            ),
+        ]
         res = pipe._distribute_output(
-            "document_builder",
-            {"doc": Document("some text"), "another_doc": Document()},
-            inputs,
-            run_queue,
-            waiting_queue,
+            receivers, {"doc": Document("some text"), "another_doc": Document()}, inputs, run_queue, waiting_queue
         )
 
         assert res == {}
@@ -1524,3 +1519,65 @@ class TestPipeline:
         assert not _is_lazy_variadic(NonVariadic())
         assert _is_lazy_variadic(VariadicNonGreedyVariadic())
         assert not _is_lazy_variadic(NonVariadicAndGreedyVariadic())
+
+    def test__find_receivers_from(self):
+        sentence_builder = component_class(
+            "SentenceBuilder", input_types={"words": List[str]}, output_types={"text": str}
+        )()
+        document_builder = component_class(
+            "DocumentBuilder", input_types={"text": str}, output_types={"doc": Document}
+        )()
+        conditional_document_builder = component_class(
+            "ConditionalDocumentBuilder", output_types={"doc": Document, "noop": None}
+        )()
+
+        document_joiner = component_class("DocumentJoiner", input_types={"docs": Variadic[Document]})()
+
+        pipe = Pipeline()
+        pipe.add_component("sentence_builder", sentence_builder)
+        pipe.add_component("document_builder", document_builder)
+        pipe.add_component("document_joiner", document_joiner)
+        pipe.add_component("conditional_document_builder", conditional_document_builder)
+        pipe.connect("sentence_builder.text", "document_builder.text")
+        pipe.connect("document_builder.doc", "document_joiner.docs")
+        pipe.connect("conditional_document_builder.doc", "document_joiner.docs")
+
+        res = pipe._find_receivers_from("sentence_builder")
+        assert res == [
+            (
+                "document_builder",
+                OutputSocket(name="text", type=str, receivers=["document_builder"]),
+                InputSocket(name="text", type=str, default_value=_empty, senders=["sentence_builder"]),
+            )
+        ]
+
+        res = pipe._find_receivers_from("document_builder")
+        assert res == [
+            (
+                "document_joiner",
+                OutputSocket(name="doc", type=Document, receivers=["document_joiner"]),
+                InputSocket(
+                    name="docs",
+                    type=Variadic[Document],
+                    default_value=_empty,
+                    senders=["document_builder", "conditional_document_builder"],
+                ),
+            )
+        ]
+
+        res = pipe._find_receivers_from("document_joiner")
+        assert res == []
+
+        res = pipe._find_receivers_from("conditional_document_builder")
+        assert res == [
+            (
+                "document_joiner",
+                OutputSocket(name="doc", type=Document, receivers=["document_joiner"]),
+                InputSocket(
+                    name="docs",
+                    type=Variadic[Document],
+                    default_value=_empty,
+                    senders=["document_builder", "conditional_document_builder"],
+                ),
+            )
+        ]
