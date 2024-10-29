@@ -254,7 +254,7 @@ class ConditionalRouter:
                 raise RouteConditionException(msg) from e
 
             if self._validate_output_type and not self._output_matches_type(output, route["output_type"]):
-                msg = f"Route '{route["output_name"]}' type doesn't match expected type"
+                msg = f"""Route '{route["output_name"]}' type doesn't match expected type"""
                 raise ValueError(msg)
 
             # and return the output as a dictionary under the output_name key
