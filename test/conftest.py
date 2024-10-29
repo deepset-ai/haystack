@@ -88,11 +88,3 @@ def spying_tracer() -> Generator[SpyingTracer, None, None]:
 
     # Make sure to disable tracing after the test to avoid affecting other tests
     tracing.disable_tracing()
-
-
-# Collecting this test is causing issues when running tests in CI
-# as it's indirectly importing jsonschema which for some reason
-# is causing collection to fail.
-# See this issue:
-# https://github.com/python-jsonschema/jsonschema/issues/1236
-collect_ignore = ["components/validators/test_json_schema.py"]
