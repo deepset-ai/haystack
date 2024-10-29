@@ -186,6 +186,7 @@ class TestHuggingFaceAPIGenerator:
             "details": True,
             "temperature": 0.6,
             "stop_sequences": ["stop", "words"],
+            "stream": False,
             "max_new_tokens": 512,
         }
 
