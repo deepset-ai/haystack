@@ -13,7 +13,7 @@ on:
       - "!v1.[0-9]+.x"
 
 env:
-  HATCH_VERSION: "1.9.3"
+  HATCH_VERSION: "1.13.0"
   PYTHON_VERSION: "3.10"
 
 jobs:
@@ -38,7 +38,7 @@ jobs:
           # in config files with their id.
           README_API_KEY: ${{ secrets.README_API_KEY }}
         # The command is a bit misleading, we're not actually syncing anything here,
-        # we're just generating the markdown files from the the yaml configs.
+        # we're just generating the markdown files from the yaml configs.
         run: hatch run readme:sync
 
       - name: Get version
