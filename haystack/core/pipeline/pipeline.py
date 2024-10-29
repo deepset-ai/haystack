@@ -31,12 +31,16 @@ class Pipeline(PipelineBase):
     Orchestrates component execution according to the execution graph, one after the other.
     """
 
-    def _run_component(self, name: str, inputs: Dict[str, Any]) -> Dict[str, Any]:
+    def _run_component(
+        self, name: str, inputs: Dict[str, Any], parent_span: Optional[tracing.Span] = None
+    ) -> Dict[str, Any]:
         """
         Runs a Component with the given inputs.
 
         :param name: Name of the Component as defined in the Pipeline.
         :param inputs: Inputs for the Component.
+        :param parent_span: The parent span to use for the newly created span.
+            This is to allow tracing to be correctly linked to the pipeline run.
         :raises PipelineRuntimeError: If Component doesn't return a dictionary.
         :return: The output of the Component.
         """
@@ -63,6 +67,7 @@ class Pipeline(PipelineBase):
                     for key, value in instance.__haystack_output__._sockets_dict.items()  # type: ignore
                 },
             },
+            parent_span=parent_span,
         ) as span:
             # We deepcopy the inputs otherwise we might lose that information
             # when we delete them in case they're sent to other Components
@@ -412,7 +417,7 @@ class Pipeline(PipelineBase):
                 "haystack.pipeline.metadata": self.metadata,
                 "haystack.pipeline.max_runs_per_component": self._max_runs_per_component,
             },
-        ):
+        ) as span:
             # Cache for extra outputs, if enabled.
             extra_outputs: Dict[Any, Any] = {}
 
@@ -463,7 +468,7 @@ class Pipeline(PipelineBase):
                         msg = f"Maximum run count {self._max_runs_per_component} reached for component '{name}'"
                         raise PipelineMaxComponentRuns(msg)
 
-                    res: Dict[str, Any] = self._run_component(name, components_inputs[name])
+                    res: Dict[str, Any] = self._run_component(name, components_inputs[name], parent_span=span)
 
                     # Delete the inputs that were consumed by the Component and are not received from the user
                     sockets = list(components_inputs[name].keys())
