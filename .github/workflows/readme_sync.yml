@@ -45,15 +45,9 @@ jobs:
         id: version-getter
         run: |
           VERSION="$(hatch version | cut -d '.' -f 1,2)"
-          # The first stable documentation on Readme for a version is created when
-          # the first x.x.0 version is released.
-          # Up until that point we need to push to an "-unstable" suffixed version.
-          # This also means that following RCs for patch releases are pushed to the
-          # stable docs, for the time being we're ok with that.
-          # `main` branch docs will be handled correctly too and get pushed to an
-          # unstable documentation.
-          IS_UNSTABLE="$(hatch version | grep -v -q '0-rc')"
-          if [ "$IS_UNSTABLE" ]; then
+          CURRENT_BRANCH="${{ github.ref_name }}"
+          # If we're on `main` branch we should push docs to the unstable version
+          if [ "$CURRENT_BRANCH" = "main" ]; then
             VERSION="$VERSION-unstable"
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
