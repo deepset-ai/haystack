@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 @component
 class StringJoiner:
     """
-    Component to join strings from different components to a list of strings
+    Component to join strings from different components to a list of strings.
 
     ### Usage example
 
@@ -45,7 +45,12 @@ class StringJoiner:
         """
         Joins strings into a list of strings
 
-        :param strings: strings from different components
+        :param strings:
+            strings from different components
+
+        :returns:
+            A dictionary with the following keys:
+            - `strings`: Merged list of strings
         """
 
         out_strings = list(strings)
