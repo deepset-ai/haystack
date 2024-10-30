@@ -490,6 +490,28 @@ class TestCompositeLogger:
             "module": "test.test_logging",
         }
 
+    def test_log_json_content(self, capfd: LogCaptureFixture) -> None:
+        haystack_logging.configure_logging(use_json=True)
+
+        logger = haystack_logging.getLogger(__name__)
+        logger.setLevel(logging.DEBUG)
+
+        logger.log(logging.DEBUG, 'Hello, structured: {"key": "value"}', key="logging", key1="value1", key2="value2")
+
+        output = capfd.readouterr().err
+        parsed_output = json.loads(output)
+
+        assert parsed_output == {
+            "event": 'Hello, structured: {"key": "value"}',
+            "key": "logging",
+            "key1": "value1",
+            "key2": "value2",
+            "level": "debug",
+            "timestamp": ANY,
+            "lineno": ANY,
+            "module": "test.test_logging",
+        }
+
     def test_log_with_string_cast(self, capfd: LogCaptureFixture) -> None:
         haystack_logging.configure_logging(use_json=True)
 

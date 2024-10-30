@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from unittest.mock import MagicMock, patch
 
-import numpy as np
+import random
 import pytest
 import torch
 
@@ -79,6 +79,7 @@ class TestSentenceTransformersDocumentEmbedder:
                 "truncate_dim": None,
                 "model_kwargs": None,
                 "tokenizer_kwargs": None,
+                "config_kwargs": None,
                 "precision": "float32",
             },
         }
@@ -99,6 +100,7 @@ class TestSentenceTransformersDocumentEmbedder:
             truncate_dim=256,
             model_kwargs={"torch_dtype": torch.float32},
             tokenizer_kwargs={"model_max_length": 512},
+            config_kwargs={"use_memory_efficient_attention": True},
             precision="int8",
         )
         data = component.to_dict()
@@ -120,6 +122,7 @@ class TestSentenceTransformersDocumentEmbedder:
                 "truncate_dim": 256,
                 "model_kwargs": {"torch_dtype": "torch.float32"},
                 "tokenizer_kwargs": {"model_max_length": 512},
+                "config_kwargs": {"use_memory_efficient_attention": True},
                 "precision": "int8",
             },
         }
@@ -140,6 +143,7 @@ class TestSentenceTransformersDocumentEmbedder:
             "truncate_dim": 256,
             "model_kwargs": {"torch_dtype": "torch.float32"},
             "tokenizer_kwargs": {"model_max_length": 512},
+            "config_kwargs": {"use_memory_efficient_attention": True},
             "precision": "int8",
         }
         component = SentenceTransformersDocumentEmbedder.from_dict(
@@ -162,6 +166,7 @@ class TestSentenceTransformersDocumentEmbedder:
         assert component.truncate_dim == 256
         assert component.model_kwargs == {"torch_dtype": torch.float32}
         assert component.tokenizer_kwargs == {"model_max_length": 512}
+        assert component.config_kwargs == {"use_memory_efficient_attention": True}
         assert component.precision == "int8"
 
     def test_from_dict_no_default_parameters(self):
@@ -230,6 +235,7 @@ class TestSentenceTransformersDocumentEmbedder:
             token=None,
             device=ComponentDevice.from_str("cpu"),
             tokenizer_kwargs={"model_max_length": 512},
+            config_kwargs={"use_memory_efficient_attention": True},
         )
         mocked_factory.get_embedding_backend.assert_not_called()
         embedder.warm_up()
@@ -242,6 +248,7 @@ class TestSentenceTransformersDocumentEmbedder:
             truncate_dim=None,
             model_kwargs=None,
             tokenizer_kwargs={"model_max_length": 512},
+            config_kwargs={"use_memory_efficient_attention": True},
         )
 
     @patch(
@@ -257,7 +264,9 @@ class TestSentenceTransformersDocumentEmbedder:
     def test_run(self):
         embedder = SentenceTransformersDocumentEmbedder(model="model")
         embedder.embedding_backend = MagicMock()
-        embedder.embedding_backend.embed = lambda x, **kwargs: np.random.rand(len(x), 16).tolist()
+        embedder.embedding_backend.embed = lambda x, **kwargs: [
+            [random.random() for _ in range(16)] for _ in range(len(x))
+        ]
 
         documents = [Document(content=f"document number {i}") for i in range(5)]
 
@@ -291,11 +300,8 @@ class TestSentenceTransformersDocumentEmbedder:
             model="model", meta_fields_to_embed=["meta_field"], embedding_separator="\n"
         )
         embedder.embedding_backend = MagicMock()
-
         documents = [Document(content=f"document number {i}", meta={"meta_field": f"meta_value {i}"}) for i in range(5)]
-
         embedder.run(documents=documents)
-
         embedder.embedding_backend.embed.assert_called_once_with(
             [
                 "meta_value 0\ndocument number 0",
@@ -319,11 +325,8 @@ class TestSentenceTransformersDocumentEmbedder:
             embedding_separator="\n",
         )
         embedder.embedding_backend = MagicMock()
-
         documents = [Document(content=f"document number {i}", meta={"meta_field": f"meta_value {i}"}) for i in range(5)]
-
         embedder.run(documents=documents)
-
         embedder.embedding_backend.embed.assert_called_once_with(
             [
                 "my_prefix meta_value 0\ndocument number 0 my_suffix",

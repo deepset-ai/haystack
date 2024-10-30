@@ -186,6 +186,7 @@ class TestHuggingFaceAPIGenerator:
             "details": True,
             "temperature": 0.6,
             "stop_sequences": ["stop", "words"],
+            "stream": False,
             "max_new_tokens": 512,
         }
 
@@ -208,7 +209,13 @@ class TestHuggingFaceAPIGenerator:
 
         # check kwargs passed to text_generation
         _, kwargs = mock_text_generation.call_args
-        assert kwargs == {"details": True, "max_new_tokens": 100, "stop_sequences": [], "temperature": 0.8}
+        assert kwargs == {
+            "details": True,
+            "max_new_tokens": 100,
+            "stop_sequences": [],
+            "stream": False,
+            "temperature": 0.8,
+        }
 
         # Assert that the response contains the generated replies and the right response
         assert "replies" in response
@@ -250,7 +257,9 @@ class TestHuggingFaceAPIGenerator:
                 index=1,
                 generated_text=None,
                 token=TextGenerationOutputToken(id=1, text="Ok bye", logprob=0.0, special=False),
-                details=TextGenerationStreamOutputStreamDetails(finish_reason="length", generated_tokens=5, seed=None),
+                details=TextGenerationStreamOutputStreamDetails(
+                    finish_reason="length", generated_tokens=5, seed=None, input_length=10
+                ),
             )
 
         mock_response = Mock(**{"__iter__": mock_iter})

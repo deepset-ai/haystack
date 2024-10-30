@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    SentenceTransformersDocumentEmbedder now supports config_kwargs for additional parameters when loading the model configuration

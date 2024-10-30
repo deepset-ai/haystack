@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Reduced numpy usage to speed up imports.

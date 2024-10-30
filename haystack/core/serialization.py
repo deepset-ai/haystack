@@ -6,7 +6,7 @@ import inspect
 from collections.abc import Callable
 from dataclasses import dataclass
 from importlib import import_module
-from typing import Any, Dict, Optional, Type
+from typing import Any, Dict, Iterable, Optional, Type
 
 from haystack.core.component.component import _hook_component_init, logger
 from haystack.core.errors import DeserializationError, SerializationError
@@ -30,7 +30,7 @@ class DeserializationCallbacks:
     component_pre_init: Optional[Callable] = None
 
 
-def component_to_dict(obj: Any) -> Dict[str, Any]:
+def component_to_dict(obj: Any, name: str) -> Dict[str, Any]:
     """
     Converts a component instance into a dictionary.
 
@@ -38,37 +38,82 @@ def component_to_dict(obj: Any) -> Dict[str, Any]:
 
     :param obj:
         The component to be serialized.
+    :param name:
+        The name of the component.
     :returns:
         A dictionary representation of the component.
 
     :raises SerializationError:
-        If the component doesn't have a `to_dict` method and the values of the init parameters can't be determined.
+        If the component doesn't have a `to_dict` method.
+        If the values of the init parameters can't be determined.
+        If a non-basic Python type is used in the serialized data.
     """
     if hasattr(obj, "to_dict"):
-        return obj.to_dict()
+        data = obj.to_dict()
+    else:
+        init_parameters = {}
+        for param_name, param in inspect.signature(obj.__init__).parameters.items():
+            # Ignore `args` and `kwargs`, used by the default constructor
+            if param_name in ("args", "kwargs"):
+                continue
+            try:
+                # This only works if the Component constructor assigns the init
+                # parameter to an instance variable or property with the same name
+                param_value = getattr(obj, param_name)
+            except AttributeError as e:
+                # If the parameter doesn't have a default value, raise an error
+                if param.default is param.empty:
+                    raise SerializationError(
+                        f"Cannot determine the value of the init parameter '{param_name}' "
+                        f"for the class {obj.__class__.__name__}."
+                        f"You can fix this error by assigning 'self.{param_name} = {param_name}' or adding a "
+                        f"custom serialization method 'to_dict' to the class."
+                    ) from e
+                # In case the init parameter was not assigned, we use the default value
+                param_value = param.default
+            init_parameters[param_name] = param_value
 
-    init_parameters = {}
-    for name, param in inspect.signature(obj.__init__).parameters.items():
-        # Ignore `args` and `kwargs`, used by the default constructor
-        if name in ("args", "kwargs"):
-            continue
-        try:
-            # This only works if the Component constructor assigns the init
-            # parameter to an instance variable or property with the same name
-            param_value = getattr(obj, name)
-        except AttributeError as e:
-            # If the parameter doesn't have a default value, raise an error
-            if param.default is param.empty:
+        data = default_to_dict(obj, **init_parameters)
+
+    _validate_component_to_dict_output(obj, name, data)
+    return data
+
+
+def _validate_component_to_dict_output(component: Any, name: str, data: Dict[str, Any]) -> None:
+    # Ensure that only basic Python types are used in the serde data.
+    def is_allowed_type(obj: Any) -> bool:
+        return isinstance(obj, (str, int, float, bool, list, dict, set, tuple, type(None)))
+
+    def check_iterable(l: Iterable[Any]):
+        for v in l:
+            if not is_allowed_type(v):
                 raise SerializationError(
-                    f"Cannot determine the value of the init parameter '{name}' for the class {obj.__class__.__name__}."
-                    f"You can fix this error by assigning 'self.{name} = {name}' or adding a "
-                    f"custom serialization method 'to_dict' to the class."
-                ) from e
-            # In case the init parameter was not assigned, we use the default value
-            param_value = param.default
-        init_parameters[name] = param_value
+                    f"Component '{name}' of type '{type(component).__name__}' has an unsupported value "
+                    f"of type '{type(v).__name__}' in the serialized data."
+                )
+            if isinstance(v, (list, set, tuple)):
+                check_iterable(v)
+            elif isinstance(v, dict):
+                check_dict(v)
 
-    return default_to_dict(obj, **init_parameters)
+    def check_dict(d: Dict[str, Any]):
+        if any(not isinstance(k, str) for k in data.keys()):
+            raise SerializationError(
+                f"Component '{name}' of type '{type(component).__name__}' has a non-string key in the serialized data."
+            )
+
+        for k, v in d.items():
+            if not is_allowed_type(v):
+                raise SerializationError(
+                    f"Component '{name}' of type '{type(component).__name__}' has an unsupported value "
+                    f"of type '{type(v).__name__}' in the serialized data under key '{k}'."
+                )
+            if isinstance(v, (list, set, tuple)):
+                check_iterable(v)
+            elif isinstance(v, dict):
+                check_dict(v)
+
+    check_dict(data)
 
 
 def generate_qualified_class_name(cls: Type[object]) -> str:
