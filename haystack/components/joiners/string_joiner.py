@@ -21,7 +21,12 @@ class StringJoiner:
         """
         Joins strings into a list of strings
 
-        :param strings: strings from different components
+        :param strings:
+            strings from different components
+        
+        :returns:
+            A dictionary with the following keys:
+            - `strings`: Merged list of strings        
         """
 
         out_strings = list(strings)
