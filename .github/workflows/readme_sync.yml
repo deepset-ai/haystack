@@ -52,7 +52,7 @@ jobs:
           # stable docs, for the time being we're ok with that.
           # `main` branch docs will be handled correctly too and get pushed to an
           # unstable documentation.
-          IS_UNSTABLE=$(hatch version | grep -v -q "0-rc")
+          IS_UNSTABLE="$(hatch version | grep -v -q '0-rc')"
           if [ "$IS_UNSTABLE" ]; then
             VERSION="$VERSION-unstable"
           fi
