@@ -13,7 +13,7 @@ from haystack.components.builders import PromptBuilder, AnswerBuilder, ChatPromp
 from haystack.components.preprocessors import DocumentCleaner, DocumentSplitter
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.components.joiners import BranchJoiner, DocumentJoiner, AnswerJoiner
+from haystack.components.joiners import BranchJoiner, DocumentJoiner, AnswerJoiner, StringJoiner
 from haystack.testing.sample_components import (
     Accumulate,
     AddFixedValue,
@@ -2195,3 +2195,32 @@ def that_has_variadic_component_that_receives_a_conditional_input():
             ],
         ),
     ]
+
+
+@given("a pipeline that has a string variadic component", target_fixture="pipeline_data")
+def that_has_a_string_variadic_component():
+    string_1 = "What's Natural Language Processing?"
+    string_2 = "What's is life?"
+
+    pipeline = Pipeline()
+    pipeline.add_component("prompt_builder_1", PromptBuilder("Builder 1: {{query}}"))
+    pipeline.add_component("prompt_builder_2", PromptBuilder("Builder 2: {{query}}"))
+    pipeline.add_component("string_joiner", StringJoiner())
+
+    pipeline.connect("prompt_builder_1.prompt", "string_joiner.strings")
+    pipeline.connect("prompt_builder_2.prompt", "string_joiner.strings")
+
+    return (
+        pipeline,
+        [
+            PipelineRunData(
+                inputs={"prompt_builder_1": {"query": string_1}, "prompt_builder_2": {"query": string_2}},
+                expected_outputs={
+                    "string_joiner": {
+                        "strings": ["Builder 1: What's Natural Language Processing?", "Builder 2: What's is life?"]
+                    }
+                },
+                expected_run_order=["prompt_builder_1", "prompt_builder_2", "string_joiner"],
+            )
+        ],
+    )

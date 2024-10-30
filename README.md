@@ -24,7 +24,7 @@ pip install haystack-ai
 
 Install from the `main` branch to try the newest features:
 ```sh
-pip install git+https://github.com/deepset-ai/haystack.git@main 
+pip install git+https://github.com/deepset-ai/haystack.git@main
 ```
 
 Haystack supports multiple installation methods including Docker images. For a comprehensive guide please refer
