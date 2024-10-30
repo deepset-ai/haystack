@@ -43,6 +43,7 @@ Feature: Pipeline running
         | that is linear and a component in the middle receives optional input from other components and input from the user |
         | that has a loop in the middle |
         | that has variadic component that receives a conditional input |
+        | that has a string variadic component |
 
     Scenario Outline: Running a bad Pipeline
         Given a pipeline <kind>
