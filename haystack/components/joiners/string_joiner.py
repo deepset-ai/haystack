@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 @component
 class StringJoiner:
     """
-    Component to join strings from different components to a list of strings
+    Component to join strings from different components to a list of strings.
     """
 
     @component.output_types(strings=List[str])
