@@ -26,7 +26,7 @@ class StringJoiner:
     from haystack.dataclasses import ChatMessage
 
     string_1 = "What's Natural Language Processing?"
-    string_2 = "What's is life?"
+    string_2 = "What is life?"
 
     pipeline = Pipeline()
     pipeline.add_component("prompt_builder_1", PromptBuilder("Builder 1: {{query}}"))
@@ -36,7 +36,9 @@ class StringJoiner:
     pipeline.connect("prompt_builder_1.prompt", "string_joiner.strings")
     pipeline.connect("prompt_builder_2.prompt", "string_joiner.strings")
 
-    results = pipeline.run(data={"prompt_builder_1": {"query": string_1}, "prompt_builder_2": {"query": string_2}})
+    print(pipeline.run(data={"prompt_builder_1": {"query": string_1}, "prompt_builder_2": {"query": string_2}}))
+    
+    >> {"string_joiner": {"strings": ["Builder 1: What's Natural Language Processing?", "Builder 2: What is life?"]}}
     ```
     """
 
