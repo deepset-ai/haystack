@@ -7,7 +7,7 @@ from unittest.mock import patch
 import pytest
 
 from haystack import Document, default_from_dict, default_to_dict
-from haystack.components.converters.pypdf import PyPDFToDocument, DefaultConverter
+from haystack.components.converters.pypdf import PyPDFToDocument
 from haystack.dataclasses import ByteStream
 
 
@@ -78,15 +78,6 @@ class TestPyPDFToDocument:
         instance = PyPDFToDocument.from_dict(data)
         assert isinstance(instance, PyPDFToDocument)
         assert isinstance(instance.converter, CustomConverter)
-
-    def test_from_dict_pre_2_6_0(self):
-        data = {
-            "type": "haystack.components.converters.pypdf.PyPDFToDocument",
-            "init_parameters": {"converter": {"type": "haystack.components.converters.pypdf.DefaultConverter"}},
-        }
-        instance = PyPDFToDocument.from_dict(data)
-        assert isinstance(instance, PyPDFToDocument)
-        assert isinstance(instance.converter, DefaultConverter)
 
     @pytest.mark.integration
     def test_run(self, test_files_path, pypdf_converter):

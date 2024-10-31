@@ -54,7 +54,7 @@ class HuggingFaceLocalGenerator:
     ```
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         model: str = "google/flan-t5-base",
         task: Optional[Literal["text-generation", "text2text-generation"]] = None,
@@ -204,12 +204,19 @@ class HuggingFaceLocalGenerator:
         return default_from_dict(cls, data)
 
     @component.output_types(replies=List[str])
-    def run(self, prompt: str, generation_kwargs: Optional[Dict[str, Any]] = None):
+    def run(
+        self,
+        prompt: str,
+        streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
+        generation_kwargs: Optional[Dict[str, Any]] = None,
+    ):
         """
         Run the text generation model on the given prompt.
 
         :param prompt:
             A string representing the prompt.
+        :param streaming_callback:
+            A callback function that is called when a new token is received from the stream.
         :param generation_kwargs:
             Additional keyword arguments for text generation.
 
@@ -228,7 +235,10 @@ class HuggingFaceLocalGenerator:
         # merge generation kwargs from init method with those from run method
         updated_generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
 
-        if self.streaming_callback:
+        # check if streaming_callback is passed
+        streaming_callback = streaming_callback or self.streaming_callback
+
+        if streaming_callback:
             num_responses = updated_generation_kwargs.get("num_return_sequences", 1)
             if num_responses > 1:
                 msg = (
@@ -241,7 +251,7 @@ class HuggingFaceLocalGenerator:
             # streamer parameter hooks into HF streaming, HFTokenStreamingHandler is an adapter to our streaming
             updated_generation_kwargs["streamer"] = HFTokenStreamingHandler(
                 self.pipeline.tokenizer,  # type: ignore
-                self.streaming_callback,
+                streaming_callback,
                 self.stop_words,  # type: ignore
             )
 
