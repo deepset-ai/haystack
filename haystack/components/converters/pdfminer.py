@@ -92,7 +92,7 @@ class PDFMinerToDocument:
             all_texts=all_texts,
         )
 
-    def __converter(self, extractor) -> Document:
+    def _converter(self, extractor) -> Document:
         """
         Extracts text from PDF pages then convert the text into Documents
 
@@ -151,12 +151,18 @@ class PDFMinerToDocument:
                 continue
             try:
                 pdf_reader = extract_pages(io.BytesIO(bytestream.data), laparams=self.layout_params)
-                document = self.__converter(pdf_reader)
+                document = self._converter(pdf_reader)
             except Exception as e:
                 logger.warning(
                     "Could not read {source} and convert it to Document, skipping. {error}", source=source, error=e
                 )
                 continue
+
+            if document.content == "":
+                logger.warning(
+                    "PDFMinerToDocument could not extract text from the file {source}. Returning an empty document.",
+                    source=source,
+                )
 
             merged_metadata = {**bytestream.meta, **metadata}
             document.meta = merged_metadata
