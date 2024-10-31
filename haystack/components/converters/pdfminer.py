@@ -158,7 +158,7 @@ class PDFMinerToDocument:
                 )
                 continue
 
-            if document.content == "":
+            if document.content.strip() == "":
                 logger.warning(
                     "PDFMinerToDocument could not extract text from the file {source}. Returning an empty document.",
                     source=source,
