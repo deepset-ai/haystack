@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    We have added a new MetaDataGrouper component that reorders documents by grouping them based on metadata keys. This can be useful pre-processing before feeding them to an LLM.
