@@ -71,7 +71,6 @@ class TestPyPDFToDocument:
 
     def test_from_dict_custom_converter(self):
         pypdf_converter = PyPDFToDocument(converter=CustomConverter())
-        data = pypdf_converter.to_dict()
         data = {
             "type": "haystack.components.converters.pypdf.PyPDFToDocument",
             "init_parameters": {
