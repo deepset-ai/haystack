@@ -142,7 +142,7 @@ class PyPDFToDocument:
                 )
                 continue
 
-            if document.content.strip() == "":
+            if document.content is None or document.content.strip() == "":
                 logger.warning(
                     "PyPDFToDocument could not extract text from the file {source}. Returning an empty document.",
                     source=source,
