@@ -49,12 +49,15 @@ class LoggingTracer(Tracer):
         self.tags_color_strings = tags_color_strings or {}
 
     @contextlib.contextmanager
-    def trace(self, operation_name: str, tags: Optional[Dict[str, Any]] = None) -> Iterator[Span]:
+    def trace(
+        self, operation_name: str, tags: Optional[Dict[str, Any]] = None, parent_span: Optional[Span] = None
+    ) -> Iterator[Span]:
         """
         Trace the execution of a block of code.
 
         :param operation_name: the name of the operation being traced.
         :param tags: tags to apply to the newly created span.
+        :param parent_span: the parent span to use for the newly created span. Not used in this simple tracer.
         :returns: the newly created span.
         """
 
