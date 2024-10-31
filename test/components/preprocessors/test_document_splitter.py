@@ -458,7 +458,7 @@ class TestDocumentSplitter:
 
     def test_run_document_only_whitespaces(self):
         """
-        Test if the component runs correctly with an empty document.
+        Test if the component runs correctly with a document containing only whitespaces.
         """
         splitter = DocumentSplitter()
         doc = Document(content="  ")
