@@ -9,11 +9,16 @@ logger = logging.getLogger(__name__)
 @component
 class MetaDataGrouper:
     """
-    Groups documents based on a metafield value into one group, using the 'group_by' parameter.
+    It reorders the documents by grouping them based on metadata keys.
 
-    If you provide the `subgroup_by` parameter, it then creates subgroups based on it.
-    It can also use the `sort_docs_by` parameter to sort the groups or subgroups based on an integer value in the
-    document's metadata.
+    It groups the documents based on metadata keys. It can group based on a:
+     - single metadata key 'group_by'
+     - further subgroup them based on another metadata key 'subgroup_by'.
+
+    It can also sort the documents within each group or subgroup based on a specified metadata key, 'sort_docs_by'
+
+    It returns a flat list with the original input documents ordered by the 'group_by' and 'subgroup_by' metadata
+    values, and all documents without a group are included at the end of the list.
 
     This helps to ensure the documents are properly organized leading to a better performance of a following LLM.
 
@@ -70,7 +75,7 @@ class MetaDataGrouper:
         document_groups: Dict[str, List] = defaultdict(list)
         no_group: list = []
 
-        # Go through all documents and bucket them based on the group_by value
+        # Go through all documents and bucket them based on the 'group_by' value
         for document in documents:
             if self.group_by in document.meta:
                 document_groups[str(document.meta[self.group_by])].append(document)
@@ -79,7 +84,7 @@ class MetaDataGrouper:
             else:
                 no_group.append(document)
 
-        # Go through all documents and bucket them based on the subgroup_by value
+        # Go through all documents and bucket them based on the 'subgroup_by' value
         subgroup_ordered_keys = []
         document_subgroups: Dict[str, dict] = defaultdict(lambda: defaultdict(list))
         if self.subgroup_by:
