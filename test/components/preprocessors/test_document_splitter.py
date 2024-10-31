@@ -4,6 +4,7 @@
 import re
 
 import pytest
+import logging
 
 from haystack import Document
 from haystack.components.preprocessors import DocumentSplitter
@@ -37,12 +38,11 @@ def merge_documents(documents):
 
 
 class TestDocumentSplitter:
-    def test_non_text_document(self):
-        with pytest.raises(
-            ValueError, match="DocumentSplitter only works with text documents but content for document ID"
-        ):
+    def test_non_text_document(self, caplog):
+        with caplog.at_level(logging.WARNING):
             splitter = DocumentSplitter()
             splitter.run(documents=[Document()])
+            assert "DocumentSplitter only works with text documents but content for document ID" in caplog.text
 
     def test_single_doc(self):
         with pytest.raises(TypeError, match="DocumentSplitter expects a List of Documents as input."):
