@@ -70,7 +70,6 @@ class TestPyPDFToDocument:
         assert instance.converter is None
 
     def test_from_dict_custom_converter(self):
-        pypdf_converter = PyPDFToDocument(converter=CustomConverter())
         data = {
             "type": "haystack.components.converters.pypdf.PyPDFToDocument",
             "init_parameters": {
