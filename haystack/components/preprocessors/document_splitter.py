@@ -48,7 +48,7 @@ class DocumentSplitter:
     ```
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         split_by: Literal["function", "page", "passage", "sentence", "word"] = "word",
         split_length: int = 200,
