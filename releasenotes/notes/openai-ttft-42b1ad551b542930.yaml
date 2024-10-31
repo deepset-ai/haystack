@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Add TTFT (Time-to-First-Token) support for OpenAI generators. This
+    captures the time taken to generate the first token from the model and
+    can be used to analyze the latency of the application.

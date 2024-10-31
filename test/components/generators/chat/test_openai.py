@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import logging
 import os
+from unittest.mock import patch
 
 import pytest
 from openai import OpenAIError
@@ -219,7 +220,8 @@ class TestOpenAIChatGenerator:
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
         assert "Hello" in response["replies"][0].content  # see mock_chat_completion_chunk
 
-    def test_run_with_streaming_callback_in_run_method(self, chat_messages, mock_chat_completion_chunk):
+    @patch("haystack.components.generators.chat.openai.datetime")
+    def test_run_with_streaming_callback_in_run_method(self, mock_datetime, chat_messages, mock_chat_completion_chunk):
         streaming_callback_called = False
 
         def streaming_callback(chunk: StreamingChunk) -> None:
@@ -239,6 +241,13 @@ class TestOpenAIChatGenerator:
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
         assert "Hello" in response["replies"][0].content  # see mock_chat_completion_chunk
+
+        assert hasattr(response["replies"][0], "meta")
+        assert isinstance(response["replies"][0].meta, dict)
+        assert (
+            response["replies"][0].meta["completion_start_time"]
+            == mock_datetime.now.return_value.isoformat.return_value
+        )
 
     def test_check_abnormal_completions(self, caplog):
         caplog.set_level(logging.INFO)
