@@ -4,7 +4,6 @@
 import re
 
 import pytest
-import logging
 
 from haystack import Document
 from haystack.components.preprocessors import DocumentSplitter
