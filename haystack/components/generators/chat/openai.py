@@ -64,7 +64,7 @@ class OpenAIChatGenerator:
     ```
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
         self,
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
         model: str = "gpt-4o-mini",
