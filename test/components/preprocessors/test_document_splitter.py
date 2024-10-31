@@ -38,8 +38,10 @@ def merge_documents(documents):
 
 
 class TestDocumentSplitter:
-    def test_non_text_document(self, caplog):
-        with caplog.at_level(logging.WARNING):
+    def test_non_text_document(self):
+        with pytest.raises(
+            ValueError, match="DocumentSplitter only works with text documents but content for document ID"
+        ):
             splitter = DocumentSplitter()
             splitter.run(documents=[Document()])
             assert "DocumentSplitter only works with text documents but content for document ID" in caplog.text

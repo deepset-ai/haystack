@@ -111,12 +111,9 @@ class DocumentSplitter:
         split_docs = []
         for doc in documents:
             if doc.content is None:
-                logger.warning(
-                    "DocumentSplitter only works with text documents but content for document ID {doc_id} is None."
-                    " Skipping this document.",
-                    doc_id=doc.id,
+                raise ValueError(
+                    f"DocumentSplitter only works with text documents but content for document ID {doc.id} is None."
                 )
-                continue
             if doc.content == "":
                 logger.warning("Document ID {doc_id} has an empty content. Skipping this document.", doc_id=doc.id)
                 continue
