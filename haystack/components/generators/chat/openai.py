@@ -5,6 +5,7 @@
 import copy
 import json
 import os
+from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from openai import OpenAI, Stream
@@ -63,7 +64,7 @@ class OpenAIChatGenerator:
     ```
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
         model: str = "gpt-4o-mini",
@@ -222,11 +223,15 @@ class OpenAIChatGenerator:
                 raise ValueError("Cannot stream multiple responses, please set n=1.")
             chunks: List[StreamingChunk] = []
             chunk = None
+            _first_token = True
 
             # pylint: disable=not-an-iterable
             for chunk in chat_completion:
                 if chunk.choices and streaming_callback:
                     chunk_delta: StreamingChunk = self._build_chunk(chunk)
+                    if _first_token:
+                        _first_token = False
+                        chunk_delta.meta["completion_start_time"] = datetime.now().isoformat()
                     chunks.append(chunk_delta)
                     streaming_callback(chunk_delta)  # invoke callback with the chunk_delta
             completions = [self._connect_chunks(chunk, chunks)]
@@ -280,7 +285,12 @@ class OpenAIChatGenerator:
                         payload["function"]["arguments"] += delta.arguments or ""
             complete_response = ChatMessage.from_assistant(json.dumps(payloads))
         else:
-            complete_response = ChatMessage.from_assistant("".join([chunk.content for chunk in chunks]))
+            total_content = ""
+            total_meta = {}
+            for streaming_chunk in chunks:
+                total_content += streaming_chunk.content
+                total_meta.update(streaming_chunk.meta)
+            complete_response = ChatMessage.from_assistant(total_content, meta=total_meta)
         complete_response.meta.update(
             {
                 "model": chunk.model,
