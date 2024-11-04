@@ -90,10 +90,10 @@ class PyPDFToDocument:
         :returns:
             Deserialized component.
         """
-        custom_converter_data = data["init_parameters"]["converter"]
+        init_parameters = data.get("init_parameters", {})
+        custom_converter_data = init_parameters.get("converter")
         if custom_converter_data is not None:
             data["init_parameters"]["converter"] = deserialize_class_instance(custom_converter_data)
-
         return default_from_dict(cls, data)
 
     def _default_convert(self, reader: "PdfReader") -> Document:
@@ -141,6 +141,12 @@ class PyPDFToDocument:
                     "Could not read {source} and convert it to Document, skipping. {error}", source=source, error=e
                 )
                 continue
+
+            if document.content is None or document.content.strip() == "":
+                logger.warning(
+                    "PyPDFToDocument could not extract text from the file {source}. Returning an empty document.",
+                    source=source,
+                )
 
             merged_metadata = {**bytestream.meta, **metadata}
             document.meta = merged_metadata

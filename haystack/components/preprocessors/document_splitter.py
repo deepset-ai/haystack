@@ -7,9 +7,11 @@ from typing import Any, Callable, Dict, List, Literal, Optional, Tuple
 
 from more_itertools import windowed
 
-from haystack import Document, component
+from haystack import Document, component, logging
 from haystack.core.serialization import default_from_dict, default_to_dict
 from haystack.utils import deserialize_callable, serialize_callable
+
+logger = logging.getLogger(__name__)
 
 
 @component
@@ -46,7 +48,7 @@ class DocumentSplitter:
     ```
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         split_by: Literal["function", "page", "passage", "sentence", "word"] = "word",
         split_length: int = 200,
@@ -112,6 +114,9 @@ class DocumentSplitter:
                 raise ValueError(
                     f"DocumentSplitter only works with text documents but content for document ID {doc.id} is None."
                 )
+            if doc.content == "":
+                logger.warning("Document ID {doc_id} has an empty content. Skipping this document.", doc_id=doc.id)
+                continue
             units = self._split_into_units(doc.content, self.split_by)
             text_splits, splits_pages, splits_start_idxs = self._concatenate_units(
                 units, self.split_length, self.split_overlap, self.split_threshold
@@ -173,6 +178,7 @@ class DocumentSplitter:
                 # concatenate the last split with the current one
                 text_splits[-1] += txt
 
+            # NOTE: This line skips documents that have content=""
             elif len(txt) > 0:
                 text_splits.append(txt)
                 splits_pages.append(cur_page)
