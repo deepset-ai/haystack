@@ -63,9 +63,13 @@ class TestPyPDFToDocument:
         assert isinstance(instance, PyPDFToDocument)
         assert instance.converter is None
 
+    def test_from_dict_defaults(self):
+        data = {"type": "haystack.components.converters.pypdf.PyPDFToDocument", "init_parameters": {}}
+        instance = PyPDFToDocument.from_dict(data)
+        assert isinstance(instance, PyPDFToDocument)
+        assert instance.converter is None
+
     def test_from_dict_custom_converter(self):
-        pypdf_converter = PyPDFToDocument(converter=CustomConverter())
-        data = pypdf_converter.to_dict()
         data = {
             "type": "haystack.components.converters.pypdf.PyPDFToDocument",
             "init_parameters": {
@@ -161,3 +165,10 @@ class TestPyPDFToDocument:
         assert len(docs) == 1
         assert "ReAct" not in docs[0].content
         assert "I don't care about converting given pdfs, I always return this" in docs[0].content
+
+    def test_run_empty_document(self, caplog, test_files_path):
+        paths = [test_files_path / "pdf" / "non_text_searchable.pdf"]
+        with caplog.at_level(logging.WARNING):
+            output = PyPDFToDocument().run(sources=paths)
+            assert "PyPDFToDocument could not extract text from the file" in caplog.text
+            assert output["documents"][0].content == ""
