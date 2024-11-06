@@ -217,6 +217,9 @@ class DocumentJoiner:
         If a Document is in more than one retriever, the one with the highest score is used.
         """
         for documents in document_lists:
+            if len(documents) == 0:
+                continue
+
             scores_list = []
 
             for doc in documents:
