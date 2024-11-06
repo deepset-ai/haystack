@@ -60,8 +60,17 @@ class TestDocumentJoiner:
         assert document_joiner.top_k == 6
         assert not document_joiner.sort_by_score
 
-    def test_empty_list(self):
-        joiner = DocumentJoiner()
+    @pytest.mark.parametrize(
+        "join_mode",
+        [
+            JoinMode.CONCATENATE,
+            JoinMode.MERGE,
+            JoinMode.RECIPROCAL_RANK_FUSION,
+            JoinMode.DISTRIBUTION_BASED_RANK_FUSION,
+        ],
+    )
+    def test_empty_list(self, join_mode: JoinMode):
+        joiner = DocumentJoiner(join_mode=join_mode)
         result = joiner.run([])
         assert result == {"documents": []}
 
