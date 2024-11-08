@@ -178,6 +178,20 @@ class OpenAIDocumentEmbedder:
             texts_to_embed.append(text_to_embed)
         return texts_to_embed
 
+    def _call(self, input):
+        if self.dimensions is not None:
+            response = self.client.embeddings.create(model=self.model, dimensions=self.dimensions, input=input)
+        else:
+            response = self.client.embeddings.create(model=self.model, input=input)
+        return response
+
+    def _safe_call(self, input):
+        try:
+            return self._call(input)
+        except Exception:
+            logging.exception(f"Failed to embed documents. {"\n-----------debug----------\n".join([doc for doc in input])}")
+            return None
+
     def _embed_batch(self, texts_to_embed: List[str], batch_size: int) -> Tuple[List[List[float]], Dict[str, Any]]:
         """
         Embed a list of texts in batches.
@@ -189,10 +203,11 @@ class OpenAIDocumentEmbedder:
             range(0, len(texts_to_embed), batch_size), disable=not self.progress_bar, desc="Calculating embeddings"
         ):
             batch = texts_to_embed[i : i + batch_size]
-            if self.dimensions is not None:
-                response = self.client.embeddings.create(model=self.model, dimensions=self.dimensions, input=batch)
-            else:
-                response = self.client.embeddings.create(model=self.model, input=batch)
+            response = self._safe_call(batch)
+
+            if not response:
+                continue
+
             embeddings = [el.embedding for el in response.data]
             all_embeddings.extend(embeddings)
 
