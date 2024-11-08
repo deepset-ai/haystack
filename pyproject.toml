@@ -106,6 +106,7 @@ extra-dependencies = [
   "python-pptx",                      # PPTXToDocument
   "python-docx",                      # DocxToDocument
   "jq",                               #JSONConverter
+  "openpyxl",                         # XLSXToDocument
 
   "nltk", # NLTKDocumentSplitter
 
