@@ -42,7 +42,7 @@ class XLSXToDocument:
     def __init__(
         self,
         table_format: Literal["csv", "markdown"] = "csv",
-        sheet_name: str | int | List[Union[str, int]] | None = None,
+        sheet_name: Union[str, int, List[Union[str, int]], None] = None,
         read_excel_kwargs: Optional[Dict[str, Any]] = None,
         table_format_kwargs: Optional[Dict[str, Any]] = None,
     ):
