@@ -50,7 +50,7 @@ class DocumentSplitter:
 
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
-        split_by: Literal["function", "page", "passage", "sentence", "word"] = "word",
+        split_by: Literal["function", "page", "passage", "sentence", "word", "line"] = "word",
         split_length: int = 200,
         split_overlap: int = 0,
         split_threshold: int = 0,
@@ -61,7 +61,7 @@ class DocumentSplitter:
 
         :param split_by: The unit for splitting your documents. Choose from `word` for splitting by spaces (" "),
             `sentence` for splitting by periods ("."), `page` for splitting by form feed ("\\f"),
-            or `passage` for splitting by double line breaks ("\\n\\n").
+            `passage` for splitting by double line breaks ("\\n\\n") or `line` for splitting each line ("\\n").
         :param split_length: The maximum number of units in each split.
         :param split_overlap: The number of overlapping units for each split.
         :param split_threshold: The minimum number of units per split. If a split has fewer units
@@ -72,8 +72,8 @@ class DocumentSplitter:
         """
 
         self.split_by = split_by
-        if split_by not in ["function", "page", "passage", "sentence", "word"]:
-            raise ValueError("split_by must be one of 'word', 'sentence', 'page' or 'passage'.")
+        if split_by not in ["function", "page", "passage", "sentence", "word", "line"]:
+            raise ValueError("split_by must be one of 'word', 'sentence', 'page', 'passage' or 'line'.")
         if split_by == "function" and splitting_function is None:
             raise ValueError("When 'split_by' is set to 'function', a valid 'splitting_function' must be provided.")
         if split_length <= 0:
@@ -129,7 +129,7 @@ class DocumentSplitter:
         return {"documents": split_docs}
 
     def _split_into_units(
-        self, text: str, split_by: Literal["function", "page", "passage", "sentence", "word"]
+        self, text: str, split_by: Literal["function", "page", "passage", "sentence", "word", "line"]
     ) -> List[str]:
         if split_by == "page":
             self.split_at = "\f"
@@ -139,11 +139,14 @@ class DocumentSplitter:
             self.split_at = "."
         elif split_by == "word":
             self.split_at = " "
+        elif split_by == "line":
+            self.split_at = "\n"
         elif split_by == "function" and self.splitting_function is not None:
             return self.splitting_function(text)
         else:
             raise NotImplementedError(
-                "DocumentSplitter only supports 'function', 'page', 'passage', 'sentence' or 'word' split_by options."
+                """DocumentSplitter only supports 'function', 'line', 'page',
+                   'passage', 'sentence' or 'word' split_by options."""
             )
         units = text.split(self.split_at)
         # Add the delimiter back to all units except the last one

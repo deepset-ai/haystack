@@ -1,0 +1,3 @@
+enhancements:
+  - |
+    Added split by line to DocumentSplitter, which will split the document at \n
