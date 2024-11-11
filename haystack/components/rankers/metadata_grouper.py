@@ -162,7 +162,7 @@ class MetaDataGrouper:
         return result_docs
 
     @component.output_types(documents=List[Document])
-    def run(self, documents: List[Document]) -> Dict[str, Any]:
+    def run(self, documents: List[Document]) -> Dict[str, Any]:  # disable = too-many-positional-arguments
         """
         Groups the provided list of documents based on the `group_by` parameter and optionally the `subgroup_by`.
 
