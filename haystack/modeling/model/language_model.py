@@ -18,25 +18,23 @@ Acknowledgements: Many of the modeling parts here come from the great transforme
 Thanks for the great work!
 """
 
-from typing import Type, Optional, Dict, Any, Union, List
-
-import re
 import json
 import logging
 import os
+import re
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Type, Union
+
 import numpy as np
 import torch
-from torch import nn
 import transformers
-from transformers import PretrainedConfig, PreTrainedModel
-from transformers import AutoModel, AutoConfig
+from torch import nn
+from transformers import AutoConfig, AutoModel, PretrainedConfig, PreTrainedModel
 from transformers.modeling_utils import SequenceSummary
 
 from haystack.errors import ModelingError
 from haystack.modeling.utils import silence_transformers_logs
-
 
 logger = logging.getLogger(__name__)
 
@@ -213,8 +211,7 @@ class LanguageModel(nn.Module, ABC):
     ):
         token_vecs = sequence_output.cpu().numpy()
         # we only take the aggregated value of non-padding tokens
-        padding_mask = padding_mask.cpu().numpy()
-        ignore_mask_2d = padding_mask == 0
+        ignore_mask_2d = padding_mask.cpu().numpy() == 0
         # sometimes we want to exclude the CLS token as well from our aggregation operation
         if ignore_first_token:
             ignore_mask_2d[:, 0] = True
@@ -225,7 +222,7 @@ class LanguageModel(nn.Module, ABC):
         if strategy == "reduce_mean":
             pooled_vecs = np.ma.array(data=token_vecs, mask=ignore_mask_3d).mean(axis=1).data
 
-        return pooled_vecs
+        return pooled_vecs  # pylint: disable=possibly-used-before-assignment
 
 
 class HFLanguageModel(LanguageModel):

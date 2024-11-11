@@ -1,19 +1,23 @@
 import re
 from typing import Dict, Generator, List, Optional, Union
+
 import numpy as np
 from tqdm import tqdm
+
+from haystack import __version__ as haystack_version
 from haystack.document_stores import BaseDocumentStore
 from haystack.errors import DocumentStoreError
 from haystack.nodes.retriever import DenseRetriever
 from haystack.schema import Document, FilterType
 from haystack.utils import get_batches_from_generator
-from haystack import __version__ as haystack_version
-from .mongodb_filters import mongo_filter_converter
+
 from ..lazy_imports import LazyImport
+from .mongodb_filters import mongo_filter_converter
 
 with LazyImport("Run 'pip install farm-haystack[mongodb]'") as mongodb_import:
     import pymongo
     from pymongo import InsertOne, ReplaceOne, UpdateOne
+    from pymongo.collection import Collection as MongoCollection
     from pymongo.driver_info import DriverInfo
 
 METRIC_TYPES = ["euclidean", "cosine", "dotProduct"]
@@ -82,7 +86,7 @@ class MongoDBAtlasDocumentStore(BaseDocumentStore):
     def _create_document_field_map(self) -> Dict:
         return {self.embedding_field: "embedding"}
 
-    def _get_collection(self, index=None) -> "pymongo.collection.Collection":
+    def _get_collection(self, index=None) -> "MongoCollection":
         """
         Returns the collection named by index or returns the collection specified when the
         driver was initialized.
@@ -126,7 +130,7 @@ class MongoDBAtlasDocumentStore(BaseDocumentStore):
         elif (ids, filters) == (ids, filters):
             mongo_filters = {"$and": [mongo_filter_converter(filters), {"id": {"$in": ids}}]}
 
-        collection.delete_many(filter=mongo_filters)
+        collection.delete_many(filter=mongo_filters)  # pylint: disable=possibly-used-before-assignment
 
     def delete_index(self, index=None):
         """
