@@ -126,7 +126,7 @@ class MetaDataGrouper:
         no_group: List,
         ordered_keys: List,
         subgroup_ordered_keys: List,
-    ):
+    ):  # pylint: disable=too-many-positional-arguments
         """
         Sorts the documents within the groups or subgroups based on the 'sort_docs_by' value.
 
@@ -162,7 +162,7 @@ class MetaDataGrouper:
         return result_docs
 
     @component.output_types(documents=List[Document])
-    def run(self, documents: List[Document]) -> Dict[str, Any]:  # disable = too-many-positional-arguments
+    def run(self, documents: List[Document]) -> Dict[str, Any]:
         """
         Groups the provided list of documents based on the `group_by` parameter and optionally the `subgroup_by`.
 
