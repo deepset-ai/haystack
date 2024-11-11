@@ -7,7 +7,7 @@ from typing import Any, Dict
 from haystack import Pipeline
 from haystack.dataclasses import Document
 
-from haystack.components.rankers.meta_field_grouper_ranker import MetaFieldGroupingRanker
+from haystack.components.rankers.meta_field_grouping_ranker import MetaFieldGroupingRanker
 
 DOC_LIST = [
     # regular
