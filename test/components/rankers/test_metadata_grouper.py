@@ -60,7 +60,7 @@ class TestMetadataGrouper:
         assert result["documents"][9].content == "without split id2" and result["documents"][9].meta["group"] == "22"
         assert result["documents"][10].content == "bla bla bla bla"
 
-    def test_run(self) -> None:
+    def test_with_group_subgroup_and_sorting(self) -> None:
         """
         Test the MetaDataGrouper component with all parameters set, i.e.: grouping by 'group', subgrouping by 'subgroup',
         and sorting by 'split_id'.
