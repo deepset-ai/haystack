@@ -502,15 +502,14 @@ class QuestionAnsweringHead(PredictionHead):
         # sorted_candidates.shape : (batch_size, max_seq_len^2, 2)
         start_indices = torch.div(flat_sorted_indices, max_seq_len, rounding_mode="trunc")
         end_indices = flat_sorted_indices % max_seq_len
-        sorted_candidates = torch.cat((start_indices, end_indices), dim=2)
 
         # Get the n_best candidate answers for each sample
-        sorted_candidates = sorted_candidates.cpu().numpy()
-        start_end_matrix = start_end_matrix.cpu().numpy()
+        sorted_candidates = torch.cat((start_indices, end_indices), dim=2).cpu().numpy()
+        start_end_matrix_array = start_end_matrix.cpu().numpy()
         for sample_idx in range(batch_size):
             sample_top_n = self.get_top_candidates(
                 sorted_candidates[sample_idx],
-                start_end_matrix[sample_idx],
+                start_end_matrix_array[sample_idx],
                 sample_idx,
                 start_matrix=start_matrix[sample_idx],
                 end_matrix=end_matrix[sample_idx],

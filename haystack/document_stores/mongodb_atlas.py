@@ -13,6 +13,7 @@ from ..lazy_imports import LazyImport
 
 with LazyImport("Run 'pip install farm-haystack[mongodb]'") as mongodb_import:
     import pymongo
+    import pymongo.collection.Collection
     from pymongo import InsertOne, ReplaceOne, UpdateOne
     from pymongo.driver_info import DriverInfo
 

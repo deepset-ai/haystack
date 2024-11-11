@@ -213,7 +213,7 @@ class MLflowTrackingHead(BaseTrackingHead):
 
     def track_artifacts(self, dir_path: Union[str, Path], artifact_path: Optional[str] = None):
         try:
-            mlflow.log_artifacts(dir_path, artifact_path)
+            mlflow.log_artifacts(str(dir_path), artifact_path)
         except ConnectionError:
             logger.warning("ConnectionError in logging artifacts to MLflow")
         except Exception as e:
