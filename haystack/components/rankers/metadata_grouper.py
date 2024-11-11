@@ -54,7 +54,7 @@ class MetaDataGrouper:
         :param group_by: The metadata key to aggregate the documents by.
         :param subgroup_by: The metadata key to aggregate the documents within a group that was created by the
                             `group_by` key.
-        :param sort_docs_by: Determines which metadata keys are used to sort the documents. If not provided, the
+        :param sort_docs_by: Determines which metadata key is used to sort the documents. If not provided, the
                              documents within the groups or subgroups are not sorted and are kept in the same order as
                              they were inserted in the subgroups.
 
