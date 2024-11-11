@@ -13,18 +13,16 @@ logger = logging.getLogger(__name__)
 @component
 class MetaFieldSorter:
     """
-    It reorders the documents by grouping them based on metadata keys.
+    Reorders the documents by grouping them based on metadata keys.
 
-    It groups the documents based on metadata keys. It can group based on a:
-     - single metadata key 'group_by'
-     - further subgroup them based on another metadata key 'subgroup_by'.
+    The MetaDataGrouper can group documents by a primary metadata key `group_by`, and subgroup them with an optional
+    secondary key, `subgroup_by`.
+    Within each group or subgroup, it can also sort documents by a metadata key `sort_docs_by`.
 
-    It can also sort the documents within each group or subgroup based on a specified metadata key, 'sort_docs_by'
+    The output is a flat list of documents ordered by `group_by` and `subgroup_by` values.
+    Any documents without a group are placed at the end of the list.
 
-    It returns a flat list with the original input documents ordered by the 'group_by' and 'subgroup_by' metadata
-    values, and all documents without a group are included at the end of the list.
-
-    This helps to ensure the documents are properly organized leading to a better performance of a following LLM.
+    The proper organization of documents helps improve the efficiency and performance of subsequent processing by an LLM.
 
     ### Usage example
 
