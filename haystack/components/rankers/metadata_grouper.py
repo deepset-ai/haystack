@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 @component
-class MetaDataGrouper:
+class MetaFieldSorter:
     """
     It reorders the documents by grouping them based on metadata keys.
 
