@@ -15,7 +15,7 @@ class MetaFieldGroupingRanker:
     """
     Reorders the documents by grouping them based on metadata keys.
 
-    The MetaDataGrouper can group documents by a primary metadata key `group_by`, and subgroup them with an optional
+    The MetaFieldGroupingRanker can group documents by a primary metadata key `group_by`, and subgroup them with an optional
     secondary key, `subgroup_by`.
     Within each group or subgroup, it can also sort documents by a metadata key `sort_docs_by`.
 
