@@ -101,8 +101,7 @@ class MetaDataGrouper:
         :param document_groups: A dictionary with the 'group_by' values as keys and the documents as values.
         :returns:
             A tuple with the following elements:
-            - document_subgroups: A dictionary with the 'group_by' values as keys and a dictionary with the
-                                  'subgroup_by' values as keys and the documents as values.
+            - document_subgroups: A dictionary with the 'subgroup_by' values as keys and the documents as values.
             - subgroup_ordered_keys: A list of 'subgroup_by' values in the order they were encountered
         """
         subgroup_ordered_keys = []
@@ -124,9 +123,9 @@ class MetaDataGrouper:
         self,
         document_groups: Dict[str, List],
         document_subgroups: Dict[str, dict],
-        no_group,
-        ordered_keys,
-        subgroup_ordered_keys,
+        no_group: List,
+        ordered_keys: List,
+        subgroup_ordered_keys: List,
     ):
         """
         Sorts the documents within the groups or subgroups based on the 'sort_docs_by' value.
@@ -135,7 +134,7 @@ class MetaDataGrouper:
         and subgroups.
 
         :param document_groups: A dictionary with the 'group_by' values as keys and the documents as values.
-        :param document_subgroups:
+        :param document_subgroups: A dictionary with the 'subgroup_by' values as keys and the documents as values.
         :param no_group: A list of documents without a 'group_by' value.
         :param ordered_keys: A list of 'group_by' values in the order they were encountered.
         :param subgroup_ordered_keys: A list of 'subgroup_by' values in the order they were encountered.
