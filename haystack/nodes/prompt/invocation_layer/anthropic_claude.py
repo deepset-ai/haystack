@@ -25,9 +25,7 @@ logger = logging.getLogger(__name__)
 # Anthropic removed tokenizer.json from their repo (https://github.com/anthropics/anthropic-sdk-python/pull/726),
 # we need to use the commit from the latest version of the SDK that still
 # has it, i.e. 0.38.0 and commit hash 14afc93ffd809e60666a267763a57a328184c5e4.
-CLAUDE_TOKENIZER_REMOTE_FILE = (
-    "https://raw.githubusercontent.com/anthropics/anthropic-sdk-python/14afc93ffd809e60666a267763a57a328184c5e4/src/anthropic/tokenizer.json"
-)
+CLAUDE_TOKENIZER_REMOTE_FILE = "https://raw.githubusercontent.com/anthropics/anthropic-sdk-python/14afc93ffd809e60666a267763a57a328184c5e4/src/anthropic/tokenizer.json"
 
 
 class AnthropicClaudeInvocationLayer(PromptModelInvocationLayer):
