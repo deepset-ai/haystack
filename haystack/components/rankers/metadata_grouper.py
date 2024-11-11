@@ -132,7 +132,8 @@ class MetaFieldSorter:
         Sorts the documents within the groups or subgroups based on the 'sort_docs_by' value.
 
         If 'sort_docs_by' is not provided, the documents are kept in the same order as they were inserted in the groups
-        and subgroups.
+        and subgroups. The final list of documents is created by merging the groups, subgroups, and documents without a
+        group.
 
         :param document_groups: A dictionary with the 'group_by' values as keys and the documents as values.
         :param document_subgroups: A dictionary with the 'subgroup_by' values as keys and the documents as values.
@@ -156,6 +157,7 @@ class MetaFieldSorter:
         else:
             for key in document_groups:
                 result_docs += document_groups[key]
+
         for doc in no_group:
             if doc not in result_docs:
                 result_docs += [doc]
