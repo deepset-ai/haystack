@@ -222,7 +222,7 @@ class LanguageModel(nn.Module, ABC):
         if strategy == "reduce_mean":
             pooled_vecs = np.ma.array(data=token_vecs, mask=ignore_mask_3d).mean(axis=1).data
 
-        return pooled_vecs
+        return pooled_vecs  # pylint: disable=possibly-used-before-assignment
 
 
 class HFLanguageModel(LanguageModel):
