@@ -27,7 +27,7 @@ class MetaFieldGroupingRanker:
     ### Usage example
 
     ```python
-    from haystack.components.rankers import MetaDataGrouper
+    from haystack.components.rankers import MetaFieldGroupingRanker
     from haystack.dataclasses import Document
 
 
@@ -39,9 +39,21 @@ class MetaFieldGroupingRanker:
         Document(content="Java is a popular programming language", meta={"group": "42", "split_id": 3, "subgroup": "subB"})
     ]
 
-    sample_meta_aggregator = MetaDataGrouper(group_by="group",subgroup_by="subgroup", sort_docs_by="split_id")
+    sample_meta_aggregator = MetaFieldGroupingRanker(group_by="group",subgroup_by="subgroup", sort_docs_by="split_id")
     result = sample_meta_aggregator.run(documents=docs)
     print(result["documents"])
+    [
+        Document(id=d665bbc83e52c08c3d8275bccf4f22bf2bfee21c6e77d78794627637355b8ebc,
+                content: 'Java is a popular programming language', meta: {'group': '42', 'split_id': 3, 'subgroup': 'subB'}),
+        Document(id=a20b326f07382b3cbf2ce156092f7c93e8788df5d48f2986957dce2adb5fe3c2,
+                content: 'Python is a popular programming language', meta: {'group': '42', 'split_id': 4, 'subgroup': 'subB'}),
+        Document(id=ce12919795d22f6ca214d0f161cf870993889dcb146f3bb1b3e1ffdc95be960f,
+                content: 'Javascript is a popular programming language', meta: {'group': '42', 'split_id': 7, 'subgroup': 'subB'}),
+        Document(id=d9fc857046c904e5cf790b3969b971b1bbdb1b3037d50a20728fdbf82991aa94,
+                content: 'A chromosome is a package of DNA', meta: {'group': '314', 'split_id': 2, 'subgroup': 'subC'}),
+        Document(id=6d3b7bdc13d09aa01216471eb5fb0bfdc53c5f2f3e98ad125ff6b85d3106c9a3,
+                content: 'An octopus has three hearts', meta: {'group': '11', 'split_id': 2, 'subgroup': 'subD'})
+    ]
     ```
     """  # noqa: E501
 
