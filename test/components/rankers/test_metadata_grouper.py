@@ -33,7 +33,7 @@ DOC_LIST = [
 class TestMetaFieldGroupingRanker:
     def test_init_default(self) -> None:
         """
-        Test the default initialization of the MetaDataGrouper component.
+        Test the default initialization of the MetaFieldGroupingRanker component.
         """
         sample_meta_aggregator = MetaFieldGroupingRanker(group_by="group", sort_docs_by=None)
         result = sample_meta_aggregator.run(documents=[])
@@ -42,7 +42,7 @@ class TestMetaFieldGroupingRanker:
 
     def test_run_group_by_only(self) -> None:
         """
-        Test the MetaDataGrouper component with only the 'group_by' parameter. No subgroup or sorting is done.
+        Test the MetaFieldGroupingRanker component with only the 'group_by' parameter. No subgroup or sorting is done.
         """
         sample_meta_aggregator = MetaFieldGroupingRanker(group_by="group")
         result = sample_meta_aggregator.run(documents=DOC_LIST)
@@ -62,7 +62,7 @@ class TestMetaFieldGroupingRanker:
 
     def test_with_group_subgroup_and_sorting(self) -> None:
         """
-        Test the MetaDataGrouper component with all parameters set, i.e.: grouping by 'group', subgrouping by 'subgroup',
+        Test the MetaFieldGroupingRanker component with all parameters set, i.e.: grouping by 'group', subgrouping by 'subgroup',
         and sorting by 'split_id'.
         """
         meta_aggregator = MetaFieldGroupingRanker(group_by="group", subgroup_by="subgroup", sort_docs_by="split_id")
@@ -96,7 +96,7 @@ class TestMetaFieldGroupingRanker:
 
     def test_run_with_lists(self) -> None:
         """
-        Test if the MetaDataGrouper component can handle list values in the metadata.
+        Test if the MetaFieldGroupingRanker component can handle list values in the metadata.
         """
         meta_aggregator = MetaFieldGroupingRanker(
             group_by="value_list", subgroup_by="subvaluelist", sort_docs_by="split_id"
@@ -110,7 +110,7 @@ class TestMetaFieldGroupingRanker:
 
     def test_run_in_pipeline_dumps_and_loads(self) -> None:
         """
-        Test if the MetaDataGrouper component can be dumped to a YAML string and reloaded from it.
+        Test if the MetaFieldGroupingRanker component can be dumped to a YAML string and reloaded from it.
         """
         meta_aggregator = MetaFieldGroupingRanker(group_by="group", sort_docs_by="split_id")
         result_single = meta_aggregator.run(documents=DOC_LIST)
