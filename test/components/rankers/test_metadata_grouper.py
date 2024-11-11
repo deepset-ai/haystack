@@ -32,12 +32,18 @@ DOC_LIST = [
 
 class TestMetadataGrouper:
     def test_init_default(self) -> None:
+        """
+        Test the default initialization of the MetaDataGrouper component.
+        """
         sample_meta_aggregator = MetaDataGrouper(group_by="group", sort_docs_by=None)
         result = sample_meta_aggregator.run(documents=[])
         assert "documents" in result
         assert result["documents"] == []
 
     def test_run_group_by_only(self) -> None:
+        """
+        Test the MetaDataGrouper component with only the 'group_by' parameter. No subgroup or sorting is done.
+        """
         sample_meta_aggregator = MetaDataGrouper(group_by="group")
         result = sample_meta_aggregator.run(documents=DOC_LIST)
         assert "documents" in result
@@ -55,6 +61,10 @@ class TestMetadataGrouper:
         assert result["documents"][10].content == "bla bla bla bla"
 
     def test_run(self) -> None:
+        """
+        Test the MetaDataGrouper component with all parameters set, i.e.: grouping by 'group', subgrouping by 'subgroup',
+        and sorting by 'split_id'.
+        """
         meta_aggregator = MetaDataGrouper(group_by="group", subgroup_by="subgroup", sort_docs_by="split_id")
         result = meta_aggregator.run(documents=DOC_LIST)
 
@@ -85,6 +95,9 @@ class TestMetadataGrouper:
         assert result["documents"][10].content == "bla bla bla bla"
 
     def test_run_with_lists(self) -> None:
+        """
+        Test if the MetaDataGrouper component can handle list values in the metadata.
+        """
         meta_aggregator = MetaDataGrouper(group_by="value_list", subgroup_by="subvaluelist", sort_docs_by="split_id")
         result = meta_aggregator.run(documents=DOC_LIST)
         assert "documents" in result
@@ -94,6 +107,9 @@ class TestMetadataGrouper:
         assert result["documents"][2].content == "list values3" and result["documents"][2].meta["value_list"] == ["12"]
 
     def test_run_in_pipeline_dumps_and_loads(self) -> None:
+        """
+        Test if the MetaDataGrouper component can be dumped to a YAML string and reloaded from it.
+        """
         meta_aggregator = MetaDataGrouper(group_by="group", sort_docs_by="split_id")
         result_single = meta_aggregator.run(documents=DOC_LIST)
         pipeline = Pipeline()
