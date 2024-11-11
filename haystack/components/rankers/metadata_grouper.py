@@ -61,7 +61,7 @@ class MetaFieldSorter:
         self.sort_docs_by = sort_docs_by
         self.subgroup_by = subgroup_by
 
-    def _buck_into_groups(self, documents: List[Document]) -> Tuple[Dict[str, List], List, List]:
+    def _group_documents(self, documents: List[Document]) -> Tuple[Dict[str, List], List, List]:
         """
         Go through all documents and bucket them based on the 'group_by' value.
 
@@ -81,15 +81,16 @@ class MetaFieldSorter:
 
         for document in documents:
             if self.group_by in document.meta:
-                document_groups[str(document.meta[self.group_by])].append(document)
-                if str(document.meta[self.group_by]) not in ordered_keys:
-                    ordered_keys.append(str(document.meta[self.group_by]))
+                group_by_value = str(document.meta[self.group_by])
+                document_groups[group_by_value].append(document)
+                if group_by_value not in ordered_keys:
+                    ordered_keys.append(group_by_value)
             else:
                 no_group.append(document)
 
         return document_groups, no_group, ordered_keys
 
-    def _buck_into_subgroups(self, document_groups: Dict[str, List]) -> Tuple[Dict[str, Dict], List]:
+    def _create_subgroups(self, document_groups: Dict[str, List]) -> Tuple[Dict[str, Dict], List]:
         """
         Buckets the documents within the groups based on the 'subgroup_by' value.
 
@@ -108,16 +109,18 @@ class MetaFieldSorter:
             for key, value in document_groups.items():
                 for doc in value:
                     if self.subgroup_by in doc.meta:
-                        document_subgroups[key][str(doc.meta[self.subgroup_by])].append(doc)
-                        if str(doc.meta[self.subgroup_by]) not in subgroup_ordered_keys:
-                            subgroup_ordered_keys.append(str(doc.meta[self.subgroup_by]))
+                        subgroup_by_value = str(doc.meta[self.subgroup_by])
+                        document_subgroups[key][subgroup_by_value].append(doc)
+                        if subgroup_by_value not in subgroup_ordered_keys:
+                            subgroup_ordered_keys.append(subgroup_by_value)
                     else:
                         document_subgroups[key]["no_subgroup"].append(doc)
                         if "no_subgroup" not in subgroup_ordered_keys:
                             subgroup_ordered_keys.append("no_subgroup")
+
         return document_subgroups, subgroup_ordered_keys
 
-    def _sort_docs(
+    def _merge_and_sort(
         self,
         document_groups: Dict[str, List],
         document_subgroups: Dict[str, Dict],
@@ -171,17 +174,18 @@ class MetaFieldSorter:
             A dictionary with the following keys:
             - documents: The list of documents ordered by the `group_by` and `subgroup_by` metadata values.
         """
+
         if len(documents) == 0:
             return {"documents": []}
 
-        # docs based on the 'group_by' value.
-        document_groups, no_group, ordered_keys = self._buck_into_groups(documents)
+        # docs based on the 'group_by' value
+        document_groups, no_group, ordered_keys = self._group_documents(documents)
 
-        # further bucking of the document groups based on the 'subgroup_by' value
-        document_subgroups, subgroup_ordered_keys = self._buck_into_subgroups(document_groups)
+        # further grouping of the document inside each group based on the 'subgroup_by' value
+        document_subgroups, subgroup_ordered_keys = self._create_subgroups(document_groups)
 
         # sort the docs within the groups or subgroups if necessary
-        result_docs = self._sort_docs(
+        result_docs = self._merge_and_sort(
             document_groups, document_subgroups, no_group, ordered_keys, subgroup_ordered_keys
         )
 
