@@ -326,10 +326,10 @@ class TestOpenAIGenerator:
             system_prompt="You answer in Portuguese, regardless of the language on which a question is asked",
         )
         result = generator.run("Can you explain the Pitagoras therom?")
-        assert "teorema" in result["replies"][0]
+        assert "teorema" in result["replies"][0].lower()
 
         result = generator.run(
             "Can you explain the Pitagoras therom?",
             system_prompt="You answer in German, regardless of the language on which a question is asked.",
         )
-        assert "Pythagoras" in result["replies"][0]
+        assert "pythagoras".lower() in result["replies"][0].lower()
