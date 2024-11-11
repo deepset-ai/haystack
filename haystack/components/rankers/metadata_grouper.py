@@ -77,7 +77,7 @@ class MetaDataGrouper:
             - ordered_keys: A list of 'group_by' values in the order they were encountered.
         """
 
-        document_groups: Dict[str, List] = defaultdict(List)
+        document_groups: Dict[str, List] = defaultdict(list)
         ordered_keys: List = []
         no_group: List = []
 
@@ -105,7 +105,7 @@ class MetaDataGrouper:
             - subgroup_ordered_keys: A list of 'subgroup_by' values in the order they were encountered
         """
         subgroup_ordered_keys = []
-        document_subgroups: Dict[str, dict] = defaultdict(lambda: defaultdict(list))
+        document_subgroups: Dict[str, Dict] = defaultdict(lambda: defaultdict(list))
         if self.subgroup_by:
             for key, value in document_groups.items():
                 for doc in value:
@@ -122,7 +122,7 @@ class MetaDataGrouper:
     def _sort_docs(
         self,
         document_groups: Dict[str, List],
-        document_subgroups: Dict[str, dict],
+        document_subgroups: Dict[str, Dict],
         no_group: List,
         ordered_keys: List,
         subgroup_ordered_keys: List,
