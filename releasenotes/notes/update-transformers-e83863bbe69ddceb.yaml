@@ -1,0 +1,8 @@
+---
+upgrade:
+  - |
+    Upgrade the transformers dependency requirement to "transformers>=4.46,<5.0".
+
+enhancements:
+  - |
+    Updated `tokenizer.json` URL for Anthropic models as the old URL was no longer available.
