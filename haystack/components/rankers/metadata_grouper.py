@@ -164,7 +164,7 @@ class MetaFieldSorter:
         """
         Groups the provided list of documents based on the `group_by` parameter and optionally the `subgroup_by`.
 
-        The output is a list of documents re-ordered based on how they were grouped.
+        The output is a list of documents reordered based on how they were grouped.
 
         :param documents: The list of documents to group.
         :returns:
