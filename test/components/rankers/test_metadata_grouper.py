@@ -30,7 +30,7 @@ DOC_LIST = [
 ]
 
 
-class TestMetaFieldSorter:
+class TestMetaFieldGroupingRanker:
     def test_init_default(self) -> None:
         """
         Test the default initialization of the MetaDataGrouper component.
