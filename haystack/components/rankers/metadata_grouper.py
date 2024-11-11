@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from collections import defaultdict
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from haystack import Document, component, logging
 
@@ -54,32 +54,33 @@ class MetaDataGrouper:
         :param group_by: The metadata key to aggregate the documents by.
         :param subgroup_by: The metadata key to aggregate the documents within a group that was created by the
                             `group_by` key.
-        :param sort_docs_by: Determines which metadata keys are used to sort the documents.
+        :param sort_docs_by: Determines which metadata keys are used to sort the documents. If not provided, the
+                             documents within the groups or subgroups are not sorted and are kept in the same order as
+                             they were inserted in the subgroups.
 
         """
         self.group_by = group_by
         self.sort_docs_by = sort_docs_by
         self.subgroup_by = subgroup_by
 
-    @component.output_types(documents=List[Document])
-    def run(self, documents: List[Document]) -> Dict[str, Any]:  # noqa: C901, PLR0912
+    def _buck_into_groups(self, documents: List[Document]) -> Tuple[Dict[str, List], List, List]:
         """
-        Groups the provided list of documents based on the `group_by` parameter and optionally the `subgroup_by`.
+        Go through all documents and bucket them based on the 'group_by' value.
 
-        The output is a list of documents re-ordered based on how they were grouped.
+        If no 'group_by' value is present in the document, the document is added to a list of documents without a group.
 
-        :param documents: The list of documents to group.
+        :param documents:
         :returns:
-            A dictionary with the following keys:
-            - documents: The list of documents ordered by the `group_by` and `subgroup_by` metadata values.
+            A tuple with the following elements:
+            - document_groups: A dictionary with the 'group_by' values as keys and the documents as values.
+            - no_group: A list of documents without a 'group_by' value.
+            - ordered_keys: A list of 'group_by' values in the order they were encountered.
         """
-        if len(documents) == 0:
-            return {"documents": []}
-        ordered_keys = []
-        document_groups: Dict[str, List] = defaultdict(list)
-        no_group: list = []
 
-        # Go through all documents and bucket them based on the 'group_by' value
+        document_groups: Dict[str, List] = defaultdict(List)
+        ordered_keys: List = []
+        no_group: List = []
+
         for document in documents:
             if self.group_by in document.meta:
                 document_groups[str(document.meta[self.group_by])].append(document)
@@ -88,7 +89,22 @@ class MetaDataGrouper:
             else:
                 no_group.append(document)
 
-        # Go through all documents and bucket them based on the 'subgroup_by' value
+        return document_groups, no_group, ordered_keys
+
+    def _buck_into_subgroups(self, document_groups: Dict[str, List]) -> Tuple[Dict[str, Dict], List]:
+        """
+        Buckets the documents within the groups based on the 'subgroup_by' value.
+
+        If no 'subgroup_by' value is present in the document, the document is added to a subgroup with the key
+        'no_subgroup'.
+
+        :param document_groups: A dictionary with the 'group_by' values as keys and the documents as values.
+        :returns:
+            A tuple with the following elements:
+            - document_subgroups: A dictionary with the 'group_by' values as keys and a dictionary with the
+                                  'subgroup_by' values as keys and the documents as values.
+            - subgroup_ordered_keys: A list of 'subgroup_by' values in the order they were encountered
+        """
         subgroup_ordered_keys = []
         document_subgroups: Dict[str, dict] = defaultdict(lambda: defaultdict(list))
         if self.subgroup_by:
@@ -102,10 +118,31 @@ class MetaDataGrouper:
                         document_subgroups[key]["no_subgroup"].append(doc)
                         if "no_subgroup" not in subgroup_ordered_keys:
                             subgroup_ordered_keys.append("no_subgroup")
+        return document_subgroups, subgroup_ordered_keys
 
+    def _sort_docs(
+        self,
+        document_groups: Dict[str, List],
+        document_subgroups: Dict[str, dict],
+        no_group,
+        ordered_keys,
+        subgroup_ordered_keys,
+    ):
+        """
+        Sorts the documents within the groups or subgroups based on the 'sort_docs_by' value.
+
+        If 'sort_docs_by' is not provided, the documents are kept in the same order as they were inserted in the groups
+        and subgroups.
+
+        :param document_groups: A dictionary with the 'group_by' values as keys and the documents as values.
+        :param document_subgroups:
+        :param no_group: A list of documents without a 'group_by' value.
+        :param ordered_keys: A list of 'group_by' values in the order they were encountered.
+        :param subgroup_ordered_keys: A list of 'subgroup_by' values in the order they were encountered.
+        :returns:
+            A list of documents ordered by the 'sort_docs_by' metadata values.
+        """
         result_docs = []
-
-        # Sort the docs within the groups or subgroups if necessary
         if self.sort_docs_by and not self.subgroup_by:
             for key in document_groups:
                 result_docs += sorted(document_groups[key], key=lambda d: d.meta.get(self.sort_docs_by, float("inf")))
@@ -119,9 +156,36 @@ class MetaDataGrouper:
         else:
             for key in document_groups:
                 result_docs += document_groups[key]
-
         for doc in no_group:
             if doc not in result_docs:
                 result_docs += [doc]
+
+        return result_docs
+
+    @component.output_types(documents=List[Document])
+    def run(self, documents: List[Document]) -> Dict[str, Any]:
+        """
+        Groups the provided list of documents based on the `group_by` parameter and optionally the `subgroup_by`.
+
+        The output is a list of documents re-ordered based on how they were grouped.
+
+        :param documents: The list of documents to group.
+        :returns:
+            A dictionary with the following keys:
+            - documents: The list of documents ordered by the `group_by` and `subgroup_by` metadata values.
+        """
+        if len(documents) == 0:
+            return {"documents": []}
+
+        # docs based on the 'group_by' value.
+        document_groups, no_group, ordered_keys = self._buck_into_groups(documents)
+
+        # further bucking of the document groups based on the 'subgroup_by' value
+        document_subgroups, subgroup_ordered_keys = self._buck_into_subgroups(document_groups)
+
+        # sort the docs within the groups or subgroups if necessary
+        result_docs = self._sort_docs(
+            document_groups, document_subgroups, no_group, ordered_keys, subgroup_ordered_keys
+        )
 
         return {"documents": result_docs}
