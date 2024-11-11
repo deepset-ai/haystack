@@ -7,7 +7,7 @@ from typing import Any, Dict
 from haystack import Pipeline
 from haystack.dataclasses import Document
 
-from haystack.components.rankers.metadata_grouper import MetaFieldSorter
+from haystack.components.rankers.meta_field_grouper_ranker import MetaFieldGroupingRanker
 
 DOC_LIST = [
     # regular
@@ -35,7 +35,7 @@ class TestMetaFieldSorter:
         """
         Test the default initialization of the MetaDataGrouper component.
         """
-        sample_meta_aggregator = MetaFieldSorter(group_by="group", sort_docs_by=None)
+        sample_meta_aggregator = MetaFieldGroupingRanker(group_by="group", sort_docs_by=None)
         result = sample_meta_aggregator.run(documents=[])
         assert "documents" in result
         assert result["documents"] == []
@@ -44,7 +44,7 @@ class TestMetaFieldSorter:
         """
         Test the MetaDataGrouper component with only the 'group_by' parameter. No subgroup or sorting is done.
         """
-        sample_meta_aggregator = MetaFieldSorter(group_by="group")
+        sample_meta_aggregator = MetaFieldGroupingRanker(group_by="group")
         result = sample_meta_aggregator.run(documents=DOC_LIST)
         assert "documents" in result
         assert len(DOC_LIST) == len(result["documents"])
@@ -65,7 +65,7 @@ class TestMetaFieldSorter:
         Test the MetaDataGrouper component with all parameters set, i.e.: grouping by 'group', subgrouping by 'subgroup',
         and sorting by 'split_id'.
         """
-        meta_aggregator = MetaFieldSorter(group_by="group", subgroup_by="subgroup", sort_docs_by="split_id")
+        meta_aggregator = MetaFieldGroupingRanker(group_by="group", subgroup_by="subgroup", sort_docs_by="split_id")
         result = meta_aggregator.run(documents=DOC_LIST)
 
         assert "documents" in result
@@ -98,7 +98,9 @@ class TestMetaFieldSorter:
         """
         Test if the MetaDataGrouper component can handle list values in the metadata.
         """
-        meta_aggregator = MetaFieldSorter(group_by="value_list", subgroup_by="subvaluelist", sort_docs_by="split_id")
+        meta_aggregator = MetaFieldGroupingRanker(
+            group_by="value_list", subgroup_by="subvaluelist", sort_docs_by="split_id"
+        )
         result = meta_aggregator.run(documents=DOC_LIST)
         assert "documents" in result
         assert len(DOC_LIST) == len(result["documents"])
@@ -110,7 +112,7 @@ class TestMetaFieldSorter:
         """
         Test if the MetaDataGrouper component can be dumped to a YAML string and reloaded from it.
         """
-        meta_aggregator = MetaFieldSorter(group_by="group", sort_docs_by="split_id")
+        meta_aggregator = MetaFieldGroupingRanker(group_by="group", sort_docs_by="split_id")
         result_single = meta_aggregator.run(documents=DOC_LIST)
         pipeline = Pipeline()
         pipeline.add_component("meta_aggregator", meta_aggregator)
