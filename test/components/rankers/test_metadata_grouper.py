@@ -30,7 +30,7 @@ DOC_LIST = [
 ]
 
 
-class TestDeepsetMetadataGrouper:
+class TestMetadataGrouper:
     def test_init_default(self) -> None:
         sample_meta_aggregator = MetaDataGrouper(group_by="group", sort_docs_by=None)
         result = sample_meta_aggregator.run(documents=[])
