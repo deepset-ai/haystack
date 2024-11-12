@@ -82,7 +82,7 @@ class HuggingFaceAPITextEmbedder:
         suffix: str = "",
         truncate: bool = True,
         normalize: bool = False,
-    ):
+    ):  # pylint: disable=too-many-positional-arguments
         """
         Creates a HuggingFaceAPITextEmbedder component.
 
@@ -138,7 +138,7 @@ class HuggingFaceAPITextEmbedder:
             model_or_url = url
         else:
             msg = f"Unknown api_type {api_type}"
-            raise ValueError()
+            raise ValueError(msg)
 
         self.api_type = api_type
         self.api_params = api_params
