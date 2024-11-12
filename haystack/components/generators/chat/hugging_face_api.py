@@ -104,7 +104,7 @@ class HuggingFaceAPIChatGenerator:
     ```
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
         self,
         api_type: Union[HFGenerationAPIType, str],
         api_params: Dict[str, str],
