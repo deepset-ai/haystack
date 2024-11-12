@@ -9,7 +9,9 @@ from typing import Any, Callable, Dict, List, Literal, Optional, Tuple
 
 from haystack import Document, component, logging
 from haystack.components.preprocessors.document_splitter import DocumentSplitter
+from haystack.core.serialization import default_to_dict
 from haystack.lazy_imports import LazyImport
+from haystack.utils import serialize_callable
 
 with LazyImport("Run 'pip install nltk'") as nltk_imports:
     import nltk
@@ -74,6 +76,8 @@ class NLTKDocumentSplitter(DocumentSplitter):
             )
             respect_sentence_boundary = False
         self.respect_sentence_boundary = respect_sentence_boundary
+        self.use_split_rules = use_split_rules
+        self.extend_abbreviations = extend_abbreviations
         self.sentence_splitter = SentenceSplitter(
             language=language,
             use_split_rules=use_split_rules,
@@ -171,6 +175,25 @@ class NLTKDocumentSplitter(DocumentSplitter):
                 text_splits=text_splits, splits_pages=splits_pages, splits_start_idxs=splits_start_idxs, meta=metadata
             )
         return {"documents": split_docs}
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serializes the component to a dictionary.
+        """
+        serialized = default_to_dict(
+            self,
+            split_by=self.split_by,
+            split_length=self.split_length,
+            split_overlap=self.split_overlap,
+            split_threshold=self.split_threshold,
+            respect_sentence_boundary=self.respect_sentence_boundary,
+            language=self.language,
+            use_split_rules=self.use_split_rules,
+            extend_abbreviations=self.extend_abbreviations,
+        )
+        if self.splitting_function:
+            serialized["init_parameters"]["splitting_function"] = serialize_callable(self.splitting_function)
+        return serialized
 
     @staticmethod
     def _number_of_sentences_to_keep(sentences: List[str], split_length: int, split_overlap: int) -> int:

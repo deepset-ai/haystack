@@ -5,11 +5,16 @@ from haystack import Document
 from pytest import LogCaptureFixture
 
 from haystack.components.preprocessors.nltk_document_splitter import NLTKDocumentSplitter, SentenceSplitter
+from haystack.utils import deserialize_callable
 
 
 def test_init_warning_message(caplog: LogCaptureFixture) -> None:
     _ = NLTKDocumentSplitter(split_by="page", respect_sentence_boundary=True)
     assert "The 'respect_sentence_boundary' option is only supported for" in caplog.text
+
+
+def custom_split(text):
+    return text.split(".")
 
 
 class TestNLTKDocumentSplitterSplitIntoUnits:
@@ -346,6 +351,29 @@ class TestNLTKDocumentSplitterRespectSentenceBoundary:
         assert documents[5].meta["page_number"] == 3
         assert documents[5].meta["split_id"] == 5
         assert documents[5].meta["split_idx_start"] == text.index(documents[5].content)
+
+    def test_to_dict(self):
+        splitter = NLTKDocumentSplitter(split_by="word", split_length=10, split_overlap=2, split_threshold=5)
+        serialized = splitter.to_dict()
+
+        assert serialized["type"] == "haystack.components.preprocessors.nltk_document_splitter.NLTKDocumentSplitter"
+        assert serialized["init_parameters"]["split_by"] == "word"
+        assert serialized["init_parameters"]["split_length"] == 10
+        assert serialized["init_parameters"]["split_overlap"] == 2
+        assert serialized["init_parameters"]["split_threshold"] == 5
+        assert serialized["init_parameters"]["language"] == "en"
+        assert serialized["init_parameters"]["use_split_rules"] is True
+        assert serialized["init_parameters"]["extend_abbreviations"] is True
+        assert "splitting_function" not in serialized["init_parameters"]
+
+    def test_to_dict_with_splitting_function(self):
+        splitter = NLTKDocumentSplitter(split_by="function", splitting_function=custom_split)
+        serialized = splitter.to_dict()
+
+        assert serialized["type"] == "haystack.components.preprocessors.nltk_document_splitter.NLTKDocumentSplitter"
+        assert serialized["init_parameters"]["split_by"] == "function"
+        assert "splitting_function" in serialized["init_parameters"]
+        assert callable(deserialize_callable(serialized["init_parameters"]["splitting_function"]))
 
 
 class TestSentenceSplitter:
