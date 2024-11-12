@@ -138,7 +138,7 @@ class HuggingFaceAPITextEmbedder:
             model_or_url = url
         else:
             msg = f"Unknown api_type {api_type}"
-            raise ValueError()
+            raise ValueError(msg)
 
         self.api_type = api_type
         self.api_params = api_params
