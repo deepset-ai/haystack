@@ -82,7 +82,7 @@ class HuggingFaceAPITextEmbedder:
         suffix: str = "",
         truncate: bool = True,
         normalize: bool = False,
-    ):  # pylint: disable=too-many-arguments
+    ):  # pylint: disable=too-many-positional-arguments
         """
         Creates a HuggingFaceAPITextEmbedder component.
 

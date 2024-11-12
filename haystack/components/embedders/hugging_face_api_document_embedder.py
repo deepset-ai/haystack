@@ -102,7 +102,7 @@ class HuggingFaceAPIDocumentEmbedder:
         progress_bar: bool = True,
         meta_fields_to_embed: Optional[List[str]] = None,
         embedding_separator: str = "\n",
-    ):  # pylint: disable=too-many-arguments
+    ):  # pylint: disable=too-many-positional-arguments
         """
         Creates a HuggingFaceAPIDocumentEmbedder component.
 
