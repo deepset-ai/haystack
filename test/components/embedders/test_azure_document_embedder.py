@@ -45,6 +45,7 @@ class TestAzureOpenAIDocumentEmbedder:
                 "embedding_separator": "\n",
                 "max_retries": 5,
                 "timeout": 30.0,
+                "default_headers": {},
             },
         }
 

@@ -38,6 +38,7 @@ class TestAzureOpenAITextEmbedder:
                 "timeout": 30.0,
                 "prefix": "",
                 "suffix": "",
+                "default_headers": {},
             },
         }
 
