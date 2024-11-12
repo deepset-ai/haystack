@@ -57,6 +57,7 @@ dependencies = [
   "requests",
   "numpy",
   "python-dateutil",
+  "docstring-parser",
   "haystack-experimental",
 ]
 
