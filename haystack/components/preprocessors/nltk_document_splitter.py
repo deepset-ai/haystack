@@ -25,7 +25,7 @@ Language = Literal[
 
 @component
 class NLTKDocumentSplitter(DocumentSplitter):
-    def __init__(
+    def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         split_by: Literal["word", "sentence", "page", "passage", "function"] = "word",
         split_length: int = 200,
