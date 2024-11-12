@@ -102,7 +102,7 @@ class HuggingFaceAPIDocumentEmbedder:
         progress_bar: bool = True,
         meta_fields_to_embed: Optional[List[str]] = None,
         embedding_separator: str = "\n",
-    ):
+    ):  # pylint: disable=too-many-positional-arguments
         """
         Creates a HuggingFaceAPIDocumentEmbedder component.
 
@@ -168,7 +168,7 @@ class HuggingFaceAPIDocumentEmbedder:
             model_or_url = url
         else:
             msg = f"Unknown api_type {api_type}"
-            raise ValueError(api_type)
+            raise ValueError(msg)
 
         self.api_type = api_type
         self.api_params = api_params
