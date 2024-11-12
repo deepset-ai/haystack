@@ -35,8 +35,8 @@ class TestMetaFieldGroupingRanker:
         """
         Test the default initialization of the MetaFieldGroupingRanker component.
         """
-        sample_meta_aggregator = MetaFieldGroupingRanker(group_by="group", sort_docs_by=None)
-        result = sample_meta_aggregator.run(documents=[])
+        sample_ranker = MetaFieldGroupingRanker(group_by="group", sort_docs_by=None)
+        result = sample_ranker.run(documents=[])
         assert "documents" in result
         assert result["documents"] == []
 
@@ -44,8 +44,8 @@ class TestMetaFieldGroupingRanker:
         """
         Test the MetaFieldGroupingRanker component with only the 'group_by' parameter. No subgroup or sorting is done.
         """
-        sample_meta_aggregator = MetaFieldGroupingRanker(group_by="group")
-        result = sample_meta_aggregator.run(documents=DOC_LIST)
+        sample_ranker = MetaFieldGroupingRanker(group_by="group")
+        result = sample_ranker.run(documents=DOC_LIST)
         assert "documents" in result
         assert len(DOC_LIST) == len(result["documents"])
         assert result["documents"][0].meta["split_id"] == 7 and result["documents"][0].meta["group"] == "42"
@@ -65,8 +65,8 @@ class TestMetaFieldGroupingRanker:
         Test the MetaFieldGroupingRanker component with all parameters set, i.e.: grouping by 'group', subgrouping by 'subgroup',
         and sorting by 'split_id'.
         """
-        meta_aggregator = MetaFieldGroupingRanker(group_by="group", subgroup_by="subgroup", sort_docs_by="split_id")
-        result = meta_aggregator.run(documents=DOC_LIST)
+        ranker = MetaFieldGroupingRanker(group_by="group", subgroup_by="subgroup", sort_docs_by="split_id")
+        result = ranker.run(documents=DOC_LIST)
 
         assert "documents" in result
         assert len(DOC_LIST) == len(result["documents"])
@@ -98,26 +98,84 @@ class TestMetaFieldGroupingRanker:
         """
         Test if the MetaFieldGroupingRanker component can handle list values in the metadata.
         """
-        meta_aggregator = MetaFieldGroupingRanker(
-            group_by="value_list", subgroup_by="subvaluelist", sort_docs_by="split_id"
-        )
-        result = meta_aggregator.run(documents=DOC_LIST)
+        ranker = MetaFieldGroupingRanker(group_by="value_list", subgroup_by="subvaluelist", sort_docs_by="split_id")
+        result = ranker.run(documents=DOC_LIST)
         assert "documents" in result
         assert len(DOC_LIST) == len(result["documents"])
         assert result["documents"][0].content == "list values" and result["documents"][0].meta["value_list"] == ["11"]
         assert result["documents"][1].content == "list values2" and result["documents"][1].meta["value_list"] == ["12"]
         assert result["documents"][2].content == "list values3" and result["documents"][2].meta["value_list"] == ["12"]
 
+    def test_run_empty_input(self) -> None:
+        """
+        Test the behavior of the MetaFieldGroupingRanker component with an empty list of documents.
+        """
+        sample_ranker = MetaFieldGroupingRanker(group_by="group")
+        result = sample_ranker.run(documents=[])
+        assert "documents" in result
+        assert result["documents"] == []
+
+    def test_run_missing_metadata_keys(self) -> None:
+        """
+        Test the behavior of the MetaFieldGroupingRanker component when some documents are missing the required metadata keys.
+        """
+        docs_with_missing_keys = [
+            Document(content="Document without group", meta={"split_id": 1, "subgroup": "subA"}),
+            Document(content="Document without subgroup", meta={"group": "42", "split_id": 2}),
+            Document(content="Document with all keys", meta={"group": "42", "split_id": 3, "subgroup": "subB"}),
+        ]
+        sample_ranker = MetaFieldGroupingRanker(group_by="group", subgroup_by="subgroup", sort_docs_by="split_id")
+        result = sample_ranker.run(documents=docs_with_missing_keys)
+        assert "documents" in result
+        assert len(result["documents"]) == 3
+        assert result["documents"][0].meta["group"] == "42"
+        assert result["documents"][1].meta["group"] == "42"
+        assert result["documents"][2].content == "Document without group"
+
+    def test_run_metadata_with_different_data_types(self) -> None:
+        """
+        Test the behavior of the MetaFieldGroupingRanker component when the metadata values have different data types.
+        """
+        docs_with_mixed_data_types = [
+            Document(content="Document with string group", meta={"group": "42", "split_id": 1, "subgroup": "subA"}),
+            Document(content="Document with number group", meta={"group": 42, "split_id": 2, "subgroup": "subB"}),
+            Document(content="Document with boolean group", meta={"group": True, "split_id": 3, "subgroup": "subC"}),
+        ]
+        sample_ranker = MetaFieldGroupingRanker(group_by="group", subgroup_by="subgroup", sort_docs_by="split_id")
+        result = sample_ranker.run(documents=docs_with_mixed_data_types)
+        assert "documents" in result
+        assert len(result["documents"]) == 3
+        assert result["documents"][0].meta["group"] == "42"
+        assert result["documents"][1].meta["group"] == 42
+        assert result["documents"][2].meta["group"] is True
+
+    def test_run_duplicate_documents(self) -> None:
+        """
+        Test the behavior of the MetaFieldGroupingRanker component when the input contains duplicate documents.
+        """
+        docs_with_duplicates = [
+            Document(content="Duplicate 1", meta={"group": "42", "split_id": 1, "subgroup": "subA"}),
+            Document(content="Duplicate 1", meta={"group": "42", "split_id": 1, "subgroup": "subA"}),
+            Document(content="Unique document", meta={"group": "42", "split_id": 2, "subgroup": "subB"}),
+        ]
+        sample_ranker = MetaFieldGroupingRanker(group_by="group", subgroup_by="subgroup", sort_docs_by="split_id")
+        result = sample_ranker.run(documents=docs_with_duplicates)
+        assert "documents" in result
+        assert len(result["documents"]) == 3
+        assert result["documents"][0].content == "Duplicate 1"
+        assert result["documents"][1].content == "Duplicate 1"
+        assert result["documents"][2].content == "Unique document"
+
     def test_run_in_pipeline_dumps_and_loads(self) -> None:
         """
         Test if the MetaFieldGroupingRanker component can be dumped to a YAML string and reloaded from it.
         """
-        meta_aggregator = MetaFieldGroupingRanker(group_by="group", sort_docs_by="split_id")
-        result_single = meta_aggregator.run(documents=DOC_LIST)
+        ranker = MetaFieldGroupingRanker(group_by="group", sort_docs_by="split_id")
+        result_single = ranker.run(documents=DOC_LIST)
         pipeline = Pipeline()
-        pipeline.add_component("meta_aggregator", meta_aggregator)
+        pipeline.add_component("ranker", ranker)
         pipeline_yaml_str = pipeline.dumps()
         pipeline_reloaded = Pipeline().loads(pipeline_yaml_str)
         result: Dict[str, Any] = pipeline_reloaded.run(data={"documents": DOC_LIST})
-        result = result["meta_aggregator"]
+        result = result["ranker"]
         assert result_single == result

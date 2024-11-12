@@ -332,4 +332,4 @@ class TestOpenAIGenerator:
             "Can you explain the Pitagoras therom?",
             system_prompt="You answer in German, regardless of the language on which a question is asked.",
         )
-        assert "pythagoras".lower() in result["replies"][0].lower()
+        assert "pythagoras" in result["replies"][0].lower()
