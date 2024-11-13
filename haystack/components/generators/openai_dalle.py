@@ -123,11 +123,7 @@ class DALLEImageGenerator:
             model=self.model, prompt=prompt, size=size, quality=quality, response_format=response_format, n=1
         )
         image: Image = response.data[0]
-        image_str = ""
-        if image.url is not None:
-            image_str = image.url
-        elif image.b64_json is not None:
-            image_str = image.b64_json
+        image_str = image.url or image.b64_json or ""
         return {"images": [image_str], "revised_prompt": image.revised_prompt or ""}
 
     def to_dict(self) -> Dict[str, Any]:
