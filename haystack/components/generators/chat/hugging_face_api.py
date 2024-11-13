@@ -104,7 +104,7 @@ class HuggingFaceAPIChatGenerator:
     ```
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         api_type: Union[HFGenerationAPIType, str],
         api_params: Dict[str, str],
@@ -162,7 +162,7 @@ class HuggingFaceAPIChatGenerator:
             model_or_url = url
         else:
             msg = f"Unknown api_type {api_type}"
-            raise ValueError(api_type)
+            raise ValueError(msg)
 
         # handle generation kwargs setup
         generation_kwargs = generation_kwargs.copy() if generation_kwargs else {}
