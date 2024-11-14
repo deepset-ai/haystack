@@ -45,7 +45,7 @@ class DALLEImageGenerator:
         max_retries: Optional[int] = None,
     ):
         """
-        Creates an instance of DALLEImageGenerator. Unless specified otherwise in `model`, uses OpenAI's dall-e-3
+        Creates an instance of DALLEImageGenerator. Unless specified otherwise in `model`, uses OpenAI's dall-e-3.
 
         :param model: The model to use for image generation. Can be "dall-e-2" or "dall-e-3".
         :param quality: The quality of the generated image. Can be "standard" or "hd".
