@@ -155,7 +155,8 @@ class TestOpenAIDocumentEmbedder:
 
     def test_prepare_texts_to_embed_w_metadata(self):
         documents = [
-            Document(content=f"document number {i}:\ncontent", meta={"meta_field": f"meta_value {i}"}) for i in range(5)
+            Document(id=f"{i}", content=f"document number {i}:\ncontent", meta={"meta_field": f"meta_value {i}"})
+            for i in range(5)
         ]
 
         embedder = OpenAIDocumentEmbedder(
@@ -165,16 +166,16 @@ class TestOpenAIDocumentEmbedder:
         prepared_texts = embedder._prepare_texts_to_embed(documents)
 
         # note that newline is replaced by space
-        assert prepared_texts == [
-            "meta_value 0 | document number 0: content",
-            "meta_value 1 | document number 1: content",
-            "meta_value 2 | document number 2: content",
-            "meta_value 3 | document number 3: content",
-            "meta_value 4 | document number 4: content",
-        ]
+        assert prepared_texts == {
+            "0": "meta_value 0 | document number 0: content",
+            "1": "meta_value 1 | document number 1: content",
+            "2": "meta_value 2 | document number 2: content",
+            "3": "meta_value 3 | document number 3: content",
+            "4": "meta_value 4 | document number 4: content",
+        }
 
     def test_prepare_texts_to_embed_w_suffix(self):
-        documents = [Document(content=f"document number {i}") for i in range(5)]
+        documents = [Document(id=f"{i}", content=f"document number {i}") for i in range(5)]
 
         embedder = OpenAIDocumentEmbedder(
             api_key=Secret.from_token("fake-api-key"), prefix="my_prefix ", suffix=" my_suffix"
@@ -182,13 +183,13 @@ class TestOpenAIDocumentEmbedder:
 
         prepared_texts = embedder._prepare_texts_to_embed(documents)
 
-        assert prepared_texts == [
-            "my_prefix document number 0 my_suffix",
-            "my_prefix document number 1 my_suffix",
-            "my_prefix document number 2 my_suffix",
-            "my_prefix document number 3 my_suffix",
-            "my_prefix document number 4 my_suffix",
-        ]
+        assert prepared_texts == {
+            "0": "my_prefix document number 0 my_suffix",
+            "1": "my_prefix document number 1 my_suffix",
+            "2": "my_prefix document number 2 my_suffix",
+            "3": "my_prefix document number 3 my_suffix",
+            "4": "my_prefix document number 4 my_suffix",
+        }
 
     def test_run_wrong_input_format(self):
         embedder = OpenAIDocumentEmbedder(api_key=Secret.from_token("fake-api-key"))

@@ -2,15 +2,17 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import logging
 import os
+from itertools import batched
 from typing import Any, Dict, List, Optional, Tuple
 
-from openai import OpenAI
+from openai import APIError, OpenAI
 from tqdm import tqdm
 
-from haystack import Document, component, default_from_dict, default_to_dict
+from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.utils import Secret, deserialize_secrets_inplace
+
+logger = logging.getLogger(__name__)
 
 
 @component
@@ -35,7 +37,7 @@ class OpenAIDocumentEmbedder:
     ```
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
         model: str = "text-embedding-ada-002",
@@ -159,69 +161,46 @@ class OpenAIDocumentEmbedder:
         deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         return default_from_dict(cls, data)
 
-    def _prepare_texts_to_embed(self, documents: List[Document]) -> List[str]:
+    def _prepare_texts_to_embed(self, documents: List[Document]) -> Dict[str, str]:
         """
         Prepare the texts to embed by concatenating the Document text with the metadata fields to embed.
         """
-        texts_to_embed = []
+        texts_to_embed = {}
         for doc in documents:
             meta_values_to_embed = [
-                str(doc.meta[key])
-                for key in self.meta_fields_to_embed
-                if key in doc.meta and doc.meta[key] is not None
+                str(doc.meta[key]) for key in self.meta_fields_to_embed if key in doc.meta and doc.meta[key] is not None
             ]
 
             text_to_embed = (
-                self.prefix
-                + self.embedding_separator.join(
-                    meta_values_to_embed + [doc.content or ""]
-                )
-                + self.suffix
+                self.prefix + self.embedding_separator.join(meta_values_to_embed + [doc.content or ""]) + self.suffix
             )
 
             # copied from OpenAI embedding_utils (https://github.com/openai/openai-python/blob/main/openai/embeddings_utils.py)
             # replace newlines, which can negatively affect performance.
-            text_to_embed = text_to_embed.replace("\n", " ")
-            texts_to_embed.append(text_to_embed)
+            texts_to_embed[doc.id] = text_to_embed.replace("\n", " ")
         return texts_to_embed
 
-    def _call(self, input):
-        if self.dimensions is not None:
-            response = self.client.embeddings.create(
-                model=self.model, dimensions=self.dimensions, input=input
-            )
-        else:
-            response = self.client.embeddings.create(model=self.model, input=input)
-        return response
-
-    def _safe_call(self, input):
-        try:
-            return self._call(input)
-        except Exception:
-            separator = "\n-----------debug: text separator----------\n"
-            logging.exception(
-                f"Failed to embed documents. {separator.join([doc for doc in input])}"
-            )
-            return None
-
-    def _embed_batch(
-        self, texts_to_embed: List[str], batch_size: int
-    ) -> Tuple[List[List[float]], Dict[str, Any]]:
+    def _embed_batch(self, texts_to_embed: Dict[str, str], batch_size: int) -> Tuple[List[List[float]], Dict[str, Any]]:
         """
         Embed a list of texts in batches.
         """
 
         all_embeddings = []
         meta: Dict[str, Any] = {}
-        for i in tqdm(
-            range(0, len(texts_to_embed), batch_size),
-            disable=not self.progress_bar,
-            desc="Calculating embeddings",
+        for batch in tqdm(
+            batched(texts_to_embed.values(), batch_size), disable=not self.progress_bar, desc="Calculating embeddings"
         ):
-            batch = texts_to_embed[i : i + batch_size]
-            response = self._safe_call(batch)
+            args: Dict[str, Any] = {"model": self.model, "input": [b[1] for b in batch]}
 
-            if not response:
+            if self.dimensions is not None:
+                args["dimensions"] = self.dimensions
+
+            try:
+                response = self.client.embeddings.create(**args)
+            except APIError as exc:
+                ids = ", ".join(b[0] for b in batch)
+                msg = "Failed embedding of documents {ids} caused by {exc}"
+                logger.exception(msg, ids=ids, exc=exc)
                 continue
 
             embeddings = [el.embedding for el in response.data]
@@ -250,11 +229,7 @@ class OpenAIDocumentEmbedder:
             - `documents`: A list of documents with embeddings.
             - `meta`: Information about the usage of the model.
         """
-        if (
-            not isinstance(documents, list)
-            or documents
-            and not isinstance(documents[0], Document)
-        ):
+        if not isinstance(documents, list) or documents and not isinstance(documents[0], Document):
             raise TypeError(
                 "OpenAIDocumentEmbedder expects a list of Documents as input."
                 "In case you want to embed a string, please use the OpenAITextEmbedder."
@@ -262,9 +237,7 @@ class OpenAIDocumentEmbedder:
 
         texts_to_embed = self._prepare_texts_to_embed(documents=documents)
 
-        embeddings, meta = self._embed_batch(
-            texts_to_embed=texts_to_embed, batch_size=self.batch_size
-        )
+        embeddings, meta = self._embed_batch(texts_to_embed=texts_to_embed, batch_size=self.batch_size)
 
         for doc, emb in zip(documents, embeddings):
             doc.embedding = emb
