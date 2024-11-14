@@ -57,7 +57,7 @@ class DALLEImageGenerator:
         :param api_base_url: An optional base URL.
         :param organization: The Organization ID, defaults to `None`.
         :param timeout:
-            Timeout for OpenAI Client calls, if not set it is inferred from the `OPENAI_TIMEOUT` environment variable
+            Timeout for OpenAI Client calls. If not set, it is inferred from the `OPENAI_TIMEOUT` environment variable
             or set to 30.
         :param max_retries:
             Maximum retries to establish contact with OpenAI if it returns an internal error, if not set it is inferred
