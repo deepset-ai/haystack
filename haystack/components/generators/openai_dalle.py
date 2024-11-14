@@ -20,7 +20,7 @@ class DALLEImageGenerator:
     Generates images using OpenAI's DALL-E model.
 
     For details on OpenAI API parameters, see
-    https://platform.openai.com/docs/api-reference/images/create
+    [OpenAI documentation](https://platform.openai.com/docs/api-reference/images/create).
 
     ### Usage example
 
