@@ -58,7 +58,7 @@ class AnswerBuilder:
         self.reference_pattern = reference_pattern
 
     @component.output_types(answers=List[GeneratedAnswer])
-    def run(
+    def run(  # pylint: disable=too-many-positional-arguments
         self,
         query: str,
         replies: Union[List[str], List[ChatMessage]],
