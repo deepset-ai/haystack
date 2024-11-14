@@ -1,0 +1,12 @@
+---
+features:
+  - |
+    We've added a new **DALLEImageGenerator** component, bringing image generation with OpenAI's DALL-E to the Haystack
+
+    - **Easy to Use**: Just a few lines of code to get started:
+        ```python
+        from haystack.components.generators import DALLEImageGenerator
+        image_generator = DALLEImageGenerator()
+        response = image_generator.run("Show me a picture of a black cat.")
+        print(response)
+        ```
