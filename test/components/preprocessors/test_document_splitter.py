@@ -43,6 +43,7 @@ class TestDocumentSplitter:
         ):
             splitter = DocumentSplitter()
             splitter.run(documents=[Document()])
+            assert "DocumentSplitter only works with text documents but content for document ID" in caplog.text
 
     def test_single_doc(self):
         with pytest.raises(TypeError, match="DocumentSplitter expects a List of Documents as input."):
@@ -445,3 +446,21 @@ class TestDocumentSplitter:
         assert original_splitter.split_by == deserialized_splitter.split_by
         assert callable(deserialized_splitter.splitting_function)
         assert deserialized_splitter.splitting_function("a.b.c") == ["a", "b", "c"]
+
+    def test_run_empty_document(self):
+        """
+        Test if the component runs correctly with an empty document.
+        """
+        splitter = DocumentSplitter()
+        doc = Document(content="")
+        results = splitter.run([doc])
+        assert results["documents"] == []
+
+    def test_run_document_only_whitespaces(self):
+        """
+        Test if the component runs correctly with a document containing only whitespaces.
+        """
+        splitter = DocumentSplitter()
+        doc = Document(content="  ")
+        results = splitter.run([doc])
+        assert results["documents"][0].content == "  "

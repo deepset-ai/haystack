@@ -81,7 +81,7 @@ format-check = "ruff format --check {args}"
 
 [tool.hatch.envs.test]
 extra-dependencies = [
-  "numpy>=2",                                  # Haystack is compatible both with numpy 1.x and 2.x, but we test with 2.x
+  "numpy>=2", # Haystack is compatible both with numpy 1.x and 2.x, but we test with 2.x
 
   "transformers[torch,sentencepiece]==4.44.2", # ExtractiveReader, TransformersSimilarityRanker, LocalWhisperTranscriber, HFGenerators...
   "huggingface_hub>=0.23.0",                   # Hugging Face API Generators and Embedders
@@ -118,7 +118,7 @@ extra-dependencies = [
 
   # Tracing
   "opentelemetry-sdk",
-  "ddtrace==2.15.0rc2",
+  "ddtrace",
 
   # Structured logging
   "structlog",

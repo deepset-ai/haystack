@@ -126,3 +126,11 @@ class TestPDFMinerToDocument:
             results = converter.run(sources=sources)
             assert "Could not read non_existing_file.pdf" in caplog.text
             assert results["documents"] == []
+
+    def test_run_empty_document(self, caplog, test_files_path):
+        sources = [test_files_path / "pdf" / "non_text_searchable.pdf"]
+        converter = PDFMinerToDocument()
+        with caplog.at_level(logging.WARNING):
+            results = converter.run(sources=sources)
+            assert "PDFMinerToDocument could not extract text from the file" in caplog.text
+            assert results["documents"][0].content == ""
