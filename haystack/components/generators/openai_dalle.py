@@ -98,7 +98,7 @@ class DALLEImageGenerator:
         response_format: Optional[Optional[Literal["url", "b64_json"]]] = None,
     ):
         """
-        Invoke the image generation inference based on the provided prompt and generation parameters.
+        Invokes the image generation inference based on the provided prompt and generation parameters.
 
         :param prompt: The prompt to generate the image.
         :param size: If provided, overrides the size provided during initialization.
