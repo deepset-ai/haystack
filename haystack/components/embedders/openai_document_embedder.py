@@ -3,9 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from itertools import batched
 from typing import Any, Dict, List, Optional, Tuple
 
+from more_itertools import batched
 from openai import APIError, OpenAI
 from tqdm import tqdm
 
