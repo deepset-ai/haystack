@@ -160,3 +160,6 @@ haystack/json-schemas
 
 # ruff
 .ruff_cache
+
+# Zed configs
+.zed/*
