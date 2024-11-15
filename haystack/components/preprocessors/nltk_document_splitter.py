@@ -5,11 +5,13 @@
 import re
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Tuple
+from typing import Any, Callable, Dict, List, Literal, Optional, Tuple
 
 from haystack import Document, component, logging
 from haystack.components.preprocessors.document_splitter import DocumentSplitter
+from haystack.core.serialization import default_to_dict
 from haystack.lazy_imports import LazyImport
+from haystack.utils import serialize_callable
 
 with LazyImport("Run 'pip install nltk'") as nltk_imports:
     import nltk
@@ -23,7 +25,7 @@ Language = Literal[
 
 @component
 class NLTKDocumentSplitter(DocumentSplitter):
-    def __init__(
+    def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         split_by: Literal["word", "sentence", "page", "passage", "function"] = "word",
         split_length: int = 200,
@@ -33,6 +35,7 @@ class NLTKDocumentSplitter(DocumentSplitter):
         language: Language = "en",
         use_split_rules: bool = True,
         extend_abbreviations: bool = True,
+        splitting_function: Optional[Callable[[str], List[str]]] = None,
     ):
         """
         Splits your documents using NLTK to respect sentence boundaries.
@@ -53,10 +56,17 @@ class NLTKDocumentSplitter(DocumentSplitter):
         :param extend_abbreviations: Choose whether to extend NLTK's PunktTokenizer abbreviations with a list
             of curated abbreviations, if available.
             This is currently supported for English ("en") and German ("de").
+        :param splitting_function: Necessary when `split_by` is set to "function".
+            This is a function which must accept a single `str` as input and return a `list` of `str` as output,
+            representing the chunks after splitting.
         """
 
         super(NLTKDocumentSplitter, self).__init__(
-            split_by=split_by, split_length=split_length, split_overlap=split_overlap, split_threshold=split_threshold
+            split_by=split_by,
+            split_length=split_length,
+            split_overlap=split_overlap,
+            split_threshold=split_threshold,
+            splitting_function=splitting_function,
         )
         nltk_imports.check()
         if respect_sentence_boundary and split_by != "word":
@@ -66,6 +76,8 @@ class NLTKDocumentSplitter(DocumentSplitter):
             )
             respect_sentence_boundary = False
         self.respect_sentence_boundary = respect_sentence_boundary
+        self.use_split_rules = use_split_rules
+        self.extend_abbreviations = extend_abbreviations
         self.sentence_splitter = SentenceSplitter(
             language=language,
             use_split_rules=use_split_rules,
@@ -100,9 +112,11 @@ class NLTKDocumentSplitter(DocumentSplitter):
         elif split_by == "word":
             self.split_at = " "
             units = text.split(self.split_at)
+        elif split_by == "function" and self.splitting_function is not None:
+            return self.splitting_function(text)
         else:
             raise NotImplementedError(
-                "DocumentSplitter only supports 'word', 'sentence', 'page' or 'passage' split_by options."
+                "DocumentSplitter only supports 'function', 'page', 'passage', 'sentence' or 'word' split_by options."
             )
 
         # Add the delimiter back to all units except the last one
@@ -138,6 +152,9 @@ class NLTKDocumentSplitter(DocumentSplitter):
                 raise ValueError(
                     f"DocumentSplitter only works with text documents but content for document ID {doc.id} is None."
                 )
+            if doc.content == "":
+                logger.warning("Document ID {doc_id} has an empty content. Skipping this document.", doc_id=doc.id)
+                continue
 
             if self.respect_sentence_boundary:
                 units = self._split_into_units(doc.content, "sentence")
@@ -159,6 +176,25 @@ class NLTKDocumentSplitter(DocumentSplitter):
             )
         return {"documents": split_docs}
 
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serializes the component to a dictionary.
+        """
+        serialized = default_to_dict(
+            self,
+            split_by=self.split_by,
+            split_length=self.split_length,
+            split_overlap=self.split_overlap,
+            split_threshold=self.split_threshold,
+            respect_sentence_boundary=self.respect_sentence_boundary,
+            language=self.language,
+            use_split_rules=self.use_split_rules,
+            extend_abbreviations=self.extend_abbreviations,
+        )
+        if self.splitting_function:
+            serialized["init_parameters"]["splitting_function"] = serialize_callable(self.splitting_function)
+        return serialized
+
     @staticmethod
     def _number_of_sentences_to_keep(sentences: List[str], split_length: int, split_overlap: int) -> int:
         """
@@ -175,7 +211,8 @@ class NLTKDocumentSplitter(DocumentSplitter):
 
         num_sentences_to_keep = 0
         num_words = 0
-        for sent in reversed(sentences):
+        # Next overlapping Document should not start exactly the same as the previous one, so we skip the first sentence
+        for sent in reversed(sentences[1:]):
             num_words += len(sent.split())
             # If the number of words is larger than the split_length then don't add any more sentences
             if num_words > split_length:
