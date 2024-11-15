@@ -56,6 +56,8 @@ class SentenceTransformersDiversityRanker:
         document_suffix: str = "",
         meta_fields_to_embed: Optional[List[str]] = None,
         embedding_separator: str = "\n",
+        strategy: Literal["greedy_diversity_order", "maximum_margin_relevance"] = "greedy_diversity_order",
+        lambda_threshold: float = 0.5,
     ):
         """
         Initialize a SentenceTransformersDiversityRanker.
@@ -78,6 +80,10 @@ class SentenceTransformersDiversityRanker:
         :param document_suffix: A string to add to the end of each Document text before ranking.
         :param meta_fields_to_embed: List of meta fields that should be embedded along with the Document content.
         :param embedding_separator: Separator used to concatenate the meta fields to the Document content.
+        :param strategy: The strategy to use for diversity ranking. Can be one of "greedy_diversity_order" or
+                         "maximum_margin_relevance".
+        :param lambda_threshold: The trade-off parameter between relevance and diversity. Only used when strategy is
+                                 "maximum_margin_relevance".
         """
         torch_and_sentence_transformers_import.check()
 
@@ -97,6 +103,7 @@ class SentenceTransformersDiversityRanker:
         self.document_suffix = document_suffix
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
+        self.strategy = strategy
 
     def warm_up(self):
         """
@@ -218,17 +225,83 @@ class SentenceTransformersDiversityRanker:
 
         return ranked_docs
 
+    def _maximum_margin_relevance(
+        self, query: str, documents: List[Document], lambda_threshold: float = 0.5
+    ) -> List[Document]:
+        """
+        Orders the given list of documents according to the Maximum Margin Relevance (MMR) scores.
+
+        MMR scores are calculated for each document based on their relevance to the query and diversity from already
+        selected documents.
+
+        The algorithm iteratively selects documents based on their MMR scores, balancing between relevance to the query
+        and diversity from already selected documents. The 'lambda_threshold' controls the trade-off between relevance
+        and diversity.
+
+        A closer value to 0, favors diversity, while a closer value to 1, favors relevance to the query.
+
+        See : "The Use of MMR, Diversity-Based Reranking for Reordering Documents and Producing Summaries"
+               https://www.cs.cmu.edu/~jgc/publication/The_Use_MMR_Diversity_Based_LTMIR_1998.pdf
+        """
+
+        texts_to_embed = self._prepare_texts_to_embed(documents)
+
+        # Calculate embeddings
+        doc_embeddings = self.model.encode(texts_to_embed, convert_to_tensor=True)  # type: ignore[attr-defined]
+        query_embedding = self.model.encode([self.query_prefix + query + self.query_suffix], convert_to_tensor=True)  # type: ignore[attr-defined]
+
+        # Normalize embeddings to unit length for computing cosine similarity
+        if self.similarity == "cosine":
+            doc_embeddings /= torch.norm(doc_embeddings, p=2, dim=-1).unsqueeze(-1)
+            query_embedding /= torch.norm(query_embedding, p=2, dim=-1).unsqueeze(-1)
+
+        n = len(documents)
+        selected: List[int] = []
+
+        # compute MMR score for each document
+        mmr_scores = []
+        for i in range(n):
+            relevance_score = query_embedding @ doc_embeddings[i].T
+            # diversity score: max similarity score between current document and all the current selected documents
+            if len(selected) > 0:
+                print("selected", selected)
+                diversity_score = max([doc_embeddings[i] @ doc_embeddings[j] for j in selected])
+            else:
+                diversity_score = 0
+            mmr_score = lambda_threshold * relevance_score - (1 - lambda_threshold) * diversity_score
+            mmr_scores.append(mmr_score)
+            selected.append(i)
+
+        # rank documents based on MMR score
+        ranked_docs = [doc for _, doc in sorted(zip(mmr_scores, documents), reverse=True)]
+
+        for score, doc in sorted(zip(mmr_scores, documents), reverse=True):
+            print(doc.content, score)
+
+        return ranked_docs
+
     @component.output_types(documents=List[Document])
-    def run(self, query: str, documents: List[Document], top_k: Optional[int] = None):
+    def run(
+        self,
+        query: str,
+        documents: List[Document],
+        top_k: Optional[int] = None,
+        strategy: Literal["greedy_diversity_order", "maximum_margin_relevance"] = "greedy_diversity_order",
+        lambda_threshold: float = 0.5,
+    ) -> Dict[str, List[Document]]:
         """
         Rank the documents based on their diversity.
 
+        :param strategy: Override the strategy to use for diversity ranking. Can be one of "greedy_diversity_order"
+                         or "maximum_margin_relevance".
+        :param lambda_threshold: Override the trade-off parameter between relevance and diversity. Only used when
+                                strategy is "maximum_margin_relevance".
         :param query: The search query.
         :param documents: List of Document objects to be ranker.
         :param top_k: Optional. An integer to override the top_k set during initialization.
 
         :returns: A dictionary with the following key:
-            - `documents`: List of Document objects that have been selected based on the diversity ranking.
+            - `documents`: List of Document objects that have been selected based on the diversity-ranking.
 
         :raises ValueError: If the top_k value is less than or equal to 0.
         :raises RuntimeError: If the component has not been warmed up.
@@ -248,6 +321,17 @@ class SentenceTransformersDiversityRanker:
         elif top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
 
-        diversity_sorted = self._greedy_diversity_order(query=query, documents=documents)
+        # select either the provided strategy at runtime or the one set during initialization
+        if strategy not in ["greedy_diversity_order", "maximum_margin_relevance"]:
+            raise ValueError(
+                f"Strategy must be one of 'greedy_diversity_order' or 'maximum_margin_relevance', but got {strategy}."
+            )
+
+        if strategy == "maximum_margin_relevance" or (not strategy and self.strategy == "maximum_margin_relevance"):
+            diversity_sorted = self._maximum_margin_relevance(
+                query=query, documents=documents, lambda_threshold=lambda_threshold
+            )
+        else:
+            diversity_sorted = self._greedy_diversity_order(query=query, documents=documents)
 
         return {"documents": diversity_sorted[:top_k]}
