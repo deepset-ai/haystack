@@ -77,7 +77,7 @@ class OpenAPIServiceConnector:
         in case an str is passed, will be used as the CA.
         """
         openapi_imports.check()
-        self.ssl_verify=ssl_verify
+        self.ssl_verify = ssl_verify
 
     @component.output_types(service_response=Dict[str, Any])
     def run(
