@@ -2,14 +2,16 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import os
-from typing import List
-from haystack.utils.auth import Secret
-
 import random
+from typing import List
+from unittest.mock import Mock, patch
+
 import pytest
+from openai import APIError
 
 from haystack import Document
 from haystack.components.embedders.openai_document_embedder import OpenAIDocumentEmbedder
+from haystack.utils.auth import Secret
 
 
 def mock_openai_response(input: List[str], model: str = "text-embedding-ada-002", **kwargs) -> dict:
@@ -212,6 +214,19 @@ class TestOpenAIDocumentEmbedder:
 
         assert result["documents"] is not None
         assert not result["documents"]  # empty list
+
+    def test_embed_batch_handles_exceptions_gracefully(self, caplog):
+        embedder = OpenAIDocumentEmbedder(api_key=Secret.from_token("fake_api_key"))
+        fake_texts_to_embed = {"1": "text1", "2": "text2"}
+        with patch.object(
+            embedder.client.embeddings,
+            "create",
+            side_effect=APIError(message="Mocked error", request=Mock(), body=None),
+        ):
+            embedder._embed_batch(texts_to_embed=fake_texts_to_embed, batch_size=2)
+
+        assert len(caplog.records) == 1
+        assert "Failed embedding of documents 1, 2 caused by Mocked error" in caplog.records[0].msg
 
     @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
