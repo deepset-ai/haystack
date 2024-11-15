@@ -66,6 +66,10 @@ dependencies = [
   "ruff",
   "toml",
   "reno",
+  # dulwich is a reno dependency, they pin it at >=0.15.0 so pip takes ton of time to resolve the dependency tree.
+  # We pin it here to avoid taking too much time.
+  # https://opendev.org/openstack/reno/src/branch/master/requirements.txt#L7
+  "dulwich>=0.21.0,<1.0.0",
 ]
 
 [tool.hatch.envs.default.scripts]
