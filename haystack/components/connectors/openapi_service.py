@@ -69,11 +69,15 @@ class OpenAPIServiceConnector:
 
     """
 
-    def __init__(self):
+    def __init__(self, ssl_verify: Optional[Union[bool, str]] = None):
         """
         Initializes the OpenAPIServiceConnector instance
+
+        :param ssl_verify: Decide if to use ssl verification to the requests or not,
+        in case an str is passed, will be used as the CA.
         """
         openapi_imports.check()
+        self.ssl_verify=ssl_verify
 
     @component.output_types(service_response=Dict[str, Any])
     def run(
@@ -112,7 +116,7 @@ class OpenAPIServiceConnector:
         function_invocation_payloads = self._parse_message(last_message)
 
         # instantiate the OpenAPI service for the given specification
-        openapi_service = OpenAPI(service_openapi_spec)
+        openapi_service = OpenAPI(service_openapi_spec, ssl_verify=self.ssl_verify)
         self._authenticate_service(openapi_service, service_credentials)
 
         response_messages = []
