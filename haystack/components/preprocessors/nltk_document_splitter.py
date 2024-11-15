@@ -87,7 +87,7 @@ class NLTKDocumentSplitter(DocumentSplitter):
         self.language = language
 
     def _split_into_units(
-        self, text: str, split_by: Literal["word", "sentence", "passage", "page", "function"]
+        self, text: str, split_by: Literal["function", "page", "passage", "sentence", "word", "line"]
     ) -> List[str]:
         """
         Splits the text into units based on the specified split_by parameter.

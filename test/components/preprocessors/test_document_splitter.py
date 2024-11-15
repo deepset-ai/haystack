@@ -57,7 +57,7 @@ class TestDocumentSplitter:
 
     def test_unsupported_split_by(self):
         with pytest.raises(
-            ValueError, match="split_by must be one of 'word', 'sentence', 'page', 'passage' or 'line'."
+            ValueError, match="split_by must be one of 'function', 'word', 'sentence', 'page', 'passage' or 'line'."
         ):
             DocumentSplitter(split_by="unsupported")
 
@@ -177,25 +177,36 @@ class TestDocumentSplitter:
         assert docs[2].meta["page_number"] == 3
 
     def test_split_by_function(self):
-        splitting_function = lambda input_str: input_str.split(".")
-        splitter = DocumentSplitter(split_by="function", splitting_function=splitting_function, split_length=1)
+        splitting_function = lambda s: s.split(".")
+        splitter = DocumentSplitter(split_by="function", splitting_function=splitting_function)
         text = "This.Is.A.Test"
-        result = splitter.run(documents=[Document(content=text)])
+        result = splitter.run(documents=[Document(id="1", content=text, meta={"key": "value"})])
         docs = result["documents"]
 
-        word_list = ["This", "Is", "A", "Test"]
         assert len(docs) == 4
-        for w_target, w_split in zip(word_list, docs):
-            assert w_split.content == w_target
+        assert docs[0].content == "This"
+        assert docs[0].meta == {"key": "value", "source_id": "1"}
+        assert docs[1].content == "Is"
+        assert docs[1].meta == {"key": "value", "source_id": "1"}
+        assert docs[2].content == "A"
+        assert docs[2].meta == {"key": "value", "source_id": "1"}
+        assert docs[3].content == "Test"
+        assert docs[3].meta == {"key": "value", "source_id": "1"}
 
-        splitting_function = lambda input_str: re.split("[\s]{2,}", input_str)
-        splitter = DocumentSplitter(split_by="function", splitting_function=splitting_function, split_length=1)
+        splitting_function = lambda s: re.split(r"[\s]{2,}", s)
+        splitter = DocumentSplitter(split_by="function", splitting_function=splitting_function)
         text = "This       Is\n  A  Test"
-        result = splitter.run(documents=[Document(content=text)])
+        result = splitter.run(documents=[Document(id="1", content=text, meta={"key": "value"})])
         docs = result["documents"]
         assert len(docs) == 4
-        for w_target, w_split in zip(word_list, docs):
-            assert w_split.content == w_target
+        assert docs[0].content == "This"
+        assert docs[0].meta == {"key": "value", "source_id": "1"}
+        assert docs[1].content == "Is"
+        assert docs[1].meta == {"key": "value", "source_id": "1"}
+        assert docs[2].content == "A"
+        assert docs[2].meta == {"key": "value", "source_id": "1"}
+        assert docs[3].content == "Test"
+        assert docs[3].meta == {"key": "value", "source_id": "1"}
 
     def test_split_by_word_with_overlap(self):
         splitter = DocumentSplitter(split_by="word", split_length=10, split_overlap=2)
