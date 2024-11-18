@@ -139,8 +139,7 @@ class XLSXToDocument:
             dict_or_df = {self.sheet_name: dict_or_df}
 
         # Drop all columns and rows that are completely empty
-        keep_index = True
-        out_header = False if self.table_format == "csv" else ()
+        out_header = True if self.table_format == "csv" else ()
         for key in dict_or_df:
             df = dict_or_df[key]
             # row starts at 1
@@ -148,20 +147,19 @@ class XLSXToDocument:
             # column names are alphabet characters
             header = self._generate_excel_column_names(df.shape[1])
             df.columns = header
-            out_header = True if self.table_format == "csv" else header
-            df = df.dropna(axis=1, how="all", ignore_index=False)
-            df = df.dropna(axis=0, how="all", ignore_index=False)
+            if self.table_format == "markdown":
+                out_header = header
             dict_or_df[key] = df
 
         tables = []
         metadata = []
         for key in dict_or_df:
             if self.table_format == "csv":
-                resolved_kwargs = {"index": keep_index, "header": out_header, **self.table_format_kwargs}
+                resolved_kwargs = {"index": True, "header": out_header, **self.table_format_kwargs}
                 tables.append(dict_or_df[key].to_csv(**resolved_kwargs))
             elif self.table_format == "markdown":
                 resolved_kwargs = {
-                    "index": keep_index,
+                    "index": True,
                     "headers": out_header,
                     "tablefmt": "pipe",  # tablefmt 'plain', 'simple', 'grid', 'pipe', 'orgtbl', 'rst', 'mediawiki',
                     # 'latex', 'latex_raw', 'latex_booktabs', 'latex_longtable' and tsv
