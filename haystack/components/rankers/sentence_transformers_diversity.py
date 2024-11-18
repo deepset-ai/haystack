@@ -205,14 +205,7 @@ class SentenceTransformersDiversityRanker:
         """
         texts_to_embed = self._prepare_texts_to_embed(documents)
 
-        # Calculate embeddings
-        doc_embeddings = self.model.encode(texts_to_embed, convert_to_tensor=True)  # type: ignore[attr-defined]
-        query_embedding = self.model.encode([self.query_prefix + query + self.query_suffix], convert_to_tensor=True)  # type: ignore[attr-defined]
-
-        # Normalize embeddings to unit length for computing cosine similarity
-        if self.similarity == "cosine":
-            doc_embeddings /= torch.norm(doc_embeddings, p=2, dim=-1).unsqueeze(-1)
-            query_embedding /= torch.norm(query_embedding, p=2, dim=-1).unsqueeze(-1)
+        doc_embeddings, query_embedding = self._embed_and_normalize(query, texts_to_embed)
 
         n = len(documents)
         selected: List[int] = []
@@ -241,6 +234,17 @@ class SentenceTransformersDiversityRanker:
 
         return ranked_docs
 
+    def _embed_and_normalize(self, query, texts_to_embed):
+        # Calculate embeddings
+        doc_embeddings = self.model.encode(texts_to_embed, convert_to_tensor=True)  # type: ignore[attr-defined]
+        query_embedding = self.model.encode([self.query_prefix + query + self.query_suffix], convert_to_tensor=True)  # type: ignore[attr-defined]
+
+        # Normalize embeddings to unit length for computing cosine similarity
+        if self.similarity == "cosine":
+            doc_embeddings /= torch.norm(doc_embeddings, p=2, dim=-1).unsqueeze(-1)
+            query_embedding /= torch.norm(query_embedding, p=2, dim=-1).unsqueeze(-1)
+        return doc_embeddings, query_embedding
+
     def _maximum_margin_relevance(
         self, query: str, documents: List[Document], lambda_threshold: float = 0.5
     ) -> List[Document]:
@@ -262,14 +266,7 @@ class SentenceTransformersDiversityRanker:
 
         texts_to_embed = self._prepare_texts_to_embed(documents)
 
-        # Calculate embeddings
-        doc_embeddings = self.model.encode(texts_to_embed, convert_to_tensor=True)  # type: ignore[attr-defined]
-        query_embedding = self.model.encode([self.query_prefix + query + self.query_suffix], convert_to_tensor=True)  # type: ignore[attr-defined]
-
-        # Normalize embeddings to unit length for computing cosine similarity
-        if self.similarity == "cosine":
-            doc_embeddings /= torch.norm(doc_embeddings, p=2, dim=-1).unsqueeze(-1)
-            query_embedding /= torch.norm(query_embedding, p=2, dim=-1).unsqueeze(-1)
+        doc_embeddings, query_embedding = self._embed_and_normalize(query, texts_to_embed)
 
         n = len(documents)
         selected: List[int] = []
