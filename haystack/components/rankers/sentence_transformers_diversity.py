@@ -264,6 +264,7 @@ class SentenceTransformersDiversityRanker:
             relevance_score = query_embedding @ doc_embeddings[i].T
             # diversity score: max similarity score between current document and all the current selected documents
             if len(selected) > 0:
+                print("selected", selected)
                 diversity_score = max(doc_embeddings[i] @ doc_embeddings[j] for j in selected)
             else:
                 diversity_score = 0

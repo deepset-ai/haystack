@@ -608,7 +608,7 @@ class TestSentenceTransformersDiversityRanker:
         # Check the order of ranked documents by comparing the content of the ranked documents
         assert result_content == expected_content
 
-    def test_mrr(self):
+    def test_maximum_margin_relevance_strategy(self):
         query = "renewable energy sources"
 
         docs = [
@@ -704,4 +704,12 @@ class TestSentenceTransformersDiversityRanker:
         )
 
         ranker.warm_up()
+
+        # lambda_threshold=1, the ranker should return more query-relevant documents
         results = ranker.run(query=query, documents=docs, strategy="maximum_margin_relevance", lambda_threshold=1)
+        ranked_ids = [doc.meta["id"] for doc in results["documents"]]
+        assert [1, 2, 3, 4, 5, 7, 8, 12, 13, 14] in ranked_ids
+
+        # lambda_threshold=0, the ranker should return more diverse documents
+        results = ranker.run(query=query, documents=docs, strategy="maximum_margin_relevance", lambda_threshold=0)
+        assert [1, 4, 5, 6, 9, 11, 15, 16, 17, 18] in ranked_ids
