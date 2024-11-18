@@ -19,7 +19,7 @@ class _SentenceTransformersEmbeddingBackendFactory:
     _instances: Dict[str, "_SentenceTransformersEmbeddingBackend"] = {}
 
     @staticmethod
-    def get_embedding_backend(
+    def get_embedding_backend(  # pylint: disable=too-many-positional-arguments
         model: str,
         device: Optional[str] = None,
         auth_token: Optional[Secret] = None,
@@ -52,7 +52,7 @@ class _SentenceTransformersEmbeddingBackend:
     Class to manage Sentence Transformers embeddings.
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         model: str,
         device: Optional[str] = None,
@@ -67,7 +67,7 @@ class _SentenceTransformersEmbeddingBackend:
         self.model = SentenceTransformer(
             model_name_or_path=model,
             device=device,
-            use_auth_token=auth_token.resolve_value() if auth_token else None,
+            token=auth_token.resolve_value() if auth_token else None,
             trust_remote_code=trust_remote_code,
             truncate_dim=truncate_dim,
             model_kwargs=model_kwargs,
