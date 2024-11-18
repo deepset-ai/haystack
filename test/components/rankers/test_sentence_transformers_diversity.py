@@ -608,9 +608,10 @@ class TestSentenceTransformersDiversityRanker:
         # Check the order of ranked documents by comparing the content of the ranked documents
         assert result_content == expected_content
 
-    def test_maximum_margin_relevance_strategy(self):
+    @pytest.mark.integration
+    @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
+    def test_maximum_margin_relevance_strategy(self, similarity):
         query = "renewable energy sources"
-
         docs = [
             # Documents 1-14 are relevant to the query, with varying degrees of diversity
             # Documents 1, 2, 7, and 19 are similar, focusing on wind and solar energy
@@ -698,18 +699,17 @@ class TestSentenceTransformersDiversityRanker:
                 meta={"id": 20},
             ),
         ]
-
         ranker = SentenceTransformersDiversityRanker(
-            model="sentence-transformers/all-MiniLM-L6-v2", similarity="cosine", strategy="maximum_margin_relevance"
+            model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity, strategy="maximum_margin_relevance"
         )
-
         ranker.warm_up()
 
         # lambda_threshold=1, the ranker should return more query-relevant documents
         results = ranker.run(query=query, documents=docs, strategy="maximum_margin_relevance", lambda_threshold=1)
         ranked_ids = [doc.meta["id"] for doc in results["documents"]]
-        assert [1, 2, 3, 4, 5, 7, 8, 12, 13, 14] in ranked_ids
+        assert {1, 2, 3, 4, 5, 7, 8, 12, 13, 14} == set(ranked_ids)
 
         # lambda_threshold=0, the ranker should return more diverse documents
         results = ranker.run(query=query, documents=docs, strategy="maximum_margin_relevance", lambda_threshold=0)
-        assert [1, 4, 5, 6, 9, 11, 15, 16, 17, 18] in ranked_ids
+        ranked_ids = [doc.meta["id"] for doc in results["documents"]]
+        assert {1, 4, 5, 6, 9, 11, 15, 16, 17, 18} == set(ranked_ids)

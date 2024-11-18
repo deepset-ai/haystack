@@ -104,6 +104,8 @@ class SentenceTransformersDiversityRanker:
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
         self.strategy = strategy
+        self._check_lambda_threshold(lambda_threshold, strategy)
+        self.lambda_threshold = lambda_threshold
 
     def warm_up(self):
         """
@@ -264,7 +266,6 @@ class SentenceTransformersDiversityRanker:
             relevance_score = query_embedding @ doc_embeddings[i].T
             # diversity score: max similarity score between current document and all the current selected documents
             if len(selected) > 0:
-                print("selected", selected)
                 diversity_score = max(doc_embeddings[i] @ doc_embeddings[j] for j in selected)
             else:
                 diversity_score = 0
@@ -275,10 +276,12 @@ class SentenceTransformersDiversityRanker:
         # rank documents based on MMR score
         ranked_docs = [doc for _, doc in sorted(zip(mmr_scores, documents), reverse=True)]
 
-        for score, doc in sorted(zip(mmr_scores, documents), reverse=True):
-            print(doc.content, score)
-
         return ranked_docs
+
+    @staticmethod
+    def _check_lambda_threshold(lambda_threshold, strategy):
+        if strategy == "maximum_margin_relevance" and (lambda_threshold < 0 or lambda_threshold > 1):
+            raise ValueError(f"lambda_threshold must be between 0 and 1, but got {lambda_threshold}.")
 
     @component.output_types(documents=List[Document])
     def run(
@@ -327,7 +330,12 @@ class SentenceTransformersDiversityRanker:
                 f"Strategy must be one of 'greedy_diversity_order' or 'maximum_margin_relevance', but got {strategy}."
             )
 
+        # select which strategy to use
         if strategy == "maximum_margin_relevance" or (not strategy and self.strategy == "maximum_margin_relevance"):
+            # use lambda_threshold provided at runtime or the one set during initialization
+            if lambda_threshold is None:
+                lambda_threshold = self.lambda_threshold
+            self._check_lambda_threshold(lambda_threshold, strategy)
             diversity_sorted = self._maximum_margin_relevance(
                 query=query, documents=documents, lambda_threshold=lambda_threshold
             )
