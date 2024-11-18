@@ -37,7 +37,7 @@ def test_model_initialization(mock_sentence_transformer):
     mock_sentence_transformer.assert_called_once_with(
         model_name_or_path="model",
         device="cpu",
-        use_auth_token="fake-api-token",
+        token="fake-api-token",
         trust_remote_code=True,
         truncate_dim=256,
         model_kwargs=None,
