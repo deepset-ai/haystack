@@ -58,7 +58,7 @@ class SentenceTransformersDiversityRanker:
         embedding_separator: str = "\n",
         strategy: Literal["greedy_diversity_order", "maximum_margin_relevance"] = "greedy_diversity_order",
         lambda_threshold: float = 0.5,
-    ):
+    ):  # pylint: disable=too-many-positional-arguments
         """
         Initialize a SentenceTransformersDiversityRanker.
 
@@ -264,8 +264,7 @@ class SentenceTransformersDiversityRanker:
             relevance_score = query_embedding @ doc_embeddings[i].T
             # diversity score: max similarity score between current document and all the current selected documents
             if len(selected) > 0:
-                print("selected", selected)
-                diversity_score = max([doc_embeddings[i] @ doc_embeddings[j] for j in selected])
+                diversity_score = max(doc_embeddings[i] @ doc_embeddings[j] for j in selected)
             else:
                 diversity_score = 0
             mmr_score = lambda_threshold * relevance_score - (1 - lambda_threshold) * diversity_score
@@ -288,7 +287,7 @@ class SentenceTransformersDiversityRanker:
         top_k: Optional[int] = None,
         strategy: Literal["greedy_diversity_order", "maximum_margin_relevance"] = "greedy_diversity_order",
         lambda_threshold: float = 0.5,
-    ) -> Dict[str, List[Document]]:
+    ) -> Dict[str, List[Document]]:  # pylint: too-many-positional-arguments
         """
         Rank the documents based on their diversity.
 
