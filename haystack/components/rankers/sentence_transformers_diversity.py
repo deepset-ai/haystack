@@ -21,19 +21,33 @@ class SentenceTransformersDiversityRanker:
     """
     A Diversity Ranker based on Sentence Transformers.
 
-    Implements a document ranking algorithm that orders documents in such a way as to maximize the overall diversity
-    of the documents.
+    It applies a document ranking algorithm based on two strategies:
 
-    This component provides functionality to rank a list of documents based on their similarity with respect to the
-    query to maximize the overall diversity. It uses a pre-trained Sentence Transformers model to embed the query and
-    the Documents.
+    1. Greedy Diversity Order:
+
+        Implements a document ranking algorithm that orders documents in such a way as to maximize the overall diversity
+        of the documents.
+
+        This component provides functionality to rank a list of documents based on their similarity with respect to the
+        query to maximize the overall diversity. It uses a pre-trained Sentence Transformers model to embed the query and
+        the Documents.
+
+    2. Maximum Margin Relevance:
+
+        Implements a document ranking algorithm that orders documents based on their Maximum Margin Relevance (MMR)
+        scores.
+
+        MMR scores are calculated for each document based on their relevance to the query and diversity from already
+        selected documents. The algorithm iteratively selects documents based on their MMR scores, balancing between
+        relevance to the query and diversity from already selected documents. The 'lambda_threshold' controls the
+        trade-off between relevance and diversity.
 
     Usage example:
     ```python
     from haystack import Document
     from haystack.components.rankers import SentenceTransformersDiversityRanker
 
-    ranker = SentenceTransformersDiversityRanker(model="sentence-transformers/all-MiniLM-L6-v2", similarity="cosine")
+    ranker = SentenceTransformersDiversityRanker(model="sentence-transformers/all-MiniLM-L6-v2", similarity="cosine", strategy="greedy_diversity_order")
     ranker.warm_up()
 
     docs = [Document(content="Paris"), Document(content="Berlin")]
@@ -41,7 +55,7 @@ class SentenceTransformersDiversityRanker:
     output = ranker.run(query=query, documents=docs)
     docs = output["documents"]
     ```
-    """
+    """  # noqa: E501
 
     def __init__(
         self,
