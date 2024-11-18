@@ -284,14 +284,14 @@ class SentenceTransformersDiversityRanker:
             raise ValueError(f"lambda_threshold must be between 0 and 1, but got {lambda_threshold}.")
 
     @component.output_types(documents=List[Document])
-    def run(
+    def run(  # pylint: disable=too-many-positional-arguments
         self,
         query: str,
         documents: List[Document],
         top_k: Optional[int] = None,
         strategy: Literal["greedy_diversity_order", "maximum_margin_relevance"] = "greedy_diversity_order",
         lambda_threshold: float = 0.5,
-    ) -> Dict[str, List[Document]]:  # pylint: too-many-positional-arguments
+    ) -> Dict[str, List[Document]]:
         """
         Rank the documents based on their diversity.
 
