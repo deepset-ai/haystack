@@ -67,7 +67,7 @@ class _SentenceTransformersEmbeddingBackend:
         self.model = SentenceTransformer(
             model_name_or_path=model,
             device=device,
-            use_auth_token=auth_token.resolve_value() if auth_token else None,
+            token=auth_token.resolve_value() if auth_token else None,
             trust_remote_code=trust_remote_code,
             truncate_dim=truncate_dim,
             model_kwargs=model_kwargs,
