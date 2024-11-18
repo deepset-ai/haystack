@@ -5,11 +5,16 @@ from haystack import Document
 from pytest import LogCaptureFixture
 
 from haystack.components.preprocessors.nltk_document_splitter import NLTKDocumentSplitter, SentenceSplitter
+from haystack.utils import deserialize_callable
 
 
 def test_init_warning_message(caplog: LogCaptureFixture) -> None:
     _ = NLTKDocumentSplitter(split_by="page", respect_sentence_boundary=True)
     assert "The 'respect_sentence_boundary' option is only supported for" in caplog.text
+
+
+def custom_split(text):
+    return text.split(".")
 
 
 class TestNLTKDocumentSplitterSplitIntoUnits:
@@ -87,9 +92,11 @@ class TestNLTKDocumentSplitterNumberOfSentencesToKeep:
     @pytest.mark.parametrize(
         "sentences, expected_num_sentences",
         [
-            (["Moonlight shimmered softly, wolves howled nearby, night enveloped everything."], 0),
-            ([" It was a dark night ..."], 0),
-            ([" The moon was full."], 1),
+            (["The sun set.", "Moonlight shimmered softly, wolves howled nearby, night enveloped everything."], 0),
+            (["The sun set.", "It was a dark night ..."], 0),
+            (["The sun set.", " The moon was full."], 1),
+            (["The sun.", " The moon."], 1),  # Ignores the first sentence
+            (["Sun", "Moon"], 1),  # Ignores the first sentence even if its inclusion would be < split_overlap
         ],
     )
     def test_number_of_sentences_to_keep(self, sentences: List[str], expected_num_sentences: int) -> None:
@@ -304,7 +311,7 @@ class TestNLTKDocumentSplitterRespectSentenceBoundary:
     def test_run_split_by_word_respect_sentence_boundary_with_split_overlap_and_page_breaks(self) -> None:
         document_splitter = NLTKDocumentSplitter(
             split_by="word",
-            split_length=5,
+            split_length=8,
             split_overlap=1,
             split_threshold=0,
             language="en",
@@ -313,26 +320,60 @@ class TestNLTKDocumentSplitterRespectSentenceBoundary:
             respect_sentence_boundary=True,
         )
 
-        text = "Sentence on page 1.\fSentence on page 2. \fSentence on page 3. \f\f Sentence on page 5."
+        text = (
+            "Sentence on page 1. Another on page 1.\fSentence on page 2. Another on page 2.\f"
+            "Sentence on page 3. Another on page 3.\f\f Sentence on page 5."
+        )
         documents = document_splitter.run(documents=[Document(content=text)])["documents"]
 
-        assert len(documents) == 4
-        assert documents[0].content == "Sentence on page 1.\f"
+        assert len(documents) == 6
+        assert documents[0].content == "Sentence on page 1. Another on page 1.\f"
         assert documents[0].meta["page_number"] == 1
         assert documents[0].meta["split_id"] == 0
         assert documents[0].meta["split_idx_start"] == text.index(documents[0].content)
-        assert documents[1].content == "Sentence on page 1.\fSentence on page 2. \f"
+        assert documents[1].content == "Another on page 1.\fSentence on page 2. "
         assert documents[1].meta["page_number"] == 1
         assert documents[1].meta["split_id"] == 1
         assert documents[1].meta["split_idx_start"] == text.index(documents[1].content)
-        assert documents[2].content == "Sentence on page 2. \fSentence on page 3. \f\f "
+        assert documents[2].content == "Sentence on page 2. Another on page 2.\f"
         assert documents[2].meta["page_number"] == 2
         assert documents[2].meta["split_id"] == 2
         assert documents[2].meta["split_idx_start"] == text.index(documents[2].content)
-        assert documents[3].content == "Sentence on page 3. \f\f Sentence on page 5."
-        assert documents[3].meta["page_number"] == 3
+        assert documents[3].content == "Another on page 2.\fSentence on page 3. "
+        assert documents[3].meta["page_number"] == 2
         assert documents[3].meta["split_id"] == 3
         assert documents[3].meta["split_idx_start"] == text.index(documents[3].content)
+        assert documents[4].content == "Sentence on page 3. Another on page 3.\f\f "
+        assert documents[4].meta["page_number"] == 3
+        assert documents[4].meta["split_id"] == 4
+        assert documents[4].meta["split_idx_start"] == text.index(documents[4].content)
+        assert documents[5].content == "Another on page 3.\f\f Sentence on page 5."
+        assert documents[5].meta["page_number"] == 3
+        assert documents[5].meta["split_id"] == 5
+        assert documents[5].meta["split_idx_start"] == text.index(documents[5].content)
+
+    def test_to_dict(self):
+        splitter = NLTKDocumentSplitter(split_by="word", split_length=10, split_overlap=2, split_threshold=5)
+        serialized = splitter.to_dict()
+
+        assert serialized["type"] == "haystack.components.preprocessors.nltk_document_splitter.NLTKDocumentSplitter"
+        assert serialized["init_parameters"]["split_by"] == "word"
+        assert serialized["init_parameters"]["split_length"] == 10
+        assert serialized["init_parameters"]["split_overlap"] == 2
+        assert serialized["init_parameters"]["split_threshold"] == 5
+        assert serialized["init_parameters"]["language"] == "en"
+        assert serialized["init_parameters"]["use_split_rules"] is True
+        assert serialized["init_parameters"]["extend_abbreviations"] is True
+        assert "splitting_function" not in serialized["init_parameters"]
+
+    def test_to_dict_with_splitting_function(self):
+        splitter = NLTKDocumentSplitter(split_by="function", splitting_function=custom_split)
+        serialized = splitter.to_dict()
+
+        assert serialized["type"] == "haystack.components.preprocessors.nltk_document_splitter.NLTKDocumentSplitter"
+        assert serialized["init_parameters"]["split_by"] == "function"
+        assert "splitting_function" in serialized["init_parameters"]
+        assert callable(deserialize_callable(serialized["init_parameters"]["splitting_function"]))
 
 
 class TestSentenceSplitter:

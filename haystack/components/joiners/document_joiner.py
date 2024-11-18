@@ -166,6 +166,10 @@ class DocumentJoiner:
         """
         Merge multiple lists of Documents and calculate a weighted sum of the scores of duplicate Documents.
         """
+        # This check prevents a division by zero when no documents are passed
+        if not document_lists:
+            return []
+
         scores_map: dict = defaultdict(int)
         documents_map = {}
         weights = self.weights if self.weights else [1 / len(document_lists)] * len(document_lists)
@@ -187,6 +191,10 @@ class DocumentJoiner:
         The constant k is set to 61 (60 was suggested by the original paper,
         plus 1 as python lists are 0-based and the paper used 1-based ranking).
         """
+        # This check prevents a division by zero when no documents are passed
+        if not document_lists:
+            return []
+
         k = 61
 
         scores_map: dict = defaultdict(int)
@@ -217,6 +225,9 @@ class DocumentJoiner:
         If a Document is in more than one retriever, the one with the highest score is used.
         """
         for documents in document_lists:
+            if len(documents) == 0:
+                continue
+
             scores_list = []
 
             for doc in documents:
