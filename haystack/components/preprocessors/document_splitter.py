@@ -13,6 +13,10 @@ from haystack.utils import deserialize_callable, serialize_callable
 
 logger = logging.getLogger(__name__)
 
+# Maps the 'split_by' argument to the actual char used to split the Documents.
+# 'function' is not in the mapping cause it doesn't split on chars.
+_SPLIT_BY_MAPPING = {"page": "\f", "passage": "\n\n", "sentence": ".", "word": " ", "line": "\n"}
+
 
 @component
 class DocumentSplitter:
@@ -135,7 +139,7 @@ class DocumentSplitter:
                 docs.append(Document(content=s, meta=meta))
             return docs
 
-        split_at = {"page": "\f", "passage": "\n\n", "sentence": ".", "word": " ", "line": "\n"}[self.split_by]
+        split_at = _SPLIT_BY_MAPPING[self.split_by]
         units = to_split.content.split(split_at)
         # Add the delimiter back to all units except the last one
         for i in range(len(units) - 1):
