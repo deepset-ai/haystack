@@ -13,6 +13,10 @@ from haystack.utils import deserialize_callable, serialize_callable
 
 logger = logging.getLogger(__name__)
 
+# Maps the 'split_by' argument to the actual char used to split the Documents.
+# 'function' is not in the mapping cause it doesn't split on chars.
+_SPLIT_BY_MAPPING = {"page": "\f", "passage": "\n\n", "sentence": ".", "word": " ", "line": "\n"}
+
 
 @component
 class DocumentSplitter:
@@ -73,7 +77,7 @@ class DocumentSplitter:
 
         self.split_by = split_by
         if split_by not in ["function", "page", "passage", "sentence", "word", "line"]:
-            raise ValueError("split_by must be one of 'word', 'sentence', 'page', 'passage' or 'line'.")
+            raise ValueError("split_by must be one of 'function', 'word', 'sentence', 'page', 'passage' or 'line'.")
         if split_by == "function" and splitting_function is None:
             raise ValueError("When 'split_by' is set to 'function', a valid 'splitting_function' must be provided.")
         if split_length <= 0:
@@ -108,7 +112,7 @@ class DocumentSplitter:
         if not isinstance(documents, list) or (documents and not isinstance(documents[0], Document)):
             raise TypeError("DocumentSplitter expects a List of Documents as input.")
 
-        split_docs = []
+        split_docs: List[Document] = []
         for doc in documents:
             if doc.content is None:
                 raise ValueError(
@@ -117,42 +121,38 @@ class DocumentSplitter:
             if doc.content == "":
                 logger.warning("Document ID {doc_id} has an empty content. Skipping this document.", doc_id=doc.id)
                 continue
-            units = self._split_into_units(doc.content, self.split_by)
-            text_splits, splits_pages, splits_start_idxs = self._concatenate_units(
-                units, self.split_length, self.split_overlap, self.split_threshold
-            )
-            metadata = deepcopy(doc.meta)
-            metadata["source_id"] = doc.id
-            split_docs += self._create_docs_from_splits(
-                text_splits=text_splits, splits_pages=splits_pages, splits_start_idxs=splits_start_idxs, meta=metadata
-            )
+            split_docs += self._split(doc)
         return {"documents": split_docs}
 
-    def _split_into_units(
-        self, text: str, split_by: Literal["function", "page", "passage", "sentence", "word", "line"]
-    ) -> List[str]:
-        if split_by == "page":
-            self.split_at = "\f"
-        elif split_by == "passage":
-            self.split_at = "\n\n"
-        elif split_by == "sentence":
-            self.split_at = "."
-        elif split_by == "word":
-            self.split_at = " "
-        elif split_by == "line":
-            self.split_at = "\n"
-        elif split_by == "function" and self.splitting_function is not None:
-            return self.splitting_function(text)
-        else:
-            raise NotImplementedError(
-                """DocumentSplitter only supports 'function', 'line', 'page',
-                   'passage', 'sentence' or 'word' split_by options."""
-            )
-        units = text.split(self.split_at)
+    def _split(self, to_split: Document) -> List[Document]:
+        # We already check this before calling _split but
+        # we need to make linters happy
+        if to_split.content is None:
+            return []
+
+        if self.split_by == "function" and self.splitting_function is not None:
+            splits = self.splitting_function(to_split.content)
+            docs: List[Document] = []
+            for s in splits:
+                meta = deepcopy(to_split.meta)
+                meta["source_id"] = to_split.id
+                docs.append(Document(content=s, meta=meta))
+            return docs
+
+        split_at = _SPLIT_BY_MAPPING[self.split_by]
+        units = to_split.content.split(split_at)
         # Add the delimiter back to all units except the last one
         for i in range(len(units) - 1):
-            units[i] += self.split_at
-        return units
+            units[i] += split_at
+
+        text_splits, splits_pages, splits_start_idxs = self._concatenate_units(
+            units, self.split_length, self.split_overlap, self.split_threshold
+        )
+        metadata = deepcopy(to_split.meta)
+        metadata["source_id"] = to_split.id
+        return self._create_docs_from_splits(
+            text_splits=text_splits, splits_pages=splits_pages, splits_start_idxs=splits_start_idxs, meta=metadata
+        )
 
     def _concatenate_units(
         self, elements: List[str], split_length: int, split_overlap: int, split_threshold: int
@@ -166,8 +166,8 @@ class DocumentSplitter:
         """
 
         text_splits: List[str] = []
-        splits_pages = []
-        splits_start_idxs = []
+        splits_pages: List[int] = []
+        splits_start_idxs: List[int] = []
         cur_start_idx = 0
         cur_page = 1
         segments = windowed(elements, n=split_length, step=split_length - split_overlap)
@@ -200,7 +200,7 @@ class DocumentSplitter:
         return text_splits, splits_pages, splits_start_idxs
 
     def _create_docs_from_splits(
-        self, text_splits: List[str], splits_pages: List[int], splits_start_idxs: List[int], meta: Dict
+        self, text_splits: List[str], splits_pages: List[int], splits_start_idxs: List[int], meta: Dict[str, Any]
     ) -> List[Document]:
         """
         Creates Document objects from splits enriching them with page number and the metadata of the original document.
