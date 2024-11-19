@@ -339,18 +339,11 @@ class SentenceTransformersDiversityRanker:
 
     @component.output_types(documents=List[Document])
     def run(  # pylint: disable=too-many-positional-arguments
-        self,
-        query: str,
-        documents: List[Document],
-        top_k: Optional[int] = None,
-        strategy: Optional[str] = None,
-        lambda_threshold: float = 0.5,
+        self, query: str, documents: List[Document], top_k: Optional[int] = None, lambda_threshold: float = 0.5
     ) -> Dict[str, List[Document]]:
         """
         Rank the documents based on their diversity.
 
-        :param strategy: Override the strategy to use for diversity ranking. Can be one of "greedy_diversity_order"
-                         or "maximum_margin_relevance".
         :param lambda_threshold: Override the trade-off parameter between relevance and diversity. Only used when
                                 strategy is "maximum_margin_relevance".
         :param query: The search query.
@@ -378,17 +371,11 @@ class SentenceTransformersDiversityRanker:
         elif top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
 
-        # use strategy provided at runtime or the one set during initialization
-        if strategy is None:
-            strategy = self.strategy
-        else:
-            strategy = Strategy.from_str(strategy)
-
-        if strategy == Strategy.MAXIMUM_MARGIN_RELEVANCE:
+        if self.strategy == Strategy.MAXIMUM_MARGIN_RELEVANCE:
             # use lambda_threshold provided at runtime or the one set during initialization
             if lambda_threshold is None:
                 lambda_threshold = self.lambda_threshold
-            self._check_lambda_threshold(lambda_threshold, strategy)
+            self._check_lambda_threshold(lambda_threshold, self.strategy)
             re_ranked_docs = self._maximum_margin_relevance(
                 query=query, documents=documents, lambda_threshold=lambda_threshold
             )

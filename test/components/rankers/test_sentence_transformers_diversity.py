@@ -674,7 +674,7 @@ class TestSentenceTransformersDiversityRanker:
         ranker.warm_up()
 
         # lambda_threshold=1, the most relevant document should be returned first
-        results = ranker.run(query=query, documents=docs, strategy="maximum_margin_relevance", lambda_threshold=1)
+        results = ranker.run(query=query, documents=docs, lambda_threshold=1)
         expected = [
             "Solar power generation",
             "Wind turbine technology",
@@ -688,7 +688,7 @@ class TestSentenceTransformersDiversityRanker:
         assert [doc.content for doc in results["documents"]] == expected
 
         # lambda_threshold=0, after the most relevant one, diverse documents should be returned
-        results = ranker.run(query=query, documents=docs, strategy="maximum_margin_relevance", lambda_threshold=0)
+        results = ranker.run(query=query, documents=docs, lambda_threshold=0)
         expected = [
             "Solar power generation",
             "Ancient Egyptian hieroglyphics",
