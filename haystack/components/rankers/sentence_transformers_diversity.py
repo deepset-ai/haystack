@@ -159,13 +159,6 @@ class SentenceTransformersDiversityRanker:
         self._check_lambda_threshold(lambda_threshold, strategy)
         self.lambda_threshold = lambda_threshold
 
-    @staticmethod
-    def _check_strategy(strategy):
-        if strategy not in ["greedy_diversity_order", "maximum_margin_relevance"]:
-            raise ValueError(
-                f"Strategy must be one of 'greedy_diversity_order' or 'maximum_margin_relevance', but got {strategy}."
-            )
-
     def warm_up(self):
         """
         Initializes the component.
@@ -390,7 +383,7 @@ class SentenceTransformersDiversityRanker:
         else:
             strategy = Strategy.from_str(strategy)
 
-        if strategy == "maximum_margin_relevance":
+        if strategy == Strategy.MAXIMUM_MARGIN_RELEVANCE:
             # use lambda_threshold provided at runtime or the one set during initialization
             if lambda_threshold is None:
                 lambda_threshold = self.lambda_threshold

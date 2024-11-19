@@ -536,6 +536,24 @@ class TestSentenceTransformersDiversityRanker:
 
         assert ranked_text == "Berlin Eiffel Tower Bananas"
 
+    @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
+    def test_run_maximum_margin_relevance_with_given_lambda_threshold(self, similarity):
+        ranker = SentenceTransformersDiversityRanker(
+            model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity
+        )
+        ranker.model = MagicMock()
+        ranker.model.encode = MagicMock(side_effect=mock_encode_response)
+
+        query = "city"
+        documents = [Document(content="Eiffel Tower"), Document(content="Berlin"), Document(content="Bananas")]
+        ranker.model = MagicMock()
+        ranker.model.encode = MagicMock(side_effect=mock_encode_response)
+
+        ranked_docs = ranker._maximum_margin_relevance(query=query, documents=documents, lambda_threshold=1)
+        ranked_text = " ".join([doc.content for doc in ranked_docs])
+
+        assert ranked_text == "Berlin Eiffel Tower Bananas"
+
     @pytest.mark.integration
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
     def test_run(self, similarity):
@@ -637,7 +655,7 @@ class TestSentenceTransformersDiversityRanker:
 
     @pytest.mark.integration
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
-    def test_maximum_margin_relevance_strategy(self, similarity):
+    def test_run_with_maximum_margin_relevance_strategy(self, similarity):
         query = "renewable energy sources"
         docs = [
             Document(content="18th-century French literature"),
