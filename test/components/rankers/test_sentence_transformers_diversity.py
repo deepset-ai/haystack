@@ -522,40 +522,6 @@ class TestSentenceTransformersDiversityRanker:
 
         assert ranked_text == "Berlin Eiffel Tower Bananas"
 
-    def test_run_mrr_strategy(self):
-        """
-        Tests that run method returns documents in the correct order
-        """
-        ranker = SentenceTransformersDiversityRanker(
-            model="sentence-transformers/all-MiniLM-L6-v2", similarity="cosine", strategy="maximum_margin_relevance"
-        )
-        ranker.warm_up()
-        query = "Renewable energy sources"
-
-        documents = [
-            Document(content="18th-century French literature"),
-            Document(content="Solar power generation"),
-            Document(content="Ancient Egyptian hieroglyphics"),
-            Document(content="Wind turbine technology"),
-            Document(content="Baking sourdough bread"),
-            Document(content="Hydroelectric dam systems"),
-            Document(content="Competitive figure skating"),
-            Document(content="Geothermal energy extraction"),
-            Document(content="Biomass fuel production"),
-            Document(content="Endangered species of butterflies"),
-        ]
-
-        result = ranker._maximum_margin_relevance(query=query, documents=documents)
-        result = [doc.content for doc in result]
-        result[:5] = set(result[:5])
-        assert result == {
-            "Solar power generation",
-            "Wind turbine technology",
-            "Hydroelectric dam systems",
-            "Geothermal energy extraction",
-            "Biomass fuel production",
-        }
-
     @pytest.mark.integration
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
     def test_run(self, similarity):

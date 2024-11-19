@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-
 from typing import Any, Dict, List, Literal, Optional
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
@@ -254,7 +253,7 @@ class SentenceTransformersDiversityRanker:
         return doc_embeddings, query_embedding
 
     def _maximum_margin_relevance(
-        self, query: str, documents: List[Document], lambda_threshold: float = 0.5
+        self, query: str, documents: List[Document], lambda_threshold: float = 0.5, top_k: Optional[int] = None
     ) -> List[Document]:
         """
         Orders the given list of documents according to the Maximum Margin Relevance (MMR) scores.
@@ -273,29 +272,33 @@ class SentenceTransformersDiversityRanker:
         """
 
         texts_to_embed = self._prepare_texts_to_embed(documents)
-
         doc_embeddings, query_embedding = self._embed_and_normalize(query, texts_to_embed)
+        top_k = len(documents) if top_k is None else top_k
 
-        n = len(documents)
         selected: List[int] = []
-
-        # compute MMR score for each document
         mmr_scores = []
-        for i in range(n):
-            relevance_score = query_embedding @ doc_embeddings[i].T
-            # diversity score: max similarity score between current document and all the current selected documents
-            if len(selected) > 0:
-                diversity_score = max(doc_embeddings[i] @ doc_embeddings[j] for j in selected)
-            else:
-                diversity_score = 0
-            mmr_score = lambda_threshold * relevance_score - (1 - lambda_threshold) * diversity_score
-            mmr_scores.append(mmr_score)
-            selected.append(i)
 
-        # rank documents based on MMR score
-        ranked_docs = [doc for _, doc in sorted(zip(mmr_scores, documents), reverse=True)]
+        tensor = query_embedding @ doc_embeddings.T
+        query_similarities = tensor.reshape(-1)
+        idx = int(torch.argmax(query_similarities))
+        selected.append(idx)
+        mmr_scores.append(query_similarities[idx])
 
-        return ranked_docs
+        while len(selected) < top_k:
+            for idx, _ in enumerate(documents):
+                if idx in selected:
+                    continue
+                best_score = -float("inf")
+                relevance_score = query_similarities[idx]
+                diversity_score = max(doc_embeddings[idx] @ doc_embeddings[j].T for j in selected)
+                mmr_score = lambda_threshold * relevance_score - (1 - lambda_threshold) * diversity_score
+                if mmr_score > best_score:
+                    best_score = mmr_score
+                    best_idx = idx
+            mmr_scores.append(best_score)
+            selected.append(best_idx)  # pylint: disable=possibly-used-before-assignment
+
+        return [documents[i] for i in selected]
 
     @staticmethod
     def _check_lambda_threshold(lambda_threshold, strategy):
