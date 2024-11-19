@@ -522,6 +522,24 @@ class TestSentenceTransformersDiversityRanker:
 
         assert ranked_text == "Berlin Eiffel Tower Bananas"
 
+    @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
+    def test_run_maximum_margin_relevance(self, similarity):
+        ranker = SentenceTransformersDiversityRanker(
+            model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity
+        )
+        ranker.model = MagicMock()
+        ranker.model.encode = MagicMock(side_effect=mock_encode_response)
+
+        query = "city"
+        documents = [Document(content="Eiffel Tower"), Document(content="Berlin"), Document(content="Bananas")]
+        ranker.model = MagicMock()
+        ranker.model.encode = MagicMock(side_effect=mock_encode_response)
+
+        ranked_docs = ranker._greedy_diversity_order(query=query, documents=documents)
+        ranked_text = " ".join([doc.content for doc in ranked_docs])
+
+        assert ranked_text == "Berlin Eiffel Tower Bananas"
+
     @pytest.mark.integration
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
     def test_run(self, similarity):
@@ -632,7 +650,6 @@ class TestSentenceTransformersDiversityRanker:
             Document(content="Wind turbine technology"),
             Document(content="Baking sourdough bread"),
             Document(content="Hydroelectric dam systems"),
-            Document(content="Competitive figure skating"),
             Document(content="Geothermal energy extraction"),
             Document(content="Biomass fuel production"),
         ]
@@ -642,29 +659,28 @@ class TestSentenceTransformersDiversityRanker:
         )
         ranker.warm_up()
 
-        # lambda_threshold=1, the ranker should return more query-relevant documents
+        # lambda_threshold=1, the most relevant document should be returned first
         results = ranker.run(query=query, documents=docs, strategy="maximum_margin_relevance", lambda_threshold=1)
         expected = [
             "Solar power generation",
-            "Biomass fuel production",
-            "Geothermal energy extraction",
-            "Competitive figure skating",
-            "Hydroelectric dam systems",
-            "Baking sourdough bread",
             "Wind turbine technology",
+            "Geothermal energy extraction",
+            "Hydroelectric dam systems",
+            "Biomass fuel production",
             "Ancient Egyptian hieroglyphics",
+            "Baking sourdough bread",
             "18th-century French literature",
         ]
         assert [doc.content for doc in results["documents"]] == expected
 
-        # lambda_threshold=0, the ranker should return more diverse documents
+        # lambda_threshold=0, after the most relevant one, diverse documents should be returned
         results = ranker.run(query=query, documents=docs, strategy="maximum_margin_relevance", lambda_threshold=0)
         expected = [
             "Solar power generation",
             "Ancient Egyptian hieroglyphics",
             "Baking sourdough bread",
-            "Competitive figure skating",
-            "18th-century French literature" "Biomass fuel production",
+            "18th-century French literature",
+            "Biomass fuel production",
             "Hydroelectric dam systems",
             "Geothermal energy extraction",
             "Wind turbine technology",
