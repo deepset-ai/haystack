@@ -8,6 +8,7 @@ import torch
 
 from haystack import Document
 from haystack.components.rankers import SentenceTransformersDiversityRanker
+from haystack.components.rankers.sentence_transformers_diversity import Similarity
 from haystack.utils import ComponentDevice
 from haystack.utils.auth import Secret
 
@@ -27,7 +28,7 @@ class TestSentenceTransformersDiversityRanker:
         assert component.model_name_or_path == "sentence-transformers/all-MiniLM-L6-v2"
         assert component.top_k == 10
         assert component.device == ComponentDevice.resolve_device(None)
-        assert component.similarity == "cosine"
+        assert component.similarity == Similarity.COSINE
         assert component.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
         assert component.query_prefix == ""
         assert component.document_prefix == ""
@@ -53,7 +54,7 @@ class TestSentenceTransformersDiversityRanker:
         assert component.model_name_or_path == "sentence-transformers/msmarco-distilbert-base-v4"
         assert component.top_k == 5
         assert component.device == ComponentDevice.from_str("cuda:0")
-        assert component.similarity == "dot_product"
+        assert component.similarity == Similarity.DOT_PRODUCT
         assert component.token == Secret.from_token("fake-api-token")
         assert component.query_prefix == "query:"
         assert component.document_prefix == "document:"
@@ -71,7 +72,7 @@ class TestSentenceTransformersDiversityRanker:
                 "model": "sentence-transformers/all-MiniLM-L6-v2",
                 "top_k": 10,
                 "device": ComponentDevice.resolve_device(None).to_dict(),
-                "similarity": "cosine",
+                "similarity": Similarity.COSINE,
                 "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
                 "query_prefix": "",
                 "document_prefix": "",
@@ -104,7 +105,7 @@ class TestSentenceTransformersDiversityRanker:
         assert ranker.model_name_or_path == "sentence-transformers/all-MiniLM-L6-v2"
         assert ranker.top_k == 10
         assert ranker.device == ComponentDevice.resolve_device(None)
-        assert ranker.similarity == "cosine"
+        assert ranker.similarity == Similarity.COSINE
         assert ranker.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
         assert ranker.query_prefix == ""
         assert ranker.document_prefix == ""
@@ -135,7 +136,7 @@ class TestSentenceTransformersDiversityRanker:
         assert ranker.model_name_or_path == "sentence-transformers/all-MiniLM-L6-v2"
         assert ranker.top_k == 10
         assert ranker.device == ComponentDevice.resolve_device(None)
-        assert ranker.similarity == "cosine"
+        assert ranker.similarity == Similarity.COSINE
         assert ranker.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
         assert ranker.query_prefix == ""
         assert ranker.document_prefix == ""
@@ -154,7 +155,7 @@ class TestSentenceTransformersDiversityRanker:
         assert ranker.model_name_or_path == "sentence-transformers/all-MiniLM-L6-v2"
         assert ranker.top_k == 10
         assert ranker.device == ComponentDevice.resolve_device(None)
-        assert ranker.similarity == "cosine"
+        assert ranker.similarity == Similarity.COSINE
         assert ranker.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
         assert ranker.query_prefix == ""
         assert ranker.document_prefix == ""
@@ -185,7 +186,7 @@ class TestSentenceTransformersDiversityRanker:
                 "top_k": 5,
                 "device": ComponentDevice.from_str("cuda:0").to_dict(),
                 "token": {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"},
-                "similarity": "dot_product",
+                "similarity": Similarity.DOT_PRODUCT,
                 "query_prefix": "query:",
                 "document_prefix": "document:",
                 "query_suffix": "query suffix",
@@ -217,7 +218,7 @@ class TestSentenceTransformersDiversityRanker:
         assert ranker.model_name_or_path == "sentence-transformers/msmarco-distilbert-base-v4"
         assert ranker.top_k == 5
         assert ranker.device == ComponentDevice.from_str("cuda:0")
-        assert ranker.similarity == "dot_product"
+        assert ranker.similarity == Similarity.DOT_PRODUCT
         assert ranker.token == Secret.from_env_var("ENV_VAR", strict=False)
         assert ranker.query_prefix == "query:"
         assert ranker.document_prefix == "document:"
@@ -231,9 +232,7 @@ class TestSentenceTransformersDiversityRanker:
         Tests that run method raises ValueError if similarity is incorrect
         """
         similarity = "incorrect"
-        with pytest.raises(
-            ValueError, match=f"Similarity must be one of 'dot_product' or 'cosine', but got {similarity}."
-        ):
+        with pytest.raises(ValueError, match=f"Invalid value for Similarity: {similarity}"):
             SentenceTransformersDiversityRanker(model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity)
 
     def test_invalid_strategy(self):
@@ -241,10 +240,7 @@ class TestSentenceTransformersDiversityRanker:
         Tests that run method raises ValueError if strategy is incorrect
         """
         strategy = "incorrect"
-        with pytest.raises(
-            ValueError,
-            match=f"Strategy must be one of 'greedy_diversity_order' or 'maximum_margin_relevance', but got {strategy}.",
-        ):
+        with pytest.raises(ValueError, match=f"Invalid value for Strategy: {strategy}"):
             SentenceTransformersDiversityRanker(
                 model="sentence-transformers/all-MiniLM-L6-v2", similarity="cosine", strategy=strategy
             )

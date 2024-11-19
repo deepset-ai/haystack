@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-
+from enum import Enum
 from typing import Any, Dict, List, Literal, Optional
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
@@ -14,6 +14,46 @@ logger = logging.getLogger(__name__)
 with LazyImport(message="Run 'pip install \"sentence-transformers>=3.0.0\"'") as torch_and_sentence_transformers_import:
     import torch
     from sentence_transformers import SentenceTransformer
+
+
+class Strategy(Enum):
+    """
+    The strategy to use for diversity ranking.
+    """
+
+    GREEDY_DIVERSITY_ORDER = "greedy_diversity_order"
+    MAXIMUM_MARGIN_RELEVANCE = "maximum_margin_relevance"
+
+    @staticmethod
+    def from_str(value: str) -> "Strategy":
+        """
+        Convert a string to a Strategy enum.
+        """
+        if value == "greedy_diversity_order":
+            return Strategy.GREEDY_DIVERSITY_ORDER
+        if value == "maximum_margin_relevance":
+            return Strategy.MAXIMUM_MARGIN_RELEVANCE
+        raise ValueError(f"Invalid value for Strategy: {value}")
+
+
+class Similarity(Enum):
+    """
+    The similarity metric to use for comparing embeddings.
+    """
+
+    DOT_PRODUCT = "dot_product"
+    COSINE = "cosine"
+
+    @staticmethod
+    def from_str(value: str) -> "Similarity":
+        """
+        Convert a string to a Similarity enum.
+        """
+        if value == "dot_product":
+            return Similarity.DOT_PRODUCT
+        if value == "cosine":
+            return Similarity.COSINE
+        raise ValueError(f"Invalid value for Similarity: {value}")
 
 
 @component
@@ -108,17 +148,14 @@ class SentenceTransformersDiversityRanker:
         self.device = ComponentDevice.resolve_device(device)
         self.token = token
         self.model = None
-        if similarity not in ["dot_product", "cosine"]:
-            raise ValueError(f"Similarity must be one of 'dot_product' or 'cosine', but got {similarity}.")
-        self.similarity = similarity
+        self.similarity = Similarity.from_str(similarity) if similarity else Similarity.COSINE
         self.query_prefix = query_prefix
         self.document_prefix = document_prefix
         self.query_suffix = query_suffix
         self.document_suffix = document_suffix
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
-        self._check_strategy(strategy)
-        self.strategy = strategy
+        self.strategy = Strategy.from_str(strategy) if strategy else Strategy.GREEDY_DIVERSITY_ORDER
         self._check_lambda_threshold(lambda_threshold, strategy)
         self.lambda_threshold = lambda_threshold
 
@@ -351,7 +388,7 @@ class SentenceTransformersDiversityRanker:
         if strategy is None:
             strategy = self.strategy
         else:
-            self._check_strategy(strategy)
+            strategy = Strategy.from_str(strategy)
 
         if strategy == "maximum_margin_relevance":
             # use lambda_threshold provided at runtime or the one set during initialization
