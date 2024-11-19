@@ -70,7 +70,7 @@ class SentenceTransformersDiversityRanker:
         document_suffix: str = "",
         meta_fields_to_embed: Optional[List[str]] = None,
         embedding_separator: str = "\n",
-        strategy: Literal["greedy_diversity_order", "maximum_margin_relevance"] = "greedy_diversity_order",
+        strategy: Optional[str] = "greedy_diversity_order",
         lambda_threshold: float = 0.5,
     ):  # pylint: disable=too-many-positional-arguments
         """
@@ -117,9 +117,17 @@ class SentenceTransformersDiversityRanker:
         self.document_suffix = document_suffix
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
+        self._check_strategy(strategy)
         self.strategy = strategy
         self._check_lambda_threshold(lambda_threshold, strategy)
         self.lambda_threshold = lambda_threshold
+
+    @staticmethod
+    def _check_strategy(strategy):
+        if strategy not in ["greedy_diversity_order", "maximum_margin_relevance"]:
+            raise ValueError(
+                f"Strategy must be one of 'greedy_diversity_order' or 'maximum_margin_relevance', but got {strategy}."
+            )
 
     def warm_up(self):
         """
@@ -300,7 +308,7 @@ class SentenceTransformersDiversityRanker:
         query: str,
         documents: List[Document],
         top_k: Optional[int] = None,
-        strategy: Literal["greedy_diversity_order", "maximum_margin_relevance"] = "greedy_diversity_order",
+        strategy: Optional[str] = None,
         lambda_threshold: float = 0.5,
     ) -> Dict[str, List[Document]]:
         """
@@ -335,22 +343,21 @@ class SentenceTransformersDiversityRanker:
         elif top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
 
-        # select either the provided strategy at runtime or the one set during initialization
-        if strategy not in ["greedy_diversity_order", "maximum_margin_relevance"]:
-            raise ValueError(
-                f"Strategy must be one of 'greedy_diversity_order' or 'maximum_margin_relevance', but got {strategy}."
-            )
+        # use strategy provided at runtime or the one set during initialization
+        if strategy is None:
+            strategy = self.strategy
+        else:
+            self._check_strategy(strategy)
 
-        # select which strategy to use
-        if strategy == "maximum_margin_relevance" or (not strategy and self.strategy == "maximum_margin_relevance"):
+        if strategy == "maximum_margin_relevance":
             # use lambda_threshold provided at runtime or the one set during initialization
             if lambda_threshold is None:
                 lambda_threshold = self.lambda_threshold
             self._check_lambda_threshold(lambda_threshold, strategy)
-            diversity_sorted = self._maximum_margin_relevance(
+            re_ranked_docs = self._maximum_margin_relevance(
                 query=query, documents=documents, lambda_threshold=lambda_threshold
             )
         else:
-            diversity_sorted = self._greedy_diversity_order(query=query, documents=documents)
+            re_ranked_docs = self._greedy_diversity_order(query=query, documents=documents)
 
-        return {"documents": diversity_sorted[:top_k]}
+        return {"documents": re_ranked_docs[:top_k]}
