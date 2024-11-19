@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from enum import Enum
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.lazy_imports import LazyImport
@@ -34,7 +34,9 @@ class Strategy(Enum):
             return Strategy.GREEDY_DIVERSITY_ORDER
         if value == "maximum_margin_relevance":
             return Strategy.MAXIMUM_MARGIN_RELEVANCE
-        raise ValueError(f"Invalid value for Strategy: {value}")
+        raise ValueError(
+            f"Invalid value for Strategy: {value} choose from 'greedy_diversity_order' or 'maximum_margin_relevance'"
+        )
 
 
 class Similarity(Enum):
@@ -54,7 +56,7 @@ class Similarity(Enum):
             return Similarity.DOT_PRODUCT
         if value == "cosine":
             return Similarity.COSINE
-        raise ValueError(f"Invalid value for Similarity: {value}")
+        raise ValueError(f"Invalid value for Similarity: {value} choose from 'dot_product' or 'cosine'")
 
 
 @component
@@ -104,14 +106,14 @@ class SentenceTransformersDiversityRanker:
         top_k: int = 10,
         device: Optional[ComponentDevice] = None,
         token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
-        similarity: Literal["dot_product", "cosine"] = "cosine",
+        similarity: Union[str, Similarity] = "cosine",
         query_prefix: str = "",
         query_suffix: str = "",
         document_prefix: str = "",
         document_suffix: str = "",
         meta_fields_to_embed: Optional[List[str]] = None,
         embedding_separator: str = "\n",
-        strategy: Optional[str] = "greedy_diversity_order",
+        strategy: Union[str, Strategy] = "greedy_diversity_order",
         lambda_threshold: float = 0.5,
     ):  # pylint: disable=too-many-positional-arguments
         """
@@ -149,16 +151,20 @@ class SentenceTransformersDiversityRanker:
         self.device = ComponentDevice.resolve_device(device)
         self.token = token
         self.model = None
-        self.similarity = Similarity.from_str(similarity) if similarity else Similarity.COSINE
+        self.similarity = (
+            Similarity.from_str(similarity) if similarity and isinstance(similarity, str) else Similarity.COSINE
+        )
         self.query_prefix = query_prefix
         self.document_prefix = document_prefix
         self.query_suffix = query_suffix
         self.document_suffix = document_suffix
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
-        self.strategy = Strategy.from_str(strategy) if strategy else Strategy.GREEDY_DIVERSITY_ORDER
+        self.strategy = (
+            Strategy.from_str(strategy) if strategy and isinstance(strategy, str) else Strategy.GREEDY_DIVERSITY_ORDER
+        )
         self._check_lambda_threshold(lambda_threshold, strategy)
-        self.lambda_threshold = lambda_threshold
+        self.lambda_threshold = lambda_threshold or 0.5
 
     def warm_up(self):
         """
@@ -279,13 +285,13 @@ class SentenceTransformersDiversityRanker:
         query_embedding = self.model.encode([self.query_prefix + query + self.query_suffix], convert_to_tensor=True)  # type: ignore[attr-defined]
 
         # Normalize embeddings to unit length for computing cosine similarity
-        if self.similarity == "cosine":
+        if self.similarity == Similarity.COSINE:
             doc_embeddings /= torch.norm(doc_embeddings, p=2, dim=-1).unsqueeze(-1)
             query_embedding /= torch.norm(query_embedding, p=2, dim=-1).unsqueeze(-1)
         return doc_embeddings, query_embedding
 
     def _maximum_margin_relevance(
-        self, query: str, documents: List[Document], lambda_threshold: float = 0.5, top_k: Optional[int] = None
+        self, query: str, documents: List[Document], lambda_threshold: float, top_k: int
     ) -> List[Document]:
         """
         Orders the given list of documents according to the Maximum Margin Relevance (MMR) scores.
@@ -305,7 +311,7 @@ class SentenceTransformersDiversityRanker:
 
         texts_to_embed = self._prepare_texts_to_embed(documents)
         doc_embeddings, query_embedding = self._embed_and_normalize(query, texts_to_embed)
-        top_k = len(documents) if top_k is None else top_k
+        top_k = top_k if top_k else len(documents)
 
         selected: List[int] = []
         mmr_scores = []
@@ -333,22 +339,27 @@ class SentenceTransformersDiversityRanker:
         return [documents[i] for i in selected]
 
     @staticmethod
-    def _check_lambda_threshold(lambda_threshold, strategy):
-        if strategy == "maximum_margin_relevance" and (lambda_threshold < 0 or lambda_threshold > 1):
+    def _check_lambda_threshold(lambda_threshold: float, strategy: Union[str, Strategy]):
+        if (strategy == Strategy.MAXIMUM_MARGIN_RELEVANCE) and not 0 <= lambda_threshold <= 1:
             raise ValueError(f"lambda_threshold must be between 0 and 1, but got {lambda_threshold}.")
 
     @component.output_types(documents=List[Document])
-    def run(  # pylint: disable=too-many-positional-arguments
-        self, query: str, documents: List[Document], top_k: Optional[int] = None, lambda_threshold: float = 0.5
+    def run(
+        self,
+        query: str,
+        documents: List[Document],
+        top_k: Optional[int] = None,
+        *,
+        lambda_threshold: Optional[float] = None,
     ) -> Dict[str, List[Document]]:
         """
         Rank the documents based on their diversity.
 
-        :param lambda_threshold: Override the trade-off parameter between relevance and diversity. Only used when
-                                strategy is "maximum_margin_relevance".
         :param query: The search query.
         :param documents: List of Document objects to be ranker.
         :param top_k: Optional. An integer to override the top_k set during initialization.
+        :param lambda_threshold: Override the trade-off parameter between relevance and diversity. Only used when
+                                strategy is "maximum_margin_relevance".
 
         :returns: A dictionary with the following key:
             - `documents`: List of Document objects that have been selected based on the diversity-ranking.
@@ -370,6 +381,8 @@ class SentenceTransformersDiversityRanker:
             top_k = self.top_k
         elif top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
+        elif top_k > len(documents):
+            raise ValueError(f"top_k must be <= number of documents, but got {top_k}")
 
         if self.strategy == Strategy.MAXIMUM_MARGIN_RELEVANCE:
             # use lambda_threshold provided at runtime or the one set during initialization
@@ -377,7 +390,7 @@ class SentenceTransformersDiversityRanker:
                 lambda_threshold = self.lambda_threshold
             self._check_lambda_threshold(lambda_threshold, self.strategy)
             re_ranked_docs = self._maximum_margin_relevance(
-                query=query, documents=documents, lambda_threshold=lambda_threshold
+                query=query, documents=documents, lambda_threshold=lambda_threshold, top_k=top_k
             )
         else:
             re_ranked_docs = self._greedy_diversity_order(query=query, documents=documents)
