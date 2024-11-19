@@ -329,3 +329,34 @@ class TestOpenAIChatGenerator:
 
         assert callback.counter > 1
         assert "Paris" in callback.responses
+
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_live_run_streaming_with_include_usage(self):
+        class Callback:
+            def __init__(self):
+                self.responses = ""
+                self.counter = 0
+
+            def __call__(self, chunk: StreamingChunk) -> None:
+                self.counter += 1
+                self.responses += chunk.content if chunk.content else ""
+
+        callback = Callback()
+        component = OpenAIChatGenerator(
+            streaming_callback=callback, generation_kwargs={"stream_options": {"include_usage": True}}
+        )
+        results = component.run([ChatMessage.from_user("What's the capital of France?")])
+
+        assert len(results["replies"]) == 1
+        message: ChatMessage = results["replies"][0]
+        assert "Paris" in message.content
+
+        assert "gpt-4o-mini" in message.meta["model"]
+        assert message.meta["finish_reason"] == "stop"
+
+        assert callback.counter > 1
+        assert "Paris" in callback.responses
