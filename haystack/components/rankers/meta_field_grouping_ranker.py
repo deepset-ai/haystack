@@ -60,7 +60,7 @@ class MetaFieldGroupingRanker:
 
     def __init__(self, group_by: str, subgroup_by: Optional[str] = None, sort_docs_by: Optional[str] = None):
         """
-        Creates an instance of DeepsetMetadataGrouper.
+        Creates an instance of MetaFieldGroupingRanker.
 
         :param group_by: The metadata key to aggregate the documents by.
         :param subgroup_by: The metadata key to aggregate the documents within a group that was created by the
