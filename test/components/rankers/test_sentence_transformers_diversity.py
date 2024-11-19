@@ -535,7 +535,7 @@ class TestSentenceTransformersDiversityRanker:
         ranker.model = MagicMock()
         ranker.model.encode = MagicMock(side_effect=mock_encode_response)
 
-        ranked_docs = ranker._greedy_diversity_order(query=query, documents=documents)
+        ranked_docs = ranker._maximum_margin_relevance(query=query, documents=documents)
         ranked_text = " ".join([doc.content for doc in ranked_docs])
 
         assert ranked_text == "Berlin Eiffel Tower Bananas"
