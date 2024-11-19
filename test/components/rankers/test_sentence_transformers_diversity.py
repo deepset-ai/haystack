@@ -626,92 +626,17 @@ class TestSentenceTransformersDiversityRanker:
     def test_maximum_margin_relevance_strategy(self, similarity):
         query = "renewable energy sources"
         docs = [
-            # Documents 1-14 are relevant to the query, with varying degrees of diversity
-            # Documents 1, 2, 7, and 19 are similar, focusing on wind and solar energy
-            # Documents 3, 8, and 9 are related, discussing water-based renewable energy and environmental impacts
-            Document(
-                content="Solar panels convert sunlight into electricity, providing a clean and renewable energy source with minimal environmental impact.",
-                meta={"id": 1},
-            ),
-            Document(
-                content="Wind turbines harness the power of wind to generate electricity, offering a sustainable alternative to fossil fuels.",
-                meta={"id": 2},
-            ),
-            Document(
-                content="Hydroelectric power plants use flowing water to produce electricity, but can disrupt local ecosystems and fish migration patterns.",
-                meta={"id": 3},
-            ),
-            Document(
-                content="Geothermal energy taps into the Earth's heat, providing a constant and renewable power source with a small land footprint.",
-                meta={"id": 4},
-            ),
-            Document(
-                content="Biomass energy, derived from organic materials, is renewable but can contribute to deforestation if not managed properly.",
-                meta={"id": 5},
-            ),
-            Document(
-                content="Nuclear power, while not renewable, produces zero direct carbon emissions but raises concerns about radioactive waste disposal.",
-                meta={"id": 6},
-            ),
-            Document(
-                content="Solar thermal systems use sunlight to heat water or air, reducing reliance on fossil fuels for heating purposes.",
-                meta={"id": 7},
-            ),
-            Document(
-                content="Tidal energy harnesses the power of ocean tides to generate electricity, offering predictable and renewable power generation.",
-                meta={"id": 8},
-            ),
-            Document(
-                content="Wind farms can have negative impacts on bird and bat populations, requiring careful siting and mitigation strategies.",
-                meta={"id": 9},
-            ),
-            Document(
-                content="The production of solar panels involves some toxic materials, but their long-term environmental benefits outweigh these concerns.",
-                meta={"id": 10},
-            ),
-            Document(
-                content="Electric vehicles reduce carbon emissions when powered by renewable energy sources, improving urban air quality.",
-                meta={"id": 11},
-            ),
-            Document(
-                content="Renewable energy sources help mitigate climate change by reducing greenhouse gas emissions from the power sector.",
-                meta={"id": 12},
-            ),
-            Document(
-                content="The cost of renewable energy technologies has decreased significantly in recent years, making them more competitive with fossil fuels.",
-                meta={"id": 13},
-            ),
-            Document(
-                content="Energy storage systems, such as batteries, play a crucial role in integrating intermittent renewable sources into the power grid.",
-                meta={"id": 14},
-            ),
-            # Documents 15-18 are irrelevant to the query
-            Document(
-                content="The Great Barrier Reef is home to diverse marine life, including over 1,500 species of fish and 400 types of hard coral.",
-                meta={"id": 15},
-            ),
-            Document(
-                content="Sustainable farming practices focus on reducing environmental impact while maintaining crop yields and soil health.",
-                meta={"id": 16},
-            ),
-            Document(
-                content="Artificial intelligence is revolutionizing various industries, from healthcare to finance, by automating complex tasks and improving decision-making processes.",
-                meta={"id": 17},
-            ),
-            Document(
-                content="The human brain contains approximately 86 billion neurons, forming trillions of synaptic connections.",
-                meta={"id": 18},
-            ),
-            # Documents 19 and 20 are relevant but provide more specific details about wind and solar energy
-            Document(
-                content="Wind turbines can generate electricity from wind speeds as low as 6-9 mph, with optimal performance at around 30-35 mph.",
-                meta={"id": 19},
-            ),
-            Document(
-                content="Solar panels typically have a lifespan of 25-30 years, with efficiency gradually decreasing over time.",
-                meta={"id": 20},
-            ),
+            Document(content="18th-century French literature"),
+            Document(content="Solar power generation"),
+            Document(content="Ancient Egyptian hieroglyphics"),
+            Document(content="Wind turbine technology"),
+            Document(content="Baking sourdough bread"),
+            Document(content="Hydroelectric dam systems"),
+            Document(content="Competitive figure skating"),
+            Document(content="Geothermal energy extraction"),
+            Document(content="Biomass fuel production"),
         ]
+
         ranker = SentenceTransformersDiversityRanker(
             model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity, strategy="maximum_margin_relevance"
         )
@@ -719,10 +644,29 @@ class TestSentenceTransformersDiversityRanker:
 
         # lambda_threshold=1, the ranker should return more query-relevant documents
         results = ranker.run(query=query, documents=docs, strategy="maximum_margin_relevance", lambda_threshold=1)
-        ranked_ids = [doc.meta["id"] for doc in results["documents"]]
-        assert {1, 2, 3, 4, 5, 7, 8, 12, 13, 14} == set(ranked_ids)
+        expected = [
+            "Solar power generation",
+            "Biomass fuel production",
+            "Geothermal energy extraction",
+            "Competitive figure skating",
+            "Hydroelectric dam systems",
+            "Baking sourdough bread",
+            "Wind turbine technology",
+            "Ancient Egyptian hieroglyphics",
+            "18th-century French literature",
+        ]
+        assert [doc.content for doc in results["documents"]] == expected
 
         # lambda_threshold=0, the ranker should return more diverse documents
         results = ranker.run(query=query, documents=docs, strategy="maximum_margin_relevance", lambda_threshold=0)
-        ranked_ids = [doc.meta["id"] for doc in results["documents"]]
-        assert {1, 4, 5, 6, 9, 11, 15, 16, 17, 18} == set(ranked_ids)
+        expected = [
+            "Solar power generation",
+            "Ancient Egyptian hieroglyphics",
+            "Baking sourdough bread",
+            "Competitive figure skating",
+            "18th-century French literature" "Biomass fuel production",
+            "Hydroelectric dam systems",
+            "Geothermal energy extraction",
+            "Wind turbine technology",
+        ]
+        assert [doc.content for doc in results["documents"]] == expected

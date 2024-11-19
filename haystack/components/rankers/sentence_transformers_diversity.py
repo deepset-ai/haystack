@@ -284,17 +284,34 @@ class SentenceTransformersDiversityRanker:
         selected.append(idx)
         mmr_scores.append(query_similarities[idx])
 
+        print("Initial selection:")
+        print(f"MRR score: {query_similarities[idx]}")
+        print(f"Document: {documents[idx].content}")
+        print("")
+
         while len(selected) < top_k:
+            print("\n\n--------------")
+            print("Iteration: ", len(selected) - 1)
+
+            best_score = -float("inf")
             for idx, _ in enumerate(documents):
                 if idx in selected:
                     continue
-                best_score = -float("inf")
                 relevance_score = query_similarities[idx]
                 diversity_score = max(doc_embeddings[idx] @ doc_embeddings[j].T for j in selected)
                 mmr_score = lambda_threshold * relevance_score - (1 - lambda_threshold) * diversity_score
                 if mmr_score > best_score:
                     best_score = mmr_score
                     best_idx = idx
+                    print("iteration: ", idx)
+                    print(f"MRR score: {mmr_score}, relevance: {relevance_score}, diversity: {diversity_score}")
+                    print(f"Document: {documents[idx].content}")
+                    print("")
+
+            print("Best document selected:")
+            print(f"MRR score: {best_score}")
+            print(f"Document: {documents[best_idx].content}")
+
             mmr_scores.append(best_score)
             selected.append(best_idx)  # pylint: disable=possibly-used-before-assignment
 
