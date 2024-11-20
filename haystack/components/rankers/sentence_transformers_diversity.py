@@ -352,6 +352,7 @@ class SentenceTransformersDiversityRanker:
         selected.append(idx)
         mmr_scores.append(query_similarities[idx])
         while len(selected) < top_k:
+            best_idx = None
             best_score = -float("inf")
             for idx, _ in enumerate(documents):
                 if idx in selected:
@@ -362,8 +363,10 @@ class SentenceTransformersDiversityRanker:
                 if mmr_score > best_score:
                     best_score = mmr_score
                     best_idx = idx
+            if best_idx is None:
+                raise ValueError("No best document found check if the documents list contains any documents.")
             mmr_scores.append(best_score)
-            selected.append(best_idx)  # pylint: disable=possibly-used-before-assignment
+            selected.append(best_idx)
 
         return [documents[i] for i in selected]
 
