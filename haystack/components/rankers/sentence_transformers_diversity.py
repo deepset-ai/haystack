@@ -334,7 +334,7 @@ class SentenceTransformersDiversityRanker:
         and diversity from already selected documents. The 'lambda_threshold' controls the trade-off between relevance
         and diversity.
 
-        A closer value to 0, favors diversity, while a closer value to 1, favors relevance to the query.
+        A closer value to 0 favors diversity, while a closer value to 1 favors relevance to the query.
 
         See : "The Use of MMR, Diversity-Based Reranking for Reordering Documents and Producing Summaries"
                https://www.cs.cmu.edu/~jgc/publication/The_Use_MMR_Diversity_Based_LTMIR_1998.pdf
