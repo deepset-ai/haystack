@@ -394,7 +394,7 @@ class SentenceTransformersDiversityRanker:
                                 strategy is "maximum_margin_relevance".
 
         :returns: A dictionary with the following key:
-            - `documents`: List of Document objects that have been selected based on the diversity-ranking.
+            - `documents`: List of Document objects that have been selected based on the diversity ranking.
 
         :raises ValueError: If the top_k value is less than or equal to 0.
         :raises RuntimeError: If the component has not been warmed up.
