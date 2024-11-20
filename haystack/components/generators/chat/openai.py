@@ -222,19 +222,19 @@ class OpenAIChatGenerator:
             if num_responses > 1:
                 raise ValueError("Cannot stream multiple responses, please set n=1.")
             chunks: List[StreamingChunk] = []
-            chunk = None
+            completion_chunk = None
             _first_token = True
 
             # pylint: disable=not-an-iterable
-            for chunk in chat_completion:
-                if chunk.choices and streaming_callback:
-                    chunk_delta: StreamingChunk = self._build_chunk(chunk)
+            for completion_chunk in chat_completion:
+                if completion_chunk.choices and streaming_callback:
+                    chunk_delta: StreamingChunk = self._build_chunk(completion_chunk)
                     if _first_token:
                         _first_token = False
                         chunk_delta.meta["completion_start_time"] = datetime.now().isoformat()
                     chunks.append(chunk_delta)
                     streaming_callback(chunk_delta)  # invoke callback with the chunk_delta
-            completions = [self._connect_chunks(chunk, chunks)]
+            completions = [self._create_message_from_chunks(completion_chunk, chunks)]
         # if streaming is disabled, the completion is a ChatCompletion
         elif isinstance(chat_completion, ChatCompletion):
             completions = [self._build_message(chat_completion, choice) for choice in chat_completion.choices]
@@ -245,18 +245,20 @@ class OpenAIChatGenerator:
 
         return {"replies": completions}
 
-    def _connect_chunks(self, chunk: Any, chunks: List[StreamingChunk]) -> ChatMessage:
+    def _create_message_from_chunks(
+        self, completion_chunk: ChatCompletionChunk, streamed_chunks: List[StreamingChunk]
+    ) -> ChatMessage:
         """
-        Connects the streaming chunks into a single ChatMessage.
+        Creates a single ChatMessage from the streamed chunks. Some data is retrieved from the completion chunk.
 
-        :param chunk: The last chunk returned by the OpenAI API.
-        :param chunks: The list of all chunks returned by the OpenAI API.
+        :param completion_chunk: The last completion chunk returned by the OpenAI API.
+        :param streamed_chunks: The list of all chunks returned by the OpenAI API.
         """
-        is_tools_call = bool(chunks[0].meta.get("tool_calls"))
-        is_function_call = bool(chunks[0].meta.get("function_call"))
+        is_tools_call = bool(streamed_chunks[0].meta.get("tool_calls"))
+        is_function_call = bool(streamed_chunks[0].meta.get("function_call"))
         # if it's a tool call or function call, we need to build the payload dict from all the chunks
         if is_tools_call or is_function_call:
-            tools_len = 1 if is_function_call else len(chunks[0].meta.get("tool_calls", []))
+            tools_len = 1 if is_function_call else len(streamed_chunks[0].meta.get("tool_calls", []))
             # don't change this approach of building payload dicts, otherwise mypy will complain
             p_def: Dict[str, Any] = {
                 "index": 0,
@@ -265,7 +267,7 @@ class OpenAIChatGenerator:
                 "type": "function",
             }
             payloads = [copy.deepcopy(p_def) for _ in range(tools_len)]
-            for chunk_payload in chunks:
+            for chunk_payload in streamed_chunks:
                 if is_tools_call:
                     deltas = chunk_payload.meta.get("tool_calls") or []
                 else:
@@ -287,16 +289,18 @@ class OpenAIChatGenerator:
         else:
             total_content = ""
             total_meta = {}
-            for streaming_chunk in chunks:
+            for streaming_chunk in streamed_chunks:
                 total_content += streaming_chunk.content
                 total_meta.update(streaming_chunk.meta)
             complete_response = ChatMessage.from_assistant(total_content, meta=total_meta)
+        finish_reason = streamed_chunks[-1].meta["finish_reason"]
         complete_response.meta.update(
             {
-                "model": chunk.model,
+                "model": completion_chunk.model,
                 "index": 0,
-                "finish_reason": chunk.choices[0].finish_reason,
-                "usage": {},  # we don't have usage data for streaming responses
+                "finish_reason": finish_reason,
+                # Usage is available when streaming only if the user explicitly requests it
+                "usage": dict(completion_chunk.usage or {}),
             }
         )
         return complete_response
