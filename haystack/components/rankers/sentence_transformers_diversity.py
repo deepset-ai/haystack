@@ -217,16 +217,18 @@ class SentenceTransformersDiversityRanker:
         return default_to_dict(
             self,
             model=self.model_name_or_path,
+            top_k=self.top_k,
             device=self.device.to_dict(),
             token=self.token.to_dict() if self.token else None,
-            top_k=self.top_k,
             similarity=self.similarity,
             query_prefix=self.query_prefix,
-            document_prefix=self.document_prefix,
             query_suffix=self.query_suffix,
+            document_prefix=self.document_prefix,
             document_suffix=self.document_suffix,
             meta_fields_to_embed=self.meta_fields_to_embed,
             embedding_separator=self.embedding_separator,
+            strategy=self.strategy,
+            lambda_threshold=self.lambda_threshold,
         )
 
     @classmethod
