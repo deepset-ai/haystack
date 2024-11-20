@@ -151,20 +151,50 @@ class SentenceTransformersDiversityRanker:
         self.device = ComponentDevice.resolve_device(device)
         self.token = token
         self.model = None
-        self.similarity = (
-            Similarity.from_str(similarity) if similarity and isinstance(similarity, str) else Similarity.COSINE
-        )
+        self.similarity = self.parse_similarity(similarity)
         self.query_prefix = query_prefix
         self.document_prefix = document_prefix
         self.query_suffix = query_suffix
         self.document_suffix = document_suffix
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
-        self.strategy = (
-            Strategy.from_str(strategy) if strategy and isinstance(strategy, str) else Strategy.GREEDY_DIVERSITY_ORDER
-        )
-        self._check_lambda_threshold(lambda_threshold, strategy)
+        self.strategy = self.parse_strategy(strategy)
+        self._check_lambda_threshold(lambda_threshold, strategy)  # type: ignore
         self.lambda_threshold = lambda_threshold or 0.5
+
+    @staticmethod
+    def parse_similarity(similarity: Union[str, Similarity]) -> "Similarity":
+        """
+        Parse the similarity metric to use for comparing embeddings.
+
+        :param similarity:
+        :returns:
+            The Similarity enum.
+        """
+
+        if isinstance(similarity, str):
+            return Similarity.from_str(similarity)
+        elif isinstance(similarity, Similarity):
+            return similarity
+        else:
+            return Similarity.COSINE
+
+    @staticmethod
+    def parse_strategy(strategy: Union[str, Strategy]) -> "Strategy":
+        """
+        Parse the strategy to use for diversity ranking.
+
+        :param strategy:
+        :returns:
+            The Strategy enum.
+        """
+
+        if isinstance(strategy, str):
+            return Strategy.from_str(strategy)
+        elif isinstance(strategy, Strategy):
+            return strategy
+        else:
+            return Strategy.GREEDY_DIVERSITY_ORDER
 
     def warm_up(self):
         """
@@ -321,7 +351,6 @@ class SentenceTransformersDiversityRanker:
         idx = int(torch.argmax(query_similarities))
         selected.append(idx)
         mmr_scores.append(query_similarities[idx])
-
         while len(selected) < top_k:
             best_score = -float("inf")
             for idx, _ in enumerate(documents):
@@ -339,7 +368,7 @@ class SentenceTransformersDiversityRanker:
         return [documents[i] for i in selected]
 
     @staticmethod
-    def _check_lambda_threshold(lambda_threshold: float, strategy: Union[str, Strategy]):
+    def _check_lambda_threshold(lambda_threshold: float, strategy: Strategy):
         if (strategy == Strategy.MAXIMUM_MARGIN_RELEVANCE) and not 0 <= lambda_threshold <= 1:
             raise ValueError(f"lambda_threshold must be between 0 and 1, but got {lambda_threshold}.")
 
@@ -349,7 +378,6 @@ class SentenceTransformersDiversityRanker:
         query: str,
         documents: List[Document],
         top_k: Optional[int] = None,
-        *,
         lambda_threshold: Optional[float] = None,
     ) -> Dict[str, List[Document]]:
         """
