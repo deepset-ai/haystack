@@ -8,7 +8,7 @@ import torch
 
 from haystack import Document
 from haystack.components.rankers import SentenceTransformersDiversityRanker
-from haystack.components.rankers.sentence_transformers_diversity import Similarity
+from haystack.components.rankers.sentence_transformers_diversity import Similarity, Strategy
 from haystack.utils import ComponentDevice
 from haystack.utils.auth import Secret
 
@@ -66,22 +66,26 @@ class TestSentenceTransformersDiversityRanker:
     def test_to_dict(self):
         component = SentenceTransformersDiversityRanker()
         data = component.to_dict()
-        assert data == {
-            "type": "haystack.components.rankers.sentence_transformers_diversity.SentenceTransformersDiversityRanker",
-            "init_parameters": {
-                "model": "sentence-transformers/all-MiniLM-L6-v2",
-                "top_k": 10,
-                "device": ComponentDevice.resolve_device(None).to_dict(),
-                "similarity": Similarity.COSINE,
-                "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
-                "query_prefix": "",
-                "document_prefix": "",
-                "query_suffix": "",
-                "document_suffix": "",
-                "meta_fields_to_embed": [],
-                "embedding_separator": "\n",
-            },
+        assert (
+            data["type"]
+            == "haystack.components.rankers.sentence_transformers_diversity.SentenceTransformersDiversityRanker"
+        )
+        assert data["init_parameters"]["model"] == "sentence-transformers/all-MiniLM-L6-v2"
+        assert data["init_parameters"]["top_k"] == 10
+        assert data["init_parameters"]["device"] == ComponentDevice.resolve_device(None).to_dict()
+        assert data["init_parameters"]["similarity"] == Similarity.COSINE
+        assert data["init_parameters"]["token"] == {
+            "env_vars": ["HF_API_TOKEN", "HF_TOKEN"],
+            "strict": False,
+            "type": "env_var",
         }
+        assert data["init_parameters"]["query_prefix"] == ""
+        assert data["init_parameters"]["document_prefix"] == ""
+        assert data["init_parameters"]["query_suffix"] == ""
+        assert data["init_parameters"]["document_suffix"] == ""
+        assert data["init_parameters"]["meta_fields_to_embed"] == []
+        assert data["init_parameters"]["embedding_separator"] == "\n"
+        assert data["init_parameters"]["strategy"] == Strategy.GREEDY_DIVERSITY_ORDER
 
     def test_from_dict(self):
         data = {
@@ -179,22 +183,23 @@ class TestSentenceTransformersDiversityRanker:
             embedding_separator="--",
         )
         data = component.to_dict()
-        assert data == {
-            "type": "haystack.components.rankers.sentence_transformers_diversity.SentenceTransformersDiversityRanker",
-            "init_parameters": {
-                "model": "sentence-transformers/msmarco-distilbert-base-v4",
-                "top_k": 5,
-                "device": ComponentDevice.from_str("cuda:0").to_dict(),
-                "token": {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"},
-                "similarity": Similarity.DOT_PRODUCT,
-                "query_prefix": "query:",
-                "document_prefix": "document:",
-                "query_suffix": "query suffix",
-                "document_suffix": "document suffix",
-                "meta_fields_to_embed": ["meta_field"],
-                "embedding_separator": "--",
-            },
-        }
+
+        assert (
+            data["type"]
+            == "haystack.components.rankers.sentence_transformers_diversity.SentenceTransformersDiversityRanker"
+        )
+        assert data["init_parameters"]["model"] == "sentence-transformers/msmarco-distilbert-base-v4"
+        assert data["init_parameters"]["top_k"] == 5
+        assert data["init_parameters"]["device"] == ComponentDevice.from_str("cuda:0").to_dict()
+        assert data["init_parameters"]["token"] == {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"}
+        assert data["init_parameters"]["similarity"] == Similarity.DOT_PRODUCT
+        assert data["init_parameters"]["query_prefix"] == "query:"
+        assert data["init_parameters"]["document_prefix"] == "document:"
+        assert data["init_parameters"]["query_suffix"] == "query suffix"
+        assert data["init_parameters"]["document_suffix"] == "document suffix"
+        assert data["init_parameters"]["meta_fields_to_embed"] == ["meta_field"]
+        assert data["init_parameters"]["embedding_separator"] == "--"
+        assert data["init_parameters"]["strategy"] == Strategy.GREEDY_DIVERSITY_ORDER
 
     def test_from_dict_with_custom_init_parameters(self):
         data = {
