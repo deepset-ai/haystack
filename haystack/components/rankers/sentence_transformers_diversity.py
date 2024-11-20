@@ -64,7 +64,7 @@ class SentenceTransformersDiversityRanker:
     """
     A Diversity Ranker based on Sentence Transformers.
 
-    It applies a document ranking algorithm based on two strategies:
+    Applies a document ranking algorithm based on one of the two strategies:
 
     1. Greedy Diversity Order:
 
