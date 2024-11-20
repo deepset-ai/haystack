@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fix `DocumentSplitter` to handle custom `splitting_function` without requiring `split_length`.
+    Previously the `splitting_function` provided would not override other settings.
