@@ -140,7 +140,7 @@ class TestOpenAPIServiceConnector:
 
         connector.run(messages=messages, service_openapi_spec=spec, service_credentials="fake_key")
 
-        openapi_mock.assert_called_once_with(spec)
+        openapi_mock.assert_called_once_with(spec, ssl_verify=None)
         mock_service.authenticate.assert_called_once_with("apikey", "fake_key")
 
         # verify call went through on the wire with the correct parameters
