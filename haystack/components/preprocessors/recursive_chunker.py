@@ -21,7 +21,19 @@ class RecursiveChunker:
 
     @staticmethod
     def _chunk_text(text):
-        # some logic to split text into smaller chunks
+        # 1. identify all occurrences of the first splitting character in the text
+
+        # 2. split the text at the first occurrence of the splitting character
+
+        # 3. assessing each split to check whether they meet the condition of being smaller than our specified chunk
+        #    size
+
+        # 4. splits that satisfy this condition can be labeled as good splits.
+        # 4.1 combine good splits if each individual split is smaller than the chunk size
+
+        # 5. splits that don't satisfy the condition of being smaller than the chunk size can be labeled as bad splits
+        # 5.1 split the bad splits recursively until they meet the condition of being smaller than the chunk size
+
         return text
 
     def run(self, documents):
