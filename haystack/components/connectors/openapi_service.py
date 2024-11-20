@@ -74,7 +74,7 @@ class OpenAPIServiceConnector:
         Initializes the OpenAPIServiceConnector instance
 
         :param ssl_verify: Decide if to use ssl verification to the requests or not,
-        in case an str is passed, will be used as the CA.
+        in case an string is passed, will be used as the CA.
         """
         openapi_imports.check()
         self.ssl_verify = ssl_verify
