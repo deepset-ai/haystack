@@ -136,7 +136,7 @@ class SentenceTransformersDiversityRanker:
         :param document_suffix: A string to add to the end of each Document text before ranking.
         :param meta_fields_to_embed: List of meta fields that should be embedded along with the Document content.
         :param embedding_separator: Separator used to concatenate the meta fields to the Document content.
-        :param strategy: The strategy to use for diversity ranking. Can be one of "greedy_diversity_order" or
+        :param strategy: The strategy to use for diversity ranking. Can be either "greedy_diversity_order" or
                          "maximum_margin_relevance".
         :param lambda_threshold: The trade-off parameter between relevance and diversity. Only used when strategy is
                                  "maximum_margin_relevance".
