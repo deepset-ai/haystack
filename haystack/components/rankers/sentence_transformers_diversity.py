@@ -84,7 +84,7 @@ class SentenceTransformersDiversityRanker:
         relevance to the query and diversity from already selected documents. The 'lambda_threshold' controls the
         trade-off between relevance and diversity.
 
-    Usage example:
+    ### Usage example
     ```python
     from haystack import Document
     from haystack.components.rankers import SentenceTransformersDiversityRanker
