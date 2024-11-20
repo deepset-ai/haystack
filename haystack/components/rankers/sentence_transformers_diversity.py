@@ -68,12 +68,11 @@ class SentenceTransformersDiversityRanker:
 
     1. Greedy Diversity Order:
 
-        Implements a document ranking algorithm that orders documents in such a way as to maximize the overall diversity
-        of the documents.
+        Implements a document ranking algorithm that orders documents in a way that maximizes the overall diversity
+        of the documents based on their similarity to the query.
 
-        This component provides functionality to rank a list of documents based on their similarity with respect to the
-        query to maximize the overall diversity. It uses a pre-trained Sentence Transformers model to embed the query and
-        the Documents.
+        It uses a pre-trained Sentence Transformers model to embed the query and
+        the documents.
 
     2. Maximum Margin Relevance:
 
