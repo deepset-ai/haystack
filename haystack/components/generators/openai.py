@@ -49,7 +49,7 @@ class OpenAIGenerator:
     ```
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
         model: str = "gpt-4o-mini",
@@ -222,15 +222,17 @@ class OpenAIGenerator:
             if num_responses > 1:
                 raise ValueError("Cannot stream multiple responses, please set n=1.")
             chunks: List[StreamingChunk] = []
-            chunk = None
+            completion_chunk: Optional[ChatCompletionChunk] = None
 
             # pylint: disable=not-an-iterable
-            for chunk in completion:
-                if chunk.choices and streaming_callback:
-                    chunk_delta: StreamingChunk = self._build_chunk(chunk)
+            for completion_chunk in completion:
+                if completion_chunk.choices and streaming_callback:
+                    chunk_delta: StreamingChunk = self._build_chunk(completion_chunk)
                     chunks.append(chunk_delta)
                     streaming_callback(chunk_delta)  # invoke callback with the chunk_delta
-            completions = [self._connect_chunks(chunk, chunks)]
+            # Makes type checkers happy
+            assert completion_chunk is not None
+            completions = [self._create_message_from_chunks(completion_chunk, chunks)]
         elif isinstance(completion, ChatCompletion):
             completions = [self._build_message(completion, choice) for choice in completion.choices]
 
@@ -244,17 +246,21 @@ class OpenAIGenerator:
         }
 
     @staticmethod
-    def _connect_chunks(chunk: Any, chunks: List[StreamingChunk]) -> ChatMessage:
+    def _create_message_from_chunks(
+        completion_chunk: ChatCompletionChunk, streamed_chunks: List[StreamingChunk]
+    ) -> ChatMessage:
         """
-        Connects the streaming chunks into a single ChatMessage.
+        Creates a single ChatMessage from the streamed chunks. Some data is retrieved from the completion chunk.
         """
-        complete_response = ChatMessage.from_assistant("".join([chunk.content for chunk in chunks]))
+        complete_response = ChatMessage.from_assistant("".join([chunk.content for chunk in streamed_chunks]))
+        finish_reason = streamed_chunks[-1].meta["finish_reason"]
         complete_response.meta.update(
             {
-                "model": chunk.model,
+                "model": completion_chunk.model,
                 "index": 0,
-                "finish_reason": chunk.choices[0].finish_reason,
-                "usage": {},  # we don't have usage data for streaming responses
+                "finish_reason": finish_reason,
+                # Usage is available when streaming only if the user explicitly requests it
+                "usage": dict(completion_chunk.usage or {}),
             }
         )
         return complete_response
