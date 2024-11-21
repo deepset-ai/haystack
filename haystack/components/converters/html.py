@@ -129,7 +129,7 @@ class HTMLToDocument:
                 "storing only file names to improve privacy.",
                 DeprecationWarning,
             )
-            if not store_full_path:
+            if not store_full_path and "file_path" in merged_metadata:
                 merged_metadata["file_path"] = os.path.basename(bytestream.meta.get("file_path"))
 
             document = Document(content=text, meta=merged_metadata)

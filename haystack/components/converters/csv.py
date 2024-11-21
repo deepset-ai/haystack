@@ -101,7 +101,7 @@ class CSVToDocument:
                 DeprecationWarning,
             )
 
-            if not store_full_path:
+            if not store_full_path and "file_path" in merged_metadata:
                 merged_metadata["file_path"] = os.path.basename(bytestream.meta.get("file_path"))
 
             document = Document(content=data, meta=merged_metadata)
