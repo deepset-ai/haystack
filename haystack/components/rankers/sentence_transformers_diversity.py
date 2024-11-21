@@ -25,18 +25,23 @@ class Strategy(Enum):
     GREEDY_DIVERSITY_ORDER = "greedy_diversity_order"
     MAXIMUM_MARGIN_RELEVANCE = "maximum_margin_relevance"
 
+    def __str__(self) -> str:
+        """
+        Convert a Strategy enum to a string.
+        """
+        return self.value
+
     @staticmethod
-    def from_str(value: str) -> "Strategy":
+    def from_str(string: str) -> "Strategy":
         """
         Convert a string to a Strategy enum.
         """
-        if value == "greedy_diversity_order":
-            return Strategy.GREEDY_DIVERSITY_ORDER
-        if value == "maximum_margin_relevance":
-            return Strategy.MAXIMUM_MARGIN_RELEVANCE
-        raise ValueError(
-            f"Invalid value for Strategy: {value} choose from 'greedy_diversity_order' or 'maximum_margin_relevance'"
-        )
+        enum_map = {e.value: e for e in Strategy}
+        strategy = enum_map.get(string)
+        if strategy is None:
+            msg = f"Unknown strategy '{string}'. Supported strategies are: {list(enum_map.keys())}"
+            raise ValueError(msg)
+        return strategy
 
 
 class Similarity(Enum):
@@ -47,16 +52,23 @@ class Similarity(Enum):
     DOT_PRODUCT = "dot_product"
     COSINE = "cosine"
 
+    def __str__(self) -> str:
+        """
+        Convert a Similarity enum to a string.
+        """
+        return self.value
+
     @staticmethod
-    def from_str(value: str) -> "Similarity":
+    def from_str(string: str) -> "Similarity":
         """
         Convert a string to a Similarity enum.
         """
-        if value == "dot_product":
-            return Similarity.DOT_PRODUCT
-        if value == "cosine":
-            return Similarity.COSINE
-        raise ValueError(f"Invalid value for Similarity: {value} choose from 'dot_product' or 'cosine'")
+        enum_map = {e.value: e for e in Similarity}
+        similarity = enum_map.get(string)
+        if similarity is None:
+            msg = f"Unknown similarity metric '{string}'. Supported metrics are: {list(enum_map.keys())}"
+            raise ValueError(msg)
+        return similarity
 
 
 @component
@@ -150,19 +162,19 @@ class SentenceTransformersDiversityRanker:
         self.device = ComponentDevice.resolve_device(device)
         self.token = token
         self.model = None
-        self.similarity = self.parse_similarity(similarity)
+        self.similarity = self._parse_similarity(similarity)
         self.query_prefix = query_prefix
         self.document_prefix = document_prefix
         self.query_suffix = query_suffix
         self.document_suffix = document_suffix
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
-        self.strategy = self.parse_strategy(strategy)
+        self.strategy = self._parse_strategy(strategy)
         self._check_lambda_threshold(lambda_threshold, strategy)  # type: ignore
         self.lambda_threshold = lambda_threshold or 0.5
 
     @staticmethod
-    def parse_similarity(similarity: Union[str, Similarity]) -> "Similarity":
+    def _parse_similarity(similarity: Union[str, Similarity]) -> "Similarity":
         """
         Parse the similarity metric to use for comparing embeddings.
 
@@ -179,7 +191,7 @@ class SentenceTransformersDiversityRanker:
             return Similarity.COSINE
 
     @staticmethod
-    def parse_strategy(strategy: Union[str, Strategy]) -> "Strategy":
+    def _parse_strategy(strategy: Union[str, Strategy]) -> "Strategy":
         """
         Parse the strategy to use for diversity ranking.
 
@@ -219,14 +231,14 @@ class SentenceTransformersDiversityRanker:
             top_k=self.top_k,
             device=self.device.to_dict(),
             token=self.token.to_dict() if self.token else None,
-            similarity=self.similarity,
+            similarity=str(self.similarity),
             query_prefix=self.query_prefix,
             query_suffix=self.query_suffix,
             document_prefix=self.document_prefix,
             document_suffix=self.document_suffix,
             meta_fields_to_embed=self.meta_fields_to_embed,
             embedding_separator=self.embedding_separator,
-            strategy=self.strategy,
+            strategy=str(self.strategy),
             lambda_threshold=self.lambda_threshold,
         )
 

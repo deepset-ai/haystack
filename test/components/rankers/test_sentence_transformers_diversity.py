@@ -37,7 +37,7 @@ class TestSentenceTransformersDiversityRanker:
         assert component.meta_fields_to_embed == []
         assert component.embedding_separator == "\n"
 
-    def test_init_with_custom_init_parameters(self):
+    def test_init_with_custom_parameters(self):
         component = SentenceTransformersDiversityRanker(
             model="sentence-transformers/msmarco-distilbert-base-v4",
             top_k=5,
@@ -73,7 +73,7 @@ class TestSentenceTransformersDiversityRanker:
         assert data["init_parameters"]["model"] == "sentence-transformers/all-MiniLM-L6-v2"
         assert data["init_parameters"]["top_k"] == 10
         assert data["init_parameters"]["device"] == ComponentDevice.resolve_device(None).to_dict()
-        assert data["init_parameters"]["similarity"] == Similarity.COSINE
+        assert data["init_parameters"]["similarity"] == "cosine"
         assert data["init_parameters"]["token"] == {
             "env_vars": ["HF_API_TOKEN", "HF_TOKEN"],
             "strict": False,
@@ -85,7 +85,7 @@ class TestSentenceTransformersDiversityRanker:
         assert data["init_parameters"]["document_suffix"] == ""
         assert data["init_parameters"]["meta_fields_to_embed"] == []
         assert data["init_parameters"]["embedding_separator"] == "\n"
-        assert data["init_parameters"]["strategy"] == Strategy.GREEDY_DIVERSITY_ORDER
+        assert data["init_parameters"]["strategy"] == "greedy_diversity_order"
 
     def test_from_dict(self):
         data = {
@@ -168,7 +168,7 @@ class TestSentenceTransformersDiversityRanker:
         assert ranker.meta_fields_to_embed == []
         assert ranker.embedding_separator == "\n"
 
-    def test_to_dict_with_custom_init_parameters(self):
+    def test_to_dict_with_custom_parameters(self):
         component = SentenceTransformersDiversityRanker(
             model="sentence-transformers/msmarco-distilbert-base-v4",
             top_k=5,
@@ -192,14 +192,14 @@ class TestSentenceTransformersDiversityRanker:
         assert data["init_parameters"]["top_k"] == 5
         assert data["init_parameters"]["device"] == ComponentDevice.from_str("cuda:0").to_dict()
         assert data["init_parameters"]["token"] == {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"}
-        assert data["init_parameters"]["similarity"] == Similarity.DOT_PRODUCT
+        assert data["init_parameters"]["similarity"] == "dot_product"
         assert data["init_parameters"]["query_prefix"] == "query:"
         assert data["init_parameters"]["document_prefix"] == "document:"
         assert data["init_parameters"]["query_suffix"] == "query suffix"
         assert data["init_parameters"]["document_suffix"] == "document suffix"
         assert data["init_parameters"]["meta_fields_to_embed"] == ["meta_field"]
         assert data["init_parameters"]["embedding_separator"] == "--"
-        assert data["init_parameters"]["strategy"] == Strategy.GREEDY_DIVERSITY_ORDER
+        assert data["init_parameters"]["strategy"] == "greedy_diversity_order"
 
     def test_from_dict_with_custom_init_parameters(self):
         data = {
@@ -232,20 +232,20 @@ class TestSentenceTransformersDiversityRanker:
         assert ranker.meta_fields_to_embed == ["meta_field"]
         assert ranker.embedding_separator == "--"
 
-    def test_run_incorrect_similarity(self):
+    def test_run_invalid_similarity(self):
         """
         Tests that run method raises ValueError if similarity is incorrect
         """
         similarity = "incorrect"
-        with pytest.raises(ValueError, match=f"Invalid value for Similarity: {similarity}"):
+        with pytest.raises(ValueError, match=f"Unknown similarity metric"):
             SentenceTransformersDiversityRanker(model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity)
 
-    def test_invalid_strategy(self):
+    def test_run_invalid_strategy(self):
         """
         Tests that run method raises ValueError if strategy is incorrect
         """
         strategy = "incorrect"
-        with pytest.raises(ValueError, match=f"Invalid value for Strategy: {strategy}"):
+        with pytest.raises(ValueError, match=f"Unknown strategy"):
             SentenceTransformersDiversityRanker(
                 model="sentence-transformers/all-MiniLM-L6-v2", similarity="cosine", strategy=strategy
             )
@@ -558,6 +558,25 @@ class TestSentenceTransformersDiversityRanker:
         ranked_text = " ".join([doc.content for doc in ranked_docs])
 
         assert ranked_text == "Berlin Eiffel Tower Bananas"
+
+    def test_pipeline_serialise_deserialise(self):
+        ranker = SentenceTransformersDiversityRanker(
+            model="sentence-transformers/all-MiniLM-L6-v2", similarity="cosine", top_k=5
+        )
+        ranker_serialized = ranker.to_dict()
+        ranker_deserialized = SentenceTransformersDiversityRanker.from_dict(ranker_serialized)
+        assert ranker.model_name_or_path == ranker_deserialized.model_name_or_path
+        assert ranker.top_k == ranker_deserialized.top_k
+        assert ranker.device == ranker_deserialized.device
+        assert ranker.similarity == ranker_deserialized.similarity
+        assert ranker.token == ranker_deserialized.token
+        assert ranker.query_prefix == ranker_deserialized.query_prefix
+        assert ranker.document_prefix == ranker_deserialized.document_prefix
+        assert ranker.query_suffix == ranker_deserialized.query_suffix
+        assert ranker.document_suffix == ranker_deserialized.document_suffix
+        assert ranker.meta_fields_to_embed == ranker_deserialized.meta_fields_to_embed
+        assert ranker.embedding_separator == ranker_deserialized.embedding_separator
+        assert ranker.strategy == ranker_deserialized.strategy
 
     @pytest.mark.integration
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
