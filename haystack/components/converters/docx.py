@@ -4,6 +4,7 @@
 
 import csv
 import io
+import os
 from dataclasses import dataclass
 from enum import Enum
 from io import StringIO
@@ -145,6 +146,7 @@ class DOCXToDocument:
         self,
         sources: List[Union[str, Path, ByteStream]],
         meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+        store_full_path: bool = True,
     ):
         """
         Converts DOCX files to Documents.
@@ -158,7 +160,9 @@ class DOCXToDocument:
             If it's a list, the length of the list must match the number of sources, because the two lists will
             be zipped.
             If `sources` contains ByteStream objects, their `meta` will be added to the output Documents.
-
+        :param store_full_path:
+            If True, the full path of the file is stored in the metadata of the document.
+            If False, only the file name is stored.
         :returns:
             A dictionary with the following keys:
             - `documents`: Created Documents
@@ -186,6 +190,14 @@ class DOCXToDocument:
 
             docx_metadata = self._get_docx_metadata(document=docx_document)
             merged_metadata = {**bytestream.meta, **metadata, "docx": docx_metadata}
+
+            if not store_full_path:
+                merged_metadata["file_path"] = os.path.basename(bytestream.meta.get("file_path"))
+
+            logger.warning("""The `store_full_path` parameter defaults to True, storing full file paths in metadata.
+            In the next release, the default will change to False, storing only file names to improve privacy.
+            Update your approach to align with this change.""")
+
             document = Document(content=text, meta=merged_metadata)
             documents.append(document)
 

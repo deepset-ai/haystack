@@ -179,6 +179,37 @@ class TestDOCXToDocument:
             "Now we are in Page 2" in part for part in content_parts[table_index + 1 :]
         ), "Text after table not found"
 
+    def test_run_with_store_full_path_false(self, test_files_path, docx_converter):
+        """
+        Test if the component runs correctly with store_full_path=False
+        """
+        paths = [test_files_path / "docx" / "sample_docx_1.docx"]
+        output = docx_converter.run(sources=paths, store_full_path=False)
+        docs = output["documents"]
+        assert len(docs) == 1
+        assert "History" in docs[0].content
+        assert docs[0].meta.keys() == {"file_path", "docx"}
+        assert docs[0].meta == {
+            "file_path": "sample_docx_1.docx",
+            "docx": DOCXMetadata(
+                author="Microsoft Office User",
+                category="",
+                comments="",
+                content_status="",
+                created="2024-06-09T21:17:00+00:00",
+                identifier="",
+                keywords="",
+                language="",
+                last_modified_by="Carlos Fernández Lorán",
+                last_printed=None,
+                modified="2024-06-09T21:27:00+00:00",
+                revision=2,
+                subject="",
+                title="",
+                version="",
+            ),
+        }
+
     @pytest.mark.parametrize("table_format", ["markdown", "csv"])
     def test_table_between_two_paragraphs(self, test_files_path, table_format):
         docx_converter = DOCXToDocument(table_format=table_format)
