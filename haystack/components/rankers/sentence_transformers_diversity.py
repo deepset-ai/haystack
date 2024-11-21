@@ -17,7 +17,7 @@ with LazyImport(message="Run 'pip install \"sentence-transformers>=3.0.0\"'") as
     from sentence_transformers import SentenceTransformer
 
 
-class Strategy(Enum):
+class DiversityRankingStrategy(Enum):
     """
     The strategy to use for diversity ranking.
     """
@@ -32,11 +32,11 @@ class Strategy(Enum):
         return self.value
 
     @staticmethod
-    def from_str(string: str) -> "Strategy":
+    def from_str(string: str) -> "DiversityRankingStrategy":
         """
         Convert a string to a Strategy enum.
         """
-        enum_map = {e.value: e for e in Strategy}
+        enum_map = {e.value: e for e in DiversityRankingStrategy}
         strategy = enum_map.get(string)
         if strategy is None:
             msg = f"Unknown strategy '{string}'. Supported strategies are: {list(enum_map.keys())}"
@@ -44,7 +44,7 @@ class Strategy(Enum):
         return strategy
 
 
-class Similarity(Enum):
+class DiversityRankingSimilarity(Enum):
     """
     The similarity metric to use for comparing embeddings.
     """
@@ -59,11 +59,11 @@ class Similarity(Enum):
         return self.value
 
     @staticmethod
-    def from_str(string: str) -> "Similarity":
+    def from_str(string: str) -> "DiversityRankingSimilarity":
         """
         Convert a string to a Similarity enum.
         """
-        enum_map = {e.value: e for e in Similarity}
+        enum_map = {e.value: e for e in DiversityRankingSimilarity}
         similarity = enum_map.get(string)
         if similarity is None:
             msg = f"Unknown similarity metric '{string}'. Supported metrics are: {list(enum_map.keys())}"
@@ -117,14 +117,14 @@ class SentenceTransformersDiversityRanker:
         top_k: int = 10,
         device: Optional[ComponentDevice] = None,
         token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
-        similarity: Union[str, Similarity] = "cosine",
+        similarity: Union[str, DiversityRankingSimilarity] = "cosine",
         query_prefix: str = "",
         query_suffix: str = "",
         document_prefix: str = "",
         document_suffix: str = "",
         meta_fields_to_embed: Optional[List[str]] = None,
         embedding_separator: str = "\n",
-        strategy: Union[str, Strategy] = "greedy_diversity_order",
+        strategy: Union[str, DiversityRankingStrategy] = "greedy_diversity_order",
         lambda_threshold: float = 0.5,
     ):  # pylint: disable=too-many-positional-arguments
         """
@@ -162,50 +162,16 @@ class SentenceTransformersDiversityRanker:
         self.device = ComponentDevice.resolve_device(device)
         self.token = token
         self.model = None
-        self.similarity = self._parse_similarity(similarity)
+        self.similarity = DiversityRankingSimilarity.from_str(similarity) if isinstance(similarity, str) else similarity
         self.query_prefix = query_prefix
         self.document_prefix = document_prefix
         self.query_suffix = query_suffix
         self.document_suffix = document_suffix
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
-        self.strategy = self._parse_strategy(strategy)
-        self._check_lambda_threshold(lambda_threshold, strategy)  # type: ignore
+        self.strategy = DiversityRankingStrategy.from_str(strategy) if isinstance(strategy, str) else strategy
+        self._check_lambda_threshold(lambda_threshold, self.strategy)
         self.lambda_threshold = lambda_threshold or 0.5
-
-    @staticmethod
-    def _parse_similarity(similarity: Union[str, Similarity]) -> "Similarity":
-        """
-        Parse the similarity metric to use for comparing embeddings.
-
-        :param similarity:
-        :returns:
-            The Similarity enum.
-        """
-
-        if isinstance(similarity, str):
-            return Similarity.from_str(similarity)
-        elif isinstance(similarity, Similarity):
-            return similarity
-        else:
-            return Similarity.COSINE
-
-    @staticmethod
-    def _parse_strategy(strategy: Union[str, Strategy]) -> "Strategy":
-        """
-        Parse the strategy to use for diversity ranking.
-
-        :param strategy:
-        :returns:
-            The Strategy enum.
-        """
-
-        if isinstance(strategy, str):
-            return Strategy.from_str(strategy)
-        elif isinstance(strategy, Strategy):
-            return strategy
-        else:
-            return Strategy.GREEDY_DIVERSITY_ORDER
 
     def warm_up(self):
         """
@@ -328,7 +294,7 @@ class SentenceTransformersDiversityRanker:
         query_embedding = self.model.encode([self.query_prefix + query + self.query_suffix], convert_to_tensor=True)  # type: ignore[attr-defined]
 
         # Normalize embeddings to unit length for computing cosine similarity
-        if self.similarity == Similarity.COSINE:
+        if self.similarity == DiversityRankingSimilarity.COSINE:
             doc_embeddings /= torch.norm(doc_embeddings, p=2, dim=-1).unsqueeze(-1)
             query_embedding /= torch.norm(query_embedding, p=2, dim=-1).unsqueeze(-1)
         return doc_embeddings, query_embedding
@@ -357,13 +323,10 @@ class SentenceTransformersDiversityRanker:
         top_k = top_k if top_k else len(documents)
 
         selected: List[int] = []
-        mmr_scores = []
-
         tensor = query_embedding @ doc_embeddings.T
         query_similarities = tensor.reshape(-1)
         idx = int(torch.argmax(query_similarities))
         selected.append(idx)
-        mmr_scores.append(query_similarities[idx])
         while len(selected) < top_k:
             best_idx = None
             best_score = -float("inf")
@@ -378,14 +341,13 @@ class SentenceTransformersDiversityRanker:
                     best_idx = idx
             if best_idx is None:
                 raise ValueError("No best document found, check if the documents list contains any documents.")
-            mmr_scores.append(best_score)
             selected.append(best_idx)
 
         return [documents[i] for i in selected]
 
     @staticmethod
-    def _check_lambda_threshold(lambda_threshold: float, strategy: Strategy):
-        if (strategy == Strategy.MAXIMUM_MARGIN_RELEVANCE) and not 0 <= lambda_threshold <= 1:
+    def _check_lambda_threshold(lambda_threshold: float, strategy: DiversityRankingStrategy):
+        if (strategy == DiversityRankingStrategy.MAXIMUM_MARGIN_RELEVANCE) and not 0 <= lambda_threshold <= 1:
             raise ValueError(f"lambda_threshold must be between 0 and 1, but got {lambda_threshold}.")
 
     @component.output_types(documents=List[Document])
@@ -423,13 +385,10 @@ class SentenceTransformersDiversityRanker:
 
         if top_k is None:
             top_k = self.top_k
-        elif top_k <= 0:
-            raise ValueError(f"top_k must be > 0, but got {top_k}")
-        elif top_k > len(documents):
-            raise ValueError(f"top_k must be <= number of documents, but got {top_k}")
+        elif not 0 < top_k <= len(documents):
+            raise ValueError(f"top_k must be between 1 and {len(documents)}, but got {top_k}")
 
-        if self.strategy == Strategy.MAXIMUM_MARGIN_RELEVANCE:
-            # use lambda_threshold provided at runtime or the one set during initialization
+        if self.strategy == DiversityRankingStrategy.MAXIMUM_MARGIN_RELEVANCE:
             if lambda_threshold is None:
                 lambda_threshold = self.lambda_threshold
             self._check_lambda_threshold(lambda_threshold, self.strategy)

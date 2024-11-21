@@ -6,9 +6,12 @@ from unittest.mock import MagicMock, call, patch
 import pytest
 import torch
 
-from haystack import Document
+from haystack import Document, Pipeline
 from haystack.components.rankers import SentenceTransformersDiversityRanker
-from haystack.components.rankers.sentence_transformers_diversity import Similarity, Strategy
+from haystack.components.rankers.sentence_transformers_diversity import (
+    DiversityRankingSimilarity,
+    DiversityRankingStrategy,
+)
 from haystack.utils import ComponentDevice
 from haystack.utils.auth import Secret
 
@@ -28,7 +31,7 @@ class TestSentenceTransformersDiversityRanker:
         assert component.model_name_or_path == "sentence-transformers/all-MiniLM-L6-v2"
         assert component.top_k == 10
         assert component.device == ComponentDevice.resolve_device(None)
-        assert component.similarity == Similarity.COSINE
+        assert component.similarity == DiversityRankingSimilarity.COSINE
         assert component.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
         assert component.query_prefix == ""
         assert component.document_prefix == ""
@@ -54,7 +57,7 @@ class TestSentenceTransformersDiversityRanker:
         assert component.model_name_or_path == "sentence-transformers/msmarco-distilbert-base-v4"
         assert component.top_k == 5
         assert component.device == ComponentDevice.from_str("cuda:0")
-        assert component.similarity == Similarity.DOT_PRODUCT
+        assert component.similarity == DiversityRankingSimilarity.DOT_PRODUCT
         assert component.token == Secret.from_token("fake-api-token")
         assert component.query_prefix == "query:"
         assert component.document_prefix == "document:"
@@ -109,7 +112,7 @@ class TestSentenceTransformersDiversityRanker:
         assert ranker.model_name_or_path == "sentence-transformers/all-MiniLM-L6-v2"
         assert ranker.top_k == 10
         assert ranker.device == ComponentDevice.resolve_device(None)
-        assert ranker.similarity == Similarity.COSINE
+        assert ranker.similarity == DiversityRankingSimilarity.COSINE
         assert ranker.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
         assert ranker.query_prefix == ""
         assert ranker.document_prefix == ""
@@ -140,7 +143,7 @@ class TestSentenceTransformersDiversityRanker:
         assert ranker.model_name_or_path == "sentence-transformers/all-MiniLM-L6-v2"
         assert ranker.top_k == 10
         assert ranker.device == ComponentDevice.resolve_device(None)
-        assert ranker.similarity == Similarity.COSINE
+        assert ranker.similarity == DiversityRankingSimilarity.COSINE
         assert ranker.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
         assert ranker.query_prefix == ""
         assert ranker.document_prefix == ""
@@ -159,7 +162,7 @@ class TestSentenceTransformersDiversityRanker:
         assert ranker.model_name_or_path == "sentence-transformers/all-MiniLM-L6-v2"
         assert ranker.top_k == 10
         assert ranker.device == ComponentDevice.resolve_device(None)
-        assert ranker.similarity == Similarity.COSINE
+        assert ranker.similarity == DiversityRankingSimilarity.COSINE
         assert ranker.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
         assert ranker.query_prefix == ""
         assert ranker.document_prefix == ""
@@ -223,7 +226,7 @@ class TestSentenceTransformersDiversityRanker:
         assert ranker.model_name_or_path == "sentence-transformers/msmarco-distilbert-base-v4"
         assert ranker.top_k == 5
         assert ranker.device == ComponentDevice.from_str("cuda:0")
-        assert ranker.similarity == Similarity.DOT_PRODUCT
+        assert ranker.similarity == DiversityRankingSimilarity.DOT_PRODUCT
         assert ranker.token == Secret.from_env_var("ENV_VAR", strict=False)
         assert ranker.query_prefix == "query:"
         assert ranker.document_prefix == "document:"
@@ -376,7 +379,7 @@ class TestSentenceTransformersDiversityRanker:
         query = "test"
         documents = [Document(content="doc1"), Document(content="doc2"), Document(content="doc3")]
 
-        with pytest.raises(ValueError, match="top_k must be > 0, but got"):
+        with pytest.raises(ValueError, match="top_k must be between"):
             ranker.run(query=query, documents=documents, top_k=-5)
 
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
@@ -563,20 +566,11 @@ class TestSentenceTransformersDiversityRanker:
         ranker = SentenceTransformersDiversityRanker(
             model="sentence-transformers/all-MiniLM-L6-v2", similarity="cosine", top_k=5
         )
-        ranker_serialized = ranker.to_dict()
-        ranker_deserialized = SentenceTransformersDiversityRanker.from_dict(ranker_serialized)
-        assert ranker.model_name_or_path == ranker_deserialized.model_name_or_path
-        assert ranker.top_k == ranker_deserialized.top_k
-        assert ranker.device == ranker_deserialized.device
-        assert ranker.similarity == ranker_deserialized.similarity
-        assert ranker.token == ranker_deserialized.token
-        assert ranker.query_prefix == ranker_deserialized.query_prefix
-        assert ranker.document_prefix == ranker_deserialized.document_prefix
-        assert ranker.query_suffix == ranker_deserialized.query_suffix
-        assert ranker.document_suffix == ranker_deserialized.document_suffix
-        assert ranker.meta_fields_to_embed == ranker_deserialized.meta_fields_to_embed
-        assert ranker.embedding_separator == ranker_deserialized.embedding_separator
-        assert ranker.strategy == ranker_deserialized.strategy
+
+        pipe = Pipeline()
+        pipe.add_component("ranker", ranker)
+        pipe_serialized = pipe.to_dict()
+        assert Pipeline.from_dict(pipe_serialized) == pipe
 
     @pytest.mark.integration
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
