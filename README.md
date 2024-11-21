@@ -66,14 +66,14 @@ Some examples of what you can do with Haystack:
 >
 > Are you looking for a managed solution that benefits from Haystack? [deepset Cloud](https://www.deepset.ai/deepset-cloud?utm_campaign=developer-relations&utm_source=haystack&utm_medium=readme) is our fully managed, end-to-end platform to integrate LLMs with your data, which uses Haystack for the LLM pipelines architecture.
 
-## 🔜 Visual Pipeline Editor
+## 🆕 deepset Studio: Your Development Environment for Haystack
 
-Use **deepset Studio** to visually create and export your Haystack pipeline architecture as a YAML or as Python code. Learn more about it in [our announcement post](https://haystack.deepset.ai/blog/announcing-studio).
+Use **deepset Studio** to visually create, deploy, and test your Haystack pipelines. Learn more about it in [our announcement post](https://haystack.deepset.ai/blog/announcing-studio).
 
 ![studio](https://github.com/user-attachments/assets/e4f09746-20b5-433e-8261-eca224ac23b3)
 
 
-👉 [Join the waitlist](https://landing.deepset.ai/deepset-studio-waitlist?utm_campaign=2408%20-%20Campaign%20-%20Studio%20Launch&utm_source=github&utm_medium=referral)!
+👉 [Sign up](https://landing.deepset.ai/deepset-studio-signup)!
 
 ## Telemetry
 
