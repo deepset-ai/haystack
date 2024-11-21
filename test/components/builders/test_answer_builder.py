@@ -36,6 +36,16 @@ class TestAnswerBuilder:
         assert answers[0].documents == []
         assert isinstance(answers[0], GeneratedAnswer)
 
+    def test_run_with_meta(self):
+        component = AnswerBuilder()
+        output = component.run(query="query", replies=["reply1"], meta=[{"test": "meta"}])
+        answers = output["answers"]
+        assert answers[0].data == "reply1"
+        assert answers[0].meta == {"test": "meta"}
+        assert answers[0].query == "query"
+        assert answers[0].documents == []
+        assert isinstance(answers[0], GeneratedAnswer)
+
     def test_run_without_pattern(self):
         component = AnswerBuilder()
         output = component.run(query="test query", replies=["Answer: AnswerString"], meta=[{}])
@@ -269,6 +279,48 @@ class TestAnswerBuilder:
             "finish_reason": "stop",
             "usage": {"prompt_tokens": 32, "completion_tokens": 153, "total_tokens": 185},
         }
+        assert answers[0].query == "test query"
+        assert answers[0].documents == []
+        assert isinstance(answers[0], GeneratedAnswer)
+
+    def test_run_with_chat_message_replies_with_meta_set_at_run_time(self):
+        component = AnswerBuilder()
+        replies = [
+            ChatMessage(
+                content="AnswerString",
+                role=ChatRole.ASSISTANT,
+                name=None,
+                meta={
+                    "model": "gpt-4o-mini",
+                    "index": 0,
+                    "finish_reason": "stop",
+                    "usage": {"prompt_tokens": 32, "completion_tokens": 153, "total_tokens": 185},
+                },
+            )
+        ]
+        output = component.run(query="test query", replies=replies, meta=[{"test": "meta"}])
+        answers = output["answers"]
+        assert len(answers) == 1
+        assert answers[0].data == "AnswerString"
+        assert answers[0].meta == {
+            "model": "gpt-4o-mini",
+            "index": 0,
+            "finish_reason": "stop",
+            "usage": {"prompt_tokens": 32, "completion_tokens": 153, "total_tokens": 185},
+            "test": "meta",
+        }
+        assert answers[0].query == "test query"
+        assert answers[0].documents == []
+        assert isinstance(answers[0], GeneratedAnswer)
+
+    def test_run_with_chat_message_no_meta_with_meta_set_at_run_time(self):
+        component = AnswerBuilder()
+        replies = [ChatMessage(content="AnswerString", role=ChatRole.ASSISTANT, name=None, meta={})]
+        output = component.run(query="test query", replies=replies, meta=[{"test": "meta"}])
+        answers = output["answers"]
+        assert len(answers) == 1
+        assert answers[0].data == "AnswerString"
+        assert answers[0].meta == {"test": "meta"}
         assert answers[0].query == "test query"
         assert answers[0].documents == []
         assert isinstance(answers[0], GeneratedAnswer)
