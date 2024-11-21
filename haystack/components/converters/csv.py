@@ -4,6 +4,7 @@
 
 import io
 import os
+import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
@@ -93,12 +94,15 @@ class CSVToDocument:
 
             merged_metadata = {**bytestream.meta, **metadata}
 
+            warnings.warn(
+                "The `store_full_path` parameter defaults to True, storing full file paths in metadata. "
+                "In the 2.9.0 release, the default value for `store_full_path` will change to False, "
+                "storing only file names to improve privacy.",
+                DeprecationWarning,
+            )
+
             if not store_full_path:
                 merged_metadata["file_path"] = os.path.basename(bytestream.meta.get("file_path"))
-
-            logger.warning("""The `store_full_path` parameter defaults to True, storing full file paths in metadata.
-            In the next release, the default will change to False, storing only file names to improve privacy.
-            Update your approach to align with this change.""")
 
             document = Document(content=data, meta=merged_metadata)
             documents.append(document)
