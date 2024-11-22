@@ -524,3 +524,21 @@ class TestRouter:
         # Test pipeline with mandatory and both optionals
         result = pipe.run(data={"router": {"question": "What?", "mode": "chat", "language": "en", "source": "doc"}})
         assert result["router"] == {"en_doc_chat": "What?"}, "Pipeline should handle all parameters"
+
+    def test_warns_on_unused_optional_variables(self):
+        """
+        Test that a warning is raised when optional_variables contains variables
+        that are not used in any route conditions or outputs.
+        """
+        routes = [
+            {"condition": '{{mode == "chat"}}', "output": "{{question}}", "output_name": "chat", "output_type": str},
+            {"condition": "{{ True }}", "output": "{{question}}", "output_name": "fallback", "output_type": str},
+        ]
+
+        # Initialize with unused optional variables and capture warning
+        with pytest.warns(UserWarning, match="optional variables"):
+            router = ConditionalRouter(routes=routes, optional_variables=["unused_var1", "unused_var2"])
+
+        # Verify router still works normally
+        result = router.run(question="What?", mode="chat")
+        assert result == {"chat": "What?"}

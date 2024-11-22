@@ -208,6 +208,15 @@ class ConditionalRouter:
         # remove optional variables from mandatory input types
         mandatory_input_types = input_types - set(self.optional_variables)
 
+        # warn about unused optional variables
+        unused_optional_vars = set(self.optional_variables) - input_types if self.optional_variables else None
+        if unused_optional_vars:
+            warn(
+                f"The following optional variables are specified but not used in any route: {unused_optional_vars}. "
+                "Check if there's a typo in variable names.",
+                UserWarning,
+            )
+
         # add mandatory input types
         component.set_input_types(self, **{var: Any for var in mandatory_input_types})
 
