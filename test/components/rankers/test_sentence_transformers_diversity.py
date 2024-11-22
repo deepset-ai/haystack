@@ -569,8 +569,8 @@ class TestSentenceTransformersDiversityRanker:
 
         pipe = Pipeline()
         pipe.add_component("ranker", ranker)
-        pipe_serialized = pipe.to_dict()
-        assert Pipeline.from_dict(pipe_serialized) == pipe
+        pipe_serialized = pipe.dumps()
+        assert Pipeline.loads(pipe_serialized) == pipe
 
     @pytest.mark.integration
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
