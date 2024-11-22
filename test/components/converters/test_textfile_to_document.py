@@ -31,6 +31,23 @@ class TestTextfileToDocument:
         assert docs[1].meta["file_path"] == str(files[1])
         assert docs[2].meta == bytestream.meta
 
+    def test_run_with_store_full_path(self, test_files_path):
+        """
+        Test if the component runs correctly with store_full_path= False.
+        """
+        bytestream = ByteStream.from_file_path(test_files_path / "txt" / "doc_3.txt")
+        bytestream.meta["file_path"] = str(test_files_path / "txt" / "doc_3.txt")
+        bytestream.meta["key"] = "value"
+        files = [str(test_files_path / "txt" / "doc_1.txt"), bytestream]
+        converter = TextFileToDocument(store_full_path=False)
+        output = converter.run(sources=files)
+        docs = output["documents"]
+        assert len(docs) == 2
+        assert "Some text for testing." in docs[0].content
+        assert "That's yet another file!" in docs[1].content
+        assert docs[0].meta["file_path"] == "doc_1.txt"
+        assert docs[1].meta["file_path"] == "doc_3.txt"
+
     def test_run_error_handling(self, test_files_path, caplog):
         """
         Test if the component correctly handles errors.

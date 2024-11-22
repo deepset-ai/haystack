@@ -18,9 +18,10 @@ class TestMarkdownToDocument:
         assert converter.progress_bar is True
 
     def test_init_params_custom(self):
-        converter = MarkdownToDocument(table_to_single_line=True, progress_bar=False)
+        converter = MarkdownToDocument(table_to_single_line=True, progress_bar=False, store_full_path=False)
         assert converter.table_to_single_line is True
         assert converter.progress_bar is False
+        assert converter.store_full_path is False
 
     @pytest.mark.integration
     def test_run(self, test_files_path):
@@ -33,6 +34,21 @@ class TestMarkdownToDocument:
         for doc in docs:
             assert "What to build with Haystack" in doc.content
             assert "# git clone https://github.com/deepset-ai/haystack.git" in doc.content
+
+    def test_run_with_store_full_path_false(self, test_files_path):
+        """
+        Test if the component runs correctly with store_full_path=False
+        """
+        converter = MarkdownToDocument(store_full_path=False)
+        sources = [test_files_path / "markdown" / "sample.md"]
+        results = converter.run(sources=sources)
+        docs = results["documents"]
+
+        assert len(docs) == 1
+        for doc in docs:
+            assert "What to build with Haystack" in doc.content
+            assert "# git clone https://github.com/deepset-ai/haystack.git" in doc.content
+            assert doc.meta["file_path"] == "sample.md"
 
     def test_run_calls_normalize_metadata(self, test_files_path):
         bytestream = ByteStream(data=b"test", meta={"author": "test_author", "language": "en"})

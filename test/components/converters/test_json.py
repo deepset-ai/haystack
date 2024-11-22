@@ -21,7 +21,7 @@ test_data = [
             {
                 "id": "674",
                 "firstname": "Dario",
-                "surname": "Fo",
+                "surname": "Fokin",
                 "motivation": "who emulates the jesters of the Middle Ages in scourging authority and upholding the dignity of the downtrodden",
                 "share": "1",
             }
@@ -104,6 +104,7 @@ def test_to_dict():
             "content_key": "motivation",
             "jq_schema": ".laureates[]",
             "extra_meta_fields": {"firstname", "surname"},
+            "store_full_path": True,
         },
     }
 
@@ -115,6 +116,7 @@ def test_from_dict():
             "content_key": "motivation",
             "jq_schema": ".laureates[]",
             "extra_meta_fields": ["firstname", "surname"],
+            "store_full_path": True,
         },
     }
     converter = JSONConverter.from_dict(data)
@@ -140,7 +142,7 @@ def test_run(tmpdir):
     assert len(result["documents"]) == 4
     assert (
         result["documents"][0].content
-        == "Dario Fo who emulates the jesters of the Middle Ages in scourging authority and "
+        == "Dario Fokin who emulates the jesters of the Middle Ages in scourging authority and "
         "upholding the dignity of the downtrodden"
     )
     assert result["documents"][0].meta == {"file_path": str(first_test_file)}
@@ -148,6 +150,43 @@ def test_run(tmpdir):
     assert result["documents"][1].meta == {"file_path": str(second_test_file)}
     assert result["documents"][2].content == "Rita Levi-Montalcini for their discoveries of growth factors"
     assert result["documents"][2].meta == {"file_path": str(second_test_file)}
+    assert (
+        result["documents"][3].content == "Enrico Fermi for his demonstrations of the existence of new "
+        "radioactive elements produced by neutron irradiation, and for his related discovery of nuclear "
+        "reactions brought about by slow neutrons"
+    )
+    assert result["documents"][3].meta == {}
+
+
+def test_run_with_store_full_path_false(tmpdir):
+    """
+    Test if the component runs correctly with store_full_path=False
+    """
+    first_test_file = Path(tmpdir / "first_test_file.json")
+    second_test_file = Path(tmpdir / "second_test_file.json")
+
+    first_test_file.write_text(json.dumps(test_data[0]), "utf-8")
+    second_test_file.write_text(json.dumps(test_data[1]), "utf-8")
+    byte_stream = ByteStream.from_string(json.dumps(test_data[2]))
+
+    sources = [str(first_test_file), second_test_file, byte_stream]
+
+    converter = JSONConverter(
+        jq_schema='.laureates[] | .firstname + " " + .surname + " " + .motivation', store_full_path=False
+    )
+    result = converter.run(sources=sources)
+    assert len(result) == 1
+    assert len(result["documents"]) == 4
+    assert (
+        result["documents"][0].content
+        == "Dario Fokin who emulates the jesters of the Middle Ages in scourging authority and "
+        "upholding the dignity of the downtrodden"
+    )
+    assert result["documents"][0].meta == {"file_path": "first_test_file.json"}
+    assert result["documents"][1].content == "Stanley Cohen for their discoveries of growth factors"
+    assert result["documents"][1].meta == {"file_path": "second_test_file.json"}
+    assert result["documents"][2].content == "Rita Levi-Montalcini for their discoveries of growth factors"
+    assert result["documents"][2].meta == {"file_path": "second_test_file.json"}
     assert (
         result["documents"][3].content == "Enrico Fermi for his demonstrations of the existence of new "
         "radioactive elements produced by neutron irradiation, and for his related discovery of nuclear "
@@ -212,7 +251,7 @@ def test_run_with_single_meta(tmpdir):
     assert len(result["documents"]) == 4
     assert (
         result["documents"][0].content
-        == "Dario Fo who emulates the jesters of the Middle Ages in scourging authority and "
+        == "Dario Fokin who emulates the jesters of the Middle Ages in scourging authority and "
         "upholding the dignity of the downtrodden"
     )
     assert result["documents"][0].meta == {"file_path": str(first_test_file), "creation_date": "1945-05-25T00:00:00"}
@@ -248,7 +287,7 @@ def test_run_with_meta_list(tmpdir):
     assert len(result["documents"]) == 4
     assert (
         result["documents"][0].content
-        == "Dario Fo who emulates the jesters of the Middle Ages in scourging authority and "
+        == "Dario Fokin who emulates the jesters of the Middle Ages in scourging authority and "
         "upholding the dignity of the downtrodden"
     )
     assert result["documents"][0].meta == {"file_path": str(first_test_file), "creation_date": "1945-05-25T00:00:00"}
@@ -322,7 +361,7 @@ def test_run_with_jq_schema_content_key_and_extra_meta_fields(tmpdir):
         result["documents"][0].content == "who emulates the jesters of the Middle Ages in scourging authority and "
         "upholding the dignity of the downtrodden"
     )
-    assert result["documents"][0].meta == {"file_path": str(first_test_file), "firstname": "Dario", "surname": "Fo"}
+    assert result["documents"][0].meta == {"file_path": str(first_test_file), "firstname": "Dario", "surname": "Fokin"}
     assert result["documents"][1].content == "for their discoveries of growth factors"
     assert result["documents"][1].meta == {
         "file_path": str(second_test_file),
@@ -406,7 +445,7 @@ def test_run_with_jq_schema_content_key_and_extra_meta_fields_literal(tmpdir):
         "file_path": str(first_test_file),
         "id": "674",
         "firstname": "Dario",
-        "surname": "Fo",
+        "surname": "Fokin",
         "share": "1",
     }
     assert result["documents"][1].content == "for their discoveries of growth factors"
