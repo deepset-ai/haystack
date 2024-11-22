@@ -170,8 +170,8 @@ class SentenceTransformersDiversityRanker:
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
         self.strategy = DiversityRankingStrategy.from_str(strategy) if isinstance(strategy, str) else strategy
-        self._check_lambda_threshold(lambda_threshold, self.strategy)
         self.lambda_threshold = lambda_threshold or 0.5
+        self._check_lambda_threshold(lambda_threshold, self.strategy)
 
     def warm_up(self):
         """
