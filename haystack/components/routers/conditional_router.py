@@ -113,6 +113,7 @@ class ConditionalRouter:
         custom_filters: Optional[Dict[str, Callable]] = None,
         unsafe: bool = False,
         validate_output_type: bool = False,
+        optional_variables: Optional[List[str]] = None,
     ):
         """
         Initializes the `ConditionalRouter` with a list of routes detailing the conditions for routing.
@@ -136,11 +137,49 @@ class ConditionalRouter:
         :param validate_output_type:
             Enable validation of routes' output.
             If a route output doesn't match the declared type a ValueError is raised running.
+        :param optional_variables:
+            A list of variable names that are optional in your route conditions and outputs.
+            If these variables are not provided at runtime, they will be set to `None`.
+            This allows you to write routes that can handle missing inputs gracefully without raising errors.
+
+            Example usage with a default fallback route:
+            ```python
+            routes = [
+                {
+                    "condition": '{{ path == "rag" }}',
+                    "output": "{{ question }}",
+                    "output_name": "rag_route",
+                    "output_type": str
+                },
+                {
+                    "condition": "{{ True }}",  # fallback route
+                    "output": "{{ question }}",
+                    "output_name": "default_route",
+                    "output_type": str
+                }
+            ]
+
+            router = ConditionalRouter(routes, optional_variables=["path"])
+
+            # When 'path' is provided, specific route is taken:
+            result = router.run(question="What?", path="rag")
+            assert result == {"rag_route": "What?"}
+
+            # When 'path' is not provided, fallback route is taken:
+            result = router.run(question="What?")
+            assert result == {"default_route": "What?"}
+            ```
+
+            This pattern is particularly useful when:
+            - You want to provide default/fallback behavior when certain inputs are missing
+            - Some variables are only needed for specific routing conditions
+            - You're building flexible pipelines where not all inputs are guaranteed to be present
         """
         self.routes: List[dict] = routes
         self.custom_filters = custom_filters or {}
         self._unsafe = unsafe
         self._validate_output_type = validate_output_type
+        self.optional_variables = optional_variables or []
 
         # Create a Jinja environment to inspect variables in the condition templates
         if self._unsafe:
@@ -166,7 +205,17 @@ class ConditionalRouter:
             # extract outputs
             output_types.update({route["output_name"]: route["output_type"]})
 
-        component.set_input_types(self, **{var: Any for var in input_types})
+        # remove optional variables from mandatory input types
+        mandatory_input_types = input_types - set(self.optional_variables)
+
+        # add mandatory input types
+        component.set_input_types(self, **{var: Any for var in mandatory_input_types})
+
+        # now add optional input types
+        for optional_var_name in self.optional_variables:
+            component.set_input_type(self, name=optional_var_name, type=Any, default=None)
+
+        # set output types
         component.set_output_types(self, **output_types)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -186,6 +235,7 @@ class ConditionalRouter:
             custom_filters=se_filters,
             unsafe=self._unsafe,
             validate_output_type=self._validate_output_type,
+            optional_variables=self.optional_variables,
         )
 
     @classmethod

@@ -397,3 +397,51 @@ class TestRouter:
         streams = ["1", "2", "3", "4"]
         with pytest.raises(ValueError, match="Route 'streams' type doesn't match expected type"):
             router.run(streams=streams, message=message)
+
+    def test_router_with_optional_parameters(self):
+        """
+        Test that the router works with optional parameters, particularly testing the default/fallback route
+        when an expected parameter is not provided.
+        """
+        routes = [
+            {"condition": '{{path == "rag"}}', "output": "{{question}}", "output_name": "normal", "output_type": str},
+            {
+                "condition": '{{path == "followup_short"}}',
+                "output": "{{question}}",
+                "output_name": "followup_short",
+                "output_type": str,
+            },
+            {
+                "condition": '{{path == "followup_elaborate"}}',
+                "output": "{{question}}",
+                "output_name": "followup_elaborate",
+                "output_type": str,
+            },
+            {"condition": "{{ True }}", "output": "{{ question }}", "output_name": "fallback", "output_type": str},
+        ]
+
+        router = ConditionalRouter(routes, optional_variables=["path"])
+
+        # Test direct component usage
+        result = router.run(question="What?")
+        assert result == {"fallback": "What?"}, "Default route should be taken when 'path' is not provided"
+
+        # Test with path parameter
+        result = router.run(question="What?", path="rag")
+        assert result == {"normal": "What?"}, "Specific route should be taken when 'path' is provided"
+
+        # Test in pipeline
+        from haystack import Pipeline
+
+        pipe = Pipeline()
+        pipe.add_component("router", router)
+
+        # Test pipeline without path parameter
+        result = pipe.run(data={"router": {"question": "What?"}})
+        assert result["router"] == {
+            "fallback": "What?"
+        }, "Default route should work in pipeline when 'path' is not provided"
+
+        # Test pipeline with path parameter
+        result = pipe.run(data={"router": {"question": "What?", "path": "followup_short"}})
+        assert result["router"] == {"followup_short": "What?"}, "Specific route should work in pipeline"
