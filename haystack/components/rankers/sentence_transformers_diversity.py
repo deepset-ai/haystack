@@ -323,8 +323,8 @@ class SentenceTransformersDiversityRanker:
         top_k = top_k if top_k else len(documents)
 
         selected: List[int] = []
-        tensor = query_embedding @ doc_embeddings.T
-        query_similarities = tensor.reshape(-1)
+        query_similarities_as_tensor = query_embedding @ doc_embeddings.T
+        query_similarities = query_similarities_as_tensor.reshape(-1)
         idx = int(torch.argmax(query_similarities))
         selected.append(idx)
         while len(selected) < top_k:
