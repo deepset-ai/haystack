@@ -39,6 +39,25 @@ class TestCSVToDocument:
         assert docs[1].meta["file_path"] == str(files[1])
         assert docs[2].meta["file_path"] == str(files[2])
 
+    def test_run_with_store_full_path_false(self, test_files_path):
+        """
+        Test if the component runs correctly with store_full_path=False
+        """
+        bytestream = ByteStream.from_file_path(test_files_path / "csv" / "sample_1.csv")
+        bytestream.meta["file_path"] = str(test_files_path / "csv" / "sample_1.csv")
+        bytestream.meta["key"] = "value"
+        files = [bytestream, test_files_path / "csv" / "sample_2.csv", test_files_path / "csv" / "sample_3.csv"]
+        converter = CSVToDocument(store_full_path=False)
+        output = converter.run(sources=files)
+        docs = output["documents"]
+        assert len(docs) == 3
+        assert "Name,Age\r\nJohn Doe,27\r\nJane Smith,37\r\nMike Johnson,47\r\n" == docs[0].content
+        assert isinstance(docs[0].content, str)
+        assert docs[0].meta["file_path"] == "sample_1.csv"
+        assert docs[0].meta["key"] == "value"
+        assert docs[1].meta["file_path"] == "sample_2.csv"
+        assert docs[2].meta["file_path"] == "sample_3.csv"
+
     def test_run_error_handling(self, test_files_path, caplog):
         """
         Test if the component correctly handles errors.
