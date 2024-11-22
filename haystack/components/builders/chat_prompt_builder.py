@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from copy import deepcopy
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Literal, Optional, Set, Union
 
 from jinja2 import meta
 from jinja2.sandbox import SandboxedEnvironment
@@ -100,7 +100,7 @@ class ChatPromptBuilder:
     def __init__(
         self,
         template: Optional[List[ChatMessage]] = None,
-        required_variables: Optional[List[str]] = None,
+        required_variables: Optional[Union[List[str], Literal["*"]]] = None,
         variables: Optional[List[str]] = None,
     ):
         """
@@ -112,7 +112,8 @@ class ChatPromptBuilder:
             the `init` method` or the `run` method.
         :param required_variables:
             List variables that must be provided as input to ChatPromptBuilder.
-            If a variable listed as required is not provided, an exception is raised. Optional.
+            If a variable listed as required is not provided, an exception is raised.
+            If set to "*", all variables found in the prompt are required. Optional.
         :param variables:
             List input variables to use in prompt templates instead of the ones inferred from the
             `template` parameter. For example, to use more variables during prompt engineering than the ones present
@@ -127,14 +128,14 @@ class ChatPromptBuilder:
         if template and not variables:
             for message in template:
                 if message.is_from(ChatRole.USER) or message.is_from(ChatRole.SYSTEM):
-                    # infere variables from template
+                    # infer variables from template
                     ast = self._env.parse(message.content)
                     template_variables = meta.find_undeclared_variables(ast)
                     variables += list(template_variables)
 
         # setup inputs
         for var in variables:
-            if var in self.required_variables:
+            if self.required_variables == "*" or var in self.required_variables:
                 component.set_input_type(self, var, Any)
             else:
                 component.set_input_type(self, var, Any, "")

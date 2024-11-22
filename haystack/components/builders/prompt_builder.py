@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Literal, Optional, Set, Union
 
 from jinja2 import meta
 from jinja2.sandbox import SandboxedEnvironment
@@ -137,7 +137,10 @@ class PromptBuilder:
     """
 
     def __init__(
-        self, template: str, required_variables: Optional[List[str]] = None, variables: Optional[List[str]] = None
+        self,
+        template: str,
+        required_variables: Optional[Union[List[str], Literal["*"]]] = None,
+        variables: Optional[List[str]] = None,
     ):
         """
         Constructs a PromptBuilder component.
@@ -150,7 +153,8 @@ class PromptBuilder:
             unless explicitly specified.
             If an optional variable is not provided, it's replaced with an empty string in the rendered prompt.
         :param required_variables: List variables that must be provided as input to PromptBuilder.
-            If a variable listed as required is not provided, an exception is raised. Optional.
+            If a variable listed as required is not provided, an exception is raised.
+            If set to "*", all variables found in the prompt are required. Optional.
         :param variables:
             List input variables to use in prompt templates instead of the ones inferred from the
             `template` parameter. For example, to use more variables during prompt engineering than the ones present
@@ -178,7 +182,7 @@ class PromptBuilder:
 
         # setup inputs
         for var in variables:
-            if var in self.required_variables:
+            if self.required_variables == "*" or var in self.required_variables:
                 component.set_input_type(self, var, Any)
             else:
                 component.set_input_type(self, var, Any, "")
