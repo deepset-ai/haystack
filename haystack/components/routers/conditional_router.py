@@ -107,7 +107,7 @@ class ConditionalRouter:
     ```
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         routes: List[Dict],
         custom_filters: Optional[Dict[str, Callable]] = None,
