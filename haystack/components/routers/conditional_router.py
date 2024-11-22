@@ -142,8 +142,11 @@ class ConditionalRouter:
             If these variables are not provided at runtime, they will be set to `None`.
             This allows you to write routes that can handle missing inputs gracefully without raising errors.
 
-            Example usage with a default fallback route:
+            Example usage with a default fallback route in a Pipeline:
             ```python
+            from haystack import Pipeline
+            from haystack.components.routers import ConditionalRouter
+
             routes = [
                 {
                     "condition": '{{ path == "rag" }}',
@@ -160,14 +163,16 @@ class ConditionalRouter:
             ]
 
             router = ConditionalRouter(routes, optional_variables=["path"])
+            pipe = Pipeline()
+            pipe.add_component("router", router)
 
-            # When 'path' is provided, specific route is taken:
-            result = router.run(question="What?", path="rag")
-            assert result == {"rag_route": "What?"}
+            # When 'path' is provided in the pipeline:
+            result = pipe.run(data={"router": {"question": "What?", "path": "rag"}})
+            assert result["router"] == {"rag_route": "What?"}
 
             # When 'path' is not provided, fallback route is taken:
-            result = router.run(question="What?")
-            assert result == {"default_route": "What?"}
+            result = pipe.run(data={"router": {"question": "What?"}})
+            assert result["router"] == {"default_route": "What?"}
             ```
 
             This pattern is particularly useful when:
@@ -211,11 +216,13 @@ class ConditionalRouter:
         # warn about unused optional variables
         unused_optional_vars = set(self.optional_variables) - input_types if self.optional_variables else None
         if unused_optional_vars:
-            warn(
+            msg = (
                 f"The following optional variables are specified but not used in any route: {unused_optional_vars}. "
-                "Check if there's a typo in variable names.",
-                UserWarning,
+                "Check if there's a typo in variable names."
             )
+            # intentionally using both warn and logger
+            warn(msg, UserWarning)
+            logger.warning(msg)
 
         # add mandatory input types
         component.set_input_types(self, **{var: Any for var in mandatory_input_types})
