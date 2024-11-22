@@ -4,6 +4,8 @@
 
 import csv
 import io
+import os
+import warnings
 from dataclasses import dataclass
 from enum import Enum
 from io import StringIO
@@ -107,15 +109,19 @@ class DOCXToDocument:
     ```
     """
 
-    def __init__(self, table_format: Union[str, DOCXTableFormat] = DOCXTableFormat.CSV):
+    def __init__(self, table_format: Union[str, DOCXTableFormat] = DOCXTableFormat.CSV, store_full_path: bool = True):
         """
         Create a DOCXToDocument component.
 
         :param table_format: The format for table output. Can be either DOCXTableFormat.MARKDOWN,
             DOCXTableFormat.CSV, "markdown", or "csv". Defaults to DOCXTableFormat.CSV.
+        :param store_full_path:
+            If True, the full path of the file is stored in the metadata of the document.
+            If False, only the file name is stored.
         """
         docx_import.check()
         self.table_format = DOCXTableFormat.from_str(table_format) if isinstance(table_format, str) else table_format
+        self.store_full_path = store_full_path
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -124,7 +130,7 @@ class DOCXToDocument:
         :returns:
             Dictionary with serialized data.
         """
-        return default_to_dict(self, table_format=str(self.table_format))
+        return default_to_dict(self, table_format=str(self.table_format), store_full_path=self.store_full_path)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "DOCXToDocument":
@@ -158,7 +164,6 @@ class DOCXToDocument:
             If it's a list, the length of the list must match the number of sources, because the two lists will
             be zipped.
             If `sources` contains ByteStream objects, their `meta` will be added to the output Documents.
-
         :returns:
             A dictionary with the following keys:
             - `documents`: Created Documents
@@ -184,8 +189,21 @@ class DOCXToDocument:
                 )
                 continue
 
+            warnings.warn(
+                "The `store_full_path` parameter defaults to True, storing full file paths in metadata. "
+                "In the 2.9.0 release, the default value for `store_full_path` will change to False, "
+                "storing only file names to improve privacy.",
+                DeprecationWarning,
+            )
+
             docx_metadata = self._get_docx_metadata(document=docx_document)
             merged_metadata = {**bytestream.meta, **metadata, "docx": docx_metadata}
+
+            if not self.store_full_path and "file_path" in bytestream.meta:
+                file_path = bytestream.meta.get("file_path")
+                if file_path:  # Ensure the value is not None for pylint
+                    merged_metadata["file_path"] = os.path.basename(file_path)
+
             document = Document(content=text, meta=merged_metadata)
             documents.append(document)
 
