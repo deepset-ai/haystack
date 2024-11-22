@@ -7,6 +7,7 @@ from unittest import mock
 
 import pytest
 
+from haystack import Pipeline
 from haystack.components.routers import ConditionalRouter
 from haystack.components.routers.conditional_router import NoRouteSelectedException
 from haystack.dataclasses import ChatMessage
@@ -430,9 +431,6 @@ class TestRouter:
         result = router.run(question="What?", path="rag")
         assert result == {"normal": "What?"}, "Specific route should be taken when 'path' is provided"
 
-        # Test in pipeline
-        from haystack import Pipeline
-
         pipe = Pipeline()
         pipe.add_component("router", router)
 
@@ -445,3 +443,84 @@ class TestRouter:
         # Test pipeline with path parameter
         result = pipe.run(data={"router": {"question": "What?", "path": "followup_short"}})
         assert result["router"] == {"followup_short": "What?"}, "Specific route should work in pipeline"
+
+    def test_router_with_multiple_optional_parameters(self):
+        """
+        Test ConditionalRouter with a mix of mandatory and optional parameters,
+        exploring various combinations of provided/missing optional variables.
+        """
+        routes = [
+            {
+                "condition": '{{mode == "chat" and language == "en" and source == "doc"}}',
+                "output": "{{question}}",
+                "output_name": "en_doc_chat",
+                "output_type": str,
+            },
+            {
+                "condition": '{{mode == "qa" and source == "web"}}',
+                "output": "{{question}}",
+                "output_name": "web_qa",
+                "output_type": str,
+            },
+            {
+                "condition": '{{mode == "qa" and source == "doc"}}',
+                "output": "{{question}}",
+                "output_name": "doc_qa",
+                "output_type": str,
+            },
+            {
+                "condition": '{{mode == "chat" and language == "en"}}',
+                "output": "{{question}}",
+                "output_name": "en_chat",
+                "output_type": str,
+            },
+            {
+                "condition": '{{mode == "chat"}}',  # fallback for chat without language
+                "output": "{{question}}",
+                "output_name": "default_chat",
+                "output_type": str,
+            },
+            {
+                "condition": "{{ True }}",  # global fallback
+                "output": "{{question}}",
+                "output_name": "fallback",
+                "output_type": str,
+            },
+        ]
+
+        # There are four variables in the routes:
+        # - mandatory: mode, question (always must be provided) or we'll route to fallback
+        # - optional: source, language
+        router = ConditionalRouter(routes, optional_variables=["source", "language"])
+
+        # Test with mandatory parameter only
+        result = router.run(question="What?", mode="chat")
+        assert result == {"default_chat": "What?"}, "Should use chat fallback when language not provided"
+
+        # Test with all parameters provided
+        result = router.run(question="What?", mode="chat", language="en", source="doc")
+        assert result == {"en_doc_chat": "What?"}, "Should use specific route when all params provided"
+
+        # Test with different mandatory value and one optional
+        result = router.run(question="What?", mode="qa", source="web")
+        assert result == {"web_qa": "What?"}, "Should route qa with source correctly"
+
+        # Test with mandatory the routes to fallback
+        result = router.run(question="What?", mode="qa")
+        assert result == {"fallback": "What?"}, "Should use global fallback for qa without source"
+
+        # Test in pipeline
+        pipe = Pipeline()
+        pipe.add_component("router", router)
+
+        # Test pipeline with mandatory only
+        result = pipe.run(data={"router": {"question": "What?", "mode": "chat"}})
+        assert result["router"] == {"default_chat": "What?"}, "Pipeline should handle missing optionals"
+
+        # Test pipeline with mandatory and one optional
+        result = pipe.run(data={"router": {"question": "What?", "mode": "qa", "source": "doc"}})
+        assert result["router"] == {"doc_qa": "What?"}, "Pipeline should handle all parameters"
+
+        # Test pipeline with mandatory and both optionals
+        result = pipe.run(data={"router": {"question": "What?", "mode": "chat", "language": "en", "source": "doc"}})
+        assert result["router"] == {"en_doc_chat": "What?"}, "Pipeline should handle all parameters"
