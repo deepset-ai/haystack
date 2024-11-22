@@ -47,8 +47,8 @@ class TestCSVToDocument:
         bytestream.meta["file_path"] = str(test_files_path / "csv" / "sample_1.csv")
         bytestream.meta["key"] = "value"
         files = [bytestream, test_files_path / "csv" / "sample_2.csv", test_files_path / "csv" / "sample_3.csv"]
-        converter = CSVToDocument()
-        output = converter.run(sources=files, store_full_path=False)
+        converter = CSVToDocument(store_full_path=False)
+        output = converter.run(sources=files)
         docs = output["documents"]
         assert len(docs) == 3
         assert "Name,Age\r\nJohn Doe,27\r\nJane Smith,37\r\nMike Johnson,47\r\n" == docs[0].content

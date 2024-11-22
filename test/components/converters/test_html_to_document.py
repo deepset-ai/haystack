@@ -52,7 +52,8 @@ class TestHTMLToDocument:
         assert "Haystack" in docs[0].content
         assert docs[0].meta["file_path"] == str(sources[0])
 
-        results = converter.run(sources=sources, store_full_path=False)
+        converter_2 = HTMLToDocument(store_full_path=False)
+        results = converter_2.run(sources=sources)
         docs = results["documents"]
 
         assert len(docs) == 1
