@@ -43,7 +43,7 @@ class TransformersSimilarityRanker:
     ```
     """
 
-    def __init__(  # noqa: PLR0913
+    def __init__(  # noqa: PLR0913, pylint: disable=too-many-positional-arguments
         self,
         model: Union[str, Path] = "cross-encoder/ms-marco-MiniLM-L-6-v2",
         device: Optional[ComponentDevice] = None,
@@ -201,7 +201,7 @@ class TransformersSimilarityRanker:
         return default_from_dict(cls, data)
 
     @component.output_types(documents=List[Document])
-    def run(
+    def run(  # pylint: disable=too-many-positional-arguments
         self,
         query: str,
         documents: List[Document],
