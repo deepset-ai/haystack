@@ -137,6 +137,17 @@ class TestChatPromptBuilder:
         with pytest.raises(ValueError, match="foo, bar"):
             builder.run()
 
+    def test_run_with_missing_required_input_using_star(self):
+        builder = ChatPromptBuilder(
+            template=[ChatMessage.from_user("This is a {{ foo }}, not a {{ bar }}")], required_variables="*"
+        )
+        with pytest.raises(ValueError, match="foo"):
+            builder.run(bar="bar")
+        with pytest.raises(ValueError, match="bar"):
+            builder.run(foo="foo")
+        with pytest.raises(ValueError, match="bar, foo"):
+            builder.run()
+
     def test_run_with_variables(self):
         variables = ["var1", "var2", "var3"]
         template = [ChatMessage.from_user("Hello, {{ name }}! {{ var1 }}")]

@@ -132,9 +132,10 @@ class ChatPromptBuilder:
                     ast = self._env.parse(message.content)
                     template_variables = meta.find_undeclared_variables(ast)
                     variables += list(template_variables)
+        self.variables = variables
 
         # setup inputs
-        for var in variables:
+        for var in self.variables:
             if self.required_variables == "*" or var in self.required_variables:
                 component.set_input_type(self, var, Any)
             else:
@@ -212,12 +213,16 @@ class ChatPromptBuilder:
         :raises ValueError:
             If no template is provided or if all the required template variables are not provided.
         """
-        missing_variables = [var for var in self.required_variables if var not in provided_variables]
+        if self.required_variables == "*":
+            required_variables = sorted(self.variables)
+        else:
+            required_variables = self.required_variables
+        missing_variables = [var for var in required_variables if var not in provided_variables]
         if missing_variables:
             missing_vars_str = ", ".join(missing_variables)
             raise ValueError(
                 f"Missing required input variables in ChatPromptBuilder: {missing_vars_str}. "
-                f"Required variables: {self.required_variables}. Provided variables: {provided_variables}."
+                f"Required variables: {required_variables}. Provided variables: {provided_variables}."
             )
 
     def to_dict(self) -> Dict[str, Any]:
