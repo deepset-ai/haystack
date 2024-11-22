@@ -189,17 +189,20 @@ class PyPDFToDocument:
         return default_from_dict(cls, data)
 
     def _default_convert(self, reader: "PdfReader") -> Document:
-        extraction_kwargs = {
-            "extraction_mode": str(self.extraction_mode),
-            "orientations": self.plain_mode_orientations,
-            "space_width": self.plain_mode_space_width,
-            "layout_mode_space_vertically": self.layout_mode_space_vertically,
-            "layout_mode_scale_weight": self.layout_mode_scale_weight,
-            "layout_mode_strip_rotated": self.layout_mode_strip_rotated,
-            "layout_mode_font_height_weight": self.layout_mode_font_height_weight,
-        }
-
-        text = "\f".join(page.extract_text(**extraction_kwargs) for page in reader.pages)
+        texts = []
+        for page in reader.pages:
+            texts.append(
+                page.extract_text(
+                    orientations=self.plain_mode_orientations,
+                    extraction_mode=self.extraction_mode.value,
+                    space_width=self.plain_mode_space_width,
+                    layout_mode_space_vertically=self.layout_mode_space_vertically,
+                    layout_mode_scale_weight=self.layout_mode_scale_weight,
+                    layout_mode_strip_rotated=self.layout_mode_strip_rotated,
+                    layout_mode_font_height_weight=self.layout_mode_font_height_weight,
+                )
+            )
+        text = "\f".join(texts)
         return Document(content=text)
 
     @component.output_types(documents=List[Document])
