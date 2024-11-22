@@ -106,9 +106,8 @@ class MetaFieldGroupingRanker:
                 no_group_docs.append(doc)
 
         ordered_docs = []
-        for group in document_groups:
-            for subgroup in document_groups[group]:
-                docs = document_groups[group][subgroup]
+        for subgroups in document_groups.values():
+            for docs in subgroups.values():
                 if self.sort_docs_by:
                     docs.sort(key=lambda d: d.meta.get(cast(str, self.sort_docs_by), float("inf")))
                 ordered_docs.extend(docs)
