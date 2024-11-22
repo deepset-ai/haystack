@@ -1,7 +1,7 @@
 ---
 features:
   - |
-    Added a new `store_full_path` parameter to the `run` method of `CSVToDocument`, `DOCXToDocument`, and `HTMLToDocument`. The default value is `True`, which stores full file path in the metadata of the output documents. When set to `False`, only the file name is stored.
+    Added a new `store_full_path` parameter to the `__init__` method of `CSVToDocument`, `DOCXToDocument`, and `HTMLToDocument`. The default value is `True`, which stores full file path in the metadata of the output documents. When set to `False`, only the file name is stored.
 
 deprecations:
   - |
