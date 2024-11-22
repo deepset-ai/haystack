@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import os
+import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
@@ -33,17 +35,21 @@ class HTMLToDocument:
     ```
     """
 
-    def __init__(self, extraction_kwargs: Optional[Dict[str, Any]] = None):
+    def __init__(self, extraction_kwargs: Optional[Dict[str, Any]] = None, store_full_path: bool = True):
         """
         Create an HTMLToDocument component.
 
         :param extraction_kwargs: A dictionary containing keyword arguments to customize the extraction process. These
             are passed to the underlying Trafilatura `extract` function. For the full list of available arguments, see
             the [Trafilatura documentation](https://trafilatura.readthedocs.io/en/latest/corefunctions.html#extract).
+        :param store_full_path:
+        If True, the full path of the file is stored in the metadata of the document.
+        If False, only the file name is stored.
         """
         trafilatura_import.check()
 
         self.extraction_kwargs = extraction_kwargs or {}
+        self.store_full_path = store_full_path
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -52,7 +58,7 @@ class HTMLToDocument:
         :returns:
             Dictionary with serialized data.
         """
-        return default_to_dict(self, extraction_kwargs=self.extraction_kwargs)
+        return default_to_dict(self, extraction_kwargs=self.extraction_kwargs, store_full_path=self.store_full_path)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "HTMLToDocument":
@@ -115,7 +121,20 @@ class HTMLToDocument:
                 )
                 continue
 
-            document = Document(content=text, meta={**bytestream.meta, **metadata})
+            merged_metadata = {**bytestream.meta, **metadata}
+
+            warnings.warn(
+                "The `store_full_path` parameter defaults to True, storing full file paths in metadata. "
+                "In the 2.9.0 release, the default value for `store_full_path` will change to False, "
+                "storing only file names to improve privacy.",
+                DeprecationWarning,
+            )
+            if not self.store_full_path and "file_path" in bytestream.meta:
+                file_path = bytestream.meta.get("file_path")
+                if file_path:  # Ensure the value is not None for pylint
+                    merged_metadata["file_path"] = os.path.basename(file_path)
+
+            document = Document(content=text, meta=merged_metadata)
             documents.append(document)
 
         return {"documents": documents}
