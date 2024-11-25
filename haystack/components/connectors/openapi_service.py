@@ -7,7 +7,7 @@ from collections import defaultdict
 from copy import copy
 from typing import Any, Dict, List, Optional, Union
 
-from haystack import component, logging
+from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import ChatMessage, ChatRole
 from haystack.lazy_imports import LazyImport
 
@@ -69,11 +69,15 @@ class OpenAPIServiceConnector:
 
     """
 
-    def __init__(self):
+    def __init__(self, ssl_verify: Optional[Union[bool, str]] = None):
         """
         Initializes the OpenAPIServiceConnector instance
+
+        :param ssl_verify: Decide if to use SSL verification to the requests or not,
+        in case a string is passed, will be used as the CA.
         """
         openapi_imports.check()
+        self.ssl_verify = ssl_verify
 
     @component.output_types(service_response=Dict[str, Any])
     def run(
@@ -112,7 +116,7 @@ class OpenAPIServiceConnector:
         function_invocation_payloads = self._parse_message(last_message)
 
         # instantiate the OpenAPI service for the given specification
-        openapi_service = OpenAPI(service_openapi_spec)
+        openapi_service = OpenAPI(service_openapi_spec, ssl_verify=self.ssl_verify)
         self._authenticate_service(openapi_service, service_credentials)
 
         response_messages = []
@@ -126,6 +130,27 @@ class OpenAPIServiceConnector:
             response_messages.append(ChatMessage.from_user(json.dumps(service_response._raw_data)))
 
         return {"service_response": response_messages}
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serializes the component to a dictionary.
+
+        :returns:
+            Dictionary with serialized data.
+        """
+        return default_to_dict(self, ssl_verify=self.ssl_verify)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "OpenAPIServiceConnector":
+        """
+        Deserializes the component from a dictionary.
+
+        :param data:
+            The dictionary to deserialize from.
+        :returns:
+            The deserialized component.
+        """
+        return default_from_dict(cls, data)
 
     def _parse_message(self, message: ChatMessage) -> List[Dict[str, Any]]:
         """
