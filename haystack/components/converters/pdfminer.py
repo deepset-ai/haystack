@@ -3,6 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import io
+import os
+import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
@@ -46,6 +48,7 @@ class PDFMinerToDocument:
         boxes_flow: Optional[float] = 0.5,
         detect_vertical: bool = True,
         all_texts: bool = False,
+        store_full_path: bool = True,
     ) -> None:
         """
         Create a PDFMinerToDocument component.
@@ -78,6 +81,9 @@ class PDFMinerToDocument:
             This parameter determines whether vertical text should be considered during layout analysis.
         :param all_texts:
             If layout analysis should be performed on text in figures.
+        :param store_full_path:
+            If True, the full path of the file is stored in the metadata of the document.
+            If False, only the file name is stored.
         """
 
         pdfminer_import.check()
@@ -91,6 +97,7 @@ class PDFMinerToDocument:
             detect_vertical=detect_vertical,
             all_texts=all_texts,
         )
+        self.store_full_path = store_full_path
 
     def _converter(self, extractor) -> Document:
         """
@@ -165,6 +172,15 @@ class PDFMinerToDocument:
                 )
 
             merged_metadata = {**bytestream.meta, **metadata}
+            warnings.warn(
+                "The `store_full_path` parameter defaults to True, storing full file paths in metadata. "
+                "In the 2.9.0 release, the default value for `store_full_path` will change to False, "
+                "storing only file names to improve privacy.",
+                DeprecationWarning,
+            )
+
+            if not self.store_full_path and (file_path := bytestream.meta.get("file_path")):
+                merged_metadata["file_path"] = os.path.basename(file_path)
             document.meta = merged_metadata
             documents.append(document)
 

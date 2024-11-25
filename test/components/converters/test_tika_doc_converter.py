@@ -35,6 +35,18 @@ class TestTikaDocumentConverter:
         assert output["documents"][0].meta["language"] == "it"
         assert output["documents"][1].meta["language"] == "it"
 
+    def test_run_with_store_full_path_false(self, test_files_path):
+        bytestream = ByteStream(data=b"test")
+        bytestream.meta["file_path"] = str(test_files_path / "txt" / "doc_3.txt")
+
+        converter = TikaDocumentConverter(store_full_path=False)
+        with patch("haystack.components.converters.tika.tika_parser.from_buffer"):
+            output = converter.run(sources=[bytestream, test_files_path / "markdown" / "sample.md"])
+
+        # check that the metadata from the sources is merged with that from the meta parameter
+        assert output["documents"][0].meta["file_path"] == "doc_3.txt"
+        assert output["documents"][1].meta["file_path"] == "sample.md"
+
     def test_run_nonexistent_file(self, caplog):
         component = TikaDocumentConverter()
         with caplog.at_level("WARNING"):

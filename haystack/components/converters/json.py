@@ -3,6 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+import os
+import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Set, Tuple, Union
 
@@ -93,6 +95,7 @@ class JSONConverter:
         jq_schema: Optional[str] = None,
         content_key: Optional[str] = None,
         extra_meta_fields: Optional[Union[Set[str], Literal["*"]]] = None,
+        store_full_path: bool = True,
     ):
         """
         Creates a JSONConverter component.
@@ -129,6 +132,9 @@ class JSONConverter:
         :param extra_meta_fields:
             An optional set of meta keys to extract from the content.
             If `jq_schema` is specified, all keys will be extracted from that object.
+        :param store_full_path:
+            If True, the full path of the file is stored in the metadata of the document.
+            If False, only the file name is stored.
         """
         self._compiled_filter = None
         if jq_schema:
@@ -138,6 +144,7 @@ class JSONConverter:
         self._jq_schema = jq_schema
         self._content_key = content_key
         self._meta_fields = extra_meta_fields
+        self._store_full_path = store_full_path
 
         if self._compiled_filter is None and self._content_key is None:
             msg = "No `jq_schema` nor `content_key` specified. Set either or both to extract data."
@@ -151,7 +158,11 @@ class JSONConverter:
             Dictionary with serialized data.
         """
         return default_to_dict(
-            self, jq_schema=self._jq_schema, content_key=self._content_key, extra_meta_fields=self._meta_fields
+            self,
+            jq_schema=self._jq_schema,
+            content_key=self._content_key,
+            extra_meta_fields=self._meta_fields,
+            store_full_path=self._store_full_path,
         )
 
     @classmethod
@@ -269,8 +280,17 @@ class JSONConverter:
 
             data = self._get_content_and_meta(bytestream)
 
+            warnings.warn(
+                "The `store_full_path` parameter defaults to True, storing full file paths in metadata. "
+                "In the 2.9.0 release, the default value for `store_full_path` will change to False, "
+                "storing only file names to improve privacy.",
+                DeprecationWarning,
+            )
             for text, extra_meta in data:
                 merged_metadata = {**bytestream.meta, **metadata, **extra_meta}
+
+                if not self._store_full_path and (file_path := bytestream.meta.get("file_path")):
+                    merged_metadata["file_path"] = os.path.basename(file_path)
                 document = Document(content=text, meta=merged_metadata)
                 documents.append(document)
 
