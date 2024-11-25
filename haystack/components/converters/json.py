@@ -289,10 +289,8 @@ class JSONConverter:
             for text, extra_meta in data:
                 merged_metadata = {**bytestream.meta, **metadata, **extra_meta}
 
-                if not self._store_full_path and "file_path" in bytestream.meta:
-                    file_path = bytestream.meta.get("file_path")
-                    if file_path:  # Ensure the value is not None for pylint
-                        merged_metadata["file_path"] = os.path.basename(file_path)
+                if not self._store_full_path and (file_path := bytestream.meta.get("file_path")):
+                    merged_metadata["file_path"] = os.path.basename(file_path)
                 document = Document(content=text, meta=merged_metadata)
                 documents.append(document)
 
