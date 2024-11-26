@@ -7,6 +7,7 @@ from unittest import mock
 
 import pytest
 
+from haystack import Pipeline
 from haystack.components.routers import ConditionalRouter
 from haystack.components.routers.conditional_router import NoRouteSelectedException
 from haystack.dataclasses import ChatMessage
@@ -397,3 +398,147 @@ class TestRouter:
         streams = ["1", "2", "3", "4"]
         with pytest.raises(ValueError, match="Route 'streams' type doesn't match expected type"):
             router.run(streams=streams, message=message)
+
+    def test_router_with_optional_parameters(self):
+        """
+        Test that the router works with optional parameters, particularly testing the default/fallback route
+        when an expected parameter is not provided.
+        """
+        routes = [
+            {"condition": '{{path == "rag"}}', "output": "{{question}}", "output_name": "normal", "output_type": str},
+            {
+                "condition": '{{path == "followup_short"}}',
+                "output": "{{question}}",
+                "output_name": "followup_short",
+                "output_type": str,
+            },
+            {
+                "condition": '{{path == "followup_elaborate"}}',
+                "output": "{{question}}",
+                "output_name": "followup_elaborate",
+                "output_type": str,
+            },
+            {"condition": "{{ True }}", "output": "{{ question }}", "output_name": "fallback", "output_type": str},
+        ]
+
+        router = ConditionalRouter(routes, optional_variables=["path"])
+
+        # Test direct component usage
+        result = router.run(question="What?")
+        assert result == {"fallback": "What?"}, "Default route should be taken when 'path' is not provided"
+
+        # Test with path parameter
+        result = router.run(question="What?", path="rag")
+        assert result == {"normal": "What?"}, "Specific route should be taken when 'path' is provided"
+
+        pipe = Pipeline()
+        pipe.add_component("router", router)
+
+        # Test pipeline without path parameter
+        result = pipe.run(data={"router": {"question": "What?"}})
+        assert result["router"] == {
+            "fallback": "What?"
+        }, "Default route should work in pipeline when 'path' is not provided"
+
+        # Test pipeline with path parameter
+        result = pipe.run(data={"router": {"question": "What?", "path": "followup_short"}})
+        assert result["router"] == {"followup_short": "What?"}, "Specific route should work in pipeline"
+
+    def test_router_with_multiple_optional_parameters(self):
+        """
+        Test ConditionalRouter with a mix of mandatory and optional parameters,
+        exploring various combinations of provided/missing optional variables.
+        """
+        routes = [
+            {
+                "condition": '{{mode == "chat" and language == "en" and source == "doc"}}',
+                "output": "{{question}}",
+                "output_name": "en_doc_chat",
+                "output_type": str,
+            },
+            {
+                "condition": '{{mode == "qa" and source == "web"}}',
+                "output": "{{question}}",
+                "output_name": "web_qa",
+                "output_type": str,
+            },
+            {
+                "condition": '{{mode == "qa" and source == "doc"}}',
+                "output": "{{question}}",
+                "output_name": "doc_qa",
+                "output_type": str,
+            },
+            {
+                "condition": '{{mode == "chat" and language == "en"}}',
+                "output": "{{question}}",
+                "output_name": "en_chat",
+                "output_type": str,
+            },
+            {
+                "condition": '{{mode == "chat"}}',  # fallback for chat without language
+                "output": "{{question}}",
+                "output_name": "default_chat",
+                "output_type": str,
+            },
+            {
+                "condition": "{{ True }}",  # global fallback
+                "output": "{{question}}",
+                "output_name": "fallback",
+                "output_type": str,
+            },
+        ]
+
+        # There are four variables in the routes:
+        # - mandatory: mode, question (always must be provided) or we'll route to fallback
+        # - optional: source, language
+        router = ConditionalRouter(routes, optional_variables=["source", "language"])
+
+        # Test with mandatory parameter only
+        result = router.run(question="What?", mode="chat")
+        assert result == {"default_chat": "What?"}, "Should use chat fallback when language not provided"
+
+        # Test with all parameters provided
+        result = router.run(question="What?", mode="chat", language="en", source="doc")
+        assert result == {"en_doc_chat": "What?"}, "Should use specific route when all params provided"
+
+        # Test with different mandatory value and one optional
+        result = router.run(question="What?", mode="qa", source="web")
+        assert result == {"web_qa": "What?"}, "Should route qa with source correctly"
+
+        # Test with mandatory the routes to fallback
+        result = router.run(question="What?", mode="qa")
+        assert result == {"fallback": "What?"}, "Should use global fallback for qa without source"
+
+        # Test in pipeline
+        pipe = Pipeline()
+        pipe.add_component("router", router)
+
+        # Test pipeline with mandatory only
+        result = pipe.run(data={"router": {"question": "What?", "mode": "chat"}})
+        assert result["router"] == {"default_chat": "What?"}, "Pipeline should handle missing optionals"
+
+        # Test pipeline with mandatory and one optional
+        result = pipe.run(data={"router": {"question": "What?", "mode": "qa", "source": "doc"}})
+        assert result["router"] == {"doc_qa": "What?"}, "Pipeline should handle all parameters"
+
+        # Test pipeline with mandatory and both optionals
+        result = pipe.run(data={"router": {"question": "What?", "mode": "chat", "language": "en", "source": "doc"}})
+        assert result["router"] == {"en_doc_chat": "What?"}, "Pipeline should handle all parameters"
+
+    def test_warns_on_unused_optional_variables(self):
+        """
+        Test that a warning is raised when optional_variables contains variables
+        that are not used in any route conditions or outputs.
+        """
+        routes = [
+            {"condition": '{{mode == "chat"}}', "output": "{{question}}", "output_name": "chat", "output_type": str},
+            {"condition": "{{ True }}", "output": "{{question}}", "output_name": "fallback", "output_type": str},
+        ]
+
+        # Initialize with unused optional variables and capture warning
+        with pytest.warns(UserWarning, match="optional variables"):
+            router = ConditionalRouter(routes=routes, optional_variables=["unused_var1", "unused_var2"])
+
+        # Verify router still works normally
+        result = router.run(question="What?", mode="chat")
+        assert result == {"chat": "What?"}
