@@ -289,6 +289,21 @@ class TestAzureOCRDocumentConverter:
         assert "Now we are in Page 2" in documents[0].content
         assert "Page 3 was empty this is page 4" in documents[0].content
 
+    @pytest.mark.integration
+    @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_ENDPOINT", None), reason="Azure endpoint not available")
+    @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_API_KEY", None), reason="Azure credentials not available")
+    def test_run_with_store_full_path_false(self, test_files_path):
+        component = AzureOCRDocumentConverter(
+            endpoint=os.environ["CORE_AZURE_CS_ENDPOINT"],
+            api_key=Secret.from_env_var("CORE_AZURE_CS_API_KEY"),
+            store_full_path=False,
+        )
+        output = component.run(sources=[test_files_path / "docx" / "sample_docx.docx"])
+        documents = output["documents"]
+        assert len(documents) == 1
+        assert "Sample Docx File" in documents[0].content
+        assert documents[0].meta["file_path"] == "sample_docx.docx"
+
     @patch("haystack.utils.auth.EnvVarSecret.resolve_value")
     def test_hashing_dataframe(self, mock_resolve_value):
         mock_resolve_value.return_value = "test_api_key"
@@ -330,30 +345,3 @@ class TestAzureOCRDocumentConverter:
         docs = out["documents"]
         assert docs[1].meta["test"] == "value_1"
         assert docs[1].meta["test_from"] == "byte_stream"
-
-    @patch("haystack.utils.auth.EnvVarSecret.resolve_value")
-    def test_run_with_store_full_path_false(self, mock_resolve_value, test_files_path):
-        """
-        Test if the component runs correctly with store_full_path=False
-        """
-        mock_resolve_value.return_value = "test_api_key"
-
-        class MockPoller:
-            def result(self) -> AnalyzeResult:
-                with open(test_files_path / "json" / "azure_sample_pdf_1.json", encoding="utf-8") as azure_file:
-                    result = json.load(azure_file)
-                return AnalyzeResult.from_dict(result)
-
-        with patch("azure.ai.formrecognizer.DocumentAnalysisClient.begin_analyze_document") as azure_mock:
-            azure_mock.return_value = MockPoller()
-            ocr_node = AzureOCRDocumentConverter(endpoint="", store_full_path=False)
-            bytes = (test_files_path / "pdf" / "sample_pdf_1.pdf").read_bytes()
-            byte_stream = ByteStream(data=bytes, meta={"test_from": "byte_stream"})
-            out = ocr_node.run(sources=[byte_stream], meta=[{"test": "value_1"}])
-
-        docs = out["documents"]
-        print(docs)
-        assert docs[1].meta["test"] == "value_1"
-        assert docs[1].meta["test_from"] == "byte_stream"
-        assert docs[1].meta["file_path"] == "sample_pdf_1.pdf"
-        assert docs[0].meta["file_path"] == "sample_pdf_1.pdf"
