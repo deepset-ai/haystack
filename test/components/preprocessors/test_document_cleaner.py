@@ -5,7 +5,9 @@ import logging
 
 import pytest
 
+from pandas import DataFrame
 from haystack import Document
+from haystack.dataclasses import ByteStream, SparseEmbedding
 from haystack.components.preprocessors import DocumentCleaner
 
 
@@ -204,3 +206,33 @@ class TestDocumentCleaner:
         cleaner = DocumentCleaner(ascii_only=True, remove_extra_whitespaces=False, remove_empty_lines=False)
         result = cleaner.run(documents=[Document(content=text)])
         assert result["documents"][0].content == expected_text
+
+    def test_other_document_fields_are_not_lost(self):
+        cleaner = DocumentCleaner(keep_id=True)
+        document = Document(
+            content="This is a text with some words. \n"
+            ""
+            "There is a second sentence. \n"
+            ""
+            "And there is a third sentence.\n",
+            dataframe=DataFrame({"col1": [1], "col2": [2]}),
+            blob=ByteStream.from_string("some_data"),
+            meta={"data": 1},
+            score=0.1,
+            embedding=[0.1, 0.2, 0.3],
+            sparse_embedding=SparseEmbedding([0, 2], [0.1, 0.3]),
+        )
+        res = cleaner.run(documents=[document])
+
+        assert len(res) == 1
+        assert len(res["documents"])
+        assert res["documents"][0].id == document.id
+        assert res["documents"][0].content == (
+            "This is a text with some words. There is a second sentence. And there is a third sentence."
+        )
+        assert res["documents"][0].dataframe.equals(document.dataframe)
+        assert res["documents"][0].blob == document.blob
+        assert res["documents"][0].meta == document.meta
+        assert res["documents"][0].score == document.score
+        assert res["documents"][0].embedding == document.embedding
+        assert res["documents"][0].sparse_embedding == document.sparse_embedding
