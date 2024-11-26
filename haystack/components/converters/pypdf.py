@@ -3,6 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import io
+import os
+import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Protocol, Union
 
@@ -57,16 +59,20 @@ class PyPDFToDocument:
     ```
     """
 
-    def __init__(self, converter: Optional[PyPDFConverter] = None):
+    def __init__(self, converter: Optional[PyPDFConverter] = None, store_full_path: bool = True):
         """
         Create an PyPDFToDocument component.
 
         :param converter:
             An instance of a PyPDFConverter compatible class.
+        :param store_full_path:
+            If True, the full path of the file is stored in the metadata of the document.
+            If False, only the file name is stored.
         """
         pypdf_import.check()
 
         self.converter = converter
+        self.store_full_path = store_full_path
 
     def to_dict(self):
         """
@@ -76,7 +82,9 @@ class PyPDFToDocument:
             Dictionary with serialized data.
         """
         return default_to_dict(
-            self, converter=(serialize_class_instance(self.converter) if self.converter is not None else None)
+            self,
+            converter=(serialize_class_instance(self.converter) if self.converter is not None else None),
+            store_full_path=self.store_full_path,
         )
 
     @classmethod
@@ -149,6 +157,14 @@ class PyPDFToDocument:
                 )
 
             merged_metadata = {**bytestream.meta, **metadata}
+            warnings.warn(
+                "The `store_full_path` parameter defaults to True, storing full file paths in metadata. "
+                "In the 2.9.0 release, the default value for `store_full_path` will change to False, "
+                "storing only file names to improve privacy.",
+                DeprecationWarning,
+            )
+            if not self.store_full_path and (file_path := bytestream.meta.get("file_path")):
+                merged_metadata["file_path"] = os.path.basename(file_path)
             document.meta = merged_metadata
             documents.append(document)
 
