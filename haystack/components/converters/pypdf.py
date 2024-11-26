@@ -114,22 +114,23 @@ class PyPDFToDocument:
             Layout mode is an experimental mode that adheres to the rendered layout of the PDF.
         :param plain_mode_orientations:
             Tuple of orientations to look for when extracting text from a PDF in plain mode.
-            Ignored if `extraction_mode` is `layout`.
+            Ignored if `extraction_mode` is `PyPDFExtractionMode.LAYOUT`.
         :param plain_mode_space_width:
-            Forces default space width if not extracted from font. Ignored if `extraction_mode` is `layout`.
+            Forces default space width if not extracted from font.
+            Ignored if `extraction_mode` is `PyPDFExtractionMode.LAYOUT`.
         :param layout_mode_space_vertically:
             Whether to include blank lines inferred from y distance + font height.
-            Ignored if `extraction_mode` is `plain`.
+            Ignored if `extraction_mode` is `PyPDFExtractionMode.PLAIN`.
         :param layout_mode_scale_weight:
             Multiplier for string length when calculating weighted average character width.
-            Ignored if `extraction_mode` is `plain`.
+            Ignored if `extraction_mode` is `PyPDFExtractionMode.PLAIN`.
         :param layout_mode_strip_rotated:
             Layout mode does not support rotated text. Set to `False` to include rotated text anyway.
             If rotated text is discovered, layout will be degraded and a warning will be logged.
-            Ignored if `extraction_mode` is `plain`.
+            Ignored if `extraction_mode` is `PyPDFExtractionMode.PLAIN`.
         :param layout_mode_font_height_weight:
             Multiplier for font height when calculating blank line height.
-            Ignored if `extraction_mode` is `plain`.
+            Ignored if `extraction_mode` is `PyPDFExtractionMode.PLAIN`.
         """
         pypdf_import.check()
 
@@ -161,7 +162,7 @@ class PyPDFToDocument:
         """
         return default_to_dict(
             self,
-            converter=(serialize_class_instance(self.converter) if self.converter is not None else None),
+            converter=(serialize_class_instance(self.converter) if self.converter else None),
             extraction_mode=str(self.extraction_mode),
             plain_mode_orientations=self.plain_mode_orientations,
             plain_mode_space_width=self.plain_mode_space_width,
