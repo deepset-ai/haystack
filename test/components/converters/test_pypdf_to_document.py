@@ -80,11 +80,12 @@ class TestPyPDFToDocument:
                 "layout_mode_scale_weight": 1.25,
                 "layout_mode_strip_rotated": True,
                 "layout_mode_font_height_weight": 1.0,
+                "store_full_path": True,
             },
         }
 
     def test_to_dict_custom_converter(self):
-        pypdf_component = PyPDFToDocument(converter=CustomConverter())
+        pypdf_component = PyPDFToDocument(converter=CustomConverter(), store_full_path=False)
         data = pypdf_component.to_dict()
         assert data == {
             "type": "haystack.components.converters.pypdf.PyPDFToDocument",
@@ -100,6 +101,7 @@ class TestPyPDFToDocument:
                 "layout_mode_scale_weight": 1.25,
                 "layout_mode_strip_rotated": True,
                 "layout_mode_font_height_weight": 1.0,
+                "store_full_path": False,
             },
         }
 
@@ -233,7 +235,7 @@ class TestPyPDFToDocument:
         assert len(docs) == 1
         assert docs[0].meta["file_path"] == "sample_pdf_1.pdf"
 
-    def test_run_error_handling(self, test_files_path, pypdf_converter, caplog):
+    def test_run_error_handling(self, test_files_path, pypdf_component, caplog):
         """
         Test if the component correctly handles errors.
         """
