@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import io
+import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Protocol, Union
 
@@ -22,6 +23,9 @@ logger = logging.getLogger(__name__)
 class PyPDFConverter(Protocol):
     """
     A protocol that defines a converter which takes a PdfReader object and converts it into a Document object.
+
+    This is deprecated and will be removed in Haystack 2.9.0.
+    For in-depth customization of the conversion process, consider implementing a custom component.
     """
 
     def convert(self, reader: "PdfReader") -> Document:  # noqa: D102
@@ -40,8 +44,7 @@ class PyPDFToDocument:
     """
     Converts PDF files to documents your pipeline can query.
 
-    This component uses converters compatible with the PyPDF library.
-    If no converter is provided, uses a default text extraction converter.
+    This component uses the PyPDF library.
     You can attach metadata to the resulting documents.
 
     ### Usage example
@@ -62,9 +65,17 @@ class PyPDFToDocument:
         Create an PyPDFToDocument component.
 
         :param converter:
-            An instance of a PyPDFConverter compatible class.
+            An instance of a PyPDFConverter compatible class. This is deprecated and will be removed in Haystack 2.9.0.
+            For in-depth customization of the conversion process, consider implementing a custom component.
         """
         pypdf_import.check()
+
+        if converter is not None:
+            msg = (
+                "The `converter` parameter is deprecated and will be removed in Haystack 2.9.0. "
+                "For in-depth customization of the conversion process, consider implementing a custom component."
+            )
+            warnings.warn(msg, DeprecationWarning)
 
         self.converter = converter
 
