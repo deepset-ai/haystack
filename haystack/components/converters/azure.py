@@ -51,7 +51,7 @@ class AzureOCRDocumentConverter:
     ```
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         endpoint: str,
         api_key: Secret = Secret.from_env_var("AZURE_AI_API_KEY"),
