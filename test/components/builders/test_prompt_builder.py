@@ -143,6 +143,15 @@ class TestPromptBuilder:
         with pytest.raises(ValueError, match="foo, bar"):
             builder.run()
 
+    def test_run_with_missing_required_input_using_star(self):
+        builder = PromptBuilder(template="This is a {{ foo }}, not a {{ bar }}", required_variables="*")
+        with pytest.raises(ValueError, match="foo"):
+            builder.run(bar="bar")
+        with pytest.raises(ValueError, match="bar"):
+            builder.run(foo="foo")
+        with pytest.raises(ValueError, match="bar, foo"):
+            builder.run()
+
     def test_run_with_variables(self):
         variables = ["var1", "var2", "var3"]
         template = "Hello, {{ name }}! {{ var1 }}"
@@ -296,7 +305,7 @@ class TestPromptBuilder:
 
         assert now_plus_2 == result
 
-    def test_date_with_substraction_offset(self) -> None:
+    def test_date_with_subtraction_offset(self) -> None:
         template = "Time after 12 days is: {% now 'UTC' - 'days=12' %}"
         builder = PromptBuilder(template=template)
 

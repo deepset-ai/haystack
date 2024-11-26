@@ -98,7 +98,9 @@ class Pipeline(PipelineBase):
         cycle: List[str],
         component_name: str,
         components_inputs: Dict[str, Dict[str, Any]],
+        *,
         include_outputs_from: Optional[Set[str]] = None,
+        parent_span: Optional[tracing.Span] = None,
     ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """
         Runs a `cycle` in the Pipeline starting from `component_name`.
@@ -162,7 +164,7 @@ class Pipeline(PipelineBase):
                     msg = f"Maximum run count {self._max_runs_per_component} reached for component '{name}'"
                     raise PipelineMaxComponentRuns(msg)
 
-                res: Dict[str, Any] = self._run_component(name, components_inputs[name])
+                res: Dict[str, Any] = self._run_component(name, components_inputs[name], parent_span=parent_span)
 
                 # Delete the inputs that were consumed by the Component and are not received from
                 # the user or from Components that are part of this cycle
@@ -439,7 +441,7 @@ class Pipeline(PipelineBase):
                     # are run doesn't make a different whether we pick the first or any of the others a
                     # Component is part of.
                     subgraph_output, subgraph_extra_output = self._run_subgraph(
-                        cycles[0], name, components_inputs, include_outputs_from
+                        cycles[0], name, components_inputs, include_outputs_from=include_outputs_from, parent_span=span
                     )
 
                     # After a cycle is run the previous run_queue can't be correct anymore cause it's
