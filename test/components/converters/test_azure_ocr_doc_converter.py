@@ -279,6 +279,9 @@ class TestAzureOCRDocumentConverter:
     @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_ENDPOINT", None), reason="Azure endpoint not available")
     @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_API_KEY", None), reason="Azure credentials not available")
     def test_run_with_docx_file(self, test_files_path):
+        """
+        Test if the component runs correctly with store_full_path=False
+        """
         component = AzureOCRDocumentConverter(
             endpoint=os.environ["CORE_AZURE_CS_ENDPOINT"], api_key=Secret.from_env_var("CORE_AZURE_CS_API_KEY")
         )
