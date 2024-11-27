@@ -192,6 +192,7 @@ class SentenceWindowRetriever:
                 }
             )
             context_text.append(self.merge_documents_text(context_docs))
-            context_documents.append(context_docs)
+            context_docs_sorted = sorted(context_docs, key=lambda doc: doc.meta["split_idx_start"])
+            context_documents.extend(context_docs_sorted)
 
         return {"context_windows": context_text, "context_documents": context_documents}
