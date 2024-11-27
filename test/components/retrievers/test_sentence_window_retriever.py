@@ -198,13 +198,13 @@ class TestSentenceWindowRetriever:
             "This is a text with some words. There is a second sentence. And there is also a third sentence. "
             "It also contains a fourth sentence. And a fifth sentence."
         ]
-        assert len(result["sentence_window_retriever"]["context_documents"][0]) == 5
+        assert len(result["sentence_window_retriever"]["context_documents"]) == 5
 
         result = pipe.run({"bm25_retriever": {"query": "third"}, "sentence_window_retriever": {"window_size": 1}})
         assert result["sentence_window_retriever"]["context_windows"] == [
             " There is a second sentence. And there is also a third sentence. It also contains a fourth sentence."
         ]
-        assert len(result["sentence_window_retriever"]["context_documents"][0]) == 3
+        assert len(result["sentence_window_retriever"]["context_documents"]) == 3
 
     @pytest.mark.integration
     def test_serialization_deserialization_in_pipeline(self):
