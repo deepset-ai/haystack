@@ -188,7 +188,7 @@ class JsonSchemaValidator:
             )
             return {"validation_error": [ChatMessage.from_user(recovery_prompt)]}
 
-    def _construct_error_recovery_message(
+    def _construct_error_recovery_message(  # pylint: disable=too-many-positional-arguments
         self,
         error_template: str,
         error_message: str,
