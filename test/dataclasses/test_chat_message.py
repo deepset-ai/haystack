@@ -12,6 +12,7 @@ def test_from_assistant_with_valid_content():
     content = "Hello, how can I assist you?"
     message = ChatMessage.from_assistant(content)
     assert message.content == content
+    assert message.text == content
     assert message.role == ChatRole.ASSISTANT
 
 
@@ -19,6 +20,7 @@ def test_from_user_with_valid_content():
     content = "I have a question."
     message = ChatMessage.from_user(content)
     assert message.content == content
+    assert message.text == content
     assert message.role == ChatRole.USER
 
 
@@ -26,18 +28,21 @@ def test_from_system_with_valid_content():
     content = "System message."
     message = ChatMessage.from_system(content)
     assert message.content == content
+    assert message.text == content
     assert message.role == ChatRole.SYSTEM
 
 
 def test_with_empty_content():
     message = ChatMessage.from_user("")
     assert message.content == ""
+    assert message.text == ""
 
 
 def test_from_function_with_empty_name():
     content = "Function call"
     message = ChatMessage.from_function(content, "")
     assert message.content == content
+    assert message.text == content
     assert message.name == ""
 
 
@@ -93,6 +98,7 @@ def test_to_dict():
     message.meta["some"] = "some"
 
     assert message.to_dict() == {"content": "content", "role": "user", "name": None, "meta": {"some": "some"}}
+    assert message.text == "content"
 
 
 def test_from_dict():
@@ -105,3 +111,17 @@ def test_from_dict_with_meta():
     assert ChatMessage.from_dict(
         data={"content": "text", "role": "user", "name": None, "meta": {"something": "something"}}
     ) == ChatMessage(content="text", role=ChatRole("user"), name=None, meta={"something": "something"})
+
+
+def test_content_deprecation_warning(recwarn):
+    message = ChatMessage.from_user("my message")
+
+    # accessing the content attribute triggers the deprecation warning
+    _ = message.content
+    assert len(recwarn) == 1
+    wrn = recwarn.pop(DeprecationWarning)
+    assert "`content` attribute" in wrn.message.args[0]
+
+    # accessing the text property does not trigger a warning
+    assert message.text == "my message"
+    assert len(recwarn) == 0
