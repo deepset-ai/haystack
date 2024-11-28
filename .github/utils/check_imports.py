@@ -58,5 +58,10 @@ if __name__ == '__main__':
     if failed:
         print(f"\nFAILED TO IMPORT {len(failed)} PACKAGES:")
         for fail in failed:
-            print(f"  - {fail['module']}:\n{fail['traceback']}")
+            print(f"  - {fail['module']}")
+
+        print("\nERRORS:")
+        for fail in failed:
+            print(f"  - {fail['module']}")
+            print(f"    {fail['traceback']}")
         sys.exit(1)
