@@ -2,14 +2,14 @@ import os
 import sys
 import importlib
 import traceback
-from haystack import logging  # this is needed to avoid circular imports
+from haystack import logging  # pylint: disable=unused-import  # this is needed to avoid circular imports
 
 """
 This script checks that all Haystack packages can be imported successfully.
 This can detect several issues.
 One example is forgetting to use a forward reference for a type hint coming
 from a lazy import.
-"""
+"""  # pylint: disable=pointless-string-statement
 
 def validate_package_imports(directory):
     """
