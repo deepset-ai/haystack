@@ -107,12 +107,13 @@ class ConditionalRouter:
     ```
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         routes: List[Dict],
         custom_filters: Optional[Dict[str, Callable]] = None,
         unsafe: bool = False,
         validate_output_type: bool = False,
+        optional_variables: Optional[List[str]] = None,
     ):
         """
         Initializes the `ConditionalRouter` with a list of routes detailing the conditions for routing.
@@ -136,11 +137,54 @@ class ConditionalRouter:
         :param validate_output_type:
             Enable validation of routes' output.
             If a route output doesn't match the declared type a ValueError is raised running.
+        :param optional_variables:
+            A list of variable names that are optional in your route conditions and outputs.
+            If these variables are not provided at runtime, they will be set to `None`.
+            This allows you to write routes that can handle missing inputs gracefully without raising errors.
+
+            Example usage with a default fallback route in a Pipeline:
+            ```python
+            from haystack import Pipeline
+            from haystack.components.routers import ConditionalRouter
+
+            routes = [
+                {
+                    "condition": '{{ path == "rag" }}',
+                    "output": "{{ question }}",
+                    "output_name": "rag_route",
+                    "output_type": str
+                },
+                {
+                    "condition": "{{ True }}",  # fallback route
+                    "output": "{{ question }}",
+                    "output_name": "default_route",
+                    "output_type": str
+                }
+            ]
+
+            router = ConditionalRouter(routes, optional_variables=["path"])
+            pipe = Pipeline()
+            pipe.add_component("router", router)
+
+            # When 'path' is provided in the pipeline:
+            result = pipe.run(data={"router": {"question": "What?", "path": "rag"}})
+            assert result["router"] == {"rag_route": "What?"}
+
+            # When 'path' is not provided, fallback route is taken:
+            result = pipe.run(data={"router": {"question": "What?"}})
+            assert result["router"] == {"default_route": "What?"}
+            ```
+
+            This pattern is particularly useful when:
+            - You want to provide default/fallback behavior when certain inputs are missing
+            - Some variables are only needed for specific routing conditions
+            - You're building flexible pipelines where not all inputs are guaranteed to be present
         """
         self.routes: List[dict] = routes
         self.custom_filters = custom_filters or {}
         self._unsafe = unsafe
         self._validate_output_type = validate_output_type
+        self.optional_variables = optional_variables or []
 
         # Create a Jinja environment to inspect variables in the condition templates
         if self._unsafe:
@@ -166,7 +210,28 @@ class ConditionalRouter:
             # extract outputs
             output_types.update({route["output_name"]: route["output_type"]})
 
-        component.set_input_types(self, **{var: Any for var in input_types})
+        # remove optional variables from mandatory input types
+        mandatory_input_types = input_types - set(self.optional_variables)
+
+        # warn about unused optional variables
+        unused_optional_vars = set(self.optional_variables) - input_types if self.optional_variables else None
+        if unused_optional_vars:
+            msg = (
+                f"The following optional variables are specified but not used in any route: {unused_optional_vars}. "
+                "Check if there's a typo in variable names."
+            )
+            # intentionally using both warn and logger
+            warn(msg, UserWarning)
+            logger.warning(msg)
+
+        # add mandatory input types
+        component.set_input_types(self, **{var: Any for var in mandatory_input_types})
+
+        # now add optional input types
+        for optional_var_name in self.optional_variables:
+            component.set_input_type(self, name=optional_var_name, type=Any, default=None)
+
+        # set output types
         component.set_output_types(self, **output_types)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -186,6 +251,7 @@ class ConditionalRouter:
             custom_filters=se_filters,
             unsafe=self._unsafe,
             validate_output_type=self._validate_output_type,
+            optional_variables=self.optional_variables,
         )
 
     @classmethod

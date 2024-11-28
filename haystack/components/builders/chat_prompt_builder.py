@@ -129,7 +129,9 @@ class ChatPromptBuilder:
             for message in template:
                 if message.is_from(ChatRole.USER) or message.is_from(ChatRole.SYSTEM):
                     # infer variables from template
-                    ast = self._env.parse(message.content)
+                    if message.text is None:
+                        raise ValueError(f"The provided ChatMessage has no text. ChatMessage: {message}")
+                    ast = self._env.parse(message.text)
                     template_variables = meta.find_undeclared_variables(ast)
                     variables += list(template_variables)
         self.variables = variables
@@ -192,8 +194,9 @@ class ChatPromptBuilder:
         for message in template:
             if message.is_from(ChatRole.USER) or message.is_from(ChatRole.SYSTEM):
                 self._validate_variables(set(template_variables_combined.keys()))
-
-                compiled_template = self._env.from_string(message.content)
+                if message.text is None:
+                    raise ValueError(f"The provided ChatMessage has no text. ChatMessage: {message}")
+                compiled_template = self._env.from_string(message.text)
                 rendered_content = compiled_template.render(template_variables_combined)
                 # deep copy the message to avoid modifying the original message
                 rendered_message: ChatMessage = deepcopy(message)

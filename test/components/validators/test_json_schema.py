@@ -184,7 +184,7 @@ class TestJsonSchemaValidator:
         result = pipe.run(data={"schema_validator": {"json_schema": json_schema_github_compare}})
         assert "validated" in result["schema_validator"]
         assert len(result["schema_validator"]["validated"]) == 1
-        assert result["schema_validator"]["validated"][0].content == genuine_fc_message
+        assert result["schema_validator"]["validated"][0].text == genuine_fc_message
 
     def test_schema_validator_in_pipeline_validation_error(self, json_schema_github_compare):
         @component
@@ -202,4 +202,4 @@ class TestJsonSchemaValidator:
         result = pipe.run(data={"schema_validator": {"json_schema": json_schema_github_compare}})
         assert "validation_error" in result["schema_validator"]
         assert len(result["schema_validator"]["validation_error"]) == 1
-        assert "Error details" in result["schema_validator"]["validation_error"][0].content
+        assert "Error details" in result["schema_validator"]["validation_error"][0].text

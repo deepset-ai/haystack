@@ -141,18 +141,20 @@ class JsonSchemaValidator:
             dictionaries.
         """
         last_message = messages[-1]
-        if not is_valid_json(last_message.content):
+        if last_message.text is None:
+            raise ValueError(f"The provided ChatMessage has no text. ChatMessage: {last_message}")
+        if not is_valid_json(last_message.text):
             return {
                 "validation_error": [
                     ChatMessage.from_user(
-                        f"The message '{last_message.content}' is not a valid JSON object. "
+                        f"The message '{last_message.text}' is not a valid JSON object. "
                         f"Please provide only a valid JSON object in string format."
                         f"Don't use any markdown and don't add any comment."
                     )
                 ]
             }
 
-        last_message_content = json.loads(last_message.content)
+        last_message_content = json.loads(last_message.text)
         json_schema = json_schema or self.json_schema
         error_template = error_template or self.error_template or self.default_error_template
 
@@ -182,16 +184,11 @@ class JsonSchemaValidator:
             error_template = error_template or self.default_error_template
 
             recovery_prompt = self._construct_error_recovery_message(
-                error_template,
-                str(e),
-                error_path,
-                error_schema_path,
-                validation_schema,
-                failing_json=last_message.content,
+                error_template, str(e), error_path, error_schema_path, validation_schema, failing_json=last_message.text
             )
             return {"validation_error": [ChatMessage.from_user(recovery_prompt)]}
 
-    def _construct_error_recovery_message(
+    def _construct_error_recovery_message(  # pylint: disable=too-many-positional-arguments
         self,
         error_template: str,
         error_message: str,

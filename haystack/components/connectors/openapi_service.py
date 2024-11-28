@@ -161,15 +161,17 @@ class OpenAPIServiceConnector:
         :raises ValueError: If the content is not valid JSON or lacks required fields.
         """
         function_payloads = []
+        if message.text is None:
+            raise ValueError(f"The provided ChatMessage has no text.\nChatMessage: {message}")
         try:
-            tool_calls = json.loads(message.content)
+            tool_calls = json.loads(message.text)
         except json.JSONDecodeError:
-            raise ValueError("Invalid JSON content, expected OpenAI tools message.", message.content)
+            raise ValueError("Invalid JSON content, expected OpenAI tools message.", message.text)
 
         for tool_call in tool_calls:
             # this should never happen, but just in case do a sanity check
             if "type" not in tool_call:
-                raise ValueError("Message payload doesn't seem to be a tool invocation descriptor", message.content)
+                raise ValueError("Message payload doesn't seem to be a tool invocation descriptor", message.text)
 
             # In OpenAPIServiceConnector we know how to handle functions tools only
             if tool_call["type"] == "function":
