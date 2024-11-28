@@ -36,6 +36,7 @@ def test_with_empty_content():
     message = ChatMessage.from_user("")
     assert message.content == ""
     assert message.text == ""
+    assert message.role == ChatRole.USER
 
 
 def test_from_function_with_empty_name():
@@ -44,6 +45,7 @@ def test_from_function_with_empty_name():
     assert message.content == content
     assert message.text == content
     assert message.name == ""
+    assert message.role == ChatRole.FUNCTION
 
 
 def test_to_openai_format():
@@ -94,11 +96,15 @@ def test_apply_custom_chat_templating_on_chat_message():
 
 
 def test_to_dict():
-    message = ChatMessage.from_user("content")
-    message.meta["some"] = "some"
+    content = "content"
+    role = "user"
+    meta = {"some": "some"}
 
-    assert message.to_dict() == {"content": "content", "role": "user", "name": None, "meta": {"some": "some"}}
-    assert message.text == "content"
+    message = ChatMessage.from_user(content)
+    message.meta.update(meta)
+
+    assert message.text == content
+    assert message.to_dict() == {"content": content, "role": role, "name": None, "meta": meta}
 
 
 def test_from_dict():
