@@ -52,8 +52,6 @@ if __name__ == '__main__':
     imported, failed = import_packages_with_init("haystack")
 
     print(f"\nSUCCESSFULLY IMPORTED {len(imported)} PACKAGES:")
-    for package in sorted(imported):
-        print(f"  - {package}")
 
     if failed:
         print(f"\nFAILED TO IMPORT {len(failed)} PACKAGES:")
