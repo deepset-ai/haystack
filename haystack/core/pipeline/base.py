@@ -176,15 +176,16 @@ class PipelineBase:
 
                 try:
                     instance = component_from_dict(component_class, component_data, name, callbacks)
-                except Exception as e:
+                except Exception as error:
                     msg = (
-                        f"Couldn't deserialize component '{name}' of class '{component_class.__name__}' "
-                        f"with the following data: {str(component_data)}. Possible reasons include "
-                        "malformed serialized data, mismatch between the serialized component and the "
-                        "loaded one (due to a breaking change, see "
-                        "https://github.com/deepset-ai/haystack/releases), etc."
+                        f"Couldn't deserialize component '{name}' of class '{component_class.__name__}' because of:"
+                        f"{error}"
+                        "Component was deserialized with the following data:"
+                        f"{str(component_data)}."
+                        "Possible reasons include malformed serialized data, mismatch between the serialized component "
+                        "and the loaded one (due to a breaking change, see  https://github.com/deepset-ai/haystack/releases), etc."
                     )
-                    raise DeserializationError(msg) from e
+                    raise DeserializationError(msg) from error
             pipe.add_component(name=name, instance=instance)
 
         for connection in data.get("connections", []):
