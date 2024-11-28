@@ -51,6 +51,10 @@ if __name__ == '__main__':
     print("Checking imports from Haystack packages...")
     imported, failed = import_packages_with_init("haystack")
 
+    if not imported:
+        print("\nNO PACKAGES WERE IMPORTED")
+        sys.exit(1)
+
     print(f"\nSUCCESSFULLY IMPORTED {len(imported)} PACKAGES:")
 
     if failed:
