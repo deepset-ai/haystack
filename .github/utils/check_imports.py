@@ -11,7 +11,7 @@ One example is forgetting to use a forward reference for a type hint coming
 from a lazy import.
 """
 
-def import_packages_with_init(directory):
+def validate_package_imports(directory):
     """
     Recursively search for directories with __init__.py and import them.
     """
@@ -51,7 +51,7 @@ def import_packages_with_init(directory):
 
 if __name__ == '__main__':
     print("Checking imports from Haystack packages...")
-    imported, failed = import_packages_with_init("haystack")
+    imported, failed = validate_package_imports(directory="haystack")
 
     if not imported:
         print("\nNO PACKAGES WERE IMPORTED")
