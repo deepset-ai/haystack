@@ -96,12 +96,12 @@ def test_to_dict():
 
 
 def test_from_dict():
-    assert ChatMessage.from_dict(data={"content": "text", "role": "user", "name": None}) == ChatMessage(
-        content="text", role=ChatRole("user"), name=None, meta={}
+    assert ChatMessage.from_dict(data={"content": "text", "role": "user", "name": None}) == ChatMessage.from_user(
+        "text"
     )
 
 
 def test_from_dict_with_meta():
     assert ChatMessage.from_dict(
-        data={"content": "text", "role": "user", "name": None, "meta": {"something": "something"}}
-    ) == ChatMessage(content="text", role=ChatRole("user"), name=None, meta={"something": "something"})
+        data={"content": "text", "role": "assistant", "name": None, "meta": {"something": "something"}}
+    ) == ChatMessage.from_assistant("text", meta={"something": "something"})

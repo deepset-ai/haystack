@@ -183,7 +183,8 @@ class PipelineBase:
                         "Component was deserialized with the following data:"
                         f"{str(component_data)}."
                         "Possible reasons include malformed serialized data, mismatch between the serialized component "
-                        "and the loaded one (due to a breaking change, see  https://github.com/deepset-ai/haystack/releases), etc."
+                        "and the loaded one (due to a breaking change, see "
+                        "https://github.com/deepset-ai/haystack/releases), etc."
                     )
                     raise DeserializationError(msg) from error
             pipe.add_component(name=name, instance=instance)
