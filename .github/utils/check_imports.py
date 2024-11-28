@@ -62,6 +62,6 @@ if __name__ == '__main__':
 
         print("\nERRORS:")
         for fail in failed:
-            print(f"  - {fail['module']}")
-            print(f"    {fail['traceback']}")
+            print(f"  - {fail['module']}\n")
+            print(f"    {fail['traceback']}\n\n")
         sys.exit(1)
