@@ -214,7 +214,7 @@ class HuggingFaceAPIGenerator:
         return self._build_non_streaming_response(hf_output)
 
     def _stream_and_build_response(
-        self, hf_output: Iterable[TextGenerationStreamOutput], streaming_callback: Callable[[StreamingChunk], None]
+        self, hf_output: Iterable["TextGenerationStreamOutput"], streaming_callback: Callable[[StreamingChunk], None]
     ):
         chunks: List[StreamingChunk] = []
         for chunk in hf_output:
