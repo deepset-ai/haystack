@@ -192,7 +192,7 @@ class TestHuggingFaceLocalChatGenerator:
         assert isinstance(results["replies"][0], ChatMessage)
         chat_message = results["replies"][0]
         assert chat_message.is_from(ChatRole.ASSISTANT)
-        assert chat_message.content == "Berlin is cool"
+        assert chat_message.text == "Berlin is cool"
 
     def test_run_with_custom_generation_parameters(self, model_info_mock, mock_pipeline_tokenizer, chat_messages):
         generator = HuggingFaceLocalChatGenerator(model="meta-llama/Llama-2-13b-chat-hf")
@@ -216,4 +216,4 @@ class TestHuggingFaceLocalChatGenerator:
         assert isinstance(results["replies"][0], ChatMessage)
         chat_message = results["replies"][0]
         assert chat_message.is_from(ChatRole.ASSISTANT)
-        assert chat_message.content == "Berlin is cool"
+        assert chat_message.text == "Berlin is cool"
