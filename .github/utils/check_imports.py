@@ -7,12 +7,13 @@ from haystack import logging  # this is needed to avoid circular imports
 """
 This script checks that all Haystack packages can be imported successfully.
 This can detect several issues.
-One example is forgetting to use a forward reference for a type hint coming from a lazy import.
+One example is forgetting to use a forward reference for a type hint coming
+from a lazy import.
 """
 
 def import_packages_with_init(directory):
     """
-    Recursively search for directories with __init__.py and import them safely.
+    Recursively search for directories with __init__.py and import them.
     """
     imported = []
     failed = []
@@ -30,6 +31,7 @@ def import_packages_with_init(directory):
         if init_path.endswith(f'{directory}/__init__.py'):
             continue
 
+        # convert filesystem path to Python module name
         relative_path = os.path.relpath(root, directory)
         module_name = relative_path.replace(os.path.sep, '.')
         if module_name == '.':
@@ -55,7 +57,7 @@ if __name__ == '__main__':
         print("\nNO PACKAGES WERE IMPORTED")
         sys.exit(1)
 
-    print(f"\nSUCCESSFULLY IMPORTED {len(imported)} PACKAGES:")
+    print(f"\nSUCCESSFULLY IMPORTED {len(imported)} PACKAGES")
 
     if failed:
         print(f"\nFAILED TO IMPORT {len(failed)} PACKAGES:")
