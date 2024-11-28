@@ -210,11 +210,14 @@ class TestChatPromptBuilder:
         Test that the ChatPromptBuilder correctly handles meta data.
         It should render the message and copy the meta data from the original message.
         """
-        m = ChatMessage(content="This is a {{ variable }}", role=ChatRole.USER, name=None, meta={"test": "test"})
+        m = ChatMessage.from_user("This is a {{ variable }}")
+        m.meta["meta_field"] = "meta_value"
         builder = ChatPromptBuilder(template=[m])
         res = builder.run(variable="test")
-        res_msg = ChatMessage(content="This is a test", role=ChatRole.USER, name=None, meta={"test": "test"})
-        assert res == {"prompt": [res_msg]}
+
+        expected_msg = ChatMessage.from_user("This is a test")
+        expected_msg.meta["meta_field"] = "meta_value"
+        assert res == {"prompt": [expected_msg]}
 
     def test_run_with_invalid_template(self):
         builder = ChatPromptBuilder()

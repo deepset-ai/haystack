@@ -36,6 +36,7 @@ def test_with_empty_content():
     message = ChatMessage.from_user("")
     assert message.content == ""
     assert message.text == ""
+    assert message.role == ChatRole.USER
 
 
 def test_from_function_with_empty_name():
@@ -44,6 +45,7 @@ def test_from_function_with_empty_name():
     assert message.content == content
     assert message.text == content
     assert message.name == ""
+    assert message.role == ChatRole.FUNCTION
 
 
 def test_to_openai_format():
@@ -94,23 +96,26 @@ def test_apply_custom_chat_templating_on_chat_message():
 
 
 def test_to_dict():
-    message = ChatMessage.from_user("content")
-    message.meta["some"] = "some"
+    content = "content"
+    role = "user"
+    meta = {"some": "some"}
 
-    assert message.to_dict() == {"content": "content", "role": "user", "name": None, "meta": {"some": "some"}}
-    assert message.text == "content"
+    message = ChatMessage.from_user(content)
+    message.meta.update(meta)
+
+    assert message.text == content
+    assert message.to_dict() == {"content": content, "role": role, "name": None, "meta": meta}
 
 
 def test_from_dict():
-    assert ChatMessage.from_dict(data={"content": "text", "role": "user", "name": None}) == ChatMessage(
-        content="text", role=ChatRole("user"), name=None, meta={}
+    assert ChatMessage.from_dict(data={"content": "text", "role": "user", "name": None}) == ChatMessage.from_user(
+        "text"
     )
 
 
 def test_from_dict_with_meta():
-    assert ChatMessage.from_dict(
-        data={"content": "text", "role": "user", "name": None, "meta": {"something": "something"}}
-    ) == ChatMessage(content="text", role=ChatRole("user"), name=None, meta={"something": "something"})
+    data = {"content": "text", "role": "assistant", "name": None, "meta": {"something": "something"}}
+    assert ChatMessage.from_dict(data) == ChatMessage.from_assistant("text", meta={"something": "something"})
 
 
 def test_content_deprecation_warning(recwarn):
