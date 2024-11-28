@@ -114,9 +114,8 @@ def test_from_dict():
 
 
 def test_from_dict_with_meta():
-    assert ChatMessage.from_dict(
-        data={"content": "text", "role": "assistant", "name": None, "meta": {"something": "something"}}
-    ) == ChatMessage.from_assistant("text", meta={"something": "something"})
+    data = {"content": "text", "role": "assistant", "name": None, "meta": {"something": "something"}}
+    assert ChatMessage.from_dict(data) == ChatMessage.from_assistant("text", meta={"something": "something"})
 
 
 def test_content_deprecation_warning(recwarn):
