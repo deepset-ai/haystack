@@ -18,8 +18,8 @@ class TestChatPromptBuilder:
             ]
         )
         assert builder.required_variables == []
-        assert builder.template[0].content == "This is a {{ variable }}"
-        assert builder.template[1].content == "This is a {{ variable2 }}"
+        assert builder.template[0].text == "This is a {{ variable }}"
+        assert builder.template[1].text == "This is a {{ variable2 }}"
         assert builder._variables is None
         assert builder._required_variables is None
 
@@ -62,7 +62,7 @@ class TestChatPromptBuilder:
             template=[ChatMessage.from_user("This is a {{ variable }}")], required_variables=["variable"]
         )
         assert builder.required_variables == ["variable"]
-        assert builder.template[0].content == "This is a {{ variable }}"
+        assert builder.template[0].text == "This is a {{ variable }}"
         assert builder._variables is None
         assert builder._required_variables == ["variable"]
 
@@ -84,7 +84,7 @@ class TestChatPromptBuilder:
         builder = ChatPromptBuilder(template=template, variables=variables)
         assert builder.required_variables == []
         assert builder._variables == variables
-        assert builder.template[0].content == "Hello, {{ var1 }}, {{ var2 }}!"
+        assert builder.template[0].text == "Hello, {{ var1 }}, {{ var2 }}!"
         assert builder._required_variables is None
 
         # we have inputs that contain: template, template_variables + variables

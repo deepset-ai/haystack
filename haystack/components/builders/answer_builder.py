@@ -113,7 +113,12 @@ class AnswerBuilder:
         all_answers = []
         for reply, given_metadata in zip(replies, meta):
             # Extract content from ChatMessage objects if reply is a ChatMessages, else use the string as is
-            extracted_reply = reply.content if isinstance(reply, ChatMessage) else str(reply)
+            if isinstance(reply, ChatMessage):
+                if reply.text is None:
+                    raise ValueError(f"The provided ChatMessage has no text. ChatMessage: {reply}")
+                extracted_reply = reply.text
+            else:
+                extracted_reply = str(reply)
             extracted_metadata = reply.meta if isinstance(reply, ChatMessage) else {}
 
             extracted_metadata = {**extracted_metadata, **given_metadata}

@@ -240,10 +240,7 @@ class OpenAIGenerator:
         for response in completions:
             self._check_finish_reason(response)
 
-        return {
-            "replies": [message.content for message in completions],
-            "meta": [message.meta for message in completions],
-        }
+        return {"replies": [message.text for message in completions], "meta": [message.meta for message in completions]}
 
     @staticmethod
     def _create_message_from_chunks(
