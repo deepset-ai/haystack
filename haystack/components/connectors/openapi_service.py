@@ -181,7 +181,7 @@ class OpenAPIServiceConnector:
                 )
         return function_payloads
 
-    def _authenticate_service(self, openapi_service: OpenAPI, credentials: Optional[Union[dict, str]] = None):
+    def _authenticate_service(self, openapi_service: "OpenAPI", credentials: Optional[Union[dict, str]] = None):
         """
         Authentication with an OpenAPI service.
 
@@ -236,7 +236,7 @@ class OpenAPIServiceConnector:
                     f"for it. Check the service configuration and credentials."
                 )
 
-    def _invoke_method(self, openapi_service: OpenAPI, method_invocation_descriptor: Dict[str, Any]) -> Any:
+    def _invoke_method(self, openapi_service: "OpenAPI", method_invocation_descriptor: Dict[str, Any]) -> Any:
         """
         Invokes the specified method on the OpenAPI service.
 
