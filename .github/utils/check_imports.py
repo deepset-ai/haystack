@@ -4,7 +4,7 @@ import importlib
 import traceback
 from haystack import logging  # pylint: disable=unused-import  # this is needed to avoid circular imports
 
-def validate_package_imports(directory):
+def validate_package_imports(directory: str):
     """
     Recursively search for directories with __init__.py and import them.
     """
