@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import warnings
 from dataclasses import asdict, dataclass, field
 from enum import Enum
 from typing import Any, Dict, Optional
@@ -31,6 +32,26 @@ class ChatMessage:
     role: ChatRole
     name: Optional[str]
     meta: Dict[str, Any] = field(default_factory=dict, hash=False)
+
+    @property
+    def text(self) -> Optional[str]:
+        """
+        Returns the textual content of the message.
+        """
+        # Currently, this property mirrors the `content` attribute. This will change in 2.9.0.
+        # The current actual return type is str. We are using Optional[str] to be ready for 2.9.0,
+        # when None will be a valid value for `text`.
+        return object.__getattribute__(self, "content")
+
+    def __getattribute__(self, name):
+        # this method is reimplemented to warn about the deprecation of the `content` attribute
+        if name == "content":
+            msg = (
+                "The `content` attribute of `ChatMessage` will be removed in Haystack 2.9.0. "
+                "Use the `text` property to access the textual value."
+            )
+            warnings.warn(msg, DeprecationWarning)
+        return object.__getattribute__(self, name)
 
     def is_from(self, role: ChatRole) -> bool:
         """

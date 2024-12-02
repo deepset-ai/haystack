@@ -603,7 +603,7 @@ def pipeline_that_has_a_component_with_mutable_output_sent_to_multiple_inputs():
     class MessageMerger:
         @component.output_types(merged_message=str)
         def run(self, messages: List[ChatMessage], metadata: dict = None):
-            return {"merged_message": "\n".join(t.content for t in messages)}
+            return {"merged_message": "\n".join(t.text or "" for t in messages)}
 
     @component
     class FakeGenerator:
