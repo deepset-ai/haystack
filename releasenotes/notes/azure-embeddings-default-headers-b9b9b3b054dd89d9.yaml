@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Adds `default_headers` parameter to `AzureOpenAIDocumentEmbedder` and `AzureOpenAITextEmbedder`
