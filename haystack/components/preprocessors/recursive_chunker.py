@@ -1,12 +1,14 @@
 import re
 from typing import List
 
-from haystack import Document, component
+from haystack import Document, component, logging
+
+logger = logging.getLogger(__name__)
 
 
 @component
 class RecursiveChunker:
-    def __init__(
+    def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         chunk_size: int,
         chunk_overlap: int,
@@ -19,33 +21,66 @@ class RecursiveChunker:
         self.separators = separators
         self.keep_separator = keep_separator
         self.is_separator_regex = is_separator_regex
+        if "sentence" in separators:
+            self._check_if_nltk_is_installed()
+
+    @staticmethod
+    def _check_if_nltk_is_installed():
+        try:
+            import nltk
+
+            nltk.data.find("tokenizers/punkt")
+        except (LookupError, ModuleNotFoundError):
+            raise Exception("You need to install NLTK to use this function. You can install it via `pip install nltk`")
 
     def _apply_overlap(self, chunks: List[str]) -> List[str]:
+        """
+        Applies an overlap between consecutive chunks if the  chunk_overlap attribute is greater than zero.
+
+        :param chunks:
+        :returns:
+            The list of chunks with overlap applied.
+        """
         if self.chunk_overlap <= 0:
             return chunks
 
         overlapped_chunks = []
-        for i in range(len(chunks)):
-            if i > 0:
-                # Add overlap from previous chunk
-                overlap_start = max(0, len(chunks[i - 1]) - self.chunk_overlap)
-                current_chunk = chunks[i - 1][overlap_start:] + chunks[i]
+        for idx, chunk in enumerate(chunks):
+            if idx > 0:
+                # adds an overlap from previous chunk
+                overlap_start = max(0, len(chunks[idx - 1]) - self.chunk_overlap)
+                current_chunk = chunks[idx - 1][overlap_start:] + chunk
                 overlapped_chunks.append(current_chunk)
             else:
-                overlapped_chunks.append(chunks[i])
+                overlapped_chunks.append(chunk)
         return overlapped_chunks
 
     def _chunk_text(self, text: str) -> List[str]:
-        if not text:
-            return []
+        """
+        Recursive chunking algorithm that divides text into smaller chunks based on a list of separator characters.
 
+        It starts with a list of separator characters (e.g., ["\n\n", "\n", " ", ""]) and attempts to divide the text
+        using the first separator. If the resulting chunks are still larger than the specified chunk size, it moves to
+        the next separator in the list.
+        This process continues recursively, using progressively less specific separators until the chunks meet the
+        desired size criteria.
+
+        :param text:
+        :returns:
+            A list of text chunks.
+        """
         if len(text) <= self.chunk_size:
             return [text]
 
-        # Try each separator in order
+        # try each separator
         for separator in self.separators:
-            # split using the current separator
-            splits = text.split(separator) if not self.is_separator_regex else re.split(separator, text)
+            if separator in "sentence":
+                from nltk.tokenize import sent_tokenize
+
+                splits = sent_tokenize(text)
+            else:
+                # split using the current separator
+                splits = text.split(separator) if not self.is_separator_regex else re.split(separator, text)
 
             # filter out empty splits
             splits = [s for s in splits if s.strip()]
@@ -54,14 +89,14 @@ class RecursiveChunker:
                 continue
 
             chunks = []
-            current_chunk = []
+            current_chunk: List[str] = []
             current_length = 0
 
             # check splits, if any is too long, recursively chunk it, otherwise add to current chunk
             for split in splits:
                 split_text = split
-                if self.keep_separator:
-                    split_text = separator + split if split != splits[0] else split
+                if self.keep_separator and separator != "sentence":
+                    split_text = split + separator
 
                 # if adding this split exceeds chunk_size, process current_chunk
                 if current_length + len(split_text) > self.chunk_size:
@@ -91,7 +126,8 @@ class RecursiveChunker:
 
     def _run_one(self, doc: Document) -> List[Document]:
         new_docs = []
-        chunks = self._chunk_text(doc.content)
+        # NOTE: the check for a non-empty content is already done in the run method
+        chunks = self._chunk_text(doc.content)  # type: ignore
         for chunk in chunks:
             new_doc = Document(content=chunk, meta=doc.meta)
             new_doc.meta["original_id"] = doc.id
@@ -104,5 +140,8 @@ class RecursiveChunker:
         """
         new_docs = []
         for doc in documents:
+            if not doc.content or doc.content == "":
+                logger.warning("Document ID {doc_id} has an empty content. Skipping this document.", doc_id=doc.id)
+                continue
             new_docs.extend(self._run_one(doc))
         return new_docs
