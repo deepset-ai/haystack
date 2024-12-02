@@ -5,4 +5,4 @@ features:
 
 deprecations:
   - |
-    The default value of the `store_full_path` parameter will change to `False` in Haysatck 2.9.0 to enhance privacy.
+    The default value of the `store_full_path` parameter in `PyPDFToDocument` and `AzureOCRDocumentConverter` will change to `False` in Haysatck 2.9.0 to enhance privacy.

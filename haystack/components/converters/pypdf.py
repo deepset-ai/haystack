@@ -159,16 +159,6 @@ class PyPDFToDocument:
         self.layout_mode_strip_rotated = layout_mode_strip_rotated
         self.layout_mode_font_height_weight = layout_mode_font_height_weight
 
-        if isinstance(extraction_mode, str):
-            extraction_mode = PyPDFExtractionMode.from_str(extraction_mode)
-        self.extraction_mode = extraction_mode
-        self.plain_mode_orientations = plain_mode_orientations
-        self.plain_mode_space_width = plain_mode_space_width
-        self.layout_mode_space_vertically = layout_mode_space_vertically
-        self.layout_mode_scale_weight = layout_mode_scale_weight
-        self.layout_mode_strip_rotated = layout_mode_strip_rotated
-        self.layout_mode_font_height_weight = layout_mode_font_height_weight
-
     def to_dict(self):
         """
         Serializes the component to a dictionary.
