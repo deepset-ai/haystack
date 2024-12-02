@@ -21,8 +21,18 @@ class RecursiveChunker:
         self.separators = separators
         self.keep_separator = keep_separator
         self.is_separator_regex = is_separator_regex
+        self._check_params()
         if "sentence" in separators:
             self._check_if_nltk_is_installed()
+            from nltk.tokenize import sent_tokenize
+
+            self.nltk_tokenizer = sent_tokenize
+
+    def _check_params(self):
+        if self.chunk_overlap < 0:
+            raise ValueError("Overlap must be greater than zero.")
+        if self.chunk_overlap >= self.chunk_size:
+            raise ValueError("Overlap cannot be greater than or equal to the chunk size.")
 
     @staticmethod
     def _check_if_nltk_is_installed():
@@ -37,22 +47,18 @@ class RecursiveChunker:
         """
         Applies an overlap between consecutive chunks if the  chunk_overlap attribute is greater than zero.
 
-        :param chunks:
+        :param chunks: List of text chunks.
         :returns:
             The list of chunks with overlap applied.
         """
-        if self.chunk_overlap <= 0:
-            return chunks
-
         overlapped_chunks = []
         for idx, chunk in enumerate(chunks):
-            if idx > 0:
-                # adds an overlap from previous chunk
-                overlap_start = max(0, len(chunks[idx - 1]) - self.chunk_overlap)
-                current_chunk = chunks[idx - 1][overlap_start:] + chunk
-                overlapped_chunks.append(current_chunk)
-            else:
+            if idx == 0:
                 overlapped_chunks.append(chunk)
+                continue
+            overlap_start = max(0, len(chunks[idx - 1]) - self.chunk_overlap)
+            current_chunk = chunks[idx - 1][overlap_start:] + chunk
+            overlapped_chunks.append(current_chunk)
         return overlapped_chunks
 
     def _chunk_text(self, text: str) -> List[str]:
@@ -75,9 +81,7 @@ class RecursiveChunker:
         # try each separator
         for separator in self.separators:
             if separator in "sentence":
-                from nltk.tokenize import sent_tokenize
-
-                splits = sent_tokenize(text)
+                splits = self.nltk_tokenizer(text)
             else:
                 # split using the current separator
                 splits = text.split(separator) if not self.is_separator_regex else re.split(separator, text)
@@ -100,7 +104,7 @@ class RecursiveChunker:
 
                 # if adding this split exceeds chunk_size, process current_chunk
                 if current_length + len(split_text) > self.chunk_size:
-                    if current_chunk:  # Save the good splits
+                    if current_chunk:  # keep the good splits
                         chunks.append("".join(current_chunk))
                         current_chunk = []
                         current_length = 0
@@ -117,7 +121,8 @@ class RecursiveChunker:
             if current_chunk:
                 chunks.append("".join(current_chunk))
 
-            chunks = self._apply_overlap(chunks)
+            if self.chunk_overlap > 0:
+                chunks = self._apply_overlap(chunks)
 
             return chunks
 
