@@ -105,6 +105,7 @@ class TestAzureOCRDocumentConverter:
                 "page_layout": "natural",
                 "preceding_context_len": 3,
                 "threshold_y": 0.05,
+                "store_full_path": True,
             },
         }
 
@@ -278,6 +279,9 @@ class TestAzureOCRDocumentConverter:
     @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_ENDPOINT", None), reason="Azure endpoint not available")
     @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_API_KEY", None), reason="Azure credentials not available")
     def test_run_with_docx_file(self, test_files_path):
+        """
+        Test if the component runs correctly with store_full_path=False
+        """
         component = AzureOCRDocumentConverter(
             endpoint=os.environ["CORE_AZURE_CS_ENDPOINT"], api_key=Secret.from_env_var("CORE_AZURE_CS_API_KEY")
         )
@@ -287,6 +291,21 @@ class TestAzureOCRDocumentConverter:
         assert "Sample Docx File" in documents[0].content
         assert "Now we are in Page 2" in documents[0].content
         assert "Page 3 was empty this is page 4" in documents[0].content
+
+    @pytest.mark.integration
+    @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_ENDPOINT", None), reason="Azure endpoint not available")
+    @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_API_KEY", None), reason="Azure credentials not available")
+    def test_run_with_store_full_path_false(self, test_files_path):
+        component = AzureOCRDocumentConverter(
+            endpoint=os.environ["CORE_AZURE_CS_ENDPOINT"],
+            api_key=Secret.from_env_var("CORE_AZURE_CS_API_KEY"),
+            store_full_path=False,
+        )
+        output = component.run(sources=[test_files_path / "docx" / "sample_docx.docx"])
+        documents = output["documents"]
+        assert len(documents) == 1
+        assert "Sample Docx File" in documents[0].content
+        assert documents[0].meta["file_path"] == "sample_docx.docx"
 
     @patch("haystack.utils.auth.EnvVarSecret.resolve_value")
     def test_hashing_dataframe(self, mock_resolve_value):
