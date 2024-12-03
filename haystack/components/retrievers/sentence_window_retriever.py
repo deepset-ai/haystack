@@ -95,7 +95,8 @@ class SentenceWindowRetriever:
 
         warnings.warn(
             "The output of `context_documents` will change in the next release. Instead of a "
-            "List[List[Document]], the output will be a List[Document], ordered by `split_idx_start`.",
+            "List[List[Document]], the output will be a List[Document], where the documents are ordered by "
+            "`split_idx_start`.",
             DeprecationWarning,
         )
 
