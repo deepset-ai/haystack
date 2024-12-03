@@ -79,39 +79,38 @@ if nltk_imports.is_successful():
 
         return sentence_tokenizer
 
+    class CustomPunktLanguageVars(nltk.tokenize.punkt.PunktLanguageVars):
+        # The following adjustment of PunktSentenceTokenizer is inspired by:
+        # https://stackoverflow.com/questions/33139531/preserve-empty-lines-with-nltks-punkt-tokenizer
+        # It is needed for preserving whitespace while splitting text into sentences.
+        _period_context_fmt = r"""
+                %(SentEndChars)s             # a potential sentence ending
+                \s*                          # match potential whitespace [ \t\n\x0B\f\r]
+                (?=(?P<after_tok>
+                    %(NonWord)s              # either other punctuation
+                    |
+                    (?P<next_tok>\S+)        # or some other token - original version: \s+(?P<next_tok>\S+)
+                ))"""
 
-class CustomPunktLanguageVars(nltk.tokenize.punkt.PunktLanguageVars):
-    # The following adjustment of PunktSentenceTokenizer is inspired by:
-    # https://stackoverflow.com/questions/33139531/preserve-empty-lines-with-nltks-punkt-tokenizer
-    # It is needed for preserving whitespace while splitting text into sentences.
-    _period_context_fmt = r"""
-            %(SentEndChars)s             # a potential sentence ending
-            \s*                          # match potential whitespace [ \t\n\x0B\f\r]
-            (?=(?P<after_tok>
-                %(NonWord)s              # either other punctuation
-                |
-                (?P<next_tok>\S+)        # or some other token - original version: \s+(?P<next_tok>\S+)
-            ))"""
+        def period_context_re(self) -> re.Pattern:
+            """
+            Compiles and returns a regular expression to find contexts including possible sentence boundaries.
 
-    def period_context_re(self) -> re.Pattern:
-        """
-        Compiles and returns a regular expression to find contexts including possible sentence boundaries.
-
-        :returns: A compiled regular expression pattern.
-        """
-        try:
-            return self._re_period_context  # type: ignore
-        except:  # noqa: E722
-            self._re_period_context = re.compile(
-                self._period_context_fmt
-                % {
-                    "NonWord": self._re_non_word_chars,
-                    # SentEndChars might be followed by closing brackets, so we match them here.
-                    "SentEndChars": self._re_sent_end_chars + r"[\)\]}]*",
-                },
-                re.UNICODE | re.VERBOSE,
-            )
-            return self._re_period_context
+            :returns: A compiled regular expression pattern.
+            """
+            try:
+                return self._re_period_context  # type: ignore
+            except:  # noqa: E722
+                self._re_period_context = re.compile(
+                    self._period_context_fmt
+                    % {
+                        "NonWord": self._re_non_word_chars,
+                        # SentEndChars might be followed by closing brackets, so we match them here.
+                        "SentEndChars": self._re_sent_end_chars + r"[\)\]}]*",
+                    },
+                    re.UNICODE | re.VERBOSE,
+                )
+                return self._re_period_context
 
 
 class SentenceSplitter:  # pylint: disable=too-few-public-methods
