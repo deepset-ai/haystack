@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-
+import warnings
 from typing import Any, Dict, List, Optional
 
 from haystack import Document, component, default_from_dict, default_to_dict
@@ -91,6 +91,12 @@ class SentenceWindowRetriever:
 
         self.window_size = window_size
         self.document_store = document_store
+
+        warnings.warn(
+            "The `context_documents` output key will be deprecated in the next release. Instead of a "
+            "List[List[Document]], the output will be a List[Document], ordered by `split_idx_start`.",
+            DeprecationWarning,
+        )
 
     @staticmethod
     def merge_documents_text(documents: List[Document]) -> str:
