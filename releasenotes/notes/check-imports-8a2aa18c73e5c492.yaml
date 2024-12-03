@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    Add a testing job to check that all packages can be imported successfully.
+    This should help detecting several issues, such as forgetting to use a
+    forward reference for a type hint coming from a lazy import.

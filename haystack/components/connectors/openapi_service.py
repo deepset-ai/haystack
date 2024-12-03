@@ -161,15 +161,17 @@ class OpenAPIServiceConnector:
         :raises ValueError: If the content is not valid JSON or lacks required fields.
         """
         function_payloads = []
+        if message.text is None:
+            raise ValueError(f"The provided ChatMessage has no text.\nChatMessage: {message}")
         try:
-            tool_calls = json.loads(message.content)
+            tool_calls = json.loads(message.text)
         except json.JSONDecodeError:
-            raise ValueError("Invalid JSON content, expected OpenAI tools message.", message.content)
+            raise ValueError("Invalid JSON content, expected OpenAI tools message.", message.text)
 
         for tool_call in tool_calls:
             # this should never happen, but just in case do a sanity check
             if "type" not in tool_call:
-                raise ValueError("Message payload doesn't seem to be a tool invocation descriptor", message.content)
+                raise ValueError("Message payload doesn't seem to be a tool invocation descriptor", message.text)
 
             # In OpenAPIServiceConnector we know how to handle functions tools only
             if tool_call["type"] == "function":
@@ -179,7 +181,7 @@ class OpenAPIServiceConnector:
                 )
         return function_payloads
 
-    def _authenticate_service(self, openapi_service: OpenAPI, credentials: Optional[Union[dict, str]] = None):
+    def _authenticate_service(self, openapi_service: "OpenAPI", credentials: Optional[Union[dict, str]] = None):
         """
         Authentication with an OpenAPI service.
 
@@ -234,7 +236,7 @@ class OpenAPIServiceConnector:
                     f"for it. Check the service configuration and credentials."
                 )
 
-    def _invoke_method(self, openapi_service: OpenAPI, method_invocation_descriptor: Dict[str, Any]) -> Any:
+    def _invoke_method(self, openapi_service: "OpenAPI", method_invocation_descriptor: Dict[str, Any]) -> Any:
         """
         Invokes the specified method on the OpenAPI service.
 

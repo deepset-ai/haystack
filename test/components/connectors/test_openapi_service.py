@@ -182,7 +182,7 @@ class TestOpenAPIServiceConnector:
         # verify call went through on the wire
         mock_service.call_greet.assert_called_once_with(parameters={"name": "John"}, data={"message": "Hello"})
 
-        response = json.loads(result["service_response"][0].content)
+        response = json.loads(result["service_response"][0].text)
         assert response == "Hello, John"
 
     @patch("haystack.components.connectors.openapi_service.OpenAPI")
@@ -259,7 +259,7 @@ class TestOpenAPIServiceConnector:
             }
         )
 
-        response = json.loads(result["service_response"][0].content)
+        response = json.loads(result["service_response"][0].text)
         assert response == {"result": "accepted"}
 
     @patch("haystack.components.connectors.openapi_service.OpenAPI")

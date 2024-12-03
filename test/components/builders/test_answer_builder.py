@@ -164,77 +164,54 @@ class TestAnswerBuilder:
 
     def test_run_with_chat_message_replies_without_pattern(self):
         component = AnswerBuilder()
-        replies = [
-            ChatMessage(
-                content="Answer: AnswerString",
-                role=ChatRole.ASSISTANT,
-                name=None,
-                meta={
-                    "model": "gpt-4o-mini",
-                    "index": 0,
-                    "finish_reason": "stop",
-                    "usage": {"prompt_tokens": 32, "completion_tokens": 153, "total_tokens": 185},
-                },
-            )
-        ]
-        output = component.run(query="test query", replies=replies, meta=[{}])
-        answers = output["answers"]
-        assert len(answers) == 1
-        assert answers[0].data == "Answer: AnswerString"
-        assert answers[0].meta == {
+
+        message_meta = {
             "model": "gpt-4o-mini",
             "index": 0,
             "finish_reason": "stop",
             "usage": {"prompt_tokens": 32, "completion_tokens": 153, "total_tokens": 185},
         }
+        replies = [ChatMessage.from_assistant("Answer: AnswerString", meta=message_meta)]
+
+        output = component.run(query="test query", replies=replies, meta=[{}])
+        answers = output["answers"]
+        assert len(answers) == 1
+        assert answers[0].data == "Answer: AnswerString"
+        assert answers[0].meta == message_meta
         assert answers[0].query == "test query"
         assert answers[0].documents == []
         assert isinstance(answers[0], GeneratedAnswer)
 
     def test_run_with_chat_message_replies_with_pattern(self):
         component = AnswerBuilder(pattern=r"Answer: (.*)")
-        replies = [
-            ChatMessage(
-                content="Answer: AnswerString",
-                role=ChatRole.ASSISTANT,
-                name=None,
-                meta={
-                    "model": "gpt-4o-mini",
-                    "index": 0,
-                    "finish_reason": "stop",
-                    "usage": {"prompt_tokens": 32, "completion_tokens": 153, "total_tokens": 185},
-                },
-            )
-        ]
-        output = component.run(query="test query", replies=replies, meta=[{}])
-        answers = output["answers"]
-        assert len(answers) == 1
-        assert answers[0].data == "AnswerString"
-        assert answers[0].meta == {
+
+        message_meta = {
             "model": "gpt-4o-mini",
             "index": 0,
             "finish_reason": "stop",
             "usage": {"prompt_tokens": 32, "completion_tokens": 153, "total_tokens": 185},
         }
+        replies = [ChatMessage.from_assistant("Answer: AnswerString", meta=message_meta)]
+
+        output = component.run(query="test query", replies=replies, meta=[{}])
+        answers = output["answers"]
+        assert len(answers) == 1
+        assert answers[0].data == "AnswerString"
+        assert answers[0].meta == message_meta
         assert answers[0].query == "test query"
         assert answers[0].documents == []
         assert isinstance(answers[0], GeneratedAnswer)
 
     def test_run_with_chat_message_replies_with_documents(self):
         component = AnswerBuilder(reference_pattern="\\[(\\d+)\\]")
-        replies = [
-            ChatMessage(
-                content="Answer: AnswerString[2]",
-                role=ChatRole.ASSISTANT,
-                name=None,
-                meta={
-                    "model": "gpt-4o-mini",
-                    "index": 0,
-                    "finish_reason": "stop",
-                    "usage": {"prompt_tokens": 32, "completion_tokens": 153, "total_tokens": 185},
-                },
-            )
-        ]
+        message_meta = {
+            "model": "gpt-4o-mini",
+            "index": 0,
+            "finish_reason": "stop",
+            "usage": {"prompt_tokens": 32, "completion_tokens": 153, "total_tokens": 185},
+        }
+        replies = [ChatMessage.from_assistant("Answer: AnswerString[2]", meta=message_meta)]
+
         output = component.run(
             query="test query",
             replies=replies,
@@ -244,60 +221,40 @@ class TestAnswerBuilder:
         answers = output["answers"]
         assert len(answers) == 1
         assert answers[0].data == "Answer: AnswerString[2]"
-        assert answers[0].meta == {
-            "model": "gpt-4o-mini",
-            "index": 0,
-            "finish_reason": "stop",
-            "usage": {"prompt_tokens": 32, "completion_tokens": 153, "total_tokens": 185},
-        }
+        assert answers[0].meta == message_meta
         assert answers[0].query == "test query"
         assert len(answers[0].documents) == 1
         assert answers[0].documents[0].content == "test doc 2"
 
     def test_run_with_chat_message_replies_with_pattern_set_at_runtime(self):
         component = AnswerBuilder(pattern="unused pattern")
-        replies = [
-            ChatMessage(
-                content="Answer: AnswerString",
-                role=ChatRole.ASSISTANT,
-                name=None,
-                meta={
-                    "model": "gpt-4o-mini",
-                    "index": 0,
-                    "finish_reason": "stop",
-                    "usage": {"prompt_tokens": 32, "completion_tokens": 153, "total_tokens": 185},
-                },
-            )
-        ]
-        output = component.run(query="test query", replies=replies, meta=[{}], pattern=r"Answer: (.*)")
-        answers = output["answers"]
-        assert len(answers) == 1
-        assert answers[0].data == "AnswerString"
-        assert answers[0].meta == {
+        message_meta = {
             "model": "gpt-4o-mini",
             "index": 0,
             "finish_reason": "stop",
             "usage": {"prompt_tokens": 32, "completion_tokens": 153, "total_tokens": 185},
         }
+        replies = [ChatMessage.from_assistant("Answer: AnswerString", meta=message_meta)]
+
+        output = component.run(query="test query", replies=replies, meta=[{}], pattern=r"Answer: (.*)")
+        answers = output["answers"]
+        assert len(answers) == 1
+        assert answers[0].data == "AnswerString"
+        assert answers[0].meta == message_meta
         assert answers[0].query == "test query"
         assert answers[0].documents == []
         assert isinstance(answers[0], GeneratedAnswer)
 
     def test_run_with_chat_message_replies_with_meta_set_at_run_time(self):
         component = AnswerBuilder()
-        replies = [
-            ChatMessage(
-                content="AnswerString",
-                role=ChatRole.ASSISTANT,
-                name=None,
-                meta={
-                    "model": "gpt-4o-mini",
-                    "index": 0,
-                    "finish_reason": "stop",
-                    "usage": {"prompt_tokens": 32, "completion_tokens": 153, "total_tokens": 185},
-                },
-            )
-        ]
+        message_meta = {
+            "model": "gpt-4o-mini",
+            "index": 0,
+            "finish_reason": "stop",
+            "usage": {"prompt_tokens": 32, "completion_tokens": 153, "total_tokens": 185},
+        }
+        replies = [ChatMessage.from_assistant("AnswerString", meta=message_meta)]
+
         output = component.run(query="test query", replies=replies, meta=[{"test": "meta"}])
         answers = output["answers"]
         assert len(answers) == 1
@@ -315,8 +272,9 @@ class TestAnswerBuilder:
 
     def test_run_with_chat_message_no_meta_with_meta_set_at_run_time(self):
         component = AnswerBuilder()
-        replies = [ChatMessage(content="AnswerString", role=ChatRole.ASSISTANT, name=None, meta={})]
+        replies = [ChatMessage.from_assistant("AnswerString")]
         output = component.run(query="test query", replies=replies, meta=[{"test": "meta"}])
+
         answers = output["answers"]
         assert len(answers) == 1
         assert answers[0].data == "AnswerString"

@@ -4,6 +4,8 @@
 
 import copy
 import hashlib
+import os
+import warnings
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Union
@@ -49,7 +51,7 @@ class AzureOCRDocumentConverter:
     ```
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         endpoint: str,
         api_key: Secret = Secret.from_env_var("AZURE_AI_API_KEY"),
@@ -59,6 +61,7 @@ class AzureOCRDocumentConverter:
         merge_multiple_column_headers: bool = True,
         page_layout: Literal["natural", "single_column"] = "natural",
         threshold_y: Optional[float] = 0.05,
+        store_full_path: bool = True,
     ):
         """
         Creates an AzureOCRDocumentConverter component.
@@ -83,6 +86,9 @@ class AzureOCRDocumentConverter:
             The threshold, in inches, to determine if two recognized PDF elements are grouped into a
             single line. This is crucial for section headers or numbers which may be spatially separated
             from the remaining text on the horizontal axis.
+        :param store_full_path:
+            If True, the full path of the file is stored in the metadata of the document.
+            If False, only the file name is stored.
         """
         azure_import.check()
 
@@ -97,6 +103,7 @@ class AzureOCRDocumentConverter:
         self.merge_multiple_column_headers = merge_multiple_column_headers
         self.page_layout = page_layout
         self.threshold_y = threshold_y
+        self.store_full_path = store_full_path
         if self.page_layout == "single_column" and self.threshold_y is None:
             self.threshold_y = 0.05
 
@@ -136,6 +143,15 @@ class AzureOCRDocumentConverter:
             azure_output.append(result.to_dict())
 
             merged_metadata = {**bytestream.meta, **metadata}
+            warnings.warn(
+                "The `store_full_path` parameter defaults to True, storing full file paths in metadata. "
+                "In the 2.9.0 release, the default value for `store_full_path` will change to False, "
+                "storing only file names to improve privacy.",
+                DeprecationWarning,
+            )
+
+            if not self.store_full_path and (file_path := bytestream.meta.get("file_path")):
+                merged_metadata["file_path"] = os.path.basename(file_path)
             docs = self._convert_tables_and_text(result=result, meta=merged_metadata)
             documents.extend(docs)
 
@@ -158,6 +174,7 @@ class AzureOCRDocumentConverter:
             merge_multiple_column_headers=self.merge_multiple_column_headers,
             page_layout=self.page_layout,
             threshold_y=self.threshold_y,
+            store_full_path=self.store_full_path,
         )
 
     @classmethod
