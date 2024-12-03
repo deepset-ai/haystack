@@ -93,7 +93,7 @@ class SentenceWindowRetriever:
         self.document_store = document_store
 
         warnings.warn(
-            "The `context_documents` output key will be deprecated in the next release. Instead of a "
+            "The output of `context_documents` will change in the next release. Instead of a "
             "List[List[Document]], the output will be a List[Document], ordered by `split_idx_start`.",
             DeprecationWarning,
         )
