@@ -7,7 +7,7 @@ from typing import Any, Callable, Dict, List, Literal, Optional, Tuple
 
 from haystack import Document, component, logging
 from haystack.components.preprocessors.document_splitter import DocumentSplitter
-from haystack.components.preprocessors.utils import Language, SentenceSplitter, nltk_imports
+from haystack.components.preprocessors.sentence_tokenizer import Language, SentenceSplitter, nltk_imports
 from haystack.core.serialization import default_to_dict
 from haystack.utils import serialize_callable
 
