@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import io
+import os
 import warnings
 from enum import Enum
 from pathlib import Path
@@ -99,6 +100,7 @@ class PyPDFToDocument:
         layout_mode_scale_weight: float = 1.25,
         layout_mode_strip_rotated: bool = True,
         layout_mode_font_height_weight: float = 1.0,
+        store_full_path: bool = True,
     ):
         """
         Create an PyPDFToDocument component.
@@ -131,6 +133,9 @@ class PyPDFToDocument:
         :param layout_mode_font_height_weight:
             Multiplier for font height when calculating blank line height.
             Ignored if `extraction_mode` is `PyPDFExtractionMode.PLAIN`.
+        :param store_full_path:
+            If True, the full path of the file is stored in the metadata of the document.
+            If False, only the file name is stored.
         """
         pypdf_import.check()
 
@@ -142,6 +147,7 @@ class PyPDFToDocument:
             warnings.warn(msg, DeprecationWarning)
 
         self.converter = converter
+        self.store_full_path = store_full_path
 
         if isinstance(extraction_mode, str):
             extraction_mode = PyPDFExtractionMode.from_str(extraction_mode)
@@ -170,6 +176,7 @@ class PyPDFToDocument:
             layout_mode_scale_weight=self.layout_mode_scale_weight,
             layout_mode_strip_rotated=self.layout_mode_strip_rotated,
             layout_mode_font_height_weight=self.layout_mode_font_height_weight,
+            store_full_path=self.store_full_path,
         )
 
     @classmethod
@@ -255,6 +262,14 @@ class PyPDFToDocument:
                 )
 
             merged_metadata = {**bytestream.meta, **metadata}
+            warnings.warn(
+                "The `store_full_path` parameter defaults to True, storing full file paths in metadata. "
+                "In the 2.9.0 release, the default value for `store_full_path` will change to False, "
+                "storing only file names to improve privacy.",
+                DeprecationWarning,
+            )
+            if not self.store_full_path and (file_path := bytestream.meta.get("file_path")):
+                merged_metadata["file_path"] = os.path.basename(file_path)
             document.meta = merged_metadata
             documents.append(document)
 
