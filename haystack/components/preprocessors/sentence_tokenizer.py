@@ -42,41 +42,42 @@ ISO639_TO_NLTK = {
 
 QUOTE_SPANS_RE = re.compile(r"\W(\"+|\'+).*?\1")
 
+if nltk_imports.is_successful():
 
-def load_sentence_tokenizer(
-    language: Language, keep_white_spaces: bool = False
-) -> nltk.tokenize.punkt.PunktSentenceTokenizer:
-    """
-    Utility function to load the nltk sentence tokenizer.
+    def load_sentence_tokenizer(
+        language: Language, keep_white_spaces: bool = False
+    ) -> nltk.tokenize.punkt.PunktSentenceTokenizer:
+        """
+        Utility function to load the nltk sentence tokenizer.
 
-    :param language: The language for the tokenizer.
-    :param keep_white_spaces: If True, the tokenizer will keep white spaces between sentences.
-    :returns: nltk sentence tokenizer.
-    """
-    try:
-        nltk.data.find("tokenizers/punkt_tab")
-    except LookupError:
+        :param language: The language for the tokenizer.
+        :param keep_white_spaces: If True, the tokenizer will keep white spaces between sentences.
+        :returns: nltk sentence tokenizer.
+        """
         try:
-            nltk.download("punkt_tab")
-        except FileExistsError as error:
-            logger.debug("NLTK punkt tokenizer seems to be already downloaded. Error message: {error}", error=error)
+            nltk.data.find("tokenizers/punkt_tab")
+        except LookupError:
+            try:
+                nltk.download("punkt_tab")
+            except FileExistsError as error:
+                logger.debug("NLTK punkt tokenizer seems to be already downloaded. Error message: {error}", error=error)
 
-    language_name = ISO639_TO_NLTK.get(language)
+        language_name = ISO639_TO_NLTK.get(language)
 
-    if language_name is not None:
-        sentence_tokenizer = nltk.data.load(f"tokenizers/punkt_tab/{language_name}.pickle")
-    else:
-        logger.warning(
-            "PreProcessor couldn't find the default sentence tokenizer model for {language}. "
-            " Using English instead. You may train your own model and use the 'tokenizer_model_folder' parameter.",
-            language=language,
-        )
-        sentence_tokenizer = nltk.data.load("tokenizers/punkt_tab/english.pickle")
+        if language_name is not None:
+            sentence_tokenizer = nltk.data.load(f"tokenizers/punkt_tab/{language_name}.pickle")
+        else:
+            logger.warning(
+                "PreProcessor couldn't find the default sentence tokenizer model for {language}. "
+                " Using English instead. You may train your own model and use the 'tokenizer_model_folder' parameter.",
+                language=language,
+            )
+            sentence_tokenizer = nltk.data.load("tokenizers/punkt_tab/english.pickle")
 
-    if keep_white_spaces:
-        sentence_tokenizer._lang_vars = CustomPunktLanguageVars()
+        if keep_white_spaces:
+            sentence_tokenizer._lang_vars = CustomPunktLanguageVars()
 
-    return sentence_tokenizer
+        return sentence_tokenizer
 
 
 class CustomPunktLanguageVars(nltk.tokenize.punkt.PunktLanguageVars):
