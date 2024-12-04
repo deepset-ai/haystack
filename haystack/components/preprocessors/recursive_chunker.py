@@ -1,7 +1,7 @@
 import re
-from typing import List
+from typing import Any, Dict, List
 
-from haystack import Document, component, logging
+from haystack import Document, component, default_from_dict, default_to_dict, logging
 
 logger = logging.getLogger(__name__)
 
@@ -63,9 +63,8 @@ class RecursiveChunker:
 
         It starts with a list of separator characters (e.g., ["\n\n", "\n", " ", ""]) and attempts to divide the text
         using the first separator. If the resulting chunks are still larger than the specified chunk size, it moves to
-        the next separator in the list.
-        This process continues recursively, using progressively less specific separators until the chunks meet the
-        desired size criteria.
+        the next separator in the list. This process continues recursively, progressively applying each specific
+        separator until the chunks meet the desired size criteria.
 
         :param text:
         :returns:
@@ -76,7 +75,7 @@ class RecursiveChunker:
 
         # try each separator
         for separator in self.separators:
-            if separator in "sentence":
+            if separator in "sentence":  # using nltk sentence tokenizer
                 sentence_with_spans = self.nltk_tokenizer.split_sentences(text)
                 splits = [sentence["sentence"] for sentence in sentence_with_spans]
             else:
@@ -123,12 +122,32 @@ class RecursiveChunker:
 
             return chunks
 
-        # If no separator worked, fall back to character-level chunking
+        # if no separator worked, fall back to character-level chunking
         return [text[i : i + self.chunk_size] for i in range(0, len(text), self.chunk_size - self.chunk_overlap)]
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serializes the RecursiveChunker instance to a dictionary.
+        """
+        return default_to_dict(
+            self,
+            chunk_size=self.chunk_size,
+            chunk_overlap=self.chunk_overlap,
+            separators=self.separators,
+            keep_separator=self.keep_separator,
+            is_separator_regex=self.is_separator_regex,
+        )
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "RecursiveChunker":
+        """
+        Deserializes a dictionary to a RecursiveChunker instance.
+        """
+        return default_from_dict(cls, data)
 
     def _run_one(self, doc: Document) -> List[Document]:
         new_docs = []
-        # NOTE: the check for a non-empty content is already done in the run method
+        # NOTE: the check for a non-empty content is already done in the run method, hence the type ignore below
         chunks = self._chunk_text(doc.content)  # type: ignore
         for chunk in chunks:
             new_doc = Document(content=chunk, meta=doc.meta)
