@@ -79,7 +79,7 @@ class SentenceTransformersDocumentEmbedder:
         :param progress_bar:
             If `True`, shows a progress bar when embedding documents.
         :param normalize_embeddings:
-            If `True`, returns vectors with length 1.
+            If `True`, the embeddings are normalized using L2 normalization.
         :param meta_fields_to_embed:
             List of metadata fields to embed along with the document text.
         :param embedding_separator:
