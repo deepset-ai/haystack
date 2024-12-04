@@ -23,10 +23,7 @@ class RecursiveChunker:
         self.is_separator_regex = is_separator_regex
         self._check_params()
         if "sentence" in separators:
-            self._check_if_nltk_is_installed()
-            from nltk.tokenize import sent_tokenize
-
-            self.nltk_tokenizer = sent_tokenize
+            self.nltk_tokenizer = self._get_custom_sentence_tokenizer()
 
     def _check_params(self):
         if self.chunk_overlap < 0:
@@ -35,13 +32,12 @@ class RecursiveChunker:
             raise ValueError("Overlap cannot be greater than or equal to the chunk size.")
 
     @staticmethod
-    def _check_if_nltk_is_installed():
+    def _get_custom_sentence_tokenizer():
         try:
-            import nltk
-
-            nltk.data.find("tokenizers/punkt")
+            from haystack.components.preprocessors.sentence_tokenizer import Language, SentenceSplitter, nltk_imports
         except (LookupError, ModuleNotFoundError):
             raise Exception("You need to install NLTK to use this function. You can install it via `pip install nltk`")
+        return SentenceSplitter(language="en")
 
     def _apply_overlap(self, chunks: List[str]) -> List[str]:
         """
@@ -81,7 +77,8 @@ class RecursiveChunker:
         # try each separator
         for separator in self.separators:
             if separator in "sentence":
-                splits = self.nltk_tokenizer(text)
+                sentence_with_spans = self.nltk_tokenizer.split_sentences(text)
+                splits = [sentence["sentence"] for sentence in sentence_with_spans]
             else:
                 # split using the current separator
                 splits = text.split(separator) if not self.is_separator_regex else re.split(separator, text)
