@@ -96,6 +96,7 @@ def test_recursive_splitter_empty_documents():
     chunker = RecursiveChunker(chunk_size=20, chunk_overlap=0, separators=["."])
     empty_doc = Document(content="")
     doc_chunks = chunker.run([empty_doc])
+    doc_chunks = doc_chunks["documents"]
     assert len(doc_chunks) == 0
 
 
@@ -110,6 +111,7 @@ AI technology is widely used throughout industry, government, and science. Some 
 
     doc = Document(content=text)
     doc_chunks = chunker.run([doc])
+    doc_chunks = doc_chunks["documents"]
     assert len(doc_chunks) == 4
     assert (
         doc_chunks[0].meta["original_id"]
@@ -137,6 +139,7 @@ def test_recursive_chunker_split_document_with_overlap(chunk_overlap):
 
     doc = Document(content=text)
     doc_chunks = chunker.run([doc])
+    doc_chunks = doc_chunks["documents"]
     if chunker.chunk_overlap == 20:
         assert len(doc_chunks) == 4
         for i, chunk in enumerate(doc_chunks):
