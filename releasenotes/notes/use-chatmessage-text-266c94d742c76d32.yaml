@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Replace usage of `ChatMessage.content` with `ChatMessage.text` across the codebase.
+    This is done in preparation for the removal of `content` in Haystack 2.9.0.

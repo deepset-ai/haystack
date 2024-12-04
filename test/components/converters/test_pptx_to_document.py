@@ -62,3 +62,17 @@ class TestPPTXToDocument:
             "key": "value",
             "language": "it",
         }
+
+    def test_run_with_store_full_path_false(self, test_files_path):
+        """
+        Test if the component runs correctly with store_full_path=False
+        """
+        bytestream = ByteStream.from_file_path(test_files_path / "pptx" / "sample_pptx.pptx")
+        bytestream.meta["file_path"] = str(test_files_path / "pptx" / "sample_pptx.pptx")
+        bytestream.meta["key"] = "value"
+
+        converter = PPTXToDocument(store_full_path=False)
+        output = converter.run(sources=[bytestream], meta=[{"language": "it"}])
+        document = output["documents"][0]
+
+        assert document.meta == {"file_path": "sample_pptx.pptx", "key": "value", "language": "it"}

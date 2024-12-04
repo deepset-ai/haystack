@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Literal, Optional, Set, Union
 
 from jinja2 import meta
 from jinja2.sandbox import SandboxedEnvironment
@@ -137,7 +137,10 @@ class PromptBuilder:
     """
 
     def __init__(
-        self, template: str, required_variables: Optional[List[str]] = None, variables: Optional[List[str]] = None
+        self,
+        template: str,
+        required_variables: Optional[Union[List[str], Literal["*"]]] = None,
+        variables: Optional[List[str]] = None,
     ):
         """
         Constructs a PromptBuilder component.
@@ -150,7 +153,8 @@ class PromptBuilder:
             unless explicitly specified.
             If an optional variable is not provided, it's replaced with an empty string in the rendered prompt.
         :param required_variables: List variables that must be provided as input to PromptBuilder.
-            If a variable listed as required is not provided, an exception is raised. Optional.
+            If a variable listed as required is not provided, an exception is raised.
+            If set to "*", all variables found in the prompt are required. Optional.
         :param variables:
             List input variables to use in prompt templates instead of the ones inferred from the
             `template` parameter. For example, to use more variables during prompt engineering than the ones present
@@ -173,12 +177,12 @@ class PromptBuilder:
             ast = self._env.parse(template)
             template_variables = meta.find_undeclared_variables(ast)
             variables = list(template_variables)
-
         variables = variables or []
+        self.variables = variables
 
         # setup inputs
-        for var in variables:
-            if var in self.required_variables:
+        for var in self.variables:
+            if self.required_variables == "*" or var in self.required_variables:
                 component.set_input_type(self, var, Any)
             else:
                 component.set_input_type(self, var, Any, "")
@@ -238,10 +242,14 @@ class PromptBuilder:
         :raises ValueError:
             If any of the required template variables is not provided.
         """
-        missing_variables = [var for var in self.required_variables if var not in provided_variables]
+        if self.required_variables == "*":
+            required_variables = sorted(self.variables)
+        else:
+            required_variables = self.required_variables
+        missing_variables = [var for var in required_variables if var not in provided_variables]
         if missing_variables:
             missing_vars_str = ", ".join(missing_variables)
             raise ValueError(
                 f"Missing required input variables in PromptBuilder: {missing_vars_str}. "
-                f"Required variables: {self.required_variables}. Provided variables: {provided_variables}."
+                f"Required variables: {required_variables}. Provided variables: {provided_variables}."
             )

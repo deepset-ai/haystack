@@ -131,7 +131,17 @@ class DocumentCleaner:
             if self.remove_repeated_substrings:
                 text = self._remove_repeated_substrings(text)
 
-            cleaned_docs.append(Document(content=text, meta=deepcopy(doc.meta), id=doc.id if self.keep_id else ""))
+            clean_doc = Document(
+                id=doc.id if self.keep_id else "",
+                content=text,
+                dataframe=doc.dataframe,
+                blob=doc.blob,
+                meta=deepcopy(doc.meta),
+                score=doc.score,
+                embedding=doc.embedding,
+                sparse_embedding=doc.sparse_embedding,
+            )
+            cleaned_docs.append(clean_doc)
 
         return {"documents": cleaned_docs}
 

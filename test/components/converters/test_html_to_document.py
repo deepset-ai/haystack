@@ -38,6 +38,28 @@ class TestHTMLToDocument:
         assert "Haystack" in docs[0].content
         assert docs[0].meta["file_name"] == "what_is_haystack.html"
 
+    def test_run_with_store_full_path(self, test_files_path):
+        """
+        Test if the component runs correctly when metadata is supplied by the user.
+        """
+        converter = HTMLToDocument()
+        sources = [test_files_path / "html" / "what_is_haystack.html"]
+
+        results = converter.run(sources=sources)  # store_full_path is True by default
+        docs = results["documents"]
+
+        assert len(docs) == 1
+        assert "Haystack" in docs[0].content
+        assert docs[0].meta["file_path"] == str(sources[0])
+
+        converter_2 = HTMLToDocument(store_full_path=False)
+        results = converter_2.run(sources=sources)
+        docs = results["documents"]
+
+        assert len(docs) == 1
+        assert "Haystack" in docs[0].content
+        assert docs[0].meta["file_path"] == "what_is_haystack.html"
+
     def test_incorrect_meta(self, test_files_path):
         """
         Test if the component raises an error when incorrect metadata is supplied by the user.

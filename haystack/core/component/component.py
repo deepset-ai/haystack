@@ -71,7 +71,6 @@ method decorated with `@component.input`. This dataclass contains:
 
 import inspect
 import sys
-import warnings
 from collections.abc import Callable
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -487,20 +486,11 @@ class _Component:
 
         return output_types_decorator
 
-    def _component(self, cls, is_greedy: Optional[bool] = None):
+    def _component(self, cls: Any):
         """
         Decorator validating the structure of the component and registering it in the components registry.
         """
         logger.debug("Registering {component} as a component", component=cls)
-
-        if is_greedy is not None:
-            msg = (
-                "The 'is_greedy' argument is deprecated and will be removed in version '2.7.0'. "
-                "Change the 'Variadic' input of your Component to 'GreedyVariadic' instead."
-            )
-            warnings.warn(msg, DeprecationWarning)
-        else:
-            is_greedy = False
 
         # Check for required methods and fail as soon as possible
         if not hasattr(cls, "run"):
@@ -543,11 +533,11 @@ class _Component:
 
         return cls
 
-    def __call__(self, cls: Optional[type] = None, is_greedy: Optional[bool] = None):
+    def __call__(self, cls: Optional[type] = None):
         # We must wrap the call to the decorator in a function for it to work
         # correctly with or without parens
         def wrap(cls):
-            return self._component(cls, is_greedy=is_greedy)
+            return self._component(cls)
 
         if cls:
             # Decorator is called without parens

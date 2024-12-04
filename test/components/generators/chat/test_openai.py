@@ -218,7 +218,7 @@ class TestOpenAIChatGenerator:
         assert isinstance(response["replies"], list)
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
-        assert "Hello" in response["replies"][0].content  # see mock_chat_completion_chunk
+        assert "Hello" in response["replies"][0].text  # see mock_chat_completion_chunk
 
     @patch("haystack.components.generators.chat.openai.datetime")
     def test_run_with_streaming_callback_in_run_method(self, mock_datetime, chat_messages, mock_chat_completion_chunk):
@@ -240,7 +240,7 @@ class TestOpenAIChatGenerator:
         assert isinstance(response["replies"], list)
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
-        assert "Hello" in response["replies"][0].content  # see mock_chat_completion_chunk
+        assert "Hello" in response["replies"][0].text  # see mock_chat_completion_chunk
 
         assert hasattr(response["replies"][0], "meta")
         assert isinstance(response["replies"][0].meta, dict)
@@ -287,7 +287,7 @@ class TestOpenAIChatGenerator:
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
-        assert "Paris" in message.content
+        assert "Paris" in message.text
         assert "gpt-4o-mini" in message.meta["model"]
         assert message.meta["finish_reason"] == "stop"
 
@@ -322,7 +322,7 @@ class TestOpenAIChatGenerator:
 
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
-        assert "Paris" in message.content
+        assert "Paris" in message.text
 
         assert "gpt-4o-mini" in message.meta["model"]
         assert message.meta["finish_reason"] == "stop"
@@ -353,7 +353,7 @@ class TestOpenAIChatGenerator:
 
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
-        assert "Paris" in message.content
+        assert "Paris" in message.text
 
         assert "gpt-4o-mini" in message.meta["model"]
         assert message.meta["finish_reason"] == "stop"
