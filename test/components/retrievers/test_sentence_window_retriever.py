@@ -141,6 +141,39 @@ class TestSentenceWindowRetriever:
         retriever.run(retrieved_documents=[Document.from_dict(doc)], window_size=1)
         assert retriever.window_size == 5
 
+    def test_context_documents_returned_are_ordered_by_split_idx_start(self):
+        docs = []
+        accumulated_length = 0
+        for sent in range(10):
+            content = f"Sentence {sent}."
+            docs.append(
+                Document(
+                    content=content,
+                    meta={
+                        "id": f"doc_{sent}",
+                        "split_idx_start": accumulated_length,
+                        "source_id": "source1",
+                        "split_id": sent,
+                    },
+                )
+            )
+            accumulated_length += len(content)
+
+        import random
+
+        random.shuffle(docs)
+
+        doc_store = InMemoryDocumentStore()
+        doc_store.write_documents(docs)
+        retriever = SentenceWindowRetriever(document_store=doc_store, window_size=3)
+
+        # run the retriever with a document whose content = "Sentence 4."
+        result = retriever.run(retrieved_documents=[doc for doc in docs if doc.content == "Sentence 4."])
+
+        # assert that the context documents are in the correct order
+        assert len(result["context_documents"]) == 7
+        assert [doc.meta["split_idx_start"] for doc in result["context_documents"]] == [11, 22, 33, 44, 55, 66, 77]
+
     @pytest.mark.integration
     def test_run_with_pipeline(self):
         splitter = DocumentSplitter(split_length=1, split_overlap=0, split_by="sentence")
@@ -165,13 +198,13 @@ class TestSentenceWindowRetriever:
             "This is a text with some words. There is a second sentence. And there is also a third sentence. "
             "It also contains a fourth sentence. And a fifth sentence."
         ]
-        assert len(result["sentence_window_retriever"]["context_documents"][0]) == 5
+        assert len(result["sentence_window_retriever"]["context_documents"]) == 5
 
         result = pipe.run({"bm25_retriever": {"query": "third"}, "sentence_window_retriever": {"window_size": 1}})
         assert result["sentence_window_retriever"]["context_windows"] == [
             " There is a second sentence. And there is also a third sentence. It also contains a fourth sentence."
         ]
-        assert len(result["sentence_window_retriever"]["context_documents"][0]) == 3
+        assert len(result["sentence_window_retriever"]["context_documents"]) == 3
 
     @pytest.mark.integration
     def test_serialization_deserialization_in_pipeline(self):
