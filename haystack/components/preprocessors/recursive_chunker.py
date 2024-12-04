@@ -12,6 +12,40 @@ logger = logging.getLogger(__name__)
 
 @component
 class RecursiveChunker:
+    """
+    Recursively chunk text into smaller chunks.
+
+    This component is used to split text into smaller chunks, it does so by recursively applying a list of separators
+    to the text.
+
+    Each separator is applied to the text, if then checks each of the resulting chunks, it keeps the ones chunks that
+    are within the chunk_size, for the ones that are larger than the chunk_size, it applies the next separator in the
+    list to the remaining text.
+
+    This is done until all chunks are smaller than the chunk_size parameter.
+
+    Example:
+
+    ```python
+    from haystack import Document
+    from haystack.components.preprocessors.recursive_chunker import RecursiveChunker
+
+    chunker = RecursiveChunker(chunk_size=260, chunk_overlap=0, separators=["\n\n", "\n", ".", " "], keep_separator=True)
+    text = '''Artificial intelligence (AI) - Introduction
+
+    AI, in its broadest sense, is intelligence exhibited by machines, particularly computer systems.
+    AI technology is widely used throughout industry, government, and science. Some high-profile applications include advanced web search engines; recommendation systems; interacting via human speech; autonomous vehicles; generative and creative tools; and superhuman play and analysis in strategy games.'''
+
+    doc = Document(content=text)
+    doc_chunks = chunker.run([doc])
+    >[
+    >Document(id=..., content: 'Artificial intelligence (AI) - Introduction\n\n', meta: {'original_id': '65167a9823dd883de577e828ca4fd529e6f7241f0ff616acfce454d808478951'}),
+    >Document(id=..., content: 'AI, in its broadest sense, is intelligence exhibited by machines, particularly computer systems. ', meta: {'original_id': '65167a9823dd883de577e828ca4fd529e6f7241f0ff616acfce454d808478951'}),
+    >Document(id=..., content: 'AI technology is widely used throughout industry, government, and science.', meta: {'original_id': '65167a9823dd883de577e828ca4fd529e6f7241f0ff616acfce454d808478951'}),
+    >Document(id=..., content: ' Some high-profile applications include advanced web search engines; recommendation systems; interac...', meta: {'original_id': '65167a9823dd883de577e828ca4fd529e6f7241f0ff616acfce454d808478951'})
+    >]
+    """  # noqa: E501
+
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         chunk_size: int,
