@@ -38,7 +38,7 @@ class RecursiveChunker:
     @staticmethod
     def _get_custom_sentence_tokenizer():
         try:
-            from haystack.components.preprocessors.sentence_tokenizer import Language, SentenceSplitter, nltk_imports
+            from haystack.components.preprocessors.sentence_tokenizer import SentenceSplitter
         except (LookupError, ModuleNotFoundError):
             raise Exception("You need to install NLTK to use this function. You can install it via `pip install nltk`")
         return SentenceSplitter(language="en")
