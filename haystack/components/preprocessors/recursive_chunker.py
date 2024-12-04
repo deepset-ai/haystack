@@ -193,9 +193,15 @@ class RecursiveChunker:
             new_docs.append(new_doc)
         return new_docs
 
-    def run(self, documents: List[Document]) -> List[Document]:
+    @component.output_types(documents=List[Document])
+    def run(self, documents: List[Document]) -> Dict[str, List[Document]]:
         """
-        Split text of documents into smaller chunks recursively.
+        Split documents into Documents with smaller chunks of text.
+
+        :param documents: List of Documents to split.
+        :returns:
+            A dictionary containing a key "documents" with a List of Documents with smaller chunks of text corresponding
+            to the input documents.
         """
         new_docs = []
         for doc in documents:
@@ -203,4 +209,4 @@ class RecursiveChunker:
                 logger.warning("Document ID {doc_id} has an empty content. Skipping this document.", doc_id=doc.id)
                 continue
             new_docs.extend(self._run_one(doc))
-        return new_docs
+        return {"documents": new_docs}
