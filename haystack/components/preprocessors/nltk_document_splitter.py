@@ -77,7 +77,7 @@ class NLTKDocumentSplitter(DocumentSplitter):
         )
         self.language = language
 
-    def _split_into_units(
+    def _split_into_units(  # type: ignore
         self, text: str, split_by: Literal["function", "page", "passage", "sentence", "word", "line"]
     ) -> List[str]:
         """
@@ -153,7 +153,7 @@ class NLTKDocumentSplitter(DocumentSplitter):
                     sentences=units, split_length=self.split_length, split_overlap=self.split_overlap
                 )
             else:
-                units = self._split_into_units(doc.content, self.split_by)
+                units = self._split_into_units(doc.content, self.split_by)  # type: ignore
                 text_splits, splits_pages, splits_start_idxs = self._concatenate_units(
                     elements=units,
                     split_length=self.split_length,

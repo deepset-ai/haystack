@@ -75,16 +75,19 @@ class DocumentSplitter:
             - `passage` for splitting by double line breaks ("\\n\\n")
             - `line` for splitting each line ("\\n")
             - `nltk_sentence` for splitting by NLTK sentence tokenizer
+
         :param split_length: The maximum number of units in each split.
         :param split_overlap: The number of overlapping units for each split.
         :param split_threshold: The minimum number of units per split. If a split has fewer units
             than the threshold, it's attached to the previous split.
+
         :param splitting_function: Necessary when `split_by` is set to "function".
             This is a function which must accept a single `str` as input and return a `list` of `str` as output,
             representing the chunks after splitting.
 
         :param respect_sentence_boundary: Choose whether to respect sentence boundaries when splitting by "word".
             If True, uses NLTK to detect sentence boundaries, ensuring splits occur only between sentences.
+
         :param language: Choose the language for the NLTK tokenizer. The default is English ("en").
         :param use_split_rules: Choose whether to use additional split rules when splitting by `sentence`.
         :param extend_abbreviations: Choose whether to extend NLTK's PunktTokenizer abbreviations with a list
@@ -121,6 +124,7 @@ class DocumentSplitter:
                 keep_white_spaces=True,
             )
             self.language = language
+            self.respect_sentence_boundary = respect_sentence_boundary
 
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document]):
@@ -154,8 +158,47 @@ class DocumentSplitter:
             if doc.content == "":
                 logger.warning("Document ID {doc_id} has an empty content. Skipping this document.", doc_id=doc.id)
                 continue
-            split_docs += self._split(doc)
+
+            if self.split_by == "nltk_sentence":
+                split_docs += self._split_nltk_sentence(doc)
+            else:
+                split_docs += self._split(doc)
         return {"documents": split_docs}
+
+    def _split_into_units(self, text: str) -> List[str]:
+        # whitespace is preserved while splitting text into sentences when using keep_white_spaces=True
+        # so split_at is set to an empty string
+        self.split_at = ""
+        result = self.sentence_splitter.split_sentences(text)
+        units = [sentence["sentence"] for sentence in result]
+        return units
+
+    def _split_nltk_sentence(self, doc: Document) -> List[Document]:
+        if doc.content is None:
+            return []
+
+        split_docs = []
+
+        if self.respect_sentence_boundary:
+            units = self._split_into_units(doc.content)
+            text_splits, splits_pages, splits_start_idxs = self._concatenate_sentences_based_on_word_amount(
+                sentences=units, split_length=self.split_length, split_overlap=self.split_overlap
+            )
+        else:
+            units = self._split_into_units(doc.content)
+            text_splits, splits_pages, splits_start_idxs = self._concatenate_units(
+                elements=units,
+                split_length=self.split_length,
+                split_overlap=self.split_overlap,
+                split_threshold=self.split_threshold,
+            )
+        metadata = deepcopy(doc.meta)
+        metadata["source_id"] = doc.id
+        split_docs += self._create_docs_from_splits(
+            text_splits=text_splits, splits_pages=splits_pages, splits_start_idxs=splits_start_idxs, meta=metadata
+        )
+
+        return split_docs
 
     def _split(self, to_split: Document) -> List[Document]:
         # We already check this before calling _split, but we need to make linters happy
@@ -170,13 +213,6 @@ class DocumentSplitter:
                 meta["source_id"] = to_split.id
                 docs.append(Document(content=s, meta=meta))
             return docs
-
-        if self.split_by == "nltk_sentence":
-            # whitespace is preserved while splitting text into sentences when using keep_white_spaces=True
-            # so split_at is set to an empty string
-            self.split_at = ""
-            # result = self.sentence_splitter.split_sentences(text)
-            # units = [sentence["sentence"] for sentence in result]
 
         split_at = _SPLIT_BY_MAPPING[self.split_by]
         units = to_split.content.split(split_at)
@@ -321,3 +357,95 @@ class DocumentSplitter:
             init_params["splitting_function"] = deserialize_callable(splitting_function)
 
         return default_from_dict(cls, data)
+
+    @staticmethod
+    def _number_of_sentences_to_keep(sentences: List[str], split_length: int, split_overlap: int) -> int:
+        """
+        Returns the number of sentences to keep in the next chunk based on the `split_overlap` and `split_length`.
+
+        :param sentences: The list of sentences to split.
+        :param split_length: The maximum number of words in each split.
+        :param split_overlap: The number of overlapping words in each split.
+        :returns: The number of sentences to keep in the next chunk.
+        """
+        # If the split_overlap is 0, we don't need to keep any sentences
+        if split_overlap == 0:
+            return 0
+
+        num_sentences_to_keep = 0
+        num_words = 0
+        # Next overlapping Document should not start exactly the same as the previous one, so we skip the first sentence
+        for sent in reversed(sentences[1:]):
+            num_words += len(sent.split())
+            # If the number of words is larger than the split_length then don't add any more sentences
+            if num_words > split_length:
+                break
+            num_sentences_to_keep += 1
+            if num_words > split_overlap:
+                break
+        return num_sentences_to_keep
+
+    def _concatenate_sentences_based_on_word_amount(
+        self, sentences: List[str], split_length: int, split_overlap: int
+    ) -> Tuple[List[str], List[int], List[int]]:
+        """
+        Groups the sentences into chunks of `split_length` words while respecting sentence boundaries.
+
+        :param sentences: The list of sentences to split.
+        :param split_length: The maximum number of words in each split.
+        :param split_overlap: The number of overlapping words in each split.
+        :returns: A tuple containing the concatenated sentences, the start page numbers, and the start indices.
+        """
+        # Chunk information
+        chunk_word_count = 0
+        chunk_starting_page_number = 1
+        chunk_start_idx = 0
+        current_chunk: List[str] = []
+        # Output lists
+        split_start_page_numbers = []
+        list_of_splits: List[List[str]] = []
+        split_start_indices = []
+
+        for sentence_idx, sentence in enumerate(sentences):
+            current_chunk.append(sentence)
+            chunk_word_count += len(sentence.split())
+            next_sentence_word_count = (
+                len(sentences[sentence_idx + 1].split()) if sentence_idx < len(sentences) - 1 else 0
+            )
+
+            # Number of words in the current chunk plus the next sentence is larger than the split_length
+            # or we reached the last sentence
+            if (chunk_word_count + next_sentence_word_count) > split_length or sentence_idx == len(sentences) - 1:
+                #  Save current chunk and start a new one
+                list_of_splits.append(current_chunk)
+                split_start_page_numbers.append(chunk_starting_page_number)
+                split_start_indices.append(chunk_start_idx)
+
+                # Get the number of sentences that overlap with the next chunk
+                num_sentences_to_keep = self._number_of_sentences_to_keep(
+                    sentences=current_chunk, split_length=split_length, split_overlap=split_overlap
+                )
+                # Set up information for the new chunk
+                if num_sentences_to_keep > 0:
+                    # Processed sentences are the ones that are not overlapping with the next chunk
+                    processed_sentences = current_chunk[:-num_sentences_to_keep]
+                    chunk_starting_page_number += sum(sent.count("\f") for sent in processed_sentences)
+                    chunk_start_idx += len("".join(processed_sentences))
+                    # Next chunk starts with the sentences that were overlapping with the previous chunk
+                    current_chunk = current_chunk[-num_sentences_to_keep:]
+                    chunk_word_count = sum(len(s.split()) for s in current_chunk)
+                else:
+                    # Here processed_sentences is the same as current_chunk since there is no overlap
+                    chunk_starting_page_number += sum(sent.count("\f") for sent in current_chunk)
+                    chunk_start_idx += len("".join(current_chunk))
+                    current_chunk = []
+                    chunk_word_count = 0
+
+        # Concatenate the sentences together within each split
+        text_splits = []
+        for split in list_of_splits:
+            text = "".join(split)
+            if len(text) > 0:
+                text_splits.append(text)
+
+        return text_splits, split_start_page_numbers, split_start_indices

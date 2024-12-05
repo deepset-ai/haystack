@@ -57,7 +57,8 @@ class TestDocumentSplitter:
 
     def test_unsupported_split_by(self):
         with pytest.raises(
-            ValueError, match="split_by must be one of 'function', 'word', 'sentence', 'page', 'passage' or 'line'."
+            ValueError,
+            match="split_by must be one of 'function', 'word', 'sentence', 'page', 'passage', 'line' or 'nltk_sentence'.",
         ):
             DocumentSplitter(split_by="unsupported")
 
@@ -494,3 +495,31 @@ class TestDocumentSplitter:
         doc = Document(content="  ")
         results = splitter.run([doc])
         assert results["documents"][0].content == "  "
+
+    def test_run_split_by_nltk_sentence(self) -> None:
+        document_splitter = DocumentSplitter(
+            split_by="sentence",
+            split_length=2,
+            split_overlap=0,
+            split_threshold=0,
+            language="en",
+            use_split_rules=True,
+            extend_abbreviations=True,
+        )
+
+        text = (
+            "Moonlight shimmered softly, wolves howled nearby, night enveloped everything. It was a dark night ... "
+            "The moon was full."
+        )
+        documents = document_splitter.run(documents=[Document(content=text)])["documents"]
+
+        print("\n")
+        for idx, d in enumerate(documents):
+            print(idx, d.content)
+
+        assert len(documents) == 2
+        assert (
+            documents[0].content
+            == "Moonlight shimmered softly, wolves howled nearby, night enveloped everything. It was a dark night ... "
+        )
+        assert documents[1].content == "The moon was full."
