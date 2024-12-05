@@ -14,7 +14,7 @@ class RAGExpectedComponent(Enum):
     """
     Represents the basic components in a RAG pipeline that are, by default, required to be present for evaluation.
 
-    Each of these can be separate components in the pipeline or a single component that performs
+    These can be separate components in a pipeline or a single component that performs
     multiple tasks.
     """
 
@@ -96,14 +96,14 @@ class RAGEvaluationInput:
     :param ground_truth_documents:
         The ground truth documents passed to the
         evaluation pipeline. Only required for metrics
-        that require them. Corresponds to the queries.
+        that need the ground truth documents. Corresponds to the queries.
     :param ground_truth_answers:
         The ground truth answers passed to the
         evaluation pipeline. Only required for metrics
-        that require them. Corresponds to the queries.
+        that need the ground truth answeres. Corresponds to the queries.
     :param rag_pipeline_inputs:
         Additional inputs to pass to the RAG pipeline. Each
-        key is the name of the component and its value a dictionary
+        key is the name of the component, and its value is a dictionary
         with the input name and a list of values, each corresponding
         to a query.
     """
@@ -120,15 +120,15 @@ class RAGEvaluationOverrides:
     Overrides for a RAG evaluation run.
 
     Used to override the init parameters of components in
-    either (or both) the evaluated and evaluation pipelines.
+    either or both the evaluated and evaluation pipelines.
 
     :param rag_pipeline:
         Overrides for the RAG pipeline. Each
-        key is a component name and its value a dictionary
+        key is a component name, and its value is a dictionary
         with init parameters to override.
     :param eval_pipeline:
         Overrides for the evaluation pipeline. Each
-        key is a RAG metric and its value a dictionary
+        key is a RAG metric, and its value is a dictionary
         with init parameters to override.
     """
 
@@ -142,9 +142,9 @@ class RAGEvaluationOutput:
     Represents the output of a RAG evaluation run.
 
     :param evaluated_pipeline:
-        Serialized version of the evaluated pipeline, including overrides.
+        A serialized version of the evaluated pipeline, including overrides.
     :param evaluation_pipeline:
-        Serialized version of the evaluation pipeline, including overrides.
+        A serialized version of the evaluation pipeline, including overrides.
     :param inputs:
         Input passed to the evaluation harness.
     :param results:
