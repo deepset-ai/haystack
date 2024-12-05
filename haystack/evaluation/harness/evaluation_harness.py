@@ -37,8 +37,7 @@ EvalRunOverridesT = TypeVar("EvalRunOverridesT")
 
 class EvaluationHarness(ABC, Generic[EvalRunInputT, EvalRunOverridesT, EvalRunOutputT]):
     """
-    Executes a pipeline with a given set of parameters and inputs,
-    then evaluates its outputs with an evaluation pipeline.
+    Executes a pipeline with specified parameters and inputs, then evaluates its outputs using an evaluation pipeline.
     """
 
     @staticmethod
