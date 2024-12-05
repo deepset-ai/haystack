@@ -15,9 +15,9 @@ class EvaluationRunOverrides:
     """
     Overrides for an evaluation run.
 
-    Used to override the init parameters of components in either
-    (or both) the evaluated and evaluation pipelines. Each key is
-    a component name and its value a dictionary with init parameters
+    Use it to override the init parameters of components in either
+    or both the evaluated and evaluation pipelines. Each key is
+    a component name, and its value is a dictionary with init parameters
     to override.
 
     :param evaluated_pipeline_overrides:
@@ -37,7 +37,8 @@ EvalRunOverridesT = TypeVar("EvalRunOverridesT")
 
 class EvaluationHarness(ABC, Generic[EvalRunInputT, EvalRunOverridesT, EvalRunOutputT]):
     """
-    Executes a pipeline with a given set of parameters, inputs and evaluates its outputs with an evaluation pipeline.
+    Executes a pipeline with a given set of parameters and inputs,
+    then evaluates its outputs with an evaluation pipeline.
     """
 
     @staticmethod
@@ -70,7 +71,7 @@ class EvaluationHarness(ABC, Generic[EvalRunInputT, EvalRunOverridesT, EvalRunOu
         self, inputs: EvalRunInputT, *, overrides: Optional[EvalRunOverridesT] = None, run_name: Optional[str] = None
     ) -> EvalRunOutputT:
         """
-        Launch a evaluation run.
+        Launch an evaluation run.
 
         :param inputs:
             Inputs to the evaluated and evaluation pipelines.
