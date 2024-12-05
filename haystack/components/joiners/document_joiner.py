@@ -162,8 +162,7 @@ class DocumentJoiner:
 
         return {"documents": output_documents}
 
-    @staticmethod
-    def _concatenate(document_lists: List[List[Document]]) -> List[Document]:
+    def _concatenate(self, document_lists: List[List[Document]]) -> List[Document]:
         """
         Concatenate multiple lists of Documents and return only the Document with the highest score for duplicates.
         """
