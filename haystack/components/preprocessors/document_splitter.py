@@ -8,13 +8,14 @@ from typing import Any, Callable, Dict, List, Literal, Optional, Tuple
 from more_itertools import windowed
 
 from haystack import Document, component, logging
+from haystack.components.preprocessors.sentence_tokenizer import Language, SentenceSplitter
 from haystack.core.serialization import default_from_dict, default_to_dict
 from haystack.utils import deserialize_callable, serialize_callable
 
 logger = logging.getLogger(__name__)
 
 # Maps the 'split_by' argument to the actual char used to split the Documents.
-# 'function' is not in the mapping cause it doesn't split on chars.
+# 'function' is not in the mapping because it doesn't split on chars.
 _SPLIT_BY_MAPPING = {"page": "\f", "passage": "\n\n", "sentence": ".", "word": " ", "line": "\n"}
 
 
@@ -54,18 +55,26 @@ class DocumentSplitter:
 
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
-        split_by: Literal["function", "page", "passage", "sentence", "word", "line"] = "word",
+        split_by: Literal["function", "page", "passage", "sentence", "word", "line", "nltk_sentence"] = "word",
         split_length: int = 200,
         split_overlap: int = 0,
         split_threshold: int = 0,
         splitting_function: Optional[Callable[[str], List[str]]] = None,
+        respect_sentence_boundary: bool = False,
+        language: Language = "en",
+        use_split_rules: bool = True,
+        extend_abbreviations: bool = True,
     ):
         """
         Initialize DocumentSplitter.
 
-        :param split_by: The unit for splitting your documents. Choose from `word` for splitting by spaces (" "),
-            `sentence` for splitting by periods ("."), `page` for splitting by form feed ("\\f"),
-            `passage` for splitting by double line breaks ("\\n\\n") or `line` for splitting each line ("\\n").
+        :param split_by: The unit for splitting your documents. Choose from:
+            - `word` for splitting by spaces (" ")
+            - `sentence` for splitting by periods (".")
+            - `page` for splitting by form feed ("\\f")
+            - `passage` for splitting by double line breaks ("\\n\\n")
+            - `line` for splitting each line ("\\n")
+            - `nltk_sentence` for splitting by NLTK sentence tokenizer
         :param split_length: The maximum number of units in each split.
         :param split_overlap: The number of overlapping units for each split.
         :param split_threshold: The minimum number of units per split. If a split has fewer units
@@ -73,21 +82,45 @@ class DocumentSplitter:
         :param splitting_function: Necessary when `split_by` is set to "function".
             This is a function which must accept a single `str` as input and return a `list` of `str` as output,
             representing the chunks after splitting.
+
+        :param respect_sentence_boundary: Choose whether to respect sentence boundaries when splitting by "word".
+            If True, uses NLTK to detect sentence boundaries, ensuring splits occur only between sentences.
+        :param language: Choose the language for the NLTK tokenizer. The default is English ("en").
+        :param use_split_rules: Choose whether to use additional split rules when splitting by `sentence`.
+        :param extend_abbreviations: Choose whether to extend NLTK's PunktTokenizer abbreviations with a list
+            of curated abbreviations, if available.
+            This is currently supported for English ("en") and German ("de").
         """
 
         self.split_by = split_by
-        if split_by not in ["function", "page", "passage", "sentence", "word", "line"]:
-            raise ValueError("split_by must be one of 'function', 'word', 'sentence', 'page', 'passage' or 'line'.")
+
+        if split_by not in ["function", "page", "passage", "sentence", "word", "line", "nltk_sentence"]:
+            raise ValueError(
+                "split_by must be one of 'function', 'word', 'sentence', 'page', 'passage', 'line' or "
+                "'nltk_sentence'."
+            )
+
         if split_by == "function" and splitting_function is None:
             raise ValueError("When 'split_by' is set to 'function', a valid 'splitting_function' must be provided.")
+
         if split_length <= 0:
             raise ValueError("split_length must be greater than 0.")
         self.split_length = split_length
+
         if split_overlap < 0:
             raise ValueError("split_overlap must be greater than or equal to 0.")
         self.split_overlap = split_overlap
         self.split_threshold = split_threshold
         self.splitting_function = splitting_function
+
+        if split_by == "nltk_sentence":
+            self.sentence_splitter = SentenceSplitter(
+                language=language,
+                use_split_rules=use_split_rules,
+                extend_abbreviations=extend_abbreviations,
+                keep_white_spaces=True,
+            )
+            self.language = language
 
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document]):
@@ -125,8 +158,7 @@ class DocumentSplitter:
         return {"documents": split_docs}
 
     def _split(self, to_split: Document) -> List[Document]:
-        # We already check this before calling _split but
-        # we need to make linters happy
+        # We already check this before calling _split, but we need to make linters happy
         if to_split.content is None:
             return []
 
@@ -138,6 +170,13 @@ class DocumentSplitter:
                 meta["source_id"] = to_split.id
                 docs.append(Document(content=s, meta=meta))
             return docs
+
+        if self.split_by == "nltk_sentence":
+            # whitespace is preserved while splitting text into sentences when using keep_white_spaces=True
+            # so split_at is set to an empty string
+            self.split_at = ""
+            # result = self.sentence_splitter.split_sentences(text)
+            # units = [sentence["sentence"] for sentence in result]
 
         split_at = _SPLIT_BY_MAPPING[self.split_by]
         units = to_split.content.split(split_at)
