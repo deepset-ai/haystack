@@ -14,7 +14,7 @@ from haystack.utils import deserialize_callable, serialize_callable
 logger = logging.getLogger(__name__)
 
 # Maps the 'split_by' argument to the actual char used to split the Documents.
-# 'function' is not in the mapping cause it doesn't split on chars.
+# 'function' is not in the mapping because it doesn't split on chars.
 _SPLIT_BY_MAPPING = {"page": "\f", "passage": "\n\n", "sentence": ".", "word": " ", "line": "\n"}
 
 
