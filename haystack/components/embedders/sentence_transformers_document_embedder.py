@@ -38,7 +38,7 @@ class SentenceTransformersDocumentEmbedder:
     ```
     """
 
-    def __init__(  # noqa: PLR0913
+    def __init__(  # noqa: PLR0913 # pylint: disable=too-many-positional-arguments
         self,
         model: str = "sentence-transformers/all-mpnet-base-v2",
         device: Optional[ComponentDevice] = None,
@@ -79,7 +79,7 @@ class SentenceTransformersDocumentEmbedder:
         :param progress_bar:
             If `True`, shows a progress bar when embedding documents.
         :param normalize_embeddings:
-            If `True`, returns vectors with length 1.
+            If `True`, the embeddings are normalized using L2 normalization, so that each embedding has a norm of 1.
         :param meta_fields_to_embed:
             List of metadata fields to embed along with the document text.
         :param embedding_separator:
