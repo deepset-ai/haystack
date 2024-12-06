@@ -51,7 +51,7 @@ class ExtractiveReader:
     ```
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         model: Union[Path, str] = "deepset/roberta-base-squad2-distilled",
         device: Optional[ComponentDevice] = None,
@@ -203,7 +203,7 @@ class ExtractiveReader:
         query_ids = [i for i, documents_ in enumerate(documents) for _ in documents_]
         return flattened_queries, flattened_documents, query_ids
 
-    def _preprocess(
+    def _preprocess(  # pylint: disable=too-many-positional-arguments
         self, queries: List[str], documents: List[Document], max_seq_length: int, query_ids: List[int], stride: int
     ) -> Tuple["torch.Tensor", "torch.Tensor", "torch.Tensor", List["Encoding"], List[int], List[int]]:
         """
@@ -254,7 +254,7 @@ class ExtractiveReader:
 
         return input_ids, attention_mask, sequence_ids, encodings, query_ids, document_ids
 
-    def _postprocess(
+    def _postprocess(  # pylint: disable=too-many-positional-arguments
         self,
         start: "torch.Tensor",
         end: "torch.Tensor",
@@ -341,7 +341,7 @@ class ExtractiveReader:
 
         return answer
 
-    def _nest_answers(
+    def _nest_answers(  # pylint: disable=too-many-positional-arguments
         self,
         start: List[List[int]],
         end: List[List[int]],
@@ -526,7 +526,7 @@ class ExtractiveReader:
         return deduplicated_answers
 
     @component.output_types(answers=List[ExtractedAnswer])
-    def run(
+    def run(  # pylint: disable=too-many-positional-arguments
         self,
         query: str,
         documents: List[Document],
