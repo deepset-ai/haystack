@@ -72,7 +72,7 @@ class TransformersTextRouter:
     ```
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         model: str,
         labels: Optional[List[str]] = None,

@@ -166,7 +166,7 @@ def resolve_hf_device_map(device: Optional[ComponentDevice], model_kwargs: Optio
     return model_kwargs
 
 
-def resolve_hf_pipeline_kwargs(
+def resolve_hf_pipeline_kwargs(  # pylint: disable=too-many-positional-arguments
     huggingface_pipeline_kwargs: Dict[str, Any],
     model: str,
     task: Optional[str],

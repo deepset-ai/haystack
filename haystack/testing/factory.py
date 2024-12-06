@@ -124,7 +124,7 @@ def document_store_class(
     return cls
 
 
-def component_class(
+def component_class(  # pylint: disable=too-many-positional-arguments
     name: str,
     input_types: Optional[Dict[str, Any]] = None,
     output_types: Optional[Dict[str, Any]] = None,
