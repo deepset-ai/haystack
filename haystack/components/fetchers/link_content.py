@@ -151,6 +151,7 @@ class LinkContentFetcher:
         if len(urls) == 1:
             stream_metadata, stream = self._fetch(urls[0])
             stream.meta.update(stream_metadata)
+            stream.mime_type = stream.meta.get("content_type", None)
             streams.append(stream)
         else:
             with ThreadPoolExecutor() as executor:
