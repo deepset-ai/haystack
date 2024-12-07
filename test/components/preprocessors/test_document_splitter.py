@@ -509,11 +509,11 @@ class TestDocumentSplitter:
 class TestNLTKDocumentSplitterSplitIntoUnits:
     def test_document_splitter_split_into_units_sentence(self) -> None:
         document_splitter = DocumentSplitter(
-            split_by="sentence", split_length=2, split_overlap=0, split_threshold=0, language="en"
+            split_by="nltk_sentence", split_length=2, split_overlap=0, split_threshold=0, language="en"
         )
 
         text = "Moonlight shimmered softly, wolves howled nearby, night enveloped everything. It was a dark night."
-        units = document_splitter._split_into_units(text=text, split_by="sentence")
+        units = document_splitter._split_into_units(text=text)
 
         assert units == [
             "Moonlight shimmered softly, wolves howled nearby, night enveloped everything. ",
@@ -553,7 +553,7 @@ class TestNLTKDocumentSplitterNumberOfSentencesToKeep:
 class TestNLTKDocumentSplitterRun:
     def test_run_split_by_sentence_1(self) -> None:
         document_splitter = DocumentSplitter(
-            split_by="sentence",
+            split_by="nltk_sentence",
             split_length=2,
             split_overlap=0,
             split_threshold=0,
@@ -577,7 +577,7 @@ class TestNLTKDocumentSplitterRun:
 
     def test_run_split_by_sentence_2(self) -> None:
         document_splitter = DocumentSplitter(
-            split_by="sentence",
+            split_by="nltk_sentence",
             split_length=1,
             split_overlap=0,
             split_threshold=0,
@@ -616,7 +616,7 @@ class TestNLTKDocumentSplitterRun:
 
     def test_run_split_by_sentence_3(self) -> None:
         document_splitter = DocumentSplitter(
-            split_by="sentence",
+            split_by="nltk_sentence",
             split_length=1,
             split_overlap=0,
             split_threshold=0,
@@ -648,7 +648,7 @@ class TestNLTKDocumentSplitterRun:
 
     def test_run_split_by_sentence_4(self) -> None:
         document_splitter = DocumentSplitter(
-            split_by="sentence",
+            split_by="nltk_sentence",
             split_length=2,
             split_overlap=1,
             split_threshold=0,

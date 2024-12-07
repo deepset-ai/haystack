@@ -80,19 +80,15 @@ class DocumentSplitter:
         :param split_overlap: The number of overlapping units for each split.
         :param split_threshold: The minimum number of units per split. If a split has fewer units
             than the threshold, it's attached to the previous split.
-
         :param splitting_function: Necessary when `split_by` is set to "function".
             This is a function which must accept a single `str` as input and return a `list` of `str` as output,
             representing the chunks after splitting.
-
         :param respect_sentence_boundary: Choose whether to respect sentence boundaries when splitting by "word".
             If True, uses NLTK to detect sentence boundaries, ensuring splits occur only between sentences.
-
         :param language: Choose the language for the NLTK tokenizer. The default is English ("en").
         :param use_split_rules: Choose whether to use additional split rules when splitting by `sentence`.
         :param extend_abbreviations: Choose whether to extend NLTK's PunktTokenizer abbreviations with a list
-            of curated abbreviations, if available.
-            This is currently supported for English ("en") and German ("de").
+            of curated abbreviations, if available. This is currently supported for English ("en") and German ("de").
         """
 
         self.split_by = split_by
@@ -164,41 +160,6 @@ class DocumentSplitter:
             else:
                 split_docs += self._split(doc)
         return {"documents": split_docs}
-
-    def _split_into_units(self, text: str) -> List[str]:
-        # whitespace is preserved while splitting text into sentences when using keep_white_spaces=True
-        # so split_at is set to an empty string
-        self.split_at = ""
-        result = self.sentence_splitter.split_sentences(text)
-        units = [sentence["sentence"] for sentence in result]
-        return units
-
-    def _split_nltk_sentence(self, doc: Document) -> List[Document]:
-        if doc.content is None:
-            return []
-
-        split_docs = []
-
-        if self.respect_sentence_boundary:
-            units = self._split_into_units(doc.content)
-            text_splits, splits_pages, splits_start_idxs = self._concatenate_sentences_based_on_word_amount(
-                sentences=units, split_length=self.split_length, split_overlap=self.split_overlap
-            )
-        else:
-            units = self._split_into_units(doc.content)
-            text_splits, splits_pages, splits_start_idxs = self._concatenate_units(
-                elements=units,
-                split_length=self.split_length,
-                split_overlap=self.split_overlap,
-                split_threshold=self.split_threshold,
-            )
-        metadata = deepcopy(doc.meta)
-        metadata["source_id"] = doc.id
-        split_docs += self._create_docs_from_splits(
-            text_splits=text_splits, splits_pages=splits_pages, splits_start_idxs=splits_start_idxs, meta=metadata
-        )
-
-        return split_docs
 
     def _split(self, to_split: Document) -> List[Document]:
         # We already check this before calling _split, but we need to make linters happy
@@ -357,6 +318,41 @@ class DocumentSplitter:
             init_params["splitting_function"] = deserialize_callable(splitting_function)
 
         return default_from_dict(cls, data)
+
+    # NLTK only
+    def _split_into_units(self, text: str) -> List[str]:
+        # whitespace is preserved while splitting text into sentences when using keep_white_spaces=True
+        # so split_at is set to an empty string
+        self.split_at = ""
+        result = self.sentence_splitter.split_sentences(text)
+        units = [sentence["sentence"] for sentence in result]
+        return units
+
+    def _split_nltk_sentence(self, doc: Document) -> List[Document]:
+        if doc.content is None:
+            return []
+
+        split_docs = []
+        units = self._split_into_units(doc.content)
+
+        if self.respect_sentence_boundary:
+            text_splits, splits_pages, splits_start_idxs = self._concatenate_sentences_based_on_word_amount(
+                sentences=units, split_length=self.split_length, split_overlap=self.split_overlap
+            )
+        else:
+            text_splits, splits_pages, splits_start_idxs = self._concatenate_units(
+                elements=units,
+                split_length=self.split_length,
+                split_overlap=self.split_overlap,
+                split_threshold=self.split_threshold,
+            )
+        metadata = deepcopy(doc.meta)
+        metadata["source_id"] = doc.id
+        split_docs += self._create_docs_from_splits(
+            text_splits=text_splits, splits_pages=splits_pages, splits_start_idxs=splits_start_idxs, meta=metadata
+        )
+
+        return split_docs
 
     @staticmethod
     def _number_of_sentences_to_keep(sentences: List[str], split_length: int, split_overlap: int) -> int:
