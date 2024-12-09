@@ -54,7 +54,7 @@ jobs:
 
       - name: Sync docs
         if: github.event_name == 'push'
-        uses: readmeio/rdme@v8
+        uses: readmeio/rdme@v9
         with:
           rdme: docs ./docs/pydoc/temp --key=${{ secrets.README_API_KEY }} --version=${{ steps.version-getter.outputs.version }}
 
