@@ -192,8 +192,9 @@ class ExtractiveReader:
             )
             self.device = ComponentDevice.from_multiple(device_map=DeviceMap.from_hf(self.model.hf_device_map))
 
+    @staticmethod
     def _flatten_documents(
-        self, queries: List[str], documents: List[List[Document]]
+        queries: List[str], documents: List[List[Document]]
     ) -> Tuple[List[str], List[Document], List[int]]:
         """
         Flattens queries and Documents so all query-document pairs are arranged along one batch axis.
@@ -594,7 +595,9 @@ class ExtractiveReader:
         no_answer = no_answer if no_answer is not None else self.no_answer
         overlap_threshold = overlap_threshold or self.overlap_threshold
 
-        flattened_queries, flattened_documents, query_ids = self._flatten_documents(queries, nested_documents)
+        flattened_queries, flattened_documents, query_ids = ExtractiveReader._flatten_documents(
+            queries, nested_documents
+        )
         input_ids, attention_mask, sequence_ids, encodings, query_ids, document_ids = self._preprocess(
             flattened_queries, flattened_documents, max_seq_length, query_ids, stride
         )

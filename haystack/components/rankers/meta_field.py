@@ -104,8 +104,9 @@ class MetaFieldRanker:
         )
         self.meta_value_type = meta_value_type
 
-    def _validate_params(  # pylint: disable=too-many-positional-arguments
+    def _validate_params(
         self,
+        *,
         weight: float,
         top_k: Optional[int],
         ranking_mode: Literal["reciprocal_rank_fusion", "linear_score"],
