@@ -95,7 +95,7 @@ class TransformersZeroShotTextRouter:
     ```
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         labels: List[str],
         multi_label: bool = False,

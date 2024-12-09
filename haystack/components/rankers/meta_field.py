@@ -38,7 +38,7 @@ class MetaFieldRanker:
     ```
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         meta_field: str,
         weight: float = 1.0,
@@ -106,6 +106,7 @@ class MetaFieldRanker:
 
     def _validate_params(
         self,
+        *,
         weight: float,
         top_k: Optional[int],
         ranking_mode: Literal["reciprocal_rank_fusion", "linear_score"],
@@ -156,7 +157,7 @@ class MetaFieldRanker:
             )
 
     @component.output_types(documents=List[Document])
-    def run(
+    def run(  # pylint: disable=too-many-positional-arguments
         self,
         documents: List[Document],
         top_k: Optional[int] = None,

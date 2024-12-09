@@ -58,7 +58,7 @@ class InMemoryDocumentStore:
     Stores data in-memory. It's ephemeral and cannot be saved to disk.
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         bm25_tokenization_regex: str = r"(?u)\b\w\w+\b",
         bm25_algorithm: Literal["BM25Okapi", "BM25L", "BM25Plus"] = "BM25L",
@@ -539,7 +539,7 @@ class InMemoryDocumentStore:
 
         return return_documents
 
-    def embedding_retrieval(
+    def embedding_retrieval(  # pylint: disable=too-many-positional-arguments
         self,
         query_embedding: List[float],
         filters: Optional[Dict[str, Any]] = None,

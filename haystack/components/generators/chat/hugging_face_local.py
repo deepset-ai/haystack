@@ -71,7 +71,7 @@ class HuggingFaceLocalChatGenerator:
     ```
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         model: str = "HuggingFaceH4/zephyr-7b-beta",
         task: Optional[Literal["text-generation", "text2text-generation"]] = None,
@@ -295,7 +295,7 @@ class HuggingFaceLocalChatGenerator:
         ]
         return {"replies": chat_messages}
 
-    def create_message(
+    def create_message(  # pylint: disable=too-many-positional-arguments
         self,
         text: str,
         index: int,

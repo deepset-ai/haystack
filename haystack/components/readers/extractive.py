@@ -51,7 +51,7 @@ class ExtractiveReader:
     ```
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         model: Union[Path, str] = "deepset/roberta-base-squad2-distilled",
         device: Optional[ComponentDevice] = None,
@@ -192,8 +192,9 @@ class ExtractiveReader:
             )
             self.device = ComponentDevice.from_multiple(device_map=DeviceMap.from_hf(self.model.hf_device_map))
 
+    @staticmethod
     def _flatten_documents(
-        self, queries: List[str], documents: List[List[Document]]
+        queries: List[str], documents: List[List[Document]]
     ) -> Tuple[List[str], List[Document], List[int]]:
         """
         Flattens queries and Documents so all query-document pairs are arranged along one batch axis.
@@ -203,8 +204,8 @@ class ExtractiveReader:
         query_ids = [i for i, documents_ in enumerate(documents) for _ in documents_]
         return flattened_queries, flattened_documents, query_ids
 
-    def _preprocess(
-        self, queries: List[str], documents: List[Document], max_seq_length: int, query_ids: List[int], stride: int
+    def _preprocess(  # pylint: disable=too-many-positional-arguments
+        self, *, queries: List[str], documents: List[Document], max_seq_length: int, query_ids: List[int], stride: int
     ) -> Tuple["torch.Tensor", "torch.Tensor", "torch.Tensor", List["Encoding"], List[int], List[int]]:
         """
         Splits and tokenizes Documents and preserves structures by returning mappings to query and Document IDs.
@@ -256,6 +257,7 @@ class ExtractiveReader:
 
     def _postprocess(
         self,
+        *,
         start: "torch.Tensor",
         end: "torch.Tensor",
         sequence_ids: "torch.Tensor",
@@ -285,9 +287,9 @@ class ExtractiveReader:
         masked_logits = torch.where(mask, logits, -torch.inf)
         probabilities = torch.sigmoid(masked_logits * self.calibration_factor)
 
-        flat_probabilities = probabilities.flatten(-2, -1)  # necessary for topk
+        flat_probabilities = probabilities.flatten(-2, -1)  # necessary for top-k
 
-        # topk can return invalid candidates as well if answers_per_seq > num_valid_candidates
+        # top-k can return invalid candidates as well if answers_per_seq > num_valid_candidates
         # We only keep probability > 0 candidates later on
         candidates = torch.topk(flat_probabilities, answers_per_seq)
         seq_length = logits.shape[-1]
@@ -343,6 +345,7 @@ class ExtractiveReader:
 
     def _nest_answers(
         self,
+        *,
         start: List[List[int]],
         end: List[List[int]],
         probabilities: "torch.Tensor",
@@ -526,7 +529,7 @@ class ExtractiveReader:
         return deduplicated_answers
 
     @component.output_types(answers=List[ExtractedAnswer])
-    def run(
+    def run(  # pylint: disable=too-many-positional-arguments
         self,
         query: str,
         documents: List[Document],
@@ -594,9 +597,15 @@ class ExtractiveReader:
         no_answer = no_answer if no_answer is not None else self.no_answer
         overlap_threshold = overlap_threshold or self.overlap_threshold
 
-        flattened_queries, flattened_documents, query_ids = self._flatten_documents(queries, nested_documents)
+        flattened_queries, flattened_documents, query_ids = ExtractiveReader._flatten_documents(
+            queries, nested_documents
+        )
         input_ids, attention_mask, sequence_ids, encodings, query_ids, document_ids = self._preprocess(
-            flattened_queries, flattened_documents, max_seq_length, query_ids, stride
+            queries=flattened_queries,
+            documents=flattened_documents,
+            max_seq_length=max_seq_length,
+            query_ids=query_ids,
+            stride=stride,
         )
 
         num_batches = math.ceil(input_ids.shape[0] / max_batch_size) if max_batch_size else 1
@@ -625,7 +634,12 @@ class ExtractiveReader:
         end_logits = torch.cat(end_logits_list)
 
         start, end, probabilities = self._postprocess(
-            start_logits, end_logits, sequence_ids, attention_mask, answers_per_seq, encodings
+            start=start_logits,
+            end=end_logits,
+            sequence_ids=sequence_ids,
+            attention_mask=attention_mask,
+            answers_per_seq=answers_per_seq,
+            encodings=encodings,
         )
 
         answers = self._nest_answers(
