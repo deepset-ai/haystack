@@ -217,7 +217,7 @@ class SentenceSplitter:  # pylint: disable=too-few-public-methods
             # sentence ends with a numeration
             return True
 
-        # e.g: "This is a test. (With a parenthetical statement.) And another sentence."
+        # next sentence starts with a bracket or we return False
         return re.search(r"^\s*[\(\[]", text[next_start:next_end]) is not None
 
     @staticmethod
