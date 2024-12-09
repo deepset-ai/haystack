@@ -186,15 +186,21 @@ class SentenceSplitter:  # pylint: disable=too-few-public-methods
         """
         Checks if the spans need to be joined as parts of one sentence.
 
+        This method determines whether two adjacent sentence spans should be joined back together as a single sentence.
+        It's used to prevent incorrect sentence splitting in specific cases like quotations, numbered lists,
+        and parenthetical expressions.
+
         :param text: The text containing the spans.
-        :param span: The current sentence span within text.
-        :param next_span: The next sentence span within text.
+        :param span: Tuple of (start, end) positions for the current sentence span.
+        :param next_span: Tuple of (start, end) positions for the next sentence span.
         :param quote_spans: All quoted spans within text.
-        :returns: True if the spans needs to be joined.
+        :returns:
+            True if the spans needs to be joined.
         """
         start, end = span
         next_start, next_end = next_span
 
+        # Case 1
         # sentence. sentence"\nsentence -> no split (end << quote_end)
         # sentence.", sentence -> no split (end < quote_end)
         # sentence?", sentence -> no split (end < quote_end)
@@ -202,30 +208,33 @@ class SentenceSplitter:  # pylint: disable=too-few-public-methods
             # sentence boundary is inside a quote
             return True
 
+        # Case 2
         # sentence." sentence -> split (end == quote_end)
         # sentence?" sentence -> no split (end == quote_end)
         if any(quote_start < end == quote_end and text[quote_end - 2] == "?" for quote_start, quote_end in quote_spans):
             # question is cited
             return True
 
+        # Case 3
         if re.search(r"(^|\n)\s*\d{1,2}\.$", text[start:end]) is not None:
             # sentence ends with a numeration
             return True
 
-        # next sentence starts with a bracket or we return False
+        # Case 4
+        # e.g: "This is a test. (With a parenthetical statement.) And another sentence."
         return re.search(r"^\s*[\(\[]", text[next_start:next_end]) is not None
 
     @staticmethod
-    def _read_abbreviations(language: Language) -> List[str]:
+    def _read_abbreviations(lang: Language) -> List[str]:
         """
         Reads the abbreviations for a given language from the abbreviations file.
 
-        :param language: The language to read the abbreviations for.
+        :param lang: The language to read the abbreviations for.
         :returns: List of abbreviations.
         """
-        abbreviations_file = Path(__file__).parent.parent / f"data/abbreviations/{language}.txt"
+        abbreviations_file = Path(__file__).parent.parent / f"data/abbreviations/{lang}.txt"
         if not abbreviations_file.exists():
-            logger.warning("No abbreviations file found for {language}.Using default abbreviations.", language=language)
+            logger.warning("No abbreviations file found for {language}. Using default abbreviations.", language=lang)
             return []
 
         abbreviations = abbreviations_file.read_text().split("\n")

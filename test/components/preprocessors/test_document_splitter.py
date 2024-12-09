@@ -38,7 +38,7 @@ def merge_documents(documents):
     return merged_text
 
 
-class TestDocumentSplitter:
+class TestSplittingByFunctionOrCharacterRegex:
     def test_non_text_document(self):
         with pytest.raises(
             ValueError, match="DocumentSplitter only works with text documents but content for document ID"
