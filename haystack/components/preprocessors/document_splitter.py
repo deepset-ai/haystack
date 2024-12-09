@@ -89,23 +89,18 @@ class DocumentSplitter:
         """
 
         self.split_by = split_by
-
         if split_by not in ["function", "page", "passage", "sentence", "word", "line", "nltk_sentence"]:
             raise ValueError(
                 "split_by must be one of 'function', 'word', 'sentence', 'page', 'passage', 'line' or "
                 "'nltk_sentence'."
             )
-
         if split_by == "function" and splitting_function is None:
             raise ValueError("When 'split_by' is set to 'function', a valid 'splitting_function' must be provided.")
-
         if split_length <= 0:
             raise ValueError("split_length must be greater than 0.")
         self.split_length = split_length
-
         if split_overlap < 0:
             raise ValueError("split_overlap must be greater than or equal to 0.")
-
         self.split_overlap = split_overlap
         self.split_threshold = split_threshold
         self.splitting_function = splitting_function
@@ -342,7 +337,7 @@ class DocumentSplitter:
 
         return default_from_dict(cls, data)
 
-    # The following methods are only used when `split_by='nltk_sentence'` or `respect_sentence_boundary=True`
+    # The following below methods are only used when `split_by='nltk_sentence'` or `respect_sentence_boundary=True`
     def _split_nltk_sentence(self, doc: Document) -> List[Document]:
         if doc.content is None:
             return []
@@ -371,33 +366,6 @@ class DocumentSplitter:
 
         return split_docs
 
-    @staticmethod
-    def _number_of_sentences_to_keep(sentences: List[str], split_length: int, split_overlap: int) -> int:
-        """
-        Returns the number of sentences to keep in the next chunk based on the `split_overlap` and `split_length`.
-
-        :param sentences: The list of sentences to split.
-        :param split_length: The maximum number of words in each split.
-        :param split_overlap: The number of overlapping words in each split.
-        :returns: The number of sentences to keep in the next chunk.
-        """
-        # If the split_overlap is 0, we don't need to keep any sentences
-        if split_overlap == 0:
-            return 0
-
-        num_sentences_to_keep = 0
-        num_words = 0
-        # Next overlapping Document should not start exactly the same as the previous one, so we skip the first sentence
-        for sent in reversed(sentences[1:]):
-            num_words += len(sent.split())
-            # If the number of words is larger than the split_length then don't add any more sentences
-            if num_words > split_length:
-                break
-            num_sentences_to_keep += 1
-            if num_words > split_overlap:
-                break
-        return num_sentences_to_keep
-
     def _concatenate_sentences_based_on_word_amount(
         self, sentences: List[str], split_length: int, split_overlap: int
     ) -> Tuple[List[str], List[int], List[int]]:
@@ -407,7 +375,8 @@ class DocumentSplitter:
         :param sentences: The list of sentences to split.
         :param split_length: The maximum number of words in each split.
         :param split_overlap: The number of overlapping words in each split.
-        :returns: A tuple containing the concatenated sentences, the start page numbers, and the start indices.
+        :returns:
+            A tuple containing the concatenated sentences, the start page numbers, and the start indices.
         """
         # Chunk information
         chunk_word_count = 0
@@ -462,3 +431,31 @@ class DocumentSplitter:
                 text_splits.append(text)
 
         return text_splits, split_start_page_numbers, split_start_indices
+
+    @staticmethod
+    def _number_of_sentences_to_keep(sentences: List[str], split_length: int, split_overlap: int) -> int:
+        """
+        Returns the number of sentences to keep in the next chunk based on the `split_overlap` and `split_length`.
+
+        :param sentences: The list of sentences to split.
+        :param split_length: The maximum number of words in each split.
+        :param split_overlap: The number of overlapping words in each split.
+        :returns:
+            The number of sentences to keep in the next chunk.
+        """
+        # If the split_overlap is 0, we don't need to keep any sentences
+        if split_overlap == 0:
+            return 0
+
+        num_sentences_to_keep = 0
+        num_words = 0
+        # Next overlapping Document should not start exactly the same as the previous one, so we skip the first sentence
+        for sent in reversed(sentences[1:]):
+            num_words += len(sent.split())
+            # If the number of words is larger than the split_length then don't add any more sentences
+            if num_words > split_length:
+                break
+            num_sentences_to_keep += 1
+            if num_words > split_overlap:
+                break
+        return num_sentences_to_keep
