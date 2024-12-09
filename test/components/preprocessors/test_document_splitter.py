@@ -64,6 +64,10 @@ class TestDocumentSplitter:
         ):
             DocumentSplitter(split_by="unsupported")
 
+    def test_undefined_function(self):
+        with pytest.raises(ValueError, match="When 'split_by' is set to 'function', a valid 'splitting_function'"):
+            DocumentSplitter(split_by="function", splitting_function=None)
+
     def test_unsupported_split_length(self):
         with pytest.raises(ValueError, match="split_length must be greater than 0."):
             DocumentSplitter(split_length=0)
@@ -497,28 +501,6 @@ class TestDocumentSplitter:
         doc = Document(content="  ")
         results = splitter.run([doc])
         assert results["documents"][0].content == "  "
-
-
-## NLTKDocumentSplitter tests - to review and refactor
-
-# def test_init_warning_message(caplog: LogCaptureFixture) -> None:
-#     _ = NLTKDocumentSplitter(split_by="page", respect_sentence_boundary=True)
-#     assert "The 'respect_sentence_boundary' option is only supported for" in caplog.text
-
-
-class TestNLTKDocumentSplitterSplitIntoUnits:
-    def test_document_splitter_split_into_units_sentence(self) -> None:
-        document_splitter = DocumentSplitter(
-            split_by="nltk_sentence", split_length=2, split_overlap=0, split_threshold=0, language="en"
-        )
-
-        text = "Moonlight shimmered softly, wolves howled nearby, night enveloped everything. It was a dark night."
-        units = document_splitter._split_into_units(text=text)
-
-        assert units == [
-            "Moonlight shimmered softly, wolves howled nearby, night enveloped everything. ",
-            "It was a dark night.",
-        ]
 
 
 class TestNLTKDocumentSplitterNumberOfSentencesToKeep:

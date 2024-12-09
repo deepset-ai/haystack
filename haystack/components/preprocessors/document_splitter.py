@@ -14,8 +14,6 @@ from haystack.utils import deserialize_callable, serialize_callable
 
 logger = logging.getLogger(__name__)
 
-# Maps the 'split_by' argument to the actual char used to split the Documents.
-# 'function' is not in the mapping because it doesn't split on chars.
 _SPLIT_BY_MAPPING = {"page": "\f", "passage": "\n\n", "sentence": ".", "word": " ", "line": "\n"}
 
 
@@ -24,8 +22,7 @@ class DocumentSplitter:
     """
     Splits long documents into smaller chunks.
 
-    This is a common preprocessing step during indexing.
-    It helps Embedders create meaningful semantic representations
+    This is a common preprocessing step during indexing. It helps Embedders create meaningful semantic representations
     and prevents exceeding language model context limits.
 
     The DocumentSplitter is compatible with the following DocumentStores:
@@ -167,29 +164,41 @@ class DocumentSplitter:
             if doc.content == "":
                 logger.warning("Document ID {doc_id} has an empty content. Skipping this document.", doc_id=doc.id)
                 continue
-
-            if self.split_by == "nltk_sentence" or self.respect_sentence_boundary:
-                split_docs += self._split_nltk_sentence(doc)
-            else:
-                split_docs += self._split(doc)
+            split_docs += self._split(doc)
         return {"documents": split_docs}
 
-    def _split(self, to_split: Document) -> List[Document]:
+    def _split(self, doc: Document) -> List[Document]:
+        """
+        Splits a single document into smaller parts.
+
+        This function handles 3 main cases.
+
+        1. `split_by` is set to "nltk_sentence" or `respect_sentence_boundary` is set to True, it a custom tokenizer
+        based on the NLTK sentence tokenizer to split the document. Note that 'respect_sentence_boundary' is only
+        supported when `split_by='word'`.
+
+        2. If `split_by` is set to "function", it uses the splitting function provided by the user.
+
+        3. Otherwise, it splits the document based on the `split_by` character.
+        """
         # We already check this before calling _split, but we need to make linters happy
-        if to_split.content is None:
+        if doc.content is None:
             return []
 
+        if self.split_by == "nltk_sentence" or self.respect_sentence_boundary:
+            return self._split_nltk_sentence(doc)
+
         if self.split_by == "function" and self.splitting_function is not None:
-            splits = self.splitting_function(to_split.content)
+            splits = self.splitting_function(doc.content)
             docs: List[Document] = []
             for s in splits:
-                meta = deepcopy(to_split.meta)
-                meta["source_id"] = to_split.id
+                meta = deepcopy(doc.meta)
+                meta["source_id"] = doc.id
                 docs.append(Document(content=s, meta=meta))
             return docs
 
         split_at = _SPLIT_BY_MAPPING[self.split_by]
-        units = to_split.content.split(split_at)
+        units = doc.content.split(split_at)
 
         # Add the delimiter back to all units except the last one
         for i in range(len(units) - 1):
@@ -198,8 +207,8 @@ class DocumentSplitter:
         text_splits, splits_pages, splits_start_idxs = self._concatenate_units(
             units, self.split_length, self.split_overlap, self.split_threshold
         )
-        metadata = deepcopy(to_split.meta)
-        metadata["source_id"] = to_split.id
+        metadata = deepcopy(doc.meta)
+        metadata["source_id"] = doc.id
         return self._create_docs_from_splits(
             text_splits=text_splits, splits_pages=splits_pages, splits_start_idxs=splits_start_idxs, meta=metadata
         )
@@ -333,21 +342,15 @@ class DocumentSplitter:
 
         return default_from_dict(cls, data)
 
-    # NLTK only
-    def _split_into_units(self, text: str) -> List[str]:
-        # whitespace is preserved while splitting text into sentences when using keep_white_spaces=True
-        # so split_at is set to an empty string
-        self.split_at = ""
-        result = self.sentence_splitter.split_sentences(text)
-        units = [sentence["sentence"] for sentence in result]
-        return units
-
+    # The following methods are only used when `split_by='nltk_sentence'` or `respect_sentence_boundary=True`
     def _split_nltk_sentence(self, doc: Document) -> List[Document]:
         if doc.content is None:
             return []
 
         split_docs = []
-        units = self._split_into_units(doc.content)
+        self.split_at = ""
+        result = self.sentence_splitter.split_sentences(doc.content)
+        units = [sentence["sentence"] for sentence in result]
 
         if self.respect_sentence_boundary:
             text_splits, splits_pages, splits_start_idxs = self._concatenate_sentences_based_on_word_amount(
