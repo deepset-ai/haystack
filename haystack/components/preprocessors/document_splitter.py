@@ -14,6 +14,8 @@ from haystack.utils import deserialize_callable, serialize_callable
 
 logger = logging.getLogger(__name__)
 
+# Maps the 'split_by' argument to the actual char used to split the Documents.
+# 'function' is not in the mapping because it doesn't split on chars.
 _SPLIT_BY_MAPPING = {"page": "\f", "passage": "\n\n", "sentence": ".", "word": " ", "line": "\n"}
 
 
@@ -88,29 +90,19 @@ class DocumentSplitter:
             of curated abbreviations, if available. This is currently supported for English ("en") and German ("de").
         """
 
+        self._init_checks(
+            split_by=split_by,
+            split_length=split_length,
+            split_overlap=split_overlap,
+            splitting_function=splitting_function,
+            respect_sentence_boundary=respect_sentence_boundary,
+        )
+
         self.split_by = split_by
-        if split_by not in ["function", "page", "passage", "sentence", "word", "line", "nltk_sentence"]:
-            raise ValueError(
-                "split_by must be one of 'function', 'word', 'sentence', 'page', 'passage', 'line' or "
-                "'nltk_sentence'."
-            )
-        if split_by == "function" and splitting_function is None:
-            raise ValueError("When 'split_by' is set to 'function', a valid 'splitting_function' must be provided.")
-        if split_length <= 0:
-            raise ValueError("split_length must be greater than 0.")
         self.split_length = split_length
-        if split_overlap < 0:
-            raise ValueError("split_overlap must be greater than or equal to 0.")
         self.split_overlap = split_overlap
         self.split_threshold = split_threshold
         self.splitting_function = splitting_function
-
-        if respect_sentence_boundary and split_by != "word":
-            logger.warning(
-                "The 'respect_sentence_boundary' option is only supported for `split_by='word'`. "
-                "The option `respect_sentence_boundary` will be set to `False`."
-            )
-            respect_sentence_boundary = False
         self.respect_sentence_boundary = respect_sentence_boundary
         self.use_split_rules = use_split_rules
         self.extend_abbreviations = extend_abbreviations
@@ -125,8 +117,42 @@ class DocumentSplitter:
             )
             self.language = language
 
-        if respect_sentence_boundary and split_by == "word":
-            nltk_imports.check()
+    @staticmethod
+    def _init_checks(
+        split_by: str,
+        split_length: int,
+        split_overlap: int,
+        splitting_function: Optional[Callable],
+        respect_sentence_boundary: bool,
+    ) -> None:
+        """
+        Validates initialization parameters for DocumentSplitter.
+
+        :param split_by: The unit for splitting documents
+        :param split_length: The maximum number of units in each split
+        :param split_overlap: The number of overlapping units for each split
+        :param splitting_function: Custom function for splitting when split_by="function"
+        :param respect_sentence_boundary: Whether to respect sentence boundaries when splitting
+        :raises ValueError: If any parameter is invalid
+        """
+        valid_split_by = ["function", "page", "passage", "sentence", "word", "line", "nltk_sentence"]
+        if split_by not in valid_split_by:
+            raise ValueError(f"split_by must be one of {', '.join(valid_split_by)}.")
+
+        if split_by == "function" and splitting_function is None:
+            raise ValueError("When 'split_by' is set to 'function', a valid 'splitting_function' must be provided.")
+
+        if split_length <= 0:
+            raise ValueError("split_length must be greater than 0.")
+
+        if split_overlap < 0:
+            raise ValueError("split_overlap must be greater than or equal to 0.")
+
+        if respect_sentence_boundary and split_by != "word":
+            logger.warning(
+                "The 'respect_sentence_boundary' option is only supported for `split_by='word'`. "
+                "The option `respect_sentence_boundary` will be set to `False`."
+            )
 
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document]):
@@ -159,46 +185,55 @@ class DocumentSplitter:
             if doc.content == "":
                 logger.warning("Document ID {doc_id} has an empty content. Skipping this document.", doc_id=doc.id)
                 continue
-            split_docs += self._split(doc)
+
+            split_docs += self._split_document(doc)
         return {"documents": split_docs}
 
-    def _split(self, doc: Document) -> List[Document]:
-        """
-        Splits a single document into smaller parts.
+    def _split_document(self, doc: Document) -> List[Document]:
+        if self.split_by == "nltk_sentence" or self.respect_sentence_boundary:
+            return self._split_by_nltk_sentence(doc)
 
-        This function handles 3 main cases.
+        if self.split_by == "function" and self.splitting_function is not None:
+            return self._split_by_function(doc)
 
-        1. `split_by` is set to "nltk_sentence" or `respect_sentence_boundary` is set to True, it a custom tokenizer
-        based on the NLTK sentence tokenizer to split the document. Note that 'respect_sentence_boundary' is only
-        supported when `split_by='word'`.
+        return self._split_by_character(doc)
 
-        2. If `split_by` is set to "function", it uses the splitting function provided by the user.
-
-        3. Otherwise, it splits the document based on the `split_by` character.
-        """
-        # We already check this before calling _split, but we need to make linters happy
+    def _split_by_nltk_sentence(self, doc: Document) -> List[Document]:
         if doc.content is None:
             return []
 
-        if self.split_by == "nltk_sentence" or self.respect_sentence_boundary:
-            return self._split_nltk_sentence(doc)
+        split_docs = []
+        # whitespace is preserved while splitting text into sentences when using keep_white_spaces=True
+        # so split_at is set to an empty string
+        self.split_at = ""
+        result = self.sentence_splitter.split_sentences(doc.content)
+        units = [sentence["sentence"] for sentence in result]
 
-        if self.split_by == "function" and self.splitting_function is not None:
-            splits = self.splitting_function(doc.content)
-            docs: List[Document] = []
-            for s in splits:
-                meta = deepcopy(doc.meta)
-                meta["source_id"] = doc.id
-                docs.append(Document(content=s, meta=meta))
-            return docs
+        if self.respect_sentence_boundary:
+            text_splits, splits_pages, splits_start_idxs = self._concatenate_sentences_based_on_word_amount(
+                sentences=units, split_length=self.split_length, split_overlap=self.split_overlap
+            )
+        else:
+            text_splits, splits_pages, splits_start_idxs = self._concatenate_units(
+                elements=units,
+                split_length=self.split_length,
+                split_overlap=self.split_overlap,
+                split_threshold=self.split_threshold,
+            )
+        metadata = deepcopy(doc.meta)
+        metadata["source_id"] = doc.id
+        split_docs += self._create_docs_from_splits(
+            text_splits=text_splits, splits_pages=splits_pages, splits_start_idxs=splits_start_idxs, meta=metadata
+        )
 
+        return split_docs
+
+    def _split_by_character(self, doc) -> List[Document]:
         split_at = _SPLIT_BY_MAPPING[self.split_by]
         units = doc.content.split(split_at)
-
         # Add the delimiter back to all units except the last one
         for i in range(len(units) - 1):
             units[i] += split_at
-
         text_splits, splits_pages, splits_start_idxs = self._concatenate_units(
             units, self.split_length, self.split_overlap, self.split_threshold
         )
@@ -207,6 +242,16 @@ class DocumentSplitter:
         return self._create_docs_from_splits(
             text_splits=text_splits, splits_pages=splits_pages, splits_start_idxs=splits_start_idxs, meta=metadata
         )
+
+    def _split_by_function(self, doc) -> List[Document]:
+        # the check for None is done already in the run method
+        splits = self.splitting_function(doc.content)  # type: ignore
+        docs: List[Document] = []
+        for s in splits:
+            meta = deepcopy(doc.meta)
+            meta["source_id"] = doc.id
+            docs.append(Document(content=s, meta=meta))
+        return docs
 
     def _concatenate_units(
         self, elements: List[str], split_length: int, split_overlap: int, split_threshold: int
@@ -337,46 +382,19 @@ class DocumentSplitter:
 
         return default_from_dict(cls, data)
 
-    # The following below methods are only used when `split_by='nltk_sentence'` or `respect_sentence_boundary=True`
-    def _split_nltk_sentence(self, doc: Document) -> List[Document]:
-        if doc.content is None:
-            return []
-
-        split_docs = []
-        self.split_at = ""
-        result = self.sentence_splitter.split_sentences(doc.content)
-        units = [sentence["sentence"] for sentence in result]
-
-        if self.respect_sentence_boundary:
-            text_splits, splits_pages, splits_start_idxs = self._concatenate_sentences_based_on_word_amount(
-                sentences=units, split_length=self.split_length, split_overlap=self.split_overlap
-            )
-        else:
-            text_splits, splits_pages, splits_start_idxs = self._concatenate_units(
-                elements=units,
-                split_length=self.split_length,
-                split_overlap=self.split_overlap,
-                split_threshold=self.split_threshold,
-            )
-        metadata = deepcopy(doc.meta)
-        metadata["source_id"] = doc.id
-        split_docs += self._create_docs_from_splits(
-            text_splits=text_splits, splits_pages=splits_pages, splits_start_idxs=splits_start_idxs, meta=metadata
-        )
-
-        return split_docs
-
     def _concatenate_sentences_based_on_word_amount(
         self, sentences: List[str], split_length: int, split_overlap: int
     ) -> Tuple[List[str], List[int], List[int]]:
         """
         Groups the sentences into chunks of `split_length` words while respecting sentence boundaries.
 
+        This function is only used when splitting by `word` and `respect_sentence_boundary` is set to `True`, i.e.:
+        with NLTK sentence tokenizer.
+
         :param sentences: The list of sentences to split.
         :param split_length: The maximum number of words in each split.
         :param split_overlap: The number of overlapping words in each split.
-        :returns:
-            A tuple containing the concatenated sentences, the start page numbers, and the start indices.
+        :returns: A tuple containing the concatenated sentences, the start page numbers, and the start indices.
         """
         # Chunk information
         chunk_word_count = 0
@@ -404,7 +422,7 @@ class DocumentSplitter:
                 split_start_indices.append(chunk_start_idx)
 
                 # Get the number of sentences that overlap with the next chunk
-                num_sentences_to_keep = self._number_of_sentences_to_keep(
+                num_sentences_to_keep = DocumentSplitter._number_of_sentences_to_keep(
                     sentences=current_chunk, split_length=split_length, split_overlap=split_overlap
                 )
                 # Set up information for the new chunk
@@ -440,8 +458,7 @@ class DocumentSplitter:
         :param sentences: The list of sentences to split.
         :param split_length: The maximum number of words in each split.
         :param split_overlap: The number of overlapping words in each split.
-        :returns:
-            The number of sentences to keep in the next chunk.
+        :returns: The number of sentences to keep in the next chunk.
         """
         # If the split_overlap is 0, we don't need to keep any sentences
         if split_overlap == 0:

@@ -58,10 +58,7 @@ class TestDocumentSplitter:
         assert res == {"documents": []}
 
     def test_unsupported_split_by(self):
-        with pytest.raises(
-            ValueError,
-            match="split_by must be one of 'function', 'word', 'sentence', 'page', 'passage', 'line' or 'nltk_sentence'.",
-        ):
+        with pytest.raises(ValueError, match="split_by must be one of "):
             DocumentSplitter(split_by="unsupported")
 
     def test_undefined_function(self):
