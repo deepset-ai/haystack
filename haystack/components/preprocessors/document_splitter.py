@@ -8,7 +8,7 @@ from typing import Any, Callable, Dict, List, Literal, Optional, Tuple
 from more_itertools import windowed
 
 from haystack import Document, component, logging
-from haystack.components.preprocessors.sentence_tokenizer import Language, SentenceSplitter
+from haystack.components.preprocessors.sentence_tokenizer import Language, SentenceSplitter, nltk_imports
 from haystack.core.serialization import default_from_dict, default_to_dict
 from haystack.utils import deserialize_callable, serialize_callable
 
@@ -108,11 +108,23 @@ class DocumentSplitter:
 
         if split_overlap < 0:
             raise ValueError("split_overlap must be greater than or equal to 0.")
+
         self.split_overlap = split_overlap
         self.split_threshold = split_threshold
         self.splitting_function = splitting_function
 
-        if split_by == "nltk_sentence":
+        if respect_sentence_boundary and split_by != "word":
+            logger.warning(
+                "The 'respect_sentence_boundary' option is only supported for `split_by='word'`. "
+                "The option `respect_sentence_boundary` will be set to `False`."
+            )
+            respect_sentence_boundary = False
+        self.respect_sentence_boundary = respect_sentence_boundary
+        self.use_split_rules = use_split_rules
+        self.extend_abbreviations = extend_abbreviations
+
+        if split_by == "nltk_sentence" or respect_sentence_boundary and split_by == "word":
+            nltk_imports.check()
             self.sentence_splitter = SentenceSplitter(
                 language=language,
                 use_split_rules=use_split_rules,
@@ -120,7 +132,9 @@ class DocumentSplitter:
                 keep_white_spaces=True,
             )
             self.language = language
-            self.respect_sentence_boundary = respect_sentence_boundary
+
+        if respect_sentence_boundary and split_by == "word":
+            nltk_imports.check()
 
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document]):
@@ -131,7 +145,6 @@ class DocumentSplitter:
         and an overlap of `split_overlap`.
 
         :param documents: The documents to split.
-
         :returns: A dictionary with the following key:
             - `documents`: List of documents with the split texts. Each document includes:
                 - A metadata field `source_id` to track the original document.
@@ -155,7 +168,7 @@ class DocumentSplitter:
                 logger.warning("Document ID {doc_id} has an empty content. Skipping this document.", doc_id=doc.id)
                 continue
 
-            if self.split_by == "nltk_sentence":
+            if self.split_by == "nltk_sentence" or self.respect_sentence_boundary:
                 split_docs += self._split_nltk_sentence(doc)
             else:
                 split_docs += self._split(doc)
@@ -177,6 +190,7 @@ class DocumentSplitter:
 
         split_at = _SPLIT_BY_MAPPING[self.split_by]
         units = to_split.content.split(split_at)
+
         # Add the delimiter back to all units except the last one
         for i in range(len(units) - 1):
             units[i] += split_at
@@ -409,7 +423,7 @@ class DocumentSplitter:
                 len(sentences[sentence_idx + 1].split()) if sentence_idx < len(sentences) - 1 else 0
             )
 
-            # Number of words in the current chunk plus the next sentence is larger than the split_length
+            # Number of words in the current chunk plus the next sentence is larger than the split_length,
             # or we reached the last sentence
             if (chunk_word_count + next_sentence_word_count) > split_length or sentence_idx == len(sentences) - 1:
                 #  Save current chunk and start a new one
