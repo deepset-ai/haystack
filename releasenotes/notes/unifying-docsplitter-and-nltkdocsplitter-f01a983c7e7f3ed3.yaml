@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    The NLTKDocumentSplitter was merged into the DocumentSplitter. You can now make use of a more robust sentence boundary detection, for that you need to initialize the DocumentSplitter with `split_by="nltk_sentence"`.
