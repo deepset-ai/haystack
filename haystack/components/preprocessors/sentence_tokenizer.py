@@ -200,7 +200,6 @@ class SentenceSplitter:  # pylint: disable=too-few-public-methods
         start, end = span
         next_start, next_end = next_span
 
-        # Case 1
         # sentence. sentence"\nsentence -> no split (end << quote_end)
         # sentence.", sentence -> no split (end < quote_end)
         # sentence?", sentence -> no split (end < quote_end)
@@ -208,19 +207,16 @@ class SentenceSplitter:  # pylint: disable=too-few-public-methods
             # sentence boundary is inside a quote
             return True
 
-        # Case 2
         # sentence." sentence -> split (end == quote_end)
         # sentence?" sentence -> no split (end == quote_end)
         if any(quote_start < end == quote_end and text[quote_end - 2] == "?" for quote_start, quote_end in quote_spans):
             # question is cited
             return True
 
-        # Case 3
         if re.search(r"(^|\n)\s*\d{1,2}\.$", text[start:end]) is not None:
             # sentence ends with a numeration
             return True
 
-        # Case 4
         # e.g: "This is a test. (With a parenthetical statement.) And another sentence."
         return re.search(r"^\s*[\(\[]", text[next_start:next_end]) is not None
 
