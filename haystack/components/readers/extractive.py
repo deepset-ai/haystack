@@ -205,7 +205,7 @@ class ExtractiveReader:
         return flattened_queries, flattened_documents, query_ids
 
     def _preprocess(  # pylint: disable=too-many-positional-arguments
-        self, queries: List[str], documents: List[Document], max_seq_length: int, query_ids: List[int], stride: int
+        self, *, queries: List[str], documents: List[Document], max_seq_length: int, query_ids: List[int], stride: int
     ) -> Tuple["torch.Tensor", "torch.Tensor", "torch.Tensor", List["Encoding"], List[int], List[int]]:
         """
         Splits and tokenizes Documents and preserves structures by returning mappings to query and Document IDs.
@@ -600,7 +600,11 @@ class ExtractiveReader:
             queries, nested_documents
         )
         input_ids, attention_mask, sequence_ids, encodings, query_ids, document_ids = self._preprocess(
-            flattened_queries, flattened_documents, max_seq_length, query_ids, stride
+            queries=flattened_queries,
+            documents=flattened_documents,
+            max_seq_length=max_seq_length,
+            query_ids=query_ids,
+            stride=stride,
         )
 
         num_batches = math.ceil(input_ids.shape[0] / max_batch_size) if max_batch_size else 1

@@ -321,7 +321,7 @@ def test_flatten_documents(mock_reader: ExtractiveReader):
 
 def test_preprocess(mock_reader: ExtractiveReader):
     _, _, seq_ids, _, query_ids, doc_ids = mock_reader._preprocess(
-        example_queries * 3, example_documents[0], 384, [1, 1, 1], 0
+        queries=example_queries * 3, documents=example_documents[0], max_seq_length=384, query_ids=[1, 1, 1], stride=0
     )
     expected_seq_ids = torch.full((3, 384), -1, dtype=torch.int)
     expected_seq_ids[:, :16] = 0
@@ -333,7 +333,11 @@ def test_preprocess(mock_reader: ExtractiveReader):
 
 def test_preprocess_splitting(mock_reader: ExtractiveReader):
     _, _, seq_ids, _, query_ids, doc_ids = mock_reader._preprocess(
-        example_queries * 4, example_documents[0] + [Document(content="a" * 64)], 96, [1, 1, 1, 1], 0
+        queries=example_queries * 4,
+        documents=example_documents[0] + [Document(content="a" * 64)],
+        max_seq_length=96,
+        query_ids=[1, 1, 1, 1],
+        stride=0,
     )
     assert seq_ids.shape[0] == 5
     assert query_ids == [1, 1, 1, 1, 1]
