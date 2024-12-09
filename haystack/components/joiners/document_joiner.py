@@ -115,10 +115,10 @@ class DocumentJoiner:
         if isinstance(join_mode, str):
             join_mode = JoinMode.from_str(join_mode)
         join_mode_functions = {
-            JoinMode.CONCATENATE: self._concatenate,
+            JoinMode.CONCATENATE: DocumentJoiner._concatenate,
             JoinMode.MERGE: self._merge,
             JoinMode.RECIPROCAL_RANK_FUSION: self._reciprocal_rank_fusion,
-            JoinMode.DISTRIBUTION_BASED_RANK_FUSION: self._distribution_based_rank_fusion,
+            JoinMode.DISTRIBUTION_BASED_RANK_FUSION: DocumentJoiner._distribution_based_rank_fusion,
         }
         self.join_mode_function = join_mode_functions[join_mode]
         self.join_mode = join_mode
@@ -162,7 +162,8 @@ class DocumentJoiner:
 
         return {"documents": output_documents}
 
-    def _concatenate(self, document_lists: List[List[Document]]) -> List[Document]:
+    @staticmethod
+    def _concatenate(document_lists: List[List[Document]]) -> List[Document]:
         """
         Concatenate multiple lists of Documents and return only the Document with the highest score for duplicates.
         """
@@ -230,7 +231,8 @@ class DocumentJoiner:
 
         return list(documents_map.values())
 
-    def _distribution_based_rank_fusion(self, document_lists: List[List[Document]]) -> List[Document]:
+    @staticmethod
+    def _distribution_based_rank_fusion(document_lists: List[List[Document]]) -> List[Document]:
         """
         Merge multiple lists of Documents and assign scores based on Distribution-Based Score Fusion.
 
@@ -256,7 +258,7 @@ class DocumentJoiner:
                 doc.score = (doc.score - min_score) / delta_score if delta_score != 0.0 else 0.0
                 # if all docs have the same score delta_score is 0, the docs are uninformative for the query
 
-        output = self._concatenate(document_lists=document_lists)
+        output = DocumentJoiner._concatenate(document_lists=document_lists)
 
         return output
 
