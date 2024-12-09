@@ -342,8 +342,9 @@ class ExtractiveReader:
 
         return answer
 
-    def _nest_answers(  # pylint: disable=too-many-positional-arguments
+    def _nest_answers(
         self,
+        *,
         start: List[List[int]],
         end: List[List[int]],
         probabilities: "torch.Tensor",
