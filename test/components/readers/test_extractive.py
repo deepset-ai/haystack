@@ -366,7 +366,12 @@ def test_postprocess(mock_reader: ExtractiveReader):
     encoding.token_to_chars = lambda i: (int(i), int(i) + 1)
 
     start_candidates, end_candidates, probs = mock_reader._postprocess(
-        start, end, sequence_ids, attention_mask, 3, [encoding, encoding]
+        start=start,
+        end=end,
+        sequence_ids=sequence_ids,
+        attention_mask=attention_mask,
+        answers_per_seq=3,
+        encodings=[encoding, encoding],
     )
 
     assert len(start_candidates) == len(end_candidates) == len(probs) == 2

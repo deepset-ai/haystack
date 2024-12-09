@@ -255,8 +255,9 @@ class ExtractiveReader:
 
         return input_ids, attention_mask, sequence_ids, encodings, query_ids, document_ids
 
-    def _postprocess(  # pylint: disable=too-many-positional-arguments
+    def _postprocess(
         self,
+        *,
         start: "torch.Tensor",
         end: "torch.Tensor",
         sequence_ids: "torch.Tensor",
@@ -286,9 +287,9 @@ class ExtractiveReader:
         masked_logits = torch.where(mask, logits, -torch.inf)
         probabilities = torch.sigmoid(masked_logits * self.calibration_factor)
 
-        flat_probabilities = probabilities.flatten(-2, -1)  # necessary for topk
+        flat_probabilities = probabilities.flatten(-2, -1)  # necessary for top-k
 
-        # topk can return invalid candidates as well if answers_per_seq > num_valid_candidates
+        # top-k can return invalid candidates as well if answers_per_seq > num_valid_candidates
         # We only keep probability > 0 candidates later on
         candidates = torch.topk(flat_probabilities, answers_per_seq)
         seq_length = logits.shape[-1]
@@ -633,7 +634,12 @@ class ExtractiveReader:
         end_logits = torch.cat(end_logits_list)
 
         start, end, probabilities = self._postprocess(
-            start_logits, end_logits, sequence_ids, attention_mask, answers_per_seq, encodings
+            start=start_logits,
+            end=end_logits,
+            sequence_ids=sequence_ids,
+            attention_mask=attention_mask,
+            answers_per_seq=answers_per_seq,
+            encodings=encodings,
         )
 
         answers = self._nest_answers(
