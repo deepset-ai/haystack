@@ -37,7 +37,7 @@ class PPTXToDocument:
     ```
     """
 
-    def __init__(self, store_full_path: bool = True):
+    def __init__(self, store_full_path: bool = False):
         """
         Create an PPTXToDocument component.
 

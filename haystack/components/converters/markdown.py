@@ -40,7 +40,7 @@ class MarkdownToDocument:
     ```
     """
 
-    def __init__(self, table_to_single_line: bool = False, progress_bar: bool = True, store_full_path: bool = True):
+    def __init__(self, table_to_single_line: bool = False, progress_bar: bool = True, store_full_path: bool = False):
         """
         Create a MarkdownToDocument component.
 

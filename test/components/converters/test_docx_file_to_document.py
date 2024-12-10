@@ -1,4 +1,5 @@
 import json
+import os
 import logging
 import pytest
 import csv
@@ -32,7 +33,7 @@ class TestDOCXToDocument:
         data = converter.to_dict()
         assert data == {
             "type": "haystack.components.converters.docx.DOCXToDocument",
-            "init_parameters": {"store_full_path": True, "table_format": "csv"},
+            "init_parameters": {"store_full_path": False, "table_format": "csv"},
         }
 
     def test_to_dict_custom_parameters(self):
@@ -40,28 +41,28 @@ class TestDOCXToDocument:
         data = converter.to_dict()
         assert data == {
             "type": "haystack.components.converters.docx.DOCXToDocument",
-            "init_parameters": {"store_full_path": True, "table_format": "markdown"},
+            "init_parameters": {"store_full_path": False, "table_format": "markdown"},
         }
 
         converter = DOCXToDocument(table_format="csv")
         data = converter.to_dict()
         assert data == {
             "type": "haystack.components.converters.docx.DOCXToDocument",
-            "init_parameters": {"store_full_path": True, "table_format": "csv"},
+            "init_parameters": {"store_full_path": False, "table_format": "csv"},
         }
 
         converter = DOCXToDocument(table_format=DOCXTableFormat.MARKDOWN)
         data = converter.to_dict()
         assert data == {
             "type": "haystack.components.converters.docx.DOCXToDocument",
-            "init_parameters": {"store_full_path": True, "table_format": "markdown"},
+            "init_parameters": {"store_full_path": False, "table_format": "markdown"},
         }
 
         converter = DOCXToDocument(table_format=DOCXTableFormat.CSV)
         data = converter.to_dict()
         assert data == {
             "type": "haystack.components.converters.docx.DOCXToDocument",
-            "init_parameters": {"store_full_path": True, "table_format": "csv"},
+            "init_parameters": {"store_full_path": False, "table_format": "csv"},
         }
 
     def test_from_dict(self):
@@ -119,7 +120,7 @@ class TestDOCXToDocument:
         assert "History" in docs[0].content
         assert docs[0].meta.keys() == {"file_path", "docx"}
         assert docs[0].meta == {
-            "file_path": str(paths[0]),
+            "file_path": os.path.basename(paths[0]),
             "docx": DOCXMetadata(
                 author="Microsoft Office User",
                 category="",
@@ -151,7 +152,7 @@ class TestDOCXToDocument:
         assert "Donald Trump" in docs[0].content  ## :-)
         assert docs[0].meta.keys() == {"file_path", "docx"}
         assert docs[0].meta == {
-            "file_path": str(paths[0]),
+            "file_path": os.path.basename(paths[0]),
             "docx": DOCXMetadata(
                 author="Saha, Anirban",
                 category="",
@@ -283,7 +284,7 @@ class TestDOCXToDocument:
         output = docx_converter.run(sources=paths, meta={"language": "it", "author": "test_author"})
         doc = output["documents"][0]
         assert doc.meta == {
-            "file_path": str(paths[0]),
+            "file_path": os.path.basename(paths[0]),
             "docx": DOCXMetadata(
                 author="Microsoft Office User",
                 category="",

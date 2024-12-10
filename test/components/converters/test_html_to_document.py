@@ -42,7 +42,7 @@ class TestHTMLToDocument:
         """
         Test if the component runs correctly when metadata is supplied by the user.
         """
-        converter = HTMLToDocument()
+        converter = HTMLToDocument(store_full_path=True)
         sources = [test_files_path / "html" / "what_is_haystack.html"]
 
         results = converter.run(sources=sources)  # store_full_path is True by default
