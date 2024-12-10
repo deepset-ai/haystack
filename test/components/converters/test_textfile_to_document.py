@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import logging
+import os
 from unittest.mock import patch
 from pathlib import Path
 
@@ -27,9 +28,9 @@ class TestTextfileToDocument:
         assert "Some text for testing." in docs[0].content
         assert "This is a test line." in docs[1].content
         assert "That's yet another file!" in docs[2].content
-        assert docs[0].meta["file_path"] == str(files[0])
-        assert docs[1].meta["file_path"] == str(files[1])
-        assert docs[2].meta == bytestream.meta
+        assert docs[0].meta["file_path"] == os.path.basename(files[0])
+        assert docs[1].meta["file_path"] == os.path.basename(files[1])
+        assert docs[2].meta == {"file_path": os.path.basename(bytestream.meta["file_path"]), "key": "value"}
 
     def test_run_with_store_full_path(self, test_files_path):
         """
@@ -59,8 +60,8 @@ class TestTextfileToDocument:
             assert "non_existing_file.txt" in caplog.text
         docs = output["documents"]
         assert len(docs) == 2
-        assert docs[0].meta["file_path"] == str(paths[0])
-        assert docs[1].meta["file_path"] == str(paths[2])
+        assert docs[0].meta["file_path"] == os.path.basename(paths[0])
+        assert docs[1].meta["file_path"] == os.path.basename(paths[2])
 
     def test_encoding_override(self, test_files_path):
         """

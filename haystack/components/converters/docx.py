@@ -109,7 +109,7 @@ class DOCXToDocument:
     ```
     """
 
-    def __init__(self, table_format: Union[str, DOCXTableFormat] = DOCXTableFormat.CSV, store_full_path: bool = True):
+    def __init__(self, table_format: Union[str, DOCXTableFormat] = DOCXTableFormat.CSV, store_full_path: bool = False):
         """
         Create a DOCXToDocument component.
 

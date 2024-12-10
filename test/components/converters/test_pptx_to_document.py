@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import logging
+import os
 
 from haystack.dataclasses import ByteStream
 from haystack.components.converters.pptx import PPTXToDocument
@@ -29,8 +30,8 @@ class TestPPTXToDocument:
             "Sample Title Slide\nJane Doe\fTitle of First Slide\nThis is a bullet point\nThis is another bullet point"
             in docs[0].content
         )
-        assert docs[0].meta["file_path"] == str(files[0])
-        assert docs[1].meta == bytestream.meta
+        assert docs[0].meta["file_path"] == os.path.basename(files[0])
+        assert docs[1].meta == {"file_path": os.path.basename(bytestream.meta["file_path"]), "key": "value"}
 
     def test_run_error_non_existent_file(self, caplog):
         sources = ["non_existing_file.pptx"]
@@ -58,7 +59,7 @@ class TestPPTXToDocument:
         document = output["documents"][0]
 
         assert document.meta == {
-            "file_path": str(test_files_path / "pptx" / "sample_pptx.pptx"),
+            "file_path": os.path.basename(test_files_path / "pptx" / "sample_pptx.pptx"),
             "key": "value",
             "language": "it",
         }
