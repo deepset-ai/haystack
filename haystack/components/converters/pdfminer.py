@@ -48,7 +48,7 @@ class PDFMinerToDocument:
         boxes_flow: Optional[float] = 0.5,
         detect_vertical: bool = True,
         all_texts: bool = False,
-        store_full_path: bool = True,
+        store_full_path: bool = False,
     ) -> None:
         """
         Create a PDFMinerToDocument component.
