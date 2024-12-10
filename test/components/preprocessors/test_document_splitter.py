@@ -500,7 +500,7 @@ class TestSplittingByFunctionOrCharacterRegex:
         assert results["documents"][0].content == "  "
 
 
-class TestNLTKDocumentSplitterNumberOfSentencesToKeep:
+class TestSplittingNLTKSentenceSplitter:
     @pytest.mark.parametrize(
         "sentences, expected_num_sentences",
         [
@@ -528,8 +528,6 @@ class TestNLTKDocumentSplitterNumberOfSentencesToKeep:
         )
         assert num_sentences == 0
 
-
-class TestNLTKDocumentSplitterRun:
     def test_run_split_by_sentence_1(self) -> None:
         document_splitter = DocumentSplitter(
             split_by="nltk_sentence",
@@ -653,8 +651,6 @@ class TestNLTKDocumentSplitterRun:
         assert documents[2].meta["split_id"] == 2
         assert documents[2].meta["split_idx_start"] == text.index(documents[2].content)
 
-
-class TestNLTKDocumentSplitterRespectSentenceBoundary:
     def test_run_split_by_word_respect_sentence_boundary(self) -> None:
         document_splitter = DocumentSplitter(
             split_by="word",
