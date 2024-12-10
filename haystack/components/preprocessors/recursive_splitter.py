@@ -1,8 +1,8 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-
 import re
+from copy import deepcopy
 from typing import Dict, List, Optional
 
 from haystack import Document, component, logging
@@ -52,17 +52,17 @@ class RecursiveDocumentSplitter:
         split_overlap: int = 0,
         separators: Optional[List[str]] = None,
         keep_separator: bool = True,
-        is_separator_regex: bool = False,
     ):
         """
         Initializes a RecursiveDocumentSplitter.
 
         :param split_length: The maximum length of each chunk.
         :param split_overlap: The number of characters to overlap between consecutive chunks.
-        :param separators: A list of separator characters to use for splitting the text. If the separator is "sentence",
-                the text will be split into sentences using a custom sentence tokenizer based on NLTK.
+        :param separators: An optional list of separator strings to use for splitting the text. The string
+            separators will be treated as regular expressions un less if the separator is "sentence", in that case the
+            text will be split into sentences using a custom sentence tokenizer based on NLTK.
+            If no separators are provided, the default separators ["\n\n", "\n", ".", " "] are used.
         :param keep_separator: Whether to keep the separator character in the resulting chunks.
-        :param is_separator_regex: Whether the separator is a regular expression.
 
         :raises ValueError: If the overlap is greater than or equal to the chunk size or if the overlap is negative, or
                             if any separator is not a string.
@@ -71,9 +71,8 @@ class RecursiveDocumentSplitter:
         self.split_overlap = split_overlap
         self.separators = separators if separators else ["\n\n", "\n", ".", " "]
         self.keep_separator = keep_separator
-        self.is_separator_regex = is_separator_regex
         self._check_params()
-        if separators and "sentence" in separators:
+        if "sentence" in self.separators:
             self.nltk_tokenizer = self._get_custom_sentence_tokenizer()
 
     def _check_params(self):
@@ -129,15 +128,13 @@ class RecursiveDocumentSplitter:
         # type ignore below because we already checked that separators is not None
         # try each separator
         for separator in self.separators:  # type: ignore
-            if separator in "sentence":  # using nltk sentence tokenizer
+            if separator == "sentence":
+                # using the custom NLTK-based sentence tokenizer
                 sentence_with_spans = self.nltk_tokenizer.split_sentences(text)
                 splits = [sentence["sentence"] for sentence in sentence_with_spans]
             else:
-                # split using the current separator
-                splits = text.split(separator) if not self.is_separator_regex else re.split(separator, text)
-
-            # filter out empty splits
-            splits = [s for s in splits if s.strip()]
+                # apply current separator regex to split text
+                splits = re.split(re.escape(separator), text)
 
             if len(splits) == 1:  # go to next separator, if current separator not found
                 continue
@@ -147,9 +144,11 @@ class RecursiveDocumentSplitter:
             current_length = 0
 
             # check splits, if any is too long, recursively chunk it, otherwise add to current chunk
-            for split in splits:
+            for idx, split in enumerate(splits):
                 split_text = split
-                if self.keep_separator and separator != "sentence":
+
+                # add separator to the split, if it's not the last one
+                if self.keep_separator and separator != "sentence" and idx < len(splits) - 1:
                     split_text = split + separator
 
                 # if adding this split exceeds chunk_size, process current_chunk
@@ -183,10 +182,31 @@ class RecursiveDocumentSplitter:
         new_docs = []
         # NOTE: the check for a non-empty content is already done in the run method, hence the type ignore below
         chunks = self._chunk_text(doc.content)  # type: ignore
-        for chunk in chunks:
-            new_doc = Document(content=chunk, meta=doc.meta)
+        current_position = 0
+        for split_nr, chunk in enumerate(chunks):
+            new_doc = Document(content=chunk, meta=deepcopy(doc.meta))
             new_doc.meta["original_id"] = doc.id
+            new_doc.meta["split_id"] = split_nr
+            new_doc.meta["split_idx_start"] = current_position
+            new_doc.meta["_split_overlap"] = []
+
+            if split_nr > 0 and self.split_overlap > 0:
+                previous_doc = new_docs[-1]
+                overlap_length = len(previous_doc.content) - (current_position - previous_doc.meta["split_idx_start"])
+                if overlap_length > 0:
+                    # overlap info to previous document
+                    previous_doc.meta["_split_overlap"].append(
+                        {
+                            "doc_id": new_doc.id,
+                            "range": (len(previous_doc.content) - overlap_length, len(previous_doc.content)),
+                        }
+                    )
+                    # overlap info to current document
+                    new_doc.meta["_split_overlap"].append({"doc_id": previous_doc.id, "range": (0, overlap_length)})
+
             new_docs.append(new_doc)
+            current_position += len(chunk) - (self.split_overlap if split_nr < len(chunks) - 1 else 0)
+
         return new_docs
 
     @component.output_types(documents=List[Document])
@@ -199,10 +219,11 @@ class RecursiveDocumentSplitter:
             A dictionary containing a key "documents" with a List of Documents with smaller chunks of text corresponding
             to the input documents.
         """
-        new_docs = []
+        docs = []
         for doc in documents:
             if not doc.content or doc.content == "":
                 logger.warning("Document ID {doc_id} has an empty content. Skipping this document.", doc_id=doc.id)
                 continue
-            new_docs.extend(self._run_one(doc))
-        return {"documents": new_docs}
+            docs.extend(self._run_one(doc))
+
+        return {"documents": docs}
