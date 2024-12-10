@@ -18,7 +18,7 @@ class RecursiveDocumentSplitter:
     This component is used to split text into smaller chunks, it does so by recursively applying a list of separators
     to the text.
 
-    Each separator is applied to the text, if then checks each of the resulting chunks, it keeps the ones chunks that
+    Each separator is applied to the text, it then checks each of the resulting chunks, it keeps the chunks that
     are within the chunk_size, for the ones that are larger than the chunk_size, it applies the next separator in the
     list to the remaining text.
 
