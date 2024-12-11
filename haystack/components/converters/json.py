@@ -95,7 +95,7 @@ class JSONConverter:
         jq_schema: Optional[str] = None,
         content_key: Optional[str] = None,
         extra_meta_fields: Optional[Union[Set[str], Literal["*"]]] = None,
-        store_full_path: bool = True,
+        store_full_path: bool = False,
     ):
         """
         Creates a JSONConverter component.

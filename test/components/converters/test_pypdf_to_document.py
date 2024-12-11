@@ -61,7 +61,7 @@ class TestPyPDFToDocument:
                 "layout_mode_scale_weight": 1.25,
                 "layout_mode_strip_rotated": True,
                 "layout_mode_font_height_weight": 1.0,
-                "store_full_path": True,
+                "store_full_path": False,
             },
         }
 

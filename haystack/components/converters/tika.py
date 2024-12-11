@@ -75,7 +75,7 @@ class TikaDocumentConverter:
     ```
     """
 
-    def __init__(self, tika_url: str = "http://localhost:9998/tika", store_full_path: bool = True):
+    def __init__(self, tika_url: str = "http://localhost:9998/tika", store_full_path: bool = False):
         """
         Create a TikaDocumentConverter component.
 

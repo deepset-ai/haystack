@@ -61,7 +61,7 @@ class AzureOCRDocumentConverter:
         merge_multiple_column_headers: bool = True,
         page_layout: Literal["natural", "single_column"] = "natural",
         threshold_y: Optional[float] = 0.05,
-        store_full_path: bool = True,
+        store_full_path: bool = False,
     ):
         """
         Creates an AzureOCRDocumentConverter component.

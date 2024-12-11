@@ -36,7 +36,7 @@ class TextFileToDocument:
     ```
     """
 
-    def __init__(self, encoding: str = "utf-8", store_full_path: bool = True):
+    def __init__(self, encoding: str = "utf-8", store_full_path: bool = False):
         """
         Creates a TextFileToDocument component.
 
