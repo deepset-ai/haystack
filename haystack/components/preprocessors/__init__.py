@@ -4,7 +4,6 @@
 
 from .document_cleaner import DocumentCleaner
 from .document_splitter import DocumentSplitter
-from .nltk_document_splitter import NLTKDocumentSplitter
 from .text_cleaner import TextCleaner
 
-__all__ = ["DocumentSplitter", "DocumentCleaner", "TextCleaner", "NLTKDocumentSplitter"]
+__all__ = ["DocumentSplitter", "DocumentCleaner", "TextCleaner"]
