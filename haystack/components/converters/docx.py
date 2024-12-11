@@ -5,7 +5,6 @@
 import csv
 import io
 import os
-import warnings
 from dataclasses import dataclass
 from enum import Enum
 from io import StringIO

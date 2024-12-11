@@ -4,7 +4,6 @@
 
 import io
 import os
-import warnings
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
