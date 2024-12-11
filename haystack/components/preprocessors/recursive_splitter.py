@@ -1,0 +1,241 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
+import re
+from copy import deepcopy
+from typing import Dict, List, Optional
+
+from haystack import Document, component, logging
+
+logger = logging.getLogger(__name__)
+
+
+@component
+class RecursiveDocumentSplitter:
+    """
+    Recursively chunk text into smaller chunks.
+
+    This component is used to split text into smaller chunks, it does so by recursively applying a list of separators
+    to the text.
+
+    The separators are applied in the order they are provided, typically this is a list of separators that are
+    applied in a specific order, being the last separator the most specific one.
+
+    Each separator is applied to the text, it then checks each of the resulting chunks, it keeps the chunks that
+    are within the chunk_size, for the ones that are larger than the chunk_size, it applies the next separator in the
+    list to the remaining text.
+
+    This is done until all chunks are smaller than the chunk_size parameter.
+
+    Example:
+
+    ```python
+    from haystack import Document
+    from haystack.components.preprocessors import RecursiveChunker
+
+    chunker = RecursiveChunker(chunk_size=260, chunk_overlap=0, separators=["\n\n", "\n", ".", " "], keep_separator=True)
+    text = '''Artificial intelligence (AI) - Introduction
+
+    AI, in its broadest sense, is intelligence exhibited by machines, particularly computer systems.
+    AI technology is widely used throughout industry, government, and science. Some high-profile applications include advanced web search engines; recommendation systems; interacting via human speech; autonomous vehicles; generative and creative tools; and superhuman play and analysis in strategy games.'''
+
+    doc = Document(content=text)
+    doc_chunks = chunker.run([doc])
+    >[
+    >Document(id=..., content: 'Artificial intelligence (AI) - Introduction\n\n', meta: {'original_id': '65167a9823dd883de577e828ca4fd529e6f7241f0ff616acfce454d808478951'}),
+    >Document(id=..., content: 'AI, in its broadest sense, is intelligence exhibited by machines, particularly computer systems. ', meta: {'original_id': '65167a9823dd883de577e828ca4fd529e6f7241f0ff616acfce454d808478951'}),
+    >Document(id=..., content: 'AI technology is widely used throughout industry, government, and science.', meta: {'original_id': '65167a9823dd883de577e828ca4fd529e6f7241f0ff616acfce454d808478951'}),
+    >Document(id=..., content: ' Some high-profile applications include advanced web search engines; recommendation systems; interac...', meta: {'original_id': '65167a9823dd883de577e828ca4fd529e6f7241f0ff616acfce454d808478951'})
+    >]
+    """  # noqa: E501
+
+    def __init__(  # pylint: disable=too-many-positional-arguments
+        self,
+        split_length: int = 200,
+        split_overlap: int = 0,
+        separators: Optional[List[str]] = None,
+        keep_separator: bool = True,
+    ):
+        """
+        Initializes a RecursiveDocumentSplitter.
+
+        :param split_length: The maximum length of each chunk.
+        :param split_overlap: The number of characters to overlap between consecutive chunks.
+        :param separators: An optional list of separator strings to use for splitting the text. The string
+            separators will be treated as regular expressions un less if the separator is "sentence", in that case the
+            text will be split into sentences using a custom sentence tokenizer based on NLTK.
+            If no separators are provided, the default separators ["\n\n", "\n", ".", " "] are used.
+        :param keep_separator: Whether to keep the separator character in the resulting chunks.
+
+        :raises ValueError: If the overlap is greater than or equal to the chunk size or if the overlap is negative, or
+                            if any separator is not a string.
+        """
+        self.split_length = split_length
+        self.split_overlap = split_overlap
+        self.separators = separators if separators else ["\n\n", "\n", ".", " "]
+        self.keep_separator = keep_separator
+        self._check_params()
+        if "sentence" in self.separators:
+            self.nltk_tokenizer = self._get_custom_sentence_tokenizer()
+
+    def _check_params(self):
+        if self.split_length < 1:
+            raise ValueError("Split length must be at least 1 character.")
+        if self.split_overlap < 0:
+            raise ValueError("Overlap must be greater than zero.")
+        if self.split_overlap >= self.split_length:
+            raise ValueError("Overlap cannot be greater than or equal to the chunk size.")
+        if not all(isinstance(separator, str) for separator in self.separators):
+            raise ValueError("All separators must be strings.")
+
+    @staticmethod
+    def _get_custom_sentence_tokenizer():
+        try:
+            from haystack.components.preprocessors.sentence_tokenizer import SentenceSplitter
+        except (LookupError, ModuleNotFoundError):
+            raise Exception("You need to install NLTK to use this function. You can install it via `pip install nltk`")
+        return SentenceSplitter()
+
+    def _apply_overlap(self, chunks: List[str]) -> List[str]:
+        """
+        Applies an overlap between consecutive chunks if the chunk_overlap attribute is greater than zero.
+
+        :param chunks: List of text chunks.
+        :returns:
+            The list of chunks with overlap applied.
+        """
+        overlapped_chunks = []
+        for idx, chunk in enumerate(chunks):
+            if idx == 0:
+                overlapped_chunks.append(chunk)
+                continue
+            overlap_start = max(0, len(chunks[idx - 1]) - self.split_overlap)
+            current_chunk = chunks[idx - 1][overlap_start:] + chunk
+            overlapped_chunks.append(current_chunk)
+        return overlapped_chunks
+
+    def _chunk_text(self, text: str) -> List[str]:
+        """
+        Recursive chunking algorithm that divides text into smaller chunks based on a list of separator characters.
+
+        It starts with a list of separator characters (e.g., ["\n\n", "\n", " ", ""]) and attempts to divide the text
+        using the first separator. If the resulting chunks are still larger than the specified chunk size, it moves to
+        the next separator in the list. This process continues recursively, progressively applying each specific
+        separator until the chunks meet the desired size criteria.
+
+        :param text: The text to be split into chunks.
+        :returns:
+            A list of text chunks.
+        """
+        if len(text) <= self.split_length:
+            return [text]
+
+        for curr_separator in self.separators:  # type: ignore # the caller already checked that separators is not None
+            if curr_separator == "sentence":
+                # using the custom NLTK-based sentence tokenizer
+                sentence_with_spans = self.nltk_tokenizer.split_sentences(text)
+                splits = [sentence["sentence"] for sentence in sentence_with_spans]
+            else:
+                # apply current separator regex to split text
+                escaped_separator = re.escape(curr_separator)
+                splits = re.split(escaped_separator, text)
+
+            if len(splits) == 1:  # go to next separator, if current separator not found
+                continue
+
+            chunks = []
+            current_chunk: List[str] = []
+            current_length = 0
+
+            # check splits, if any is too long, recursively chunk it, otherwise add to current chunk
+            for idx, split in enumerate(splits):
+                split_text = split
+
+                # add separator to the split, if it's not the last split
+                if self.keep_separator and curr_separator != "sentence" and idx < len(splits) - 1:
+                    split_text = split + curr_separator
+
+                # if adding this split exceeds chunk_size, process current_chunk
+                if current_length + len(split_text) > self.split_length:
+                    if current_chunk:  # keep the good splits
+                        chunks.append("".join(current_chunk))
+                        current_chunk = []
+                        current_length = 0
+
+                    # recursively handle splits that are too large
+                    if len(split_text) > self.split_length:
+                        if curr_separator == self.separators[-1]:
+                            # tried the last separator, can't split further, break the loop and fall back to
+                            # character-level chunking
+                            break
+                        chunks.extend(self._chunk_text(split_text))
+                    else:
+                        chunks.append(split_text)
+                else:
+                    current_chunk.append(split_text)
+                    current_length += len(split_text)
+
+            if current_chunk:
+                chunks.append("".join(current_chunk))
+
+            if self.split_overlap > 0:
+                chunks = self._apply_overlap(chunks)
+
+            if chunks:
+                return chunks
+
+        # if no separator worked, fall back to character-level chunking
+        return [text[i : i + self.split_length] for i in range(0, len(text), self.split_length - self.split_overlap)]
+
+    def _run_one(self, doc: Document) -> List[Document]:
+        new_docs: List[Document] = []
+        chunks = self._chunk_text(doc.content)  # type: ignore # the caller already check for a non-empty doc.content
+        chunks = chunks[:-1] if len(chunks[-1]) == 0 else chunks  # remove last empty chunk
+        current_position = 0
+        current_page = 1
+
+        for split_nr, chunk in enumerate(chunks):
+            new_doc = Document(content=chunk, meta=deepcopy(doc.meta))
+            new_doc.meta["original_id"] = doc.id
+            new_doc.meta["split_id"] = split_nr
+            new_doc.meta["split_idx_start"] = current_position
+            new_doc.meta["_split_overlap"] = [] if self.split_overlap > 0 else None
+            new_doc.meta["page_number"] = current_page
+
+            if split_nr > 0 and self.split_overlap > 0:
+                previous_doc = new_docs[-1]
+                overlap_length = len(previous_doc.content) - (current_position - previous_doc.meta["split_idx_start"])  # type: ignore
+                if overlap_length > 0:
+                    previous_doc.meta["_split_overlap"].append({"doc_id": new_doc.id, "range": (0, overlap_length)})
+                    new_doc.meta["_split_overlap"].append(
+                        {
+                            "doc_id": previous_doc.id,
+                            "range": (len(previous_doc.content) - overlap_length, len(previous_doc.content)),  # type: ignore
+                        }
+                    )
+
+            new_docs.append(new_doc)
+            current_page += chunk.count("\f")  # update the page number based on the number of page breaks
+            current_position += len(chunk) - (self.split_overlap if split_nr < len(chunks) - 1 else 0)
+
+        return new_docs
+
+    @component.output_types(documents=List[Document])
+    def run(self, documents: List[Document]) -> Dict[str, List[Document]]:
+        """
+        Split documents into Documents with smaller chunks of text.
+
+        :param documents: List of Documents to split.
+        :returns:
+            A dictionary containing a key "documents" with a List of Documents with smaller chunks of text corresponding
+            to the input documents.
+        """
+        docs = []
+        for doc in documents:
+            if not doc.content or doc.content == "":
+                logger.warning("Document ID {doc_id} has an empty content. Skipping this document.", doc_id=doc.id)
+                continue
+            docs.extend(self._run_one(doc))
+
+        return {"documents": docs}
