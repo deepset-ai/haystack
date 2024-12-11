@@ -94,7 +94,7 @@ class DocumentSplitter:
         self.split_threshold = split_threshold
         self.splitting_function = splitting_function
         self.respect_sentence_boundary = respect_sentence_boundary
-        self.language = (language,)
+        self.language = language
         self.use_split_rules = use_split_rules
         self.extend_abbreviations = extend_abbreviations
 
@@ -114,9 +114,8 @@ class DocumentSplitter:
                 extend_abbreviations=extend_abbreviations,
                 keep_white_spaces=True,
             )
-            self.language = language
 
-    def _init_checks(
+    def _init_checks(  # pylint: disable=too-many-positional-arguments
         self,
         split_by: str,
         split_length: int,
@@ -201,11 +200,7 @@ class DocumentSplitter:
     def _split_by_nltk_sentence(self, doc: Document) -> List[Document]:
         split_docs = []
 
-        # whitespace is preserved while splitting text into sentences when using keep_white_spaces=True
-        # so split_at is set to an empty string
-        # self.split_at = ""
-
-        result = self.sentence_splitter.split_sentences(doc.content)
+        result = self.sentence_splitter.split_sentences(doc.content)  # type: ignore # None check is done in run()
         units = [sentence["sentence"] for sentence in result]
 
         if self.respect_sentence_boundary:
