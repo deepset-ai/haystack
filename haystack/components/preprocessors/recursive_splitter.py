@@ -196,9 +196,7 @@ class RecursiveDocumentSplitter:
                 previous_doc = new_docs[-1]
                 overlap_length = len(previous_doc.content) - (current_position - previous_doc.meta["split_idx_start"])
                 if overlap_length > 0:
-                    # previous document
                     previous_doc.meta["_split_overlap"].append({"doc_id": new_doc.id, "range": (0, overlap_length)})
-                    # current document
                     new_doc.meta["_split_overlap"].append(
                         {
                             "doc_id": previous_doc.id,

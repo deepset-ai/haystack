@@ -2,6 +2,12 @@ import pytest
 
 from haystack import Document, Pipeline
 from haystack.components.preprocessors.recursive_splitter import RecursiveDocumentSplitter
+from haystack.components.preprocessors.sentence_tokenizer import SentenceSplitter
+
+
+def test_get_custom_sentence_tokenizer_success():
+    tokenizer = RecursiveDocumentSplitter._get_custom_sentence_tokenizer()
+    assert isinstance(tokenizer, SentenceSplitter)
 
 
 def test_init_with_negative_overlap():
