@@ -4,7 +4,6 @@
 
 import json
 import os
-import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Set, Tuple, Union
 
@@ -280,12 +279,6 @@ class JSONConverter:
 
             data = self._get_content_and_meta(bytestream)
 
-            warnings.warn(
-                "The `store_full_path` parameter defaults to True, storing full file paths in metadata. "
-                "In the 2.9.0 release, the default value for `store_full_path` will change to False, "
-                "storing only file names to improve privacy.",
-                DeprecationWarning,
-            )
             for text, extra_meta in data:
                 merged_metadata = {**bytestream.meta, **metadata, **extra_meta}
 
