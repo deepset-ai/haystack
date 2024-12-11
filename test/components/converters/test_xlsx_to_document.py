@@ -16,26 +16,26 @@ class TestXLSXToDocument:
 
     def test_run(self, test_files_path) -> None:
         converter = XLSXToDocument()
-        paths = [test_files_path / "xlsx" / "test.xlsx"]
+        paths = [test_files_path / "xlsx" / "basic_tables_two_sheets.xlsx"]
         results = converter.run(sources=paths, meta={"date_added": "2022-01-01T00:00:00"})
         documents = results["documents"]
         assert len(documents) == 2
         assert documents[0].content == ",A,B\n1,col_a,col_b\n2,1.5,test\n"
         assert documents[0].meta == {
             "date_added": "2022-01-01T00:00:00",
-            "file_path": str(test_files_path / "xlsx" / "test.xlsx"),
-            "xlsx": {"sheet_name": "Sheet1"},
+            "file_path": str(test_files_path / "xlsx" / "basic_tables_two_sheets.xlsx"),
+            "xlsx": {"sheet_name": "Basic Table"},
         }
         assert documents[1].content == ",A,B\n1,col_c,col_d\n2,True,\n"
         assert documents[1].meta == {
             "date_added": "2022-01-01T00:00:00",
-            "file_path": str(test_files_path / "xlsx" / "test.xlsx"),
-            "xlsx": {"sheet_name": "Sheet2"},
+            "file_path": str(test_files_path / "xlsx" / "basic_tables_two_sheets.xlsx"),
+            "xlsx": {"sheet_name": "Table Missing Value"},
         }
 
     def test_run_markdown(self, test_files_path) -> None:
         converter = XLSXToDocument(table_format="markdown")
-        paths = [test_files_path / "xlsx" / "test.xlsx"]
+        paths = [test_files_path / "xlsx" / "basic_tables_two_sheets.xlsx"]
         results = converter.run(sources=paths, meta={"date_added": "2022-01-01T00:00:00"})
         documents = results["documents"]
         assert len(documents) == 2
@@ -45,8 +45,8 @@ class TestXLSXToDocument:
         )
         assert documents[0].meta == {
             "date_added": "2022-01-01T00:00:00",
-            "file_path": str(test_files_path / "xlsx" / "test.xlsx"),
-            "xlsx": {"sheet_name": "Sheet1"},
+            "file_path": str(test_files_path / "xlsx" / "basic_tables_two_sheets.xlsx"),
+            "xlsx": {"sheet_name": "Basic Table"},
         }
         assert (
             documents[1].content
@@ -54,15 +54,15 @@ class TestXLSXToDocument:
         )
         assert documents[1].meta == {
             "date_added": "2022-01-01T00:00:00",
-            "file_path": str(test_files_path / "xlsx" / "test.xlsx"),
-            "xlsx": {"sheet_name": "Sheet2"},
+            "file_path": str(test_files_path / "xlsx" / "basic_tables_two_sheets.xlsx"),
+            "xlsx": {"sheet_name": "Table Missing Value"},
         }
 
     @pytest.mark.parametrize(
         "sheet_name, expected_sheet_name, expected_content",
         [
-            ("Sheet1", "Sheet1", ",A,B\n1,col_a,col_b\n2,1.5,test\n"),
-            ("Sheet2", "Sheet2", ",A,B\n1,col_c,col_d\n2,True,\n"),
+            ("Basic Table", "Basic Table", ",A,B\n1,col_a,col_b\n2,1.5,test\n"),
+            ("Table Missing Value", "Table Missing Value", ",A,B\n1,col_c,col_d\n2,True,\n"),
             (0, 0, ",A,B\n1,col_a,col_b\n2,1.5,test\n"),
             (1, 1, ",A,B\n1,col_c,col_d\n2,True,\n"),
         ],
@@ -71,27 +71,27 @@ class TestXLSXToDocument:
         self, sheet_name: Union[int, str], expected_sheet_name: str, expected_content: str, test_files_path
     ) -> None:
         converter = XLSXToDocument(sheet_name=sheet_name)
-        paths = [test_files_path / "xlsx" / "test.xlsx"]
+        paths = [test_files_path / "xlsx" / "basic_tables_two_sheets.xlsx"]
         results = converter.run(sources=paths)
         documents = results["documents"]
         assert len(documents) == 1
         assert documents[0].content == expected_content
         assert documents[0].meta == {
-            "file_path": str(test_files_path / "xlsx" / "test.xlsx"),
+            "file_path": str(test_files_path / "xlsx" / "basic_tables_two_sheets.xlsx"),
             "xlsx": {"sheet_name": expected_sheet_name},
         }
 
     def test_run_with_read_excel_kwargs(self, test_files_path) -> None:
-        converter = XLSXToDocument(sheet_name="Sheet1", read_excel_kwargs={"skiprows": 1})
-        paths = [test_files_path / "xlsx" / "test.xlsx"]
+        converter = XLSXToDocument(sheet_name="Basic Table", read_excel_kwargs={"skiprows": 1})
+        paths = [test_files_path / "xlsx" / "basic_tables_two_sheets.xlsx"]
         results = converter.run(sources=paths, meta={"date_added": "2022-01-01T00:00:00"})
         documents = results["documents"]
         assert len(documents) == 1
         assert documents[0].content == ",A,B\n1,1.5,test\n"
         assert documents[0].meta == {
             "date_added": "2022-01-01T00:00:00",
-            "file_path": str(test_files_path / "xlsx" / "test.xlsx"),
-            "xlsx": {"sheet_name": "Sheet1"},
+            "file_path": str(test_files_path / "xlsx" / "basic_tables_two_sheets.xlsx"),
+            "xlsx": {"sheet_name": "Basic Table"},
         }
 
     def test_run_error_wrong_file_type(self, caplog: pytest.LogCaptureFixture, test_files_path) -> None:
