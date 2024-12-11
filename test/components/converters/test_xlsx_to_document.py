@@ -14,7 +14,7 @@ class TestXLSXToDocument:
         assert converter.table_format == "csv"
         assert converter.table_format_kwargs == {}
 
-    def test_run(self, test_files_path) -> None:
+    def test_run_basic_tables(self, test_files_path) -> None:
         converter = XLSXToDocument()
         paths = [test_files_path / "xlsx" / "basic_tables_two_sheets.xlsx"]
         results = converter.run(sources=paths, meta={"date_added": "2022-01-01T00:00:00"})
@@ -31,6 +31,35 @@ class TestXLSXToDocument:
             "date_added": "2022-01-01T00:00:00",
             "file_path": str(test_files_path / "xlsx" / "basic_tables_two_sheets.xlsx"),
             "xlsx": {"sheet_name": "Table Missing Value"},
+        }
+
+    def test_run_table_empty_rows_and_columns(self, test_files_path) -> None:
+        converter = XLSXToDocument()
+        paths = [test_files_path / "xlsx" / "table_empty_rows_and_columns.xlsx"]
+        results = converter.run(sources=paths, meta={"date_added": "2022-01-01T00:00:00"})
+        documents = results["documents"]
+        assert len(documents) == 1
+        assert documents[0].content == ",A,B,C\n1,,,\n2,,,\n3,,,\n4,,col_a,col_b\n5,,1.5,test\n"
+        assert documents[0].meta == {
+            "date_added": "2022-01-01T00:00:00",
+            "file_path": str(test_files_path / "xlsx" / "table_empty_rows_and_columns.xlsx"),
+            "xlsx": {"sheet_name": "Sheet1"},
+        }
+
+    def test_run_multiple_tables_in_one_sheet(self, test_files_path) -> None:
+        converter = XLSXToDocument()
+        paths = [test_files_path / "xlsx" / "multiple_tables.xlsx"]
+        results = converter.run(sources=paths, meta={"date_added": "2022-01-01T00:00:00"})
+        documents = results["documents"]
+        assert len(documents) == 1
+        assert (
+            documents[0].content
+            == ",A,B,C,D,E,F\n1,,,,,,\n2,,,,,,\n3,,col_a,col_b,,,\n4,,1.5,test,,col_c,col_d\n5,,,,,3,True\n"
+        )
+        assert documents[0].meta == {
+            "date_added": "2022-01-01T00:00:00",
+            "file_path": str(test_files_path / "xlsx" / "multiple_tables.xlsx"),
+            "xlsx": {"sheet_name": "Sheet1"},
         }
 
     def test_run_markdown(self, test_files_path) -> None:
