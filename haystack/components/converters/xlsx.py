@@ -163,7 +163,7 @@ class XLSXToDocument:
             else:
                 resolved_kwargs = {
                     "index": True,
-                    "headers": "firstrow",
+                    "headers": dict_or_df[key].columns,
                     "tablefmt": "pipe",  # tablefmt 'plain', 'simple', 'grid', 'pipe', 'orgtbl', 'rst', 'mediawiki',
                     # 'latex', 'latex_raw', 'latex_booktabs', 'latex_longtable' and tsv
                     **self.table_format_kwargs,

@@ -33,6 +33,31 @@ class TestXLSXToDocument:
             "xlsx": {"sheet_name": "Sheet2"},
         }
 
+    def test_run_markdown(self, test_files_path) -> None:
+        converter = XLSXToDocument(table_format="markdown")
+        paths = [test_files_path / "xlsx" / "test.xlsx"]
+        results = converter.run(sources=paths, meta={"date_added": "2022-01-01T00:00:00"})
+        documents = results["documents"]
+        assert len(documents) == 2
+        assert (
+            documents[0].content
+            == "|    | A     | B     |\n|---:|:------|:------|\n|  1 | col_a | col_b |\n|  2 | 1.5   | test  |"
+        )
+        assert documents[0].meta == {
+            "date_added": "2022-01-01T00:00:00",
+            "file_path": str(test_files_path / "xlsx" / "test.xlsx"),
+            "xlsx": {"sheet_name": "Sheet1"},
+        }
+        assert (
+            documents[1].content
+            == "|    | A     | B     |\n|---:|:------|:------|\n|  1 | col_c | col_d |\n|  2 | True  | nan   |"
+        )
+        assert documents[1].meta == {
+            "date_added": "2022-01-01T00:00:00",
+            "file_path": str(test_files_path / "xlsx" / "test.xlsx"),
+            "xlsx": {"sheet_name": "Sheet2"},
+        }
+
     @pytest.mark.parametrize(
         "sheet_name, expected_sheet_name, expected_content",
         [
