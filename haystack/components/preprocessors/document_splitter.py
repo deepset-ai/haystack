@@ -88,6 +88,16 @@ class DocumentSplitter:
             of curated abbreviations, if available. This is currently supported for English ("en") and German ("de").
         """
 
+        self.split_by = split_by
+        self.split_length = split_length
+        self.split_overlap = split_overlap
+        self.split_threshold = split_threshold
+        self.splitting_function = splitting_function
+        self.respect_sentence_boundary = respect_sentence_boundary
+        self.language = (language,)
+        self.use_split_rules = use_split_rules
+        self.extend_abbreviations = extend_abbreviations
+
         self._init_checks(
             split_by=split_by,
             split_length=split_length,
@@ -96,16 +106,7 @@ class DocumentSplitter:
             respect_sentence_boundary=respect_sentence_boundary,
         )
 
-        self.split_by = split_by
-        self.split_length = split_length
-        self.split_overlap = split_overlap
-        self.split_threshold = split_threshold
-        self.splitting_function = splitting_function
-        self.respect_sentence_boundary = respect_sentence_boundary
-        self.use_split_rules = use_split_rules
-        self.extend_abbreviations = extend_abbreviations
-
-        if split_by == "nltk_sentence" or respect_sentence_boundary and split_by == "word":
+        if split_by == "nltk_sentence" or (respect_sentence_boundary and split_by == "word"):
             nltk_imports.check()
             self.sentence_splitter = SentenceSplitter(
                 language=language,
@@ -115,8 +116,8 @@ class DocumentSplitter:
             )
             self.language = language
 
-    @staticmethod
     def _init_checks(
+        self,
         split_by: str,
         split_length: int,
         split_overlap: int,
@@ -151,6 +152,7 @@ class DocumentSplitter:
                 "The 'respect_sentence_boundary' option is only supported for `split_by='word'`. "
                 "The option `respect_sentence_boundary` will be set to `False`."
             )
+            self.respect_sentence_boundary = False
 
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document]):
@@ -197,13 +199,12 @@ class DocumentSplitter:
         return self._split_by_character(doc)
 
     def _split_by_nltk_sentence(self, doc: Document) -> List[Document]:
-        if doc.content is None:
-            return []
-
         split_docs = []
+
         # whitespace is preserved while splitting text into sentences when using keep_white_spaces=True
         # so split_at is set to an empty string
-        self.split_at = ""
+        # self.split_at = ""
+
         result = self.sentence_splitter.split_sentences(doc.content)
         units = [sentence["sentence"] for sentence in result]
 
@@ -362,6 +363,10 @@ class DocumentSplitter:
             split_length=self.split_length,
             split_overlap=self.split_overlap,
             split_threshold=self.split_threshold,
+            respect_sentence_boundary=self.respect_sentence_boundary,
+            language=self.language,
+            use_split_rules=self.use_split_rules,
+            extend_abbreviations=self.extend_abbreviations,
         )
         if self.splitting_function:
             serialized["init_parameters"]["splitting_function"] = serialize_callable(self.splitting_function)
@@ -380,8 +385,9 @@ class DocumentSplitter:
 
         return default_from_dict(cls, data)
 
+    @staticmethod
     def _concatenate_sentences_based_on_word_amount(
-        self, sentences: List[str], split_length: int, split_overlap: int
+        sentences: List[str], split_length: int, split_overlap: int
     ) -> Tuple[List[str], List[int], List[int]]:
         """
         Groups the sentences into chunks of `split_length` words while respecting sentence boundaries.
@@ -394,12 +400,12 @@ class DocumentSplitter:
         :param split_overlap: The number of overlapping words in each split.
         :returns: A tuple containing the concatenated sentences, the start page numbers, and the start indices.
         """
-        # Chunk information
+        # chunk information
         chunk_word_count = 0
         chunk_starting_page_number = 1
         chunk_start_idx = 0
         current_chunk: List[str] = []
-        # Output lists
+        # output lists
         split_start_page_numbers = []
         list_of_splits: List[List[str]] = []
         split_start_indices = []

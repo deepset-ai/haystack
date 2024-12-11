@@ -749,3 +749,50 @@ class TestSplittingNLTKSentenceSplitter:
         assert documents[5].meta["page_number"] == 3
         assert documents[5].meta["split_id"] == 5
         assert documents[5].meta["split_idx_start"] == text.index(documents[5].content)
+
+    def test_respect_sentence_boundary_checks(self):
+        # this combination triggers the warning
+        splitter = DocumentSplitter(split_by="sentence", split_length=10, respect_sentence_boundary=True)
+        assert splitter.respect_sentence_boundary == False
+
+    def test_nltk_sentence_serialization(self):
+        """Test serialization with NLTK sentence splitting configuration and using non-default values"""
+        splitter = DocumentSplitter(
+            split_by="nltk_sentence",
+            language="de",
+            use_split_rules=False,
+            extend_abbreviations=False,
+            respect_sentence_boundary=False,
+        )
+        serialized = splitter.to_dict()
+        deserialized = DocumentSplitter.from_dict(serialized)
+
+        assert deserialized.split_by == "nltk_sentence"
+        assert hasattr(deserialized, "sentence_splitter")
+        assert deserialized.language == "de"
+        assert deserialized.use_split_rules == False
+        assert deserialized.extend_abbreviations == False
+        assert deserialized.respect_sentence_boundary == False
+
+    def test_nltk_serialization_roundtrip(self):
+        """Test complete serialization roundtrip with actual document splitting"""
+        splitter = DocumentSplitter(
+            split_by="nltk_sentence",
+            language="de",
+            use_split_rules=False,
+            extend_abbreviations=False,
+            respect_sentence_boundary=False,
+        )
+        serialized = splitter.to_dict()
+        deserialized_splitter = DocumentSplitter.from_dict(serialized)
+        assert splitter.split_by == deserialized_splitter.split_by
+
+    def test_respect_sentence_boundary_serialization(self):
+        """Test serialization with respect_sentence_boundary option"""
+        splitter = DocumentSplitter(split_by="word", respect_sentence_boundary=True, language="de")
+        serialized = splitter.to_dict()
+        deserialized = DocumentSplitter.from_dict(serialized)
+
+        assert deserialized.respect_sentence_boundary == True
+        assert hasattr(deserialized, "sentence_splitter")
+        assert deserialized.language == "de"
