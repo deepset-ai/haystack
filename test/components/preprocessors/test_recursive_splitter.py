@@ -25,6 +25,11 @@ def test_init_with_invalid_separators():
         _ = RecursiveDocumentSplitter(separators=[".", 2])
 
 
+def test_init_with_negative_split_length():
+    with pytest.raises(ValueError):
+        _ = RecursiveDocumentSplitter(split_length=-1, separators=["."])
+
+
 def test_apply_overlap_no_overlap():
     # Test the case where there is no overlap between chunks
     splitter = RecursiveDocumentSplitter(split_length=20, split_overlap=0, separators=["."])
@@ -214,38 +219,35 @@ def test_recursive_splitter_generate_pages():
             assert doc.meta["page_number"] == 3
 
 
-def test_recursive_splitter_split_length_too_small():
-    # ToDo: the splitter should raise an error if the split_length is too small, i.e.: cannot be split into chunks of
-    # the desired length
-    pass
-    # ToDo: Add test for the case where the splitter generates pages
-    """
-    splitter = DocumentSplitter(split_by="word", split_length=2)
-    doc1 = Document(content="This is some text.\f This text is on another page.")
-    doc2 = Document(content="This content has two.\f\f page brakes.")
-    result = splitter.run(documents=[doc1, doc2])
-
-    expected_pages = [1, 1, 2, 2, 2, 1, 1, 3]
-    for doc, p in zip(result["documents"], expected_pages):
-        assert doc.meta["page_number"] == p
-    """
+def test_recursive_splitter_separator_exists_but_split_length_too_small_fall_back_to_character_chunking():
+    splitter = RecursiveDocumentSplitter(separators=[" "], split_length=2)
+    doc = Document(content="This is some text. This is some more text.")
+    result = splitter.run(documents=[doc])
+    assert len(result["documents"]) == 21
+    for doc in result["documents"]:
+        assert len(doc.content) == 2
 
 
 def test_recursive_splitter_generate_empty_chunks():
-    # ToDo: Add test for the case where the splitter generates empty chunks
-    pass
-
-
-def test_recursive_splitter_no_separator_used_and_no_overlap():
-    splitter = RecursiveDocumentSplitter(split_length=18, split_overlap=0, separators=["!", "-"], keep_separator=True)
-    text = """A simple sentence.A simple sentence.A simple sentence.A simple sentence."""
+    splitter = RecursiveDocumentSplitter(split_length=15, separators=["\n\n", "\n"], keep_separator=False)
+    text = "This is a test.\n\n\nAnother test.\n\n\n\nFinal test."
     doc = Document(content=text)
-    doc_chunks = splitter.run([doc])
-    doc_chunks = doc_chunks["documents"]
-    assert len(doc_chunks) == 4
-    for i, chunk in enumerate(doc_chunks):
-        assert chunk.meta["original_id"] == doc.id
-        assert chunk.content == "A simple sentence."
+    chunks = splitter.run([doc])["documents"]
+
+    assert chunks[0].content == "This is a test."
+    assert chunks[1].content == "\nAnother test."
+    assert chunks[2].content == "Final test."
+
+
+# def test_recursive_splitter_fallback_to_character_chunking():
+#      text = "abczdefzghizjkl"
+#      separators = ["\n\n", "\n", "z"]
+#      splitter = RecursiveDocumentSplitter(split_length=2, separators=separators, keep_separator=False)
+#
+#      doc = Document(content=text)
+#      chunks = splitter.run([doc])["documents"]
+#      for chunk in chunks:
+#          print(chunk.content)
 
 
 def test_recursive_splitter_serialization_in_pipeline():

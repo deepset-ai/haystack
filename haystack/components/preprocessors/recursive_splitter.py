@@ -19,6 +19,9 @@ class RecursiveDocumentSplitter:
     This component is used to split text into smaller chunks, it does so by recursively applying a list of separators
     to the text.
 
+    The separators are applied in the order they are provided, typically this is a list of separators that are
+    applied in a specific order, being the last separator the most specific one.
+
     Each separator is applied to the text, it then checks each of the resulting chunks, it keeps the chunks that
     are within the chunk_size, for the ones that are larger than the chunk_size, it applies the next separator in the
     list to the remaining text.
@@ -77,6 +80,8 @@ class RecursiveDocumentSplitter:
             self.nltk_tokenizer = self._get_custom_sentence_tokenizer()
 
     def _check_params(self):
+        if self.split_length < 1:
+            raise ValueError("Split length must be at least 1 character.")
         if self.split_overlap < 0:
             raise ValueError("Overlap must be greater than zero.")
         if self.split_overlap >= self.split_length:
@@ -126,16 +131,15 @@ class RecursiveDocumentSplitter:
         if len(text) <= self.split_length:
             return [text]
 
-        for separator in self.separators:  # type: ignore # the caller already checked that separators is not None
-            if separator == "sentence":
+        for curr_separator in self.separators:  # type: ignore # the caller already checked that separators is not None
+            if curr_separator == "sentence":
                 # using the custom NLTK-based sentence tokenizer
                 sentence_with_spans = self.nltk_tokenizer.split_sentences(text)
                 splits = [sentence["sentence"] for sentence in sentence_with_spans]
             else:
                 # apply current separator regex to split text
-                splits = re.split(re.escape(separator), text)
-
-                print("DEBUG", splits)
+                escaped_separator = re.escape(curr_separator)
+                splits = re.split(escaped_separator, text)
 
             if len(splits) == 1:  # go to next separator, if current separator not found
                 continue
@@ -149,11 +153,8 @@ class RecursiveDocumentSplitter:
                 split_text = split
 
                 # add separator to the split, if it's not the last split
-                if self.keep_separator and separator != "sentence" and idx < len(splits) - 1:
-                    split_text = split + separator
-
-                print("DEBUG", split_text)
-                print(current_length, len(split_text), self.split_length)
+                if self.keep_separator and curr_separator != "sentence" and idx < len(splits) - 1:
+                    split_text = split + curr_separator
 
                 # if adding this split exceeds chunk_size, process current_chunk
                 if current_length + len(split_text) > self.split_length:
@@ -164,7 +165,11 @@ class RecursiveDocumentSplitter:
 
                     # recursively handle splits that are too large
                     if len(split_text) > self.split_length:
-                        chunks.extend(self._chunk_text(split_text))
+                        if curr_separator == self.separators[-1]:
+                            # tried the last separator, can't split further, fall back to character-level chunking
+                            break
+                        else:
+                            chunks.extend(self._chunk_text(split_text))
                     else:
                         chunks.append(split_text)
                 else:
@@ -177,7 +182,8 @@ class RecursiveDocumentSplitter:
             if self.split_overlap > 0:
                 chunks = self._apply_overlap(chunks)
 
-            return chunks
+            if chunks:
+                return chunks
 
         # if no separator worked, fall back to character-level chunking
         return [text[i : i + self.split_length] for i in range(0, len(text), self.split_length - self.split_overlap)]
