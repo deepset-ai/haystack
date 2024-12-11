@@ -166,10 +166,10 @@ class RecursiveDocumentSplitter:
                     # recursively handle splits that are too large
                     if len(split_text) > self.split_length:
                         if curr_separator == self.separators[-1]:
-                            # tried the last separator, can't split further, fall back to character-level chunking
+                            # tried the last separator, can't split further, break the loop and fall back to
+                            # character-level chunking
                             break
-                        else:
-                            chunks.extend(self._chunk_text(split_text))
+                        chunks.extend(self._chunk_text(split_text))
                     else:
                         chunks.append(split_text)
                 else:
