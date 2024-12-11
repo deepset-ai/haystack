@@ -158,7 +158,7 @@ class XLSXToDocument:
         metadata = []
         for key in dict_or_df:
             if self.table_format == "csv":
-                resolved_kwargs = {"index": True, "header": True, **self.table_format_kwargs}
+                resolved_kwargs = {"index": True, "header": True, "lineterminator": "\n", **self.table_format_kwargs}
                 tables.append(dict_or_df[key].to_csv(**resolved_kwargs))
             else:
                 resolved_kwargs = {
