@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import warnings
 from copy import deepcopy
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple
 
@@ -51,6 +52,12 @@ class NLTKDocumentSplitter(DocumentSplitter):
             This is a function which must accept a single `str` as input and return a `list` of `str` as output,
             representing the chunks after splitting.
         """
+
+        warnings.warn(
+            "The NLTKDocumentSplitter will deprecated and will be removed in the next release. "
+            "The DocumentSplitter will instead support the functionality of the NLTKDocumentSplitter.",
+            DeprecationWarning,
+        )
 
         super(NLTKDocumentSplitter, self).__init__(
             split_by=split_by,
