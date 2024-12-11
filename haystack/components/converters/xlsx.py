@@ -18,6 +18,9 @@ logger = logging.getLogger(__name__)
 with LazyImport("Run 'pip install openpyxl'") as xlsx_import:
     import openpyxl  # pylint: disable=unused-import # the library is used but not directly referenced
 
+with LazyImport("Run 'pip install tabulate'") as tabulate_import:
+    from tabulate import tabulate  # pylint: disable=unused-import # the library is used but not directly referenced
+
 
 @component
 class XLSXToDocument:
@@ -57,6 +60,10 @@ class XLSXToDocument:
         """
         xlsx_import.check()
         self.table_format = table_format
+        if table_format not in ["csv", "markdown"]:
+            raise ValueError(f"Unsupported export format: {table_format}. Choose either 'csv' or 'markdown'.")
+        if table_format == "markdown":
+            tabulate_import.check()
         self.sheet_name = sheet_name
         self.read_excel_kwargs = read_excel_kwargs or {}
         self.table_format_kwargs = table_format_kwargs or {}
@@ -138,35 +145,31 @@ class XLSXToDocument:
         if isinstance(dict_or_df, pd.DataFrame):
             dict_or_df = {self.sheet_name: dict_or_df}
 
-        # Drop all columns and rows that are completely empty
-        out_header = True if self.table_format == "csv" else ()
         for key in dict_or_df:
             df = dict_or_df[key]
-            # row starts at 1
+            # Row starts at 1 in Excel
             df.index = df.index + 1
-            # column names are alphabet characters
+            # Excel column names are Alphabet Characters
             header = self._generate_excel_column_names(df.shape[1])
             df.columns = header
-            if self.table_format == "markdown":
-                out_header = header
             dict_or_df[key] = df
 
         tables = []
         metadata = []
         for key in dict_or_df:
             if self.table_format == "csv":
-                resolved_kwargs = {"index": True, "header": out_header, **self.table_format_kwargs}
+                resolved_kwargs = {"index": True, "header": True, **self.table_format_kwargs}
                 tables.append(dict_or_df[key].to_csv(**resolved_kwargs))
-            elif self.table_format == "markdown":
+            else:
                 resolved_kwargs = {
                     "index": True,
-                    "headers": out_header,
+                    "headers": "firstrow",
                     "tablefmt": "pipe",  # tablefmt 'plain', 'simple', 'grid', 'pipe', 'orgtbl', 'rst', 'mediawiki',
                     # 'latex', 'latex_raw', 'latex_booktabs', 'latex_longtable' and tsv
                     **self.table_format_kwargs,
                 }
+                # to_markdown uses tabulate
                 tables.append(dict_or_df[key].to_markdown(**resolved_kwargs))
-            else:
-                raise ValueError(f"Unsupported export format: {self.table_format}. Choose either 'csv' or 'markdown'.")
+            # add sheet_name to metadata
             metadata.append({"xlsx": {"sheet_name": key}})
         return tables, metadata
