@@ -128,6 +128,7 @@ AI technology is widely used throughout industry, government, and science. Some 
     doc = Document(content=text)
     doc_chunks = splitter.run([doc])
     doc_chunks = doc_chunks["documents"]
+
     assert len(doc_chunks) == 4
     assert (
         doc_chunks[0].meta["original_id"]
@@ -149,44 +150,47 @@ AI technology is widely used throughout industry, government, and science. Some 
 
 
 def test_recursive_chunker_split_document_with_overlap():
-    splitter = RecursiveDocumentSplitter(split_length=20, split_overlap=9, separators=[".", " "], keep_separator=True)
-    text = """A simple sentence.A bright sentence.A clever sentence.A joyful sentence"""
+    splitter = RecursiveDocumentSplitter(split_length=20, split_overlap=11, separators=[".", " "], keep_separator=True)
+    text = """A simple sentence1. A bright sentence2. A clever sentence3. A joyful sentence4"""
 
     doc = Document(content=text)
     doc_chunks = splitter.run([doc])
     doc_chunks = doc_chunks["documents"]
 
-    print("\n")
-    for doc in doc_chunks:
-        print(doc.id)
-        print(doc.content)
-        print(doc.meta)
-        print("-------")
-
     assert len(doc_chunks) == 4
+    assert (
+        doc_chunks[0].meta["original_id"]
+        == doc_chunks[1].meta["original_id"]
+        == doc_chunks[2].meta["original_id"]
+        == doc_chunks[3].meta["original_id"]
+        == doc.id
+    )
 
-    assert doc_chunks[0].content == "A simple sentence."
+    assert doc_chunks[0].content == "A simple sentence1."
     assert doc_chunks[0].meta["split_id"] == 0
     assert doc_chunks[0].meta["split_idx_start"] == 0
-    assert doc_chunks[0].meta["_split_overlap"] == [{"doc_id": doc_chunks[1].id, "range": (9, 18)}]
+    assert doc_chunks[0].meta["_split_overlap"] == [{"doc_id": doc_chunks[1].id, "range": (0, 11)}]
 
-    assert doc_chunks[1].content == "sentence.A bright sentence."
+    assert doc_chunks[1].content == " sentence1. A bright sentence2."
     assert doc_chunks[1].meta["split_id"] == 1
-    assert doc_chunks[1].meta["split_idx_start"] == 9
+    assert doc_chunks[1].meta["split_idx_start"] == 8
     assert doc_chunks[1].meta["_split_overlap"] == [
-        {"doc_id": doc_chunks[0].id, "range": (0, 9)},
-        {"doc_id": doc_chunks[2].id, "range": (18, 27)},
+        {"doc_id": doc_chunks[0].id, "range": (8, 19)},
+        {"doc_id": doc_chunks[2].id, "range": (0, 11)},
     ]
 
-    assert doc_chunks[2].content == "sentence.A clever sentence."
+    assert doc_chunks[2].content == " sentence2. A clever sentence3."
     assert doc_chunks[2].meta["split_id"] == 2
-    assert doc_chunks[2].meta["split_idx_start"] == 18
+    assert doc_chunks[2].meta["split_idx_start"] == 28
     assert doc_chunks[2].meta["_split_overlap"] == [
-        {"doc_id": doc_chunks[1].id, "range": (0, 9)},
-        {"doc_id": doc_chunks[3].id, "range": (27, 36)},
+        {"doc_id": doc_chunks[1].id, "range": (20, 31)},
+        {"doc_id": doc_chunks[3].id, "range": (0, 11)},
     ]
 
-    # assert doc_chunks[3].content == "sentence.A joyful sentence"
+    assert doc_chunks[3].content == " sentence3. A joyful sentence4"
+    assert doc_chunks[3].meta["split_id"] == 3
+    assert doc_chunks[3].meta["split_idx_start"] == 48
+    assert doc_chunks[3].meta["_split_overlap"] == [{"doc_id": doc_chunks[2].id, "range": (20, 31)}]
 
 
 def test_recursive_splitter_no_separator_used_and_no_overlap():

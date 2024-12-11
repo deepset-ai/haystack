@@ -179,9 +179,10 @@ class RecursiveDocumentSplitter:
         return [text[i : i + self.split_length] for i in range(0, len(text), self.split_length - self.split_overlap)]
 
     def _run_one(self, doc: Document) -> List[Document]:
-        new_docs = []
+        new_docs: List[Document] = []
         # NOTE: the check for a non-empty content is already done in the run method, hence the type ignore below
         chunks = self._chunk_text(doc.content)  # type: ignore
+        chunks = chunks[:-1] if len(chunks[-1]) == 0 else chunks  # remove last empty chunk
         current_position = 0
         for split_nr, chunk in enumerate(chunks):
             new_doc = Document(content=chunk, meta=deepcopy(doc.meta))
@@ -194,15 +195,15 @@ class RecursiveDocumentSplitter:
                 previous_doc = new_docs[-1]
                 overlap_length = len(previous_doc.content) - (current_position - previous_doc.meta["split_idx_start"])
                 if overlap_length > 0:
-                    # overlap info to previous document
-                    previous_doc.meta["_split_overlap"].append(
+                    # previous document
+                    previous_doc.meta["_split_overlap"].append({"doc_id": new_doc.id, "range": (0, overlap_length)})
+                    # current document
+                    new_doc.meta["_split_overlap"].append(
                         {
-                            "doc_id": new_doc.id,
+                            "doc_id": previous_doc.id,
                             "range": (len(previous_doc.content) - overlap_length, len(previous_doc.content)),
                         }
                     )
-                    # overlap info to current document
-                    new_doc.meta["_split_overlap"].append({"doc_id": previous_doc.id, "range": (0, overlap_length)})
 
             new_docs.append(new_doc)
             current_position += len(chunk) - (self.split_overlap if split_nr < len(chunks) - 1 else 0)
