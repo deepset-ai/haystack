@@ -34,7 +34,7 @@ class SentenceTransformersTextEmbedder:
     ```
     """
 
-    def __init__(  # noqa: PLR0913
+    def __init__(  # noqa: PLR0913 # pylint: disable=too-many-positional-arguments
         self,
         model: str = "sentence-transformers/all-mpnet-base-v2",
         device: Optional[ComponentDevice] = None,
@@ -73,7 +73,7 @@ class SentenceTransformersTextEmbedder:
             If `True`, shows a progress bar for calculating embeddings.
             If `False`, disables the progress bar.
         :param normalize_embeddings:
-            If `True`, returned vectors have a length of 1.
+            If `True`, the embeddings are normalized using L2 normalization, so that the embeddings have a norm of 1.
         :param trust_remote_code:
             If `False`, permits only Hugging Face verified model architectures.
             If `True`, permits custom models and scripts.

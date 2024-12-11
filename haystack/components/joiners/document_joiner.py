@@ -54,7 +54,20 @@ class DocumentJoiner:
     ### Usage example:
 
     ```python
+    from haystack import Pipeline, Document
+    from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
+    from haystack.components.joiners import DocumentJoiner
+    from haystack.components.retrievers import InMemoryBM25Retriever
+    from haystack.components.retrievers import InMemoryEmbeddingRetriever
+    from haystack.document_stores.in_memory import InMemoryDocumentStore
+
     document_store = InMemoryDocumentStore()
+    docs = [Document(content="Paris"), Document(content="Berlin"), Document(content="London")]
+    embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+    embedder.warm_up()
+    docs_embeddings = embedder.run(docs)
+    document_store.write_documents(docs_embeddings['documents'])
+
     p = Pipeline()
     p.add_component(instance=InMemoryBM25Retriever(document_store=document_store), name="bm25_retriever")
     p.add_component(
@@ -67,7 +80,7 @@ class DocumentJoiner:
     p.connect("embedding_retriever", "joiner")
     p.connect("text_embedder", "embedding_retriever")
     query = "What is the capital of France?"
-    p.run(data={"query": query})
+    p.run(data={"query": query, "text": query, "top_k": 1})
     ```
     """
 
@@ -102,10 +115,10 @@ class DocumentJoiner:
         if isinstance(join_mode, str):
             join_mode = JoinMode.from_str(join_mode)
         join_mode_functions = {
-            JoinMode.CONCATENATE: self._concatenate,
+            JoinMode.CONCATENATE: DocumentJoiner._concatenate,
             JoinMode.MERGE: self._merge,
             JoinMode.RECIPROCAL_RANK_FUSION: self._reciprocal_rank_fusion,
-            JoinMode.DISTRIBUTION_BASED_RANK_FUSION: self._distribution_based_rank_fusion,
+            JoinMode.DISTRIBUTION_BASED_RANK_FUSION: DocumentJoiner._distribution_based_rank_fusion,
         }
         self.join_mode_function = join_mode_functions[join_mode]
         self.join_mode = join_mode
@@ -149,7 +162,8 @@ class DocumentJoiner:
 
         return {"documents": output_documents}
 
-    def _concatenate(self, document_lists: List[List[Document]]) -> List[Document]:
+    @staticmethod
+    def _concatenate(document_lists: List[List[Document]]) -> List[Document]:
         """
         Concatenate multiple lists of Documents and return only the Document with the highest score for duplicates.
         """
@@ -217,7 +231,8 @@ class DocumentJoiner:
 
         return list(documents_map.values())
 
-    def _distribution_based_rank_fusion(self, document_lists: List[List[Document]]) -> List[Document]:
+    @staticmethod
+    def _distribution_based_rank_fusion(document_lists: List[List[Document]]) -> List[Document]:
         """
         Merge multiple lists of Documents and assign scores based on Distribution-Based Score Fusion.
 
@@ -243,7 +258,7 @@ class DocumentJoiner:
                 doc.score = (doc.score - min_score) / delta_score if delta_score != 0.0 else 0.0
                 # if all docs have the same score delta_score is 0, the docs are uninformative for the query
 
-        output = self._concatenate(document_lists=document_lists)
+        output = DocumentJoiner._concatenate(document_lists=document_lists)
 
         return output
 

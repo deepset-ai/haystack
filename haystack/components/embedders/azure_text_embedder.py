@@ -33,7 +33,7 @@ class AzureOpenAITextEmbedder:
     ```
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         azure_endpoint: Optional[str] = None,
         api_version: Optional[str] = "2023-05-15",

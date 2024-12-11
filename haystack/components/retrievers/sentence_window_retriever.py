@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import warnings
 from typing import Any, Dict, List, Optional
 
 from haystack import Document, component, default_from_dict, default_to_dict
@@ -92,6 +93,13 @@ class SentenceWindowRetriever:
         self.window_size = window_size
         self.document_store = document_store
 
+        warnings.warn(
+            "The output of `context_documents` will change in the next release. Instead of a "
+            "List[List[Document]], the output will be a List[Document], where the documents are ordered by "
+            "`split_idx_start`.",
+            DeprecationWarning,
+        )
+
     @staticmethod
     def merge_documents_text(documents: List[Document]) -> str:
         """
@@ -143,7 +151,7 @@ class SentenceWindowRetriever:
         # deserialize the component
         return default_from_dict(cls, data)
 
-    @component.output_types(context_windows=List[str], context_documents=List[List[Document]])
+    @component.output_types(context_windows=List[str], context_documents=List[Document])
     def run(self, retrieved_documents: List[Document], window_size: Optional[int] = None):
         """
         Based on the `source_id` and on the `doc.meta['split_id']` get surrounding documents from the document store.
@@ -158,9 +166,9 @@ class SentenceWindowRetriever:
             A dictionary with the following keys:
                 - `context_windows`: A list of strings, where each string represents the concatenated text from the
                                      context window of the corresponding document in `retrieved_documents`.
-                - `context_documents`: A list of lists of `Document` objects, where each inner list contains the
-                                     documents that come from the context window for the corresponding document in
-                                     `retrieved_documents`.
+                - `context_documents`: A list `Document` objects, containing the retrieved documents plus the context
+                                      document surrounding them. The documents are sorted by the `split_idx_start`
+                                      meta field.
 
         """
         window_size = window_size or self.window_size
@@ -192,6 +200,7 @@ class SentenceWindowRetriever:
                 }
             )
             context_text.append(self.merge_documents_text(context_docs))
-            context_documents.append(context_docs)
+            context_docs_sorted = sorted(context_docs, key=lambda doc: doc.meta["split_idx_start"])
+            context_documents.extend(context_docs_sorted)
 
         return {"context_windows": context_text, "context_documents": context_documents}

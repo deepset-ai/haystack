@@ -1,4 +1,5 @@
 import json
+import os
 import logging
 import pytest
 import csv
@@ -32,7 +33,7 @@ class TestDOCXToDocument:
         data = converter.to_dict()
         assert data == {
             "type": "haystack.components.converters.docx.DOCXToDocument",
-            "init_parameters": {"table_format": "csv"},
+            "init_parameters": {"store_full_path": False, "table_format": "csv"},
         }
 
     def test_to_dict_custom_parameters(self):
@@ -40,28 +41,28 @@ class TestDOCXToDocument:
         data = converter.to_dict()
         assert data == {
             "type": "haystack.components.converters.docx.DOCXToDocument",
-            "init_parameters": {"table_format": "markdown"},
+            "init_parameters": {"store_full_path": False, "table_format": "markdown"},
         }
 
         converter = DOCXToDocument(table_format="csv")
         data = converter.to_dict()
         assert data == {
             "type": "haystack.components.converters.docx.DOCXToDocument",
-            "init_parameters": {"table_format": "csv"},
+            "init_parameters": {"store_full_path": False, "table_format": "csv"},
         }
 
         converter = DOCXToDocument(table_format=DOCXTableFormat.MARKDOWN)
         data = converter.to_dict()
         assert data == {
             "type": "haystack.components.converters.docx.DOCXToDocument",
-            "init_parameters": {"table_format": "markdown"},
+            "init_parameters": {"store_full_path": False, "table_format": "markdown"},
         }
 
         converter = DOCXToDocument(table_format=DOCXTableFormat.CSV)
         data = converter.to_dict()
         assert data == {
             "type": "haystack.components.converters.docx.DOCXToDocument",
-            "init_parameters": {"table_format": "csv"},
+            "init_parameters": {"store_full_path": False, "table_format": "csv"},
         }
 
     def test_from_dict(self):
@@ -119,7 +120,7 @@ class TestDOCXToDocument:
         assert "History" in docs[0].content
         assert docs[0].meta.keys() == {"file_path", "docx"}
         assert docs[0].meta == {
-            "file_path": str(paths[0]),
+            "file_path": os.path.basename(paths[0]),
             "docx": DOCXMetadata(
                 author="Microsoft Office User",
                 category="",
@@ -151,7 +152,7 @@ class TestDOCXToDocument:
         assert "Donald Trump" in docs[0].content  ## :-)
         assert docs[0].meta.keys() == {"file_path", "docx"}
         assert docs[0].meta == {
-            "file_path": str(paths[0]),
+            "file_path": os.path.basename(paths[0]),
             "docx": DOCXMetadata(
                 author="Saha, Anirban",
                 category="",
@@ -178,6 +179,38 @@ class TestDOCXToDocument:
         assert any(
             "Now we are in Page 2" in part for part in content_parts[table_index + 1 :]
         ), "Text after table not found"
+
+    def test_run_with_store_full_path_false(self, test_files_path):
+        """
+        Test if the component runs correctly with store_full_path=False
+        """
+        docx_converter = DOCXToDocument(store_full_path=False)
+        paths = [test_files_path / "docx" / "sample_docx_1.docx"]
+        output = docx_converter.run(sources=paths)
+        docs = output["documents"]
+        assert len(docs) == 1
+        assert "History" in docs[0].content
+        assert docs[0].meta.keys() == {"file_path", "docx"}
+        assert docs[0].meta == {
+            "file_path": "sample_docx_1.docx",
+            "docx": DOCXMetadata(
+                author="Microsoft Office User",
+                category="",
+                comments="",
+                content_status="",
+                created="2024-06-09T21:17:00+00:00",
+                identifier="",
+                keywords="",
+                language="",
+                last_modified_by="Carlos Fernández Lorán",
+                last_printed=None,
+                modified="2024-06-09T21:27:00+00:00",
+                revision=2,
+                subject="",
+                title="",
+                version="",
+            ),
+        }
 
     @pytest.mark.parametrize("table_format", ["markdown", "csv"])
     def test_table_between_two_paragraphs(self, test_files_path, table_format):
@@ -251,7 +284,7 @@ class TestDOCXToDocument:
         output = docx_converter.run(sources=paths, meta={"language": "it", "author": "test_author"})
         doc = output["documents"][0]
         assert doc.meta == {
-            "file_path": str(paths[0]),
+            "file_path": os.path.basename(paths[0]),
             "docx": DOCXMetadata(
                 author="Microsoft Office User",
                 category="",

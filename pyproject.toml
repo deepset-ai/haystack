@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "LLM framework to build customizable, production-ready LLM applications. Connect components (models, vector DBs, file converters) to pipelines or agents that can interact with your data."
 readme = "README.md"
 license = "Apache-2.0"
-requires-python = ">=3.8"
+requires-python = ">=3.8,<3.13"
 authors = [{ name = "deepset.ai", email = "malte.pietsch@deepset.ai" }]
 keywords = [
   "BERT",
@@ -123,10 +123,6 @@ extra-dependencies = [
 
   # Structured logging
   "structlog",
-
-  # Looking for missing imports
-  "isort",
-  "pyproject-parser",
 
   # Test
   "pytest",
@@ -247,6 +243,7 @@ max-locals = 45         # Default is 15
 max-module-lines = 2468 # Default is 1000
 max-nested-blocks = 9   # Default is 5
 max-statements = 206    # Default is 50
+
 [tool.pylint.'SIMILARITIES']
 min-similarity-lines = 6
 

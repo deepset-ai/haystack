@@ -2,14 +2,16 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import os
-from typing import List
-from haystack.utils.auth import Secret
-
 import random
+from typing import List
+from unittest.mock import Mock, patch
+
 import pytest
+from openai import APIError
 
 from haystack import Document
 from haystack.components.embedders.openai_document_embedder import OpenAIDocumentEmbedder
+from haystack.utils.auth import Secret
 
 
 def mock_openai_response(input: List[str], model: str = "text-embedding-ada-002", **kwargs) -> dict:
@@ -155,7 +157,8 @@ class TestOpenAIDocumentEmbedder:
 
     def test_prepare_texts_to_embed_w_metadata(self):
         documents = [
-            Document(content=f"document number {i}:\ncontent", meta={"meta_field": f"meta_value {i}"}) for i in range(5)
+            Document(id=f"{i}", content=f"document number {i}:\ncontent", meta={"meta_field": f"meta_value {i}"})
+            for i in range(5)
         ]
 
         embedder = OpenAIDocumentEmbedder(
@@ -165,16 +168,16 @@ class TestOpenAIDocumentEmbedder:
         prepared_texts = embedder._prepare_texts_to_embed(documents)
 
         # note that newline is replaced by space
-        assert prepared_texts == [
-            "meta_value 0 | document number 0: content",
-            "meta_value 1 | document number 1: content",
-            "meta_value 2 | document number 2: content",
-            "meta_value 3 | document number 3: content",
-            "meta_value 4 | document number 4: content",
-        ]
+        assert prepared_texts == {
+            "0": "meta_value 0 | document number 0: content",
+            "1": "meta_value 1 | document number 1: content",
+            "2": "meta_value 2 | document number 2: content",
+            "3": "meta_value 3 | document number 3: content",
+            "4": "meta_value 4 | document number 4: content",
+        }
 
     def test_prepare_texts_to_embed_w_suffix(self):
-        documents = [Document(content=f"document number {i}") for i in range(5)]
+        documents = [Document(id=f"{i}", content=f"document number {i}") for i in range(5)]
 
         embedder = OpenAIDocumentEmbedder(
             api_key=Secret.from_token("fake-api-key"), prefix="my_prefix ", suffix=" my_suffix"
@@ -182,13 +185,13 @@ class TestOpenAIDocumentEmbedder:
 
         prepared_texts = embedder._prepare_texts_to_embed(documents)
 
-        assert prepared_texts == [
-            "my_prefix document number 0 my_suffix",
-            "my_prefix document number 1 my_suffix",
-            "my_prefix document number 2 my_suffix",
-            "my_prefix document number 3 my_suffix",
-            "my_prefix document number 4 my_suffix",
-        ]
+        assert prepared_texts == {
+            "0": "my_prefix document number 0 my_suffix",
+            "1": "my_prefix document number 1 my_suffix",
+            "2": "my_prefix document number 2 my_suffix",
+            "3": "my_prefix document number 3 my_suffix",
+            "4": "my_prefix document number 4 my_suffix",
+        }
 
     def test_run_wrong_input_format(self):
         embedder = OpenAIDocumentEmbedder(api_key=Secret.from_token("fake-api-key"))
@@ -211,6 +214,19 @@ class TestOpenAIDocumentEmbedder:
 
         assert result["documents"] is not None
         assert not result["documents"]  # empty list
+
+    def test_embed_batch_handles_exceptions_gracefully(self, caplog):
+        embedder = OpenAIDocumentEmbedder(api_key=Secret.from_token("fake_api_key"))
+        fake_texts_to_embed = {"1": "text1", "2": "text2"}
+        with patch.object(
+            embedder.client.embeddings,
+            "create",
+            side_effect=APIError(message="Mocked error", request=Mock(), body=None),
+        ):
+            embedder._embed_batch(texts_to_embed=fake_texts_to_embed, batch_size=2)
+
+        assert len(caplog.records) == 1
+        assert "Failed embedding of documents 1, 2 caused by Mocked error" in caplog.records[0].msg
 
     @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration

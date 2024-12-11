@@ -73,7 +73,7 @@ class TransformersZeroShotDocumentClassifier:
     ```
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         model: str,
         labels: List[str],

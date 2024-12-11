@@ -82,7 +82,7 @@ class FaithfulnessEvaluator(LLMEvaluator):
     ```
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         examples: Optional[List[Dict[str, Any]]] = None,
         progress_bar: bool = True,
