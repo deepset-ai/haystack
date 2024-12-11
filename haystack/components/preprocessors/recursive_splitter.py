@@ -126,9 +126,7 @@ class RecursiveDocumentSplitter:
         if len(text) <= self.split_length:
             return [text]
 
-        # type ignore below because we already checked that separators is not None
-        # try each separator
-        for separator in self.separators:  # type: ignore
+        for separator in self.separators:  # type: ignore # the caller already checked that separators is not None
             if separator == "sentence":
                 # using the custom NLTK-based sentence tokenizer
                 sentence_with_spans = self.nltk_tokenizer.split_sentences(text)
@@ -136,6 +134,8 @@ class RecursiveDocumentSplitter:
             else:
                 # apply current separator regex to split text
                 splits = re.split(re.escape(separator), text)
+
+                print("DEBUG", splits)
 
             if len(splits) == 1:  # go to next separator, if current separator not found
                 continue
@@ -148,9 +148,12 @@ class RecursiveDocumentSplitter:
             for idx, split in enumerate(splits):
                 split_text = split
 
-                # add separator to the split, if it's not the last one
+                # add separator to the split, if it's not the last split
                 if self.keep_separator and separator != "sentence" and idx < len(splits) - 1:
                     split_text = split + separator
+
+                print("DEBUG", split_text)
+                print(current_length, len(split_text), self.split_length)
 
                 # if adding this split exceeds chunk_size, process current_chunk
                 if current_length + len(split_text) > self.split_length:
@@ -181,30 +184,33 @@ class RecursiveDocumentSplitter:
 
     def _run_one(self, doc: Document) -> List[Document]:
         new_docs: List[Document] = []
-        # NOTE: the check for a non-empty content is already done in the run method, hence the type ignore below
-        chunks = self._chunk_text(doc.content)  # type: ignore
+        chunks = self._chunk_text(doc.content)  # type: ignore # the caller already check for a non-empty doc.content
         chunks = chunks[:-1] if len(chunks[-1]) == 0 else chunks  # remove last empty chunk
         current_position = 0
+        current_page = 1
+
         for split_nr, chunk in enumerate(chunks):
             new_doc = Document(content=chunk, meta=deepcopy(doc.meta))
             new_doc.meta["original_id"] = doc.id
             new_doc.meta["split_id"] = split_nr
             new_doc.meta["split_idx_start"] = current_position
-            new_doc.meta["_split_overlap"] = []
+            new_doc.meta["_split_overlap"] = [] if self.split_overlap > 0 else None
+            new_doc.meta["page_number"] = current_page
 
             if split_nr > 0 and self.split_overlap > 0:
                 previous_doc = new_docs[-1]
-                overlap_length = len(previous_doc.content) - (current_position - previous_doc.meta["split_idx_start"])
+                overlap_length = len(previous_doc.content) - (current_position - previous_doc.meta["split_idx_start"])  # type: ignore
                 if overlap_length > 0:
                     previous_doc.meta["_split_overlap"].append({"doc_id": new_doc.id, "range": (0, overlap_length)})
                     new_doc.meta["_split_overlap"].append(
                         {
                             "doc_id": previous_doc.id,
-                            "range": (len(previous_doc.content) - overlap_length, len(previous_doc.content)),
+                            "range": (len(previous_doc.content) - overlap_length, len(previous_doc.content)),  # type: ignore
                         }
                     )
 
             new_docs.append(new_doc)
+            current_page += chunk.count("\f")  # update the page number based on the number of page breaks
             current_position += len(chunk) - (self.split_overlap if split_nr < len(chunks) - 1 else 0)
 
         return new_docs

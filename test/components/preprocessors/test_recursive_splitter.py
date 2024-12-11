@@ -199,6 +199,43 @@ def test_recursive_chunker_split_document_with_overlap():
     assert doc_chunks[3].meta["_split_overlap"] == [{"doc_id": doc_chunks[2].id, "range": (20, 31)}]
 
 
+def test_recursive_splitter_generate_pages():
+    splitter = RecursiveDocumentSplitter(split_length=18, split_overlap=0, separators=[" "], keep_separator=True)
+    doc = Document(content="This is some text. \f This text is on another page. \f This is the last page.")
+    doc_chunks = splitter.run([doc])
+    doc_chunks = doc_chunks["documents"]
+    assert len(doc_chunks) == 7
+    for doc in doc_chunks:
+        if doc.meta["split_id"] in [0, 1, 2]:
+            assert doc.meta["page_number"] == 1
+        if doc.meta["split_id"] in [3, 4]:
+            assert doc.meta["page_number"] == 2
+        if doc.meta["split_id"] in [5, 6]:
+            assert doc.meta["page_number"] == 3
+
+
+def test_recursive_splitter_split_length_too_small():
+    # ToDo: the splitter should raise an error if the split_length is too small, i.e.: cannot be split into chunks of
+    # the desired length
+    pass
+    # ToDo: Add test for the case where the splitter generates pages
+    """
+    splitter = DocumentSplitter(split_by="word", split_length=2)
+    doc1 = Document(content="This is some text.\f This text is on another page.")
+    doc2 = Document(content="This content has two.\f\f page brakes.")
+    result = splitter.run(documents=[doc1, doc2])
+
+    expected_pages = [1, 1, 2, 2, 2, 1, 1, 3]
+    for doc, p in zip(result["documents"], expected_pages):
+        assert doc.meta["page_number"] == p
+    """
+
+
+def test_recursive_splitter_generate_empty_chunks():
+    # ToDo: Add test for the case where the splitter generates empty chunks
+    pass
+
+
 def test_recursive_splitter_no_separator_used_and_no_overlap():
     splitter = RecursiveDocumentSplitter(split_length=18, split_overlap=0, separators=["!", "-"], keep_separator=True)
     text = """A simple sentence.A simple sentence.A simple sentence.A simple sentence."""
