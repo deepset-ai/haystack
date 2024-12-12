@@ -154,7 +154,7 @@ class RecursiveDocumentSplitter:
             current_length = 0
 
             # check splits, if any is too long, recursively chunk it, otherwise add to current chunk
-            for idx, split in enumerate(splits):
+            for split in splits:
                 split_text = split
 
                 # if adding this split exceeds chunk_size, process current_chunk

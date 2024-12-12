@@ -39,12 +39,20 @@ def test_apply_overlap_no_overlap():
     assert result == ["chunk1", "chunk2", "chunk3"]
 
 
-def test_apply_overlap_with_overlap():
+def test_apply_overlap_with_overlap_case_1():
     # Test the case where there is overlap between chunks
     splitter = RecursiveDocumentSplitter(split_length=20, split_overlap=4, separators=["."])
     chunks = ["chunk1", "chunk2", "chunk3"]
     result = splitter._apply_overlap(chunks)
     assert result == ["chunk1", "unk1chunk2", "unk2chunk3"]
+
+
+def test_apply_overlap_with_overlap_case_2():
+    # Test the case where there is overlap between chunks
+    splitter = RecursiveDocumentSplitter(split_length=20, split_overlap=6, separators=["."])
+    chunks = ["chunk1", "chunk2", "chunk3", "chunk4"]
+    result = splitter._apply_overlap(chunks)
+    assert result == ["chunk1", "chunk1chunk2", "chunk2chunk3", "chunk3chunk4"]
 
 
 def test_apply_overlap_single_chunk():
