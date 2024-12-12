@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-
+import warnings
 from copy import deepcopy
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple
 
@@ -115,6 +115,14 @@ class DocumentSplitter:
                 extend_abbreviations=extend_abbreviations,
                 keep_white_spaces=True,
             )
+
+        if split_by == "sentence":
+            # ToDo: remove this warning in the next major release
+            msg = (
+                "The `split_by='sentence'` no longer splits by '.' and now relies on custom sentence tokenizer "
+                "based on NLTK. To achieve the previous behaviour `split_by='period'."
+            )
+            warnings.warn(msg, DeprecationWarning)
 
     def _init_checks(
         self,
