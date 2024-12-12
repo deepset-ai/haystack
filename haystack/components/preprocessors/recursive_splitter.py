@@ -32,7 +32,7 @@ class RecursiveDocumentSplitter:
 
     ```python
     from haystack import Document
-    from haystack.components.preprocessors import RecursiveChunker
+    from haystack.components.preprocessors import RecursiveDocumentSplitter
 
     chunker = RecursiveChunker(chunk_size=260, chunk_overlap=0, separators=["\n\n", "\n", ".", " "], keep_separator=True)
     text = '''Artificial intelligence (AI) - Introduction
