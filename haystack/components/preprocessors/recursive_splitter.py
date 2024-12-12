@@ -34,7 +34,7 @@ class RecursiveDocumentSplitter:
     from haystack import Document
     from haystack.components.preprocessors import RecursiveDocumentSplitter
 
-    chunker = RecursiveChunker(chunk_size=260, chunk_overlap=0, separators=["\n\n", "\n", ".", " "], keep_separator=True)
+    chunker = RecursiveDocumentSplitter(split_length=260, split_overlap=0, separators=["\n\n", "\n", ".", " "], keep_separator=True)
     text = '''Artificial intelligence (AI) - Introduction
 
     AI, in its broadest sense, is intelligence exhibited by machines, particularly computer systems.
