@@ -25,9 +25,10 @@ with LazyImport("Run 'pip install tabulate'") as tabulate_import:
 @component
 class XLSXToDocument:
     """
-    Converts XLSX files to Documents.
+    Converts XLSX (Excel) files into Documents.
 
-    By default, it reads all work sheets into CSV format.
+    Supports reading data from specific sheets or all sheets in the Excel file. If all sheets are read, a Document is
+    created for each sheet. The content of the Document is the table which can be saved in CSV or Markdown format.
 
     ### Usage example
 
@@ -38,7 +39,7 @@ class XLSXToDocument:
     results = converter.run(sources=["sample.xlsx"], meta={"date_added": datetime.now().isoformat()})
     documents = results["documents"]
     print(documents[0].content)
-    # 'col1,col2\now1,row1\nrow2row2\n'
+    # ",A,B\n1,col_a,col_b\n2,1.5,test\n"
     ```
     """
 
@@ -57,6 +58,10 @@ class XLSXToDocument:
         :param read_excel_kwargs: Additional arguments to pass to `pandas.read_excel`.
             See https://pandas.pydata.org/docs/reference/api/pandas.read_excel.html#pandas-read-excel
         :param table_format_kwargs: Additional keyword arguments to pass to the table format function.
+            - If `table_format` is "csv", these arguments are passed to `pandas.DataFrame.to_csv`.
+              See https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_csv.html#pandas-dataframe-to-csv
+            - If `table_format` is "markdown", these arguments are passed to `pandas.DataFrame.to_markdown`.
+              See https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_markdown.html#pandas-dataframe-to-markdown
         """
         xlsx_import.check()
         self.table_format = table_format
