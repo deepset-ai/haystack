@@ -68,7 +68,7 @@ class DocumentSplitter:
 
         :param split_by: The unit for splitting your documents. Choose from:
             - `word` for splitting by spaces (" ")
-            - `sentence` for splitting by periods (".")
+            - `period` for splitting by periods (".")
             - `page` for splitting by form feed ("\\f")
             - `passage` for splitting by double line breaks ("\\n\\n")
             - `line` for splitting each line ("\\n")
