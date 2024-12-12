@@ -62,8 +62,8 @@ def test_chunk_text_smaller_than_chunk_size():
     assert chunks[0] == text
 
 
-def test_chunk_text_keep_separator():
-    splitter = RecursiveDocumentSplitter(split_length=20, split_overlap=0, separators=["."], keep_separator=True)
+def test_chunk_split_by_period():
+    splitter = RecursiveDocumentSplitter(split_length=20, split_overlap=0, separators=["."])
     text = "This is a test. Another sentence. And one more."
     chunks = splitter._chunk_text(text)
     assert len(chunks) == 3
@@ -72,34 +72,13 @@ def test_chunk_text_keep_separator():
     assert chunks[2] == " And one more."
 
 
-def test_chunk_text_do_not_keep_seperator():
-    splitter = RecursiveDocumentSplitter(split_length=20, split_overlap=0, separators=["."], keep_separator=False)
-    text = "This is a test. Another sentence. And one more."
-    chunks = splitter._chunk_text(text)
-    assert len(chunks) == 3
-    assert chunks[0] == "This is a test"
-    assert chunks[1] == " Another sentence"
-    assert chunks[2] == " And one more"
-
-
-def test_keep_separator_chunks_are_equal():
-    splitter = RecursiveDocumentSplitter(split_length=20, split_overlap=0, separators=["."], keep_separator=True)
-    text = "This is a test.This is a test"
-    chunks = splitter._chunk_text(text)
-    assert len(chunks) == 2
-    assert chunks[0] == "This is a test."
-    assert chunks[1] == "This is a test"
-
-
 def test_chunk_text_using_nltk_sentence():
     """
     This test includes abbreviations that are not handled by the simple sentence tokenizer based on "." and
     requires a more sophisticated sentence tokenizer like the one provided by NLTK.
     """
 
-    splitter = RecursiveDocumentSplitter(
-        split_length=400, split_overlap=0, separators=["\n\n", "\n", "sentence", " "], keep_separator=True
-    )
+    splitter = RecursiveDocumentSplitter(split_length=400, split_overlap=0, separators=["\n\n", "\n", "sentence", " "])
     text = """Artificial intelligence (AI) - Introduction
 
 AI, in its broadest sense, is intelligence exhibited by machines, particularly computer systems.
@@ -128,9 +107,7 @@ def test_recursive_splitter_empty_documents():
 
 
 def test_recursive_chunker_with_multiple_separators_recursive():
-    splitter = RecursiveDocumentSplitter(
-        split_length=260, split_overlap=0, separators=["\n\n", "\n", ".", " "], keep_separator=True
-    )
+    splitter = RecursiveDocumentSplitter(split_length=260, split_overlap=0, separators=["\n\n", "\n", ".", " "])
     text = """Artificial intelligence (AI) - Introduction
 
 AI, in its broadest sense, is intelligence exhibited by machines, particularly computer systems.
@@ -161,7 +138,7 @@ AI technology is widely used throughout industry, government, and science. Some 
 
 
 def test_recursive_chunker_split_document_with_overlap():
-    splitter = RecursiveDocumentSplitter(split_length=20, split_overlap=11, separators=[".", " "], keep_separator=True)
+    splitter = RecursiveDocumentSplitter(split_length=20, split_overlap=11, separators=[".", " "])
     text = """A simple sentence1. A bright sentence2. A clever sentence3. A joyful sentence4"""
 
     doc = Document(content=text)
@@ -205,7 +182,7 @@ def test_recursive_chunker_split_document_with_overlap():
 
 
 def test_recursive_splitter_generate_pages():
-    splitter = RecursiveDocumentSplitter(split_length=18, split_overlap=0, separators=[" "], keep_separator=True)
+    splitter = RecursiveDocumentSplitter(split_length=18, split_overlap=0, separators=[" "])
     doc = Document(content="This is some text. \f This text is on another page. \f This is the last page.")
     doc_chunks = splitter.run([doc])
     doc_chunks = doc_chunks["documents"]
@@ -229,7 +206,7 @@ def test_recursive_splitter_separator_exists_but_split_length_too_small_fall_bac
 
 
 def test_recursive_splitter_generate_empty_chunks():
-    splitter = RecursiveDocumentSplitter(split_length=15, separators=["\n\n", "\n"], keep_separator=False)
+    splitter = RecursiveDocumentSplitter(split_length=15, separators=["\n\n", "\n"])
     text = "This is a test.\n\n\nAnother test.\n\n\n\nFinal test."
     doc = Document(content=text)
     chunks = splitter.run([doc])["documents"]
@@ -239,15 +216,14 @@ def test_recursive_splitter_generate_empty_chunks():
     assert chunks[2].content == "Final test."
 
 
-# def test_recursive_splitter_fallback_to_character_chunking():
-#      text = "abczdefzghizjkl"
-#      separators = ["\n\n", "\n", "z"]
-#      splitter = RecursiveDocumentSplitter(split_length=2, separators=separators, keep_separator=False)
-#
-#      doc = Document(content=text)
-#      chunks = splitter.run([doc])["documents"]
-#      for chunk in chunks:
-#          print(chunk.content)
+def test_recursive_splitter_fallback_to_character_chunking():
+    text = "abczdefzghizjkl"
+    separators = ["\n\n", "\n", "z"]
+    splitter = RecursiveDocumentSplitter(split_length=2, separators=separators)
+    doc = Document(content=text)
+    chunks = splitter.run([doc])["documents"]
+    for chunk in chunks:
+        assert len(chunk.content) <= 2
 
 
 def test_recursive_splitter_serialization_in_pipeline():

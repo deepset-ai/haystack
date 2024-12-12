@@ -34,7 +34,7 @@ class RecursiveDocumentSplitter:
     from haystack import Document
     from haystack.components.preprocessors import RecursiveDocumentSplitter
 
-    chunker = RecursiveDocumentSplitter(split_length=260, split_overlap=0, separators=["\n\n", "\n", ".", " "], keep_separator=True)
+    chunker = RecursiveDocumentSplitter(split_length=260, split_overlap=0, separators=["\n\n", "\n", ".", " "])
     text = '''Artificial intelligence (AI) - Introduction
 
     AI, in its broadest sense, is intelligence exhibited by machines, particularly computer systems.
@@ -52,11 +52,7 @@ class RecursiveDocumentSplitter:
     """  # noqa: E501
 
     def __init__(  # pylint: disable=too-many-positional-arguments
-        self,
-        split_length: int = 200,
-        split_overlap: int = 0,
-        separators: Optional[List[str]] = None,
-        keep_separator: bool = True,
+        self, split_length: int = 200, split_overlap: int = 0, separators: Optional[List[str]] = None
     ):
         """
         Initializes a RecursiveDocumentSplitter.
@@ -67,7 +63,6 @@ class RecursiveDocumentSplitter:
             separators will be treated as regular expressions un less if the separator is "sentence", in that case the
             text will be split into sentences using a custom sentence tokenizer based on NLTK.
             If no separators are provided, the default separators ["\n\n", "\n", ".", " "] are used.
-        :param keep_separator: Whether to keep the separator character in the resulting chunks.
 
         :raises ValueError: If the overlap is greater than or equal to the chunk size or if the overlap is negative, or
                             if any separator is not a string.
@@ -75,7 +70,6 @@ class RecursiveDocumentSplitter:
         self.split_length = split_length
         self.split_overlap = split_overlap
         self.separators = separators if separators else ["\n\n", "\n", ".", " "]
-        self.keep_separator = keep_separator
         self._check_params()
         if "sentence" in self.separators:
             self.nltk_tokenizer = self._get_custom_sentence_tokenizer()
@@ -137,10 +131,25 @@ class RecursiveDocumentSplitter:
                 # using the custom NLTK-based sentence tokenizer
                 sentence_with_spans = self.nltk_tokenizer.split_sentences(text)
                 splits = [sentence["sentence"] for sentence in sentence_with_spans]
+
+                print("")
+                for idx, split in enumerate(splits):
+                    print(f"idx: {idx}, split: {split}")
+
             else:
-                # apply current separator regex to split text
+                # using the separator as a regex
                 escaped_separator = re.escape(curr_separator)
+                escaped_separator = (
+                    f"({escaped_separator})"  # wrap the separator in a group to include it in the splits
+                )
                 splits = re.split(escaped_separator, text)
+
+                # add the separator to the end of the previous split
+                splits = [splits[i] + splits[i + 1] for i in range(0, len(splits) - 1, 2)]
+
+                # print("")
+                # for idx, split in enumerate(splits):
+                #     print(f"idx: {idx}, split: {split}")
 
             if len(splits) == 1:  # go to next separator, if current separator not found in the text
                 continue
@@ -152,10 +161,6 @@ class RecursiveDocumentSplitter:
             # check splits, if any is too long, recursively chunk it, otherwise add to current chunk
             for idx, split in enumerate(splits):
                 split_text = split
-
-                # add separator to the split, if it's not the last split
-                if self.keep_separator and curr_separator != "sentence" and idx < len(splits) - 1:
-                    split_text = split + curr_separator
 
                 # if adding this split exceeds chunk_size, process current_chunk
                 if current_length + len(split_text) > self.split_length:
