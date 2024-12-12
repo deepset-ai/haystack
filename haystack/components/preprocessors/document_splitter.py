@@ -116,8 +116,9 @@ class DocumentSplitter:
                 keep_white_spaces=True,
             )
 
-    def _init_checks(  # pylint: disable=too-many-positional-arguments
+    def _init_checks(
         self,
+        *,
         split_by: str,
         split_length: int,
         split_overlap: int,
