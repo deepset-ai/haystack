@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
@@ -35,7 +34,7 @@ class HTMLToDocument:
     ```
     """
 
-    def __init__(self, extraction_kwargs: Optional[Dict[str, Any]] = None, store_full_path: bool = True):
+    def __init__(self, extraction_kwargs: Optional[Dict[str, Any]] = None, store_full_path: bool = False):
         """
         Create an HTMLToDocument component.
 
@@ -123,12 +122,6 @@ class HTMLToDocument:
 
             merged_metadata = {**bytestream.meta, **metadata}
 
-            warnings.warn(
-                "The `store_full_path` parameter defaults to True, storing full file paths in metadata. "
-                "In the 2.9.0 release, the default value for `store_full_path` will change to False, "
-                "storing only file names to improve privacy.",
-                DeprecationWarning,
-            )
             if not self.store_full_path and "file_path" in bytestream.meta:
                 file_path = bytestream.meta.get("file_path")
                 if file_path:  # Ensure the value is not None for pylint

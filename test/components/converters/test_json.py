@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+import os
 from unittest.mock import patch
 from pathlib import Path
 import logging
@@ -104,7 +105,7 @@ def test_to_dict():
             "content_key": "motivation",
             "jq_schema": ".laureates[]",
             "extra_meta_fields": {"firstname", "surname"},
-            "store_full_path": True,
+            "store_full_path": False,
         },
     }
 
@@ -145,11 +146,11 @@ def test_run(tmpdir):
         == "Dario Fokin who emulates the jesters of the Middle Ages in scourging authority and "
         "upholding the dignity of the downtrodden"
     )
-    assert result["documents"][0].meta == {"file_path": str(first_test_file)}
+    assert result["documents"][0].meta == {"file_path": os.path.basename(first_test_file)}
     assert result["documents"][1].content == "Stanley Cohen for their discoveries of growth factors"
-    assert result["documents"][1].meta == {"file_path": str(second_test_file)}
+    assert result["documents"][1].meta == {"file_path": os.path.basename(second_test_file)}
     assert result["documents"][2].content == "Rita Levi-Montalcini for their discoveries of growth factors"
-    assert result["documents"][2].meta == {"file_path": str(second_test_file)}
+    assert result["documents"][2].meta == {"file_path": os.path.basename(second_test_file)}
     assert (
         result["documents"][3].content == "Enrico Fermi for his demonstrations of the existence of new "
         "radioactive elements produced by neutron irradiation, and for his related discovery of nuclear "
@@ -254,11 +255,20 @@ def test_run_with_single_meta(tmpdir):
         == "Dario Fokin who emulates the jesters of the Middle Ages in scourging authority and "
         "upholding the dignity of the downtrodden"
     )
-    assert result["documents"][0].meta == {"file_path": str(first_test_file), "creation_date": "1945-05-25T00:00:00"}
+    assert result["documents"][0].meta == {
+        "file_path": os.path.basename(first_test_file),
+        "creation_date": "1945-05-25T00:00:00",
+    }
     assert result["documents"][1].content == "Stanley Cohen for their discoveries of growth factors"
-    assert result["documents"][1].meta == {"file_path": str(second_test_file), "creation_date": "1945-05-25T00:00:00"}
+    assert result["documents"][1].meta == {
+        "file_path": os.path.basename(second_test_file),
+        "creation_date": "1945-05-25T00:00:00",
+    }
     assert result["documents"][2].content == "Rita Levi-Montalcini for their discoveries of growth factors"
-    assert result["documents"][2].meta == {"file_path": str(second_test_file), "creation_date": "1945-05-25T00:00:00"}
+    assert result["documents"][2].meta == {
+        "file_path": os.path.basename(second_test_file),
+        "creation_date": "1945-05-25T00:00:00",
+    }
     assert (
         result["documents"][3].content == "Enrico Fermi for his demonstrations of the existence of new "
         "radioactive elements produced by neutron irradiation, and for his related discovery of nuclear "
@@ -290,11 +300,20 @@ def test_run_with_meta_list(tmpdir):
         == "Dario Fokin who emulates the jesters of the Middle Ages in scourging authority and "
         "upholding the dignity of the downtrodden"
     )
-    assert result["documents"][0].meta == {"file_path": str(first_test_file), "creation_date": "1945-05-25T00:00:00"}
+    assert result["documents"][0].meta == {
+        "file_path": os.path.basename(first_test_file),
+        "creation_date": "1945-05-25T00:00:00",
+    }
     assert result["documents"][1].content == "Stanley Cohen for their discoveries of growth factors"
-    assert result["documents"][1].meta == {"file_path": str(second_test_file), "creation_date": "1943-09-03T00:00:00"}
+    assert result["documents"][1].meta == {
+        "file_path": os.path.basename(second_test_file),
+        "creation_date": "1943-09-03T00:00:00",
+    }
     assert result["documents"][2].content == "Rita Levi-Montalcini for their discoveries of growth factors"
-    assert result["documents"][2].meta == {"file_path": str(second_test_file), "creation_date": "1943-09-03T00:00:00"}
+    assert result["documents"][2].meta == {
+        "file_path": os.path.basename(second_test_file),
+        "creation_date": "1943-09-03T00:00:00",
+    }
     assert (
         result["documents"][3].content == "Enrico Fermi for his demonstrations of the existence of new "
         "radioactive elements produced by neutron irradiation, and for his related discovery of nuclear "
@@ -329,11 +348,11 @@ def test_run_with_jq_schema_and_content_key(tmpdir):
         result["documents"][0].content == "who emulates the jesters of the Middle Ages in scourging authority and "
         "upholding the dignity of the downtrodden"
     )
-    assert result["documents"][0].meta == {"file_path": str(first_test_file)}
+    assert result["documents"][0].meta == {"file_path": os.path.basename(first_test_file)}
     assert result["documents"][1].content == "for their discoveries of growth factors"
-    assert result["documents"][1].meta == {"file_path": str(second_test_file)}
+    assert result["documents"][1].meta == {"file_path": os.path.basename(second_test_file)}
     assert result["documents"][2].content == "for their discoveries of growth factors"
-    assert result["documents"][2].meta == {"file_path": str(second_test_file)}
+    assert result["documents"][2].meta == {"file_path": os.path.basename(second_test_file)}
     assert (
         result["documents"][3].content == "for his demonstrations of the existence of new "
         "radioactive elements produced by neutron irradiation, and for his related discovery of nuclear "
@@ -361,16 +380,20 @@ def test_run_with_jq_schema_content_key_and_extra_meta_fields(tmpdir):
         result["documents"][0].content == "who emulates the jesters of the Middle Ages in scourging authority and "
         "upholding the dignity of the downtrodden"
     )
-    assert result["documents"][0].meta == {"file_path": str(first_test_file), "firstname": "Dario", "surname": "Fokin"}
+    assert result["documents"][0].meta == {
+        "file_path": os.path.basename(first_test_file),
+        "firstname": "Dario",
+        "surname": "Fokin",
+    }
     assert result["documents"][1].content == "for their discoveries of growth factors"
     assert result["documents"][1].meta == {
-        "file_path": str(second_test_file),
+        "file_path": os.path.basename(second_test_file),
         "firstname": "Stanley",
         "surname": "Cohen",
     }
     assert result["documents"][2].content == "for their discoveries of growth factors"
     assert result["documents"][2].meta == {
-        "file_path": str(second_test_file),
+        "file_path": os.path.basename(second_test_file),
         "firstname": "Rita",
         "surname": "Levi-Montalcini",
     }
@@ -396,9 +419,9 @@ def test_run_with_content_key(tmpdir):
     assert len(result) == 1
     assert len(result["documents"]) == 3
     assert result["documents"][0].content == "literature"
-    assert result["documents"][0].meta == {"file_path": str(first_test_file)}
+    assert result["documents"][0].meta == {"file_path": os.path.basename(first_test_file)}
     assert result["documents"][1].content == "medicine"
-    assert result["documents"][1].meta == {"file_path": str(second_test_file)}
+    assert result["documents"][1].meta == {"file_path": os.path.basename(second_test_file)}
     assert result["documents"][2].content == "physics"
     assert result["documents"][2].meta == {}
 
@@ -417,9 +440,9 @@ def test_run_with_content_key_and_extra_meta_fields(tmpdir):
     assert len(result) == 1
     assert len(result["documents"]) == 3
     assert result["documents"][0].content == "literature"
-    assert result["documents"][0].meta == {"file_path": str(first_test_file), "year": "1997"}
+    assert result["documents"][0].meta == {"file_path": os.path.basename(first_test_file), "year": "1997"}
     assert result["documents"][1].content == "medicine"
-    assert result["documents"][1].meta == {"file_path": str(second_test_file), "year": "1986"}
+    assert result["documents"][1].meta == {"file_path": os.path.basename(second_test_file), "year": "1986"}
     assert result["documents"][2].content == "physics"
     assert result["documents"][2].meta == {"year": "1938"}
 
@@ -442,7 +465,7 @@ def test_run_with_jq_schema_content_key_and_extra_meta_fields_literal(tmpdir):
         == "who emulates the jesters of the Middle Ages in scourging authority and upholding the dignity of the downtrodden"
     )
     assert result["documents"][0].meta == {
-        "file_path": str(first_test_file),
+        "file_path": os.path.basename(first_test_file),
         "id": "674",
         "firstname": "Dario",
         "surname": "Fokin",
@@ -450,7 +473,7 @@ def test_run_with_jq_schema_content_key_and_extra_meta_fields_literal(tmpdir):
     }
     assert result["documents"][1].content == "for their discoveries of growth factors"
     assert result["documents"][1].meta == {
-        "file_path": str(second_test_file),
+        "file_path": os.path.basename(second_test_file),
         "id": "434",
         "firstname": "Stanley",
         "surname": "Cohen",
@@ -458,7 +481,7 @@ def test_run_with_jq_schema_content_key_and_extra_meta_fields_literal(tmpdir):
     }
     assert result["documents"][2].content == "for their discoveries of growth factors"
     assert result["documents"][2].meta == {
-        "file_path": str(second_test_file),
+        "file_path": os.path.basename(second_test_file),
         "id": "435",
         "firstname": "Rita",
         "surname": "Levi-Montalcini",

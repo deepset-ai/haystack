@@ -4,7 +4,6 @@
 
 import io
 import os
-import warnings
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
@@ -79,7 +78,7 @@ class PyPDFToDocument:
         layout_mode_scale_weight: float = 1.25,
         layout_mode_strip_rotated: bool = True,
         layout_mode_font_height_weight: float = 1.0,
-        store_full_path: bool = True,
+        store_full_path: bool = False,
     ):
         """
         Create an PyPDFToDocument component.
@@ -220,12 +219,7 @@ class PyPDFToDocument:
                 )
 
             merged_metadata = {**bytestream.meta, **metadata}
-            warnings.warn(
-                "The `store_full_path` parameter defaults to True, storing full file paths in metadata. "
-                "In the 2.9.0 release, the default value for `store_full_path` will change to False, "
-                "storing only file names to improve privacy.",
-                DeprecationWarning,
-            )
+
             if not self.store_full_path and (file_path := bytestream.meta.get("file_path")):
                 merged_metadata["file_path"] = os.path.basename(file_path)
             document.meta = merged_metadata

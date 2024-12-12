@@ -105,7 +105,7 @@ class TestAzureOCRDocumentConverter:
                 "page_layout": "natural",
                 "preceding_context_len": 3,
                 "threshold_y": 0.05,
-                "store_full_path": True,
+                "store_full_path": False,
             },
         }
 

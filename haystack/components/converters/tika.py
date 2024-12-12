@@ -4,7 +4,6 @@
 
 import io
 import os
-import warnings
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
@@ -75,7 +74,7 @@ class TikaDocumentConverter:
     ```
     """
 
-    def __init__(self, tika_url: str = "http://localhost:9998/tika", store_full_path: bool = True):
+    def __init__(self, tika_url: str = "http://localhost:9998/tika", store_full_path: bool = False):
         """
         Create a TikaDocumentConverter component.
 
@@ -139,12 +138,6 @@ class TikaDocumentConverter:
                 continue
 
             merged_metadata = {**bytestream.meta, **metadata}
-            warnings.warn(
-                "The `store_full_path` parameter defaults to True, storing full file paths in metadata. "
-                "In the 2.9.0 release, the default value for `store_full_path` will change to False, "
-                "storing only file names to improve privacy.",
-                DeprecationWarning,
-            )
 
             if not self.store_full_path and (file_path := bytestream.meta.get("file_path")):
                 merged_metadata["file_path"] = os.path.basename(file_path)

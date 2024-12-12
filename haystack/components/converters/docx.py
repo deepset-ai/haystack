@@ -5,7 +5,6 @@
 import csv
 import io
 import os
-import warnings
 from dataclasses import dataclass
 from enum import Enum
 from io import StringIO
@@ -109,7 +108,7 @@ class DOCXToDocument:
     ```
     """
 
-    def __init__(self, table_format: Union[str, DOCXTableFormat] = DOCXTableFormat.CSV, store_full_path: bool = True):
+    def __init__(self, table_format: Union[str, DOCXTableFormat] = DOCXTableFormat.CSV, store_full_path: bool = False):
         """
         Create a DOCXToDocument component.
 
@@ -188,13 +187,6 @@ class DOCXToDocument:
                     error=e,
                 )
                 continue
-
-            warnings.warn(
-                "The `store_full_path` parameter defaults to True, storing full file paths in metadata. "
-                "In the 2.9.0 release, the default value for `store_full_path` will change to False, "
-                "storing only file names to improve privacy.",
-                DeprecationWarning,
-            )
 
             docx_metadata = self._get_docx_metadata(document=docx_document)
             merged_metadata = {**bytestream.meta, **metadata, "docx": docx_metadata}

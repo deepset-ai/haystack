@@ -5,7 +5,6 @@
 import copy
 import hashlib
 import os
-import warnings
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Union
@@ -61,7 +60,7 @@ class AzureOCRDocumentConverter:
         merge_multiple_column_headers: bool = True,
         page_layout: Literal["natural", "single_column"] = "natural",
         threshold_y: Optional[float] = 0.05,
-        store_full_path: bool = True,
+        store_full_path: bool = False,
     ):
         """
         Creates an AzureOCRDocumentConverter component.
@@ -143,12 +142,6 @@ class AzureOCRDocumentConverter:
             azure_output.append(result.to_dict())
 
             merged_metadata = {**bytestream.meta, **metadata}
-            warnings.warn(
-                "The `store_full_path` parameter defaults to True, storing full file paths in metadata. "
-                "In the 2.9.0 release, the default value for `store_full_path` will change to False, "
-                "storing only file names to improve privacy.",
-                DeprecationWarning,
-            )
 
             if not self.store_full_path and (file_path := bytestream.meta.get("file_path")):
                 merged_metadata["file_path"] = os.path.basename(file_path)
