@@ -162,19 +162,19 @@ class XLSXToDocument:
 
         tables = []
         metadata = []
-        for key in updated_sheet_to_dataframe:
+        for key, value in updated_sheet_to_dataframe.items():
             if self.table_format == "csv":
                 resolved_kwargs = {"index": True, "header": True, "lineterminator": "\n", **self.table_format_kwargs}
-                tables.append(updated_sheet_to_dataframe[key].to_csv(**resolved_kwargs))
+                tables.append(value.to_csv(**resolved_kwargs))
             else:
                 resolved_kwargs = {
                     "index": True,
-                    "headers": updated_sheet_to_dataframe[key].columns,
+                    "headers": value.columns,
                     "tablefmt": "pipe",
                     **self.table_format_kwargs,
                 }
                 # to_markdown uses tabulate
-                tables.append(updated_sheet_to_dataframe[key].to_markdown(**resolved_kwargs))
+                tables.append(value.to_markdown(**resolved_kwargs))
             # add sheet_name to metadata
             metadata.append({"xlsx": {"sheet_name": key}})
         return tables, metadata
