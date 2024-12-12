@@ -142,7 +142,7 @@ class RecursiveDocumentSplitter:
                 escaped_separator = re.escape(curr_separator)
                 splits = re.split(escaped_separator, text)
 
-            if len(splits) == 1:  # go to next separator, if current separator not found
+            if len(splits) == 1:  # go to next separator, if current separator not found in the text
                 continue
 
             chunks = []
