@@ -127,8 +127,10 @@ AI technology is widely used throughout industry, government, and science. Some 
 
 
 def test_recursive_splitter_custom_sentence_tokenizer_document_and_overlap():
-    # ToDo:
-    pass
+    splitter = RecursiveDocumentSplitter(split_length=40, split_overlap=10, separators=["sentence"])
+    text = "I must not fear. Fear is the mind-killer. Fear is the little-death that brings total obliteration. I will face my fear. I will permit it to pass over me and through me. And when it has gone past I will turn the inner eye to see its path. Where the fear has gone there will be nothing. Only I will remain."
+    chunks = splitter.run([Document(content=text)])
+    # ToDo
 
 
 def test_recursive_chunker_split_document_with_overlap():

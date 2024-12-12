@@ -130,6 +130,12 @@ class RecursiveDocumentSplitter:
             if curr_separator == "sentence":
                 sentence_with_spans = self.nltk_tokenizer.split_sentences(text)
                 splits = [sentence["sentence"] for sentence in sentence_with_spans]
+
+                print("\n")
+
+                for i, sentence in enumerate(splits):
+                    print(f"Sentence {i}: {sentence}")
+
             else:
                 escaped_separator = re.escape(curr_separator)
                 escaped_separator = (
@@ -153,8 +159,13 @@ class RecursiveDocumentSplitter:
             current_chunk: List[str] = []
             current_length = 0
 
+            print("\n\n")
+
             # check splits, if any is too long, recursively chunk it, otherwise add to current chunk
             for split in splits:
+                print("in loop")
+                print(f"Split: {split}")
+
                 split_text = split
 
                 # if adding this split exceeds chunk_size, process current_chunk
