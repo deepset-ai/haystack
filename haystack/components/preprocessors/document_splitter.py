@@ -14,7 +14,8 @@ from haystack.utils import deserialize_callable, serialize_callable
 
 logger = logging.getLogger(__name__)
 
-_SPLIT_BY_MAPPING = {"page": "\f", "passage": "\n\n", "sentence": ".", "word": " ", "line": "\n"}
+# mapping of split by character, 'function' and 'sentence' don't split by character
+_CHARACTER_SPLIT_BY_MAPPING = {"page": "\f", "passage": "\n\n", "period": ".", "word": " ", "line": "\n"}
 
 
 @component
@@ -52,7 +53,7 @@ class DocumentSplitter:
 
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
-        split_by: Literal["function", "page", "passage", "sentence", "word", "line", "nltk_sentence"] = "word",
+        split_by: Literal["function", "page", "passage", "period", "word", "line", "sentence"] = "word",
         split_length: int = 200,
         split_overlap: int = 0,
         split_threshold: int = 0,
@@ -71,7 +72,7 @@ class DocumentSplitter:
             - `page` for splitting by form feed ("\\f")
             - `passage` for splitting by double line breaks ("\\n\\n")
             - `line` for splitting each line ("\\n")
-            - `nltk_sentence` for splitting by NLTK sentence tokenizer
+            - `sentence` for splitting by NLTK sentence tokenizer
 
         :param split_length: The maximum number of units in each split.
         :param split_overlap: The number of overlapping units for each split.
@@ -106,7 +107,7 @@ class DocumentSplitter:
             respect_sentence_boundary=respect_sentence_boundary,
         )
 
-        if split_by == "nltk_sentence" or (respect_sentence_boundary and split_by == "word"):
+        if split_by == "sentence" or (respect_sentence_boundary and split_by == "word"):
             nltk_imports.check()
             self.sentence_splitter = SentenceSplitter(
                 language=language,
@@ -133,7 +134,7 @@ class DocumentSplitter:
         :param respect_sentence_boundary: Whether to respect sentence boundaries when splitting
         :raises ValueError: If any parameter is invalid
         """
-        valid_split_by = ["function", "page", "passage", "sentence", "word", "line", "nltk_sentence"]
+        valid_split_by = ["function", "page", "passage", "period", "word", "line", "sentence"]
         if split_by not in valid_split_by:
             raise ValueError(f"split_by must be one of {', '.join(valid_split_by)}.")
 
@@ -189,7 +190,7 @@ class DocumentSplitter:
         return {"documents": split_docs}
 
     def _split_document(self, doc: Document) -> List[Document]:
-        if self.split_by == "nltk_sentence" or self.respect_sentence_boundary:
+        if self.split_by == "sentence" or self.respect_sentence_boundary:
             return self._split_by_nltk_sentence(doc)
 
         if self.split_by == "function" and self.splitting_function is not None:
@@ -223,7 +224,7 @@ class DocumentSplitter:
         return split_docs
 
     def _split_by_character(self, doc) -> List[Document]:
-        split_at = _SPLIT_BY_MAPPING[self.split_by]
+        split_at = _CHARACTER_SPLIT_BY_MAPPING[self.split_by]
         units = doc.content.split(split_at)
         # Add the delimiter back to all units except the last one
         for i in range(len(units) - 1):

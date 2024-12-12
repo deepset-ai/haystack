@@ -129,7 +129,7 @@ class TestSplittingByFunctionOrCharacterRegex:
         assert docs[4].meta["split_id"] == 2
         assert docs[4].meta["split_idx_start"] == text2.index(docs[4].content)
 
-    def test_split_by_sentence(self):
+    def test_split_by_period(self):
         splitter = DocumentSplitter(split_by="sentence", split_length=1)
         text = "This is a text with some words. There is a second sentence. And there is a third sentence."
         result = splitter.run(documents=[Document(content=text)])
@@ -758,7 +758,7 @@ class TestSplittingNLTKSentenceSplitter:
     def test_nltk_sentence_serialization(self):
         """Test serialization with NLTK sentence splitting configuration and using non-default values"""
         splitter = DocumentSplitter(
-            split_by="nltk_sentence",
+            split_by="sentence",
             language="de",
             use_split_rules=False,
             extend_abbreviations=False,
@@ -777,7 +777,7 @@ class TestSplittingNLTKSentenceSplitter:
     def test_nltk_serialization_roundtrip(self):
         """Test complete serialization roundtrip with actual document splitting"""
         splitter = DocumentSplitter(
-            split_by="nltk_sentence",
+            split_by="sentence",
             language="de",
             use_split_rules=False,
             extend_abbreviations=False,
