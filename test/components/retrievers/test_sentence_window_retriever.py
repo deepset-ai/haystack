@@ -176,7 +176,7 @@ class TestSentenceWindowRetriever:
 
     @pytest.mark.integration
     def test_run_with_pipeline(self):
-        splitter = DocumentSplitter(split_length=1, split_overlap=0, split_by="sentence")
+        splitter = DocumentSplitter(split_length=1, split_overlap=0, split_by="period")
         text = (
             "This is a text with some words. There is a second sentence. And there is also a third sentence. "
             "It also contains a fourth sentence. And a fifth sentence. And a sixth sentence. And a seventh sentence"
