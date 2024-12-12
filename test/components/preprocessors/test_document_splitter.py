@@ -130,7 +130,7 @@ class TestSplittingByFunctionOrCharacterRegex:
         assert docs[4].meta["split_idx_start"] == text2.index(docs[4].content)
 
     def test_split_by_period(self):
-        splitter = DocumentSplitter(split_by="sentence", split_length=1)
+        splitter = DocumentSplitter(split_by="period", split_length=1)
         text = "This is a text with some words. There is a second sentence. And there is a third sentence."
         result = splitter.run(documents=[Document(content=text)])
         docs = result["documents"]
@@ -279,8 +279,8 @@ class TestSplittingByFunctionOrCharacterRegex:
         for doc, p in zip(result["documents"], expected_pages):
             assert doc.meta["page_number"] == p
 
-    def test_add_page_number_to_metadata_with_no_overlap_sentence_split(self):
-        splitter = DocumentSplitter(split_by="sentence", split_length=1)
+    def test_add_page_number_to_metadata_with_no_overlap_period_split(self):
+        splitter = DocumentSplitter(split_by="period", split_length=1)
         doc1 = Document(content="This is some text.\f This text is on another page.")
         doc2 = Document(content="This content has two.\f\f page brakes.")
         result = splitter.run(documents=[doc1, doc2])
@@ -330,8 +330,8 @@ class TestSplittingByFunctionOrCharacterRegex:
         for doc, p in zip(result["documents"], expected_pages):
             assert doc.meta["page_number"] == p
 
-    def test_add_page_number_to_metadata_with_overlap_sentence_split(self):
-        splitter = DocumentSplitter(split_by="sentence", split_length=2, split_overlap=1)
+    def test_add_page_number_to_metadata_with_overlap_period_split(self):
+        splitter = DocumentSplitter(split_by="period", split_length=2, split_overlap=1)
         doc1 = Document(content="This is some text. And this is more text.\f This text is on another page. End.")
         doc2 = Document(content="This content has two.\f\f page brakes. More text.")
         result = splitter.run(documents=[doc1, doc2])
@@ -530,7 +530,7 @@ class TestSplittingNLTKSentenceSplitter:
 
     def test_run_split_by_sentence_1(self) -> None:
         document_splitter = DocumentSplitter(
-            split_by="nltk_sentence",
+            split_by="sentence",
             split_length=2,
             split_overlap=0,
             split_threshold=0,
@@ -554,7 +554,7 @@ class TestSplittingNLTKSentenceSplitter:
 
     def test_run_split_by_sentence_2(self) -> None:
         document_splitter = DocumentSplitter(
-            split_by="nltk_sentence",
+            split_by="sentence",
             split_length=1,
             split_overlap=0,
             split_threshold=0,
@@ -593,7 +593,7 @@ class TestSplittingNLTKSentenceSplitter:
 
     def test_run_split_by_sentence_3(self) -> None:
         document_splitter = DocumentSplitter(
-            split_by="nltk_sentence",
+            split_by="sentence",
             split_length=1,
             split_overlap=0,
             split_threshold=0,
@@ -625,7 +625,7 @@ class TestSplittingNLTKSentenceSplitter:
 
     def test_run_split_by_sentence_4(self) -> None:
         document_splitter = DocumentSplitter(
-            split_by="nltk_sentence",
+            split_by="sentence",
             split_length=2,
             split_overlap=1,
             split_threshold=0,
@@ -755,7 +755,7 @@ class TestSplittingNLTKSentenceSplitter:
         splitter = DocumentSplitter(split_by="sentence", split_length=10, respect_sentence_boundary=True)
         assert splitter.respect_sentence_boundary == False
 
-    def test_nltk_sentence_serialization(self):
+    def test_sentence_serialization(self):
         """Test serialization with NLTK sentence splitting configuration and using non-default values"""
         splitter = DocumentSplitter(
             split_by="sentence",
@@ -767,7 +767,7 @@ class TestSplittingNLTKSentenceSplitter:
         serialized = splitter.to_dict()
         deserialized = DocumentSplitter.from_dict(serialized)
 
-        assert deserialized.split_by == "nltk_sentence"
+        assert deserialized.split_by == "sentence"
         assert hasattr(deserialized, "sentence_splitter")
         assert deserialized.language == "de"
         assert deserialized.use_split_rules == False
