@@ -55,7 +55,8 @@ class NLTKDocumentSplitter(DocumentSplitter):
 
         warnings.warn(
             "The NLTKDocumentSplitter will deprecated and will be removed in the next release. "
-            "The DocumentSplitter will instead support the functionality of the NLTKDocumentSplitter.",
+            "See DocumentSplitter which now supports the functionalities of the NLTKDocumentSplitter, i.e.: "
+            "using NLTK to detect sentence boundaries.",
             DeprecationWarning,
         )
 
