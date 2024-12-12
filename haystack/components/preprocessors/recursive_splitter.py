@@ -45,7 +45,7 @@ class RecursiveDocumentSplitter:
     print(doc_chunks["documents"])
     >[
     >Document(id=..., content: 'Artificial intelligence (AI) - Introduction\n\n', meta: {'original_id': '65167a9823dd883de577e828ca4fd529e6f7241f0ff616acfce454d808478951', 'split_id': 0, 'split_idx_start': 0, '_split_overlap': []})
-    >Document(id=..., content: 'AI, in its broadest sense, is intelligence exhibited by machines, particularly computer systems. ', meta: {'original_id': '65167a9823dd883de577e828ca4fd529e6f7241f0ff616acfce454d808478951'}),
+    >Document(id=..., content: 'AI, in its broadest sense, is intelligence exhibited by machines, particularly computer systems.\n', meta: {'original_id': '65167a9823dd883de577e828ca4fd529e6f7241f0ff616acfce454d808478951', 'split_id': 1, 'split_idx_start': 45, '_split_overlap': []})
     >Document(id=..., content: 'AI technology is widely used throughout industry, government, and science.', meta: {'original_id': '65167a9823dd883de577e828ca4fd529e6f7241f0ff616acfce454d808478951'}),
     >Document(id=..., content: ' Some high-profile applications include advanced web search engines; recommendation systems; interac...', meta: {'original_id': '65167a9823dd883de577e828ca4fd529e6f7241f0ff616acfce454d808478951'})
     >]
