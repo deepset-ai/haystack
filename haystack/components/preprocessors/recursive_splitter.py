@@ -131,11 +131,6 @@ class RecursiveDocumentSplitter:
                 # using the custom NLTK-based sentence tokenizer
                 sentence_with_spans = self.nltk_tokenizer.split_sentences(text)
                 splits = [sentence["sentence"] for sentence in sentence_with_spans]
-
-                print("")
-                for idx, split in enumerate(splits):
-                    print(f"idx: {idx}, split: {split}")
-
             else:
                 # using the separator as a regex
                 escaped_separator = re.escape(curr_separator)
@@ -144,12 +139,14 @@ class RecursiveDocumentSplitter:
                 )
                 splits = re.split(escaped_separator, text)
 
-                # add the separator to the end of the previous split
-                splits = [splits[i] + splits[i + 1] for i in range(0, len(splits) - 1, 2)]
+                # merge every two consecutive splits (i.e., the ext and the separator after it)
+                splits = [
+                    "".join([splits[i], splits[i + 1]]) if i < len(splits) - 1 else splits[i]
+                    for i in range(0, len(splits), 2)
+                ]
 
-                # print("")
-                # for idx, split in enumerate(splits):
-                #     print(f"idx: {idx}, split: {split}")
+                # remove last split if it is empty
+                splits = splits[:-1] if splits[-1] == "" else splits
 
             if len(splits) == 1:  # go to next separator, if current separator not found in the text
                 continue
