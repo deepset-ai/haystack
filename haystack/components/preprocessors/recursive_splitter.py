@@ -128,18 +128,16 @@ class RecursiveDocumentSplitter:
 
         for curr_separator in self.separators:  # type: ignore # the caller already checked that separators is not None
             if curr_separator == "sentence":
-                # using the custom NLTK-based sentence tokenizer
                 sentence_with_spans = self.nltk_tokenizer.split_sentences(text)
                 splits = [sentence["sentence"] for sentence in sentence_with_spans]
             else:
-                # using the separator as a regex
                 escaped_separator = re.escape(curr_separator)
                 escaped_separator = (
                     f"({escaped_separator})"  # wrap the separator in a group to include it in the splits
                 )
                 splits = re.split(escaped_separator, text)
 
-                # merge every two consecutive splits (i.e., the ext and the separator after it)
+                # merge every two consecutive splits, i.e.: the text and the separator after it
                 splits = [
                     "".join([splits[i], splits[i + 1]]) if i < len(splits) - 1 else splits[i]
                     for i in range(0, len(splits), 2)
