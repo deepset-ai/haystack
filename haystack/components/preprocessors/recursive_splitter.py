@@ -69,7 +69,7 @@ class RecursiveDocumentSplitter:
         """
         self.split_length = split_length
         self.split_overlap = split_overlap
-        self.separators = separators if separators else ["\n\n", "\n", ".", " "]
+        self.separators = separators if separators else ["\n\n", "sentence", "\n", " "]  # default separators
         self._check_params()
         if "sentence" in self.separators:
             self.nltk_tokenizer = self._get_custom_sentence_tokenizer()
@@ -203,7 +203,6 @@ class RecursiveDocumentSplitter:
 
         for split_nr, chunk in enumerate(chunks):
             new_doc = Document(content=chunk, meta=deepcopy(doc.meta))
-            new_doc.meta["original_id"] = doc.id
             new_doc.meta["split_id"] = split_nr
             new_doc.meta["split_idx_start"] = current_position
             new_doc.meta["_split_overlap"] = [] if self.split_overlap > 0 else None

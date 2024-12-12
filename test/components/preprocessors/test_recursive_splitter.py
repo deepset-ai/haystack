@@ -72,13 +72,21 @@ def test_chunk_split_by_period():
     assert chunks[2] == " And one more."
 
 
+def test_recursive_splitter_empty_documents():
+    splitter = RecursiveDocumentSplitter(split_length=20, split_overlap=0, separators=["."])
+    empty_doc = Document(content="")
+    doc_chunks = splitter.run([empty_doc])
+    doc_chunks = doc_chunks["documents"]
+    assert len(doc_chunks) == 0
+
+
 def test_chunk_text_using_nltk_sentence():
     """
     This test includes abbreviations that are not handled by the simple sentence tokenizer based on "." and
     requires a more sophisticated sentence tokenizer like the one provided by NLTK.
     """
 
-    splitter = RecursiveDocumentSplitter(split_length=400, split_overlap=0, separators=["\n\n", "\n", "sentence", " "])
+    splitter = RecursiveDocumentSplitter(split_length=400, split_overlap=0, separators=["\n\n", "sentence", "\n", " "])
     text = """Artificial intelligence (AI) - Introduction
 
 AI, in its broadest sense, is intelligence exhibited by machines, particularly computer systems.
@@ -98,16 +106,8 @@ AI technology is widely used throughout industry, government, and science. Some 
     )  # noqa: E501
 
 
-def test_recursive_splitter_empty_documents():
-    splitter = RecursiveDocumentSplitter(split_length=20, split_overlap=0, separators=["."])
-    empty_doc = Document(content="")
-    doc_chunks = splitter.run([empty_doc])
-    doc_chunks = doc_chunks["documents"]
-    assert len(doc_chunks) == 0
-
-
 def test_recursive_chunker_with_multiple_separators_recursive():
-    splitter = RecursiveDocumentSplitter(split_length=260, split_overlap=0, separators=["\n\n", "\n", ".", " "])
+    splitter = RecursiveDocumentSplitter(split_length=260, split_overlap=0, separators=["\n\n", "\n", "sentence", " "])
     text = """Artificial intelligence (AI) - Introduction
 
 AI, in its broadest sense, is intelligence exhibited by machines, particularly computer systems.
@@ -118,13 +118,6 @@ AI technology is widely used throughout industry, government, and science. Some 
     doc_chunks = doc_chunks["documents"]
 
     assert len(doc_chunks) == 4
-    assert (
-        doc_chunks[0].meta["original_id"]
-        == doc_chunks[1].meta["original_id"]
-        == doc_chunks[2].meta["original_id"]
-        == doc_chunks[3].meta["original_id"]
-        == doc.id
-    )
     assert doc_chunks[0].content == "Artificial intelligence (AI) - Introduction\n\n"
     assert (
         doc_chunks[1].content
@@ -146,13 +139,6 @@ def test_recursive_chunker_split_document_with_overlap():
     doc_chunks = doc_chunks["documents"]
 
     assert len(doc_chunks) == 4
-    assert (
-        doc_chunks[0].meta["original_id"]
-        == doc_chunks[1].meta["original_id"]
-        == doc_chunks[2].meta["original_id"]
-        == doc_chunks[3].meta["original_id"]
-        == doc.id
-    )
 
     assert doc_chunks[0].content == "A simple sentence1."
     assert doc_chunks[0].meta["split_id"] == 0
@@ -210,7 +196,6 @@ def test_recursive_splitter_generate_empty_chunks():
     text = "This is a test.\n\n\nAnother test.\n\n\n\nFinal test."
     doc = Document(content=text)
     chunks = splitter.run([doc])["documents"]
-
     assert chunks[0].content == "This is a test."
     assert chunks[1].content == "\nAnother test."
     assert chunks[2].content == "Final test."
