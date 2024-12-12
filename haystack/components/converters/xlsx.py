@@ -146,34 +146,35 @@ class XLSXToDocument:
             "header": None,  # Don't assign any pandas column labels
             "engine": "openpyxl",  # Use openpyxl as the engine to read the Excel file
         }
-        dict_or_df = pd.read_excel(io=io.BytesIO(bytestream.data), **resolved_read_excel_kwargs)
-        if isinstance(dict_or_df, pd.DataFrame):
-            dict_or_df = {self.sheet_name: dict_or_df}
+        sheet_to_dataframe = pd.read_excel(io=io.BytesIO(bytestream.data), **resolved_read_excel_kwargs)
+        if isinstance(sheet_to_dataframe, pd.DataFrame):
+            sheet_to_dataframe = {self.sheet_name: sheet_to_dataframe}
 
-        for key in dict_or_df:
-            df = dict_or_df[key]
+        updated_sheet_to_dataframe = {}
+        for key in sheet_to_dataframe:
+            df = sheet_to_dataframe[key]
             # Row starts at 1 in Excel
             df.index = df.index + 1
             # Excel column names are Alphabet Characters
             header = self._generate_excel_column_names(df.shape[1])
             df.columns = header
-            dict_or_df[key] = df
+            updated_sheet_to_dataframe[key] = df
 
         tables = []
         metadata = []
-        for key in dict_or_df:
+        for key in updated_sheet_to_dataframe:
             if self.table_format == "csv":
                 resolved_kwargs = {"index": True, "header": True, "lineterminator": "\n", **self.table_format_kwargs}
-                tables.append(dict_or_df[key].to_csv(**resolved_kwargs))
+                tables.append(updated_sheet_to_dataframe[key].to_csv(**resolved_kwargs))
             else:
                 resolved_kwargs = {
                     "index": True,
-                    "headers": dict_or_df[key].columns,
+                    "headers": updated_sheet_to_dataframe[key].columns,
                     "tablefmt": "pipe",
                     **self.table_format_kwargs,
                 }
                 # to_markdown uses tabulate
-                tables.append(dict_or_df[key].to_markdown(**resolved_kwargs))
+                tables.append(updated_sheet_to_dataframe[key].to_markdown(**resolved_kwargs))
             # add sheet_name to metadata
             metadata.append({"xlsx": {"sheet_name": key}})
         return tables, metadata
