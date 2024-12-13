@@ -26,7 +26,7 @@ def _convert_message_to_hfapi_format(message: ChatMessage) -> Dict[str, str]:
         - `role`
         - `content`
     """
-    return {"role": message.role.value, "content": message.text}
+    return {"role": message.role.value, "content": message.text or ""}
 
 
 @component
