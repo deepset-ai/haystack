@@ -519,6 +519,7 @@ def test_warm_up_use_hf_token(mocked_automodel, mocked_autotokenizer, initialize
 @patch("haystack.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained")
 def test_device_map_auto(mocked_automodel, _mocked_autotokenizer, monkeypatch):
     monkeypatch.delenv("HF_API_TOKEN", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
     reader = ExtractiveReader("deepset/roberta-base-squad2", model_kwargs={"device_map": "auto"})
     auto_device = ComponentDevice.resolve_device(None)
 
@@ -537,6 +538,7 @@ def test_device_map_auto(mocked_automodel, _mocked_autotokenizer, monkeypatch):
 @patch("haystack.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained")
 def test_device_map_str(mocked_automodel, _mocked_autotokenizer, monkeypatch):
     monkeypatch.delenv("HF_API_TOKEN", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
     reader = ExtractiveReader("deepset/roberta-base-squad2", model_kwargs={"device_map": "cpu:0"})
 
     class MockedModel:
@@ -554,6 +556,7 @@ def test_device_map_str(mocked_automodel, _mocked_autotokenizer, monkeypatch):
 @patch("haystack.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained")
 def test_device_map_dict(mocked_automodel, _mocked_autotokenizer, monkeypatch):
     monkeypatch.delenv("HF_API_TOKEN", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
     reader = ExtractiveReader(
         "deepset/roberta-base-squad2", model_kwargs={"device_map": {"layer_1": 1, "classifier": "cpu"}}
     )
