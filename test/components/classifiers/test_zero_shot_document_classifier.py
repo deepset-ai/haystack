@@ -45,6 +45,7 @@ class TestTransformersZeroShotDocumentClassifier:
 
     def test_from_dict(self, monkeypatch):
         monkeypatch.delenv("HF_API_TOKEN", raising=False)
+        monkeypatch.delenv("HF_TOKEN", raising=False)
         data = {
             "type": "haystack.components.classifiers.zero_shot_document_classifier.TransformersZeroShotDocumentClassifier",
             "init_parameters": {
@@ -73,6 +74,7 @@ class TestTransformersZeroShotDocumentClassifier:
 
     def test_from_dict_no_default_parameters(self, monkeypatch):
         monkeypatch.delenv("HF_API_TOKEN", raising=False)
+        monkeypatch.delenv("HF_TOKEN", raising=False)
         data = {
             "type": "haystack.components.classifiers.zero_shot_document_classifier.TransformersZeroShotDocumentClassifier",
             "init_parameters": {"model": "cross-encoder/nli-deberta-v3-xsmall", "labels": ["positive", "negative"]},

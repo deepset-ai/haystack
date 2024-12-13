@@ -273,7 +273,7 @@ class TestSentenceTransformersDiversityRanker:
         Test that ranker loads the SentenceTransformer model correctly during warm up.
         """
         monkeypatch.delenv("HF_API_TOKEN", raising=False)
-
+        monkeypatch.delenv("HF_TOKEN", raising=False)
         mock_model_class = MagicMock()
         mock_model_instance = MagicMock()
         mock_model_class.return_value = mock_model_instance
