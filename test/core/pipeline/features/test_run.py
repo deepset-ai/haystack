@@ -1657,7 +1657,7 @@ def that_is_a_simple_agent():
     class ToolExtractor:
         @component.output_types(output=List[str])
         def run(self, messages: List[ChatMessage]):
-            prompt: str = messages[-1].content
+            prompt: str = messages[-1].text
             lines = prompt.strip().split("\n")
             for line in reversed(lines):
                 pattern = r"Action:\s*(\w+)\[(.*?)\]"
@@ -1678,14 +1678,14 @@ def that_is_a_simple_agent():
 
         @component.output_types(output=List[ChatMessage])
         def run(self, replies: List[ChatMessage], current_prompt: List[ChatMessage]):
-            content = current_prompt[-1].content + replies[-1].content + self._suffix
+            content = current_prompt[-1].text + replies[-1].text + self._suffix
             return {"output": [ChatMessage.from_user(content)]}
 
     @component
     class SearchOutputAdapter:
         @component.output_types(output=List[ChatMessage])
         def run(self, replies: List[ChatMessage]):
-            content = f"Observation: {replies[-1].content}\n"
+            content = f"Observation: {replies[-1].text}\n"
             return {"output": [ChatMessage.from_assistant(content)]}
 
     pipeline.add_component("prompt_concatenator_after_action", PromptConcatenator())
