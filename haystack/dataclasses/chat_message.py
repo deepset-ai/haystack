@@ -25,6 +25,9 @@ class ChatRole(str, Enum):
     #: The tool role. A message from a tool contains the result of a Tool invocation.
     TOOL = "tool"
 
+    #: The function role. Deprecated in favor of `TOOL`.
+    FUNCTION = "function"
+
     @staticmethod
     def from_str(string: str) -> "ChatRole":
         """
@@ -93,6 +96,48 @@ class ChatMessage:
     _role: ChatRole
     _content: Sequence[ChatMessageContentT]
     _meta: Dict[str, Any] = field(default_factory=dict, hash=False)
+
+    def __new__(cls, *args, **kwargs):
+        """
+        This method is reimplemented to make the changes to the `ChatMessage` dataclass more visible.
+        """
+
+        general_msg = (
+            "Use the `from_assistant`, `from_user`, `from_system`, and `from_tool` class methods to create a "
+            "ChatMessage. Head over to the documentation for more information about the new API and how to migrate:"
+            " https://docs.haystack.deepset.ai/docs/data-classes#chatmessage"
+        )
+
+        if "role" in kwargs or "content" in kwargs or "meta" in kwargs:
+            raise TypeError(
+                "The `role`, `content`, and `meta` parameters of `ChatMessage` have been removed. " f"{general_msg}"
+            )
+
+        if len(args) > 1 and not isinstance(args[1], (TextContent, ToolCall, ToolCallResult)):
+            raise TypeError(
+                "The `content` parameter of `ChatMessage` must be a `ChatMessageContentT` instance. " f"{general_msg}"
+            )
+
+        return super(ChatMessage, cls).__new__(cls)
+
+    def __post_init__(self):
+        if self._role == ChatRole.FUNCTION:
+            msg = "The `FUNCTION` role has been deprecated in favor of `TOOL` and will be removed in 2.10.0. "
+            warnings.warn(msg, DeprecationWarning)
+
+    def __getattribute__(self, name):
+        """
+        This method is reimplemented to make the `content` attribute removal more visible.
+        """
+        if name == "content":
+            msg = (
+                "The `content` attribute of `ChatMessage` has been removed. "
+                "Use the `text` property to access the textual value. "
+                "Head over to the documentation for more information: "
+                "https://docs.haystack.deepset.ai/docs/data-classes#chatmessage"
+            )
+            raise AttributeError(msg)
+        return object.__getattribute__(self, name)
 
     def __len__(self):
         return len(self._content)
@@ -170,16 +215,6 @@ class ChatMessage:
             role = ChatRole.from_str(role)
         return self._role == role
 
-    def __getattribute__(self, name):
-        # this method is reimplemented to warn about the deprecation of the `content` attribute
-        if name == "content":
-            msg = (
-                "The `content` attribute of `ChatMessage` will be removed in Haystack 2.9.0. "
-                "Use the `text` property to access the textual value."
-            )
-            warnings.warn(msg, DeprecationWarning)
-        return object.__getattribute__(self, name)
-
     @classmethod
     def from_user(cls, text: str, meta: Optional[Dict[str, Any]] = None) -> "ChatMessage":
         """
@@ -243,6 +278,26 @@ class ChatMessage:
             _content=[ToolCallResult(result=tool_result, origin=origin, error=error)],
             _meta=meta or {},
         )
+
+    @classmethod
+    def from_function(cls, content: str, name: str) -> "ChatMessage":
+        """
+        Create a message from a function call. Deprecated in favor of `from_tool`.
+
+        :param content: The text content of the message.
+        :param name: The name of the function being called.
+        :returns: A new ChatMessage instance.
+        """
+        msg = (
+            "The `from_function` method is deprecated and will be removed in version 2.10.0. "
+            "Its behavior has changed: it now attempts to convert legacy function messages to tool messages. "
+            "This conversion is not guaranteed to succeed in all scenarios. "
+            "Please migrate to `ChatMessage.from_tool` and carefully verify the results if you "
+            "continue to use this method."
+        )
+        warnings.warn(msg)
+
+        return cls.from_tool(content, ToolCall(id=None, tool_name=name, arguments={}), error=False)
 
     def to_dict(self) -> Dict[str, Any]:
         """

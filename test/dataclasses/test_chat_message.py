@@ -135,6 +135,19 @@ def test_mixed_content():
     assert message.tool_call == content[1]
 
 
+def test_from_function():
+    # check warning is raised
+    with pytest.warns():
+        message = ChatMessage.from_function("Result of function invocation", "my_function")
+
+    assert message.role == ChatRole.TOOL
+    assert message.tool_call_result == ToolCallResult(
+        result="Result of function invocation",
+        origin=ToolCall(id=None, tool_name="my_function", arguments={}),
+        error=False,
+    )
+
+
 def test_serde():
     # the following message is created just for testing purposes and does not make sense in a real use case
 
@@ -186,6 +199,27 @@ def test_from_dict_with_invalid_content_type():
     data = {"_role": "assistant", "_content": [{"text": "Hello"}, {"invalid": "invalid"}]}
     with pytest.raises(ValueError):
         ChatMessage.from_dict(data)
+
+
+def test_chat_message_content_attribute_removed():
+    message = ChatMessage.from_user(text="This is a message")
+    with pytest.raises(AttributeError):
+        message.content
+
+
+def test_chat_message_init_parameters_removed():
+    with pytest.raises(TypeError):
+        ChatMessage(role="irrelevant", content="This is a message")
+
+
+def test_chat_message_init_content_parameter_type():
+    with pytest.raises(TypeError):
+        ChatMessage(ChatRole.USER, "This is a message")
+
+
+def test_chat_message_function_role_deprecated():
+    with pytest.warns(DeprecationWarning):
+        ChatMessage(ChatRole.FUNCTION, TextContent("This is a message"))
 
 
 @pytest.mark.integration
