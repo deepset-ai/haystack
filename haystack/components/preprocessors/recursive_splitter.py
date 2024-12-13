@@ -130,12 +130,6 @@ class RecursiveDocumentSplitter:
             if curr_separator == "sentence":
                 sentence_with_spans = self.nltk_tokenizer.split_sentences(text)
                 splits = [sentence["sentence"] for sentence in sentence_with_spans]
-
-                print("\n")
-
-                for i, sentence in enumerate(splits):
-                    print(f"Sentence {i}: {sentence}")
-
             else:
                 escaped_separator = re.escape(curr_separator)
                 escaped_separator = (
@@ -159,15 +153,9 @@ class RecursiveDocumentSplitter:
             current_chunk: List[str] = []
             current_length = 0
 
-            print("\n\n")
-
             # check splits, if any is too long, recursively chunk it, otherwise add to current chunk
             for split in splits:
-                print("in loop")
-                print(f"Split: {split}")
-
                 split_text = split
-
                 # if adding this split exceeds chunk_size, process current_chunk
                 if current_length + len(split_text) > self.split_length:
                     if current_chunk:  # keep the good splits
@@ -212,7 +200,6 @@ class RecursiveDocumentSplitter:
             new_doc.meta["split_id"] = split_nr
             new_doc.meta["split_idx_start"] = current_position
             new_doc.meta["_split_overlap"] = [] if self.split_overlap > 0 else None
-            new_doc.meta["page_number"] = current_page
 
             if split_nr > 0 and self.split_overlap > 0:
                 previous_doc = new_docs[-1]
@@ -226,8 +213,21 @@ class RecursiveDocumentSplitter:
                         }
                     )
 
+            # for the case where a chunk ends with one or multiple consecutive page breaks
+            # page_breaks_at_end = 0
+            # for i in range(1, len(chunk) + 1):
+            #     if ord(chunk[-i]) == 12:  # ASCII value for form feed, which is used as a page break
+            #         page_breaks_at_end += 1
+            # if page_breaks_at_end > 0 and current_page > 1:
+            #     new_doc.meta["page_number"] = current_page - page_breaks_at_end
+            # else:
+            #     new_doc.meta["page_number"] = current_page
+
+            new_doc.meta["page_number"] = current_page
+            current_page += chunk.count("\f")  # count page breaks in the chunk
+
+            # keep the new chunk doc and update the current position
             new_docs.append(new_doc)
-            current_page += chunk.count("\f")  # update the page number based on the number of page breaks
             current_position += len(chunk) - (self.split_overlap if split_nr < len(chunks) - 1 else 0)
 
         return new_docs
