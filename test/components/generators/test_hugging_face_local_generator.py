@@ -18,6 +18,7 @@ class TestHuggingFaceLocalGenerator:
     @patch("haystack.utils.hf.model_info")
     def test_init_default(self, model_info_mock, monkeypatch):
         monkeypatch.delenv("HF_API_TOKEN", raising=False)
+        monkeypatch.delenv("HF_TOKEN", raising=False)
         model_info_mock.return_value.pipeline_tag = "text2text-generation"
         generator = HuggingFaceLocalGenerator()
 
