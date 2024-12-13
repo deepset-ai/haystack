@@ -2,8 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import json
-
 from haystack import Pipeline
 from haystack.components.classifiers import DocumentLanguageClassifier
 from haystack.components.converters import TextFileToDocument
