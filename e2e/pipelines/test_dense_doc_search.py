@@ -26,7 +26,7 @@ def test_dense_doc_search_pipeline(tmp_path, samples_path):
     indexing_pipeline.add_component(instance=DocumentJoiner(), name="joiner")
     indexing_pipeline.add_component(instance=DocumentCleaner(), name="cleaner")
     indexing_pipeline.add_component(
-        instance=DocumentSplitter(split_by="sentence", split_length=250, split_overlap=30), name="splitter"
+        instance=DocumentSplitter(split_by="period", split_length=250, split_overlap=30), name="splitter"
     )
     indexing_pipeline.add_component(
         instance=SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"), name="embedder"
