@@ -5,7 +5,7 @@
 import warnings
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import Any, Dict, Optional, Union, List, Sequence
+from typing import Any, Dict, List, Optional, Sequence, Union
 
 
 class ChatRole(str, Enum):
