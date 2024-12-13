@@ -166,6 +166,7 @@ class TestHuggingFaceLocalChatGenerator:
     @patch("haystack.components.generators.chat.hugging_face_local.pipeline")
     def test_warm_up(self, pipeline_mock, monkeypatch):
         monkeypatch.delenv("HF_API_TOKEN", raising=False)
+        monkeypatch.delenv("HF_TOKEN", raising=False)
         generator = HuggingFaceLocalChatGenerator(
             model="mistralai/Mistral-7B-Instruct-v0.2",
             task="text2text-generation",

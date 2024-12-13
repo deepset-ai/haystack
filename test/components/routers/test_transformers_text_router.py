@@ -54,6 +54,7 @@ class TestTransformersTextRouter:
     def test_from_dict(self, mock_auto_config_from_pretrained, monkeypatch):
         mock_auto_config_from_pretrained.return_value = MagicMock(label2id={"en": 0, "de": 1})
         monkeypatch.delenv("HF_API_TOKEN", raising=False)
+        monkeypatch.delenv("HF_TOKEN", raising=False)
         data = {
             "type": "haystack.components.routers.transformers_text_router.TransformersTextRouter",
             "init_parameters": {
@@ -84,6 +85,7 @@ class TestTransformersTextRouter:
     def test_from_dict_no_default_parameters(self, mock_auto_config_from_pretrained, monkeypatch):
         mock_auto_config_from_pretrained.return_value = MagicMock(label2id={"en": 0, "de": 1})
         monkeypatch.delenv("HF_API_TOKEN", raising=False)
+        monkeypatch.delenv("HF_TOKEN", raising=False)
         data = {
             "type": "haystack.components.routers.transformers_text_router.TransformersTextRouter",
             "init_parameters": {"model": "papluca/xlm-roberta-base-language-detection"},
@@ -105,6 +107,7 @@ class TestTransformersTextRouter:
     def test_from_dict_with_cpu_device(self, mock_auto_config_from_pretrained, monkeypatch):
         mock_auto_config_from_pretrained.return_value = MagicMock(label2id={"en": 0, "de": 1})
         monkeypatch.delenv("HF_API_TOKEN", raising=False)
+        monkeypatch.delenv("HF_TOKEN", raising=False)
         data = {
             "type": "haystack.components.routers.transformers_text_router.TransformersTextRouter",
             "init_parameters": {
