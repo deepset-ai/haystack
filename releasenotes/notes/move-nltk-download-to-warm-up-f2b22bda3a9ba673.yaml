@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Move the NLTK download to warm_up. This prevents calling to an external api during instantiation.
