@@ -201,7 +201,9 @@ def test_from_dict_with_invalid_content_type():
         ChatMessage.from_dict(data)
 
 
-# def test_chat_message_from_dict_with_invalid_content_type():
+def test_from_dict_with_legacy_init_parameters():
+    with pytest.raises(TypeError):
+        ChatMessage.from_dict({"role": "user", "content": "This is a message"})
 
 
 def test_chat_message_content_attribute_removed():

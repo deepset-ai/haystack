@@ -7,6 +7,8 @@ from dataclasses import asdict, dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional, Sequence, Union
 
+LEGACY_INIT_PARAMETERS = {"role", "content", "meta", "name"}
+
 
 class ChatRole(str, Enum):
     """
@@ -104,19 +106,22 @@ class ChatMessage:
 
         general_msg = (
             "Use the `from_assistant`, `from_user`, `from_system`, and `from_tool` class methods to create a "
-            "ChatMessage. Head over to the documentation for more information about the new API and how to migrate:"
+            "ChatMessage. For more information about the new API and how to migrate, see the documentation:"
             " https://docs.haystack.deepset.ai/docs/data-classes#chatmessage"
         )
 
-        if "role" in kwargs or "content" in kwargs or "meta" in kwargs or "name" in kwargs:
+        if any(param in kwargs for param in LEGACY_INIT_PARAMETERS):
             raise TypeError(
-                "The `role`, `content`, `meta`, and `name` parameters of `ChatMessage` have been removed. "
+                "The `role`, `content`, `meta`, and `name` init parameters of `ChatMessage` have been removed. "
                 f"{general_msg}"
             )
 
-        if len(args) > 1 and not isinstance(args[1], (TextContent, ToolCall, ToolCallResult)):
+        allowed_content_types = (TextContent, ToolCall, ToolCallResult)
+        if len(args) > 1 and not isinstance(args[1], allowed_content_types):
             raise TypeError(
-                "The `content` parameter of `ChatMessage` must be a `ChatMessageContentT` instance. " f"{general_msg}"
+                "The `_content` parameter of `ChatMessage` must be a one of the following types: "
+                f"{', '.join(t.__name__ for t in allowed_content_types)}. "
+                f"{general_msg}"
             )
 
         return super(ChatMessage, cls).__new__(cls)
@@ -130,11 +135,12 @@ class ChatMessage:
         """
         This method is reimplemented to make the `content` attribute removal more visible.
         """
+
         if name == "content":
             msg = (
                 "The `content` attribute of `ChatMessage` has been removed. "
                 "Use the `text` property to access the textual value. "
-                "Head over to the documentation for more information: "
+                "For more information about the new API and how to migrate, see the documentation: "
                 "https://docs.haystack.deepset.ai/docs/data-classes#chatmessage"
             )
             raise AttributeError(msg)
@@ -335,10 +341,10 @@ class ChatMessage:
         :returns:
             The created object.
         """
-        if "role" in data or "content" in data or "meta" in data or "name" in data:
+        if any(param in data for param in LEGACY_INIT_PARAMETERS):
             raise TypeError(
-                "The `role`, `content`, `meta`, and `name` parameters of `ChatMessage` have been removed. "
-                "Head over to the documentation for more information about the new API and how to migrate: "
+                "The `role`, `content`, `meta`, and `name` init parameters of `ChatMessage` have been removed. "
+                "For more information about the new API and how to migrate, see the documentation: "
                 "https://docs.haystack.deepset.ai/docs/data-classes#chatmessage"
             )
 
