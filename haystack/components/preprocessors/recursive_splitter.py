@@ -4,7 +4,7 @@
 
 import re
 from copy import deepcopy
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from haystack import Document, component, logging
 
@@ -56,7 +56,7 @@ class RecursiveDocumentSplitter:
         split_length: int = 200,
         split_overlap: int = 0,
         separators: Optional[List[str]] = None,
-        sentence_splitter_params: Optional[Dict[str, str]] = None,
+        sentence_splitter_params: Optional[Dict[str, Any]] = None,
     ):
         """
         Initializes a RecursiveDocumentSplitter.
@@ -91,7 +91,7 @@ class RecursiveDocumentSplitter:
             raise ValueError("All separators must be strings.")
 
     @staticmethod
-    def _get_custom_sentence_tokenizer(sentence_splitter_params: Dict[str, str]):
+    def _get_custom_sentence_tokenizer(sentence_splitter_params: Dict[str, Any]):
         from haystack.components.preprocessors.sentence_tokenizer import SentenceSplitter
 
         return SentenceSplitter(**sentence_splitter_params)
