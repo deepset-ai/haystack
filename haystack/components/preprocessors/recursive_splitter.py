@@ -105,13 +105,21 @@ class RecursiveDocumentSplitter:
             The list of chunks with overlap applied.
         """
         overlapped_chunks = []
+
         for idx, chunk in enumerate(chunks):
             if idx == 0:
                 overlapped_chunks.append(chunk)
                 continue
             overlap_start = max(0, len(chunks[idx - 1]) - self.split_overlap)
-            current_chunk = chunks[idx - 1][overlap_start:] + chunk
+            overlap = chunks[idx - 1][overlap_start:]
+            if overlap == chunks[idx - 1]:
+                logger.warning(
+                    "Overlap is the same as the previous chunk. "
+                    "Consider increasing the `split_overlap` parameter or decreasing the `split_length` parameter."
+                )
+            current_chunk = overlap + chunk
             overlapped_chunks.append(current_chunk)
+
         return overlapped_chunks
 
     def _chunk_text(self, text: str) -> List[str]:

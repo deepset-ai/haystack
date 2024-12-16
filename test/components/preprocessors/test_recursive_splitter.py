@@ -39,7 +39,7 @@ def test_apply_overlap_no_overlap():
     assert result == ["chunk1", "chunk2", "chunk3"]
 
 
-def test_apply_overlap_with_overlap_case_1():
+def test_apply_overlap_with_overlap():
     # Test the case where there is overlap between chunks
     splitter = RecursiveDocumentSplitter(split_length=20, split_overlap=4, separators=["."])
     chunks = ["chunk1", "chunk2", "chunk3"]
@@ -47,12 +47,14 @@ def test_apply_overlap_with_overlap_case_1():
     assert result == ["chunk1", "unk1chunk2", "unk2chunk3"]
 
 
-# ToDo: update this test, result above is not the expected one
-def ignore_test_apply_overlap_with_overlap_case_2():
+def test_apply_overlap_with_overlap_capturing_completely_previous_chunk(caplog):
     splitter = RecursiveDocumentSplitter(split_length=20, split_overlap=6, separators=["."])
     chunks = ["chunk1", "chunk2", "chunk3", "chunk4"]
-    result = splitter._apply_overlap(chunks)
-    assert result == ["chunk1", "chunk1chunk2", "chunk2chunk3", "chunk3chunk4"]
+    _ = splitter._apply_overlap(chunks)
+    assert (
+        "Overlap is the same as the previous chunk. Consider increasing the `split_overlap` parameter or decreasing the `split_length` parameter."
+        in caplog.text
+    )
 
 
 def test_apply_overlap_single_chunk():
