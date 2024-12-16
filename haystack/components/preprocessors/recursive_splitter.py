@@ -64,9 +64,10 @@ class RecursiveDocumentSplitter:
         :param split_length: The maximum length of each chunk in characters.
         :param split_overlap: The number of characters to overlap between consecutive chunks.
         :param separators: An optional list of separator strings to use for splitting the text. The string
-            separators will be treated as regular expressions un less if the separator is "sentence", in that case the
+            separators will be treated as regular expressions unless the separator is "sentence", in that case the
             text will be split into sentences using a custom sentence tokenizer based on NLTK.
-            If no separators are provided, the default separators ["\n\n", "\n", ".", " "] are used.
+            See: haystack.components.preprocessors.sentence_tokenizer.SentenceSplitter.
+            If no separators are provided, the default separators ["\n\n", "sentence", "\n", " "] are used.
 
         :raises ValueError: If the overlap is greater than or equal to the chunk size or if the overlap is negative, or
                             if any separator is not a string.
@@ -126,10 +127,10 @@ class RecursiveDocumentSplitter:
         """
         Recursive chunking algorithm that divides text into smaller chunks based on a list of separator characters.
 
-        It starts with a list of separator characters (e.g., ["\n\n", "\n", " ", ""]) and attempts to divide the text
-        using the first separator. If the resulting chunks are still larger than the specified chunk size, it moves to
-        the next separator in the list. This process continues recursively, progressively applying each specific
-        separator until the chunks meet the desired size criteria.
+        It starts with a list of separator characters (e.g., ["\n\n", "sentence", "\n", " "]) and attempts to divide
+        the text using the first separator. If the resulting chunks are still larger than the specified chunk size,
+        it moves to the next separator in the list. This process continues recursively, progressively applying each
+        specific separator until the chunks meet the desired size criteria.
 
         :param text: The text to be split into chunks.
         :returns:
@@ -246,7 +247,7 @@ class RecursiveDocumentSplitter:
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document]) -> Dict[str, List[Document]]:
         """
-        Split documents into Documents with smaller chunks of text.
+        Split a list of documents into documents with smaller chunks of text.
 
         :param documents: List of Documents to split.
         :returns:
