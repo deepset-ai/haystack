@@ -108,9 +108,10 @@ class ChatMessage:
             " https://docs.haystack.deepset.ai/docs/data-classes#chatmessage"
         )
 
-        if "role" in kwargs or "content" in kwargs or "meta" in kwargs:
+        if "role" in kwargs or "content" in kwargs or "meta" in kwargs or "name" in kwargs:
             raise TypeError(
-                "The `role`, `content`, and `meta` parameters of `ChatMessage` have been removed. " f"{general_msg}"
+                "The `role`, `content`, `meta`, and `name` parameters of `ChatMessage` have been removed. "
+                f"{general_msg}"
             )
 
         if len(args) > 1 and not isinstance(args[1], (TextContent, ToolCall, ToolCallResult)):
@@ -334,6 +335,13 @@ class ChatMessage:
         :returns:
             The created object.
         """
+        if "role" in data or "content" in data or "meta" in data or "name" in data:
+            raise TypeError(
+                "The `role`, `content`, `meta`, and `name` parameters of `ChatMessage` have been removed. "
+                "Head over to the documentation for more information about the new API and how to migrate: "
+                "https://docs.haystack.deepset.ai/docs/data-classes#chatmessage"
+            )
+
         data["_role"] = ChatRole(data["_role"])
 
         content: List[ChatMessageContentT] = []

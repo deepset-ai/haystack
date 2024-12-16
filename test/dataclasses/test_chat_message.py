@@ -201,6 +201,9 @@ def test_from_dict_with_invalid_content_type():
         ChatMessage.from_dict(data)
 
 
+# def test_chat_message_from_dict_with_invalid_content_type():
+
+
 def test_chat_message_content_attribute_removed():
     message = ChatMessage.from_user(text="This is a message")
     with pytest.raises(AttributeError):
