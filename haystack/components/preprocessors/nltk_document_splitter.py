@@ -77,13 +77,20 @@ class NLTKDocumentSplitter(DocumentSplitter):
         self.respect_sentence_boundary = respect_sentence_boundary
         self.use_split_rules = use_split_rules
         self.extend_abbreviations = extend_abbreviations
-        self.sentence_splitter = SentenceSplitter(
-            language=language,
-            use_split_rules=use_split_rules,
-            extend_abbreviations=extend_abbreviations,
-            keep_white_spaces=True,
-        )
+        self.sentence_splitter = None
         self.language = language
+
+    def warm_up(self):
+        """
+        Warm up the NLTKDocumentSplitter by loading the sentence tokenizer.
+        """
+        if self.sentence_splitter is None:
+            self.sentence_splitter = SentenceSplitter(
+                language=self.language,
+                use_split_rules=self.use_split_rules,
+                extend_abbreviations=self.extend_abbreviations,
+                keep_white_spaces=True,
+            )
 
     def _split_into_units(
         self, text: str, split_by: Literal["function", "page", "passage", "sentence", "word", "line"]
