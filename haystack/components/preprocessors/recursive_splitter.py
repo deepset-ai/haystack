@@ -61,7 +61,7 @@ class RecursiveDocumentSplitter:
         """
         Initializes a RecursiveDocumentSplitter.
 
-        :param split_length: The maximum length of each chunk.
+        :param split_length: The maximum length of each chunk in characters.
         :param split_overlap: The number of characters to overlap between consecutive chunks.
         :param separators: An optional list of separator strings to use for splitting the text. The string
             separators will be treated as regular expressions un less if the separator is "sentence", in that case the
