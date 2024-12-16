@@ -90,7 +90,7 @@ class RecursiveDocumentSplitter:
             from haystack.components.preprocessors.sentence_tokenizer import SentenceSplitter
         except (LookupError, ModuleNotFoundError):
             raise Exception("You need to install NLTK to use this function. You can install it via `pip install nltk`")
-        return SentenceSplitter()
+        return SentenceSplitter(keep_white_spaces=True)
 
     def _apply_overlap(self, chunks: List[str]) -> List[str]:
         """
