@@ -52,7 +52,11 @@ class RecursiveDocumentSplitter:
     """  # noqa: E501
 
     def __init__(  # pylint: disable=too-many-positional-arguments
-        self, split_length: int = 200, split_overlap: int = 0, separators: Optional[List[str]] = None
+        self,
+        split_length: int = 200,
+        split_overlap: int = 0,
+        separators: Optional[List[str]] = None,
+        sentence_splitter_params: Optional[Dict[str, str]] = None,
     ):
         """
         Initializes a RecursiveDocumentSplitter.
@@ -70,9 +74,11 @@ class RecursiveDocumentSplitter:
         self.split_length = split_length
         self.split_overlap = split_overlap
         self.separators = separators if separators else ["\n\n", "sentence", "\n", " "]  # default separators
+        self.sentence_tokenizer_params = sentence_splitter_params
         self._check_params()
         if "sentence" in self.separators:
-            self.nltk_tokenizer = self._get_custom_sentence_tokenizer()
+            sentence_splitter_params = sentence_splitter_params or {"keep_white_spaces": True}
+            self.nltk_tokenizer = self._get_custom_sentence_tokenizer(sentence_splitter_params)
 
     def _check_params(self):
         if self.split_length < 1:
@@ -85,12 +91,12 @@ class RecursiveDocumentSplitter:
             raise ValueError("All separators must be strings.")
 
     @staticmethod
-    def _get_custom_sentence_tokenizer():
+    def _get_custom_sentence_tokenizer(sentence_splitter_params: Optional[Dict[str, str]] = None):
         try:
             from haystack.components.preprocessors.sentence_tokenizer import SentenceSplitter
         except (LookupError, ModuleNotFoundError):
             raise Exception("You need to install NLTK to use this function. You can install it via `pip install nltk`")
-        return SentenceSplitter(keep_white_spaces=True)
+        return SentenceSplitter(**sentence_splitter_params)
 
     def _apply_overlap(self, chunks: List[str]) -> List[str]:
         """
@@ -215,7 +221,9 @@ class RecursiveDocumentSplitter:
 
             # count page breaks in the chunk
             current_page += chunk.count("\f")
-            # count the number of consecutive page breaks at the end of the chunk
+
+            # if there are consecutive page breaks at the end with no more text, adjust the page number
+            # e.g: "text\f\f\f" -> 3 page breaks, but current_page should be 1
             consecutive_page_breaks = len(chunk) - len(chunk.rstrip("\f"))
 
             if consecutive_page_breaks > 0:
