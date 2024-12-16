@@ -91,7 +91,7 @@ class RecursiveDocumentSplitter:
             raise ValueError("All separators must be strings.")
 
     @staticmethod
-    def _get_custom_sentence_tokenizer(sentence_splitter_params: Optional[Dict[str, str]] = None):
+    def _get_custom_sentence_tokenizer(sentence_splitter_params: Dict[str, str]):
         from haystack.components.preprocessors.sentence_tokenizer import SentenceSplitter
 
         return SentenceSplitter(**sentence_splitter_params)
