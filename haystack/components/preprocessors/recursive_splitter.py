@@ -222,11 +222,11 @@ class RecursiveDocumentSplitter:
                 return chunks
 
         # if no separator worked, fall back to character- or word-level chunking
-        # ToDo: refactor into functions that can be easily tested
+        # ToDo: refactor into a function making use of split_unit parameter that can be easily tested in isolation
         if self.split_units == "word":
             return [
                 " ".join(text.split()[i : i + self.split_length])
-                for i in range(0, len(text.split()), self.split_length - self.split_overlap)
+                for i in range(0, self._chunk_length(text), self.split_length - self.split_overlap)
             ]
 
         if self.split_units == "char":
