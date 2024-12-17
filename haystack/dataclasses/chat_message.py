@@ -97,6 +97,7 @@ class ChatMessage:
 
     _role: ChatRole
     _content: Sequence[ChatMessageContentT]
+    _name: Optional[str] = None
     _meta: Dict[str, Any] = field(default_factory=dict, hash=False)
 
     def __new__(cls, *args, **kwargs):
@@ -164,6 +165,13 @@ class ChatMessage:
         return self._meta
 
     @property
+    def name(self) -> Optional[str]:
+        """
+        Returns the name associated with the message.
+        """
+        return self._name
+
+    @property
     def texts(self) -> List[str]:
         """
         Returns the list of all texts contained in the message.
@@ -223,32 +231,35 @@ class ChatMessage:
         return self._role == role
 
     @classmethod
-    def from_user(cls, text: str, meta: Optional[Dict[str, Any]] = None) -> "ChatMessage":
+    def from_user(cls, text: str, meta: Optional[Dict[str, Any]] = None, name: Optional[str] = None) -> "ChatMessage":
         """
         Create a message from the user.
 
         :param text: The text content of the message.
         :param meta: Additional metadata associated with the message.
+        :param name: An optional name for the participant. This field is only supported by OpenAI.
         :returns: A new ChatMessage instance.
         """
-        return cls(_role=ChatRole.USER, _content=[TextContent(text=text)], _meta=meta or {})
+        return cls(_role=ChatRole.USER, _content=[TextContent(text=text)], _meta=meta or {}, _name=name)
 
     @classmethod
-    def from_system(cls, text: str, meta: Optional[Dict[str, Any]] = None) -> "ChatMessage":
+    def from_system(cls, text: str, meta: Optional[Dict[str, Any]] = None, name: Optional[str] = None) -> "ChatMessage":
         """
         Create a message from the system.
 
         :param text: The text content of the message.
         :param meta: Additional metadata associated with the message.
+        :param name: An optional name for the participant. This field is only supported by OpenAI.
         :returns: A new ChatMessage instance.
         """
-        return cls(_role=ChatRole.SYSTEM, _content=[TextContent(text=text)], _meta=meta or {})
+        return cls(_role=ChatRole.SYSTEM, _content=[TextContent(text=text)], _meta=meta or {}, _name=name)
 
     @classmethod
     def from_assistant(
         cls,
         text: Optional[str] = None,
         meta: Optional[Dict[str, Any]] = None,
+        name: Optional[str] = None,
         tool_calls: Optional[List[ToolCall]] = None,
     ) -> "ChatMessage":
         """
@@ -257,6 +268,7 @@ class ChatMessage:
         :param text: The text content of the message.
         :param meta: Additional metadata associated with the message.
         :param tool_calls: The Tool calls to include in the message.
+        :param name: An optional name for the participant. This field is only supported by OpenAI.
         :returns: A new ChatMessage instance.
         """
         content: List[ChatMessageContentT] = []
@@ -265,7 +277,7 @@ class ChatMessage:
         if tool_calls:
             content.extend(tool_calls)
 
-        return cls(_role=ChatRole.ASSISTANT, _content=content, _meta=meta or {})
+        return cls(_role=ChatRole.ASSISTANT, _content=content, _meta=meta or {}, _name=name)
 
     @classmethod
     def from_tool(
@@ -316,7 +328,7 @@ class ChatMessage:
         serialized: Dict[str, Any] = {}
         serialized["_role"] = self._role.value
         serialized["_meta"] = self._meta
-
+        serialized["_name"] = self._name
         content: List[Dict[str, Any]] = []
         for part in self._content:
             if isinstance(part, TextContent):

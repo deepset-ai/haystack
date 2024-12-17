@@ -31,8 +31,9 @@ def test_from_assistant_with_valid_content():
     text = "Hello, how can I assist you?"
     message = ChatMessage.from_assistant(text)
 
-    assert message._role == ChatRole.ASSISTANT
+    assert message.role == ChatRole.ASSISTANT
     assert message._content == [TextContent(text)]
+    assert message.name is None
 
     assert message.text == text
     assert message.texts == [text]
@@ -69,6 +70,7 @@ def test_from_user_with_valid_content():
 
     assert message.role == ChatRole.USER
     assert message._content == [TextContent(text)]
+    assert message.name is None
 
     assert message.text == text
     assert message.texts == [text]
@@ -77,6 +79,15 @@ def test_from_user_with_valid_content():
     assert not message.tool_call
     assert not message.tool_call_results
     assert not message.tool_call_result
+
+
+def test_from_user_with_name():
+    text = "I have a question."
+    message = ChatMessage.from_user(text=text, name="John")
+
+    assert message.name == "John"
+    assert message.role == ChatRole.USER
+    assert message._content == [TextContent(text)]
 
 
 def test_from_system_with_valid_content():
@@ -174,6 +185,7 @@ def test_serde():
             },
         ],
         "_role": "assistant",
+        "_name": None,
         "_meta": {"some": "info"},
     }
 
