@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    Improved performance of deserializing callables by using `importlib` instead of `sys.modules`.
+    This change allows importing local functions and classes that are not in `sys.modules`
+    when deserializing callables.
