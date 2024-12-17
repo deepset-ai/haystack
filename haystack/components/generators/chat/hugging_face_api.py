@@ -25,13 +25,8 @@ def _convert_message_to_hfapi_format(message: ChatMessage) -> Dict[str, str]:
     :returns: A dictionary with the following keys:
         - `role`
         - `content`
-        - `name` (optional)
     """
-    formatted_msg = {"role": message.role.value, "content": message.content}
-    if message.name:
-        formatted_msg["name"] = message.name
-
-    return formatted_msg
+    return {"role": message.role.value, "content": message.text or ""}
 
 
 @component

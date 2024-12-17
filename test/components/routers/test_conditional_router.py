@@ -349,7 +349,7 @@ class TestRouter:
         ]
         router = ConditionalRouter(routes, unsafe=True)
         streams = [1]
-        message = ChatMessage.from_user(content="This is a message")
+        message = ChatMessage.from_user("This is a message")
         res = router.run(streams=streams, message=message)
         assert res == {"message": message}
 
@@ -370,7 +370,7 @@ class TestRouter:
         ]
         router = ConditionalRouter(routes, validate_output_type=True)
         streams = [1]
-        message = ChatMessage.from_user(content="This is a message")
+        message = ChatMessage.from_user("This is a message")
         with pytest.raises(ValueError, match="Route 'message' type doesn't match expected type"):
             router.run(streams=streams, message=message)
 
@@ -391,7 +391,7 @@ class TestRouter:
         ]
         router = ConditionalRouter(routes, unsafe=True, validate_output_type=True)
         streams = [1]
-        message = ChatMessage.from_user(content="This is a message")
+        message = ChatMessage.from_user("This is a message")
         res = router.run(streams=streams, message=message)
         assert isinstance(res["message"], ChatMessage)
 
