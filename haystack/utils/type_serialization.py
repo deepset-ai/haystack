@@ -6,9 +6,13 @@ import importlib
 import inspect
 import sys
 import typing
+from threading import Lock
+from types import ModuleType
 from typing import Any, get_args, get_origin
 
 from haystack import DeserializationError
+
+_import_lock = Lock()
 
 
 def serialize_type(target: Any) -> str:
@@ -132,7 +136,7 @@ def deserialize_type(type_str: str) -> Any:
         module = sys.modules.get(module_name)
         if not module:
             try:
-                module = importlib.import_module(module_name)
+                module = thread_safe_import(module_name)
             except ImportError as e:
                 raise DeserializationError(f"Could not import the module: {module_name}") from e
 
@@ -141,3 +145,17 @@ def deserialize_type(type_str: str) -> Any:
             raise DeserializationError(f"Could not locate the type: {type_name} in the module: {module_name}")
 
         return deserialized_type
+
+
+def thread_safe_import(module_name: str) -> ModuleType:
+    """
+    Import a module in a thread-safe manner.
+
+    Importing modules in a multi-threaded environment can lead to race conditions.
+    This function ensures that the module is imported in a thread-safe manner without having impact
+    on the performance of the import for single-threaded environments.
+
+    :param module_name: the module to import
+    """
+    with _import_lock:
+        return importlib.import_module(module_name)

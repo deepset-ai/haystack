@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import importlib
 import itertools
 from collections import defaultdict
 from copy import deepcopy
@@ -26,7 +25,7 @@ from haystack.core.errors import (
 from haystack.core.serialization import DeserializationCallbacks, component_from_dict, component_to_dict
 from haystack.core.type_utils import _type_name, _types_are_compatible
 from haystack.marshal import Marshaller, YamlMarshaller
-from haystack.utils import is_in_jupyter
+from haystack.utils import is_in_jupyter, type_serialization
 
 from .descriptions import find_pipeline_inputs, find_pipeline_outputs
 from .draw import _to_mermaid_image
@@ -161,7 +160,7 @@ class PipelineBase:
                         # Import the module first...
                         module, _ = component_data["type"].rsplit(".", 1)
                         logger.debug("Trying to import module {module_name}", module_name=module)
-                        importlib.import_module(module)
+                        type_serialization.thread_safe_import(module)
                         # ...then try again
                         if component_data["type"] not in component.registry:
                             raise PipelineError(
