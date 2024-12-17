@@ -55,7 +55,7 @@ class RecursiveDocumentSplitter:
         self,
         split_length: int = 200,
         split_overlap: int = 0,
-        split_units: Literal["word", "char"] = "char",
+        split_unit: Literal["word", "char"] = "char",
         separators: Optional[List[str]] = None,
         sentence_splitter_params: Optional[Dict[str, Any]] = None,
     ):
@@ -65,7 +65,7 @@ class RecursiveDocumentSplitter:
         :param split_length: The maximum length of each chunk by default in characters, but can be in words.
             See the `split_units` parameter.
         :param split_overlap: The number of characters to overlap between consecutive chunks.
-        :param split_units: The unit of the split_length parameter. It can be either "word" or "char".
+        :param split_unit: The unit of the split_length parameter. It can be either "word" or "char".
         :param separators: An optional list of separator strings to use for splitting the text. The string
             separators will be treated as regular expressions unless the separator is "sentence", in that case the
             text will be split into sentences using a custom sentence tokenizer based on NLTK.
@@ -77,7 +77,7 @@ class RecursiveDocumentSplitter:
         """
         self.split_length = split_length
         self.split_overlap = split_overlap
-        self.split_units = split_units
+        self.split_units = split_unit
         self.separators = separators if separators else ["\n\n", "sentence", "\n", " "]  # default separators
         self.sentence_tokenizer_params = sentence_splitter_params
         self._check_params()
@@ -190,8 +190,10 @@ class RecursiveDocumentSplitter:
             # check splits, if any is too long, recursively chunk it, otherwise add to current chunk
             for split in splits:
                 split_text = split
+
                 # if adding this split exceeds chunk_size, process current_chunk
                 if current_length + self._chunk_length(split_text) > self.split_length:
+                    # process current_chunk
                     if current_chunk:  # keep the good splits
                         chunks.append("".join(current_chunk))
                         current_chunk = []
@@ -220,10 +222,18 @@ class RecursiveDocumentSplitter:
                 return chunks
 
         # if no separator worked, fall back to character- or word-level chunking
-        return [
-            text[i : i + self.split_length]
-            for i in range(0, self._chunk_length(text), self.split_length - self.split_overlap)
-        ]
+        # ToDo: refactor into functions that can be easily tested
+        if self.split_units == "word":
+            return [
+                " ".join(text.split()[i : i + self.split_length])
+                for i in range(0, len(text.split()), self.split_length - self.split_overlap)
+            ]
+
+        if self.split_units == "char":
+            return [
+                text[i : i + self.split_length]
+                for i in range(0, self._chunk_length(text), self.split_length - self.split_overlap)
+            ]
 
     def _add_overlap_info(self, curr_pos: int, new_doc: Document, new_docs: List[Document]) -> None:
         prev_doc = new_docs[-1]

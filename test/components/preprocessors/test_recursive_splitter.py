@@ -83,7 +83,7 @@ def test_chunk_text_by_period():
     assert chunks[2] == " And one more."
 
 
-def test_recursive_splitter_multiple_new_lines():
+def test_run_multiple_new_lines():
     splitter = RecursiveDocumentSplitter(split_length=20, separators=["\n\n", "\n"])
     text = "This is a test.\n\n\nAnother test.\n\n\n\nFinal test."
     doc = Document(content=text)
@@ -93,7 +93,7 @@ def test_recursive_splitter_multiple_new_lines():
     assert chunks[2].content == "\n\nFinal test."
 
 
-def test_recursive_splitter_empty_documents(caplog: LogCaptureFixture):
+def test_run_empty_documents(caplog: LogCaptureFixture):
     splitter = RecursiveDocumentSplitter(split_length=20, split_overlap=0, separators=["."])
     empty_doc = Document(content="")
     doc_chunks = splitter.run([empty_doc])
@@ -102,7 +102,7 @@ def test_recursive_splitter_empty_documents(caplog: LogCaptureFixture):
     assert "has an empty content. Skipping this document." in caplog.text
 
 
-def test_recursive_splitter_using_custom_sentence_tokenizer():
+def test_run_using_custom_sentence_tokenizer():
     """
     This test includes abbreviations that are not handled by the simple sentence tokenizer based on "." and requires a
     more sophisticated sentence tokenizer like the one provided by NLTK.
@@ -346,56 +346,6 @@ def test_run_split_by_sentence_count_page_breaks() -> None:
     assert chunks_docs[6].meta["split_idx_start"] == text.index(chunks_docs[6].content)
 
 
-def test_recursive_splitter_custom_sentence_tokenizer_document_and_overlap():
-    """Test that RecursiveDocumentSplitter works correctly with custom sentence tokenizer and overlap"""
-    splitter = RecursiveDocumentSplitter(split_length=25, split_overlap=5, separators=["sentence"])
-    text = "This is sentence one. This is sentence two. This is sentence three."
-
-    doc = Document(content=text)
-    doc_chunks = splitter.run([doc])["documents"]
-
-    assert len(doc_chunks) == 3
-
-    assert doc_chunks[0].content == "This is sentence one. "
-    assert doc_chunks[0].meta["split_id"] == 0
-    assert doc_chunks[0].meta["split_idx_start"] == text.index(doc_chunks[0].content)
-    assert doc_chunks[0].meta["_split_overlap"] == [{"doc_id": doc_chunks[1].id, "range": (0, 5)}]
-
-    assert doc_chunks[1].content == "one. This is sentence two. "
-    assert doc_chunks[1].meta["split_id"] == 1
-    assert doc_chunks[1].meta["split_idx_start"] == text.index(doc_chunks[1].content)
-    assert doc_chunks[1].meta["_split_overlap"] == [
-        {"doc_id": doc_chunks[0].id, "range": (17, 22)},
-        {"doc_id": doc_chunks[2].id, "range": (0, 5)},
-    ]
-
-    assert doc_chunks[2].content == "two. This is sentence three."
-    assert doc_chunks[2].meta["split_id"] == 2
-    assert doc_chunks[2].meta["split_idx_start"] == text.index(doc_chunks[2].content)
-    assert doc_chunks[2].meta["_split_overlap"] == [{"doc_id": doc_chunks[1].id, "range": (22, 27)}]
-
-
-def test_recursive_splitter_custom_sentence_tokenizer_document_and_overlap_word_unit_no_overlap():
-    splitter = RecursiveDocumentSplitter(split_length=4, split_overlap=0, separators=["."], split_units="word")
-    text = "This is sentence one. This is sentence two. This is sentence three."
-    chunks = splitter.run([Document(content=text)])["documents"]
-    assert len(chunks) == 3
-    assert chunks[0].content == "This is sentence one."
-    assert chunks[1].content == " This is sentence two."
-    assert chunks[2].content == " This is sentence three."
-
-
-def test_recursive_splitter_custom_sentence_tokenizer_document_and_overlap_word_unit_overlap_2_words():
-    splitter = RecursiveDocumentSplitter(split_length=4, split_overlap=2, separators=["."], split_units="word")
-    text = "This is sentence one. This is sentence two. This is sentence three. This is sentence four."
-    chunks = splitter.run([Document(content=text)])["documents"]
-    assert len(chunks) == 4
-    assert chunks[0].content == "This is sentence one."
-    assert chunks[1].content == "sentence one. This is sentence two."
-    assert chunks[2].content == "sentence two. This is sentence three."
-    assert chunks[3].content == "sentence three. This is sentence four."
-
-
 def test_run_split_document_with_overlap_character_unit():
     splitter = RecursiveDocumentSplitter(split_length=20, split_overlap=11, separators=[".", " "])
     text = """A simple sentence1. A bright sentence2. A clever sentence3. A joyful sentence4"""
@@ -450,6 +400,273 @@ def test_run_fallback_to_character_chunking():
     chunks = splitter.run([doc])["documents"]
     for chunk in chunks:
         assert len(chunk.content) <= 2
+
+
+def test_run_custom_sentence_tokenizer_document_and_overlap_char_unit():
+    """Test that RecursiveDocumentSplitter works correctly with custom sentence tokenizer and overlap"""
+    splitter = RecursiveDocumentSplitter(split_length=25, split_overlap=5, separators=["sentence"])
+    text = "This is sentence one. This is sentence two. This is sentence three."
+
+    doc = Document(content=text)
+    doc_chunks = splitter.run([doc])["documents"]
+
+    assert len(doc_chunks) == 3
+
+    assert doc_chunks[0].content == "This is sentence one. "
+    assert doc_chunks[0].meta["split_id"] == 0
+    assert doc_chunks[0].meta["split_idx_start"] == text.index(doc_chunks[0].content)
+    assert doc_chunks[0].meta["_split_overlap"] == [{"doc_id": doc_chunks[1].id, "range": (0, 5)}]
+
+    assert doc_chunks[1].content == "one. This is sentence two. "
+    assert doc_chunks[1].meta["split_id"] == 1
+    assert doc_chunks[1].meta["split_idx_start"] == text.index(doc_chunks[1].content)
+    assert doc_chunks[1].meta["_split_overlap"] == [
+        {"doc_id": doc_chunks[0].id, "range": (17, 22)},
+        {"doc_id": doc_chunks[2].id, "range": (0, 5)},
+    ]
+
+    assert doc_chunks[2].content == "two. This is sentence three."
+    assert doc_chunks[2].meta["split_id"] == 2
+    assert doc_chunks[2].meta["split_idx_start"] == text.index(doc_chunks[2].content)
+    assert doc_chunks[2].meta["_split_overlap"] == [{"doc_id": doc_chunks[1].id, "range": (22, 27)}]
+
+
+def test_run_split_by_dot_count_page_breaks_word_unit() -> None:
+    document_splitter = RecursiveDocumentSplitter(separators=["."], split_length=4, split_overlap=0, split_unit="word")
+
+    text = (
+        "Sentence on page 1. Another on page 1.\fSentence on page 2. Another on page 2.\f"
+        "Sentence on page 3. Another on page 3.\f\f Sentence on page 5."
+    )
+
+    documents = document_splitter.run(documents=[Document(content=text)])["documents"]
+
+    assert len(documents) == 7
+    assert documents[0].content == "Sentence on page 1."
+    assert documents[0].meta["page_number"] == 1
+    assert documents[0].meta["split_id"] == 0
+    assert documents[0].meta["split_idx_start"] == text.index(documents[0].content)
+
+    assert documents[1].content == " Another on page 1."
+    assert documents[1].meta["page_number"] == 1
+    assert documents[1].meta["split_id"] == 1
+    assert documents[1].meta["split_idx_start"] == text.index(documents[1].content)
+
+    assert documents[2].content == "\fSentence on page 2."
+    assert documents[2].meta["page_number"] == 2
+    assert documents[2].meta["split_id"] == 2
+    assert documents[2].meta["split_idx_start"] == text.index(documents[2].content)
+
+    assert documents[3].content == " Another on page 2."
+    assert documents[3].meta["page_number"] == 2
+    assert documents[3].meta["split_id"] == 3
+    assert documents[3].meta["split_idx_start"] == text.index(documents[3].content)
+
+    assert documents[4].content == "\fSentence on page 3."
+    assert documents[4].meta["page_number"] == 3
+    assert documents[4].meta["split_id"] == 4
+    assert documents[4].meta["split_idx_start"] == text.index(documents[4].content)
+
+    assert documents[5].content == " Another on page 3."
+    assert documents[5].meta["page_number"] == 3
+    assert documents[5].meta["split_id"] == 5
+    assert documents[5].meta["split_idx_start"] == text.index(documents[5].content)
+
+    assert documents[6].content == "\f\f Sentence on page 5."
+    assert documents[6].meta["page_number"] == 5
+    assert documents[6].meta["split_id"] == 6
+    assert documents[6].meta["split_idx_start"] == text.index(documents[6].content)
+
+
+def test_run_split_by_word_count_page_breaks_word_unit():
+    splitter = RecursiveDocumentSplitter(split_length=4, split_overlap=0, separators=["w"], split_unit="word")
+    text = "This is some text. \f This text is on another page. \f This is the last pag3."
+    doc = Document(content=text)
+    doc_chunks = splitter.run([doc])
+    doc_chunks = doc_chunks["documents"]
+
+    assert len(doc_chunks) == 4
+    assert doc_chunks[0].content == "This is some text."
+    assert doc_chunks[0].meta["page_number"] == 1
+    assert doc_chunks[0].meta["split_id"] == 0
+    assert doc_chunks[0].meta["split_idx_start"] == text.index(doc_chunks[0].content)
+
+    assert doc_chunks[1].content == " \f This text is on"
+    assert doc_chunks[1].meta["page_number"] == 2
+    assert doc_chunks[1].meta["split_id"] == 1
+    assert doc_chunks[1].meta["split_idx_start"] == text.index(doc_chunks[1].content)
+
+    assert doc_chunks[2].content == " another page. \f T"
+    assert doc_chunks[2].meta["page_number"] == 3
+    assert doc_chunks[2].meta["split_id"] == 2
+    assert doc_chunks[2].meta["split_idx_start"] == text.index(doc_chunks[2].content)
+
+    assert doc_chunks[3].content == "his is the last pa"
+    assert doc_chunks[3].meta["page_number"] == 3
+    assert doc_chunks[3].meta["split_id"] == 3
+    assert doc_chunks[3].meta["split_idx_start"] == text.index(doc_chunks[3].content)
+
+    assert doc_chunks[4].content == "g3."
+    assert doc_chunks[4].meta["page_number"] == 3
+    assert doc_chunks[4].meta["split_id"] == 4
+    assert doc_chunks[4].meta["split_idx_start"] == text.index(doc_chunks[4].content)
+
+
+def test_run_split_by_page_break_count_page_breaks_word_unit() -> None:
+    document_splitter = RecursiveDocumentSplitter(separators=["\f"], split_length=8, split_overlap=0, split_unit="word")
+
+    text = (
+        "Sentence on page 1. Another on page 1.\fSentence on page 2. Another on page 2.\f"
+        "Sentence on page 3. Another on page 3.\f\f Sentence on page 5."
+    )
+
+    documents = document_splitter.run(documents=[Document(content=text)])
+    chunks_docs = documents["documents"]
+
+    assert len(chunks_docs) == 4
+    assert chunks_docs[0].content == "Sentence on page 1. Another on page 1.\f"
+    assert chunks_docs[0].meta["page_number"] == 1
+    assert chunks_docs[0].meta["split_id"] == 0
+    assert chunks_docs[0].meta["split_idx_start"] == text.index(chunks_docs[0].content)
+
+    assert chunks_docs[1].content == "Sentence on page 2. Another on page 2.\f"
+    assert chunks_docs[1].meta["page_number"] == 2
+    assert chunks_docs[1].meta["split_id"] == 1
+    assert chunks_docs[1].meta["split_idx_start"] == text.index(chunks_docs[1].content)
+
+    assert chunks_docs[2].content == "Sentence on page 3. Another on page 3.\f\f"
+    assert chunks_docs[2].meta["page_number"] == 3
+    assert chunks_docs[2].meta["split_id"] == 2
+    assert chunks_docs[2].meta["split_idx_start"] == text.index(chunks_docs[2].content)
+
+    assert chunks_docs[3].content == " Sentence on page 5."
+    assert chunks_docs[3].meta["page_number"] == 5
+    assert chunks_docs[3].meta["split_id"] == 3
+    assert chunks_docs[3].meta["split_idx_start"] == text.index(chunks_docs[3].content)
+
+
+def test_run_split_by_new_line_count_page_breaks_word_unit() -> None:
+    document_splitter = RecursiveDocumentSplitter(
+        separators=["\n"], split_length=21, split_overlap=0, split_unit="word"
+    )
+
+    text = (
+        "Sentence on page 1.\nAnother on page 1.\n\f"
+        "Sentence on page 2.\nAnother on page 2.\n\f"
+        "Sentence on page 3.\nAnother on page 3.\n\f\f"
+        "Sentence on page 5."
+    )
+
+    documents = document_splitter.run(documents=[Document(content=text)])
+    chunks_docs = documents["documents"]
+
+    assert len(chunks_docs) == 7
+
+    assert chunks_docs[0].content == "Sentence on page 1.\n"
+    assert chunks_docs[0].meta["page_number"] == 1
+    assert chunks_docs[0].meta["split_id"] == 0
+    assert chunks_docs[0].meta["split_idx_start"] == text.index(chunks_docs[0].content)
+
+    assert chunks_docs[1].content == "Another on page 1.\n"
+    assert chunks_docs[1].meta["page_number"] == 1
+    assert chunks_docs[1].meta["split_id"] == 1
+    assert chunks_docs[1].meta["split_idx_start"] == text.index(chunks_docs[1].content)
+
+    assert chunks_docs[2].content == "\fSentence on page 2.\n"
+    assert chunks_docs[2].meta["page_number"] == 2
+    assert chunks_docs[2].meta["split_id"] == 2
+    assert chunks_docs[2].meta["split_idx_start"] == text.index(chunks_docs[2].content)
+
+    assert chunks_docs[3].content == "Another on page 2.\n"
+    assert chunks_docs[3].meta["page_number"] == 2
+    assert chunks_docs[3].meta["split_id"] == 3
+    assert chunks_docs[3].meta["split_idx_start"] == text.index(chunks_docs[3].content)
+
+    assert chunks_docs[4].content == "\fSentence on page 3.\n"
+    assert chunks_docs[4].meta["page_number"] == 3
+    assert chunks_docs[4].meta["split_id"] == 4
+    assert chunks_docs[4].meta["split_idx_start"] == text.index(chunks_docs[4].content)
+
+    assert chunks_docs[5].content == "Another on page 3.\n"
+    assert chunks_docs[5].meta["page_number"] == 3
+    assert chunks_docs[5].meta["split_id"] == 5
+    assert chunks_docs[5].meta["split_idx_start"] == text.index(chunks_docs[5].content)
+
+    assert chunks_docs[6].content == "\f\fSentence on page 5."
+    assert chunks_docs[6].meta["page_number"] == 5
+    assert chunks_docs[6].meta["split_id"] == 6
+    assert chunks_docs[6].meta["split_idx_start"] == text.index(chunks_docs[6].content)
+
+
+def test_run_split_by_sentence_count_page_breaks_word_unit() -> None:
+    document_splitter = RecursiveDocumentSplitter(
+        separators=["sentence"], split_length=28, split_overlap=0, split_unit="word"
+    )
+
+    text = (
+        "Sentence on page 1. Another on page 1.\fSentence on page 2. Another on page 2.\f"
+        "Sentence on page 3. Another on page 3.\f\fSentence on page 5."
+    )
+
+    documents = document_splitter.run(documents=[Document(content=text)])
+    chunks_docs = documents["documents"]
+    assert len(chunks_docs) == 7
+
+    assert chunks_docs[0].content == "Sentence on page 1. "
+    assert chunks_docs[0].meta["page_number"] == 1
+    assert chunks_docs[0].meta["split_id"] == 0
+    assert chunks_docs[0].meta["split_idx_start"] == text.index(chunks_docs[0].content)
+
+    assert chunks_docs[1].content == "Another on page 1.\f"
+    assert chunks_docs[1].meta["page_number"] == 1
+    assert chunks_docs[1].meta["split_id"] == 1
+    assert chunks_docs[1].meta["split_idx_start"] == text.index(chunks_docs[1].content)
+
+    assert chunks_docs[2].content == "Sentence on page 2. "
+    assert chunks_docs[2].meta["page_number"] == 2
+    assert chunks_docs[2].meta["split_id"] == 2
+    assert chunks_docs[2].meta["split_idx_start"] == text.index(chunks_docs[2].content)
+
+    assert chunks_docs[3].content == "Another on page 2.\f"
+    assert chunks_docs[3].meta["page_number"] == 2
+    assert chunks_docs[3].meta["split_id"] == 3
+    assert chunks_docs[3].meta["split_idx_start"] == text.index(chunks_docs[3].content)
+
+    assert chunks_docs[4].content == "Sentence on page 3. "
+    assert chunks_docs[4].meta["page_number"] == 3
+    assert chunks_docs[4].meta["split_id"] == 4
+    assert chunks_docs[4].meta["split_idx_start"] == text.index(chunks_docs[4].content)
+
+    assert chunks_docs[5].content == "Another on page 3.\f\f"
+    assert chunks_docs[5].meta["page_number"] == 3
+    assert chunks_docs[5].meta["split_id"] == 5
+    assert chunks_docs[5].meta["split_idx_start"] == text.index(chunks_docs[5].content)
+
+    assert chunks_docs[6].content == "Sentence on page 5."
+    assert chunks_docs[6].meta["page_number"] == 5
+    assert chunks_docs[6].meta["split_id"] == 6
+    assert chunks_docs[6].meta["split_idx_start"] == text.index(chunks_docs[6].content)
+
+
+def test_run_custom_sentence_tokenizer_document_and_overlap_word_unit_no_overlap():
+    splitter = RecursiveDocumentSplitter(split_length=4, split_overlap=0, separators=["."], split_unit="word")
+    text = "This is sentence one. This is sentence two. This is sentence three."
+    chunks = splitter.run([Document(content=text)])["documents"]
+    assert len(chunks) == 3
+    assert chunks[0].content == "This is sentence one."
+    assert chunks[1].content == " This is sentence two."
+    assert chunks[2].content == " This is sentence three."
+
+
+def test_run_custom_sentence_tokenizer_document_and_overlap_word_unit_overlap_2_words():
+    splitter = RecursiveDocumentSplitter(split_length=4, split_overlap=2, separators=["."], split_unit="word")
+    text = "This is sentence one. This is sentence two. This is sentence three. This is sentence four."
+    chunks = splitter.run([Document(content=text)])["documents"]
+    assert len(chunks) == 4
+    assert chunks[0].content == "This is sentence one."
+    assert chunks[1].content == "sentence one. This is sentence two."
+    assert chunks[2].content == "sentence two. This is sentence three."
+    assert chunks[3].content == "sentence three. This is sentence four."
 
 
 def test_run_serialization_in_pipeline():
