@@ -13,8 +13,8 @@ class TestChatPromptBuilder:
     def test_init(self):
         builder = ChatPromptBuilder(
             template=[
-                ChatMessage.from_user(content="This is a {{ variable }}"),
-                ChatMessage.from_system(content="This is a {{ variable2 }}"),
+                ChatMessage.from_user("This is a {{ variable }}"),
+                ChatMessage.from_system("This is a {{ variable2 }}"),
             ]
         )
         assert builder.required_variables == []
@@ -531,8 +531,13 @@ class TestChatPromptBuilderDynamic:
             "type": "haystack.components.builders.chat_prompt_builder.ChatPromptBuilder",
             "init_parameters": {
                 "template": [
-                    {"content": "text and {var}", "role": "user", "name": None, "meta": {}},
-                    {"content": "content {required_var}", "role": "assistant", "name": None, "meta": {}},
+                    {"_content": [{"text": "text and {var}"}], "_role": "user", "_meta": {}, "_name": None},
+                    {
+                        "_content": [{"text": "content {required_var}"}],
+                        "_role": "assistant",
+                        "_meta": {},
+                        "_name": None,
+                    },
                 ],
                 "variables": ["var", "required_var"],
                 "required_variables": ["required_var"],
@@ -545,8 +550,13 @@ class TestChatPromptBuilderDynamic:
                 "type": "haystack.components.builders.chat_prompt_builder.ChatPromptBuilder",
                 "init_parameters": {
                     "template": [
-                        {"content": "text and {var}", "role": "user", "name": None, "meta": {}},
-                        {"content": "content {required_var}", "role": "assistant", "name": None, "meta": {}},
+                        {"_content": [{"text": "text and {var}"}], "_role": "user", "_meta": {}, "_name": None},
+                        {
+                            "_content": [{"text": "content {required_var}"}],
+                            "_role": "assistant",
+                            "_meta": {},
+                            "_name": None,
+                        },
                     ],
                     "variables": ["var", "required_var"],
                     "required_variables": ["required_var"],
