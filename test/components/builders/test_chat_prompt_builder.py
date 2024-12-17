@@ -531,8 +531,13 @@ class TestChatPromptBuilderDynamic:
             "type": "haystack.components.builders.chat_prompt_builder.ChatPromptBuilder",
             "init_parameters": {
                 "template": [
-                    {"_content": [{"text": "text and {var}"}], "_role": "user", "_meta": {}},
-                    {"_content": [{"text": "content {required_var}"}], "_role": "assistant", "_meta": {}},
+                    {"_content": [{"text": "text and {var}"}], "_role": "user", "_meta": {}, "_name": None},
+                    {
+                        "_content": [{"text": "content {required_var}"}],
+                        "_role": "assistant",
+                        "_meta": {},
+                        "_name": None,
+                    },
                 ],
                 "variables": ["var", "required_var"],
                 "required_variables": ["required_var"],
@@ -545,8 +550,13 @@ class TestChatPromptBuilderDynamic:
                 "type": "haystack.components.builders.chat_prompt_builder.ChatPromptBuilder",
                 "init_parameters": {
                     "template": [
-                        {"_content": [{"text": "text and {var}"}], "_role": "user", "_meta": {}},
-                        {"_content": [{"text": "content {required_var}"}], "_role": "assistant", "_meta": {}},
+                        {"_content": [{"text": "text and {var}"}], "_role": "user", "_meta": {}, "_name": None},
+                        {
+                            "_content": [{"text": "content {required_var}"}],
+                            "_role": "assistant",
+                            "_meta": {},
+                            "_name": None,
+                        },
                     ],
                     "variables": ["var", "required_var"],
                     "required_variables": ["required_var"],
