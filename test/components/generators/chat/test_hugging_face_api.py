@@ -68,13 +68,6 @@ def test_convert_message_to_hfapi_format():
     message = ChatMessage.from_user("I have a question")
     assert _convert_message_to_hfapi_format(message) == {"role": "user", "content": "I have a question"}
 
-    message = ChatMessage.from_function("Function call", "function_name")
-    assert _convert_message_to_hfapi_format(message) == {
-        "role": "function",
-        "content": "Function call",
-        "name": "function_name",
-    }
-
 
 class TestHuggingFaceAPIGenerator:
     def test_init_invalid_api_type(self):
