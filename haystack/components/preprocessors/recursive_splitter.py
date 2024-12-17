@@ -4,7 +4,7 @@
 
 import re
 from copy import deepcopy
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from haystack import Document, component, logging
 
@@ -55,6 +55,7 @@ class RecursiveDocumentSplitter:
         self,
         split_length: int = 200,
         split_overlap: int = 0,
+        split_units: Literal["words", "char"] = "char",
         separators: Optional[List[str]] = None,
         sentence_splitter_params: Optional[Dict[str, Any]] = None,
     ):
@@ -63,6 +64,7 @@ class RecursiveDocumentSplitter:
 
         :param split_length: The maximum length of each chunk in characters.
         :param split_overlap: The number of characters to overlap between consecutive chunks.
+        :param split_units: The unit of the split_length parameter. It can be either "words" or "char".
         :param separators: An optional list of separator strings to use for splitting the text. The string
             separators will be treated as regular expressions unless the separator is "sentence", in that case the
             text will be split into sentences using a custom sentence tokenizer based on NLTK.
@@ -74,6 +76,7 @@ class RecursiveDocumentSplitter:
         """
         self.split_length = split_length
         self.split_overlap = split_overlap
+        self.split_units = split_units
         self.separators = separators if separators else ["\n\n", "sentence", "\n", " "]  # default separators
         self.sentence_tokenizer_params = sentence_splitter_params
         self._check_params()
@@ -123,6 +126,19 @@ class RecursiveDocumentSplitter:
 
         return overlapped_chunks
 
+    def _chunk_length(self, text: str) -> int:
+        """
+        Get the length of the chunk in words or characters.
+
+        :param text: The text to be split into chunks.
+        :returns:
+            The length of the chunk in words or characters.
+        """
+        if self.split_units == "words":
+            return len(text.split())
+        else:
+            return len(text)
+
     def _chunk_text(self, text: str) -> List[str]:
         """
         Recursive chunking algorithm that divides text into smaller chunks based on a list of separator characters.
@@ -136,7 +152,7 @@ class RecursiveDocumentSplitter:
         :returns:
             A list of text chunks.
         """
-        if len(text) <= self.split_length:
+        if self._chunk_length(text) <= self.split_length:
             return [text]
 
         for curr_separator in self.separators:  # type: ignore # the caller already checked that separators is not None
@@ -170,14 +186,14 @@ class RecursiveDocumentSplitter:
             for split in splits:
                 split_text = split
                 # if adding this split exceeds chunk_size, process current_chunk
-                if current_length + len(split_text) > self.split_length:
+                if current_length + self._chunk_length(split_text) > self.split_length:
                     if current_chunk:  # keep the good splits
                         chunks.append("".join(current_chunk))
                         current_chunk = []
                         current_length = 0
 
                     # recursively handle splits that are too large
-                    if len(split_text) > self.split_length:
+                    if self._chunk_length(split_text) > self.split_length:
                         if curr_separator == self.separators[-1]:
                             # tried the last separator, can't split further, break the loop and fall back to
                             # character-level chunking
@@ -187,7 +203,7 @@ class RecursiveDocumentSplitter:
                         chunks.append(split_text)
                 else:
                     current_chunk.append(split_text)
-                    current_length += len(split_text)
+                    current_length += self._chunk_length(split_text)
 
             if current_chunk:
                 chunks.append("".join(current_chunk))
@@ -199,7 +215,10 @@ class RecursiveDocumentSplitter:
                 return chunks
 
         # if no separator worked, fall back to character-level chunking
-        return [text[i : i + self.split_length] for i in range(0, len(text), self.split_length - self.split_overlap)]
+        return [
+            text[i : i + self.split_length]
+            for i in range(0, self._chunk_length(text), self.split_length - self.split_overlap)
+        ]
 
     def _run_one(self, doc: Document) -> List[Document]:
         new_docs: List[Document] = []
