@@ -47,6 +47,7 @@ dependencies = [
   "tenacity!=8.4.0",
   "lazy-imports",
   "openai>=1.56.1",
+  "pydantic",
   "Jinja2",
   "posthog",                # telemetry
   "pyyaml",
@@ -113,7 +114,7 @@ extra-dependencies = [
   "jsonref",  # OpenAPIServiceConnector, OpenAPIServiceToFunctions
   "openapi3",
 
-  # Validation
+  # JsonSchemaValidator, Tool
   "jsonschema",
 
   # Tracing
