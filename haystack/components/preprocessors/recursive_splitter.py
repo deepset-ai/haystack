@@ -55,7 +55,7 @@ class RecursiveDocumentSplitter:
         self,
         split_length: int = 200,
         split_overlap: int = 0,
-        split_units: Literal["words", "char"] = "char",
+        split_units: Literal["word", "char"] = "char",
         separators: Optional[List[str]] = None,
         sentence_splitter_params: Optional[Dict[str, Any]] = None,
     ):
@@ -114,8 +114,12 @@ class RecursiveDocumentSplitter:
             if idx == 0:
                 overlapped_chunks.append(chunk)
                 continue
-            overlap_start = max(0, len(chunks[idx - 1]) - self.split_overlap)
-            overlap = chunks[idx - 1][overlap_start:]
+            overlap_start = max(0, self._chunk_length(chunks[idx - 1]) - self.split_overlap)
+            if self.split_units == "word":
+                word_chunks = chunks[idx - 1].split()
+                overlap = " ".join(word_chunks[overlap_start:])
+            else:
+                overlap = chunks[idx - 1][overlap_start:]
             if overlap == chunks[idx - 1]:
                 logger.warning(
                     "Overlap is the same as the previous chunk. "
@@ -134,7 +138,7 @@ class RecursiveDocumentSplitter:
         :returns:
             The length of the chunk in words or characters.
         """
-        if self.split_units == "words":
+        if self.split_units == "word":
             return len(text.split())
         else:
             return len(text)
@@ -214,18 +218,34 @@ class RecursiveDocumentSplitter:
             if chunks:
                 return chunks
 
-        # if no separator worked, fall back to character-level chunking
+        # if no separator worked, fall back to character- or word-level chunking
         return [
             text[i : i + self.split_length]
             for i in range(0, self._chunk_length(text), self.split_length - self.split_overlap)
         ]
 
+    def _add_overlap_info(self, curr_pos, new_doc, new_docs):
+        prev_doc = new_docs[-1]
+        overlap_length = self._chunk_length(prev_doc.content) - (curr_pos - prev_doc.meta["split_idx_start"])  # type: ignore
+        if overlap_length > 0:
+            prev_doc.meta["_split_overlap"].append({"doc_id": new_doc.id, "range": (0, overlap_length)})
+            new_doc.meta["_split_overlap"].append(
+                {
+                    "doc_id": prev_doc.id,
+                    "range": (
+                        self._chunk_length(prev_doc.content) - overlap_length,
+                        self._chunk_length(prev_doc.content),  # type: ignore
+                    ),
+                }
+            )
+
     def _run_one(self, doc: Document) -> List[Document]:
-        new_docs: List[Document] = []
         chunks = self._chunk_text(doc.content)  # type: ignore # the caller already check for a non-empty doc.content
-        chunks = chunks[:-1] if len(chunks[-1]) == 0 else chunks  # remove last empty chunk
+        chunks = chunks[:-1] if len(chunks[-1]) == 0 else chunks  # remove last empty chunk if it exists
         current_position = 0
         current_page = 1
+
+        new_docs: List[Document] = []
 
         for split_nr, chunk in enumerate(chunks):
             new_doc = Document(content=chunk, meta=deepcopy(doc.meta))
@@ -233,17 +253,9 @@ class RecursiveDocumentSplitter:
             new_doc.meta["split_idx_start"] = current_position
             new_doc.meta["_split_overlap"] = [] if self.split_overlap > 0 else None
 
+            # add overlap information to the previous and current doc
             if split_nr > 0 and self.split_overlap > 0:
-                previous_doc = new_docs[-1]
-                overlap_length = len(previous_doc.content) - (current_position - previous_doc.meta["split_idx_start"])  # type: ignore
-                if overlap_length > 0:
-                    previous_doc.meta["_split_overlap"].append({"doc_id": new_doc.id, "range": (0, overlap_length)})
-                    new_doc.meta["_split_overlap"].append(
-                        {
-                            "doc_id": previous_doc.id,
-                            "range": (len(previous_doc.content) - overlap_length, len(previous_doc.content)),  # type: ignore
-                        }
-                    )
+                self._add_overlap_info(current_position, new_doc, new_docs)
 
             # count page breaks in the chunk
             current_page += chunk.count("\f")

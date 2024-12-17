@@ -375,7 +375,28 @@ def test_recursive_splitter_custom_sentence_tokenizer_document_and_overlap():
     assert doc_chunks[2].meta["_split_overlap"] == [{"doc_id": doc_chunks[1].id, "range": (22, 27)}]
 
 
-def test_run_split_document_with_overlap():
+def test_recursive_splitter_custom_sentence_tokenizer_document_and_overlap_word_unit_no_overlap():
+    splitter = RecursiveDocumentSplitter(split_length=4, split_overlap=0, separators=["."], split_units="word")
+    text = "This is sentence one. This is sentence two. This is sentence three."
+    chunks = splitter.run([Document(content=text)])["documents"]
+    assert len(chunks) == 3
+    assert chunks[0].content == "This is sentence one."
+    assert chunks[1].content == " This is sentence two."
+    assert chunks[2].content == " This is sentence three."
+
+
+def test_recursive_splitter_custom_sentence_tokenizer_document_and_overlap_word_unit_overlap_2_words():
+    splitter = RecursiveDocumentSplitter(split_length=4, split_overlap=2, separators=["."], split_units="word")
+    text = "This is sentence one. This is sentence two. This is sentence three. This is sentence four."
+    chunks = splitter.run([Document(content=text)])["documents"]
+    assert len(chunks) == 4
+    assert chunks[0].content == "This is sentence one."
+    assert chunks[1].content == "sentence one. This is sentence two."
+    assert chunks[2].content == "sentence two. This is sentence three."
+    assert chunks[3].content == "sentence three. This is sentence four."
+
+
+def test_run_split_document_with_overlap_character_unit():
     splitter = RecursiveDocumentSplitter(split_length=20, split_overlap=11, separators=[".", " "])
     text = """A simple sentence1. A bright sentence2. A clever sentence3. A joyful sentence4"""
 
