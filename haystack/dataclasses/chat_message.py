@@ -120,7 +120,7 @@ class ChatMessage:
         allowed_content_types = (TextContent, ToolCall, ToolCallResult)
         if len(args) > 1 and not isinstance(args[1], allowed_content_types):
             raise TypeError(
-                "The `_content` parameter of `ChatMessage` must be a one of the following types: "
+                "The `_content` parameter of `ChatMessage` must be one of the following types: "
                 f"{', '.join(t.__name__ for t in allowed_content_types)}. "
                 f"{general_msg}"
             )
