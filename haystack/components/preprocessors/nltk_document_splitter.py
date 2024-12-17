@@ -150,6 +150,11 @@ class NLTKDocumentSplitter(DocumentSplitter):
         :raises TypeError: if the input is not a list of Documents.
         :raises ValueError: if the content of a document is None.
         """
+        if self.sentence_splitter is None:
+            raise RuntimeError(
+                "The component NLTKDocumentSplitter wasn't warmed up. Run 'warm_up()' before calling 'run()'."
+            )
+
         if not isinstance(documents, list) or (documents and not isinstance(documents[0], Document)):
             raise TypeError("DocumentSplitter expects a List of Documents as input.")
 
