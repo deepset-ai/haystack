@@ -13,16 +13,11 @@ def _convert_message_to_openai_format(message: ChatMessage) -> Dict[str, str]:
 
     See the [API reference](https://platform.openai.com/docs/api-reference/chat/create) for details.
 
-    :returns: A dictionary with the following key:
+    :returns: A dictionary with the following keys:
         - `role`
         - `content`
-        - `name` (optional)
     """
     if message.text is None:
         raise ValueError(f"The provided ChatMessage has no text. ChatMessage: {message}")
 
-    openai_msg = {"role": message.role.value, "content": message.text}
-    if message.name:
-        openai_msg["name"] = message.name
-
-    return openai_msg
+    return {"role": message.role.value, "content": message.text}

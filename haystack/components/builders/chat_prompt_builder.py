@@ -9,7 +9,7 @@ from jinja2 import meta
 from jinja2.sandbox import SandboxedEnvironment
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.dataclasses.chat_message import ChatMessage, ChatRole
+from haystack.dataclasses.chat_message import ChatMessage, ChatRole, TextContent
 
 logger = logging.getLogger(__name__)
 
@@ -197,10 +197,10 @@ class ChatPromptBuilder:
                 if message.text is None:
                     raise ValueError(f"The provided ChatMessage has no text. ChatMessage: {message}")
                 compiled_template = self._env.from_string(message.text)
-                rendered_content = compiled_template.render(template_variables_combined)
+                rendered_text = compiled_template.render(template_variables_combined)
                 # deep copy the message to avoid modifying the original message
                 rendered_message: ChatMessage = deepcopy(message)
-                rendered_message.content = rendered_content
+                rendered_message._content = [TextContent(text=rendered_text)]
                 processed_messages.append(rendered_message)
             else:
                 processed_messages.append(message)
