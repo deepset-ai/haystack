@@ -173,7 +173,7 @@ class NamedEntityExtractor:
             self._warmed_up = True
         except Exception as e:
             raise ComponentError(
-                f"Named entity extractor with backend '{self._backend.type} failed to initialize."
+                f"Named entity extractor with backend '{self._backend.type}' failed to initialize."
             ) from e
 
     @component.output_types(documents=List[Document])
