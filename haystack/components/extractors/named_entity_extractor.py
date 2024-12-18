@@ -10,7 +10,9 @@ from typing import Any, Dict, List, Optional, Union
 
 from haystack import ComponentError, DeserializationError, Document, component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
+from haystack.utils.auth import Secret
 from haystack.utils.device import ComponentDevice
+from haystack.utils.hf import resolve_hf_pipeline_kwargs
 
 with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transformers_import:
     from transformers import AutoModelForTokenClassification, AutoTokenizer, pipeline
@@ -110,6 +112,7 @@ class NamedEntityExtractor:
         model: str,
         pipeline_kwargs: Optional[Dict[str, Any]] = None,
         device: Optional[ComponentDevice] = None,
+        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
     ) -> None:
         """
         Create a Named Entity extractor component.
@@ -128,6 +131,8 @@ class NamedEntityExtractor:
             device/device map is specified in `pipeline_kwargs`,
             it overrides this parameter (only applicable to the
             HuggingFace backend).
+        :param token:
+            The API token to download private models from Hugging Face.
         """
 
         if isinstance(backend, str):
@@ -138,6 +143,15 @@ class NamedEntityExtractor:
         device = ComponentDevice.resolve_device(device)
 
         if backend == NamedEntityExtractorBackend.HUGGING_FACE:
+            pipeline_kwargs = resolve_hf_pipeline_kwargs(
+                huggingface_pipeline_kwargs=pipeline_kwargs or {},
+                model=model,
+                task="ner",
+                supported_tasks=["ner"],
+                device=device,
+                token=token,
+            )
+
             self._backend = _HfBackend(model_name_or_path=model, device=device, pipeline_kwargs=pipeline_kwargs)
         elif backend == NamedEntityExtractorBackend.SPACY:
             self._backend = _SpacyBackend(model_name_or_path=model, device=device, pipeline_kwargs=pipeline_kwargs)
@@ -352,8 +366,9 @@ class _HfBackend(_NerBackend):
         self.pipeline: Optional[HfPipeline] = None
 
     def initialize(self):
-        self.tokenizer = AutoTokenizer.from_pretrained(self._model_name_or_path)
-        self.model = AutoModelForTokenClassification.from_pretrained(self._model_name_or_path)
+        token = self._pipeline_kwargs.get("token", None)
+        self.tokenizer = AutoTokenizer.from_pretrained(self._model_name_or_path, token=token)
+        self.model = AutoModelForTokenClassification.from_pretrained(self._model_name_or_path, token=token)
 
         pipeline_params = {
             "task": "ner",

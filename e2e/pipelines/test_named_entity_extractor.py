@@ -66,6 +66,14 @@ def test_ner_extractor_hf_backend(raw_texts, hf_annotations, batch_size):
 
 
 @pytest.mark.parametrize("batch_size", [1, 3])
+def test_ner_extractor_hf_backend_private_models(raw_texts, hf_annotations, batch_size):
+    extractor = NamedEntityExtractor(backend=NamedEntityExtractorBackend.HUGGING_FACE, model="deepset/bert-base-NER")
+    extractor.warm_up()
+
+    _extract_and_check_predictions(extractor, raw_texts, hf_annotations, batch_size)
+
+
+@pytest.mark.parametrize("batch_size", [1, 3])
 def test_ner_extractor_spacy_backend(raw_texts, spacy_annotations, batch_size):
     extractor = NamedEntityExtractor(backend=NamedEntityExtractorBackend.SPACY, model="en_core_web_trf")
     extractor.warm_up()
