@@ -112,7 +112,7 @@ class Tool:
         Create a Tool instance from a function.
 
         ### Usage example
-        
+
         ```python
         from typing import Annotated, Literal
         from haystack.dataclasses import Tool
