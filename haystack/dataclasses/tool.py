@@ -35,19 +35,19 @@ class SchemaGenerationError(Exception):
 @dataclass
 class Tool:
     """
-    Data class representing a tool for which Language Models can prepare a call.
+    Data class representing a Tool that Language Models can prepare a call for.
 
     Accurate definitions of the textual attributes such as `name` and `description`
     are important for the Language Model to correctly prepare the call.
 
     :param name:
-        Name of the tool.
+        Name of the Tool.
     :param description:
-        Description of the tool.
+        Description of the Tool.
     :param parameters:
-        A JSON schema defining the parameters expected by the tool.
+        A JSON schema defining the parameters expected by the Tool.
     :param function:
-        The function that will be invoked when the tool is called.
+        The function that will be invoked when the Tool is called.
     """
 
     name: str
@@ -66,19 +66,19 @@ class Tool:
     @property
     def tool_spec(self) -> Dict[str, Any]:
         """
-        Return the tool specification to be used by the Language Model.
+        Return the Tool specification to be used by the Language Model.
         """
         return {"name": self.name, "description": self.description, "parameters": self.parameters}
 
     def invoke(self, **kwargs) -> Any:
         """
-        Invoke the tool with the provided keyword arguments.
+        Invoke the Tool with the provided keyword arguments.
         """
 
         try:
             result = self.function(**kwargs)
         except Exception as e:
-            raise ToolInvocationError(f"Failed to invoke tool `{self.name}` with parameters {kwargs}") from e
+            raise ToolInvocationError(f"Failed to invoke Tool `{self.name}` with parameters {kwargs}") from e
         return result
 
     def to_dict(self) -> Dict[str, Any]:
@@ -111,7 +111,8 @@ class Tool:
         """
         Create a Tool instance from a function.
 
-        Usage example:
+        ### Usage example
+        
         ```python
         from typing import Annotated, Literal
         from haystack.dataclasses import Tool
@@ -146,9 +147,9 @@ class Tool:
             The function must include type hints for all parameters.
             If a parameter is annotated using `typing.Annotated`, its metadata will be used as parameter description.
         :param name:
-            The name of the tool. If not provided, the name of the function will be used.
+            The name of the Tool. If not provided, the name of the function will be used.
         :param description:
-            The description of the tool. If not provided, the docstring of the function will be used.
+            The description of the Tool. If not provided, the docstring of the function will be used.
             To intentionally leave the description empty, pass an empty string.
 
         :returns:
@@ -217,12 +218,12 @@ def _remove_title_from_schema(schema: Dict[str, Any]):
 
 def deserialize_tools_inplace(data: Dict[str, Any], key: str = "tools"):
     """
-    Deserialize tools in a dictionary inplace.
+    Deserialize Tools in a dictionary inplace.
 
     :param data:
         The dictionary with the serialized data.
     :param key:
-        The key in the dictionary where the tools are stored.
+        The key in the dictionary where the Tools are stored.
     """
     if key in data:
         serialized_tools = data[key]
