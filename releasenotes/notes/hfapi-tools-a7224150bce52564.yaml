@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Add support for Tools in the Hugging Face API Chat Generator.
