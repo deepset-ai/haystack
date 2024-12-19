@@ -4,7 +4,7 @@
 
 import inspect
 from dataclasses import asdict, dataclass
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from pydantic import create_model
 
@@ -214,6 +214,19 @@ def _remove_title_from_schema(schema: Dict[str, Any]):
         for key in list(property_schema.keys()):
             if key == "title":
                 del property_schema[key]
+
+
+def _check_duplicate_tool_names(tools: List[Tool]) -> None:
+    """
+    Check for duplicate tool names and raises a ValueError if they are found.
+
+    :param tools: The list of tools to check.
+    :raises ValueError: If duplicate tool names are found.
+    """
+    tool_names = [tool.name for tool in tools]
+    duplicate_tool_names = {name for name in tool_names if tool_names.count(name) > 1}
+    if duplicate_tool_names:
+        raise ValueError(f"Duplicate tool names found: {duplicate_tool_names}")
 
 
 def deserialize_tools_inplace(data: Dict[str, Any], key: str = "tools"):
