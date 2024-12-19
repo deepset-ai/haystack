@@ -228,7 +228,7 @@ class SentenceSplitter:  # pylint: disable=too-few-public-methods
         :param lang: The language to read the abbreviations for.
         :returns: List of abbreviations.
         """
-        abbreviations_file = Path(__file__).parent.parent / f"data/abbreviations/{lang}.txt"
+        abbreviations_file = Path(__file__).parent.parent.parent / f"data/abbreviations/{lang}.txt"
         if not abbreviations_file.exists():
             logger.warning("No abbreviations file found for {language}. Using default abbreviations.", language=lang)
             return []
