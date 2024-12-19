@@ -322,15 +322,15 @@ class HuggingFaceAPIChatGenerator:
                 )
                 tool_calls.append(tool_call)
 
-        meta = {
-            "model": self._client.model,
-            "finish_reason": choice.finish_reason,
-            "index": choice.index,
-            "usage": {
+        meta = {"model": self._client.model, "finish_reason": choice.finish_reason, "index": choice.index}
+
+        usage = {"prompt_tokens": 0, "completion_tokens": 0}
+        if api_chat_output.usage:
+            usage = {
                 "prompt_tokens": api_chat_output.usage.prompt_tokens,
                 "completion_tokens": api_chat_output.usage.completion_tokens,
-            },
-        }
+            }
+        meta["usage"] = usage
 
         message = ChatMessage.from_assistant(text=text, tool_calls=tool_calls, meta=meta)
         return {"replies": [message]}
