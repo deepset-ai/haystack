@@ -54,7 +54,7 @@ def test_read_abbreviations_existing_file(tmp_path, mock_file_content):
     abbrev_file.write_text(mock_file_content)
 
     with patch("haystack.components.preprocessors.sentence_tokenizer.Path") as mock_path:
-        mock_path.return_value.parent.parent = tmp_path
+        mock_path.return_value.parent.parent.parent = tmp_path
         result = SentenceSplitter._read_abbreviations("en")
         assert result == ["Mr.", "Dr.", "Prof."]
 
