@@ -124,7 +124,7 @@ class RecursiveDocumentSplitter:
             if overlap == chunks[idx - 1]:
                 logger.warning(
                     "Overlap is the same as the previous chunk. "
-                    "Consider increasing the `split_overlap` parameter or decreasing the `split_length` parameter."
+                    "Consider increasing the `split_length` parameter or decreasing the `split_overlap` parameter."
                 )
             current_chunk = overlap + chunk
             overlapped_chunks.append(current_chunk)
