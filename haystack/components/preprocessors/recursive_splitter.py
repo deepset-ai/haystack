@@ -225,7 +225,7 @@ class RecursiveDocumentSplitter:
             for i in range(0, self._chunk_length(text), self.split_length - self.split_overlap)
         ]
 
-    def _add_overlap_info(self, curr_pos, new_doc, new_docs):
+    def _add_overlap_info(self, curr_pos: int, new_doc: Document, new_docs: List[Document]) -> None:
         prev_doc = new_docs[-1]
         overlap_length = self._chunk_length(prev_doc.content) - (curr_pos - prev_doc.meta["split_idx_start"])  # type: ignore
         if overlap_length > 0:
