@@ -33,7 +33,7 @@ def test_init_with_negative_split_length():
 
 def test_apply_overlap_no_overlap():
     # Test the case where there is no overlap between chunks
-    splitter = RecursiveDocumentSplitter(split_length=20, split_overlap=0, separators=["."])
+    splitter = RecursiveDocumentSplitter(split_length=20, split_overlap=0, separators=["."], split_unit="char")
     chunks = ["chunk1", "chunk2", "chunk3"]
     result = splitter._apply_overlap(chunks)
     assert result == ["chunk1", "chunk2", "chunk3"]
@@ -41,14 +41,14 @@ def test_apply_overlap_no_overlap():
 
 def test_apply_overlap_with_overlap():
     # Test the case where there is overlap between chunks
-    splitter = RecursiveDocumentSplitter(split_length=20, split_overlap=4, separators=["."])
+    splitter = RecursiveDocumentSplitter(split_length=20, split_overlap=4, separators=["."], split_unit="char")
     chunks = ["chunk1", "chunk2", "chunk3"]
     result = splitter._apply_overlap(chunks)
     assert result == ["chunk1", "unk1chunk2", "unk2chunk3"]
 
 
 def test_apply_overlap_with_overlap_capturing_completely_previous_chunk(caplog):
-    splitter = RecursiveDocumentSplitter(split_length=20, split_overlap=6, separators=["."])
+    splitter = RecursiveDocumentSplitter(split_length=20, split_overlap=6, separators=["."], split_unit="char")
     chunks = ["chunk1", "chunk2", "chunk3", "chunk4"]
     _ = splitter._apply_overlap(chunks)
     assert (
@@ -59,7 +59,7 @@ def test_apply_overlap_with_overlap_capturing_completely_previous_chunk(caplog):
 
 def test_apply_overlap_single_chunk():
     # Test the case where there is only one chunk
-    splitter = RecursiveDocumentSplitter(split_length=20, split_overlap=3, separators=["."])
+    splitter = RecursiveDocumentSplitter(split_length=20, split_overlap=3, separators=["."], split_unit="char")
     chunks = ["chunk1"]
     result = splitter._apply_overlap(chunks)
     assert result == ["chunk1"]
@@ -74,7 +74,7 @@ def test_chunk_text_smaller_than_chunk_size():
 
 
 def test_chunk_text_by_period():
-    splitter = RecursiveDocumentSplitter(split_length=20, split_overlap=0, separators=["."])
+    splitter = RecursiveDocumentSplitter(split_length=20, split_overlap=0, separators=["."], split_unit="char")
     text = "This is a test. Another sentence. And one more."
     chunks = splitter._chunk_text(text)
     assert len(chunks) == 3
@@ -84,7 +84,7 @@ def test_chunk_text_by_period():
 
 
 def test_run_multiple_new_lines():
-    splitter = RecursiveDocumentSplitter(split_length=20, separators=["\n\n", "\n"])
+    splitter = RecursiveDocumentSplitter(split_length=20, separators=["\n\n", "\n"], split_unit="char")
     text = "This is a test.\n\n\nAnother test.\n\n\n\nFinal test."
     doc = Document(content=text)
     chunks = splitter.run([doc])["documents"]
@@ -110,6 +110,7 @@ def test_run_using_custom_sentence_tokenizer():
     splitter = RecursiveDocumentSplitter(
         split_length=400,
         split_overlap=0,
+        split_unit="char",
         separators=["\n\n", "\n", "sentence", " "],
         sentence_splitter_params={"language": "en", "use_split_rules": True, "keep_white_spaces": False},
     )
@@ -134,8 +135,8 @@ AI technology is widely used throughout industry, government, and science. Some 
     )  # noqa: E501
 
 
-def test_run_split_by_dot_count_page_breaks() -> None:
-    document_splitter = RecursiveDocumentSplitter(separators=["."], split_length=30, split_overlap=0)
+def test_run_split_by_dot_count_page_breaks_split_unit_char() -> None:
+    document_splitter = RecursiveDocumentSplitter(separators=["."], split_length=30, split_overlap=0, split_unit="char")
 
     text = (
         "Sentence on page 1. Another on page 1.\fSentence on page 2. Another on page 2.\f"
@@ -181,8 +182,8 @@ def test_run_split_by_dot_count_page_breaks() -> None:
     assert documents[6].meta["split_idx_start"] == text.index(documents[6].content)
 
 
-def test_run_split_by_word_count_page_breaks():
-    splitter = RecursiveDocumentSplitter(split_length=18, split_overlap=0, separators=["w"])
+def test_run_split_by_word_count_page_breaks_split_unit_char():
+    splitter = RecursiveDocumentSplitter(split_length=18, split_overlap=0, separators=["w"], split_unit="char")
     text = "This is some text. \f This text is on another page. \f This is the last pag3."
     doc = Document(content=text)
     doc_chunks = splitter.run([doc])
@@ -216,7 +217,9 @@ def test_run_split_by_word_count_page_breaks():
 
 
 def test_run_split_by_page_break_count_page_breaks() -> None:
-    document_splitter = RecursiveDocumentSplitter(separators=["\f"], split_length=50, split_overlap=0)
+    document_splitter = RecursiveDocumentSplitter(
+        separators=["\f"], split_length=50, split_overlap=0, split_unit="char"
+    )
 
     text = (
         "Sentence on page 1. Another on page 1.\fSentence on page 2. Another on page 2.\f"
@@ -247,8 +250,10 @@ def test_run_split_by_page_break_count_page_breaks() -> None:
     assert chunks_docs[3].meta["split_idx_start"] == text.index(chunks_docs[3].content)
 
 
-def test_run_split_by_new_line_count_page_breaks() -> None:
-    document_splitter = RecursiveDocumentSplitter(separators=["\n"], split_length=21, split_overlap=0)
+def test_run_split_by_new_line_count_page_breaks_split_unit_char() -> None:
+    document_splitter = RecursiveDocumentSplitter(
+        separators=["\n"], split_length=21, split_overlap=0, split_unit="char"
+    )
 
     text = (
         "Sentence on page 1.\nAnother on page 1.\n\f"
@@ -298,8 +303,10 @@ def test_run_split_by_new_line_count_page_breaks() -> None:
     assert chunks_docs[6].meta["split_idx_start"] == text.index(chunks_docs[6].content)
 
 
-def test_run_split_by_sentence_count_page_breaks() -> None:
-    document_splitter = RecursiveDocumentSplitter(separators=["sentence"], split_length=28, split_overlap=0)
+def test_run_split_by_sentence_count_page_breaks_split_unit_char() -> None:
+    document_splitter = RecursiveDocumentSplitter(
+        separators=["sentence"], split_length=28, split_overlap=0, split_unit="char"
+    )
 
     text = (
         "Sentence on page 1. Another on page 1.\fSentence on page 2. Another on page 2.\f"
@@ -347,7 +354,7 @@ def test_run_split_by_sentence_count_page_breaks() -> None:
 
 
 def test_run_split_document_with_overlap_character_unit():
-    splitter = RecursiveDocumentSplitter(split_length=20, split_overlap=11, separators=[".", " "])
+    splitter = RecursiveDocumentSplitter(split_length=20, split_overlap=11, separators=[".", " "], split_unit="char")
     text = """A simple sentence1. A bright sentence2. A clever sentence3. A joyful sentence4"""
 
     doc = Document(content=text)
@@ -384,7 +391,7 @@ def test_run_split_document_with_overlap_character_unit():
 
 
 def test_run_separator_exists_but_split_length_too_small_fall_back_to_character_chunking():
-    splitter = RecursiveDocumentSplitter(separators=[" "], split_length=2)
+    splitter = RecursiveDocumentSplitter(separators=[" "], split_length=2, split_unit="char")
     doc = Document(content="This is some text. This is some more text.")
     result = splitter.run(documents=[doc])
     assert len(result["documents"]) == 21
@@ -392,10 +399,10 @@ def test_run_separator_exists_but_split_length_too_small_fall_back_to_character_
         assert len(doc.content) == 2
 
 
-def test_run_fallback_to_character_chunking():
+def test_run_fallback_to_character_chunking_by_default_length_too_short():
     text = "abczdefzghizjkl"
     separators = ["\n\n", "\n", "z"]
-    splitter = RecursiveDocumentSplitter(split_length=2, separators=separators)
+    splitter = RecursiveDocumentSplitter(split_length=2, separators=separators, split_unit="char")
     doc = Document(content=text)
     chunks = splitter.run([doc])["documents"]
     for chunk in chunks:
@@ -404,7 +411,7 @@ def test_run_fallback_to_character_chunking():
 
 def test_run_custom_sentence_tokenizer_document_and_overlap_char_unit():
     """Test that RecursiveDocumentSplitter works correctly with custom sentence tokenizer and overlap"""
-    splitter = RecursiveDocumentSplitter(split_length=25, split_overlap=5, separators=["sentence"])
+    splitter = RecursiveDocumentSplitter(split_length=25, split_overlap=5, separators=["sentence"], split_unit="char")
     text = "This is sentence one. This is sentence two. This is sentence three."
 
     doc = Document(content=text)
@@ -485,6 +492,10 @@ def test_run_split_by_word_count_page_breaks_word_unit():
     doc_chunks = splitter.run([doc])
     doc_chunks = doc_chunks["documents"]
 
+    for doc in doc_chunks:
+        print(doc.content)
+        print(doc.meta)
+
     assert len(doc_chunks) == 4
     assert doc_chunks[0].content == "This is some text."
     assert doc_chunks[0].meta["page_number"] == 1
@@ -546,9 +557,7 @@ def test_run_split_by_page_break_count_page_breaks_word_unit() -> None:
 
 
 def test_run_split_by_new_line_count_page_breaks_word_unit() -> None:
-    document_splitter = RecursiveDocumentSplitter(
-        separators=["\n"], split_length=21, split_overlap=0, split_unit="word"
-    )
+    document_splitter = RecursiveDocumentSplitter(separators=["\n"], split_length=4, split_overlap=0, split_unit="word")
 
     text = (
         "Sentence on page 1.\nAnother on page 1.\n\f"
@@ -600,7 +609,7 @@ def test_run_split_by_new_line_count_page_breaks_word_unit() -> None:
 
 def test_run_split_by_sentence_count_page_breaks_word_unit() -> None:
     document_splitter = RecursiveDocumentSplitter(
-        separators=["sentence"], split_length=28, split_overlap=0, split_unit="word"
+        separators=["sentence"], split_length=7, split_overlap=0, split_unit="word"
     )
 
     text = (

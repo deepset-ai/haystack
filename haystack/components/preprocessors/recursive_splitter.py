@@ -51,8 +51,9 @@ class RecursiveDocumentSplitter:
     >]
     """  # noqa: E501
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
+        *,
         split_length: int = 200,
         split_overlap: int = 0,
         split_unit: Literal["word", "char"] = "word",
@@ -71,6 +72,8 @@ class RecursiveDocumentSplitter:
             text will be split into sentences using a custom sentence tokenizer based on NLTK.
             See: haystack.components.preprocessors.sentence_tokenizer.SentenceSplitter.
             If no separators are provided, the default separators ["\n\n", "sentence", "\n", " "] are used.
+        :param sentence_splitter_params: Optional parameters to pass to the sentence tokenizer.
+            See: haystack.components.preprocessors.sentence_tokenizer.SentenceSplitter for more information.
 
         :raises ValueError: If the overlap is greater than or equal to the chunk size or if the overlap is negative, or
                             if any separator is not a string.
@@ -81,9 +84,20 @@ class RecursiveDocumentSplitter:
         self.separators = separators if separators else ["\n\n", "sentence", "\n", " "]  # default separators
         self.sentence_tokenizer_params = sentence_splitter_params
         self._check_params()
+        self.nltk_tokenizer = None
         if "sentence" in self.separators:
-            sentence_splitter_params = sentence_splitter_params or {"keep_white_spaces": True}
-            self.nltk_tokenizer = self._get_custom_sentence_tokenizer(sentence_splitter_params)
+            self.warm_up(sentence_splitter_params)
+
+    def warm_up(self, sentence_splitter_params):
+        """
+        Warm up the sentence tokenizer.
+
+        :param sentence_splitter_params: Optional parameters to pass to the sentence tokenizer.
+        :returns:
+            An instance of the SentenceSplitter.
+        """
+        sentence_splitter_params = sentence_splitter_params or {"keep_white_spaces": True}
+        self.nltk_tokenizer = self._get_custom_sentence_tokenizer(sentence_splitter_params)
 
     def _check_params(self):
         if self.split_length < 1:
@@ -162,7 +176,8 @@ class RecursiveDocumentSplitter:
 
         for curr_separator in self.separators:  # type: ignore # the caller already checked that separators is not None
             if curr_separator == "sentence":
-                sentence_with_spans = self.nltk_tokenizer.split_sentences(text)
+                # correct SentenceSplitter initialization is checked at the initialization of the component
+                sentence_with_spans = self.nltk_tokenizer.split_sentences(text)  # type: ignore
                 splits = [sentence["sentence"] for sentence in sentence_with_spans]
             else:
                 escaped_separator = re.escape(curr_separator)
@@ -221,19 +236,37 @@ class RecursiveDocumentSplitter:
             if chunks:
                 return chunks
 
-        # if no separator worked, fall back to character- or word-level chunking
-        # ToDo: refactor into a function making use of split_unit parameter that can be easily tested in isolation
+        # if no separator worked, fall back to word- or character-level chunking
         if self.split_units == "word":
-            return [
-                " ".join(text.split()[i : i + self.split_length])
-                for i in range(0, self._chunk_length(text), self.split_length - self.split_overlap)
-            ]
+            return self.fall_back_to_word_level_chunking(text)
 
-        if self.split_units == "char":
-            return [
-                text[i : i + self.split_length]
-                for i in range(0, self._chunk_length(text), self.split_length - self.split_overlap)
-            ]
+        return self.fall_back_to_char_level_chunking(text)
+
+    def fall_back_to_word_level_chunking(self, text: str) -> List[str]:
+        """
+        Fall back to word-level chunking if no separator works.
+
+        :param text: The text to be split into chunks.
+        :returns:
+            A list of text chunks.
+        """
+        return [
+            " ".join(text.split()[i : i + self.split_length])
+            for i in range(0, self._chunk_length(text), self.split_length - self.split_overlap)
+        ]
+
+    def fall_back_to_char_level_chunking(self, text: str) -> List[str]:
+        """
+        Fall back to character-level chunking if no separator works.
+
+        :param text: The text to be split into chunks.
+        :returns:
+            A list of text chunks.
+        """
+        return [
+            text[i : i + self.split_length]
+            for i in range(0, self._chunk_length(text), self.split_length - self.split_overlap)
+        ]
 
     def _add_overlap_info(self, curr_pos: int, new_doc: Document, new_docs: List[Document]) -> None:
         prev_doc = new_docs[-1]
@@ -244,7 +277,7 @@ class RecursiveDocumentSplitter:
                 {
                     "doc_id": prev_doc.id,
                     "range": (
-                        self._chunk_length(prev_doc.content) - overlap_length,
+                        self._chunk_length(prev_doc.content) - overlap_length,  # type: ignore
                         self._chunk_length(prev_doc.content),  # type: ignore
                     ),
                 }
