@@ -201,7 +201,7 @@ class RecursiveDocumentSplitter:
                     if self._chunk_length(split_text) > self.split_length:
                         if curr_separator == self.separators[-1]:
                             # tried the last separator, can't split further, break the loop and fall back to
-                            # character-level chunking
+                            # word- or character-level chunking
                             break
                         chunks.extend(self._chunk_text(split_text))
                     else:
