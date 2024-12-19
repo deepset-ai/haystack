@@ -100,12 +100,7 @@ class TestHuggingFaceLocalGenerator:
         If they are provided, they should override other init parameters.
         """
 
-        huggingface_pipeline_kwargs = {
-            "model": "gpt2",
-            "task": "text-generation",
-            "device": "cuda:0",
-            "token": "another-test-token",
-        }
+        huggingface_pipeline_kwargs = {"model": "gpt2", "device": "cuda:0", "token": "another-test-token"}
 
         generator = HuggingFaceLocalGenerator(
             model="google/flan-t5-base",

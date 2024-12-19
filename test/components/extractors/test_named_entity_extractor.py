@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+from haystack.utils.auth import Secret
 import pytest
 
 from haystack import ComponentError, DeserializationError, Pipeline
@@ -10,6 +11,9 @@ from haystack.utils.device import ComponentDevice
 
 def test_named_entity_extractor_backend():
     _ = NamedEntityExtractor(backend=NamedEntityExtractorBackend.HUGGING_FACE, model="dslim/bert-base-NER")
+
+    # private model
+    _ = NamedEntityExtractor(backend=NamedEntityExtractorBackend.HUGGING_FACE, model="deepset/bert-base-NER")
 
     _ = NamedEntityExtractor(backend="hugging_face", model="dslim/bert-base-NER")
 
@@ -40,7 +44,58 @@ def test_named_entity_extractor_serde():
         _ = NamedEntityExtractor.from_dict(serde_data)
 
 
-def test_named_entity_extractor_from_dict_no_default_parameters_hf():
+def test_to_dict_default(monkeypatch):
+    monkeypatch.delenv("HF_API_TOKEN", raising=False)
+
+    component = NamedEntityExtractor(
+        backend=NamedEntityExtractorBackend.HUGGING_FACE,
+        model="dslim/bert-base-NER",
+        device=ComponentDevice.from_str("mps"),
+    )
+    data = component.to_dict()
+
+    assert data == {
+        "type": "haystack.components.extractors.named_entity_extractor.NamedEntityExtractor",
+        "init_parameters": {
+            "backend": "HUGGING_FACE",
+            "model": "dslim/bert-base-NER",
+            "device": {"type": "single", "device": "mps"},
+            "pipeline_kwargs": {"model": "dslim/bert-base-NER", "device": "mps", "task": "ner"},
+            "token": {"type": "env_var", "env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False},
+        },
+    }
+
+
+def test_to_dict_with_parameters():
+    component = NamedEntityExtractor(
+        backend=NamedEntityExtractorBackend.HUGGING_FACE,
+        model="dslim/bert-base-NER",
+        device=ComponentDevice.from_str("mps"),
+        pipeline_kwargs={"model_kwargs": {"load_in_4bit": True}},
+        token=Secret.from_env_var("ENV_VAR", strict=False),
+    )
+    data = component.to_dict()
+
+    assert data == {
+        "type": "haystack.components.extractors.named_entity_extractor.NamedEntityExtractor",
+        "init_parameters": {
+            "backend": "HUGGING_FACE",
+            "model": "dslim/bert-base-NER",
+            "device": {"type": "single", "device": "mps"},
+            "pipeline_kwargs": {
+                "model": "dslim/bert-base-NER",
+                "device": "mps",
+                "task": "ner",
+                "model_kwargs": {"load_in_4bit": True},
+            },
+            "token": {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"},
+        },
+    }
+
+
+def test_named_entity_extractor_from_dict_no_default_parameters_hf(monkeypatch):
+    monkeypatch.delenv("HF_API_TOKEN", raising=False)
+
     data = {
         "type": "haystack.components.extractors.named_entity_extractor.NamedEntityExtractor",
         "init_parameters": {"backend": "HUGGING_FACE", "model": "dslim/bert-base-NER"},
