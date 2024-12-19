@@ -154,6 +154,10 @@ class RecursiveDocumentSplitter:
             The length of the chunk in words or characters.
         """
         if self.split_units == "word":
+            print(text)
+            print(text.split())
+            print(len(text.split()))
+            print("-----------------")
             return len(text.split())
         else:
             return len(text)

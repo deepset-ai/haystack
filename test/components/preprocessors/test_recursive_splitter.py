@@ -52,7 +52,7 @@ def test_apply_overlap_with_overlap_capturing_completely_previous_chunk(caplog):
     chunks = ["chunk1", "chunk2", "chunk3", "chunk4"]
     _ = splitter._apply_overlap(chunks)
     assert (
-        "Overlap is the same as the previous chunk. Consider increasing the `split_overlap` parameter or decreasing the `split_length` parameter."
+        "Overlap is the same as the previous chunk. Consider increasing the `split_length` parameter or decreasing the `split_overlap` parameter."
         in caplog.text
     )
 
@@ -183,7 +183,7 @@ def test_run_split_by_dot_count_page_breaks_split_unit_char() -> None:
 
 
 def test_run_split_by_word_count_page_breaks_split_unit_char():
-    splitter = RecursiveDocumentSplitter(split_length=18, split_overlap=0, separators=["w"], split_unit="char")
+    splitter = RecursiveDocumentSplitter(split_length=18, split_overlap=0, separators=[" "], split_unit="char")
     text = "This is some text. \f This text is on another page. \f This is the last pag3."
     doc = Document(content=text)
     doc_chunks = splitter.run([doc])
@@ -496,15 +496,20 @@ def test_run_split_by_dot_count_page_breaks_word_unit() -> None:
 
 
 def test_run_split_by_word_count_page_breaks_word_unit():
-    splitter = RecursiveDocumentSplitter(split_length=4, split_overlap=0, separators=["w"], split_unit="word")
+    splitter = RecursiveDocumentSplitter(split_length=4, split_overlap=0, separators=[" "], split_unit="word")
     text = "This is some text. \f This text is on another page. \f This is the last pag3."
     doc = Document(content=text)
     doc_chunks = splitter.run([doc])
     doc_chunks = doc_chunks["documents"]
 
+    print("\n\n")
+    print("-------------")
     for doc in doc_chunks:
         print(doc.content)
         print(doc.meta)
+        print("-------------")
+
+    exit(-1)
 
     assert len(doc_chunks) == 4
     assert doc_chunks[0].content == "This is some text."
