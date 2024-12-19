@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Moved the NLTK download of DocumentSplitter and NLTKDocumentSplitter to warm_up(). This prevents calling to an external api during instantiation. If a DocumentSplitter or NLTKDocumentSplitter is used for sentence splitting outside of a pipeline, warm_up() now needs to be called before running the component.
