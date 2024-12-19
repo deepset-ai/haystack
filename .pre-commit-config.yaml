@@ -26,6 +26,7 @@ repos:
     rev: v2.3.0
     hooks:
       - id: codespell
+        exclude: "haystack/data/abbreviations"
         args: ["--toml", "pyproject.toml"]
         additional_dependencies:
           - tomli
