@@ -55,7 +55,7 @@ class RecursiveDocumentSplitter:
         self,
         split_length: int = 200,
         split_overlap: int = 0,
-        split_unit: Literal["word", "char"] = "char",
+        split_unit: Literal["word", "char"] = "word",
         separators: Optional[List[str]] = None,
         sentence_splitter_params: Optional[Dict[str, Any]] = None,
     ):
