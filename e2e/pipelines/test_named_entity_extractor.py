@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import pytest
+import os
 
 from haystack import Document, Pipeline
 from haystack.components.extractors import NamedEntityAnnotation, NamedEntityExtractor, NamedEntityExtractorBackend
@@ -66,6 +67,10 @@ def test_ner_extractor_hf_backend(raw_texts, hf_annotations, batch_size):
 
 
 @pytest.mark.parametrize("batch_size", [1, 3])
+@pytest.mark.skipif(
+    not os.environ.get("HF_API_TOKEN", None),
+    reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
+)
 def test_ner_extractor_hf_backend_private_models(raw_texts, hf_annotations, batch_size):
     extractor = NamedEntityExtractor(backend=NamedEntityExtractorBackend.HUGGING_FACE, model="deepset/bert-base-NER")
     extractor.warm_up()
