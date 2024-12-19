@@ -11,6 +11,7 @@ from haystack.utils.device import ComponentDevice
 def test_named_entity_extractor_backend():
     _ = NamedEntityExtractor(backend=NamedEntityExtractorBackend.HUGGING_FACE, model="dslim/bert-base-NER")
 
+    # private model, will fail if HF_API_TOKEN is not set
     _ = NamedEntityExtractor(backend=NamedEntityExtractorBackend.HUGGING_FACE, model="deepset/bert-base-NER")
 
     _ = NamedEntityExtractor(backend="hugging_face", model="dslim/bert-base-NER")
