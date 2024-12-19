@@ -83,7 +83,7 @@ def test_chunk_text_by_period():
     assert chunks[2] == " And one more."
 
 
-def test_run_multiple_new_lines():
+def test_run_multiple_new_lines_unit_char():
     splitter = RecursiveDocumentSplitter(split_length=20, separators=["\n\n", "\n"], split_unit="char")
     text = "This is a test.\n\n\nAnother test.\n\n\n\nFinal test."
     doc = Document(content=text)
@@ -502,37 +502,28 @@ def test_run_split_by_word_count_page_breaks_word_unit():
     doc_chunks = splitter.run([doc])
     doc_chunks = doc_chunks["documents"]
 
-    print("\n\n")
-    print("-------------")
-    for doc in doc_chunks:
-        print(doc.content)
-        print(doc.meta)
-        print("-------------")
-
-    exit(-1)
-
-    assert len(doc_chunks) == 4
-    assert doc_chunks[0].content == "This is some text."
+    assert len(doc_chunks) == 5
+    assert doc_chunks[0].content == "This is some text. "
     assert doc_chunks[0].meta["page_number"] == 1
     assert doc_chunks[0].meta["split_id"] == 0
     assert doc_chunks[0].meta["split_idx_start"] == text.index(doc_chunks[0].content)
 
-    assert doc_chunks[1].content == " \f This text is on"
+    assert doc_chunks[1].content == "\f This text is "
     assert doc_chunks[1].meta["page_number"] == 2
     assert doc_chunks[1].meta["split_id"] == 1
     assert doc_chunks[1].meta["split_idx_start"] == text.index(doc_chunks[1].content)
 
-    assert doc_chunks[2].content == " another page. \f T"
+    assert doc_chunks[2].content == "on another page. \f "
     assert doc_chunks[2].meta["page_number"] == 3
     assert doc_chunks[2].meta["split_id"] == 2
     assert doc_chunks[2].meta["split_idx_start"] == text.index(doc_chunks[2].content)
 
-    assert doc_chunks[3].content == "his is the last pa"
+    assert doc_chunks[3].content == "This is the last "
     assert doc_chunks[3].meta["page_number"] == 3
     assert doc_chunks[3].meta["split_id"] == 3
     assert doc_chunks[3].meta["split_idx_start"] == text.index(doc_chunks[3].content)
 
-    assert doc_chunks[4].content == "g3."
+    assert doc_chunks[4].content == "pag3."
     assert doc_chunks[4].meta["page_number"] == 3
     assert doc_chunks[4].meta["split_id"] == 4
     assert doc_chunks[4].meta["split_idx_start"] == text.index(doc_chunks[4].content)
@@ -560,12 +551,12 @@ def test_run_split_by_page_break_count_page_breaks_word_unit() -> None:
     assert chunks_docs[1].meta["split_id"] == 1
     assert chunks_docs[1].meta["split_idx_start"] == text.index(chunks_docs[1].content)
 
-    assert chunks_docs[2].content == "Sentence on page 3. Another on page 3.\f\f"
+    assert chunks_docs[2].content == "Sentence on page 3. Another on page 3.\f"
     assert chunks_docs[2].meta["page_number"] == 3
     assert chunks_docs[2].meta["split_id"] == 2
     assert chunks_docs[2].meta["split_idx_start"] == text.index(chunks_docs[2].content)
 
-    assert chunks_docs[3].content == " Sentence on page 5."
+    assert chunks_docs[3].content == "\f Sentence on page 5."
     assert chunks_docs[3].meta["page_number"] == 5
     assert chunks_docs[3].meta["split_id"] == 3
     assert chunks_docs[3].meta["split_idx_start"] == text.index(chunks_docs[3].content)

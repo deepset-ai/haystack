@@ -154,10 +154,11 @@ class RecursiveDocumentSplitter:
             The length of the chunk in words or characters.
         """
         if self.split_units == "word":
-            print(text)
-            print(text.split())
-            print(len(text.split()))
-            print("-----------------")
+            # page breaks are counted as a single word or page breaks followed by only whitespace 1 or multiple times
+            # regex that matches a page break followed by only whitespace 1 or multiple times
+            if re.match(r"\f\s*", text):
+                return 1
+
             return len(text.split())
         else:
             return len(text)
@@ -226,7 +227,9 @@ class RecursiveDocumentSplitter:
                             break
                         chunks.extend(self._chunk_text(split_text))
                     else:
-                        chunks.append(split_text)
+                        # chunks.append(split_text)
+                        current_chunk.append(split_text)
+                        current_length += self._chunk_length(split_text)
                 else:
                     current_chunk.append(split_text)
                     current_length += self._chunk_length(split_text)
