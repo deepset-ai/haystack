@@ -237,36 +237,29 @@ class RecursiveDocumentSplitter:
                 return chunks
 
         # if no separator worked, fall back to word- or character-level chunking
-        if self.split_units == "word":
-            return self.fall_back_to_word_level_chunking(text)
+        return self.fall_back_to_fixed_chunking(text, self.split_units)
 
-        return self.fall_back_to_char_level_chunking(text)
-
-    def fall_back_to_word_level_chunking(self, text: str) -> List[str]:
+    def fall_back_to_fixed_chunking(self, text: str, split_units: Literal["word", "char"]) -> List[str]:
         """
-        Fall back to word-level chunking if no separator works.
+        Fall back to a fixed chunking approach if no separator works for the text.
 
         :param text: The text to be split into chunks.
+        :param split_units: The unit of the split_length parameter. It can be either "word" or "char".
         :returns:
             A list of text chunks.
         """
-        return [
-            " ".join(text.split()[i : i + self.split_length])
-            for i in range(0, self._chunk_length(text), self.split_length - self.split_overlap)
-        ]
+        chunks = []
+        step = self.split_length - self.split_overlap
 
-    def fall_back_to_char_level_chunking(self, text: str) -> List[str]:
-        """
-        Fall back to character-level chunking if no separator works.
+        if split_units == "word":
+            words = text.split()
+            for i in range(0, self._chunk_length(text), step):
+                chunks.append(" ".join(words[i : i + self.split_length]))
+        else:
+            for i in range(0, self._chunk_length(text), step):
+                chunks.append(text[i : i + self.split_length])
 
-        :param text: The text to be split into chunks.
-        :returns:
-            A list of text chunks.
-        """
-        return [
-            text[i : i + self.split_length]
-            for i in range(0, self._chunk_length(text), self.split_length - self.split_overlap)
-        ]
+        return chunks
 
     def _add_overlap_info(self, curr_pos: int, new_doc: Document, new_docs: List[Document]) -> None:
         prev_doc = new_docs[-1]

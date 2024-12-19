@@ -409,6 +409,16 @@ def test_run_fallback_to_character_chunking_by_default_length_too_short():
         assert len(chunk.content) <= 2
 
 
+def test_run_fallback_to_word_chunking_by_default_length_too_short():
+    text = "This is some text. This is some more text, and even more text."
+    separators = ["\n\n", "\n", "."]
+    splitter = RecursiveDocumentSplitter(split_length=2, separators=separators, split_unit="word")
+    doc = Document(content=text)
+    chunks = splitter.run([doc])["documents"]
+    for chunk in chunks:
+        assert splitter._chunk_length(chunk.content) <= 2
+
+
 def test_run_custom_sentence_tokenizer_document_and_overlap_char_unit():
     """Test that RecursiveDocumentSplitter works correctly with custom sentence tokenizer and overlap"""
     splitter = RecursiveDocumentSplitter(split_length=25, split_overlap=5, separators=["sentence"], split_unit="char")
