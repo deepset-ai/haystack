@@ -12,6 +12,7 @@ from haystack.dataclasses.tool import (
     ToolInvocationError,
     _remove_title_from_schema,
     deserialize_tools_inplace,
+    _check_duplicate_tool_names,
 )
 
 try:
@@ -303,3 +304,18 @@ def test_remove_title_from_schema_handle_no_title_in_top_level():
         "properties": {"parameter1": {"type": "string"}, "parameter2": {"type": "integer"}},
         "type": "object",
     }
+
+
+def test_check_duplicate_tool_names():
+    tools = [
+        Tool(name="weather", description="Get weather report", parameters=parameters, function=get_weather_report),
+        Tool(name="weather", description="A different description", parameters=parameters, function=get_weather_report),
+    ]
+    with pytest.raises(ValueError):
+        _check_duplicate_tool_names(tools)
+
+    tools = [
+        Tool(name="weather", description="Get weather report", parameters=parameters, function=get_weather_report),
+        Tool(name="weather2", description="Get weather report", parameters=parameters, function=get_weather_report),
+    ]
+    _check_duplicate_tool_names(tools)

@@ -85,7 +85,7 @@ extra-dependencies = [
   "numpy>=2", # Haystack is compatible both with numpy 1.x and 2.x, but we test with 2.x
 
   "transformers[torch,sentencepiece]==4.44.2", # ExtractiveReader, TransformersSimilarityRanker, LocalWhisperTranscriber, HFGenerators...
-  "huggingface_hub>=0.23.0",                   # Hugging Face API Generators and Embedders
+  "huggingface_hub>=0.27.0",                   # Hugging Face API Generators and Embedders
   "sentence-transformers>=3.0.0",              # SentenceTransformersTextEmbedder and SentenceTransformersDocumentEmbedder
   "langdetect",                                # TextLanguageRouter and DocumentLanguageClassifier
   "openai-whisper>=20231106",                  # LocalWhisperTranscriber

@@ -5,28 +5,23 @@
 from typing import Any, Callable, Dict, Iterable, List, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.dataclasses import ChatMessage, StreamingChunk
+from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall
+from haystack.dataclasses.tool import Tool, _check_duplicate_tool_names, deserialize_tools_inplace
 from haystack.lazy_imports import LazyImport
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
-from haystack.utils.hf import HFGenerationAPIType, HFModelType, check_valid_model
+from haystack.utils.hf import HFGenerationAPIType, HFModelType, check_valid_model, convert_message_to_hf_format
 from haystack.utils.url_validation import is_valid_http_url
 
-with LazyImport(message="Run 'pip install \"huggingface_hub[inference]>=0.23.0\"'") as huggingface_hub_import:
-    from huggingface_hub import ChatCompletionOutput, ChatCompletionStreamOutput, InferenceClient
+with LazyImport(message="Run 'pip install \"huggingface_hub[inference]>=0.27.0\"'") as huggingface_hub_import:
+    from huggingface_hub import (
+        ChatCompletionInputTool,
+        ChatCompletionOutput,
+        ChatCompletionStreamOutput,
+        InferenceClient,
+    )
 
 
 logger = logging.getLogger(__name__)
-
-
-def _convert_message_to_hfapi_format(message: ChatMessage) -> Dict[str, str]:
-    """
-    Convert a message to the format expected by Hugging Face APIs.
-
-    :returns: A dictionary with the following keys:
-        - `role`
-        - `content`
-    """
-    return {"role": message.role.value, "content": message.text or ""}
 
 
 @component
@@ -107,6 +102,7 @@ class HuggingFaceAPIChatGenerator:
         generation_kwargs: Optional[Dict[str, Any]] = None,
         stop_words: Optional[List[str]] = None,
         streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
+        tools: Optional[List[Tool]] = None,
     ):
         """
         Initialize the HuggingFaceAPIChatGenerator instance.
@@ -121,14 +117,22 @@ class HuggingFaceAPIChatGenerator:
             - `model`: Hugging Face model ID. Required when `api_type` is `SERVERLESS_INFERENCE_API`.
             - `url`: URL of the inference endpoint. Required when `api_type` is `INFERENCE_ENDPOINTS` or
             `TEXT_GENERATION_INFERENCE`.
-        :param token: The Hugging Face token to use as HTTP bearer authorization.
+        :param token:
+            The Hugging Face token to use as HTTP bearer authorization.
             Check your HF token in your [account settings](https://huggingface.co/settings/tokens).
         :param generation_kwargs:
             A dictionary with keyword arguments to customize text generation.
                 Some examples: `max_tokens`, `temperature`, `top_p`.
                 For details, see [Hugging Face chat_completion documentation](https://huggingface.co/docs/huggingface_hub/package_reference/inference_client#huggingface_hub.InferenceClient.chat_completion).
-        :param stop_words: An optional list of strings representing the stop words.
-        :param streaming_callback: An optional callable for handling streaming responses.
+        :param stop_words:
+            An optional list of strings representing the stop words.
+        :param streaming_callback:
+            An optional callable for handling streaming responses.
+        :param tools:
+            A list of tools for which the model can prepare calls.
+            The chosen model should support tool/function calling, according to the model card.
+            Support for tools in the Hugging Face API and TGI is not yet fully refined and you may experience
+            unexpected behavior.
         """
 
         huggingface_hub_import.check()
@@ -159,6 +163,11 @@ class HuggingFaceAPIChatGenerator:
             msg = f"Unknown api_type {api_type}"
             raise ValueError(msg)
 
+        if tools:
+            if streaming_callback is not None:
+                raise ValueError("Using tools and streaming at the same time is not supported. Please choose one.")
+            _check_duplicate_tool_names(tools)
+
         # handle generation kwargs setup
         generation_kwargs = generation_kwargs.copy() if generation_kwargs else {}
         generation_kwargs["stop"] = generation_kwargs.get("stop", [])
@@ -171,6 +180,7 @@ class HuggingFaceAPIChatGenerator:
         self.generation_kwargs = generation_kwargs
         self.streaming_callback = streaming_callback
         self._client = InferenceClient(model_or_url, token=token.resolve_value() if token else None)
+        self.tools = tools
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -180,6 +190,7 @@ class HuggingFaceAPIChatGenerator:
             A dictionary containing the serialized component.
         """
         callback_name = serialize_callable(self.streaming_callback) if self.streaming_callback else None
+        serialized_tools = [tool.to_dict() for tool in self.tools] if self.tools else None
         return default_to_dict(
             self,
             api_type=str(self.api_type),
@@ -187,6 +198,7 @@ class HuggingFaceAPIChatGenerator:
             token=self.token.to_dict() if self.token else None,
             generation_kwargs=self.generation_kwargs,
             streaming_callback=callback_name,
+            tools=serialized_tools,
         )
 
     @classmethod
@@ -195,6 +207,7 @@ class HuggingFaceAPIChatGenerator:
         Deserialize this component from a dictionary.
         """
         deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
+        deserialize_tools_inplace(data["init_parameters"], key="tools")
         init_params = data.get("init_parameters", {})
         serialized_callback_handler = init_params.get("streaming_callback")
         if serialized_callback_handler:
@@ -202,12 +215,22 @@ class HuggingFaceAPIChatGenerator:
         return default_from_dict(cls, data)
 
     @component.output_types(replies=List[ChatMessage])
-    def run(self, messages: List[ChatMessage], generation_kwargs: Optional[Dict[str, Any]] = None):
+    def run(
+        self,
+        messages: List[ChatMessage],
+        generation_kwargs: Optional[Dict[str, Any]] = None,
+        tools: Optional[List[Tool]] = None,
+    ):
         """
         Invoke the text generation inference based on the provided messages and generation parameters.
 
-        :param messages: A list of ChatMessage objects representing the input messages.
-        :param generation_kwargs: Additional keyword arguments for text generation.
+        :param messages:
+            A list of ChatMessage objects representing the input messages.
+        :param generation_kwargs:
+            Additional keyword arguments for text generation.
+        :param tools:
+            A list of tools for which the model can prepare calls. If set, it will override the `tools` parameter set
+            during component initialization.
         :returns: A dictionary with the following keys:
             - `replies`: A list containing the generated responses as ChatMessage objects.
         """
@@ -215,12 +238,22 @@ class HuggingFaceAPIChatGenerator:
         # update generation kwargs by merging with the default ones
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
 
-        formatted_messages = [_convert_message_to_hfapi_format(message) for message in messages]
+        formatted_messages = [convert_message_to_hf_format(message) for message in messages]
+
+        tools = tools or self.tools
+        if tools:
+            if self.streaming_callback:
+                raise ValueError("Using tools and streaming at the same time is not supported. Please choose one.")
+            _check_duplicate_tool_names(tools)
 
         if self.streaming_callback:
             return self._run_streaming(formatted_messages, generation_kwargs)
 
-        return self._run_non_streaming(formatted_messages, generation_kwargs)
+        hf_tools = None
+        if tools:
+            hf_tools = [{"type": "function", "function": {**t.tool_spec}} for t in tools]
+
+        return self._run_non_streaming(formatted_messages, generation_kwargs, hf_tools)
 
     def _run_streaming(self, messages: List[Dict[str, str]], generation_kwargs: Dict[str, Any]):
         api_output: Iterable[ChatCompletionStreamOutput] = self._client.chat_completion(
@@ -229,11 +262,17 @@ class HuggingFaceAPIChatGenerator:
 
         generated_text = ""
 
-        for chunk in api_output:  # pylint: disable=not-an-iterable
-            text = chunk.choices[0].delta.content
+        for chunk in api_output:
+            # n is unused, so the API always returns only one choice
+            # the argument is probably allowed for compatibility with OpenAI
+            # see https://huggingface.co/docs/huggingface_hub/package_reference/inference_client#huggingface_hub.InferenceClient.chat_completion.n
+            choice = chunk.choices[0]
+
+            text = choice.delta.content
             if text:
                 generated_text += text
-            finish_reason = chunk.choices[0].finish_reason
+
+            finish_reason = choice.finish_reason
 
             meta = {}
             if finish_reason:
@@ -242,8 +281,7 @@ class HuggingFaceAPIChatGenerator:
             stream_chunk = StreamingChunk(text, meta)
             self.streaming_callback(stream_chunk)  # type: ignore # streaming_callback is not None (verified in the run method)
 
-        message = ChatMessage.from_assistant(generated_text)
-        message.meta.update(
+        meta.update(
             {
                 "model": self._client.model,
                 "finish_reason": finish_reason,
@@ -251,24 +289,48 @@ class HuggingFaceAPIChatGenerator:
                 "usage": {"prompt_tokens": 0, "completion_tokens": 0},  # not available in streaming
             }
         )
+
+        message = ChatMessage.from_assistant(text=generated_text, meta=meta)
+
         return {"replies": [message]}
 
     def _run_non_streaming(
-        self, messages: List[Dict[str, str]], generation_kwargs: Dict[str, Any]
+        self,
+        messages: List[Dict[str, str]],
+        generation_kwargs: Dict[str, Any],
+        tools: Optional[List["ChatCompletionInputTool"]] = None,
     ) -> Dict[str, List[ChatMessage]]:
-        chat_messages: List[ChatMessage] = []
+        api_chat_output: ChatCompletionOutput = self._client.chat_completion(
+            messages=messages, tools=tools, **generation_kwargs
+        )
 
-        api_chat_output: ChatCompletionOutput = self._client.chat_completion(messages, **generation_kwargs)
-        for choice in api_chat_output.choices:
-            message = ChatMessage.from_assistant(choice.message.content)
-            message.meta.update(
-                {
-                    "model": self._client.model,
-                    "finish_reason": choice.finish_reason,
-                    "index": choice.index,
-                    "usage": api_chat_output.usage or {"prompt_tokens": 0, "completion_tokens": 0},
-                }
-            )
-            chat_messages.append(message)
+        if len(api_chat_output.choices) == 0:
+            return {"replies": []}
 
-        return {"replies": chat_messages}
+        # n is unused, so the API always returns only one choice
+        # the argument is probably allowed for compatibility with OpenAI
+        # see https://huggingface.co/docs/huggingface_hub/package_reference/inference_client#huggingface_hub.InferenceClient.chat_completion.n
+        choice = api_chat_output.choices[0]
+
+        text = choice.message.content
+        tool_calls = []
+
+        if hfapi_tool_calls := choice.message.tool_calls:
+            for hfapi_tc in hfapi_tool_calls:
+                tool_call = ToolCall(
+                    tool_name=hfapi_tc.function.name, arguments=hfapi_tc.function.arguments, id=hfapi_tc.id
+                )
+                tool_calls.append(tool_call)
+
+        meta = {"model": self._client.model, "finish_reason": choice.finish_reason, "index": choice.index}
+
+        usage = {"prompt_tokens": 0, "completion_tokens": 0}
+        if api_chat_output.usage:
+            usage = {
+                "prompt_tokens": api_chat_output.usage.prompt_tokens,
+                "completion_tokens": api_chat_output.usage.completion_tokens,
+            }
+        meta["usage"] = usage
+
+        message = ChatMessage.from_assistant(text=text, tool_calls=tool_calls, meta=meta)
+        return {"replies": [message]}
