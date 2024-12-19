@@ -280,7 +280,7 @@ def convert_message_to_hf_format(message: ChatMessage) -> Dict[str, Any]:
 
     if not text_contents and not tool_calls and not tool_call_results:
         raise ValueError("A `ChatMessage` must contain at least one `TextContent`, `ToolCall`, or `ToolCallResult`.")
-    elif len(text_contents) + len(tool_call_results) > 1:
+    if len(text_contents) + len(tool_call_results) > 1:
         raise ValueError("A `ChatMessage` can only contain one `TextContent` or one `ToolCallResult`.")
 
     # HF always expects a content field, even if it is empty
