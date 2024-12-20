@@ -163,10 +163,9 @@ class HuggingFaceAPIChatGenerator:
             msg = f"Unknown api_type {api_type}"
             raise ValueError(msg)
 
-        if tools:
-            if streaming_callback is not None:
-                raise ValueError("Using tools and streaming at the same time is not supported. Please choose one.")
-            _check_duplicate_tool_names(tools)
+        if tools and streaming_callback is not None:
+            raise ValueError("Using tools and streaming at the same time is not supported. Please choose one.")
+        _check_duplicate_tool_names(tools)
 
         # handle generation kwargs setup
         generation_kwargs = generation_kwargs.copy() if generation_kwargs else {}
@@ -241,10 +240,9 @@ class HuggingFaceAPIChatGenerator:
         formatted_messages = [convert_message_to_hf_format(message) for message in messages]
 
         tools = tools or self.tools
-        if tools:
-            if self.streaming_callback:
-                raise ValueError("Using tools and streaming at the same time is not supported. Please choose one.")
-            _check_duplicate_tool_names(tools)
+        if tools and self.streaming_callback:
+            raise ValueError("Using tools and streaming at the same time is not supported. Please choose one.")
+        _check_duplicate_tool_names(tools)
 
         if self.streaming_callback:
             return self._run_streaming(formatted_messages, generation_kwargs)
