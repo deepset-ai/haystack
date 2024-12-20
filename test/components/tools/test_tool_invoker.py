@@ -6,6 +6,7 @@ from haystack import Pipeline
 from haystack.dataclasses import ChatMessage, ToolCall, ToolCallResult, ChatRole
 from haystack.dataclasses.tool import Tool, ToolInvocationError
 from haystack.components.tools.tool_invoker import ToolInvoker, ToolNotFoundException, StringConversionError
+from haystack.components.generators.chat.openai import OpenAIChatGenerator
 
 
 def weather_function(location):
@@ -218,3 +219,59 @@ class TestToolInvoker:
         assert invoker._tools_with_names == {"weather_tool": weather_tool}
         assert invoker.raise_on_failure
         assert not invoker.convert_result_to_json_string
+
+    def test_serde_in_pipeline(self, invoker, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+
+        pipeline = Pipeline()
+        pipeline.add_component("invoker", invoker)
+        pipeline.add_component("chatgenerator", OpenAIChatGenerator())
+        pipeline.connect("invoker", "chatgenerator")
+
+        pipeline_dict = pipeline.to_dict()
+        assert pipeline_dict == {
+            "metadata": {},
+            "max_runs_per_component": 100,
+            "components": {
+                "invoker": {
+                    "type": "haystack.components.tools.tool_invoker.ToolInvoker",
+                    "init_parameters": {
+                        "tools": [
+                            {
+                                "name": "weather_tool",
+                                "description": "Provides weather information for a given location.",
+                                "parameters": {
+                                    "type": "object",
+                                    "properties": {"location": {"type": "string"}},
+                                    "required": ["location"],
+                                },
+                                "function": "tools.test_tool_invoker.weather_function",
+                            }
+                        ],
+                        "raise_on_failure": True,
+                        "convert_result_to_json_string": False,
+                    },
+                },
+                "chatgenerator": {
+                    "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
+                    "init_parameters": {
+                        "model": "gpt-4o-mini",
+                        "streaming_callback": None,
+                        "api_base_url": None,
+                        "organization": None,
+                        "generation_kwargs": {},
+                        "max_retries": None,
+                        "timeout": None,
+                        "api_key": {"type": "env_var", "env_vars": ["OPENAI_API_KEY"], "strict": True},
+                        "tools": None,
+                        "tools_strict": False,
+                    },
+                },
+            },
+            "connections": [{"sender": "invoker.tool_messages", "receiver": "chatgenerator.messages"}],
+        }
+
+        pipeline_yaml = pipeline.dumps()
+
+        new_pipeline = Pipeline.loads(pipeline_yaml)
+        assert new_pipeline == pipeline
