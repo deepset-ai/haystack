@@ -118,32 +118,99 @@ class RecursiveDocumentSplitter:
     def _apply_overlap(self, chunks: List[str]) -> List[str]:
         """
         Applies an overlap between consecutive chunks if the chunk_overlap attribute is greater than zero.
-
-        :param chunks: List of text chunks.
-        :returns:
-            The list of chunks with overlap applied.
         """
-        overlapped_chunks = []
+        overlapped_chunks: List[str] = []
+        remaining_words: List[str] = []
+        remaining_chars: str = ""
 
         for idx, chunk in enumerate(chunks):
             if idx == 0:
                 overlapped_chunks.append(chunk)
                 continue
-            overlap_start = max(0, self._chunk_length(chunks[idx - 1]) - self.split_overlap)
-            if self.split_units == "word":
-                word_chunks = chunks[idx - 1].split()
-                overlap = " ".join(word_chunks[overlap_start:])
-            else:
-                overlap = chunks[idx - 1][overlap_start:]
-            if overlap == chunks[idx - 1]:
+
+            overlap, prev_chunk = self._get_overlap(overlapped_chunks)
+
+            if overlap == prev_chunk:
                 logger.warning(
                     "Overlap is the same as the previous chunk. "
                     "Consider increasing the `split_length` parameter or decreasing the `split_overlap` parameter."
                 )
-            current_chunk = overlap + chunk
+
+            # create new chunk starting with the overlap
+            if self.split_units == "word":
+                current_chunk = overlap + " " + chunk
+            else:
+                current_chunk = overlap + chunk
+
+            # if the new chunk exceeds split_length, trim it and add the trimmed content to the next chunk
+            if self._chunk_length(current_chunk) > self.split_length:
+                if self.split_units == "word":
+                    words = current_chunk.split()
+                    current_chunk = " ".join(words[: self.split_length])
+                    remaining_words = words[self.split_length :]
+                    if idx < len(chunks) - 1:
+                        # add remaining words to the beginning of the next chunk
+                        chunks[idx + 1] = " ".join(remaining_words) + " " + chunks[idx + 1]
+                    elif remaining_words:
+                        # if this is the last chunk, and we have remaining words
+                        overlapped_chunks.append(current_chunk)
+                        current_chunk = " ".join(remaining_words)
+
+                else:  # char-level splitting
+                    text = current_chunk
+                    current_chunk = text[: self.split_length]
+                    remaining_chars = text[self.split_length :]
+                    if idx < len(chunks) - 1:
+                        # add remaining chars to the beginning of the next chunk
+                        chunks[idx + 1] = remaining_chars + chunks[idx + 1]
+                    elif remaining_chars:  # if this is the last chunk and we have remaining chars
+                        overlapped_chunks.append(current_chunk)
+                        current_chunk = remaining_chars
+
+            # if this is the last chunk, and we have remaining words or characters, add them to the current chunk
+            if idx == len(chunks) - 1 and (remaining_words or remaining_chars):
+                overlap, prev_chunk = self._get_overlap(overlapped_chunks)
+                if remaining_words:
+                    current_chunk = overlap + " " + current_chunk
+                if remaining_chars:
+                    current_chunk = overlap + current_chunk
+
             overlapped_chunks.append(current_chunk)
 
+            # check if the last chunk exceeds split_length and split it
+            if idx == len(chunks) - 1 and self._chunk_length(current_chunk) > self.split_length:
+                # split the last chunk and add the first chunk to the list
+                last_chunk = overlapped_chunks.pop()
+                if self.split_units == "word":
+                    words = last_chunk.split()
+                    first_chunk = " ".join(words[: self.split_length])
+                    remaining_chunk = " ".join(words[self.split_length :])
+                else:
+                    first_chunk = last_chunk[: self.split_length]
+                    remaining_chunk = last_chunk[self.split_length :]
+                overlapped_chunks.append(first_chunk)
+
+                # add the remaining chunk with overlap from the previous chunk
+                if remaining_chunk:
+                    overlap, prev_chunk = self._get_overlap(overlapped_chunks)
+                    if self.split_units == "word":
+                        remaining_chunk = overlap + " " + remaining_chunk
+                    else:
+                        remaining_chunk = overlap + remaining_chunk
+                    overlapped_chunks.append(remaining_chunk)
+
         return overlapped_chunks
+
+    def _get_overlap(self, overlapped_chunks):
+        """Get the previous overlapped chunk instead of the original chunk."""
+        prev_chunk = overlapped_chunks[-1]
+        overlap_start = max(0, self._chunk_length(prev_chunk) - self.split_overlap)
+        if self.split_units == "word":
+            word_chunks = prev_chunk.split()
+            overlap = " ".join(word_chunks[overlap_start:])
+        else:
+            overlap = prev_chunk[overlap_start:]
+        return overlap, prev_chunk
 
     def _chunk_length(self, text: str) -> int:
         """
