@@ -218,7 +218,7 @@ def _remove_title_from_schema(schema: Dict[str, Any]):
 
 def _check_duplicate_tool_names(tools: Optional[List[Tool]]) -> None:
     """
-    Check for duplicate tool names and raises a ValueError if they are found.
+    Checks for duplicate tool names and raises a ValueError if they are found.
 
     :param tools: The list of tools to check.
     :raises ValueError: If duplicate tool names are found.
