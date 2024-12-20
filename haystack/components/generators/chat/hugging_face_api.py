@@ -29,7 +29,7 @@ class HuggingFaceAPIChatGenerator:
     """
     Completes chats using Hugging Face APIs.
 
-    HuggingFaceAPIChatGenerator uses the [ChatMessage](https://docs.haystack.deepset.ai/docs/data-classes#chatmessage)
+    HuggingFaceAPIChatGenerator uses the [ChatMessage](https://docs.haystack.deepset.ai/docs/chatmessage)
     format for input and output. Use it to generate text with Hugging Face APIs:
     - [Free Serverless Inference API](https://huggingface.co/inference-api)
     - [Paid Inference Endpoints](https://huggingface.co/inference-endpoints)
