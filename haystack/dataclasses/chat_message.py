@@ -109,7 +109,7 @@ class ChatMessage:
         general_msg = (
             "Use the `from_assistant`, `from_user`, `from_system`, and `from_tool` class methods to create a "
             "ChatMessage. For more information about the new API and how to migrate, see the documentation:"
-            " https://docs.haystack.deepset.ai/docs/data-classes#chatmessage"
+            " https://docs.haystack.deepset.ai/docs/chatmessage"
         )
 
         if any(param in kwargs for param in LEGACY_INIT_PARAMETERS):
@@ -143,7 +143,7 @@ class ChatMessage:
                 "The `content` attribute of `ChatMessage` has been removed. "
                 "Use the `text` property to access the textual value. "
                 "For more information about the new API and how to migrate, see the documentation: "
-                "https://docs.haystack.deepset.ai/docs/data-classes#chatmessage"
+                "https://docs.haystack.deepset.ai/docs/chatmessage"
             )
             raise AttributeError(msg)
         return object.__getattribute__(self, name)
@@ -358,7 +358,7 @@ class ChatMessage:
             raise TypeError(
                 "The `role`, `content`, `meta`, and `name` init parameters of `ChatMessage` have been removed. "
                 "For more information about the new API and how to migrate, see the documentation: "
-                "https://docs.haystack.deepset.ai/docs/data-classes#chatmessage"
+                "https://docs.haystack.deepset.ai/docs/chatmessage"
             )
 
         data["_role"] = ChatRole(data["_role"])
