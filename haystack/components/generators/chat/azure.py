@@ -142,6 +142,11 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         self.max_retries = max_retries or int(os.environ.get("OPENAI_MAX_RETRIES", 5))
         self.default_headers = default_headers or {}
 
+        # This ChatGenerator does not yet supports tools. The following workaround ensures that we do not
+        # get an error when invoking the run method of the parent class (OpenAIChatGenerator).
+        self.tools = None
+        self.tools_strict = False
+
         self.client = AzureOpenAI(
             api_version=api_version,
             azure_endpoint=azure_endpoint,

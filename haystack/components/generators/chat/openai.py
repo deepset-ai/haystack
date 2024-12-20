@@ -289,10 +289,7 @@ class OpenAIChatGenerator:
         openai_tools = None
         if tools:
             openai_tools = [
-                {
-                    "type": "function",
-                    "function": {**t.tool_spec, **({"strict": tools_strict} if tools_strict is not None else {})},
-                }
+                {"type": "function", "function": {**t.tool_spec, **({"strict": tools_strict} if tools_strict else {})}}
                 for t in tools
             ]
 
