@@ -437,8 +437,9 @@ class ChatMessage:
         Create a ChatMessage from a dictionary in the format expected by OpenAI's Chat API.
 
         NOTE: While OpenAI's API requires `tool_call_id` in both tool calls and tool messages, this method
-        accepts messages without it to support shallow OpenAI-compatible APIs. However, if you plan to use the
-        resulting ChatMessage with OpenAI, you must include `tool_call_id` or you'll encounter validation errors.
+        accepts messages without it to support shallow OpenAI-compatible APIs.
+        If you plan to use the resulting ChatMessage with OpenAI, you must include `tool_call_id` or you'll
+        encounter validation errors.
 
         :param message:
             The OpenAI dictionary to build the ChatMessage object.
