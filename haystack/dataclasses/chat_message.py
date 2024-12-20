@@ -8,6 +8,10 @@ from dataclasses import asdict, dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional, Sequence, Union
 
+from haystack import logging
+
+logger = logging.getLogger(__name__)
+
 LEGACY_INIT_PARAMETERS = {"role", "content", "meta", "name"}
 
 
@@ -426,3 +430,62 @@ class ChatMessage:
                 )
             openai_msg["tool_calls"] = openai_tool_calls
         return openai_msg
+
+    @classmethod
+    def from_openai_dict_format(cls, message: Dict[str, Any]) -> "ChatMessage":
+        """
+        Create a ChatMessage from a dictionary in the format expected by OpenAI's Chat API.
+
+        NOTE: While OpenAI's API requires `tool_call_id` in both tool calls and tool messages, this method
+        accepts messages without it to support shallow OpenAI-compatible APIs. However, if you plan to use the
+        resulting ChatMessage with OpenAI, you must include `tool_call_id` or you'll encounter validation errors.
+
+        :param message:
+            The OpenAI dictionary to build the ChatMessage object.
+        :returns:
+            The created ChatMessage object.
+
+        :raises ValueError:
+            If the message dictionary is missing required fields.
+        """
+
+        if "role" not in message:
+            raise ValueError("The `role` field is required in the message dictionary.")
+        role = message["role"]
+
+        content = message.get("content")
+        name = message.get("name")
+        tool_calls = message.get("tool_calls")
+        tool_call_id = message.get("tool_call_id")
+
+        if role == "assistant":
+            if not content and not tool_calls:
+                raise ValueError("For assistant messages, either `content` or `tool_calls` must be present.")
+
+            haystack_tool_calls = None
+            if tool_calls:
+                haystack_tool_calls = []
+                for tc in tool_calls:
+                    if "function" not in tc:
+                        raise ValueError("Tool calls must contain the `function` field")
+                    haystack_tc = ToolCall(
+                        id=tc.get("id"),
+                        tool_name=tc["function"]["name"],
+                        arguments=json.loads(tc["function"]["arguments"]),
+                    )
+                    haystack_tool_calls.append(haystack_tc)
+            return cls.from_assistant(text=content, name=name, tool_calls=haystack_tool_calls)
+
+        if not content:
+            raise ValueError(f"The `content` field is required for {role} messages.")
+
+        if role == "user":
+            return cls.from_user(text=content, name=name)
+        if role in ["system", "developer"]:
+            return cls.from_system(text=content, name=name)
+        if role == "tool":
+            return cls.from_tool(
+                tool_result=content, origin=ToolCall(id=tool_call_id, tool_name="", arguments={}), error=False
+            )
+
+        raise ValueError(f"Unsupported role: {role}")
