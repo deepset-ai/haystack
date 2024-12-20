@@ -3,9 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 import pytest
 from transformers import AutoTokenizer
+import json
 
 from haystack.dataclasses.chat_message import ChatMessage, ChatRole, ToolCall, ToolCallResult, TextContent
-from haystack.components.generators.openai_utils import _convert_message_to_openai_format
 
 
 def test_tool_call_init():
@@ -239,11 +239,60 @@ def test_chat_message_function_role_deprecated():
         ChatMessage(ChatRole.FUNCTION, TextContent("This is a message"))
 
 
+def test_to_openai_dict_format():
+    message = ChatMessage.from_system("You are good assistant")
+    assert message.to_openai_dict_format() == {"role": "system", "content": "You are good assistant"}
+
+    message = ChatMessage.from_user("I have a question")
+    assert message.to_openai_dict_format() == {"role": "user", "content": "I have a question"}
+
+    message = ChatMessage.from_assistant(text="I have an answer", meta={"finish_reason": "stop"})
+    assert message.to_openai_dict_format() == {"role": "assistant", "content": "I have an answer"}
+
+    message = ChatMessage.from_assistant(
+        tool_calls=[ToolCall(id="123", tool_name="weather", arguments={"city": "Paris"})]
+    )
+    assert message.to_openai_dict_format() == {
+        "role": "assistant",
+        "tool_calls": [
+            {"id": "123", "type": "function", "function": {"name": "weather", "arguments": '{"city": "Paris"}'}}
+        ],
+    }
+
+    tool_result = json.dumps({"weather": "sunny", "temperature": "25"})
+    message = ChatMessage.from_tool(
+        tool_result=tool_result, origin=ToolCall(id="123", tool_name="weather", arguments={"city": "Paris"})
+    )
+    assert message.to_openai_dict_format() == {"role": "tool", "content": tool_result, "tool_call_id": "123"}
+
+
+def test_to_openai_dict_format_invalid():
+    message = ChatMessage(_role=ChatRole.ASSISTANT, _content=[])
+    with pytest.raises(ValueError):
+        message.to_openai_dict_format()
+
+    message = ChatMessage(
+        _role=ChatRole.ASSISTANT,
+        _content=[TextContent(text="I have an answer"), TextContent(text="I have another answer")],
+    )
+    with pytest.raises(ValueError):
+        message.to_openai_dict_format()
+
+    tool_call_null_id = ToolCall(id=None, tool_name="weather", arguments={"city": "Paris"})
+    message = ChatMessage.from_assistant(tool_calls=[tool_call_null_id])
+    with pytest.raises(ValueError):
+        message.to_openai_dict_format()
+
+    message = ChatMessage.from_tool(tool_result="result", origin=tool_call_null_id)
+    with pytest.raises(ValueError):
+        message.to_openai_dict_format()
+
+
 @pytest.mark.integration
 def test_apply_chat_templating_on_chat_message():
     messages = [ChatMessage.from_system("You are good assistant"), ChatMessage.from_user("I have a question")]
     tokenizer = AutoTokenizer.from_pretrained("HuggingFaceH4/zephyr-7b-beta")
-    formatted_messages = [_convert_message_to_openai_format(m) for m in messages]
+    formatted_messages = [m.to_openai_dict_format() for m in messages]
     tokenized_messages = tokenizer.apply_chat_template(formatted_messages, tokenize=False)
     assert tokenized_messages == "<|system|>\nYou are good assistant</s>\n<|user|>\nI have a question</s>\n"
 
@@ -264,7 +313,7 @@ def test_apply_custom_chat_templating_on_chat_message():
     messages = [ChatMessage.from_system("You are good assistant"), ChatMessage.from_user("I have a question")]
     # could be any tokenizer, let's use the one we already likely have in cache
     tokenizer = AutoTokenizer.from_pretrained("HuggingFaceH4/zephyr-7b-beta")
-    formatted_messages = [_convert_message_to_openai_format(m) for m in messages]
+    formatted_messages = [m.to_openai_dict_format() for m in messages]
     tokenized_messages = tokenizer.apply_chat_template(
         formatted_messages, chat_template=anthropic_template, tokenize=False
     )

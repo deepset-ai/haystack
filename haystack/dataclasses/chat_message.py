@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 import warnings
 from dataclasses import asdict, dataclass, field
 from enum import Enum
@@ -381,3 +382,47 @@ class ChatMessage:
         data["_content"] = content
 
         return cls(**data)
+
+    def to_openai_dict_format(self) -> Dict[str, Any]:
+        """
+        Convert a ChatMessage to the dictionary format expected by OpenAI's Chat API.
+        """
+        text_contents = self.texts
+        tool_calls = self.tool_calls
+        tool_call_results = self.tool_call_results
+
+        if not text_contents and not tool_calls and not tool_call_results:
+            raise ValueError(
+                "A `ChatMessage` must contain at least one `TextContent`, `ToolCall`, or `ToolCallResult`."
+            )
+        if len(text_contents) + len(tool_call_results) > 1:
+            raise ValueError("A `ChatMessage` can only contain one `TextContent` or one `ToolCallResult`.")
+
+        openai_msg: Dict[str, Any] = {"role": self._role.value}
+
+        if tool_call_results:
+            result = tool_call_results[0]
+            if result.origin.id is None:
+                raise ValueError("`ToolCall` must have a non-null `id` attribute to be used with OpenAI.")
+            openai_msg["content"] = result.result
+            openai_msg["tool_call_id"] = result.origin.id
+            # OpenAI does not provide a way to communicate errors in tool invocations, so we ignore the error field
+            return openai_msg
+
+        if text_contents:
+            openai_msg["content"] = text_contents[0]
+        if tool_calls:
+            openai_tool_calls = []
+            for tc in tool_calls:
+                if tc.id is None:
+                    raise ValueError("`ToolCall` must have a non-null `id` attribute to be used with OpenAI.")
+                openai_tool_calls.append(
+                    {
+                        "id": tc.id,
+                        "type": "function",
+                        # We disable ensure_ascii so special chars like emojis are not converted
+                        "function": {"name": tc.tool_name, "arguments": json.dumps(tc.arguments, ensure_ascii=False)},
+                    }
+                )
+            openai_msg["tool_calls"] = openai_tool_calls
+        return openai_msg
