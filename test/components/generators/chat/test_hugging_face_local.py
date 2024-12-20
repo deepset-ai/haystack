@@ -18,6 +18,14 @@ def streaming_callback_handler(x):
 
 
 @pytest.fixture
+def chat_messages():
+    return [
+        ChatMessage.from_system("You are a helpful assistant speaking A2 level of English"),
+        ChatMessage.from_user("Tell me about Berlin"),
+    ]
+
+
+@pytest.fixture
 def model_info_mock():
     with patch(
         "haystack.components.generators.chat.hugging_face_local.model_info",

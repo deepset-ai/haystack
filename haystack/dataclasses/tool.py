@@ -216,13 +216,15 @@ def _remove_title_from_schema(schema: Dict[str, Any]):
                 del property_schema[key]
 
 
-def _check_duplicate_tool_names(tools: List[Tool]) -> None:
+def _check_duplicate_tool_names(tools: Optional[List[Tool]]) -> None:
     """
-    Check for duplicate tool names and raises a ValueError if they are found.
+    Checks for duplicate tool names and raises a ValueError if they are found.
 
     :param tools: The list of tools to check.
     :raises ValueError: If duplicate tool names are found.
     """
+    if tools is None:
+        return
     tool_names = [tool.name for tool in tools]
     duplicate_tool_names = {name for name in tool_names if tool_names.count(name) > 1}
     if duplicate_tool_names:

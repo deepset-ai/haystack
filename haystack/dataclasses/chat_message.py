@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 import warnings
 from dataclasses import asdict, dataclass, field
 from enum import Enum
@@ -108,7 +109,7 @@ class ChatMessage:
         general_msg = (
             "Use the `from_assistant`, `from_user`, `from_system`, and `from_tool` class methods to create a "
             "ChatMessage. For more information about the new API and how to migrate, see the documentation:"
-            " https://docs.haystack.deepset.ai/docs/data-classes#chatmessage"
+            " https://docs.haystack.deepset.ai/docs/chatmessage"
         )
 
         if any(param in kwargs for param in LEGACY_INIT_PARAMETERS):
@@ -142,7 +143,7 @@ class ChatMessage:
                 "The `content` attribute of `ChatMessage` has been removed. "
                 "Use the `text` property to access the textual value. "
                 "For more information about the new API and how to migrate, see the documentation: "
-                "https://docs.haystack.deepset.ai/docs/data-classes#chatmessage"
+                "https://docs.haystack.deepset.ai/docs/chatmessage"
             )
             raise AttributeError(msg)
         return object.__getattribute__(self, name)
@@ -357,7 +358,7 @@ class ChatMessage:
             raise TypeError(
                 "The `role`, `content`, `meta`, and `name` init parameters of `ChatMessage` have been removed. "
                 "For more information about the new API and how to migrate, see the documentation: "
-                "https://docs.haystack.deepset.ai/docs/data-classes#chatmessage"
+                "https://docs.haystack.deepset.ai/docs/chatmessage"
             )
 
         data["_role"] = ChatRole(data["_role"])
@@ -381,3 +382,47 @@ class ChatMessage:
         data["_content"] = content
 
         return cls(**data)
+
+    def to_openai_dict_format(self) -> Dict[str, Any]:
+        """
+        Convert a ChatMessage to the dictionary format expected by OpenAI's Chat API.
+        """
+        text_contents = self.texts
+        tool_calls = self.tool_calls
+        tool_call_results = self.tool_call_results
+
+        if not text_contents and not tool_calls and not tool_call_results:
+            raise ValueError(
+                "A `ChatMessage` must contain at least one `TextContent`, `ToolCall`, or `ToolCallResult`."
+            )
+        if len(text_contents) + len(tool_call_results) > 1:
+            raise ValueError("A `ChatMessage` can only contain one `TextContent` or one `ToolCallResult`.")
+
+        openai_msg: Dict[str, Any] = {"role": self._role.value}
+
+        if tool_call_results:
+            result = tool_call_results[0]
+            if result.origin.id is None:
+                raise ValueError("`ToolCall` must have a non-null `id` attribute to be used with OpenAI.")
+            openai_msg["content"] = result.result
+            openai_msg["tool_call_id"] = result.origin.id
+            # OpenAI does not provide a way to communicate errors in tool invocations, so we ignore the error field
+            return openai_msg
+
+        if text_contents:
+            openai_msg["content"] = text_contents[0]
+        if tool_calls:
+            openai_tool_calls = []
+            for tc in tool_calls:
+                if tc.id is None:
+                    raise ValueError("`ToolCall` must have a non-null `id` attribute to be used with OpenAI.")
+                openai_tool_calls.append(
+                    {
+                        "id": tc.id,
+                        "type": "function",
+                        # We disable ensure_ascii so special chars like emojis are not converted
+                        "function": {"name": tc.tool_name, "arguments": json.dumps(tc.arguments, ensure_ascii=False)},
+                    }
+                )
+            openai_msg["tool_calls"] = openai_tool_calls
+        return openai_msg
