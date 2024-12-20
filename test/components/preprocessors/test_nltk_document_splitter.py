@@ -42,6 +42,7 @@ class TestNLTKDocumentSplitterSplitIntoUnits:
         document_splitter = NLTKDocumentSplitter(
             split_by="sentence", split_length=2, split_overlap=0, split_threshold=0, language="en"
         )
+        document_splitter.warm_up()
 
         text = "Moonlight shimmered softly, wolves howled nearby, night enveloped everything. It was a dark night."
         units = document_splitter._split_into_units(text=text, split_by="sentence")
@@ -121,11 +122,13 @@ class TestNLTKDocumentSplitterRun:
     def test_run_type_error(self) -> None:
         document_splitter = NLTKDocumentSplitter()
         with pytest.raises(TypeError):
+            document_splitter.warm_up()
             document_splitter.run(documents=Document(content="Moonlight shimmered softly."))  # type: ignore
 
     def test_run_value_error(self) -> None:
         document_splitter = NLTKDocumentSplitter()
         with pytest.raises(ValueError):
+            document_splitter.warm_up()
             document_splitter.run(documents=[Document(content=None)])
 
     def test_run_split_by_sentence_1(self) -> None:
@@ -138,6 +141,7 @@ class TestNLTKDocumentSplitterRun:
             use_split_rules=True,
             extend_abbreviations=True,
         )
+        document_splitter.warm_up()
 
         text = (
             "Moonlight shimmered softly, wolves howled nearby, night enveloped everything. It was a dark night ... "
@@ -168,6 +172,7 @@ class TestNLTKDocumentSplitterRun:
             "This is another test sentence. (This is a third test sentence.) "
             "This is the last test sentence."
         )
+        document_splitter.warm_up()
         documents = document_splitter.run(documents=[Document(content=text)])["documents"]
 
         assert len(documents) == 4
@@ -201,6 +206,7 @@ class TestNLTKDocumentSplitterRun:
             use_split_rules=True,
             extend_abbreviations=True,
         )
+        document_splitter.warm_up()
 
         text = "Sentence on page 1.\fSentence on page 2. \fSentence on page 3. \f\f Sentence on page 5."
         documents = document_splitter.run(documents=[Document(content=text)])["documents"]
@@ -233,6 +239,7 @@ class TestNLTKDocumentSplitterRun:
             use_split_rules=True,
             extend_abbreviations=True,
         )
+        document_splitter.warm_up()
 
         text = "Sentence on page 1.\fSentence on page 2. \fSentence on page 3. \f\f Sentence on page 5."
         documents = document_splitter.run(documents=[Document(content=text)])["documents"]
@@ -262,6 +269,7 @@ class TestNLTKDocumentSplitterRespectSentenceBoundary:
             language="en",
             respect_sentence_boundary=True,
         )
+        document_splitter.warm_up()
 
         text = (
             "Moonlight shimmered softly, wolves howled nearby, night enveloped everything. It was a dark night.\f"
@@ -294,6 +302,7 @@ class TestNLTKDocumentSplitterRespectSentenceBoundary:
             use_split_rules=False,
             extend_abbreviations=False,
         )
+        document_splitter.warm_up()
         text = (
             "This is a test sentence with many many words that exceeds the split length and should not be repeated. "
             "This is another test sentence. (This is a third test sentence.) "
@@ -319,6 +328,7 @@ class TestNLTKDocumentSplitterRespectSentenceBoundary:
             extend_abbreviations=True,
             respect_sentence_boundary=True,
         )
+        document_splitter.warm_up()
 
         text = (
             "Sentence on page 1. Another on page 1.\fSentence on page 2. Another on page 2.\f"

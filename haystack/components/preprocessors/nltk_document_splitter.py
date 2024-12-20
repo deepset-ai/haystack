@@ -77,16 +77,23 @@ class NLTKDocumentSplitter(DocumentSplitter):
         self.respect_sentence_boundary = respect_sentence_boundary
         self.use_split_rules = use_split_rules
         self.extend_abbreviations = extend_abbreviations
-        self.sentence_splitter = SentenceSplitter(
-            language=language,
-            use_split_rules=use_split_rules,
-            extend_abbreviations=extend_abbreviations,
-            keep_white_spaces=True,
-        )
+        self.sentence_splitter = None
         self.language = language
 
+    def warm_up(self):
+        """
+        Warm up the NLTKDocumentSplitter by loading the sentence tokenizer.
+        """
+        if self.sentence_splitter is None:
+            self.sentence_splitter = SentenceSplitter(
+                language=self.language,
+                use_split_rules=self.use_split_rules,
+                extend_abbreviations=self.extend_abbreviations,
+                keep_white_spaces=True,
+            )
+
     def _split_into_units(
-        self, text: str, split_by: Literal["function", "page", "passage", "sentence", "word", "line"]
+        self, text: str, split_by: Literal["function", "page", "passage", "period", "sentence", "word", "line"]
     ) -> List[str]:
         """
         Splits the text into units based on the specified split_by parameter.
@@ -106,6 +113,7 @@ class NLTKDocumentSplitter(DocumentSplitter):
             # whitespace is preserved while splitting text into sentences when using keep_white_spaces=True
             # so split_at is set to an empty string
             self.split_at = ""
+            assert self.sentence_splitter is not None
             result = self.sentence_splitter.split_sentences(text)
             units = [sentence["sentence"] for sentence in result]
         elif split_by == "word":
@@ -142,6 +150,11 @@ class NLTKDocumentSplitter(DocumentSplitter):
         :raises TypeError: if the input is not a list of Documents.
         :raises ValueError: if the content of a document is None.
         """
+        if self.sentence_splitter is None:
+            raise RuntimeError(
+                "The component NLTKDocumentSplitter wasn't warmed up. Run 'warm_up()' before calling 'run()'."
+            )
+
         if not isinstance(documents, list) or (documents and not isinstance(documents[0], Document)):
             raise TypeError("DocumentSplitter expects a List of Documents as input.")
 
@@ -221,8 +234,9 @@ class NLTKDocumentSplitter(DocumentSplitter):
                 break
         return num_sentences_to_keep
 
+    @staticmethod
     def _concatenate_sentences_based_on_word_amount(
-        self, sentences: List[str], split_length: int, split_overlap: int
+        sentences: List[str], split_length: int, split_overlap: int
     ) -> Tuple[List[str], List[int], List[int]]:
         """
         Groups the sentences into chunks of `split_length` words while respecting sentence boundaries.
@@ -258,7 +272,7 @@ class NLTKDocumentSplitter(DocumentSplitter):
                 split_start_indices.append(chunk_start_idx)
 
                 # Get the number of sentences that overlap with the next chunk
-                num_sentences_to_keep = self._number_of_sentences_to_keep(
+                num_sentences_to_keep = NLTKDocumentSplitter._number_of_sentences_to_keep(
                     sentences=current_chunk, split_length=split_length, split_overlap=split_overlap
                 )
                 # Set up information for the new chunk
