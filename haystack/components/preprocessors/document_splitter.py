@@ -107,15 +107,10 @@ class DocumentSplitter:
             splitting_function=splitting_function,
             respect_sentence_boundary=respect_sentence_boundary,
         )
-
-        if split_by == "sentence" or (respect_sentence_boundary and split_by == "word"):
+        self._use_sentence_splitter = split_by == "sentence" or (respect_sentence_boundary and split_by == "word")
+        if self._use_sentence_splitter:
             nltk_imports.check()
-            self.sentence_splitter = SentenceSplitter(
-                language=language,
-                use_split_rules=use_split_rules,
-                extend_abbreviations=extend_abbreviations,
-                keep_white_spaces=True,
-            )
+            self.sentence_splitter = None
 
         if split_by == "sentence":
             # ToDo: remove this warning in the next major release
@@ -164,6 +159,18 @@ class DocumentSplitter:
             )
             self.respect_sentence_boundary = False
 
+    def warm_up(self):
+        """
+        Warm up the DocumentSplitter by loading the sentence tokenizer.
+        """
+        if self._use_sentence_splitter and self.sentence_splitter is None:
+            self.sentence_splitter = SentenceSplitter(
+                language=self.language,
+                use_split_rules=self.use_split_rules,
+                extend_abbreviations=self.extend_abbreviations,
+                keep_white_spaces=True,
+            )
+
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document]):
         """
@@ -182,6 +189,10 @@ class DocumentSplitter:
         :raises TypeError: if the input is not a list of Documents.
         :raises ValueError: if the content of a document is None.
         """
+        if self._use_sentence_splitter and self.sentence_splitter is None:
+            raise RuntimeError(
+                "The component DocumentSplitter wasn't warmed up. Run 'warm_up()' before calling 'run()'."
+            )
 
         if not isinstance(documents, list) or (documents and not isinstance(documents[0], Document)):
             raise TypeError("DocumentSplitter expects a List of Documents as input.")
