@@ -313,6 +313,7 @@ class TestSimilarityRanker:
     @patch("haystack.components.rankers.transformers_similarity.AutoModelForSequenceClassification.from_pretrained")
     def test_device_map_dict(self, mocked_automodel, _mocked_autotokenizer, monkeypatch):
         monkeypatch.delenv("HF_API_TOKEN", raising=False)
+        monkeypatch.delenv("HF_TOKEN", raising=False)
         ranker = TransformersSimilarityRanker("model", model_kwargs={"device_map": {"layer_1": 1, "classifier": "cpu"}})
 
         class MockedModel:

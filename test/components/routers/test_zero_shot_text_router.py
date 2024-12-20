@@ -28,6 +28,7 @@ class TestTransformersZeroShotTextRouter:
 
     def test_from_dict(self, monkeypatch):
         monkeypatch.delenv("HF_API_TOKEN", raising=False)
+        monkeypatch.delenv("HF_TOKEN", raising=False)
         data = {
             "type": "haystack.components.routers.zero_shot_text_router.TransformersZeroShotTextRouter",
             "init_parameters": {
@@ -56,6 +57,7 @@ class TestTransformersZeroShotTextRouter:
 
     def test_from_dict_no_default_parameters(self, monkeypatch):
         monkeypatch.delenv("HF_API_TOKEN", raising=False)
+        monkeypatch.delenv("HF_TOKEN", raising=False)
         data = {
             "type": "haystack.components.routers.zero_shot_text_router.TransformersZeroShotTextRouter",
             "init_parameters": {"labels": ["query", "passage"]},

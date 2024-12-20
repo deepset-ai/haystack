@@ -25,6 +25,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as torch_an
     from haystack.utils.hf import (  # pylint: disable=ungrouped-imports
         HFTokenStreamingHandler,
         StopWordsCriteria,
+        convert_message_to_hf_format,
         deserialize_hf_model_kwargs,
         serialize_hf_model_kwargs,
     )
@@ -201,6 +202,7 @@ class HuggingFaceLocalChatGenerator:
             generation_kwargs=self.generation_kwargs,
             streaming_callback=callback_name,
             token=self.token.to_dict() if self.token else None,
+            chat_template=self.chat_template,
         )
 
         huggingface_pipeline_kwargs = serialization_dict["init_parameters"]["huggingface_pipeline_kwargs"]
@@ -270,9 +272,11 @@ class HuggingFaceLocalChatGenerator:
             # streamer parameter hooks into HF streaming, HFTokenStreamingHandler is an adapter to our streaming
             generation_kwargs["streamer"] = HFTokenStreamingHandler(tokenizer, self.streaming_callback, stop_words)
 
+        hf_messages = [convert_message_to_hf_format(message) for message in messages]
+
         # Prepare the prompt for the model
         prepared_prompt = tokenizer.apply_chat_template(
-            messages, tokenize=False, chat_template=self.chat_template, add_generation_prompt=True
+            hf_messages, tokenize=False, chat_template=self.chat_template, add_generation_prompt=True
         )
 
         # Avoid some unnecessary warnings in the generation pipeline call
