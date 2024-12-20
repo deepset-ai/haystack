@@ -227,7 +227,6 @@ class RecursiveDocumentSplitter:
                             break
                         chunks.extend(self._chunk_text(split_text))
                     else:
-                        # chunks.append(split_text)
                         current_chunk.append(split_text)
                         current_length += self._chunk_length(split_text)
                 else:
