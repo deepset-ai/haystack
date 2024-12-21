@@ -308,10 +308,6 @@ class OpenAIChatGenerator:
         }
 
     def _handle_stream_response(self, chat_completion: Stream, callback: StreamingCallbackT) -> List[ChatMessage]:
-        print("callback")
-        print(callback)
-        print("-" * 100)
-
         chunks: List[StreamingChunk] = []
         chunk = None
 

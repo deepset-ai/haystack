@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Add the `from_openai_dict_format` class method to the `ChatMessage` class. It allows you to create a `ChatMessage`
+    from a dictionary in the format expected by OpenAI's Chat API.
