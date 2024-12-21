@@ -4,7 +4,7 @@
 
 import re
 from copy import deepcopy
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
 from haystack import Document, component, logging
 
@@ -115,9 +115,27 @@ class RecursiveDocumentSplitter:
 
         return SentenceSplitter(**sentence_splitter_params)
 
+    def _split_chunk(self, current_chunk: str) -> Union[Tuple[str, List[str]], Tuple[str, str]]:
+        if self.split_units == "word":
+            words = current_chunk.split()
+            current_chunk = " ".join(words[: self.split_length])
+            remaining_words = words[self.split_length :]
+            return current_chunk, remaining_words
+
+        text = current_chunk
+        current_chunk = text[: self.split_length]
+        remaining_chars = text[self.split_length :]
+        return current_chunk, remaining_chars
+
     def _apply_overlap(self, chunks: List[str]) -> List[str]:
         """
         Applies an overlap between consecutive chunks if the chunk_overlap attribute is greater than zero.
+
+        Works for both word- and character-level splitting. It trims the last chunk if it exceeds the split_length and
+        adds the trimmed content to the next chunk. If the last chunk is still too long after trimming, it splits it
+        and adds the first chunk to the list. This process continues until the last chunk is within the split_length.
+
+        :param chunks: A list of text chunks.
         """
         overlapped_chunks: List[str] = []
         remaining_words: List[str] = []
@@ -129,7 +147,6 @@ class RecursiveDocumentSplitter:
                 continue
 
             overlap, prev_chunk = self._get_overlap(overlapped_chunks)
-
             if overlap == prev_chunk:
                 logger.warning(
                     "Overlap is the same as the previous chunk. "
@@ -137,17 +154,12 @@ class RecursiveDocumentSplitter:
                 )
 
             # create new chunk starting with the overlap
-            if self.split_units == "word":
-                current_chunk = overlap + " " + chunk
-            else:
-                current_chunk = overlap + chunk
+            current_chunk = overlap + " " + chunk if self.split_units == "word" else overlap + chunk
 
             # if the new chunk exceeds split_length, trim it and add the trimmed content to the next chunk
             if self._chunk_length(current_chunk) > self.split_length:
                 if self.split_units == "word":
-                    words = current_chunk.split()
-                    current_chunk = " ".join(words[: self.split_length])
-                    remaining_words = words[self.split_length :]
+                    current_chunk, remaining_words = self._split_chunk(current_chunk)  # type: ignore
                     if idx < len(chunks) - 1:
                         # add remaining words to the beginning of the next chunk
                         chunks[idx + 1] = " ".join(remaining_words) + " " + chunks[idx + 1]
@@ -157,9 +169,7 @@ class RecursiveDocumentSplitter:
                         current_chunk = " ".join(remaining_words)
 
                 else:  # char-level splitting
-                    text = current_chunk
-                    current_chunk = text[: self.split_length]
-                    remaining_chars = text[self.split_length :]
+                    current_chunk, remaining_chars = self._split_chunk(current_chunk)  # type: ignore
                     if idx < len(chunks) - 1:
                         # add remaining chars to the beginning of the next chunk
                         chunks[idx + 1] = remaining_chars + chunks[idx + 1]
@@ -170,16 +180,12 @@ class RecursiveDocumentSplitter:
             # if this is the last chunk, and we have remaining words or characters, add them to the current chunk
             if idx == len(chunks) - 1 and (remaining_words or remaining_chars):
                 overlap, prev_chunk = self._get_overlap(overlapped_chunks)
-                if remaining_words:
-                    current_chunk = overlap + " " + current_chunk
-                if remaining_chars:
-                    current_chunk = overlap + current_chunk
+                current_chunk = overlap + " " + current_chunk if remaining_words else overlap + current_chunk
 
             overlapped_chunks.append(current_chunk)
 
-            # check if the last chunk exceeds split_length and split it
+            # new approach to split the last chunk
             if idx == len(chunks) - 1 and self._chunk_length(current_chunk) > self.split_length:
-                # split the last chunk and add the first chunk to the list
                 last_chunk = overlapped_chunks.pop()
                 if self.split_units == "word":
                     words = last_chunk.split()
@@ -188,16 +194,28 @@ class RecursiveDocumentSplitter:
                 else:
                     first_chunk = last_chunk[: self.split_length]
                     remaining_chunk = last_chunk[self.split_length :]
+
                 overlapped_chunks.append(first_chunk)
 
-                # add the remaining chunk with overlap from the previous chunk
-                if remaining_chunk:
+                while remaining_chunk:
                     overlap, prev_chunk = self._get_overlap(overlapped_chunks)
                     if self.split_units == "word":
-                        remaining_chunk = overlap + " " + remaining_chunk
+                        current = overlap + " " + remaining_chunk
+                        words = current.split()
+                        if len(words) <= self.split_length:
+                            overlapped_chunks.append(current)
+                            break
+                        first_chunk = " ".join(words[: self.split_length])
+                        remaining_chunk = " ".join(words[self.split_length :])
                     else:
-                        remaining_chunk = overlap + remaining_chunk
-                    overlapped_chunks.append(remaining_chunk)
+                        current = overlap + remaining_chunk
+                        if len(current) <= self.split_length:
+                            overlapped_chunks.append(current)
+                            break
+                        first_chunk = current[: self.split_length]
+                        remaining_chunk = current[self.split_length :]
+
+                    overlapped_chunks.append(first_chunk)
 
         return overlapped_chunks
 
