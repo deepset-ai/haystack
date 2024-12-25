@@ -1,4 +1,4 @@
 ---
 fixes:
   - |
-    ByteStream now truncates the data to 1KB in the string representation.
+    ByteStream now truncates the data to 1KB in the string representation to avoid excessive log output.
