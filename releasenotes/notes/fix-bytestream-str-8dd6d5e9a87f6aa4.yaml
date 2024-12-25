@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    ByteStream now truncates the data to 1KB in the string representation.
