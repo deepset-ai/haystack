@@ -68,5 +68,5 @@ class ByteStream:
         """
         Returns a string representation of the ByteStream, truncating the data to 1KB.
         """
-        truncated = self.data[:1021] + b"..." if len(self.data) > 1024 else self.data
+        truncated = self.data[:1024] + b"..." if len(self.data) > 1024 else self.data
         return f"ByteStream(data={truncated!r}, mime_type={self.mime_type!r}, meta={self.meta!r})"

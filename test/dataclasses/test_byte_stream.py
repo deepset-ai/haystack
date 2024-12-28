@@ -71,3 +71,10 @@ def test_to_file(tmp_path, request):
     ByteStream(test_str.encode()).to_file(test_path)
     with open(test_path, "rb") as fd:
         assert fd.read().decode() == test_str
+
+
+def test_str_truncation():
+    test_str = "1234567890" * 1000
+    b = ByteStream.from_string(test_str, mime_type="text/plain", meta={"foo": "bar"})
+    string_repr = str(b)
+    assert len(string_repr) < 1200
