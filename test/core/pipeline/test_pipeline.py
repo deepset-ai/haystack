@@ -1581,3 +1581,28 @@ class TestPipeline:
                 ),
             )
         ]
+
+    def test__break_supported_cycles_in_graph(self):
+        # the following pipeline has a nested cycle, which is supported by Haystack
+        # but was causing an exception to be raised in the _break_supported_cycles_in_graph method
+        comp1 = component_class("Comp1", input_types={"value": int}, output_types={"value": int})()
+        comp2 = component_class("Comp2", input_types={"value": Variadic[int]}, output_types={"value": int})()
+        comp3 = component_class("Comp3", input_types={"value": Variadic[int]}, output_types={"value": int})()
+        comp4 = component_class("Comp4", input_types={"value": Optional[int]}, output_types={"value": int})()
+        comp5 = component_class("Comp5", input_types={"value": Variadic[int]}, output_types={"value": int})()
+        pipe = Pipeline()
+        pipe.add_component("comp1", comp1)
+        pipe.add_component("comp2", comp2)
+        pipe.add_component("comp3", comp3)
+        pipe.add_component("comp4", comp4)
+        pipe.add_component("comp5", comp5)
+        pipe.connect("comp1.value", "comp2.value")
+        pipe.connect("comp2.value", "comp3.value")
+        pipe.connect("comp3.value", "comp4.value")
+        pipe.connect("comp3.value", "comp5.value")
+        pipe.connect("comp4.value", "comp5.value")
+        pipe.connect("comp4.value", "comp3.value")
+        pipe.connect("comp5.value", "comp2.value")
+
+        # the following call should not raise an exception
+        pipe._break_supported_cycles_in_graph()

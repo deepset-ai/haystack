@@ -1209,27 +1209,32 @@ class PipelineBase:
             # sender_comp will be the last element of cycle and receiver_comp will be the first.
             # So if cycle is [1, 2, 3, 4] we would call zip([1, 2, 3, 4], [2, 3, 4, 1]).
             for sender_comp, receiver_comp in zip(cycle, cycle[1:] + cycle[:1]):
-                # We get the key and iterate those as we want to edit the graph data while
-                # iterating the edges and that would raise.
-                # Even though the connection key set in Pipeline.connect() uses only the
-                # sockets name we don't have clashes since it's only used to differentiate
-                # multiple edges between two nodes.
-                edge_keys = list(temp_graph.get_edge_data(sender_comp, receiver_comp).keys())
-                for edge_key in edge_keys:
-                    edge_data = temp_graph.get_edge_data(sender_comp, receiver_comp)[edge_key]
-                    receiver_socket = edge_data["to_socket"]
-                    if not receiver_socket.is_variadic and receiver_socket.is_mandatory:
-                        continue
+                # for graphs with multiple nested cycles, we need to check if the edge hasn't
+                # been previously removed before we try to remove it again
+                edge_data = temp_graph.get_edge_data(sender_comp, receiver_comp)
+                if edge_data is not None:
+                    # We get the key and iterate those as we want to edit the graph data while
+                    # iterating the edges and that would raise.
+                    # Even though the connection key set in Pipeline.connect() uses only the
+                    # sockets name we don't have clashes since it's only used to differentiate
+                    # multiple edges between two nodes.
+                    edge_keys = list(edge_data.keys())
 
-                    # We found a breakable edge
-                    sender_socket = edge_data["from_socket"]
-                    edges_removed[sender_comp].append(sender_socket.name)
-                    temp_graph.remove_edge(sender_comp, receiver_comp, edge_key)
+                    for edge_key in edge_keys:
+                        edge_data = temp_graph.get_edge_data(sender_comp, receiver_comp)[edge_key]
+                        receiver_socket = edge_data["to_socket"]
+                        if not receiver_socket.is_variadic and receiver_socket.is_mandatory:
+                            continue
 
-                    graph_has_cycles = not networkx.is_directed_acyclic_graph(temp_graph)
-                    if not graph_has_cycles:
-                        # We removed all the cycles, we can stop
-                        break
+                        # We found a breakable edge
+                        sender_socket = edge_data["from_socket"]
+                        edges_removed[sender_comp].append(sender_socket.name)
+                        temp_graph.remove_edge(sender_comp, receiver_comp, edge_key)
+
+                        graph_has_cycles = not networkx.is_directed_acyclic_graph(temp_graph)
+                        if not graph_has_cycles:
+                            # We removed all the cycles, we can stop
+                            break
 
             if not graph_has_cycles:
                 # We removed all the cycles, nice

@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Prevents the pipeline from raising an exception when there are multiple nested cycles in the graph.
