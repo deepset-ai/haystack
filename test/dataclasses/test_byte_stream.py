@@ -78,3 +78,5 @@ def test_str_truncation():
     b = ByteStream.from_string(test_str, mime_type="text/plain", meta={"foo": "bar"})
     string_repr = str(b)
     assert len(string_repr) < 1200
+    assert "text/plain" in string_repr
+    assert "foo" in string_repr
