@@ -986,29 +986,6 @@ class PipelineBase:
         if first_lazy_variadic:
             return first_lazy_variadic
 
-        # Return components that get no input at all but have default arguments
-        first_default_lazy_variadic = next(
-            (
-                (name, comp)
-                for (name, comp, lazy_variadic, num_inputs) in waiting_queue
-                if lazy_variadic and num_inputs is not None
-            ),
-            None,
-        )
-        if first_default_lazy_variadic:
-            return first_default_lazy_variadic
-
-        first_default = next(
-            (
-                (name, comp)
-                for (name, comp, lazy_variadic, num_inputs) in waiting_queue
-                if not lazy_variadic and num_inputs is not None
-            ),
-            None,
-        )
-        if first_default:
-            return first_default
-
         return None
 
     def _find_next_runnable_lazy_variadic_or_default_component(

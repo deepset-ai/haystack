@@ -1223,7 +1223,7 @@ class TestPipeline:
         components_inputs = {}
         waiting_queue = [("document_joiner", document_joiner)]
         pair = pipe._find_next_runnable_component(components_inputs, waiting_queue)
-        assert pair == ("document_joiner", document_joiner)
+        assert pair == None
 
     def test__find_next_runnable_component_with_component_with_only_default_input(self):
         prompt_builder = PromptBuilder(template="{{ questions | join('\n') }}")
@@ -1233,7 +1233,7 @@ class TestPipeline:
         waiting_queue = [("prompt_builder", prompt_builder)]
         pair = pipe._find_next_runnable_component(components_inputs, waiting_queue)
 
-        assert pair == ("prompt_builder", prompt_builder)
+        assert pair == None
 
     def test__find_next_runnable_component_with_component_with_variadic_non_greedy_and_default_input(self):
         document_joiner = component_class("DocumentJoiner", input_types={"docs": Variadic[Document]})()
@@ -1244,7 +1244,7 @@ class TestPipeline:
         waiting_queue = [("prompt_builder", prompt_builder), ("document_joiner", document_joiner)]
         pair = pipe._find_next_runnable_component(components_inputs, waiting_queue)
 
-        assert pair == ("document_joiner", document_joiner)
+        assert pair == None
 
     def test__find_next_runnable_component_with_different_components_inputs(self):
         document_builder = component_class(
@@ -1280,7 +1280,7 @@ class TestPipeline:
         ]
         pair = pipe._find_next_runnable_component(components_inputs, waiting_queue)
 
-        assert pair == ("document_joiner", document_joiner)
+        assert pair == None
 
     def test__is_stuck_in_a_loop(self):
         document_builder = component_class(
