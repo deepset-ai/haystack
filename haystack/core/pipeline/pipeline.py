@@ -94,7 +94,7 @@ class Pipeline(PipelineBase):
             return res
 
     def run(  # noqa: PLR0915, PLR0912
-        self, data: Dict[str, Any], include_outputs_from: Optional[Set[str]] = None
+        self, data: Dict[str, Any], include_outputs_from: Set[str] = set()
     ) -> Dict[str, Any]:
         """
         Runs the Pipeline with given input data.
@@ -172,7 +172,7 @@ class Pipeline(PipelineBase):
             output is included.
         :returns:
             A dictionary where each entry corresponds to a component name
-            and its output. If `include_outputs_from` is `None`, this dictionary
+            and its output. If `include_outputs_from` is empty, this dictionary
             will only contain the outputs of leaf components, i.e., components
             without outgoing connections.
 
@@ -200,8 +200,6 @@ class Pipeline(PipelineBase):
 
         # Normalize the input data
         components_inputs: Dict[str, Dict[str, Any]] = self._normalize_varidiac_input_data(data)
-
-        include_outputs_from = set() if include_outputs_from is None else include_outputs_from
 
         # This is what we'll return at the end
         final_outputs: Dict[Any, Any] = {}
