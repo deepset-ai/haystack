@@ -500,7 +500,7 @@ class ChatMessage:
             return cls.from_user(text=content, name=name)
         if role in ["system", "developer"]:
             return cls.from_system(text=content, name=name)
-        # role == "tool" is the only remaining option after validation
+
         return cls.from_tool(
             tool_result=content, origin=ToolCall(id=tool_call_id, tool_name="", arguments={}), error=False
         )
