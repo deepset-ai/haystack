@@ -943,7 +943,7 @@ class PipelineBase:
         :param components_inputs: The current state of the inputs divided by Component name
         :param waiting_queue: Queue of Components waiting for input
 
-        :returns: The name and the instance of the next Component that can be run
+        :returns: None or the name and the instance of the next Component that can be run
         """
 
         def count_inputs(name, comp):
@@ -962,14 +962,12 @@ class PipelineBase:
                     num_inputs += 1
             return num_inputs
 
-        waiting_queue = [
-            (name, comp, _is_lazy_variadic(comp), count_inputs(name, comp)) for name, comp in waiting_queue
-        ]
+        queue = [(name, comp, _is_lazy_variadic(comp), count_inputs(name, comp)) for name, comp in waiting_queue]
 
         first_runnable = next(
             (
                 (name, comp)
-                for (name, comp, lazy_variadic, num_inputs) in waiting_queue
+                for (name, comp, lazy_variadic, num_inputs) in queue
                 if not lazy_variadic and num_inputs is not None and num_inputs > 0
             ),
             None,
@@ -980,7 +978,7 @@ class PipelineBase:
         first_lazy_variadic = next(
             (
                 (name, comp)
-                for (name, comp, lazy_variadic, num_inputs) in waiting_queue
+                for (name, comp, lazy_variadic, num_inputs) in queue
                 if lazy_variadic and num_inputs is not None and num_inputs > 0
             ),
             None,

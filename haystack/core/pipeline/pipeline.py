@@ -177,9 +177,7 @@ class Pipeline(PipelineBase):
             without outgoing connections.
 
         :raises PipelineRuntimeError:
-            If the Pipeline contains cycles with unsupported connections that would cause
-            it to get stuck and fail running.
-            Or if a Component fails or returns output in an unsupported type.
+            If a Component fails or returns output in an unsupported type.
         :raises PipelineMaxComponentRuns:
             If a Component reaches the maximum number of times it can be run in this Pipeline.
         """
