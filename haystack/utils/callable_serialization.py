@@ -3,10 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import inspect
-import sys
 from typing import Callable, Optional
 
 from haystack import DeserializationError
+from haystack.utils.type_serialization import thread_safe_import
 
 
 def serialize_callable(callable_handle: Callable) -> str:
@@ -37,9 +37,10 @@ def deserialize_callable(callable_handle: str) -> Optional[Callable]:
     parts = callable_handle.split(".")
     module_name = ".".join(parts[:-1])
     function_name = parts[-1]
-    module = sys.modules.get(module_name, None)
-    if not module:
-        raise DeserializationError(f"Could not locate the module of the callable: {module_name}")
+    try:
+        module = thread_safe_import(module_name)
+    except Exception as e:
+        raise DeserializationError(f"Could not locate the module of the callable: {module_name}") from e
     deserialized_callable = getattr(module, function_name, None)
     if not deserialized_callable:
         raise DeserializationError(f"Could not locate the callable: {function_name}")
