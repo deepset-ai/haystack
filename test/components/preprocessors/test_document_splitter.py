@@ -467,8 +467,8 @@ class TestSplittingByFunctionOrCharacterRegex:
         Test the from_dict class method of the DocumentSplitter class when a custom splitting function is provided.
         """
 
-        def custom_split(text):
-            return text.split(".")
+        # def custom_split(text):
+        #     return text.split(".")
 
         data = {
             "type": "haystack.components.preprocessors.document_splitter.DocumentSplitter",
