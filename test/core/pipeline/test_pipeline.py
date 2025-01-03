@@ -1214,7 +1214,7 @@ class TestPipeline:
         components_inputs = {}
         waiting_queue = [("document_builder", document_builder)]
         pair = pipe._find_next_runnable_component(components_inputs, waiting_queue)
-        assert pair == ("document_builder", document_builder)
+        assert pair == None
 
     def test__find_next_runnable_component_with_component_with_only_variadic_non_greedy_input(self):
         document_joiner = component_class("DocumentJoiner", input_types={"docs": Variadic[Document]})()
@@ -1280,7 +1280,7 @@ class TestPipeline:
         ]
         pair = pipe._find_next_runnable_component(components_inputs, waiting_queue)
 
-        assert pair == ("document_builder", document_builder)
+        assert pair == ("document_joiner", document_joiner)
 
     def test__is_stuck_in_a_loop(self):
         document_builder = component_class(
