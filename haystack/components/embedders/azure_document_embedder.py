@@ -51,6 +51,7 @@ class AzureOpenAIDocumentEmbedder:
         embedding_separator: str = "\n",
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
+        default_headers: Optional[Dict[str, str]] = None,
     ):
         """
         Creates an AzureOpenAIDocumentEmbedder component.
@@ -95,6 +96,7 @@ class AzureOpenAIDocumentEmbedder:
             `OPENAI_TIMEOUT` environment variable, or 30 seconds.
         :param max_retries: Maximum number of retries to contact AzureOpenAI after an internal error.
             If not set, defaults to either the `OPENAI_MAX_RETRIES` environment variable or to 5 retries.
+        :param default_headers: Default headers to use for the AzureOpenAI client.
         """
         # if not provided as a parameter, azure_endpoint is read from the env var AZURE_OPENAI_ENDPOINT
         azure_endpoint = azure_endpoint or os.environ.get("AZURE_OPENAI_ENDPOINT")
@@ -119,6 +121,7 @@ class AzureOpenAIDocumentEmbedder:
         self.embedding_separator = embedding_separator
         self.timeout = timeout or float(os.environ.get("OPENAI_TIMEOUT", 30.0))
         self.max_retries = max_retries or int(os.environ.get("OPENAI_MAX_RETRIES", 5))
+        self.default_headers = default_headers or {}
 
         self._client = AzureOpenAI(
             api_version=api_version,
@@ -129,6 +132,7 @@ class AzureOpenAIDocumentEmbedder:
             organization=organization,
             timeout=self.timeout,
             max_retries=self.max_retries,
+            default_headers=self.default_headers,
         )
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
@@ -161,6 +165,7 @@ class AzureOpenAIDocumentEmbedder:
             azure_ad_token=self.azure_ad_token.to_dict() if self.azure_ad_token is not None else None,
             timeout=self.timeout,
             max_retries=self.max_retries,
+            default_headers=self.default_headers,
         )
 
     @classmethod
