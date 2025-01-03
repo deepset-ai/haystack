@@ -990,7 +990,7 @@ class PipelineBase:
         first_default_lazy_variadic = next(
             (
                 (name, comp)
-                for (name, comp, lazy_variadic, num_inputs) in waiting_queue
+                for (name, comp, lazy_variadic, num_inputs) in queue
                 if lazy_variadic and num_inputs is not None
             ),
             None,
@@ -1001,7 +1001,7 @@ class PipelineBase:
         first_default = next(
             (
                 (name, comp)
-                for (name, comp, lazy_variadic, num_inputs) in waiting_queue
+                for (name, comp, lazy_variadic, num_inputs) in queue
                 if not lazy_variadic and num_inputs is not None
             ),
             None,
