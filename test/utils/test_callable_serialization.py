@@ -49,6 +49,19 @@ def test_callable_serialization_instance_methods_fail():
         serialize_callable(instance.my_method)
 
 
+def test_lambda_serialization_fail():
+    with pytest.raises(SerializationError):
+        serialize_callable(lambda x: x)
+
+
+def test_nested_function_serialization_fail():
+    def my_fun():
+        pass
+
+    with pytest.raises(SerializationError):
+        serialize_callable(my_fun)
+
+
 def test_callable_deserialization():
     result = serialize_callable(some_random_callable_for_testing)
     fn = deserialize_callable(result)
@@ -71,19 +84,6 @@ def test_staticmethod_serialization_deserialization():
     result = serialize_callable(TestClass.static_method)
     fn = deserialize_callable(result)
     assert fn == TestClass.static_method
-
-
-def test_lambda_serialization_fails():
-    with pytest.raises(SerializationError):
-        serialize_callable(lambda x: x)
-
-
-def test_nested_function_serialization_fails():
-    def my_fun():
-        pass
-
-    with pytest.raises(SerializationError):
-        serialize_callable(my_fun)
 
 
 def test_callable_deserialization_errors():
