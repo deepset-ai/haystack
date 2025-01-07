@@ -74,9 +74,9 @@ def test_to_file(tmp_path, request):
 
 
 def test_str_truncation():
-    test_str = "1234567890" * 1000
+    test_str = "1234567890" * 100
     b = ByteStream.from_string(test_str, mime_type="text/plain", meta={"foo": "bar"})
     string_repr = str(b)
-    assert len(string_repr) < 1200
+    assert len(string_repr) < 200
     assert "text/plain" in string_repr
     assert "foo" in string_repr
