@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Reorganized the document store test suite to isolate dataframe filter tests.
+    This change prepares for potential future deprecation of the Document class's dataframe field.
