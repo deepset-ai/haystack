@@ -175,7 +175,9 @@ class DeleteDocumentsTest:
 
 
 def create_filterable_docs(include_dataframe_docs: bool = False) -> List[Document]:
-    """Create a list of filterable documents, to be used in the filterable_docs fixtures."""
+    """
+    Create a list of filterable documents to be used in the filterable_docs and filterable_docs_with_dataframe fixtures.
+    """
 
     documents = []
     for i in range(3):
