@@ -25,9 +25,6 @@ class TestClass:
         pass
 
 
-my_lambda = lambda x: x
-
-
 def test_callable_serialization():
     result = serialize_callable(some_random_callable_for_testing)
     assert result == "test_callable_serialization.some_random_callable_for_testing"
@@ -76,22 +73,17 @@ def test_staticmethod_serialization_deserialization():
     assert fn == TestClass.static_method
 
 
-# def test_lambda_serialization_deserialization():
+def test_lambda_serialization_fails():
+    with pytest.raises(SerializationError):
+        serialize_callable(lambda x: x)
 
 
-#     result = serialize_callable(my_lambda)
-#     print(result)
-#     fn = deserialize_callable(result)
-#     assert fn == my_lambda
-
-
-def test_nested_function_serialization_deserialization():
+def test_nested_function_serialization_fails():
     def my_fun():
         pass
 
-    result = serialize_callable(my_fun)
-    fn = deserialize_callable(result)
-    assert fn == my_fun
+    with pytest.raises(SerializationError):
+        serialize_callable(my_fun)
 
 
 def test_callable_deserialization_errors():

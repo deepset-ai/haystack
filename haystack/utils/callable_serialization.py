@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import inspect
-from typing import Callable, Optional
+from typing import Callable
 
 from haystack.core.errors import DeserializationError, SerializationError
 from haystack.utils.type_serialization import thread_safe_import
@@ -24,7 +24,7 @@ def serialize_callable(callable_handle: Callable) -> str:
     if is_instance_method:
         raise SerializationError("Serialization of instance methods is not supported.")
 
-    # using __qualname__ allows us to get the fully qualified path for classmethods and staticmethods
+    # __qualname__ contains the fully qualified path we need for classmethods and staticmethods
     qualname = getattr(callable_handle, "__qualname__", "")
     if "<lambda>" in qualname:
         raise SerializationError("Serialization of lambdas is not supported.")
