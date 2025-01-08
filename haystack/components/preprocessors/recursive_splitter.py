@@ -124,7 +124,7 @@ class RecursiveDocumentSplitter:
         """
 
         if self.split_units == "word":
-            words = current_chunk.split()
+            words = current_chunk.split(" ")
             current_chunk = " ".join(words[: self.split_length])
             remaining_words = words[self.split_length :]
             return current_chunk, " ".join(remaining_words)
@@ -208,7 +208,7 @@ class RecursiveDocumentSplitter:
         prev_chunk = overlapped_chunks[-1]
         overlap_start = max(0, self._chunk_length(prev_chunk) - self.split_overlap)
         if self.split_units == "word":
-            word_chunks = prev_chunk.split()
+            word_chunks = prev_chunk.split(" ")
             overlap = " ".join(word_chunks[overlap_start:])
         else:
             overlap = prev_chunk[overlap_start:]
