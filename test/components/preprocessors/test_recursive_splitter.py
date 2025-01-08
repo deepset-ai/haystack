@@ -114,6 +114,7 @@ def test_run_using_custom_sentence_tokenizer():
         separators=["\n\n", "\n", "sentence", " "],
         sentence_splitter_params={"language": "en", "use_split_rules": True, "keep_white_spaces": False},
     )
+    splitter.warm_up()
     text = """Artificial intelligence (AI) - Introduction
 
 AI, in its broadest sense, is intelligence exhibited by machines, particularly computer systems.
@@ -307,6 +308,7 @@ def test_run_split_by_sentence_count_page_breaks_split_unit_char() -> None:
     document_splitter = RecursiveDocumentSplitter(
         separators=["sentence"], split_length=28, split_overlap=0, split_unit="char"
     )
+    document_splitter.warm_up()
 
     text = (
         "Sentence on page 1. Another on page 1.\fSentence on page 2. Another on page 2.\f"
@@ -431,6 +433,7 @@ def test_run_custom_sentence_tokenizer_document_and_overlap_char_unit():
     splitter = RecursiveDocumentSplitter(split_length=25, split_overlap=10, separators=["sentence"], split_unit="char")
     text = "This is sentence one. This is sentence two. This is sentence three."
 
+    splitter.warm_up()
     doc = Document(content=text)
     doc_chunks = splitter.run([doc])["documents"]
 
@@ -631,6 +634,7 @@ def test_run_split_by_sentence_count_page_breaks_word_unit() -> None:
     document_splitter = RecursiveDocumentSplitter(
         separators=["sentence"], split_length=7, split_overlap=0, split_unit="word"
     )
+    document_splitter.warm_up()
 
     text = (
         "Sentence on page 1. Another on page 1.\fSentence on page 2. Another on page 2.\f"

@@ -96,7 +96,7 @@ class RecursiveDocumentSplitter:
         """
         Warm up the sentence tokenizer.
         """
-        self.nltk_tokenizer = self._get_custom_sentence_tokenizer(sentence_splitter_params)
+        self.nltk_tokenizer = self._get_custom_sentence_tokenizer(self.sentence_splitter_params)
 
     def _check_params(self):
         if self.split_length < 1:
@@ -227,7 +227,7 @@ class RecursiveDocumentSplitter:
             if re.match(r"\f\s*", text):
                 return 1
 
-            return len(text.split())
+            return len(text.split(" "))
         else:
             return len(text)
 
@@ -292,7 +292,8 @@ class RecursiveDocumentSplitter:
                         if curr_separator == self.separators[-1]:
                             # tried the last separator, can't split further, break the loop and fall back to
                             # word- or character-level chunking
-                            break
+                            # break
+                            return self.fall_back_to_fixed_chunking(text, self.split_units)
                         chunks.extend(self._chunk_text(split_text))
                     else:
                         current_chunk.append(split_text)
@@ -326,7 +327,7 @@ class RecursiveDocumentSplitter:
         step = self.split_length - self.split_overlap
 
         if split_units == "word":
-            words = text.split()
+            words = text.split(" ")
             for i in range(0, self._chunk_length(text), step):
                 chunks.append(" ".join(words[i : i + self.split_length]))
         else:
