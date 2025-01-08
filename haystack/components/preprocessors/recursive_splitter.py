@@ -85,8 +85,11 @@ class RecursiveDocumentSplitter:
         self.sentence_tokenizer_params = sentence_splitter_params
         self._check_params()
         self.nltk_tokenizer = None
-        if "sentence" in self.separators:
-            self.warm_up(sentence_splitter_params)
+        self.sentence_splitter_params = sentence_splitter_params
+        if self.sentence_splitter_params is None:
+            self.sentence_splitter_params = {"keep_white_spaces": True}
+        else:
+            self.sentence_splitter_params["keep_white_spaces"] = True
 
     def warm_up(self, sentence_splitter_params):
         """
