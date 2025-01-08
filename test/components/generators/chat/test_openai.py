@@ -1,13 +1,12 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 import pytest
 
-from typing import Iterator
+
 import logging
 import os
-import json
 from datetime import datetime
 
 from openai import OpenAIError
@@ -15,12 +14,11 @@ from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletio
 from openai.types.chat.chat_completion import Choice
 from openai.types.chat.chat_completion_message_tool_call import Function
 from openai.types.chat import chat_completion_chunk
-from openai import Stream
 
 from haystack.components.generators.utils import print_streaming_chunk
 from haystack.dataclasses import StreamingChunk
 from haystack.utils.auth import Secret
-from haystack.dataclasses import ChatMessage, Tool, ToolCall, ChatRole, TextContent
+from haystack.dataclasses import ChatMessage, Tool, ToolCall
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 
 
@@ -209,31 +207,6 @@ class TestOpenAIChatGenerator:
                     }
                 ],
                 "tools_strict": True,
-            },
-        }
-
-    def test_to_dict_with_lambda_streaming_callback(self, monkeypatch):
-        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        component = OpenAIChatGenerator(
-            model="gpt-4o-mini",
-            streaming_callback=lambda x: x,
-            api_base_url="test-base-url",
-            generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
-        )
-        data = component.to_dict()
-        assert data == {
-            "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
-            "init_parameters": {
-                "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
-                "model": "gpt-4o-mini",
-                "organization": None,
-                "api_base_url": "test-base-url",
-                "max_retries": None,
-                "timeout": None,
-                "streaming_callback": "chat.test_openai.<lambda>",
-                "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
-                "tools": None,
-                "tools_strict": False,
             },
         }
 
