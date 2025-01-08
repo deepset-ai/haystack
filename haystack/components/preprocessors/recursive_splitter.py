@@ -223,8 +223,7 @@ class RecursiveDocumentSplitter:
             The length of the chunk in words or characters.
         """
         if self.split_units == "word":
-            # page breaks are counted as a single word or page breaks followed by only whitespace 1 or multiple times
-            # regex that matches a page break followed by only whitespace 1 or multiple times
+            # regex that matches a page break followed by one or multiple whitespaces
             if re.match(r"\f\s*", text):
                 return 1
 
