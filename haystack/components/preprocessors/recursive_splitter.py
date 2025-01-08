@@ -63,7 +63,7 @@ class RecursiveDocumentSplitter:
         """
         Initializes a RecursiveDocumentSplitter.
 
-        :param split_length: The maximum length of each chunk by default in characters, but can be in words.
+        :param split_length: The maximum length of each chunk by default in words, but can be in characters.
             See the `split_units` parameter.
         :param split_overlap: The number of characters to overlap between consecutive chunks.
         :param split_unit: The unit of the split_length parameter. It can be either "word" or "char".
