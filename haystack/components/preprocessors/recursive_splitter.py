@@ -49,6 +49,7 @@ class RecursiveDocumentSplitter:
     >Document(id=..., content: 'AI technology is widely used throughout industry, government, and science.', meta: {'original_id': '65167a9823dd883de577e828ca4fd529e6f7241f0ff616acfce454d808478951', 'split_id': 2, 'split_idx_start': 142, '_split_overlap': []})
     >Document(id=..., content: ' Some high-profile applications include advanced web search engines; recommendation systems; interac...', meta: {'original_id': '65167a9823dd883de577e828ca4fd529e6f7241f0ff616acfce454d808478951', 'split_id': 3, 'split_idx_start': 216, '_split_overlap': []})
     >]
+    ```
     """  # noqa: E501
 
     def __init__(
