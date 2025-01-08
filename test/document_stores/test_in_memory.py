@@ -11,10 +11,10 @@ import tempfile
 from haystack import Document
 from haystack.document_stores.errors import DocumentStoreError, DuplicateDocumentError
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.testing.document_store import DocumentStoreBaseTests
+from haystack.testing.document_store import DocumentStoreBaseTests, FilterDocumentsTestWithDataframe
 
 
-class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
+class TestMemoryDocumentStore(DocumentStoreBaseTests, FilterDocumentsTestWithDataframe):  # pylint: disable=R0904
     """
     Test InMemoryDocumentStore's specific features
     """

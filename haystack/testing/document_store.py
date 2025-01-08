@@ -174,6 +174,72 @@ class DeleteDocumentsTest:
         assert document_store.count_documents() == 1
 
 
+def create_filterable_docs(include_dataframe_docs: bool = False) -> List[Document]:
+    """
+    Create a list of filterable documents to be used in the filterable_docs and filterable_docs_with_dataframe fixtures.
+    """
+
+    documents = []
+    for i in range(3):
+        documents.append(
+            Document(
+                content=f"A Foo Document {i}",
+                meta={
+                    "name": f"name_{i}",
+                    "page": "100",
+                    "chapter": "intro",
+                    "number": 2,
+                    "date": "1969-07-21T20:17:40",
+                },
+                embedding=_random_embeddings(768),
+            )
+        )
+        documents.append(
+            Document(
+                content=f"A Bar Document {i}",
+                meta={
+                    "name": f"name_{i}",
+                    "page": "123",
+                    "chapter": "abstract",
+                    "number": -2,
+                    "date": "1972-12-11T19:54:58",
+                },
+                embedding=_random_embeddings(768),
+            )
+        )
+        documents.append(
+            Document(
+                content=f"A Foobar Document {i}",
+                meta={
+                    "name": f"name_{i}",
+                    "page": "90",
+                    "chapter": "conclusion",
+                    "number": -10,
+                    "date": "1989-11-09T17:53:00",
+                },
+                embedding=_random_embeddings(768),
+            )
+        )
+        documents.append(
+            Document(
+                content=f"Document {i} without embedding",
+                meta={"name": f"name_{i}", "no_embedding": True, "chapter": "conclusion"},
+            )
+        )
+        documents.append(
+            Document(content=f"Doc {i} with zeros emb", meta={"name": "zeros_doc"}, embedding=TEST_EMBEDDING_1)
+        )
+        documents.append(
+            Document(content=f"Doc {i} with ones emb", meta={"name": "ones_doc"}, embedding=TEST_EMBEDDING_2)
+        )
+
+    if include_dataframe_docs:
+        for i in range(3):
+            documents.append(Document(dataframe=pd.DataFrame([i]), meta={"name": f"table_doc_{i}"}))
+
+    return documents
+
+
 class FilterableDocsFixtureMixin:
     """
     Mixin class that adds a filterable_docs() fixture to a test class.
@@ -182,66 +248,12 @@ class FilterableDocsFixtureMixin:
     @pytest.fixture
     def filterable_docs(self) -> List[Document]:
         """Fixture that returns a list of Documents that can be used to test filtering."""
-        documents = []
-        for i in range(3):
-            documents.append(
-                Document(
-                    content=f"A Foo Document {i}",
-                    meta={
-                        "name": f"name_{i}",
-                        "page": "100",
-                        "chapter": "intro",
-                        "number": 2,
-                        "date": "1969-07-21T20:17:40",
-                    },
-                    embedding=_random_embeddings(768),
-                )
-            )
-            documents.append(
-                Document(
-                    content=f"A Bar Document {i}",
-                    meta={
-                        "name": f"name_{i}",
-                        "page": "123",
-                        "chapter": "abstract",
-                        "number": -2,
-                        "date": "1972-12-11T19:54:58",
-                    },
-                    embedding=_random_embeddings(768),
-                )
-            )
-            documents.append(
-                Document(
-                    content=f"A Foobar Document {i}",
-                    meta={
-                        "name": f"name_{i}",
-                        "page": "90",
-                        "chapter": "conclusion",
-                        "number": -10,
-                        "date": "1989-11-09T17:53:00",
-                    },
-                    embedding=_random_embeddings(768),
-                )
-            )
-            documents.append(
-                Document(
-                    content=f"Document {i} without embedding",
-                    meta={"name": f"name_{i}", "no_embedding": True, "chapter": "conclusion"},
-                )
-            )
-            documents.append(Document(dataframe=pd.DataFrame([i]), meta={"name": f"table_doc_{i}"}))
-            documents.append(
-                Document(content=f"Doc {i} with zeros emb", meta={"name": "zeros_doc"}, embedding=TEST_EMBEDDING_1)
-            )
-            documents.append(
-                Document(content=f"Doc {i} with ones emb", meta={"name": "ones_doc"}, embedding=TEST_EMBEDDING_2)
-            )
-        return documents
+        return create_filterable_docs(include_dataframe_docs=False)
 
 
 class FilterDocumentsTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin):
     """
-    Utility class to test a Document Store `filter_documents` method using different types of  filters.
+    Utility class to test a Document Store `filter_documents` method using different types of filters.
 
     To use it create a custom test class and override the `document_store` fixture to return your Document Store.
     Example usage:
@@ -270,16 +282,6 @@ class FilterDocumentsTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin)
         result = document_store.filter_documents(filters={"field": "meta.number", "operator": "==", "value": 100})
         self.assert_documents_are_equal(result, [d for d in filterable_docs if d.meta.get("number") == 100])
 
-    def test_comparison_equal_with_dataframe(self, document_store, filterable_docs):
-        """Test filter_documents() with == comparator and dataframe"""
-        document_store.write_documents(filterable_docs)
-        result = document_store.filter_documents(
-            filters={"field": "dataframe", "operator": "==", "value": pd.DataFrame([1])}
-        )
-        self.assert_documents_are_equal(
-            result, [d for d in filterable_docs if d.dataframe is not None and d.dataframe.equals(pd.DataFrame([1]))]
-        )
-
     def test_comparison_equal_with_none(self, document_store, filterable_docs):
         """Test filter_documents() with == comparator and None"""
         document_store.write_documents(filterable_docs)
@@ -292,16 +294,6 @@ class FilterDocumentsTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin)
         document_store.write_documents(filterable_docs)
         result = document_store.filter_documents({"field": "meta.number", "operator": "!=", "value": 100})
         self.assert_documents_are_equal(result, [d for d in filterable_docs if d.meta.get("number") != 100])
-
-    def test_comparison_not_equal_with_dataframe(self, document_store, filterable_docs):
-        """Test filter_documents() with != comparator and dataframe"""
-        document_store.write_documents(filterable_docs)
-        result = document_store.filter_documents(
-            filters={"field": "dataframe", "operator": "!=", "value": pd.DataFrame([1])}
-        )
-        self.assert_documents_are_equal(
-            result, [d for d in filterable_docs if d.dataframe is None or not d.dataframe.equals(pd.DataFrame([1]))]
-        )
 
     def test_comparison_not_equal_with_none(self, document_store, filterable_docs):
         """Test filter_documents() with != comparator and None"""
@@ -339,12 +331,6 @@ class FilterDocumentsTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin)
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
             document_store.filter_documents(filters={"field": "meta.number", "operator": ">", "value": "1"})
-
-    def test_comparison_greater_than_with_dataframe(self, document_store, filterable_docs):
-        """Test filter_documents() with > comparator and dataframe"""
-        document_store.write_documents(filterable_docs)
-        with pytest.raises(FilterError):
-            document_store.filter_documents(filters={"field": "dataframe", "operator": ">", "value": pd.DataFrame([1])})
 
     def test_comparison_greater_than_with_list(self, document_store, filterable_docs):
         """Test filter_documents() with > comparator and list"""
@@ -389,14 +375,6 @@ class FilterDocumentsTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin)
         with pytest.raises(FilterError):
             document_store.filter_documents(filters={"field": "meta.number", "operator": ">=", "value": "1"})
 
-    def test_comparison_greater_than_equal_with_dataframe(self, document_store, filterable_docs):
-        """Test filter_documents() with >= comparator and dataframe"""
-        document_store.write_documents(filterable_docs)
-        with pytest.raises(FilterError):
-            document_store.filter_documents(
-                filters={"field": "dataframe", "operator": ">=", "value": pd.DataFrame([1])}
-            )
-
     def test_comparison_greater_than_equal_with_list(self, document_store, filterable_docs):
         """Test filter_documents() with >= comparator and list"""
         document_store.write_documents(filterable_docs)
@@ -440,12 +418,6 @@ class FilterDocumentsTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin)
         with pytest.raises(FilterError):
             document_store.filter_documents(filters={"field": "meta.number", "operator": "<", "value": "1"})
 
-    def test_comparison_less_than_with_dataframe(self, document_store, filterable_docs):
-        """Test filter_documents() with < comparator and dataframe"""
-        document_store.write_documents(filterable_docs)
-        with pytest.raises(FilterError):
-            document_store.filter_documents(filters={"field": "dataframe", "operator": "<", "value": pd.DataFrame([1])})
-
     def test_comparison_less_than_with_list(self, document_store, filterable_docs):
         """Test filter_documents() with < comparator and list"""
         document_store.write_documents(filterable_docs)
@@ -488,14 +460,6 @@ class FilterDocumentsTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin)
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
             document_store.filter_documents(filters={"field": "meta.number", "operator": "<=", "value": "1"})
-
-    def test_comparison_less_than_equal_with_dataframe(self, document_store, filterable_docs):
-        """Test filter_documents() with <= comparator and dataframe"""
-        document_store.write_documents(filterable_docs)
-        with pytest.raises(FilterError):
-            document_store.filter_documents(
-                filters={"field": "dataframe", "operator": "<=", "value": pd.DataFrame([1])}
-            )
 
     def test_comparison_less_than_equal_with_list(self, document_store, filterable_docs):
         """Test filter_documents() with <= comparator and list"""
@@ -635,6 +599,83 @@ class FilterDocumentsTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin)
         with pytest.raises(FilterError):
             document_store.filter_documents(
                 filters={"operator": "AND", "conditions": [{"field": "meta.name", "operator": "=="}]}
+            )
+
+
+class FilterableDocsFixtureMixinWithDataframe:
+    """
+    Mixin class that adds a filterable_docs_with_dataframe() fixture to a test class, including dataframe documents.
+    """
+
+    @pytest.fixture
+    def filterable_docs_with_dataframe(self) -> List[Document]:
+        """Fixture that returns a list of Documents including dataframe documents."""
+        documents = create_filterable_docs(include_dataframe_docs=True)
+
+        return documents
+
+
+class FilterDocumentsTestWithDataframe(AssertDocumentsEqualMixin, FilterableDocsFixtureMixinWithDataframe):
+    """
+    Utility class to test a Document Store `filter_documents` method specifically for DataFrame documents.
+    """
+
+    def test_comparison_equal_with_dataframe(self, document_store, filterable_docs_with_dataframe):
+        """Test filter_documents() with == comparator and dataframe"""
+        document_store.write_documents(filterable_docs_with_dataframe)
+        result = document_store.filter_documents(
+            filters={"field": "dataframe", "operator": "==", "value": pd.DataFrame([1])}
+        )
+        self.assert_documents_are_equal(
+            result,
+            [
+                d
+                for d in filterable_docs_with_dataframe
+                if d.dataframe is not None and d.dataframe.equals(pd.DataFrame([1]))
+            ],
+        )
+
+    def test_comparison_not_equal_with_dataframe(self, document_store, filterable_docs_with_dataframe):
+        """Test filter_documents() with != comparator and dataframe"""
+        document_store.write_documents(filterable_docs_with_dataframe)
+        result = document_store.filter_documents(
+            filters={"field": "dataframe", "operator": "!=", "value": pd.DataFrame([1])}
+        )
+        self.assert_documents_are_equal(
+            result,
+            [
+                d
+                for d in filterable_docs_with_dataframe
+                if d.dataframe is None or not d.dataframe.equals(pd.DataFrame([1]))
+            ],
+        )
+
+    def test_comparison_greater_than_with_dataframe(self, document_store, filterable_docs_with_dataframe):
+        """Test filter_documents() with > comparator and dataframe"""
+        document_store.write_documents(filterable_docs_with_dataframe)
+        with pytest.raises(FilterError):
+            document_store.filter_documents(filters={"field": "dataframe", "operator": ">", "value": pd.DataFrame([1])})
+
+    def test_comparison_greater_than_equal_with_dataframe(self, document_store, filterable_docs_with_dataframe):
+        """Test filter_documents() with >= comparator and dataframe"""
+        document_store.write_documents(filterable_docs_with_dataframe)
+        with pytest.raises(FilterError):
+            document_store.filter_documents(
+                filters={"field": "dataframe", "operator": ">=", "value": pd.DataFrame([1])}
+            )
+
+    def test_comparison_less_than_with_dataframe(self, document_store, filterable_docs_with_dataframe):
+        """Test filter_documents() with < comparator and dataframe"""
+        document_store.write_documents(filterable_docs_with_dataframe)
+        with pytest.raises(FilterError):
+            document_store.filter_documents(filters={"field": "dataframe", "operator": "<", "value": pd.DataFrame([1])})
+
+    def test_comparison_less_than_equal_with_dataframe(self, document_store, filterable_docs_with_dataframe):
+        """Test filter_documents() with <= comparator and dataframe"""
+        document_store.write_documents(filterable_docs_with_dataframe)
+        with pytest.raises(FilterError):
+            document_store.filter_documents(
+                filters={"field": "dataframe", "operator": "<=", "value": pd.DataFrame([1])}
             )
 
 
