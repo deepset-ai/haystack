@@ -4,7 +4,7 @@ import datetime
 from haystack import Pipeline
 
 from haystack.dataclasses import ChatMessage, ToolCall, ToolCallResult, ChatRole
-from haystack.dataclasses.tool import Tool, ToolInvocationError
+from haystack.tools.tool import Tool, ToolInvocationError
 from haystack.components.tools.tool_invoker import ToolInvoker, ToolNotFoundException, StringConversionError
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 
@@ -238,14 +238,17 @@ class TestToolInvoker:
                     "init_parameters": {
                         "tools": [
                             {
-                                "name": "weather_tool",
-                                "description": "Provides weather information for a given location.",
-                                "parameters": {
-                                    "type": "object",
-                                    "properties": {"location": {"type": "string"}},
-                                    "required": ["location"],
+                                "type": "haystack.tools.tool.Tool",
+                                "data": {
+                                    "name": "weather_tool",
+                                    "description": "Provides weather information for a given location.",
+                                    "parameters": {
+                                        "type": "object",
+                                        "properties": {"location": {"type": "string"}},
+                                        "required": ["location"],
+                                    },
+                                    "function": "tools.test_tool_invoker.weather_function",
                                 },
-                                "function": "tools.test_tool_invoker.weather_function",
                             }
                         ],
                         "raise_on_failure": True,

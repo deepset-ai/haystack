@@ -8,7 +8,6 @@ from haystack.dataclasses.chat_message import ChatMessage, ChatRole, TextContent
 from haystack.dataclasses.document import Document
 from haystack.dataclasses.sparse_embedding import SparseEmbedding
 from haystack.dataclasses.streaming_chunk import StreamingChunk
-from haystack.dataclasses.tool import Tool
 
 __all__ = [
     "Document",
@@ -23,5 +22,4 @@ __all__ = [
     "TextContent",
     "StreamingChunk",
     "SparseEmbedding",
-    "Tool",
 ]
