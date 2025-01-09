@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    PyPDFToDocument now creates documents with id based on converted text and meta data. Before it didn't take the meta data into account.
