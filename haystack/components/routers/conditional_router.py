@@ -52,16 +52,15 @@ class NativeSandboxedEnvironment(SandboxedEnvironment, NativeEnvironment):
             template_class = self.template_class
         return SandboxedEnvironment.from_string(self, source, template_class=template_class)
 
-    def is_safe_attribute(self, obj, attr, value):
+    def is_safe_attribute(self, obj):
         """
-        Whitelist attributes or slicing on your custom classes so the sandbox won't block them.
+        Whitelist Haystack dataclasses so the sandbox won't block them.
         """
-        # If it's a ChatMessage object, you can whitelist certain attributes:
         if isinstance(obj, haystack_dataclass_types):
             return True
 
         # Otherwise, fallback to the default sandbox behavior
-        return super().is_safe_attribute(obj, attr, value)
+        return super().is_safe_attribute(obj)
 
 
 @component
