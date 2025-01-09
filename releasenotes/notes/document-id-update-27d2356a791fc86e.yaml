@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Document ids are now updated upon changes of the document's attributes. Previously document ids were unchanged when adding meta data etc. to a document after its initialization
