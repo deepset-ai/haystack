@@ -221,13 +221,25 @@ class RecursiveDocumentSplitter:
             The length of the chunk in words or characters.
         """
         if self.split_units == "word":
-            # regex that matches a page break followed by one or multiple whitespaces
-            if re.match(r"\f\s*", text):
-                return 1
-
             return len(text.split(" "))
         else:
             return len(text)
+
+    # def _chunk_length(self, text: str) -> int:
+    #     """
+    #     Split the text by whitespace and count non-empty elements
+    #     Count newline and form feed characters
+    #
+    #     :param text:
+    #     :return:
+    #     """
+    #
+    #     if self.split_units == "word":
+    #         words = [word for word in text.split() if word]
+    #         special_chars = text.count('\n') + text.count('\f') + text.count('\x0c')
+    #         return len(words) + special_chars
+    #
+    #     return len(text)
 
     def _chunk_text(self, text: str) -> List[str]:
         """
@@ -247,23 +259,22 @@ class RecursiveDocumentSplitter:
 
         for curr_separator in self.separators:  # type: ignore # the caller already checked that separators is not None
             if curr_separator == "sentence":
-                # correct SentenceSplitter initialization is checked at the initialization of the component
+                # re. ignore: correct SentenceSplitter initialization is checked at the initialization of the component
                 sentence_with_spans = self.nltk_tokenizer.split_sentences(text)  # type: ignore
                 splits = [sentence["sentence"] for sentence in sentence_with_spans]
             else:
+                # add escape "\" to the separator and wrapped it in a group so that it's included in the splits as well
                 escaped_separator = re.escape(curr_separator)
-                escaped_separator = (
-                    f"({escaped_separator})"  # wrap the separator in a group to include it in the splits
-                )
-                splits = re.split(escaped_separator, text)
+                escaped_separator = f"({escaped_separator})"
 
-                # merge every two consecutive splits, i.e.: the text and the separator after it
+                # split the text and merge every two consecutive splits, i.e.: the text and the separator after it
+                splits = re.split(escaped_separator, text)
                 splits = [
                     "".join([splits[i], splits[i + 1]]) if i < len(splits) - 1 else splits[i]
                     for i in range(0, len(splits), 2)
                 ]
 
-                # remove last split if it is empty
+                # remove last split if it's empty
                 splits = splits[:-1] if splits[-1] == "" else splits
 
             if len(splits) == 1:  # go to next separator, if current separator not found in the text
