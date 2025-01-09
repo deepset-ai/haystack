@@ -149,7 +149,7 @@ class HuggingFaceLocalChatGenerator:
 
         if task not in PIPELINE_SUPPORTED_TASKS:
             raise ValueError(
-                f"Task '{task}' is not supported. " f"The supported tasks are: {', '.join(PIPELINE_SUPPORTED_TASKS)}."
+                f"Task '{task}' is not supported. The supported tasks are: {', '.join(PIPELINE_SUPPORTED_TASKS)}."
             )
         huggingface_pipeline_kwargs["task"] = task
 
