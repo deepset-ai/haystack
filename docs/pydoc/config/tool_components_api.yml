@@ -1,8 +1,7 @@
 loaders:
   - type: haystack_pydoc_tools.loaders.CustomPythonLoader
-    search_path: [../../../haystack/dataclasses]
-    modules:
-      ["answer", "byte_stream", "chat_message", "document", "streaming_chunk", "sparse_embedding",]
+    search_path: [../../../haystack/components/tools]
+    modules: ["tool_invoker"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
@@ -14,15 +13,15 @@ processors:
   - type: crossref
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmeCoreRenderer
-  excerpt: Core classes that carry data through the system.
+  excerpt: Components related to Tool Calling.
   category_slug: haystack-api
-  title: Data Classes
-  slug: data-classes-api
-  order: 30
+  title: Tool Components
+  slug: tool-components-api
+  order: 152
   markdown:
     descriptive_class_title: false
     classdef_code_block: false
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false
-    filename: data_classess_api.md
+    filename: tool_components_api.md

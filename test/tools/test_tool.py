@@ -5,8 +5,7 @@
 from typing import Literal, Optional
 
 import pytest
-
-from haystack.dataclasses.tool import (
+from haystack.tools.tool import (
     SchemaGenerationError,
     Tool,
     ToolInvocationError,
@@ -78,18 +77,24 @@ class TestTool:
         )
 
         assert tool.to_dict() == {
-            "name": "weather",
-            "description": "Get weather report",
-            "parameters": parameters,
-            "function": "test_tool.get_weather_report",
+            "type": "haystack.tools.tool.Tool",
+            "data": {
+                "name": "weather",
+                "description": "Get weather report",
+                "parameters": parameters,
+                "function": "test_tool.get_weather_report",
+            },
         }
 
     def test_from_dict(self):
         tool_dict = {
-            "name": "weather",
-            "description": "Get weather report",
-            "parameters": parameters,
-            "function": "test_tool.get_weather_report",
+            "type": "haystack.tools.tool.Tool",
+            "data": {
+                "name": "weather",
+                "description": "Get weather report",
+                "parameters": parameters,
+                "function": "test_tool.get_weather_report",
+            },
         }
 
         tool = Tool.from_dict(tool_dict)
@@ -179,14 +184,12 @@ class TestTool:
 
 def test_deserialize_tools_inplace():
     tool = Tool(name="weather", description="Get weather report", parameters=parameters, function=get_weather_report)
-    serialized_tool = tool.to_dict()
-    print(serialized_tool)
 
-    data = {"tools": [serialized_tool.copy()]}
+    data = {"tools": [tool.to_dict()]}
     deserialize_tools_inplace(data)
     assert data["tools"] == [tool]
 
-    data = {"mytools": [serialized_tool.copy()]}
+    data = {"mytools": [tool.to_dict()]}
     deserialize_tools_inplace(data, key="mytools")
     assert data["mytools"] == [tool]
 
@@ -209,6 +212,11 @@ def test_deserialize_tools_inplace_failures():
         deserialize_tools_inplace(data)
 
     data = {"tools": ["not a dictionary"]}
+    with pytest.raises(TypeError):
+        deserialize_tools_inplace(data)
+
+    # not a subclass of Tool
+    data = {"tools": [{"type": "haystack.dataclasses.ChatMessage", "data": {"irrelevant": "irrelevant"}}]}
     with pytest.raises(TypeError):
         deserialize_tools_inplace(data)
 

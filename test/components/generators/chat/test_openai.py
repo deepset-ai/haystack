@@ -18,7 +18,8 @@ from openai.types.chat import chat_completion_chunk
 from haystack.components.generators.utils import print_streaming_chunk
 from haystack.dataclasses import StreamingChunk
 from haystack.utils.auth import Secret
-from haystack.dataclasses import ChatMessage, Tool, ToolCall
+from haystack.dataclasses import ChatMessage, ToolCall
+from haystack.tools import Tool
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 
 
@@ -200,10 +201,13 @@ class TestOpenAIChatGenerator:
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
                 "tools": [
                     {
-                        "description": "description",
-                        "function": "builtins.print",
-                        "name": "name",
-                        "parameters": {"x": {"type": "string"}},
+                        "type": "haystack.tools.tool.Tool",
+                        "data": {
+                            "description": "description",
+                            "function": "builtins.print",
+                            "name": "name",
+                            "parameters": {"x": {"type": "string"}},
+                        },
                     }
                 ],
                 "tools_strict": True,
@@ -224,10 +228,13 @@ class TestOpenAIChatGenerator:
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
                 "tools": [
                     {
-                        "description": "description",
-                        "function": "builtins.print",
-                        "name": "name",
-                        "parameters": {"x": {"type": "string"}},
+                        "type": "haystack.tools.tool.Tool",
+                        "data": {
+                            "description": "description",
+                            "function": "builtins.print",
+                            "name": "name",
+                            "parameters": {"x": {"type": "string"}},
+                        },
                     }
                 ],
                 "tools_strict": True,

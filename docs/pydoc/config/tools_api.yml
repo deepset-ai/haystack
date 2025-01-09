@@ -1,7 +1,8 @@
 loaders:
   - type: haystack_pydoc_tools.loaders.CustomPythonLoader
-    search_path: [../../../haystack/components/tools]
-    modules: ["tool_invoker"]
+    search_path: [../../../haystack/tools]
+    modules:
+      ["tool"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
@@ -13,11 +14,11 @@ processors:
   - type: crossref
 renderer:
   type: haystack_pydoc_tools.renderers.ReadmeCoreRenderer
-  excerpt: Components related to Tool Calling.
+  excerpt: Unified abstractions to represent tools across the framework.
   category_slug: haystack-api
   title: Tools
   slug: tools-api
-  order: 152
+  order: 151
   markdown:
     descriptive_class_title: false
     classdef_code_block: false
