@@ -23,7 +23,8 @@ from huggingface_hub import (
 from huggingface_hub.utils import RepositoryNotFoundError
 
 from haystack.components.generators.chat.hugging_face_api import HuggingFaceAPIChatGenerator
-from haystack.dataclasses import ChatMessage, Tool, ToolCall
+from haystack.tools import Tool
+from haystack.dataclasses import ChatMessage, ToolCall
 
 
 @pytest.fixture
@@ -217,10 +218,13 @@ class TestHuggingFaceAPIChatGenerator:
         assert init_params["streaming_callback"] is None
         assert init_params["tools"] == [
             {
-                "description": "description",
-                "function": "builtins.print",
-                "name": "name",
-                "parameters": {"x": {"type": "string"}},
+                "type": "haystack.tools.tool.Tool",
+                "data": {
+                    "description": "description",
+                    "function": "builtins.print",
+                    "name": "name",
+                    "parameters": {"x": {"type": "string"}},
+                },
             }
         ]
 
@@ -276,10 +280,13 @@ class TestHuggingFaceAPIChatGenerator:
                         "streaming_callback": None,
                         "tools": [
                             {
-                                "name": "name",
-                                "description": "description",
-                                "parameters": {"x": {"type": "string"}},
-                                "function": "builtins.print",
+                                "type": "haystack.tools.tool.Tool",
+                                "data": {
+                                    "name": "name",
+                                    "description": "description",
+                                    "parameters": {"x": {"type": "string"}},
+                                    "function": "builtins.print",
+                                },
                             }
                         ],
                     },

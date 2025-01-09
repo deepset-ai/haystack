@@ -8,6 +8,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 from pydantic import create_model
 
+from haystack.core.serialization import generate_qualified_class_name, import_class_by_name
 from haystack.lazy_imports import LazyImport
 from haystack.utils import deserialize_callable, serialize_callable
 
@@ -89,9 +90,9 @@ class Tool:
             Dictionary with serialized data.
         """
 
-        serialized = asdict(self)
-        serialized["function"] = serialize_callable(self.function)
-        return serialized
+        data = asdict(self)
+        data["function"] = serialize_callable(self.function)
+        return {"type": generate_qualified_class_name(type(self)), "data": data}
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "Tool":
@@ -103,8 +104,9 @@ class Tool:
         :returns:
             Deserialized Tool.
         """
-        data["function"] = deserialize_callable(data["function"])
-        return cls(**data)
+        init_parameters = data["data"]
+        init_parameters["function"] = deserialize_callable(init_parameters["function"])
+        return cls(**init_parameters)
 
     @classmethod
     def from_function(cls, function: Callable, name: Optional[str] = None, description: Optional[str] = None) -> "Tool":
@@ -253,6 +255,12 @@ def deserialize_tools_inplace(data: Dict[str, Any], key: str = "tools"):
         for tool in serialized_tools:
             if not isinstance(tool, dict):
                 raise TypeError(f"Serialized tool '{tool}' is not a dictionary")
-            deserialized_tools.append(Tool.from_dict(tool))
+
+            # different classes are allowed: Tool, ComponentTool, etc.
+            tool_class = import_class_by_name(tool["type"])
+            if not issubclass(tool_class, Tool):
+                raise TypeError(f"Class '{tool_class}' is not a subclass of Tool")
+
+            deserialized_tools.append(tool_class.from_dict(tool))
 
         data[key] = deserialized_tools
