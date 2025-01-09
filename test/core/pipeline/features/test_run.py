@@ -824,7 +824,7 @@ def pipeline_that_has_a_component_with_only_default_inputs():
                         "answers": [
                             GeneratedAnswer(
                                 data="Paris",
-                                query="What " "is " "the " "capital " "of " "France?",
+                                query="What is the capital of France?",
                                 documents=[
                                     Document(
                                         id="413dccdf51a54cca75b7ed2eddac04e6e58560bd2f0caf4106a3efc023fe3651",
@@ -917,7 +917,7 @@ def pipeline_that_has_a_component_with_only_default_inputs_as_first_to_run_and_r
         pipe,
         [
             PipelineRunData(
-                inputs={"prompt_builder": {"query": "What is the capital of " "Italy?"}},
+                inputs={"prompt_builder": {"query": "What is the capital of Italy?"}},
                 expected_outputs={"router": {"correct_replies": ["Rome"]}},
                 expected_run_order=["prompt_builder", "generator", "router", "prompt_builder", "generator", "router"],
             )
@@ -1809,7 +1809,11 @@ def that_has_a_variadic_component_that_receives_partial_inputs():
         ],
     )
 
-@given("a pipeline that has a variadic component that receives partial inputs in a different order", target_fixture="pipeline_data")
+
+@given(
+    "a pipeline that has a variadic component that receives partial inputs in a different order",
+    target_fixture="pipeline_data",
+)
 def that_has_a_variadic_component_that_receives_partial_inputs_different_order():
     @component
     class ConditionalDocumentCreator:
@@ -2281,6 +2285,7 @@ def that_has_a_string_variadic_component():
         ],
     )
 
+
 @given("a pipeline that is an agent that can use RAG", target_fixture="pipeline_data")
 def an_agent_that_can_use_RAG():
     @component
@@ -2288,6 +2293,7 @@ def an_agent_that_can_use_RAG():
         def __init__(self, replies):
             self.replies = replies
             self.idx = 0
+
         @component.output_types(replies=List[str])
         def run(self, prompt: str):
             if self.idx < len(self.replies):
@@ -2304,7 +2310,11 @@ def an_agent_that_can_use_RAG():
     class FakeRetriever:
         @component.output_types(documents=List[Document])
         def run(self, query: str):
-            return {"documents": [Document(content="This is a document potentially answering the question.", meta={"access_group": 1})]}
+            return {
+                "documents": [
+                    Document(content="This is a document potentially answering the question.", meta={"access_group": 1})
+                ]
+            }
 
     agent_prompt_template = """
 Your task is to answer the user's question.
@@ -2379,16 +2389,17 @@ Documents:
     pp.connect("joiner.value", "concatenator.current_prompt")
     pp.connect("concatenator.output", "joiner.value")
 
-
-
-
     query = "Does this run reliably?"
 
     return (
         pp,
         [
             PipelineRunData(
-                inputs={"agent_prompt": {"query": query}, "rag_prompt": {"query": query}, "answer_builder": {"query": query}},
+                inputs={
+                    "agent_prompt": {"query": query},
+                    "rag_prompt": {"query": query},
+                    "answer_builder": {"query": query},
+                },
                 expected_outputs={
                     "answer_builder": {
                         "answers": [GeneratedAnswer(data="answer: here is my answer", query=query, documents=[])]
@@ -2406,11 +2417,12 @@ Documents:
                     "joiner",
                     "agent_llm",
                     "router",
-                    "answer_builder"
+                    "answer_builder",
                 ],
             )
         ],
     )
+
 
 @given("a pipeline that has a feedback loop", target_fixture="pipeline_data")
 def has_feedback_loop():
@@ -2419,6 +2431,7 @@ def has_feedback_loop():
         def __init__(self, replies):
             self.replies = replies
             self.idx = 0
+
         @component.output_types(replies=List[str])
         def run(self, prompt: str):
             if self.idx < len(self.replies):
@@ -2430,7 +2443,6 @@ def has_feedback_loop():
                 self.idx += 1
 
             return {"replies": replies}
-
 
     code_prompt_template = """
 Generate code to solve the task: {{ task }}
@@ -2494,9 +2506,6 @@ Provide additional feedback on why it fails.
     pp.connect("code_llm.replies", "concatenator.current_prompt")
     pp.connect("concatenator.output", "code_prompt.feedback")
 
-
-
-
     task = "Generate code to generate christmas ascii-art"
 
     return (
@@ -2505,16 +2514,26 @@ Provide additional feedback on why it fails.
             PipelineRunData(
                 inputs={"code_prompt": {"task": task}, "answer_builder": {"query": task}},
                 expected_outputs={
-                    "answer_builder": {
-                        "answers": [GeneratedAnswer(data="valid code", query=task, documents=[])]
-                    }
+                    "answer_builder": {"answers": [GeneratedAnswer(data="valid code", query=task, documents=[])]}
                 },
                 expected_run_order=[
-                    'code_prompt', 'code_llm', 'feedback_prompt', 'feedback_llm', 'router', 'concatenator',
-                    'code_prompt', 'code_llm', 'feedback_prompt', 'feedback_llm', 'router', 'answer_builder'],
+                    "code_prompt",
+                    "code_llm",
+                    "feedback_prompt",
+                    "feedback_llm",
+                    "router",
+                    "concatenator",
+                    "code_prompt",
+                    "code_llm",
+                    "feedback_prompt",
+                    "feedback_llm",
+                    "router",
+                    "answer_builder",
+                ],
             )
         ],
     )
+
 
 @given("a pipeline created in a non-standard order that has a loop", target_fixture="pipeline_data")
 def has_non_standard_order_loop():
@@ -2523,6 +2542,7 @@ def has_non_standard_order_loop():
         def __init__(self, replies):
             self.replies = replies
             self.idx = 0
+
         @component.output_types(replies=List[str])
         def run(self, prompt: str):
             if self.idx < len(self.replies):
@@ -2534,7 +2554,6 @@ def has_non_standard_order_loop():
                 self.idx += 1
 
             return {"replies": replies}
-
 
     code_prompt_template = """
 Generate code to solve the task: {{ task }}
@@ -2550,9 +2569,6 @@ Check if this code is valid and can run: {{ code[0] }}
 Return "PASS" if it passes and "FAIL" if it fails.
 Provide additional feedback on why it fails.
     """
-
-
-
 
     code_llm = FixedGenerator(replies=["invalid code", "valid code"])
     code_prompt = PromptBuilder(template=code_prompt_template)
@@ -2592,7 +2608,6 @@ Provide additional feedback on why it fails.
 
     pp.add_component("answer_builder", answer_builder)
 
-
     pp.connect("concatenator.output", "code_prompt.feedback")
     pp.connect("code_prompt.prompt", "code_llm.prompt")
     pp.connect("code_llm.replies", "feedback_prompt.code")
@@ -2603,7 +2618,6 @@ Provide additional feedback on why it fails.
     pp.connect("code_llm.replies", "router.code")
     pp.connect("code_llm.replies", "concatenator.current_prompt")
 
-
     task = "Generate code to generate christmas ascii-art"
 
     return (
@@ -2612,16 +2626,26 @@ Provide additional feedback on why it fails.
             PipelineRunData(
                 inputs={"code_prompt": {"task": task}, "answer_builder": {"query": task}},
                 expected_outputs={
-                    "answer_builder": {
-                        "answers": [GeneratedAnswer(data="valid code", query=task, documents=[])]
-                    }
+                    "answer_builder": {"answers": [GeneratedAnswer(data="valid code", query=task, documents=[])]}
                 },
                 expected_run_order=[
-                    'code_prompt', 'code_llm', 'feedback_prompt', 'feedback_llm', 'router', 'concatenator',
-                    'code_prompt', 'code_llm', 'feedback_prompt', 'feedback_llm', 'router', 'answer_builder'],
+                    "code_prompt",
+                    "code_llm",
+                    "feedback_prompt",
+                    "feedback_llm",
+                    "router",
+                    "concatenator",
+                    "code_prompt",
+                    "code_llm",
+                    "feedback_prompt",
+                    "feedback_llm",
+                    "router",
+                    "answer_builder",
+                ],
             )
         ],
     )
+
 
 @given("a pipeline that has an agent with a feedback cycle", target_fixture="pipeline_data")
 def agent_with_feedback_cycle():
@@ -2630,14 +2654,16 @@ def agent_with_feedback_cycle():
         def __init__(self, replies):
             self.replies = replies
             self.idx = 0
+
         @component.output_types(replies=List[str])
         def run(self, prompt: str):
             if self.idx < len(self.replies):
                 replies = [self.replies[self.idx]]
                 self.idx += 1
             else:
-                self.idx = 1
+                self.idx = 0
                 replies = [self.replies[self.idx]]
+                self.idx += 1
 
             return {"replies": replies}
 
@@ -2646,7 +2672,6 @@ def agent_with_feedback_cycle():
         @component.output_types(files=str)
         def run(self, replies: List[str]):
             return {"files": "This is the edited file content."}
-
 
     code_prompt_template = """
 Generate code to solve the task: {{ task }}
@@ -2694,7 +2719,6 @@ Provide additional feedback on why it fails.
     ]
     feedback_router = ConditionalRouter(routes=routes)
 
-
     tool_use_routes = [
         {
             "condition": "{{ 'Edit:' in replies[0] }}",
@@ -2711,10 +2735,8 @@ Provide additional feedback on why it fails.
     ]
     tool_use_router = ConditionalRouter(routes=tool_use_routes)
 
-
     joiner = BranchJoiner(type_=str)
     agent_concatenator = OutputAdapter(template="{{current_prompt + '\n' + files}}", output_type=str)
-
 
     pp = Pipeline(max_runs_per_component=100)
 
@@ -2727,7 +2749,6 @@ Provide additional feedback on why it fails.
     pp.add_component("feedback_prompt", feedback_prompt)
     pp.add_component("feedback_llm", feedback_llm)
     pp.add_component("feedback_router", feedback_router)
-
 
     # Main Agent
     pp.connect("code_prompt.prompt", "joiner.value")
@@ -2746,7 +2767,6 @@ Provide additional feedback on why it fails.
     pp.connect("agent_concatenator.output", "feedback_router.current_prompt")
     pp.connect("feedback_router.fail", "joiner.value")
 
-
     task = "Generate code to generate christmas ascii-art"
 
     return (
@@ -2754,23 +2774,51 @@ Provide additional feedback on why it fails.
         [
             PipelineRunData(
                 inputs={"code_prompt": {"task": task}},
-                expected_outputs={
-                    "feedback_router": {
-                        "pass": ["PASS"]
-                    }
-                },
+                expected_outputs={"feedback_router": {"pass": ["PASS"]}},
                 expected_run_order=[
-                    'code_prompt',
-
-                    "joiner", "code_llm", "tool_use_router", "file_editor", "agent_concatenator",
-                    "joiner", "code_llm", "tool_use_router", "file_editor", "agent_concatenator",
-                    "joiner", "code_llm", "tool_use_router", "file_editor", "agent_concatenator",
-                    "joiner", "code_llm", "tool_use_router", "feedback_prompt", "feedback_llm", "feedback_router",
-
-                    "joiner", "code_llm", "tool_use_router", "file_editor", "agent_concatenator",
-                    "joiner", "code_llm", "tool_use_router", "file_editor", "agent_concatenator",
-                    "joiner", "code_llm", "tool_use_router", "file_editor", "agent_concatenator",
-                    "joiner", "code_llm", "tool_use_router", "feedback_prompt", "feedback_llm", "feedback_router"
+                    "code_prompt",
+                    "joiner",
+                    "code_llm",
+                    "tool_use_router",
+                    "file_editor",
+                    "agent_concatenator",
+                    "joiner",
+                    "code_llm",
+                    "tool_use_router",
+                    "file_editor",
+                    "agent_concatenator",
+                    "joiner",
+                    "code_llm",
+                    "tool_use_router",
+                    "file_editor",
+                    "agent_concatenator",
+                    "joiner",
+                    "code_llm",
+                    "tool_use_router",
+                    "feedback_prompt",
+                    "feedback_llm",
+                    "feedback_router",
+                    "joiner",
+                    "code_llm",
+                    "tool_use_router",
+                    "file_editor",
+                    "agent_concatenator",
+                    "joiner",
+                    "code_llm",
+                    "tool_use_router",
+                    "file_editor",
+                    "agent_concatenator",
+                    "joiner",
+                    "code_llm",
+                    "tool_use_router",
+                    "file_editor",
+                    "agent_concatenator",
+                    "joiner",
+                    "code_llm",
+                    "tool_use_router",
+                    "feedback_prompt",
+                    "feedback_llm",
+                    "feedback_router",
                 ],
             )
         ],
