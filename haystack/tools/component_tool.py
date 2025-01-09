@@ -6,12 +6,22 @@ from dataclasses import fields, is_dataclass
 from inspect import getdoc
 from typing import Any, Callable, Dict, Optional, Union, get_args, get_origin
 
-from docstring_parser import parse
 from pydantic import TypeAdapter
 
 from haystack import logging
 from haystack.core.component import Component
+from haystack.core.serialization import (
+    component_from_dict,
+    component_to_dict,
+    generate_qualified_class_name,
+    import_class_by_name,
+)
+from haystack.lazy_imports import LazyImport
 from haystack.tools import Tool
+
+with LazyImport(message="Run 'pip install docstring-parser'") as docstring_parser_import:
+    from docstring_parser import parse
+
 
 logger = logging.getLogger(__name__)
 
@@ -41,31 +51,43 @@ class ComponentTool(Tool):
     - Automatic name generation from Component class name
     - Description extraction from Component docstrings
 
-    Let's assume we already have (or want to create) a Haystack component that we want to use as a tool.
+    To use ComponentTool, you first need a Haystack component - either an existing one or a new one you create.
     We can create a ComponentTool from the component by passing the component to the ComponentTool constructor.
+    Below is an example of how to create a ComponentTool from an existing SerperDevWebSearch component.
 
     ```python
-    from haystack import component
+    from haystack import component, Pipeline
     from haystack.tools import ComponentTool
+    from haystack.components.websearch import SerperDevWebSearch
+    from haystack.utils import Secret
+    from haystack.components.tools.tool_invoker import ToolInvoker
+    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.dataclasses import ChatMessage
 
-    @component
-    class WeatherComponent:
-        '''Gets weather information for a location.'''
-
-        def run(self, city: str, units: str = "celsius"):
-            '''
-            :param city: The city to get weather for
-            :param units: Temperature units (celsius/fahrenheit)
-            '''
-            return f"Weather in {city}: 20°{units}"
+    # Create a SerperDev search component
+    search = SerperDevWebSearch(api_key=Secret.from_env_var("SERPERDEV_API_KEY"), top_k=3)
 
     # Create a tool from the component
-    weather = WeatherComponent()
     tool = ComponentTool(
-        component=weather,
-        name="get_weather",  # Optional: defaults to snake_case of class name
-        description="Get current weather for a city"  # Optional: defaults to component run method docstring
+        component=search,
+        name="web_search",  # Optional: defaults to "serper_dev_web_search"
+        description="Search the web for current information on any topic"  # Optional: defaults to component docstring
     )
+
+    # Create pipeline with OpenAIChatGenerator and ToolInvoker
+    pipeline = Pipeline()
+    pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=[tool]))
+    pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
+
+    # Connect components
+    pipeline.connect("llm.replies", "tool_invoker.messages")
+
+    message = ChatMessage.from_user("Use the web search tool to find information about Nikola Tesla")
+
+    # Run pipeline
+    result = pipeline.run({"llm": {"messages": [message]}})
+
+    print(result)
     ```
 
     """
@@ -82,9 +104,16 @@ class ComponentTool(Tool):
         if not isinstance(component, Component):
             message = (
                 f"Object {component!r} is not a Haystack component. "
-                "Use this method to create a Tool only with Haystack component instances."
+                "Use ComponentTool only with Haystack component instances."
             )
             raise ValueError(message)
+
+        if getattr(component, "__haystack_added_to_pipeline__", None):
+            msg = (
+                "Component has been added to a Pipeline and can't be used to create a ComponentTool. "
+                "Create ComponentTool from a non-pipeline component instead."
+            )
+            raise ValueError(msg)
 
         # Create the tools schema from the component run method parameters
         tool_schema = self._create_tool_parameters_schema(component)
@@ -134,7 +163,26 @@ class ComponentTool(Tool):
 
         # Create the Tool instance with the component invoker as the function to be called and the schema
         super().__init__(name, description, tool_schema, component_invoker)
-        self.component = component
+        self._component = component
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serializes the ComponentTool to a dictionary.
+        """
+        # we do not serialize the function in this case: it can be recreated from the component at deserialization time
+        serialized = {"name": self.name, "description": self.description, "parameters": self.parameters}
+        serialized["component"] = component_to_dict(obj=self._component, name=self.name)
+        return {"type": generate_qualified_class_name(type(self)), "data": serialized}
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "Tool":
+        """
+        Deserializes the ComponentTool from a dictionary.
+        """
+        inner_data = data["data"]
+        component_class = import_class_by_name(inner_data["component"]["type"])
+        component = component_from_dict(cls=component_class, data=inner_data["component"], name=inner_data["name"])
+        return cls(component=component, name=inner_data["name"], description=inner_data["description"])
 
     def _create_tool_parameters_schema(self, component: Component) -> Dict[str, Any]:
         """
@@ -181,6 +229,7 @@ class ComponentTool(Tool):
         if not docstring:
             return {}
 
+        docstring_parser_import.check()
         parsed_doc = parse(docstring)
         param_descriptions = {}
         for param in parsed_doc.params:

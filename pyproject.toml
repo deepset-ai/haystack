@@ -57,7 +57,6 @@ dependencies = [
   "requests",
   "numpy",
   "python-dateutil",
-  "docstring-parser",
   "haystack-experimental",
 ]
 
@@ -126,6 +125,9 @@ extra-dependencies = [
 
   # Structured logging
   "structlog",
+
+  # Docstring parser
+  "docstring-parser",
 
   # Test
   "pytest",

@@ -10,11 +10,13 @@ from dataclasses import dataclass
 from haystack import component
 from pydantic import BaseModel
 from haystack import Pipeline
+from haystack.components.websearch.serper_dev import SerperDevWebSearch
 from haystack.dataclasses import Document
 from haystack.dataclasses import ChatMessage, ChatRole
 from haystack.components.tools.tool_invoker import ToolInvoker
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.tools import ComponentTool
+from haystack.utils.auth import Secret
 
 
 ### Component and Model Definitions
@@ -533,7 +535,7 @@ class TestToolComponentInPipelineWithOpenAI:
         )
 
         pipeline = Pipeline()
-        pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4", tools=[tool]))
+        pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=[tool]))
         pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
         pipeline.connect("llm.replies", "tool_invoker.messages")
 
@@ -547,3 +549,66 @@ class TestToolComponentInPipelineWithOpenAI:
         assert len(tool_messages) == 1
         tool_message = tool_messages[0]
         assert tool_message.is_from(ChatRole.TOOL)
+
+    @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
+    @pytest.mark.skipif(not os.environ.get("SERPERDEV_API_KEY"), reason="SERPERDEV_API_KEY not set")
+    @pytest.mark.integration
+    def test_serper_dev_web_search_in_pipeline(self):
+        component = SerperDevWebSearch(api_key=Secret.from_env_var("SERPERDEV_API_KEY"), top_k=3)
+        tool = ComponentTool(
+            component=component, name="web_search", description="Search the web for current information on any topic"
+        )
+
+        pipeline = Pipeline()
+        pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=[tool]))
+        pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
+        pipeline.connect("llm.replies", "tool_invoker.messages")
+
+        result = pipeline.run(
+            {
+                "llm": {
+                    "messages": [
+                        ChatMessage.from_user(text="Use the web search tool to find information about Nikola Tesla")
+                    ]
+                }
+            }
+        )
+
+        assert len(result["tool_invoker"]["tool_messages"]) == 1
+        tool_message = result["tool_invoker"]["tool_messages"][0]
+        assert tool_message.is_from(ChatRole.TOOL)
+        assert "Nikola Tesla" in tool_message.tool_call_result.result
+        assert not tool_message.tool_call_result.error
+
+    def test_serde_in_pipeline(self, monkeypatch):
+        monkeypatch.setenv("SERPERDEV_API_KEY", "test-key")
+        monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+
+        # Create the search component and tool
+        search = SerperDevWebSearch(top_k=3)
+        tool = ComponentTool(component=search, name="web_search", description="Search the web for current information")
+
+        # Create and configure the pipeline
+        pipeline = Pipeline()
+        pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
+        pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=[tool]))
+        pipeline.connect("tool_invoker.tool_messages", "llm.messages")
+
+        # Serialize to dict and verify structure
+        pipeline_dict = pipeline.to_dict()
+        assert (
+            pipeline_dict["components"]["tool_invoker"]["type"] == "haystack.components.tools.tool_invoker.ToolInvoker"
+        )
+        assert len(pipeline_dict["components"]["tool_invoker"]["init_parameters"]["tools"]) == 1
+
+        tool_dict = pipeline_dict["components"]["tool_invoker"]["init_parameters"]["tools"][0]
+        assert tool_dict["type"] == "haystack.tools.component_tool.ComponentTool"
+        assert tool_dict["data"]["name"] == "web_search"
+        assert tool_dict["data"]["component"]["type"] == "haystack.components.websearch.serper_dev.SerperDevWebSearch"
+        assert tool_dict["data"]["component"]["init_parameters"]["top_k"] == 3
+        assert tool_dict["data"]["component"]["init_parameters"]["api_key"]["type"] == "env_var"
+
+        # Test round-trip serialization
+        pipeline_yaml = pipeline.dumps()
+        new_pipeline = Pipeline.loads(pipeline_yaml)
+        assert new_pipeline == pipeline
