@@ -119,6 +119,22 @@ def tool(function: Callable) -> Tool:
         unit: Annotated[Literal["Celsius", "Fahrenheit"], "the unit for the temperature"] = "Celsius"):
         '''A simple function to get the current weather for a location.'''
         return f"Weather report for {city}: 20 {unit}, sunny"
+
+    print(get_weather)
+    >>> Tool(name='get_weather', description='A simple function to get the current weather for a location.',
+    >>> parameters={
+    >>> 'type': 'object',
+    >>> 'properties': {
+    >>>     'city': {'type': 'string', 'description': 'the city for which to get the weather', 'default': 'Munich'},
+    >>>     'unit': {
+    >>>         'type': 'string',
+    >>>         'enum': ['Celsius', 'Fahrenheit'],
+    >>>         'description': 'the unit for the temperature',
+    >>>         'default': 'Celsius',
+    >>>     },
+    >>>     }
+    >>> },
+    >>> function=<function get_weather at 0x7f7b3a8a9b80>)
     ```
     """
     return create_tool_from_function(function)
