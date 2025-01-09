@@ -126,12 +126,32 @@ def test_basic_equality_id():
     assert doc1 != doc2
 
 
-def test_id_is_updated_on_property_change():
+@pytest.mark.parametrize(
+    "attribute, new_value",
+    [
+        ("content", "new content"),
+        ("dataframe", pd.DataFrame([10, 20, 30])),
+        ("blob", ByteStream(b"some bytes", mime_type="application/pdf")),
+        ("meta", {"date": "10-10-2023", "type": "article"}),
+        ("embedding", [0.1, 0.2, 0.3]),
+        ("sparse_embedding", SparseEmbedding(indices=[0, 2, 4], values=[0.1, 0.2, 0.3])),
+    ],
+)
+def test_id_is_updated_on_attribute_change(attribute, new_value):
     doc1 = Document(content="test text")
     id_at_creation = doc1.id
 
-    doc1.content = "new content"
+    # Update attributes "content", "dataframe", "blob", "meta", "embedding", "sparse_embedding"
+    setattr(doc1, attribute, new_value)
     assert doc1.id != id_at_creation
+
+
+def test_id_is_not_updated_on_score_change():
+    doc1 = Document(content="test text")
+    id_at_creation = doc1.id
+
+    doc1.score = 1.0
+    assert doc1.id == id_at_creation
 
 
 def test_to_dict():
