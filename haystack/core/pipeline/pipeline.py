@@ -449,6 +449,12 @@ class Pipeline(PipelineBase):
                     # So we reset it given the output returned by the subgraph.
                     run_queue = []
 
+                    # This prevents a cycle from running twice.
+                    # It's not a full fix for all the issues, it's only here to explain what is happening.
+                    for component_name, data in self.graph.nodes.items():
+                        if component_name in cycles[0]:
+                            _dequeue_component((component_name, data["instance"]), run_queue=run_queue, waiting_queue=waiting_queue)
+
                     # Reset the waiting for input previous states, we managed to run at least one component
                     before_last_waiting_queue = None
                     last_waiting_queue = None
