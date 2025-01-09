@@ -112,8 +112,7 @@ def _less_than_equal(document_value: Any, filter_value: Any) -> bool:
 def _in(document_value: Any, filter_value: Any) -> bool:
     if not isinstance(filter_value, list):
         msg = (
-            f"Filter value must be a `list` when using operator 'in' or 'not in', "
-            f"received type '{type(filter_value)}'"
+            f"Filter value must be a `list` when using operator 'in' or 'not in', received type '{type(filter_value)}'"
         )
         raise FilterError(msg)
     return any(_equal(e, document_value) for e in filter_value)

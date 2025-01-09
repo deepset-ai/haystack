@@ -71,7 +71,7 @@ class TestDocumentCleaner:
         )
         assert len(result["documents"]) == 1
         assert result["documents"][0].content == (
-            "This is a text with some words. " "" "There is a second sentence. " "" "And there is a third sentence.\f"
+            "This is a text with some words. There is a second sentence. And there is a third sentence.\f"
         )
 
     def test_remove_substrings(self):
@@ -210,11 +210,7 @@ class TestDocumentCleaner:
     def test_other_document_fields_are_not_lost(self):
         cleaner = DocumentCleaner(keep_id=True)
         document = Document(
-            content="This is a text with some words. \n"
-            ""
-            "There is a second sentence. \n"
-            ""
-            "And there is a third sentence.\n",
+            content="This is a text with some words. \nThere is a second sentence. \nAnd there is a third sentence.\n",
             dataframe=DataFrame({"col1": [1], "col2": [2]}),
             blob=ByteStream.from_string("some_data"),
             meta={"data": 1},
