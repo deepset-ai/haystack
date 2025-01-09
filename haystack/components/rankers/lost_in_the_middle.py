@@ -51,7 +51,7 @@ class LostInTheMiddleRanker:
         """
         if isinstance(word_count_threshold, int) and word_count_threshold <= 0:
             raise ValueError(
-                f"Invalid value for word_count_threshold: {word_count_threshold}. " f"word_count_threshold must be > 0."
+                f"Invalid value for word_count_threshold: {word_count_threshold}. word_count_threshold must be > 0."
             )
         if isinstance(top_k, int) and top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
@@ -78,7 +78,7 @@ class LostInTheMiddleRanker:
         """
         if isinstance(word_count_threshold, int) and word_count_threshold <= 0:
             raise ValueError(
-                f"Invalid value for word_count_threshold: {word_count_threshold}. " f"word_count_threshold must be > 0."
+                f"Invalid value for word_count_threshold: {word_count_threshold}. word_count_threshold must be > 0."
             )
         if isinstance(top_k, int) and top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
