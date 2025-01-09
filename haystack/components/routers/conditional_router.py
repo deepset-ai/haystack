@@ -8,13 +8,16 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Set, 
 from warnings import warn
 
 from jinja2 import Environment, TemplateSyntaxError, meta
-from jinja2.nativetypes import NativeEnvironment
+from jinja2.nativetypes import NativeEnvironment, NativeTemplate
 from jinja2.sandbox import SandboxedEnvironment
 
 from haystack import component, default_from_dict, default_to_dict, logging
+from haystack.dataclasses import Answer, ByteStream, ChatMessage, Document, SparseEmbedding, StreamingChunk
 from haystack.utils import deserialize_callable, deserialize_type, serialize_callable, serialize_type
 
 logger = logging.getLogger(__name__)
+
+haystack_dataclass_types = (ByteStream, Document, ChatMessage, Answer, SparseEmbedding, StreamingChunk)
 
 
 class NoRouteSelectedException(Exception):
@@ -23,6 +26,42 @@ class NoRouteSelectedException(Exception):
 
 class RouteConditionException(Exception):
     """Exception raised when there is an error parsing or evaluating the condition expression in ConditionalRouter."""
+
+
+class NativeSandboxedTemplate(NativeTemplate):
+    """
+    A template class that returns native Python objects and also respects the sandbox security checks.
+    """
+
+    pass
+
+
+class NativeSandboxedEnvironment(SandboxedEnvironment, NativeEnvironment):
+    """
+    An environment that combines sandbox restrictions with native rendering.
+    """
+
+    # We tell the environment to use our custom template class by default.
+    template_class = NativeSandboxedTemplate
+
+    def from_string(self, source, template_class=None):
+        """
+        Override from_string to ensure the sandbox logic + native logic are used together.
+        """
+        if template_class is None:
+            template_class = self.template_class
+        return SandboxedEnvironment.from_string(self, source, template_class=template_class)
+
+    def is_safe_attribute(self, obj, attr, value):
+        """
+        Whitelist attributes or slicing on your custom classes so the sandbox won't block them.
+        """
+        # If it's a ChatMessage object, you can whitelist certain attributes:
+        if isinstance(obj, haystack_dataclass_types):
+            return True
+
+        # Otherwise, fallback to the default sandbox behavior
+        return super().is_safe_attribute(obj, attr, value)
 
 
 @component
@@ -195,7 +234,16 @@ class ConditionalRouter:
             warn(msg)
 
         self._env = NativeEnvironment() if self._unsafe else SandboxedEnvironment()
+        self._custom_env = NativeSandboxedEnvironment()
         self._env.filters.update(self.custom_filters)
+
+        # Add custom types to the custom environment
+        self._custom_env.globals["Document"] = Document
+        self._custom_env.globals["ChatMessage"] = ChatMessage
+        self._custom_env.globals["ByteStream"] = ByteStream
+        self._custom_env.globals["Answer"] = Answer
+        self._custom_env.globals["SparseEmbedding"] = SparseEmbedding
+        self._custom_env.globals["StreamingChunk"] = StreamingChunk
 
         self._validate_routes(routes)
         # Inspect the routes to determine input and output types.
@@ -309,14 +357,15 @@ class ConditionalRouter:
                 if not rendered:
                     continue
                 # We now evaluate the `output` expression to determine the route output
-                t_output = self._env.from_string(route["output"])
+                t_output = self._custom_env.from_string(route["output"])
                 output = t_output.render(**kwargs)
+
                 # We suppress the exception in case the output is already a string, otherwise
                 # we try to evaluate it and would fail.
                 # This must be done cause the output could be different literal structures.
                 # This doesn't support any user types.
                 with contextlib.suppress(Exception):
-                    if not self._unsafe:
+                    if not self._unsafe and isinstance(output, str):
                         output = ast.literal_eval(output)
             except Exception as e:
                 msg = f"Error evaluating condition for route '{route}': {e}"
