@@ -209,3 +209,7 @@ class TestPyPDFToDocument:
             output = PyPDFToDocument().run(sources=paths)
             assert "PyPDFToDocument could not extract text from the file" in caplog.text
             assert output["documents"][0].content == ""
+
+            # Check that meta is used when the returned document is initialized and thus when doc id is generated
+            assert output["documents"][0].meta["file_path"] == "non_text_searchable.pdf"
+            assert output["documents"][0].id != Document(content="").id
