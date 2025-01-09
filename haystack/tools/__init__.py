@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
-from haystack.tools.component_tool import ComponentTool
+# ruff: noqa: I001 (ignore import order as we need to import Tool before ComponentTool)
 from haystack.tools.tool import Tool, _check_duplicate_tool_names, deserialize_tools_inplace
+from haystack.tools.component_tool import ComponentTool
 
-__all__ = ["ComponentTool", "Tool", "_check_duplicate_tool_names", "deserialize_tools_inplace"]
+__all__ = ["Tool", "_check_duplicate_tool_names", "deserialize_tools_inplace", "ComponentTool"]

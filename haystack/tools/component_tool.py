@@ -148,7 +148,7 @@ class ComponentTool(Tool):
 
         param_descriptions = self._get_param_descriptions(component.run)
 
-        for input_name, socket in component.__haystack_input__._sockets_dict.items():
+        for input_name, socket in component.__haystack_input__._sockets_dict.items():  # type: ignore[attr-defined]
             input_type = socket.type
             description = param_descriptions.get(input_name, f"Input '{input_name}' for the component.")
 
@@ -187,10 +187,8 @@ class ComponentTool(Tool):
             if not param.description:
                 logger.warning(
                     "Missing description for parameter '%s'. Please add a description in the component's "
-                    "run() method docstring using the format ':param %s: <description>'. "
-                    "This description helps the LLM understand how to use this parameter.",
-                    param.arg_name,
-                    param.arg_name,
+                    "run() method docstring using the format ':param %%s: <description>'. "
+                    "This description helps the LLM understand how to use this parameter." % param.arg_name
                 )
             param_descriptions[param.arg_name] = param.description.strip() if param.description else ""
         return param_descriptions
