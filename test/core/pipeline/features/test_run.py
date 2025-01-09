@@ -823,7 +823,7 @@ def pipeline_that_has_a_component_with_only_default_inputs():
                         "answers": [
                             GeneratedAnswer(
                                 data="Paris",
-                                query="What " "is " "the " "capital " "of " "France?",
+                                query="What is the capital of France?",
                                 documents=[
                                     Document(
                                         id="413dccdf51a54cca75b7ed2eddac04e6e58560bd2f0caf4106a3efc023fe3651",
@@ -916,7 +916,7 @@ def pipeline_that_has_a_component_with_only_default_inputs_as_first_to_run_and_r
         pipe,
         [
             PipelineRunData(
-                inputs={"prompt_builder": {"query": "What is the capital of " "Italy?"}},
+                inputs={"prompt_builder": {"query": "What is the capital of Italy?"}},
                 expected_outputs={"router": {"correct_replies": ["Rome"]}},
                 expected_run_order=["prompt_builder", "generator", "router", "prompt_builder", "generator", "router"],
             )

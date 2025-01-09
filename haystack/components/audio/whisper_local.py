@@ -72,7 +72,7 @@ class LocalWhisperTranscriber:
         whisper_import.check()
         if model not in get_args(WhisperLocalModel):
             raise ValueError(
-                f"Model name '{model}' not recognized. Choose one among: " f"{', '.join(get_args(WhisperLocalModel))}."
+                f"Model name '{model}' not recognized. Choose one among: {', '.join(get_args(WhisperLocalModel))}."
             )
         self.model = model
         self.whisper_params = whisper_params or {}
