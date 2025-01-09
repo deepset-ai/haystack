@@ -121,7 +121,7 @@ class RecursiveDocumentSplitter:
         """
 
         if self.split_units == "word":
-            words = current_chunk.split(" ")
+            words = current_chunk.split()
             current_chunk = " ".join(words[: self.split_length])
             remaining_words = words[self.split_length :]
             return current_chunk, " ".join(remaining_words)
@@ -201,12 +201,12 @@ class RecursiveDocumentSplitter:
 
         return overlapped_chunks
 
-    def _get_overlap(self, overlapped_chunks):
+    def _get_overlap(self, overlapped_chunks: List[str]) -> Tuple[str, str]:
         """Get the previous overlapped chunk instead of the original chunk."""
         prev_chunk = overlapped_chunks[-1]
         overlap_start = max(0, self._chunk_length(prev_chunk) - self.split_overlap)
         if self.split_units == "word":
-            word_chunks = prev_chunk.split(" ")
+            word_chunks = prev_chunk.split()
             overlap = " ".join(word_chunks[overlap_start:])
         else:
             overlap = prev_chunk[overlap_start:]
@@ -214,32 +214,17 @@ class RecursiveDocumentSplitter:
 
     def _chunk_length(self, text: str) -> int:
         """
-        Get the length of the chunk in words or characters.
+        Split the text by whitespace and count non-empty elements.
 
-        :param text: The text to be split into chunks.
-        :returns:
-            The length of the chunk in words or characters.
+        :param: The text to be split.
+        :return: The number of words in the text.
         """
-        if self.split_units == "word":
-            return len(text.split(" "))
-        else:
-            return len(text)
 
-    # def _chunk_length(self, text: str) -> int:
-    #     """
-    #     Split the text by whitespace and count non-empty elements
-    #     Count newline and form feed characters
-    #
-    #     :param text:
-    #     :return:
-    #     """
-    #
-    #     if self.split_units == "word":
-    #         words = [word for word in text.split() if word]
-    #         special_chars = text.count('\n') + text.count('\f') + text.count('\x0c')
-    #         return len(words) + special_chars
-    #
-    #     return len(text)
+        if self.split_units == "word":
+            words = [word for word in text.split(" ") if word]
+            return len(words)
+
+        return len(text)
 
     def _chunk_text(self, text: str) -> List[str]:
         """
@@ -299,10 +284,13 @@ class RecursiveDocumentSplitter:
                     # recursively handle splits that are too large
                     if self._chunk_length(split_text) > self.split_length:
                         if curr_separator == self.separators[-1]:
-                            # tried the last separator, can't split further, break the loop and fall back to
-                            # word- or character-level chunking
-                            return self.fall_back_to_fixed_chunking(text, self.split_units)
-                        chunks.extend(self._chunk_text(split_text))
+                            # tried last separator, can't split further, do a fixed-split based on word/character
+                            fall_back_chunks = self._fall_back_to_fixed_chunking(split_text, self.split_units)
+                            chunks.extend(fall_back_chunks)
+                        else:
+                            chunks.extend(self._chunk_text(split_text))
+                        current_length += self._chunk_length(split_text)
+
                     else:
                         current_chunk.append(split_text)
                         current_length += self._chunk_length(split_text)
@@ -320,9 +308,9 @@ class RecursiveDocumentSplitter:
                 return chunks
 
         # if no separator worked, fall back to word- or character-level chunking
-        return self.fall_back_to_fixed_chunking(text, self.split_units)
+        return self._fall_back_to_fixed_chunking(text, self.split_units)
 
-    def fall_back_to_fixed_chunking(self, text: str, split_units: Literal["word", "char"]) -> List[str]:
+    def _fall_back_to_fixed_chunking(self, text: str, split_units: Literal["word", "char"]) -> List[str]:
         """
         Fall back to a fixed chunking approach if no separator works for the text.
 
@@ -336,7 +324,7 @@ class RecursiveDocumentSplitter:
 
         if split_units == "word":
             words = text.split(" ")
-            for i in range(0, self._chunk_length(text), step):
+            for idx, i in enumerate(range(0, self._chunk_length(text), step)):
                 chunks.append(" ".join(words[i : i + self.split_length]))
         else:
             for i in range(0, self._chunk_length(text), step):

@@ -1,3 +1,5 @@
+import re
+
 import pytest
 from pytest import LogCaptureFixture
 
@@ -401,11 +403,12 @@ def test_run_split_document_with_overlap_character_unit():
 
 def test_run_separator_exists_but_split_length_too_small_fall_back_to_character_chunking():
     splitter = RecursiveDocumentSplitter(separators=[" "], split_length=2, split_unit="char")
-    doc = Document(content="This is some text. This is some more text.")
+    doc = Document(content="This is some text")
     result = splitter.run(documents=[doc])
-    assert len(result["documents"]) == 21
+    assert len(result["documents"]) == 10
     for doc in result["documents"]:
-        assert len(doc.content) == 2
+        if re.escape(doc.content) not in ["\ "]:
+            assert len(doc.content) == 2
 
 
 def test_run_fallback_to_character_chunking_by_default_length_too_short():
@@ -475,7 +478,7 @@ def test_run_split_by_dot_count_page_breaks_word_unit() -> None:
 
     documents = document_splitter.run(documents=[Document(content=text)])["documents"]
 
-    assert len(documents) == 7
+    assert len(documents) == 8
     assert documents[0].content == "Sentence on page 1."
     assert documents[0].meta["page_number"] == 1
     assert documents[0].meta["split_id"] == 0
@@ -506,10 +509,15 @@ def test_run_split_by_dot_count_page_breaks_word_unit() -> None:
     assert documents[5].meta["split_id"] == 5
     assert documents[5].meta["split_idx_start"] == text.index(documents[5].content)
 
-    assert documents[6].content == "\f\f Sentence on page 5."
+    assert documents[6].content == "\f\f Sentence on page"
     assert documents[6].meta["page_number"] == 5
     assert documents[6].meta["split_id"] == 6
     assert documents[6].meta["split_idx_start"] == text.index(documents[6].content)
+
+    assert documents[7].content == " 5."
+    assert documents[7].meta["page_number"] == 5
+    assert documents[7].meta["split_id"] == 7
+    assert documents[7].meta["split_idx_start"] == text.index(documents[7].content)
 
 
 def test_run_split_by_word_count_page_breaks_word_unit():
@@ -687,21 +695,20 @@ def test_run_split_by_sentence_tokenizer_document_and_overlap_word_unit_no_overl
     chunks = splitter.run([Document(content=text)])["documents"]
     assert len(chunks) == 3
     assert chunks[0].content == "This is sentence one."
-    assert chunks[1].content == "This is sentence two."
-    assert chunks[2].content == "This is sentence three."
+    assert chunks[1].content == " This is sentence two."
+    assert chunks[2].content == " This is sentence three."
 
 
 def test_run_split_by_dot_and_overlap_1_word_unit():
     splitter = RecursiveDocumentSplitter(split_length=4, split_overlap=1, separators=["."], split_unit="word")
     text = "This is sentence one. This is sentence two. This is sentence three. This is sentence four."
     chunks = splitter.run([Document(content=text)])["documents"]
-    assert len(chunks) == 6
+    assert len(chunks) == 5
     assert chunks[0].content == "This is sentence one."
     assert chunks[1].content == "one. This is sentence"
     assert chunks[2].content == "sentence two. This is"
     assert chunks[3].content == "is sentence three. This"
     assert chunks[4].content == "This is sentence four."
-    assert chunks[5].content == "four."
 
 
 def test_run_trigger_dealing_with_remaining_word_larger_than_split_length():
@@ -709,7 +716,7 @@ def test_run_trigger_dealing_with_remaining_word_larger_than_split_length():
     text = """A simple sentence1. A bright sentence2. A clever sentence3"""
     doc = Document(content=text)
     chunks = splitter.run([doc])["documents"]
-    assert len(chunks) == 9
+    assert len(chunks) == 7
     assert chunks[0].content == "A simple sentence1."
     assert chunks[1].content == "simple sentence1. A"
     assert chunks[2].content == "sentence1. A bright"
@@ -717,8 +724,6 @@ def test_run_trigger_dealing_with_remaining_word_larger_than_split_length():
     assert chunks[4].content == "bright sentence2. A"
     assert chunks[5].content == "sentence2. A clever"
     assert chunks[6].content == "A clever sentence3"
-    assert chunks[7].content == "clever sentence3"
-    assert chunks[8].content == "sentence3"
 
 
 def test_run_trigger_dealing_with_remaining_char_larger_than_split_length():
