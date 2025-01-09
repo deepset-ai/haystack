@@ -249,8 +249,7 @@ class OpenAPIServiceToFunctions:
             open_api_spec_content = yaml.safe_load(content)
         except yaml.YAMLError:
             error_message = (
-                "Failed to parse the OpenAPI specification. "
-                "The content does not appear to be valid JSON or YAML.\n\n"
+                "Failed to parse the OpenAPI specification. The content does not appear to be valid JSON or YAML.\n\n"
             )
             raise RuntimeError(error_message, content)
 
