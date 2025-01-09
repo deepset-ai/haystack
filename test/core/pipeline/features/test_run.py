@@ -719,7 +719,7 @@ def pipeline_that_has_a_component_that_doesnt_return_a_dictionary():
     pipe.add_component("comp", BrokenComponent())
     return pipe, [PipelineRunData({"comp": {"a": 1}})]
 
-
+# Run again
 @given(
     "a pipeline that has components added in a different order from the order of execution",
     target_fixture="pipeline_data",
