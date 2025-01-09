@@ -22,6 +22,7 @@ class TestAzureOpenAIDocumentEmbedder:
         assert embedder.progress_bar is True
         assert embedder.meta_fields_to_embed == []
         assert embedder.embedding_separator == "\n"
+        assert embedder.default_headers == {}
 
     def test_to_dict(self, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
@@ -45,6 +46,7 @@ class TestAzureOpenAIDocumentEmbedder:
                 "embedding_separator": "\n",
                 "max_retries": 5,
                 "timeout": 30.0,
+                "default_headers": None,
             },
         }
 

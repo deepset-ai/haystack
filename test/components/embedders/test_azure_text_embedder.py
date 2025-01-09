@@ -19,6 +19,7 @@ class TestAzureOpenAITextEmbedder:
         assert embedder.organization is None
         assert embedder.prefix == ""
         assert embedder.suffix == ""
+        assert embedder.default_headers == {}
 
     def test_to_dict(self, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
@@ -38,6 +39,7 @@ class TestAzureOpenAITextEmbedder:
                 "timeout": 30.0,
                 "prefix": "",
                 "suffix": "",
+                "default_headers": {},
             },
         }
 
