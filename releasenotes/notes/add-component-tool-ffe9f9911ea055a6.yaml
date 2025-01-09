@@ -1,0 +1,4 @@
+---
+features:
+ - |
+   Introduced the ComponentTool, a new tool that wraps Haystack components allowing them to be utilized as tools for LLMs (various ChatGenerators). This tool supports automatic function schema generation, input type validation, and offers enhanced integration with various data types.
