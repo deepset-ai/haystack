@@ -26,16 +26,6 @@ with LazyImport(message="Run 'pip install docstring-parser'") as docstring_parse
 logger = logging.getLogger(__name__)
 
 
-def is_pydantic_v2_model(instance: Any) -> bool:
-    """
-    Checks if the instance is a Pydantic v2 model.
-
-    :param instance: The instance to check.
-    :returns: True if the instance is a Pydantic v2 model, False otherwise.
-    """
-    return hasattr(instance, "model_validate")
-
-
 class ComponentTool(Tool):
     """
     A Tool that wraps Haystack components, allowing them to be used as tools by LLMs.
@@ -282,28 +272,6 @@ class ComponentTool(Tool):
                 schema["properties"][field.name] = self._create_property_schema(field.type, field_description)
         return schema
 
-    def _create_pydantic_schema(self, python_type: Any, description: str) -> Dict[str, Any]:
-        """
-        Creates a schema for a Pydantic model.
-
-        :param python_type: The Pydantic model type.
-        :param description: The description of the model.
-        :returns: A dictionary representing the Pydantic model schema.
-        """
-        schema = {"type": "object", "description": description, "properties": {}}
-        required_fields = []
-
-        for m_name, m_field in python_type.model_fields.items():
-            field_description = f"Field '{m_name}' of '{python_type.__name__}'."
-            if isinstance(schema["properties"], dict):
-                schema["properties"][m_name] = self._create_property_schema(m_field.annotation, field_description)
-            if m_field.is_required():
-                required_fields.append(m_name)
-
-        if required_fields:
-            schema["required"] = required_fields
-        return schema
-
     def _create_basic_type_schema(self, python_type: Any, description: str) -> Dict[str, Any]:
         """
         Creates a schema for a basic Python type.
@@ -334,8 +302,8 @@ class ComponentTool(Tool):
             schema = self._create_list_schema(get_args(python_type)[0] if get_args(python_type) else Any, description)
         elif is_dataclass(python_type):
             schema = self._create_dataclass_schema(python_type, description)
-        elif is_pydantic_v2_model(python_type):
-            schema = self._create_pydantic_schema(python_type, description)
+        elif hasattr(python_type, "model_validate"):
+            raise ValueError("Pydantic v2 models are not supported as input types for ComponentTool")
         else:
             schema = self._create_basic_type_schema(python_type, description)
 

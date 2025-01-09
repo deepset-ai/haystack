@@ -37,13 +37,6 @@ class SimpleComponent:
         return {"reply": f"Hello, {text}!"}
 
 
-class Product(BaseModel):
-    """A product model."""
-
-    name: str
-    price: float
-
-
 @dataclass
 class User:
     """A simple user dataclass."""
@@ -80,21 +73,6 @@ class ListProcessor:
         :return: A dictionary with the concatenated string.
         """
         return {"concatenated": " ".join(texts)}
-
-
-@component
-class ProductProcessor:
-    """A component that processes a Product."""
-
-    @component.output_types(description=str)
-    def run(self, product: Product) -> Dict[str, str]:
-        """
-        Creates a description for the product.
-
-        :param product: The Product to process.
-        :return: A dictionary with the product description.
-        """
-        return {"description": f"The product {product.name} costs ${product.price:.2f}."}
 
 
 @dataclass
@@ -217,33 +195,6 @@ class TestToolComponent:
         assert isinstance(result, dict)
         assert "concatenated" in result
         assert result["concatenated"] == "hello world"
-
-    def test_from_component_with_pydantic_model(self):
-        component = ProductProcessor()
-
-        tool = ComponentTool(component=component, name="product_tool", description="A tool that processes products")
-
-        assert tool.parameters == {
-            "type": "object",
-            "properties": {
-                "product": {
-                    "type": "object",
-                    "description": "The Product to process.",
-                    "properties": {
-                        "name": {"type": "string", "description": "Field 'name' of 'Product'."},
-                        "price": {"type": "number", "description": "Field 'price' of 'Product'."},
-                    },
-                    "required": ["name", "price"],
-                }
-            },
-            "required": ["product"],
-        }
-
-        # Test tool invocation
-        result = tool.invoke(product={"name": "Widget", "price": 19.99})
-        assert isinstance(result, dict)
-        assert "description" in result
-        assert result["description"] == "The product Widget costs $19.99."
 
     def test_from_component_with_nested_dataclass(self):
         component = PersonProcessor()
@@ -436,32 +387,6 @@ class TestToolComponentInPipelineWithOpenAI:
         tool_message = tool_messages[0]
         assert tool_message.is_from(ChatRole.TOOL)
         assert tool_message.tool_call_result.result == str({"concatenated": "hello beautiful world"})
-        assert not tool_message.tool_call_result.error
-
-    @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
-    @pytest.mark.integration
-    def test_product_processor_in_pipeline(self):
-        component = ProductProcessor()
-        tool = ComponentTool(
-            component=component,
-            name="product_processor",
-            description="A tool that creates a description for a product with its name and price",
-        )
-
-        pipeline = Pipeline()
-        pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=[tool]))
-        pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
-        pipeline.connect("llm.replies", "tool_invoker.messages")
-
-        message = ChatMessage.from_user(text="Can you describe a product called Widget that costs $19.99?")
-
-        result = pipeline.run({"llm": {"messages": [message]}})
-        tool_messages = result["tool_invoker"]["tool_messages"]
-        assert len(tool_messages) == 1
-
-        tool_message = tool_messages[0]
-        assert tool_message.is_from(ChatRole.TOOL)
-        assert tool_message.tool_call_result.result == str({"description": "The product Widget costs $19.99."})
         assert not tool_message.tool_call_result.error
 
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
