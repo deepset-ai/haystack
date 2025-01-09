@@ -10,7 +10,9 @@ from typing import Any, Dict, List, Optional, Union
 
 from haystack import ComponentError, DeserializationError, Document, component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
+from haystack.utils.auth import Secret, deserialize_secrets_inplace
 from haystack.utils.device import ComponentDevice
+from haystack.utils.hf import deserialize_hf_model_kwargs, resolve_hf_pipeline_kwargs, serialize_hf_model_kwargs
 
 with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transformers_import:
     from transformers import AutoModelForTokenClassification, AutoTokenizer, pipeline
@@ -110,6 +112,7 @@ class NamedEntityExtractor:
         model: str,
         pipeline_kwargs: Optional[Dict[str, Any]] = None,
         device: Optional[ComponentDevice] = None,
+        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
     ) -> None:
         """
         Create a Named Entity extractor component.
@@ -128,6 +131,8 @@ class NamedEntityExtractor:
             device/device map is specified in `pipeline_kwargs`,
             it overrides this parameter (only applicable to the
             HuggingFace backend).
+        :param token:
+            The API token to download private models from Hugging Face.
         """
 
         if isinstance(backend, str):
@@ -135,9 +140,19 @@ class NamedEntityExtractor:
 
         self._backend: _NerBackend
         self._warmed_up: bool = False
+        self.token = token
         device = ComponentDevice.resolve_device(device)
 
         if backend == NamedEntityExtractorBackend.HUGGING_FACE:
+            pipeline_kwargs = resolve_hf_pipeline_kwargs(
+                huggingface_pipeline_kwargs=pipeline_kwargs or {},
+                model=model,
+                task="ner",
+                supported_tasks=["ner"],
+                device=device,
+                token=token,
+            )
+
             self._backend = _HfBackend(model_name_or_path=model, device=device, pipeline_kwargs=pipeline_kwargs)
         elif backend == NamedEntityExtractorBackend.SPACY:
             self._backend = _SpacyBackend(model_name_or_path=model, device=device, pipeline_kwargs=pipeline_kwargs)
@@ -159,7 +174,7 @@ class NamedEntityExtractor:
             self._warmed_up = True
         except Exception as e:
             raise ComponentError(
-                f"Named entity extractor with backend '{self._backend.type} failed to initialize."
+                f"Named entity extractor with backend '{self._backend.type}' failed to initialize."
             ) from e
 
     @component.output_types(documents=List[Document])
@@ -201,13 +216,20 @@ class NamedEntityExtractor:
         :returns:
             Dictionary with serialized data.
         """
-        return default_to_dict(
+        serialization_dict = default_to_dict(
             self,
             backend=self._backend.type.name,
             model=self._backend.model_name,
             device=self._backend.device.to_dict(),
             pipeline_kwargs=self._backend._pipeline_kwargs,
+            token=self.token.to_dict() if self.token else None,
         )
+
+        hf_pipeline_kwargs = serialization_dict["init_parameters"]["pipeline_kwargs"]
+        hf_pipeline_kwargs.pop("token", None)
+
+        serialize_hf_model_kwargs(hf_pipeline_kwargs)
+        return serialization_dict
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "NamedEntityExtractor":
@@ -220,10 +242,14 @@ class NamedEntityExtractor:
             Deserialized component.
         """
         try:
-            init_params = data["init_parameters"]
+            deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
+            init_params = data.get("init_parameters", {})
             if init_params.get("device") is not None:
                 init_params["device"] = ComponentDevice.from_dict(init_params["device"])
             init_params["backend"] = NamedEntityExtractorBackend[init_params["backend"]]
+
+            hf_pipeline_kwargs = init_params.get("pipeline_kwargs", {})
+            deserialize_hf_model_kwargs(hf_pipeline_kwargs)
             return default_from_dict(cls, data)
         except Exception as e:
             raise DeserializationError(f"Couldn't deserialize {cls.__name__} instance") from e
@@ -352,8 +378,9 @@ class _HfBackend(_NerBackend):
         self.pipeline: Optional[HfPipeline] = None
 
     def initialize(self):
-        self.tokenizer = AutoTokenizer.from_pretrained(self._model_name_or_path)
-        self.model = AutoModelForTokenClassification.from_pretrained(self._model_name_or_path)
+        token = self._pipeline_kwargs.get("token", None)
+        self.tokenizer = AutoTokenizer.from_pretrained(self._model_name_or_path, token=token)
+        self.model = AutoModelForTokenClassification.from_pretrained(self._model_name_or_path, token=token)
 
         pipeline_params = {
             "task": "ner",

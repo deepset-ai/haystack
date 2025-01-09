@@ -18,6 +18,14 @@ def streaming_callback_handler(x):
 
 
 @pytest.fixture
+def chat_messages():
+    return [
+        ChatMessage.from_system("You are a helpful assistant speaking A2 level of English"),
+        ChatMessage.from_user("Tell me about Berlin"),
+    ]
+
+
+@pytest.fixture
 def model_info_mock():
     with patch(
         "haystack.components.generators.chat.hugging_face_local.model_info",
@@ -134,7 +142,7 @@ class TestHuggingFaceLocalChatGenerator:
             token=Secret.from_env_var("ENV_VAR", strict=False),
             generation_kwargs={"n": 5},
             stop_words=["stop", "words"],
-            streaming_callback=lambda x: x,
+            streaming_callback=streaming_callback_handler,
             chat_template="irrelevant",
         )
 
@@ -147,6 +155,7 @@ class TestHuggingFaceLocalChatGenerator:
         assert init_params["huggingface_pipeline_kwargs"]["model"] == "NousResearch/Llama-2-7b-chat-hf"
         assert "token" not in init_params["huggingface_pipeline_kwargs"]
         assert init_params["generation_kwargs"] == {"max_new_tokens": 512, "n": 5, "stop_sequences": ["stop", "words"]}
+        assert init_params["streaming_callback"] == "chat.test_hugging_face_local.streaming_callback_handler"
         assert init_params["chat_template"] == "irrelevant"
 
     def test_from_dict(self, model_info_mock):

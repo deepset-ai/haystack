@@ -3,9 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 import pytest
 from transformers import AutoTokenizer
+import json
 
 from haystack.dataclasses.chat_message import ChatMessage, ChatRole, ToolCall, ToolCallResult, TextContent
-from haystack.components.generators.openai_utils import _convert_message_to_openai_format
 
 
 def test_tool_call_init():
@@ -239,11 +239,140 @@ def test_chat_message_function_role_deprecated():
         ChatMessage(ChatRole.FUNCTION, TextContent("This is a message"))
 
 
+def test_to_openai_dict_format():
+    message = ChatMessage.from_system("You are good assistant")
+    assert message.to_openai_dict_format() == {"role": "system", "content": "You are good assistant"}
+
+    message = ChatMessage.from_user("I have a question")
+    assert message.to_openai_dict_format() == {"role": "user", "content": "I have a question"}
+
+    message = ChatMessage.from_assistant(text="I have an answer", meta={"finish_reason": "stop"})
+    assert message.to_openai_dict_format() == {"role": "assistant", "content": "I have an answer"}
+
+    message = ChatMessage.from_assistant(
+        tool_calls=[ToolCall(id="123", tool_name="weather", arguments={"city": "Paris"})]
+    )
+    assert message.to_openai_dict_format() == {
+        "role": "assistant",
+        "tool_calls": [
+            {"id": "123", "type": "function", "function": {"name": "weather", "arguments": '{"city": "Paris"}'}}
+        ],
+    }
+
+    tool_result = json.dumps({"weather": "sunny", "temperature": "25"})
+    message = ChatMessage.from_tool(
+        tool_result=tool_result, origin=ToolCall(id="123", tool_name="weather", arguments={"city": "Paris"})
+    )
+    assert message.to_openai_dict_format() == {"role": "tool", "content": tool_result, "tool_call_id": "123"}
+
+
+def test_to_openai_dict_format_invalid():
+    message = ChatMessage(_role=ChatRole.ASSISTANT, _content=[])
+    with pytest.raises(ValueError):
+        message.to_openai_dict_format()
+
+    message = ChatMessage(
+        _role=ChatRole.ASSISTANT,
+        _content=[TextContent(text="I have an answer"), TextContent(text="I have another answer")],
+    )
+    with pytest.raises(ValueError):
+        message.to_openai_dict_format()
+
+    tool_call_null_id = ToolCall(id=None, tool_name="weather", arguments={"city": "Paris"})
+    message = ChatMessage.from_assistant(tool_calls=[tool_call_null_id])
+    with pytest.raises(ValueError):
+        message.to_openai_dict_format()
+
+    message = ChatMessage.from_tool(tool_result="result", origin=tool_call_null_id)
+    with pytest.raises(ValueError):
+        message.to_openai_dict_format()
+
+
+def test_from_openai_dict_format_user_message():
+    openai_msg = {"role": "user", "content": "Hello, how are you?", "name": "John"}
+    message = ChatMessage.from_openai_dict_format(openai_msg)
+    assert message.role.value == "user"
+    assert message.text == "Hello, how are you?"
+    assert message.name == "John"
+
+
+def test_from_openai_dict_format_system_message():
+    openai_msg = {"role": "system", "content": "You are a helpful assistant"}
+    message = ChatMessage.from_openai_dict_format(openai_msg)
+    assert message.role.value == "system"
+    assert message.text == "You are a helpful assistant"
+
+
+def test_from_openai_dict_format_assistant_message_with_content():
+    openai_msg = {"role": "assistant", "content": "I can help with that"}
+    message = ChatMessage.from_openai_dict_format(openai_msg)
+    assert message.role.value == "assistant"
+    assert message.text == "I can help with that"
+
+
+def test_from_openai_dict_format_assistant_message_with_tool_calls():
+    openai_msg = {
+        "role": "assistant",
+        "content": None,
+        "tool_calls": [{"id": "call_123", "function": {"name": "get_weather", "arguments": '{"location": "Berlin"}'}}],
+    }
+    message = ChatMessage.from_openai_dict_format(openai_msg)
+    assert message.role.value == "assistant"
+    assert message.text is None
+    assert len(message.tool_calls) == 1
+    tool_call = message.tool_calls[0]
+    assert tool_call.id == "call_123"
+    assert tool_call.tool_name == "get_weather"
+    assert tool_call.arguments == {"location": "Berlin"}
+
+
+def test_from_openai_dict_format_tool_message():
+    openai_msg = {"role": "tool", "content": "The weather is sunny", "tool_call_id": "call_123"}
+    message = ChatMessage.from_openai_dict_format(openai_msg)
+    assert message.role.value == "tool"
+    assert message.tool_call_result.result == "The weather is sunny"
+    assert message.tool_call_result.origin.id == "call_123"
+
+
+def test_from_openai_dict_format_tool_without_id():
+    openai_msg = {"role": "tool", "content": "The weather is sunny"}
+    message = ChatMessage.from_openai_dict_format(openai_msg)
+    assert message.role.value == "tool"
+    assert message.tool_call_result.result == "The weather is sunny"
+    assert message.tool_call_result.origin.id is None
+
+
+def test_from_openai_dict_format_missing_role():
+    with pytest.raises(ValueError):
+        ChatMessage.from_openai_dict_format({"content": "test"})
+
+
+def test_from_openai_dict_format_missing_content():
+    with pytest.raises(ValueError):
+        ChatMessage.from_openai_dict_format({"role": "user"})
+
+
+def test_from_openai_dict_format_invalid_tool_calls():
+    openai_msg = {"role": "assistant", "tool_calls": [{"invalid": "format"}]}
+    with pytest.raises(ValueError):
+        ChatMessage.from_openai_dict_format(openai_msg)
+
+
+def test_from_openai_dict_format_unsupported_role():
+    with pytest.raises(ValueError):
+        ChatMessage.from_openai_dict_format({"role": "invalid", "content": "test"})
+
+
+def test_from_openai_dict_format_assistant_missing_content_and_tool_calls():
+    with pytest.raises(ValueError):
+        ChatMessage.from_openai_dict_format({"role": "assistant", "irrelevant": "irrelevant"})
+
+
 @pytest.mark.integration
 def test_apply_chat_templating_on_chat_message():
     messages = [ChatMessage.from_system("You are good assistant"), ChatMessage.from_user("I have a question")]
     tokenizer = AutoTokenizer.from_pretrained("HuggingFaceH4/zephyr-7b-beta")
-    formatted_messages = [_convert_message_to_openai_format(m) for m in messages]
+    formatted_messages = [m.to_openai_dict_format() for m in messages]
     tokenized_messages = tokenizer.apply_chat_template(formatted_messages, tokenize=False)
     assert tokenized_messages == "<|system|>\nYou are good assistant</s>\n<|user|>\nI have a question</s>\n"
 
@@ -264,7 +393,7 @@ def test_apply_custom_chat_templating_on_chat_message():
     messages = [ChatMessage.from_system("You are good assistant"), ChatMessage.from_user("I have a question")]
     # could be any tokenizer, let's use the one we already likely have in cache
     tokenizer = AutoTokenizer.from_pretrained("HuggingFaceH4/zephyr-7b-beta")
-    formatted_messages = [_convert_message_to_openai_format(m) for m in messages]
+    formatted_messages = [m.to_openai_dict_format() for m in messages]
     tokenized_messages = tokenizer.apply_chat_template(
         formatted_messages, chat_template=anthropic_template, tokenize=False
     )

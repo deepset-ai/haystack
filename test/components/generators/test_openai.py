@@ -90,28 +90,6 @@ class TestOpenAIGenerator:
             },
         }
 
-    def test_to_dict_with_lambda_streaming_callback(self, monkeypatch):
-        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        component = OpenAIGenerator(
-            model="gpt-4o-mini",
-            streaming_callback=lambda x: x,
-            api_base_url="test-base-url",
-            generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
-        )
-        data = component.to_dict()
-        assert data == {
-            "type": "haystack.components.generators.openai.OpenAIGenerator",
-            "init_parameters": {
-                "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
-                "model": "gpt-4o-mini",
-                "system_prompt": None,
-                "organization": None,
-                "api_base_url": "test-base-url",
-                "streaming_callback": "test_openai.<lambda>",
-                "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
-            },
-        }
-
     def test_from_dict(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         data = {
@@ -148,7 +126,7 @@ class TestOpenAIGenerator:
         with pytest.raises(ValueError, match="None of the .* environment variables are set"):
             OpenAIGenerator.from_dict(data)
 
-    def test_run(self, mock_chat_completion):
+    def test_run(self, openai_mock_chat_completion):
         component = OpenAIGenerator(api_key=Secret.from_token("test-api-key"))
         response = component.run("What's Natural Language Processing?")
 
@@ -159,7 +137,7 @@ class TestOpenAIGenerator:
         assert len(response["replies"]) == 1
         assert [isinstance(reply, str) for reply in response["replies"]]
 
-    def test_run_with_params_streaming(self, mock_chat_completion_chunk):
+    def test_run_with_params_streaming(self, openai_mock_chat_completion_chunk):
         streaming_callback_called = False
 
         def streaming_callback(chunk: StreamingChunk) -> None:
@@ -177,9 +155,9 @@ class TestOpenAIGenerator:
         assert "replies" in response
         assert isinstance(response["replies"], list)
         assert len(response["replies"]) == 1
-        assert "Hello" in response["replies"][0]  # see mock_chat_completion_chunk
+        assert "Hello" in response["replies"][0]  # see openai_mock_chat_completion_chunk
 
-    def test_run_with_streaming_callback_in_run_method(self, mock_chat_completion_chunk):
+    def test_run_with_streaming_callback_in_run_method(self, openai_mock_chat_completion_chunk):
         streaming_callback_called = False
 
         def streaming_callback(chunk: StreamingChunk) -> None:
@@ -198,16 +176,16 @@ class TestOpenAIGenerator:
         assert "replies" in response
         assert isinstance(response["replies"], list)
         assert len(response["replies"]) == 1
-        assert "Hello" in response["replies"][0]  # see mock_chat_completion_chunk
+        assert "Hello" in response["replies"][0]  # see openai_mock_chat_completion_chunk
 
-    def test_run_with_params(self, mock_chat_completion):
+    def test_run_with_params(self, openai_mock_chat_completion):
         component = OpenAIGenerator(
             api_key=Secret.from_token("test-api-key"), generation_kwargs={"max_tokens": 10, "temperature": 0.5}
         )
         response = component.run("What's Natural Language Processing?")
 
         # check that the component calls the OpenAI API with the correct parameters
-        _, kwargs = mock_chat_completion.call_args
+        _, kwargs = openai_mock_chat_completion.call_args
         assert kwargs["max_tokens"] == 10
         assert kwargs["temperature"] == 0.5
 

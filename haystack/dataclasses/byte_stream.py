@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 
-@dataclass
+@dataclass(repr=False)
 class ByteStream:
     """
     Base data class representing a binary object in the Haystack API.
@@ -63,3 +63,15 @@ class ByteStream:
         :raises: UnicodeDecodeError: If the ByteStream data cannot be decoded with the specified encoding.
         """
         return self.data.decode(encoding)
+
+    def __repr__(self) -> str:
+        """
+        Return a string representation of the ByteStream, truncating the data to 100 bytes.
+        """
+        fields = []
+        truncated_data = self.data[:100] + b"..." if len(self.data) > 100 else self.data
+        fields.append(f"data={truncated_data!r}")
+        fields.append(f"meta={self.meta!r}")
+        fields.append(f"mime_type={self.mime_type!r}")
+        fields_str = ", ".join(fields)
+        return f"{self.__class__.__name__}({fields_str})"
