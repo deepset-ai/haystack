@@ -126,6 +126,14 @@ def test_basic_equality_id():
     assert doc1 != doc2
 
 
+def test_id_is_updated_on_property_change():
+    doc1 = Document(content="test text")
+    id_at_creation = doc1.id
+
+    doc1.content = "new content"
+    assert doc1.id != id_at_creation
+
+
 def test_to_dict():
     doc = Document()
     assert doc.to_dict() == {

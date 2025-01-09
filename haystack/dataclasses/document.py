@@ -107,6 +107,16 @@ class Document(metaclass=_BackwardCompatible):
             return False
         return self.to_dict() == other.to_dict()
 
+    def __setattr__(self, name, value):
+        # Only trigger custom logic if the field is already set (post-initialization)
+        if hasattr(self, name) or name == "meta":
+            super().__setattr__(name, value)
+            # Recreate document id if certain attributes are updated
+            if name in {"content", "dataframe", "blob", "meta", "embedding", "sparse_embedding"}:
+                object.__setattr__(self, "id", self._create_id())
+        else:
+            super().__setattr__(name, value)
+
     def __post_init__(self):
         """
         Generate the ID based on the init parameters.
@@ -122,7 +132,7 @@ class Document(metaclass=_BackwardCompatible):
         dataframe = self.dataframe.to_json() if self.dataframe is not None else None
         blob = self.blob.data if self.blob is not None else None
         mime_type = self.blob.mime_type if self.blob is not None else None
-        meta = self.meta or {}
+        meta = self.meta if hasattr(self, "meta") and self.meta else {}
         embedding = self.embedding if self.embedding is not None else None
         sparse_embedding = self.sparse_embedding.to_dict() if self.sparse_embedding is not None else ""
         data = f"{text}{dataframe}{blob}{mime_type}{meta}{embedding}{sparse_embedding}"
