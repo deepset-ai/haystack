@@ -83,7 +83,7 @@ class AzureOpenAITextEmbedder:
             A string to add at the beginning of each text.
         :param suffix:
             A string to add at the end of each text.
-        :param default_headers: Default headers to use for the AzureOpenAI client.
+        :param default_headers: Default headers to send to the AzureOpenAI client.
         """
         # Why is this here?
         # AzureOpenAI init is forcing us to use an init method that takes either base_url or azure_endpoint as not

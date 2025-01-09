@@ -96,7 +96,7 @@ class AzureOpenAIDocumentEmbedder:
             `OPENAI_TIMEOUT` environment variable, or 30 seconds.
         :param max_retries: Maximum number of retries to contact AzureOpenAI after an internal error.
             If not set, defaults to either the `OPENAI_MAX_RETRIES` environment variable or to 5 retries.
-        :param default_headers: Default headers to use for the AzureOpenAI client.
+        :param default_headers: Default headers to send to the AzureOpenAI client.
         """
         # if not provided as a parameter, azure_endpoint is read from the env var AZURE_OPENAI_ENDPOINT
         azure_endpoint = azure_endpoint or os.environ.get("AZURE_OPENAI_ENDPOINT")
