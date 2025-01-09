@@ -436,9 +436,9 @@ class TestRouter:
 
         # Test pipeline without path parameter
         result = pipe.run(data={"router": {"question": "What?"}})
-        assert result["router"] == {
-            "fallback": "What?"
-        }, "Default route should work in pipeline when 'path' is not provided"
+        assert result["router"] == {"fallback": "What?"}, (
+            "Default route should work in pipeline when 'path' is not provided"
+        )
 
         # Test pipeline with path parameter
         result = pipe.run(data={"router": {"question": "What?", "path": "followup_short"}})

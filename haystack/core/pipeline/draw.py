@@ -124,7 +124,7 @@ def _to_mermaid_text(graph: networkx.MultiDiGraph) -> str:
     }
 
     states = {
-        comp: f"{comp}[\"<b>{comp}</b><br><small><i>{type(data['instance']).__name__}{optional_inputs[comp]}</i></small>\"]:::component"  # noqa
+        comp: f'{comp}["<b>{comp}</b><br><small><i>{type(data["instance"]).__name__}{optional_inputs[comp]}</i></small>"]:::component'  # noqa
         for comp, data in graph.nodes(data=True)
         if comp not in ["input", "output"]
     }
@@ -139,11 +139,11 @@ def _to_mermaid_text(graph: networkx.MultiDiGraph) -> str:
             connections_list.append(conn_string)
 
     input_connections = [
-        f"i{{&ast;}}--\"{conn_data['label']}<br><small><i>{conn_data['conn_type']}</i></small>\"--> {states[to_comp]}"
+        f'i{{&ast;}}--"{conn_data["label"]}<br><small><i>{conn_data["conn_type"]}</i></small>"--> {states[to_comp]}'
         for _, to_comp, conn_data in graph.out_edges("input", data=True)
     ]
     output_connections = [
-        f"{states[from_comp]}--\"{conn_data['label']}<br><small><i>{conn_data['conn_type']}</i></small>\"--> o{{&ast;}}"
+        f'{states[from_comp]}--"{conn_data["label"]}<br><small><i>{conn_data["conn_type"]}</i></small>"--> o{{&ast;}}'
         for from_comp, _, conn_data in graph.in_edges("output", data=True)
     ]
     connections = "\n".join(connections_list + input_connections + output_connections)
