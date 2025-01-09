@@ -519,11 +519,6 @@ def test_run_split_by_word_count_page_breaks_word_unit():
     doc_chunks = splitter.run([doc])
     doc_chunks = doc_chunks["documents"]
 
-    print("\n\n")
-
-    for idx, c in enumerate(doc_chunks):
-        print(idx, c.content)
-
     assert len(doc_chunks) == 9
     assert doc_chunks[0].content == "This is some text. "
     assert doc_chunks[0].meta["page_number"] == 1

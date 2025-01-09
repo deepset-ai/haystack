@@ -83,14 +83,11 @@ class RecursiveDocumentSplitter:
         self.split_overlap = split_overlap
         self.split_units = split_unit
         self.separators = separators if separators else ["\n\n", "sentence", "\n", " "]  # default separators
-        self.sentence_tokenizer_params = sentence_splitter_params
         self._check_params()
         self.nltk_tokenizer = None
-        self.sentence_splitter_params = sentence_splitter_params
-        if self.sentence_splitter_params is None:
-            self.sentence_splitter_params = {"keep_white_spaces": True}
-        else:
-            self.sentence_splitter_params["keep_white_spaces"] = True
+        self.sentence_splitter_params = (
+            {"keep_white_spaces": True} if sentence_splitter_params is None else sentence_splitter_params
+        )
 
     def warm_up(self):
         """
@@ -128,6 +125,7 @@ class RecursiveDocumentSplitter:
             current_chunk = " ".join(words[: self.split_length])
             remaining_words = words[self.split_length :]
             return current_chunk, " ".join(remaining_words)
+
         # split by characters
         text = current_chunk
         current_chunk = text[: self.split_length]
@@ -292,7 +290,6 @@ class RecursiveDocumentSplitter:
                         if curr_separator == self.separators[-1]:
                             # tried the last separator, can't split further, break the loop and fall back to
                             # word- or character-level chunking
-                            # break
                             return self.fall_back_to_fixed_chunking(text, self.split_units)
                         chunks.extend(self._chunk_text(split_text))
                     else:
