@@ -5,7 +5,6 @@
 from typing import Literal, Optional
 
 import pytest
-import copy
 from haystack.tools.tool import (
     SchemaGenerationError,
     Tool,
