@@ -176,9 +176,9 @@ class TestDOCXToDocument:
         table_index = next(i for i, part in enumerate(content_parts) if "| This | Is     | Just a |" in part)
         # check that natural order of the document is preserved
         assert any("Donald Trump" in part for part in content_parts[:table_index]), "Text before table not found"
-        assert any(
-            "Now we are in Page 2" in part for part in content_parts[table_index + 1 :]
-        ), "Text after table not found"
+        assert any("Now we are in Page 2" in part for part in content_parts[table_index + 1 :]), (
+            "Text after table not found"
+        )
 
     def test_run_with_store_full_path_false(self, test_files_path):
         """

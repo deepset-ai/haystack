@@ -31,8 +31,7 @@ class YamlMarshaller:
             return yaml.dump(dict_, Dumper=YamlDumper)
         except yaml.representer.RepresenterError as e:
             raise TypeError(
-                "Error dumping pipeline to YAML - Ensure that all pipeline "
-                "components only serialize basic Python types"
+                "Error dumping pipeline to YAML - Ensure that all pipeline components only serialize basic Python types"
             ) from e
 
     def unmarshal(self, data_: Union[str, bytes, bytearray]) -> Dict[str, Any]:
