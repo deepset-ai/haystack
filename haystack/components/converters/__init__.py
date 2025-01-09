@@ -15,6 +15,7 @@ from haystack.components.converters.pptx import PPTXToDocument
 from haystack.components.converters.pypdf import PyPDFToDocument
 from haystack.components.converters.tika import TikaDocumentConverter
 from haystack.components.converters.txt import TextFileToDocument
+from haystack.components.converters.xlsx import XLSXToDocument
 
 __all__ = [
     "TextFileToDocument",
@@ -31,4 +32,5 @@ __all__ = [
     "PPTXToDocument",
     "CSVToDocument",
     "JSONConverter",
+    "XLSXToDocument",
 ]
