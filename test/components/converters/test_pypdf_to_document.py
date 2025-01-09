@@ -113,8 +113,8 @@ class TestPyPDFToDocument:
             layout_mode_font_height_weight=1.5,
         )
 
-        doc = converter._default_convert(mock_reader)
-        assert doc.content == "Page 1 content\fPage 2 content"
+        text = converter._default_convert(mock_reader)
+        assert text == "Page 1 content\fPage 2 content"
 
         expected_params = {
             "extraction_mode": "layout",
