@@ -46,6 +46,7 @@ class AzureOpenAITextEmbedder:
         max_retries: Optional[int] = None,
         prefix: str = "",
         suffix: str = "",
+        *,
         default_headers: Optional[Dict[str, str]] = None,
     ):
         """
