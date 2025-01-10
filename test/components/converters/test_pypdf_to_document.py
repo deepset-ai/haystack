@@ -113,8 +113,8 @@ class TestPyPDFToDocument:
             layout_mode_font_height_weight=1.5,
         )
 
-        doc = converter._default_convert(mock_reader)
-        assert doc.content == "Page 1 content\fPage 2 content"
+        text = converter._default_convert(mock_reader)
+        assert text == "Page 1 content\fPage 2 content"
 
         expected_params = {
             "extraction_mode": "layout",
@@ -209,3 +209,7 @@ class TestPyPDFToDocument:
             output = PyPDFToDocument().run(sources=paths)
             assert "PyPDFToDocument could not extract text from the file" in caplog.text
             assert output["documents"][0].content == ""
+
+            # Check that meta is used when the returned document is initialized and thus when doc id is generated
+            assert output["documents"][0].meta["file_path"] == "non_text_searchable.pdf"
+            assert output["documents"][0].id != Document(content="").id
