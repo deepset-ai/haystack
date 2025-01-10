@@ -39,7 +39,7 @@ class ComponentTool(Tool):
     - Automatic LLM tool calling schema generation from Component input sockets
     - Type conversion and validation for component inputs
     - Support for types:
-        - dataclasses
+        - Dataclasses
         - Lists of dataclasses
         - Basic types (str, int, float, bool, dict)
         - Lists of basic types
