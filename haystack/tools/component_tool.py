@@ -48,7 +48,7 @@ class ComponentTool(Tool):
 
     To use ComponentTool, you first need a Haystack component - either an existing one or a new one you create.
     We can create a ComponentTool from the component by passing the component to the ComponentTool constructor.
-    Below is an example of how to create a ComponentTool from an existing SerperDevWebSearch component.
+    Below is an example of creating a ComponentTool from an existing SerperDevWebSearch component.
 
     ```python
     from haystack import component, Pipeline
