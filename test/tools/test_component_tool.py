@@ -566,5 +566,5 @@ class TestToolComponentInPipelineWithOpenAI:
 
         # Try to create a tool from the component and it should fail because the component has been added to a pipeline and
         # thus can't be used as tool
-        with pytest.raises(ValueError, match="Component has been added to a Pipeline"):
+        with pytest.raises(ValueError, match="Component has been added to a pipeline"):
             ComponentTool(component=component)
