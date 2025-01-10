@@ -323,9 +323,24 @@ class RecursiveDocumentSplitter:
         step = self.split_length - self.split_overlap
 
         if split_units == "word":
-            words = text.split(" ")
-            for idx, i in enumerate(range(0, self._chunk_length(text), step)):
-                chunks.append(" ".join(words[i : i + self.split_length]))
+            words = re.findall(r"\S+|\s+", text)
+            current_chunk = []
+            current_length = 0
+
+            for word in words:
+                if word != " ":
+                    current_chunk.append(word)
+                    current_length += 1
+                    if current_length == step and current_chunk:
+                        chunks.append("".join(current_chunk))
+                        current_chunk = []
+                        current_length = 0
+                else:
+                    current_chunk.append(word)
+
+            if current_chunk:
+                chunks.append("".join(current_chunk))
+
         else:
             for i in range(0, self._chunk_length(text), step):
                 chunks.append(text[i : i + self.split_length])
