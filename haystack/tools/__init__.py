@@ -8,4 +8,11 @@ from haystack.tools.tool import Tool, _check_duplicate_tool_names, deserialize_t
 from haystack.tools.component_tool import ComponentTool
 
 
-__all__ = ["Tool", "_check_duplicate_tool_names", "deserialize_tools_inplace", "create_tool_from_function", "tool", "ComponentTool"]
+__all__ = [
+    "Tool",
+    "_check_duplicate_tool_names",
+    "deserialize_tools_inplace",
+    "create_tool_from_function",
+    "tool",
+    "ComponentTool",
+]
