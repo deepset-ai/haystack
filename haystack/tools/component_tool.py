@@ -18,6 +18,7 @@ from haystack.core.serialization import (
 )
 from haystack.lazy_imports import LazyImport
 from haystack.tools import Tool
+from haystack.tools.errors import SchemaGenerationError
 
 with LazyImport(message="Run 'pip install docstring-parser'") as docstring_parser_import:
     from docstring_parser import parse
@@ -183,6 +184,7 @@ class ComponentTool(Tool):
         Creates an OpenAI tools schema from a component's run method parameters.
 
         :param component: The component to create the schema from.
+        :raises SchemaGenerationError: If schema generation fails
         :returns: OpenAI tools schema for the component's run method parameters.
         """
         properties = {}
@@ -196,8 +198,12 @@ class ComponentTool(Tool):
 
             try:
                 property_schema = self._create_property_schema(input_type, description)
-            except ValueError as e:
-                raise ValueError(f"Error processing input '{input_name}': {e}")
+            except Exception as e:
+                raise SchemaGenerationError(
+                    f"Error processing input '{input_name}': {e}. "
+                    f"Schema generation supports basic types (str, int, float, bool, dict), dataclasses, "
+                    f"and lists of these types as input types for component's run method."
+                ) from e
 
             properties[input_name] = property_schema
 
@@ -295,6 +301,7 @@ class ComponentTool(Tool):
         :param description: The description of the property.
         :param default: The default value of the property.
         :returns: A dictionary representing the property schema.
+        :raises SchemaGenerationError: If schema generation fails, e.g., for unsupported types like Pydantic v2 models
         """
         nullable = self._is_nullable_type(python_type)
         if nullable:
@@ -307,7 +314,10 @@ class ComponentTool(Tool):
         elif is_dataclass(python_type):
             schema = self._create_dataclass_schema(python_type, description)
         elif hasattr(python_type, "model_validate"):
-            raise ValueError("Pydantic v2 models are not supported as input types for ComponentTool")
+            raise SchemaGenerationError(
+                f"Pydantic models (e.g. {python_type.__name__}) are not supported as input types for "
+                f"component's run method."
+            )
         else:
             schema = self._create_basic_type_schema(python_type, description)
 
