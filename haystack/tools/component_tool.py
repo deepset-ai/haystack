@@ -44,7 +44,7 @@ class ComponentTool(Tool):
         - Basic types (str, int, float, bool, dict)
         - Lists of basic types
     - Automatic name generation from component class name
-    - Description extraction from Component docstrings
+    - Description extraction from component docstrings
 
     To use ComponentTool, you first need a Haystack component - either an existing one or a new one you create.
     We can create a ComponentTool from the component by passing the component to the ComponentTool constructor.
