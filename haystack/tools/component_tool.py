@@ -218,7 +218,8 @@ class ComponentTool(Tool):
 
         return parameters_schema
 
-    def _get_param_descriptions(self, method: Callable) -> Dict[str, str]:
+    @staticmethod
+    def _get_param_descriptions(method: Callable) -> Dict[str, str]:
         """
         Extracts parameter descriptions from the method's docstring using docstring_parser.
 
@@ -242,7 +243,8 @@ class ComponentTool(Tool):
             param_descriptions[param.arg_name] = param.description.strip() if param.description else ""
         return param_descriptions
 
-    def _is_nullable_type(self, python_type: Any) -> bool:
+    @staticmethod
+    def _is_nullable_type(python_type: Any) -> bool:
         """
         Checks if the type is a Union with NoneType (i.e., Optional).
 
@@ -282,7 +284,8 @@ class ComponentTool(Tool):
                 schema["properties"][field.name] = self._create_property_schema(field.type, field_description)
         return schema
 
-    def _create_basic_type_schema(self, python_type: Any, description: str) -> Dict[str, Any]:
+    @staticmethod
+    def _create_basic_type_schema(python_type: Any, description: str) -> Dict[str, Any]:
         """
         Creates a schema for a basic Python type.
 
