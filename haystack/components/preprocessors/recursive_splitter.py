@@ -89,13 +89,13 @@ class RecursiveDocumentSplitter:
             {"keep_white_spaces": True} if sentence_splitter_params is None else sentence_splitter_params
         )
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Warm up the sentence tokenizer.
         """
         self.nltk_tokenizer = self._get_custom_sentence_tokenizer(self.sentence_splitter_params)
 
-    def _check_params(self):
+    def _check_params(self) -> None:
         if self.split_length < 1:
             raise ValueError("Split length must be at least 1 character.")
         if self.split_overlap < 0:
@@ -313,6 +313,9 @@ class RecursiveDocumentSplitter:
     def _fall_back_to_fixed_chunking(self, text: str, split_units: Literal["word", "char"]) -> List[str]:
         """
         Fall back to a fixed chunking approach if no separator works for the text.
+
+        Splits the text into smaller chunks based on the split_length and split_units attributes, either by words or
+        characters. It splits into words using whitespace as a separator.
 
         :param text: The text to be split into chunks.
         :param split_units: The unit of the split_length parameter. It can be either "word" or "char".
