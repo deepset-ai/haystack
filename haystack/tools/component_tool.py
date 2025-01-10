@@ -115,7 +115,7 @@ class ComponentTool(Tool):
 
         def component_invoker(**kwargs):
             """
-            Invokes the component using keyword arguments provided by the LLM function calling/tool generated response.
+            Invokes the component using keyword arguments provided by the LLM function calling/tool-generated response.
 
             :param kwargs: The keyword arguments to invoke the component with.
             :returns: The result of the component invocation.
