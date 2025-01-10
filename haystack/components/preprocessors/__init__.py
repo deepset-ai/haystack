@@ -5,7 +5,7 @@
 from .document_cleaner import DocumentCleaner
 from .document_splitter import DocumentSplitter
 from .nltk_document_splitter import NLTKDocumentSplitter
-from .sentence_tokenizer import SentenceSplitter
+from .recursive_splitter import RecursiveDocumentSplitter
 from .text_cleaner import TextCleaner
 
-__all__ = ["DocumentSplitter", "DocumentCleaner", "NLTKDocumentSplitter", "SentenceSplitter", "TextCleaner"]
+__all__ = ["DocumentSplitter", "DocumentCleaner", "RecursiveDocumentSplitter", "TextCleaner", "NLTKDocumentSplitter"]
