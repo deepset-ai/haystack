@@ -113,6 +113,9 @@ def tool(function: Callable) -> Tool:
 
     ### Usage example
     ```python
+    from typing import Annotated, Literal
+    from haystack.tools import tool
+
     @tool
     def get_weather(
         city: Annotated[str, "the city for which to get the weather"] = "Munich",
