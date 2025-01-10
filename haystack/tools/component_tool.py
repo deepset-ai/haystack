@@ -31,7 +31,7 @@ class ComponentTool(Tool):
     """
     A Tool that wraps Haystack components, allowing them to be used as tools by LLMs.
 
-    ComponentTool automatically generates LLM-compatible tool schemas from Component input sockets,
+    ComponentTool automatically generates LLM-compatible tool schemas from component input sockets,
     which are derived from the component's `run` method signature and type hints.
 
 
