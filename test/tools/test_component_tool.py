@@ -537,3 +537,34 @@ class TestToolComponentInPipelineWithOpenAI:
         pipeline_yaml = pipeline.dumps()
         new_pipeline = Pipeline.loads(pipeline_yaml)
         assert new_pipeline == pipeline
+
+    def test_component_tool_serde(self):
+        component = SimpleComponent()
+
+        tool = ComponentTool(component=component, name="simple_tool", description="A simple tool")
+
+        # Test serialization
+        tool_dict = tool.to_dict()
+        assert tool_dict["type"] == "haystack.tools.component_tool.ComponentTool"
+        assert tool_dict["data"]["name"] == "simple_tool"
+        assert tool_dict["data"]["description"] == "A simple tool"
+        assert "component" in tool_dict["data"]
+
+        # Test deserialization
+        new_tool = ComponentTool.from_dict(tool_dict)
+        assert new_tool.name == tool.name
+        assert new_tool.description == tool.description
+        assert new_tool.parameters == tool.parameters
+        assert isinstance(new_tool._component, SimpleComponent)
+
+    def test_pipeline_component_fails(self):
+        component = SimpleComponent()
+
+        # Create a pipeline and add the component to it
+        pipeline = Pipeline()
+        pipeline.add_component("simple", component)
+
+        # Try to create a tool from the component and it should fail because the component has been added to a pipeline and
+        # thus can't be used as tool
+        with pytest.raises(ValueError, match="Component has been added to a Pipeline"):
+            ComponentTool(component=component)
