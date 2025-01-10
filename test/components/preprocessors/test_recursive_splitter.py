@@ -802,8 +802,6 @@ def test_run_trigger_dealing_with_remaining_char_larger_than_split_length():
 
 
 def test_run_custom_split_by_dot_and_overlap_3_char_unit():
-    pass
-
     document_splitter = RecursiveDocumentSplitter(separators=["."], split_length=4, split_overlap=0, split_unit="word")
     text = "\x0c\x0c Sentence on page 5."
     chunks = document_splitter._fall_back_to_fixed_chunking(text, split_units="word")
