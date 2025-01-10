@@ -117,6 +117,7 @@ def tool(function: Callable) -> Tool:
     Decorator to convert a function into a Tool.
 
     Tool name, description, and parameters are inferred from the function.
+    If you need to customize more the Tool, use `create_tool_from_function` instead.
 
     ### Usage example
     ```python
