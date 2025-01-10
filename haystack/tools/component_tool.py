@@ -37,7 +37,7 @@ class ComponentTool(Tool):
 
     Key features:
     - Automatic LLM tool calling schema generation from Component input sockets
-    - Type conversion and validation for Component inputs
+    - Type conversion and validation for component inputs
     - Support for types:
         - dataclasses
         - Lists of dataclasses
