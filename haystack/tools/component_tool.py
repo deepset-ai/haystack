@@ -105,7 +105,7 @@ class ComponentTool(Tool):
 
         if getattr(component, "__haystack_added_to_pipeline__", None):
             msg = (
-                "Component has been added to a Pipeline and can't be used to create a ComponentTool. "
+                "Component has been added to a pipeline and can't be used to create a ComponentTool. "
                 "Create ComponentTool from a non-pipeline component instead."
             )
             raise ValueError(msg)
