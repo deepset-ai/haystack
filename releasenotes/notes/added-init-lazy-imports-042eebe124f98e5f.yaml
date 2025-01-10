@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Updated init.py of components and utils directories to lazy import in order to reduce package load times

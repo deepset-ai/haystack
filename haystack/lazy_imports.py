@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import importlib
 from types import TracebackType
 from typing import Optional, Type
 
@@ -48,3 +49,22 @@ class LazyImport(_DeferredImportExceptionContextManager):
             self._deferred = (exc_value, message)
             return True
         return None
+
+
+def lazy_getattr(attr_name, lazy_imports, parent_module):
+    """
+    Lazy loads a module and fetches the requested attribute.
+    """
+
+    if attr_name in lazy_imports:
+        module = importlib.import_module(lazy_imports[attr_name])
+        return getattr(module, attr_name)
+
+    raise AttributeError(f"module ${parent_module} has no attribute {attr_name}")
+
+
+def lazy_dir(lazy_imports):
+    """
+    Returns a dynamically generated list of all available attributes.
+    """
+    return sorted(set(lazy_imports.keys()) | set(globals()))

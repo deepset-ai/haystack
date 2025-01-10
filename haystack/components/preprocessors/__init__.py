@@ -2,10 +2,32 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from .document_cleaner import DocumentCleaner
-from .document_splitter import DocumentSplitter
-from .nltk_document_splitter import NLTKDocumentSplitter
-from .sentence_tokenizer import SentenceSplitter
-from .text_cleaner import TextCleaner
+from typing import TYPE_CHECKING
 
-__all__ = ["DocumentSplitter", "DocumentCleaner", "NLTKDocumentSplitter", "SentenceSplitter", "TextCleaner"]
+from haystack.lazy_imports import lazy_dir, lazy_getattr
+
+if TYPE_CHECKING:
+    from haystack.components.preprocessors.document_cleaner import DocumentCleaner
+    from haystack.components.preprocessors.document_splitter import DocumentSplitter
+    from haystack.components.preprocessors.nltk_document_splitter import NLTKDocumentSplitter
+    from haystack.components.preprocessors.sentence_tokenizer import SentenceSplitter
+    from haystack.components.preprocessors.text_cleaner import TextCleaner
+
+
+_lazy_imports = {
+    "DocumentCleaner": "haystack.components.preprocessors.document_cleaner",
+    "DocumentSplitter": "haystack.components.preprocessors.document_splitter",
+    "NLTKDocumentSplitter": "haystack.components.preprocessors.nltk_document_splitter",
+    "SentenceSplitter": "haystack.components.preprocessors.sentence_tokenizer",
+    "TextCleaner": "haystack.components.preprocessors.text_cleaner",
+}
+
+__all__ = list(_lazy_imports.keys())
+
+
+def __getattr__(name):
+    return lazy_getattr(name, _lazy_imports, __name__)
+
+
+def __dir__():
+    return lazy_dir(_lazy_imports)
