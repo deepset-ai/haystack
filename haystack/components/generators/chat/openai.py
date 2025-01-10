@@ -13,7 +13,7 @@ from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall
-from haystack.dataclasses.tool import Tool, _check_duplicate_tool_names, deserialize_tools_inplace
+from haystack.tools.tool import Tool, _check_duplicate_tool_names, deserialize_tools_inplace
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 
 logger = logging.getLogger(__name__)
@@ -286,12 +286,13 @@ class OpenAIChatGenerator:
         tools_strict = tools_strict if tools_strict is not None else self.tools_strict
         _check_duplicate_tool_names(tools)
 
-        openai_tools = None
+        openai_tools = {}
         if tools:
-            openai_tools = [
+            tool_definitions = [
                 {"type": "function", "function": {**t.tool_spec, **({"strict": tools_strict} if tools_strict else {})}}
                 for t in tools
             ]
+            openai_tools = {"tools": tool_definitions}
 
         is_streaming = streaming_callback is not None
         num_responses = generation_kwargs.pop("n", 1)
@@ -302,8 +303,8 @@ class OpenAIChatGenerator:
             "model": self.model,
             "messages": openai_formatted_messages,  # type: ignore[arg-type] # openai expects list of specific message types
             "stream": streaming_callback is not None,
-            "tools": openai_tools,  # type: ignore[arg-type]
             "n": num_responses,
+            **openai_tools,
             **generation_kwargs,
         }
 

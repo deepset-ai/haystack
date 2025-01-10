@@ -205,7 +205,7 @@ def resolve_hf_pipeline_kwargs(  # pylint: disable=too-many-positional-arguments
         task = model_info(huggingface_pipeline_kwargs["model"], token=huggingface_pipeline_kwargs["token"]).pipeline_tag
 
     if task not in supported_tasks:
-        raise ValueError(f"Task '{task}' is not supported. " f"The supported tasks are: {', '.join(supported_tasks)}.")
+        raise ValueError(f"Task '{task}' is not supported. The supported tasks are: {', '.join(supported_tasks)}.")
     huggingface_pipeline_kwargs["task"] = task
     return huggingface_pipeline_kwargs
 
