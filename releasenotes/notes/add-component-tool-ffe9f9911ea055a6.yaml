@@ -34,5 +34,5 @@ features:
        description="Search the web for current information"  # Optional: defaults to component docstring
    )
 
-   # Use the tool now in a pipeline, see docs for more examples
+   # You can now use the tool now in a pipeline, see docs for more examples
    ```
