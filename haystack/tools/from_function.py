@@ -17,6 +17,9 @@ def create_tool_from_function(
     """
     Create a Tool instance from a function.
 
+    Allows customizing the Tool name and description.
+    For simpler use cases, consider using the `@tool` decorator.
+
     ### Usage example
 
     ```python
@@ -51,6 +54,8 @@ def create_tool_from_function(
     :param function:
         The function to be converted into a Tool.
         The function must include type hints for all parameters.
+        The function is expected to have basic python input types (str, int, float, bool, list, dict, tuple).
+        Other input types may work but are not guaranteed.
         If a parameter is annotated using `typing.Annotated`, its metadata will be used as parameter description.
     :param name:
         The name of the Tool. If not provided, the name of the function will be used.
@@ -110,6 +115,8 @@ def create_tool_from_function(
 def tool(function: Callable) -> Tool:
     """
     Decorator to convert a function into a Tool.
+
+    Tool name, description, and parameters are inferred from the function.
 
     ### Usage example
     ```python
