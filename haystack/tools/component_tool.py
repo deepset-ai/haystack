@@ -93,7 +93,7 @@ class ComponentTool(Tool):
 
         :param component: The Haystack Component to wrap as a tool
         :param name: Optional name for the tool (defaults to snake_case of Component class name)
-        :param description: Optional description (defaults to Component's docstring)
+        :param description: Optional description (defaults to component's docstring).
         :raises ValueError: If the component is invalid or schema generation fails
         """
         if not isinstance(component, Component):
