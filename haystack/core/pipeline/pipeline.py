@@ -3,26 +3,28 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from copy import deepcopy
-from typing import Any, Dict, List, Mapping, Optional, Set, Tuple
-from warnings import warn
-
-import networkx as nx
+from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, Union
+from enum import IntEnum
 
 from haystack import logging, tracing
 from haystack.core.component import Component
 from haystack.core.errors import PipelineMaxComponentRuns, PipelineRuntimeError
-from haystack.core.pipeline.base import (
-    _dequeue_component,
-    _dequeue_waiting_component,
-    _enqueue_component,
-    _enqueue_waiting_component,
-)
-from haystack.telemetry import pipeline_running
+from haystack.core.pipeline.base import PipelineBase
+from haystack.core.pipeline.component_checks import can_component_run, is_any_greedy_socket_ready, \
+    is_socket_lazy_variadic
+from haystack.core.pipeline.component_checks import all_predecessors_executed, are_all_lazy_variadic_sockets_resolved, _NO_OUTPUT_PRODUCED
+from haystack.core.pipeline.utils import FIFOPriorityQueue
 
-from .base import PipelineBase, _add_missing_input_defaults, _is_lazy_variadic
+from haystack.telemetry import pipeline_running
 
 logger = logging.getLogger(__name__)
 
+class ComponentPriority(IntEnum):
+    HIGHEST = 1
+    READY = 2
+    DEFER = 3
+    DEFER_LAST = 4
+    BLOCKED = 5
 
 class Pipeline(PipelineBase):
     """
@@ -32,24 +34,24 @@ class Pipeline(PipelineBase):
     """
 
     def _run_component(
-        self, name: str, inputs: Dict[str, Any], parent_span: Optional[tracing.Span] = None
-    ) -> Dict[str, Any]:
+        self, component: Dict[str, Any], inputs: Dict[str, Any], parent_span: Optional[tracing.Span] = None
+    ) -> Tuple[Dict, Dict]:
         """
         Runs a Component with the given inputs.
 
-        :param name: Name of the Component as defined in the Pipeline.
+        :param component: Component with component metadata.
         :param inputs: Inputs for the Component.
         :param parent_span: The parent span to use for the newly created span.
             This is to allow tracing to be correctly linked to the pipeline run.
         :raises PipelineRuntimeError: If Component doesn't return a dictionary.
-        :return: The output of the Component.
+        :return: The output of the Component and the new state of inputs.
         """
-        instance: Component = self.graph.nodes[name]["instance"]
-
+        instance: Component = component["instance"]
+        component_name = self.get_component_name(instance)
         with tracing.tracer.trace(
             "haystack.component.run",
             tags={
-                "haystack.component.name": name,
+                "haystack.component.name": component_name,
                 "haystack.component.type": instance.__class__.__name__,
                 "haystack.component.input_types": {k: type(v).__name__ for k, v in inputs.items()},
                 "haystack.component.input_spec": {
@@ -69,193 +71,217 @@ class Pipeline(PipelineBase):
             },
             parent_span=parent_span,
         ) as span:
+            component_inputs, inputs = self._consume_component_inputs(
+                component_name=component_name,
+                component=component,
+                inputs=inputs
+            )
             # We deepcopy the inputs otherwise we might lose that information
             # when we delete them in case they're sent to other Components
-            span.set_content_tag("haystack.component.input", deepcopy(inputs))
-            logger.info("Running component {component_name}", component_name=name)
-            res: Dict[str, Any] = instance.run(**inputs)
-            self.graph.nodes[name]["visits"] += 1
+            span.set_content_tag("haystack.component.input", deepcopy(component_inputs))
+            logger.info("Running component {component_name}", component_name=component_name)
+            component_output = instance.run(**component_inputs)
+            component["visits"] += 1
 
-            # After a Component that has variadic inputs is run, we need to reset the variadic inputs that were consumed
-            for socket in instance.__haystack_input__._sockets_dict.values():  # type: ignore
-                if socket.name not in inputs:
-                    continue
-                if socket.is_variadic:
-                    inputs[socket.name] = []
-
-            if not isinstance(res, Mapping):
+            if not isinstance(component_output, Mapping):
                 raise PipelineRuntimeError(
-                    f"Component '{name}' didn't return a dictionary. "
+                    f"Component '{component_name}' didn't return a dictionary. "
                     "Components must always return dictionaries: check the documentation."
                 )
-            span.set_tag("haystack.component.visits", self.graph.nodes[name]["visits"])
-            span.set_content_tag("haystack.component.output", res)
 
-            return res
+            span.set_tag("haystack.component.visits", component["visits"])
+            span.set_content_tag("haystack.component.output", component_output)
 
-    def _run_subgraph(  # noqa: PLR0915
-        self,
-        cycle: List[str],
-        component_name: str,
-        components_inputs: Dict[str, Dict[str, Any]],
-        *,
-        include_outputs_from: Optional[Set[str]] = None,
-        parent_span: Optional[tracing.Span] = None,
-    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+            return component_output, inputs
+
+    @staticmethod
+    def _consume_component_inputs(component_name: str, component: Dict, inputs: Dict) -> Tuple[Dict, Dict]:
         """
-        Runs a `cycle` in the Pipeline starting from `component_name`.
-
-        This will return once there are no inputs for the Components in `cycle`.
-
-        This is an internal method meant to be used in `Pipeline.run()` only.
-
-        :param cycle:
-            List of Components that are part of the cycle being run
-        :param component_name:
-            Name of the Component that will start execution of the cycle
-        :param components_inputs:
-            Components inputs, this might include inputs for Components that are not part
-            of the cycle but part of the wider Pipeline's graph
-        :param include_outputs_from:
-            Set of component names whose individual outputs are to be
-            included in the cycle's output. In case a Component is executed multiple times
-            only the last-produced output is included.
-        :returns:
-            Outputs of all the Components that are not connected to other Components in `cycle`.
-            If `include_outputs_from` is set those Components' outputs will be included.
-        :raises PipelineMaxComponentRuns:
-            If a Component reaches the maximum number of times it can be run in this Pipeline
+        Extracts the inputs needed to run for the component and removes them from the global inputs state.
+        :param component: Component with component metadata.
+        :param inputs: Global inputs state.
+        :returns: The inputs for the component and the new state of global inputs.
         """
-        waiting_queue: List[Tuple[str, Component]] = []
-        run_queue: List[Tuple[str, Component]] = []
+        component_inputs = inputs.get(component_name, {})
+        consumed_inputs = {}
+        greedy_inputs_to_remove = set()
+        for socket_name, socket in component["input_sockets"].items():
+            socket_inputs = component_inputs.get(socket_name, [])
+            socket_inputs = [sock["value"] for sock in socket_inputs if sock["value"] != _NO_OUTPUT_PRODUCED]
+            if socket_inputs:
+                if not socket.is_variadic:
+                    # We only care about the first input provided to the socket.
+                    consumed_inputs[socket_name] = socket_inputs[0]
+                elif socket.is_greedy:
+                    # We need to keep track of greedy inputs because we always remove them, even if they come from
+                    # outside the pipeline. Otherwise, a greedy input from the user would trigger a pipeline to run
+                    # indefinitely.
+                    greedy_inputs_to_remove.add(socket_name)
+                    consumed_inputs[socket_name] = [socket_inputs[0]]
+                elif is_socket_lazy_variadic(socket):
+                    # We use all inputs provided to the socket on a lazy variadic socket.
+                    consumed_inputs[socket_name] = socket_inputs
 
-        # Create the run queue starting with the component that needs to run first
-        start_index = cycle.index(component_name)
-        for node in cycle[start_index:]:
-            run_queue.append((node, self.graph.nodes[node]["instance"]))
+        # We prune all inputs except for those that were provided from outside the pipeline (e.g. user inputs).
+        pruned_inputs = {
+            socket_name: [
+                sock for sock in socket if sock["sender"] is None
+                and not socket_name in greedy_inputs_to_remove
+            ] for socket_name, socket in component_inputs.items()
+        }
+        pruned_inputs = {socket_name: socket for socket_name, socket in pruned_inputs.items() if len(socket) > 0}
 
-        include_outputs_from = set() if include_outputs_from is None else include_outputs_from
+        inputs[component_name] = pruned_inputs
 
-        before_last_waiting_queue: Optional[Set[str]] = None
-        last_waiting_queue: Optional[Set[str]] = None
+        return consumed_inputs, inputs
 
-        subgraph_outputs = {}
-        # These are outputs that are sent to other Components but the user explicitly
-        # asked to include them in the final output.
-        extra_outputs = {}
+    @staticmethod
+    def _convert_from_legacy_format(pipeline_inputs: Dict[str, Any]) -> Dict[str, Dict[str, List]]:
+        """
+        Converts the inputs to the pipeline to the format that is needed for the internal `Pipeline.run` logic.
+        :param pipeline_inputs: Inputs to the pipeline.
+        :returns: Converted inputs that can be used by the internal `Pipeline.run` logic.
+        """
+        inputs = {}
+        for component_name, socket_dict in pipeline_inputs.items():
+            inputs[component_name] = {}
+            for socket_name, value in socket_dict.items():
+                inputs[component_name][socket_name] = [{"sender": None, "value": value}]
 
-        # This variable is used to keep track if we still need to run the cycle or not.
-        # When a Component doesn't send outputs to another Component
-        # that's inside the subgraph, we stop running this subgraph.
-        cycle_received_inputs = False
+        return inputs
 
-        while not cycle_received_inputs:
-            # Here we run the Components
-            name, comp = run_queue.pop(0)
-            if _is_lazy_variadic(comp) and not all(_is_lazy_variadic(comp) for _, comp in run_queue):
-                # We run Components with lazy variadic inputs only if there only Components with
-                # lazy variadic inputs left to run
-                _enqueue_waiting_component((name, comp), waiting_queue)
-                continue
+    def _fill_queue(self, component_names: List[str], inputs: Dict[str, Any]) -> FIFOPriorityQueue:
+        """
+        Calculates the execution priority for each component and inserts it into the priority queue.
 
-            # As soon as a Component returns only output that is not part of the cycle, we can stop
-            if self._component_has_enough_inputs_to_run(name, components_inputs):
-                if self.graph.nodes[name]["visits"] > self._max_runs_per_component:
-                    msg = f"Maximum run count {self._max_runs_per_component} reached for component '{name}'"
-                    raise PipelineMaxComponentRuns(msg)
+        :param component_names: Names of the components to put into the queue.
+        :param inputs: Inputs to the components.
+        :returns: A prioritized queue of component names.
+        """
+        priority_queue = FIFOPriorityQueue()
+        for component_name in component_names:
+            component = self._get_component_with_graph_metadata(component_name)
+            priority = self._calculate_priority(component, inputs.get(component_name, {}))
+            priority_queue.push(component_name, priority)
 
-                res: Dict[str, Any] = self._run_component(name, components_inputs[name], parent_span=parent_span)
+        return priority_queue
 
-                # Delete the inputs that were consumed by the Component and are not received from
-                # the user or from Components that are part of this cycle
-                sockets = list(components_inputs[name].keys())
-                for socket_name in sockets:
-                    senders = comp.__haystack_input__._sockets_dict[socket_name].senders  # type: ignore
-                    if not senders:
-                        # We keep inputs that came from the user
-                        continue
-                    all_senders_in_cycle = all(sender in cycle for sender in senders)
-                    if all_senders_in_cycle:
-                        # All senders are in the cycle, we can remove the input.
-                        # We'll receive it later at a certain point.
-                        del components_inputs[name][socket_name]
+    @staticmethod
+    def _calculate_priority(component: Dict, inputs: Dict) -> ComponentPriority:
+        """
+        Calculates the execution priority for a component depending on the component's inputs.
+        :param component: Component metadata and component instance.
+        :param inputs: Inputs to the component.
+        :returns: Priority value for the component.
+        """
+        if not can_component_run(component, inputs):
+            return ComponentPriority.BLOCKED
+        elif is_any_greedy_socket_ready(component, inputs):
+            return ComponentPriority.HIGHEST
+        elif all_predecessors_executed(component, inputs):
+            return ComponentPriority.READY
+        elif are_all_lazy_variadic_sockets_resolved(component, inputs):
+            return ComponentPriority.DEFER
+        else:
+            return ComponentPriority.DEFER_LAST
 
-                if name in include_outputs_from:
-                    # Deepcopy the outputs to prevent downstream nodes from modifying them
-                    # We don't care about loops - Always store the last output.
-                    extra_outputs[name] = deepcopy(res)
+    def _get_component_with_graph_metadata(self, component_name: str) -> Dict[str, Any]:
+        return self.graph.nodes[component_name]
 
-                # Reset the waiting for input previous states, we managed to run a component
-                before_last_waiting_queue = None
-                last_waiting_queue = None
+    def _get_next_runnable_component(self, priority_queue: FIFOPriorityQueue) -> Union[Tuple[Component, str, Dict], None]:
+        """
+        Returns the next runnable component alongside its metadata from the priority queue.
+        :param priority_queue: Priority queue of component names.
+        :returns: The next runnable component, the component name, and its priority or None if no component in the queue can run.
+        :raises: PipelineMaxComponentRuns if the next runnable component has exceeded the maximum number of runs.
+        """
+        priority_and_component_name = priority_queue.get()
 
-                # Check if a component doesn't send any output to components that are part of the cycle
-                final_output_reached = False
-                for output_socket in res.keys():
-                    for receiver in comp.__haystack_output__._sockets_dict[output_socket].receivers:  # type: ignore
-                        if receiver in cycle:
-                            final_output_reached = True
-                            break
-                    if final_output_reached:
-                        break
+        if priority_and_component_name is not None and priority_and_component_name[0] != ComponentPriority.BLOCKED:
+            priority, component_name = priority_and_component_name
+            component = self._get_component_with_graph_metadata(component_name)
+            if component["visits"] > self._max_runs_per_component:
+                msg = f"Maximum run count {self._max_runs_per_component} reached for component '{component_name}'"
+                raise PipelineMaxComponentRuns(msg)
 
-                if not final_output_reached:
-                    # We stop only if the Component we just ran doesn't send any output to sockets that
-                    # are part of the cycle
-                    cycle_received_inputs = True
+            return priority, component_name, component
 
-                # We manage to run this component that was in the waiting list, we can remove it.
-                # This happens when a component was put in the waiting list but we reached it from another edge.
-                _dequeue_waiting_component((name, comp), waiting_queue)
-                for pair in self._find_components_that_will_receive_no_input(name, res, components_inputs):
-                    _dequeue_component(pair, run_queue, waiting_queue)
+        return None
 
-                receivers = [item for item in self._find_receivers_from(name) if item[0] in cycle]
+    @staticmethod
+    def _write_component_outputs(component_name, component_outputs, inputs, receivers, include_outputs_from) -> Tuple[Dict, Dict]:
+        """
+        Distributes the outputs of a component to the input sockets that it is connected to.
+        :param component_name: The name of the component.
+        :param component_outputs: The outputs of the component.
+        :param inputs: The current global input state.
+        :param receivers: List of receiver_name, sender_socket, receiver_socket for connected components.
+        :param include_outputs_from: List of component names that should always return an output from the pipeline.
+        """
+        for receiver_name, sender_socket, receiver_socket in receivers:
+            # We either get the value that was produced by the actor or we use the _NO_OUTPUT_PRODUCED class to indicate
+            # that the sender did not produce an output for this socket.
+            # This allows us to track if a pre-decessor already ran but did not produce an output.
+            value = component_outputs.get(sender_socket.name, _NO_OUTPUT_PRODUCED)
+            if receiver_name not in inputs:
+                inputs[receiver_name] = {}
 
-                res = self._distribute_output(receivers, res, components_inputs, run_queue, waiting_queue)
+            # If we have a non-variadic or a greedy variadic receiver socket, we can just overwrite any inputs
+            # that might already exist (to be reconsidered but mirrors current behavior).
+            if not is_socket_lazy_variadic(receiver_socket):
+                inputs[receiver_name][receiver_socket.name] = [{"sender": component_name, "value": value}]
 
-                # We treat a cycle as a completely independent graph, so we keep track of output
-                # that is not sent inside the cycle.
-                # This output is going to get distributed to the wider graph after we finish running
-                # a cycle.
-                # All values that are left at this point go outside the cycle.
-                if len(res) > 0:
-                    subgraph_outputs[name] = res
+            # If the receiver socket is lazy variadic, and it already has an input, we need to append the new input.
+            # Lazy variadic sockets can collect multiple inputs.
             else:
-                # This component doesn't have enough inputs so we can't run it yet
-                _enqueue_waiting_component((name, comp), waiting_queue)
+                if not inputs[receiver_name].get(receiver_socket.name):
+                    inputs[receiver_name][receiver_socket.name] = []
 
-            if len(run_queue) == 0 and len(waiting_queue) > 0:
-                # Check if we're stuck in a loop.
-                # It's important to check whether previous waitings are None as it could be that no
-                # Component has actually been run yet.
-                if (
-                    before_last_waiting_queue is not None
-                    and last_waiting_queue is not None
-                    and before_last_waiting_queue == last_waiting_queue
-                ):
-                    if self._is_stuck_in_a_loop(waiting_queue):
-                        # We're stuck! We can't make any progress.
-                        msg = (
-                            "Pipeline is stuck running in a loop. Partial outputs will be returned. "
-                            "Check the Pipeline graph for possible issues."
-                        )
-                        warn(RuntimeWarning(msg))
-                        break
+                inputs[receiver_name][receiver_socket.name].append({"sender": component_name, "value": value})
 
-                    (name, comp) = self._find_next_runnable_lazy_variadic_or_default_component(waiting_queue)
-                    _add_missing_input_defaults(name, comp, components_inputs)
-                    _enqueue_component((name, comp), run_queue, waiting_queue)
-                    continue
+        # If we want to include all outputs from this actor in the final outputs, we don't need to prune any consumed
+        # outputs
+        if component_name in include_outputs_from:
+            return component_outputs, inputs
 
-                before_last_waiting_queue = last_waiting_queue.copy() if last_waiting_queue is not None else None
-                last_waiting_queue = {item[0] for item in waiting_queue}
+        # We prune outputs that were consumed by any receiving sockets.
+        # All remaining outputs will be added to the final outputs of the pipeline.
+        consumed_outputs = {sender_socket.name for _, sender_socket, __ in receivers}
+        pruned_outputs = {key: value for key, value in component_outputs.items() if key not in consumed_outputs}
 
-                (name, comp) = self._find_next_runnable_component(components_inputs, waiting_queue)
-                _add_missing_input_defaults(name, comp, components_inputs)
-                _enqueue_component((name, comp), run_queue, waiting_queue)
+        return pruned_outputs, inputs
 
-        return subgraph_outputs, extra_outputs
+    @staticmethod
+    def _merge_component_and_pipeline_outputs(component_name: str, component_outputs: Dict, pipeline_outputs: Dict) -> Dict:
+        """
+        Merges the outputs of a component with the current pipeline outputs.
+        :param component_name: The name of the component.
+        :param component_outputs: The outputs of the component.
+        :param pipeline_outputs: The pipeline outputs.
+        :returns: New pipeline outputs.
+        """
+        if not component_outputs:
+            return pipeline_outputs
+        elif component_name not in pipeline_outputs:
+            pipeline_outputs[component_name] = component_outputs
+        else:
+            for key, value in component_outputs.items():
+                if key not in pipeline_outputs[component_name]:
+                    pipeline_outputs[component_name][key] = value
+
+        return pipeline_outputs
+
+    @staticmethod
+    def _is_queue_stale(priority_queue: FIFOPriorityQueue) -> bool:
+        """
+        Checks if the priority queue needs to be recomputed because the priorities might have changed.
+        :param priority_queue: Priority queue of component names.
+        """
+        next_priority_and_component = priority_queue and priority_queue.peek()
+        if not next_priority_and_component or next_priority_and_component[0] > ComponentPriority.READY:
+            return True
+
+        return False
 
     def run(  # noqa: PLR0915, PLR0912
         self, data: Dict[str, Any], include_outputs_from: Optional[Set[str]] = None
@@ -362,191 +388,51 @@ class Pipeline(PipelineBase):
         # Raise if input is malformed in some way
         self._validate_input(data)
 
-        # Normalize the input data
-        components_inputs: Dict[str, Dict[str, Any]] = self._normalize_varidiac_input_data(data)
+        if include_outputs_from is None:
+            include_outputs_from = set()
 
-        # These variables are used to detect when we're stuck in a loop.
-        # Stuck loops can happen when one or more components are waiting for input but
-        # no other component is going to run.
-        # This can happen when a whole branch of the graph is skipped for example.
-        # When we find that two consecutive iterations of the loop where the waiting_queue is the same,
-        # we know we're stuck in a loop and we can't make any progress.
-        #
-        # They track the previous two states of the waiting_queue. So if waiting_queue would n,
-        # before_last_waiting_queue would be n-2 and last_waiting_queue would be n-1.
-        # When we run a component, we reset both.
-        before_last_waiting_queue: Optional[Set[str]] = None
-        last_waiting_queue: Optional[Set[str]] = None
+        # We create a list of components in the pipeline sorted by name, so that the algorithm runs deterministically
+        # and independent of insertion order into the pipeline.
+        ordered_component_names = sorted(self.graph.nodes.keys())
 
-        # The waiting_for_input list is used to keep track of components that are waiting for input.
-        waiting_queue: List[Tuple[str, Component]] = []
+        # We need to access a component's receivers multiple times during a pipeline run.
+        # We store them here for easy access.
+        cached_receivers = {name: self._find_receivers_from(name) for name in ordered_component_names}
 
-        include_outputs_from = set() if include_outputs_from is None else include_outputs_from
-
-        # This is what we'll return at the end
-        final_outputs: Dict[Any, Any] = {}
-
-        # Break cycles in case there are, this is a noop if no cycle is found.
-        # This will raise if a cycle can't be broken.
-        graph_without_cycles, components_in_cycles = self._break_supported_cycles_in_graph()
-
-        run_queue: List[Tuple[str, Component]] = []
-        for node in nx.topological_sort(graph_without_cycles):
-            run_queue.append((node, self.graph.nodes[node]["instance"]))
-
-        # Set defaults inputs for those sockets that don't receive input neither from the user
-        # nor from other Components.
-        # If they have no default nothing is done.
-        # This is important to ensure correct order execution, otherwise some variadic
-        # Components that receive input from the user might be run before than they should.
-        for name, comp in self.graph.nodes(data="instance"):
-            if name not in components_inputs:
-                components_inputs[name] = {}
-            for socket_name, socket in comp.__haystack_input__._sockets_dict.items():
-                if socket_name in components_inputs[name]:
-                    continue
-                if not socket.senders:
-                    value = socket.default_value
-                    if socket.is_variadic:
-                        value = [value]
-                    components_inputs[name][socket_name] = value
-
+        pipeline_outputs: Dict[str, Any] = {}
         with tracing.tracer.trace(
             "haystack.pipeline.run",
             tags={
                 "haystack.pipeline.input_data": data,
-                "haystack.pipeline.output_data": final_outputs,
+                "haystack.pipeline.output_data": pipeline_outputs,
                 "haystack.pipeline.metadata": self.metadata,
                 "haystack.pipeline.max_runs_per_component": self._max_runs_per_component,
             },
         ) as span:
-            # Cache for extra outputs, if enabled.
-            extra_outputs: Dict[Any, Any] = {}
+            inputs = self._convert_from_legacy_format(pipeline_inputs=data)
 
-            while len(run_queue) > 0:
-                name, comp = run_queue.pop(0)
+            priority_queue = self._fill_queue(ordered_component_names, inputs)
 
-                if _is_lazy_variadic(comp) and not all(_is_lazy_variadic(comp) for _, comp in run_queue):
-                    # We run Components with lazy variadic inputs only if there only Components with
-                    # lazy variadic inputs left to run
-                    _enqueue_waiting_component((name, comp), waiting_queue)
-                    continue
-                if self._component_has_enough_inputs_to_run(name, components_inputs) and components_in_cycles.get(
-                    name, []
-                ):
-                    cycles = components_in_cycles.get(name, [])
+            while True:
+                candidate = self._get_next_runnable_component(priority_queue)
+                if candidate is None:
+                    break
 
-                    # This component is part of one or more cycles, let's get the first one and run it.
-                    # We can reliably pick any of the cycles if there are multiple ones, the way cycles
-                    # are run doesn't make a different whether we pick the first or any of the others a
-                    # Component is part of.
-                    subgraph_output, subgraph_extra_output = self._run_subgraph(
-                        cycles[0], name, components_inputs, include_outputs_from=include_outputs_from, parent_span=span
-                    )
+                priority, component_name, component = candidate
+                component_outputs, inputs = self._run_component(component, inputs, parent_span=span)
+                component_pipeline_outputs, inputs = self._write_component_outputs(
+                    component_name=component_name,
+                    component_outputs=component_outputs,
+                    inputs=inputs,
+                    receivers=cached_receivers[component_name],
+                    include_outputs_from=include_outputs_from
+                )
+                # TODO check original logic in pipeline, it looks like we don't want to override existing outputs
+                # e.g. for cycles but the tests check if intermediate outputs from components in cycles are overwritten
+                # pipeline_outputs = self._merge_component_and_pipeline_outputs(component_name, component_pipeline_outputs, pipeline_outputs)
+                if component_pipeline_outputs:
+                    pipeline_outputs = {**pipeline_outputs, component_name: component_pipeline_outputs}
+                if self._is_queue_stale(priority_queue):
+                    priority_queue = self._fill_queue(ordered_component_names, inputs)
 
-                    # After a cycle is run the previous run_queue can't be correct anymore cause it's
-                    # not modified when running the subgraph.
-                    # So we reset it given the output returned by the subgraph.
-                    run_queue = []
-
-                    # Reset the waiting for input previous states, we managed to run at least one component
-                    before_last_waiting_queue = None
-                    last_waiting_queue = None
-
-                    # Merge the extra outputs
-                    extra_outputs.update(subgraph_extra_output)
-
-                    for component_name, component_output in subgraph_output.items():
-                        receivers = self._find_receivers_from(component_name)
-                        component_output = self._distribute_output(
-                            receivers, component_output, components_inputs, run_queue, waiting_queue
-                        )
-
-                        if len(component_output) > 0:
-                            final_outputs[component_name] = component_output
-
-                elif self._component_has_enough_inputs_to_run(name, components_inputs):
-                    if self.graph.nodes[name]["visits"] > self._max_runs_per_component:
-                        msg = f"Maximum run count {self._max_runs_per_component} reached for component '{name}'"
-                        raise PipelineMaxComponentRuns(msg)
-
-                    res: Dict[str, Any] = self._run_component(name, components_inputs[name], parent_span=span)
-
-                    # Delete the inputs that were consumed by the Component and are not received from the user
-                    sockets = list(components_inputs[name].keys())
-                    for socket_name in sockets:
-                        senders = comp.__haystack_input__._sockets_dict[socket_name].senders
-                        if senders:
-                            # Delete all inputs that are received from other Components
-                            del components_inputs[name][socket_name]
-                        # We keep inputs that came from the user
-
-                    if name in include_outputs_from:
-                        # Deepcopy the outputs to prevent downstream nodes from modifying them
-                        # We don't care about loops - Always store the last output.
-                        extra_outputs[name] = deepcopy(res)
-
-                    # Reset the waiting for input previous states, we managed to run a component
-                    before_last_waiting_queue = None
-                    last_waiting_queue = None
-
-                    # We manage to run this component that was in the waiting list, we can remove it.
-                    # This happens when a component was put in the waiting list but we reached it from another edge.
-                    _dequeue_waiting_component((name, comp), waiting_queue)
-
-                    for pair in self._find_components_that_will_receive_no_input(name, res, components_inputs):
-                        _dequeue_component(pair, run_queue, waiting_queue)
-                    receivers = self._find_receivers_from(name)
-                    res = self._distribute_output(receivers, res, components_inputs, run_queue, waiting_queue)
-
-                    if len(res) > 0:
-                        final_outputs[name] = res
-                else:
-                    # This component doesn't have enough inputs so we can't run it yet
-                    _enqueue_waiting_component((name, comp), waiting_queue)
-
-                if len(run_queue) == 0 and len(waiting_queue) > 0:
-                    # Check if we're stuck in a loop.
-                    # It's important to check whether previous waitings are None as it could be that no
-                    # Component has actually been run yet.
-                    if (
-                        before_last_waiting_queue is not None
-                        and last_waiting_queue is not None
-                        and before_last_waiting_queue == last_waiting_queue
-                    ):
-                        if self._is_stuck_in_a_loop(waiting_queue):
-                            # We're stuck! We can't make any progress.
-                            msg = (
-                                "Pipeline is stuck running in a loop. Partial outputs will be returned. "
-                                "Check the Pipeline graph for possible issues."
-                            )
-                            warn(RuntimeWarning(msg))
-                            break
-
-                        (name, comp) = self._find_next_runnable_lazy_variadic_or_default_component(waiting_queue)
-                        _add_missing_input_defaults(name, comp, components_inputs)
-                        _enqueue_component((name, comp), run_queue, waiting_queue)
-                        continue
-
-                    before_last_waiting_queue = last_waiting_queue.copy() if last_waiting_queue is not None else None
-                    last_waiting_queue = {item[0] for item in waiting_queue}
-
-                    (name, comp) = self._find_next_runnable_component(components_inputs, waiting_queue)
-                    _add_missing_input_defaults(name, comp, components_inputs)
-                    _enqueue_component((name, comp), run_queue, waiting_queue)
-
-            if len(include_outputs_from) > 0:
-                for name, output in extra_outputs.items():
-                    inner = final_outputs.get(name)
-                    if inner is None:
-                        final_outputs[name] = output
-                    else:
-                        # Let's not override any keys that are already
-                        # in the final_outputs as they might be different
-                        # from what we cached in extra_outputs, e.g. when loops
-                        # are involved.
-                        for k, v in output.items():
-                            if k not in inner:
-                                inner[k] = v
-
-            return final_outputs
+            return pipeline_outputs
