@@ -39,11 +39,16 @@ Feature: Pipeline running
         | that is linear with conditional branching and multiple joins |
         | that is a simple agent |
         | that has a variadic component that receives partial inputs |
+        | that has a variadic component that receives partial inputs in a different order |
         | that has an answer joiner variadic component |
         | that is linear and a component in the middle receives optional input from other components and input from the user |
         | that has a loop in the middle |
         | that has variadic component that receives a conditional input |
         | that has a string variadic component |
+        | that is an agent that can use RAG |
+        | that has a feedback loop |
+        | created in a non-standard order that has a loop |
+        | that has an agent with a feedback cycle |
 
     Scenario Outline: Running a bad Pipeline
         Given a pipeline <kind>
