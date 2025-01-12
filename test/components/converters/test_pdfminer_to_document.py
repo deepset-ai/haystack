@@ -5,6 +5,7 @@ import logging
 
 import pytest
 
+from haystack import Document
 from haystack.dataclasses import ByteStream
 from haystack.components.converters.pdfminer import PDFMinerToDocument
 
@@ -150,3 +151,7 @@ class TestPDFMinerToDocument:
             results = converter.run(sources=sources)
             assert "PDFMinerToDocument could not extract text from the file" in caplog.text
             assert results["documents"][0].content == ""
+
+            # Check that not only content is used when the returned document is initialized and doc id is generated
+            assert results["documents"][0].meta["file_path"] == "non_text_searchable.pdf"
+            assert results["documents"][0].id != Document(content="").id
