@@ -118,9 +118,9 @@ class PDFMinerToDocument:
             pages.append(text)
 
         # Add a page delimiter
-        concat = "\f".join(pages)
+        delimited_pages = "\f".join(pages)
 
-        return concat
+        return delimited_pages
 
     @component.output_types(documents=List[Document])
     def run(
