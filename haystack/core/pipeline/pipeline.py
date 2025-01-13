@@ -3,25 +3,22 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from copy import deepcopy
-from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, Union
 from enum import IntEnum
+from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, Union
 
 from haystack import logging, tracing
 from haystack.core.component import Component
 from haystack.core.errors import PipelineMaxComponentRuns, PipelineRuntimeError
 from haystack.core.pipeline.base import PipelineBase
 from haystack.core.pipeline.component_checks import (
+    _NO_OUTPUT_PRODUCED,
+    all_predecessors_executed,
+    are_all_lazy_variadic_sockets_resolved,
     can_component_run,
     is_any_greedy_socket_ready,
     is_socket_lazy_variadic,
 )
-from haystack.core.pipeline.component_checks import (
-    all_predecessors_executed,
-    are_all_lazy_variadic_sockets_resolved,
-    _NO_OUTPUT_PRODUCED,
-)
 from haystack.core.pipeline.utils import FIFOPriorityQueue
-
 from haystack.telemetry import pipeline_running
 
 logger = logging.getLogger(__name__)
@@ -205,7 +202,8 @@ class Pipeline(PipelineBase):
         Returns the next runnable component alongside its metadata from the priority queue.
 
         :param priority_queue: Priority queue of component names.
-        :returns: The next runnable component, the component name, and its priority or None if no component in the queue can run.
+        :returns: The next runnable component, the component name, and its priority
+            or None if no component in the queue can run.
         :raises: PipelineMaxComponentRuns if the next runnable component has exceeded the maximum number of runs.
         """
         priority_and_component_name = priority_queue.get()
@@ -446,7 +444,6 @@ class Pipeline(PipelineBase):
                 )
                 # TODO check original logic in pipeline, it looks like we don't want to override existing outputs
                 # e.g. for cycles but the tests check if intermediate outputs from components in cycles are overwritten
-                # pipeline_outputs = self._merge_component_and_pipeline_outputs(component_name, component_pipeline_outputs, pipeline_outputs)
                 if component_pipeline_outputs:
                     pipeline_outputs = {**pipeline_outputs, component_name: component_pipeline_outputs}
                 if self._is_queue_stale(priority_queue):

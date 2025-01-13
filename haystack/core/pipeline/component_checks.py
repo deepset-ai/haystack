@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from typing import Any, Dict, List
 
-from haystack.core.component.types import _empty, InputSocket
+from haystack.core.component.types import InputSocket, _empty
 
 _NO_OUTPUT_PRODUCED = _empty
 
@@ -61,9 +61,11 @@ def are_all_mandatory_sockets_ready(component: Dict, inputs: Dict) -> bool:
         if socket.is_mandatory:
             socket_inputs = inputs.get(socket_name, [])
             expected_mandatory_sockets.add(socket_name)
-            if is_socket_lazy_variadic(socket) and any_socket_input_received(socket_inputs):
-                filled_mandatory_sockets.add(socket_name)
-            elif has_socket_received_all_inputs(socket, socket_inputs):
+            if (
+                    is_socket_lazy_variadic(socket) and
+                    any_socket_input_received(socket_inputs) or
+                    has_socket_received_all_inputs(socket, socket_inputs)
+            ):
                 filled_mandatory_sockets.add(socket_name)
 
     return filled_mandatory_sockets == expected_mandatory_sockets
@@ -181,10 +183,7 @@ def has_socket_received_all_inputs(socket: InputSocket, socket_inputs: List[Dict
         return True
 
     # The socket is not variadic and the only expected input is complete.
-    if not socket.is_variadic and socket_inputs[0]["value"] != _NO_OUTPUT_PRODUCED:
-        return True
-
-    return False
+    return not socket.is_variadic and socket_inputs[0]["value"] != _NO_OUTPUT_PRODUCED
 
 
 def all_predecessors_executed(component: Dict, inputs: Dict) -> bool:

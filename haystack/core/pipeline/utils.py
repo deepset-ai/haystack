@@ -2,9 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import heapq
-
 from itertools import count
-from typing import Optional, Tuple, Any
+from typing import Any, Optional, Tuple
 
 
 def parse_connect_string(connection: str) -> Tuple[str, Optional[str]]:
