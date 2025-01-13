@@ -14,6 +14,7 @@ from haystack.core.component import component
 from haystack.core.component.types import InputSocket, OutputSocket, Variadic, GreedyVariadic, _empty
 from haystack.core.errors import DeserializationError, PipelineConnectError, PipelineDrawingError, PipelineError
 from haystack.core.pipeline import Pipeline, PredefinedPipeline
+from haystack.core.pipeline.pipeline import ComponentPriority, _NO_OUTPUT_PRODUCED
 
 from haystack.core.serialization import DeserializationCallbacks
 from haystack.testing.factory import component_class
@@ -1107,3 +1108,150 @@ class TestPipeline:
                 ),
             )
         ]
+
+    @pytest.mark.parametrize(
+        "component, inputs, expected_priority, test_description",
+        [
+            # Test case 1: BLOCKED - Missing mandatory input
+            (
+                {
+                    "instance": "mock_instance",
+                    "visits": 0,
+                    "input_sockets": {
+                        "mandatory_input": InputSocket("mandatory_input", int),
+                        "optional_input": InputSocket(
+                            "optional_input", str, default_value="default", senders=["previous_component"]
+                        ),
+                    },
+                },
+                {"optional_input": [{"sender": "previous_component", "value": "test"}]},
+                ComponentPriority.BLOCKED,
+                "Component should be BLOCKED when mandatory input is missing",
+            ),
+            # Test case 2: BLOCKED - No trigger after first visit
+            (
+                {
+                    "instance": "mock_instance",
+                    "visits": 1,  # Already visited
+                    "input_sockets": {
+                        "mandatory_input": InputSocket("mandatory_input", int),
+                        "optional_input": InputSocket("optional_input", str, default_value="default"),
+                    },
+                },
+                {"mandatory_input": [{"sender": None, "value": 42}]},
+                ComponentPriority.BLOCKED,
+                "Component should be BLOCKED when there's no new trigger after first visit",
+            ),
+            # Test case 3: HIGHEST - Greedy socket ready
+            (
+                {
+                    "instance": "mock_instance",
+                    "visits": 0,
+                    "input_sockets": {
+                        "greedy_input": InputSocket("greedy_input", GreedyVariadic[int], senders=["component1"]),
+                        "normal_input": InputSocket("normal_input", str, senders=["component2"]),
+                    },
+                },
+                {
+                    "greedy_input": [{"sender": "component1", "value": 42}],
+                    "normal_input": [{"sender": "component2", "value": "test"}],
+                },
+                ComponentPriority.HIGHEST,
+                "Component should have HIGHEST priority when greedy socket has valid input",
+            ),
+            # Test case 4: READY - All predecessors executed
+            (
+                {
+                    "instance": "mock_instance",
+                    "visits": 0,
+                    "input_sockets": {
+                        "mandatory_input": InputSocket("mandatory_input", int, senders=["previous_component"]),
+                        "optional_input": InputSocket(
+                            "optional_input", str, senders=["another_component"], default_value="default"
+                        ),
+                    },
+                },
+                {
+                    "mandatory_input": [{"sender": "previous_component", "value": 42}],
+                    "optional_input": [{"sender": "another_component", "value": "test"}],
+                },
+                ComponentPriority.READY,
+                "Component should be READY when all predecessors have executed",
+            ),
+            # Test case 5: DEFER - Lazy variadic sockets resolved and optional missing.
+            (
+                {
+                    "instance": "mock_instance",
+                    "visits": 0,
+                    "input_sockets": {
+                        "variadic_input": InputSocket(
+                            "variadic_input", Variadic[int], senders=["component1", "component2"]
+                        ),
+                        "normal_input": InputSocket("normal_input", str, senders=["component3"]),
+                        "optional_input": InputSocket(
+                            "optional_input", str, default_value="default", senders=["component4"]
+                        ),
+                    },
+                },
+                {
+                    "variadic_input": [
+                        {"sender": "component1", "value": "test"},
+                        {"sender": "component2", "value": _NO_OUTPUT_PRODUCED},
+                    ],
+                    "normal_input": [{"sender": "component3", "value": "test"}],
+                },
+                ComponentPriority.DEFER,
+                "Component should DEFER when all lazy variadic sockets are resolved",
+            ),
+            # Test case 6: DEFER_LAST - Incomplete variadic inputs
+            (
+                {
+                    "instance": "mock_instance",
+                    "visits": 0,
+                    "input_sockets": {
+                        "variadic_input": InputSocket(
+                            "variadic_input", Variadic[int], senders=["component1", "component2"]
+                        ),
+                        "normal_input": InputSocket("normal_input", str),
+                    },
+                },
+                {
+                    "variadic_input": [{"sender": "component1", "value": 42}],  # Missing component2
+                    "normal_input": [{"sender": "component3", "value": "test"}],
+                },
+                ComponentPriority.DEFER_LAST,
+                "Component should be DEFER_LAST when not all variadic senders have produced output",
+            ),
+            # Test case 7: READY - No input sockets, first visit
+            (
+                {
+                    "instance": "mock_instance",
+                    "visits": 0,
+                    "input_sockets": {"optional_input": InputSocket("optional_input", str, default_value="default")},
+                },
+                {},  # no inputs
+                ComponentPriority.READY,
+                "Component should be READY on first visit when it has no input sockets",
+            ),
+            # Test case 8: BLOCKED - No connected input sockets, subsequent visit
+            (
+                {
+                    "instance": "mock_instance",
+                    "visits": 1,
+                    "input_sockets": {"optional_input": InputSocket("optional_input", str, default_value="default")},
+                },
+                {},  # no inputs
+                ComponentPriority.BLOCKED,
+                "Component should be BLOCKED on subsequent visits when it has no input sockets",
+            ),
+        ],
+        ids=lambda p: p.name if isinstance(p, ComponentPriority) else str(p),
+    )
+    def test__calculate_priority(self, component, inputs, expected_priority, test_description):
+        """Test priority calculation for various component and input combinations."""
+        # For variadic inputs, set up senders if needed
+        for socket in component["input_sockets"].values():
+            if socket.is_variadic and not hasattr(socket, "senders"):
+                socket.senders = ["component1", "component2"]
+
+        assert Pipeline._calculate_priority(component, inputs) == expected_priority
