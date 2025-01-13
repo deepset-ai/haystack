@@ -1486,12 +1486,10 @@ class TestPipeline:
         ids=["empty-queue", "ready-component", "deferred-component"],
     )
     def test__is_queue_stale(self, queue_setup, expected_stale):
-        # Setup queue
         queue = FIFOPriorityQueue()
         if queue_setup:
             priority, component_name = queue_setup
             queue.push(component_name, priority)
 
-        # Check if queue is stale
         result = Pipeline._is_queue_stale(queue)
         assert result == expected_stale
