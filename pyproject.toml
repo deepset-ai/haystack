@@ -126,7 +126,7 @@ extra-dependencies = [
   # Structured logging
   "structlog",
 
-  # Docstring parser
+  # ComponentTool
   "docstring-parser",
 
   # Test
