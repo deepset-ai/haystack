@@ -5,7 +5,7 @@
 import json
 import os
 import pytest
-from typing import Dict, List, Optional, Any
+from typing import Dict, List
 from dataclasses import dataclass
 from haystack import component
 from haystack import Pipeline
