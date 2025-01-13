@@ -8,7 +8,6 @@ import pytest
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from haystack import component
-from pydantic import BaseModel
 from haystack import Pipeline
 from haystack.components.websearch.serper_dev import SerperDevWebSearch
 from haystack.dataclasses import Document
