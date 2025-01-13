@@ -564,10 +564,21 @@ class TestPipeline:
         err.match("Missing 'type' in component 'add_two'")
 
     # UNIT
-    def test_from_dict_without_registered_component_type(self, request):
+    def test_from_dict_without_registered_component_type(self):
         data = {
             "metadata": {"test": "test"},
             "components": {"add_two": {"type": "foo.bar.baz", "init_parameters": {"add": 2}}},
+            "connections": [],
+        }
+        with pytest.raises(PipelineError) as err:
+            Pipeline.from_dict(data)
+
+        err.match(r"Component .+ not imported.")
+
+    def test_from_dict_with_invalid_type(self):
+        data = {
+            "metadata": {"test": "test"},
+            "components": {"add_two": {"type": "", "init_parameters": {"add": 2}}},
             "connections": [],
         }
         with pytest.raises(PipelineError) as err:
