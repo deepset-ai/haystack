@@ -1255,3 +1255,44 @@ class TestPipeline:
                 socket.senders = ["component1", "component2"]
 
         assert Pipeline._calculate_priority(component, inputs) == expected_priority
+
+    @pytest.mark.parametrize(
+        "pipeline_inputs,expected_output",
+        [
+            # Test case 1: Empty input
+            ({}, {}),
+            # Test case 2: Single component, multiple inputs
+            (
+                {"component1": {"input1": 42, "input2": "test", "input3": True}},
+                {
+                    "component1": {
+                        "input1": [{"sender": None, "value": 42}],
+                        "input2": [{"sender": None, "value": "test"}],
+                        "input3": [{"sender": None, "value": True}],
+                    }
+                },
+            ),
+            # Test case 3: Multiple components
+            (
+                {
+                    "component1": {"input1": 42, "input2": "test"},
+                    "component2": {"input3": [1, 2, 3], "input4": {"key": "value"}},
+                },
+                {
+                    "component1": {
+                        "input1": [{"sender": None, "value": 42}],
+                        "input2": [{"sender": None, "value": "test"}],
+                    },
+                    "component2": {
+                        "input3": [{"sender": None, "value": [1, 2, 3]}],
+                        "input4": [{"sender": None, "value": {"key": "value"}}],
+                    },
+                },
+            ),
+        ],
+        ids=["empty_input", "single_component_multiple_inputs", "multiple_components"],
+    )
+    def test_convert_from_legacy_format(self, pipeline_inputs, expected_output):
+        """Test conversion of legacy pipeline inputs to internal format."""
+        result = Pipeline._convert_from_legacy_format(pipeline_inputs)
+        assert result == expected_output
