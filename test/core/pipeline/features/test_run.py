@@ -2821,3 +2821,148 @@ Provide additional feedback on why it fails.
             )
         ],
     )
+
+@given("a pipeline that passes outputs that are consumed in cycle to outside the cycle", target_fixture="pipeline_data")
+def passes_outputs_outside_cycle():
+    @component
+    class FixedGenerator:
+        def __init__(self, replies):
+            self.replies = replies
+            self.idx = 0
+
+        @component.output_types(replies=List[str])
+        def run(self, prompt: str):
+            if self.idx < len(self.replies):
+                replies = [self.replies[self.idx]]
+                self.idx += 1
+            else:
+                self.idx = 0
+                replies = [self.replies[self.idx]]
+                self.idx += 1
+
+            return {"replies": replies}
+
+    @component
+    class AnswerBuilderWithPrompt:
+        @component.output_types(answers=List[GeneratedAnswer])
+        def run(self, replies: List[str], query: str, prompt: Optional[str] = None) -> Dict[str, Any]:
+            answer = GeneratedAnswer(data=replies[0], query=query, documents=[])
+
+            if prompt is not None:
+                answer.meta["prompt"] = prompt
+
+
+            return {"answers": [answer]}
+
+    code_prompt_template = "{{task}}"
+
+    feedback_prompt_template = """
+Check if this code is valid and can run: {{ code[0] }}
+Return "PASS" if it passes and "FAIL" if it fails.
+Provide additional feedback on why it fails.
+    """
+
+    valid_response = """
+def generate_santa_sleigh():
+    '''
+    Returns ASCII art of Santa Claus on his sleigh with Rudolph leading the way.
+    '''
+    # implementation goes here.
+    return art
+    """
+
+    code_llm = FixedGenerator(replies=["invalid code", "invalid code", valid_response])
+    code_prompt = PromptBuilder(template=code_prompt_template)
+
+    feedback_llm = FixedGenerator(replies=["FAIL", "FAIL, come on, try again.", "PASS"])
+    feedback_prompt = PromptBuilder(template=feedback_prompt_template)
+
+    routes = [
+        {
+            "condition": "{{ 'FAIL' in replies[0] }}",
+            "output": "{{ replies[0] }}",
+            "output_name": "fail",
+            "output_type": str,
+        },
+        {
+            "condition": "{{ 'PASS' in replies[0] }}",
+            "output": "{{ code }}",
+            "output_name": "pass",
+            "output_type": List[str],
+        },
+    ]
+
+    router = ConditionalRouter(routes=routes)
+    joiner = BranchJoiner(type_=str)
+    concatenator = OutputAdapter(template="{{code_prompt + '\n' + generated_code[0] + '\n' + feedback}}", output_type=str)
+
+    answer_builder = AnswerBuilderWithPrompt()
+
+    pp = Pipeline(max_runs_per_component=100)
+
+    pp.add_component("concatenator", concatenator)
+    pp.add_component("code_llm", code_llm)
+    pp.add_component("code_prompt", code_prompt)
+    pp.add_component("feedback_prompt", feedback_prompt)
+    pp.add_component("feedback_llm", feedback_llm)
+    pp.add_component("router", router)
+    pp.add_component("joiner", joiner)
+
+    pp.add_component("answer_builder", answer_builder)
+
+    pp.connect("concatenator.output", "joiner.value")
+    pp.connect("joiner.value", "code_prompt.task")
+    pp.connect("code_prompt.prompt", "code_llm.prompt")
+    pp.connect("code_prompt.prompt", "concatenator.code_prompt")
+    pp.connect("code_llm.replies", "feedback_prompt.code")
+    pp.connect("feedback_llm.replies", "router.replies")
+    pp.connect("router.fail", "concatenator.feedback")
+    pp.connect("feedback_prompt.prompt", "feedback_llm.prompt")
+    pp.connect("router.pass", "answer_builder.replies")
+    pp.connect("code_llm.replies", "router.code")
+    pp.connect("code_llm.replies", "concatenator.generated_code")
+    pp.connect("concatenator.output", "answer_builder.prompt")
+
+    task = "Generate code to generate christmas ascii-art"
+
+    expected_prompt = """Generate code to generate christmas ascii-art
+invalid code
+FAIL
+invalid code
+FAIL, come on, try again."""
+    return (
+        pp,
+        [
+            PipelineRunData(
+                inputs={"joiner": {"value": task}, "answer_builder": {"query": task}},
+                expected_outputs={
+                    "answer_builder": {"answers": [GeneratedAnswer(data=valid_response, query=task, documents=[], meta={"prompt": expected_prompt})]}
+                },
+                expected_run_order=[
+                    "joiner",
+                    "code_prompt",
+                    "code_llm",
+                    "feedback_prompt",
+                    "feedback_llm",
+                    "router",
+                    "concatenator",
+                    "joiner",
+                    "code_prompt",
+                    "code_llm",
+                    "feedback_prompt",
+                    "feedback_llm",
+                    "router",
+                    "concatenator",
+                    "joiner",
+                    "code_prompt",
+                    "code_llm",
+                    "feedback_prompt",
+                    "feedback_llm",
+                    "router",
+                    "answer_builder",
+                ],
+            )
+        ],
+    )
+
+
