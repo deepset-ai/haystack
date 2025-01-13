@@ -4,16 +4,16 @@
 
 import json
 import os
-import pytest
-from typing import Dict, List
 from dataclasses import dataclass
-from haystack import component
-from haystack import Pipeline
-from haystack.components.websearch.serper_dev import SerperDevWebSearch
-from haystack.dataclasses import Document
-from haystack.dataclasses import ChatMessage, ChatRole
-from haystack.components.tools.tool_invoker import ToolInvoker
+from typing import Dict, List
+
+import pytest
+
+from haystack import Pipeline, component
 from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.tools.tool_invoker import ToolInvoker
+from haystack.components.websearch.serper_dev import SerperDevWebSearch
+from haystack.dataclasses import ChatMessage, ChatRole, Document
 from haystack.tools import ComponentTool
 from haystack.utils.auth import Secret
 
