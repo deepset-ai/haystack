@@ -105,6 +105,7 @@ class Pipeline(PipelineBase):
     def _consume_component_inputs(component_name: str, component: Dict, inputs: Dict) -> Tuple[Dict, Dict]:
         """
         Extracts the inputs needed to run for the component and removes them from the global inputs state.
+
         :param component: Component with component metadata.
         :param inputs: Global inputs state.
         :returns: The inputs for the component and the new state of global inputs.
@@ -146,6 +147,7 @@ class Pipeline(PipelineBase):
     def _convert_from_legacy_format(pipeline_inputs: Dict[str, Any]) -> Dict[str, Dict[str, List]]:
         """
         Converts the inputs to the pipeline to the format that is needed for the internal `Pipeline.run` logic.
+
         :param pipeline_inputs: Inputs to the pipeline.
         :returns: Converted inputs that can be used by the internal `Pipeline.run` logic.
         """
@@ -177,6 +179,7 @@ class Pipeline(PipelineBase):
     def _calculate_priority(component: Dict, inputs: Dict) -> ComponentPriority:
         """
         Calculates the execution priority for a component depending on the component's inputs.
+
         :param component: Component metadata and component instance.
         :param inputs: Inputs to the component.
         :returns: Priority value for the component.
@@ -200,6 +203,7 @@ class Pipeline(PipelineBase):
     ) -> Union[Tuple[Component, str, Dict], None]:
         """
         Returns the next runnable component alongside its metadata from the priority queue.
+
         :param priority_queue: Priority queue of component names.
         :returns: The next runnable component, the component name, and its priority or None if no component in the queue can run.
         :raises: PipelineMaxComponentRuns if the next runnable component has exceeded the maximum number of runs.
@@ -223,6 +227,7 @@ class Pipeline(PipelineBase):
     ) -> Tuple[Dict, Dict]:
         """
         Distributes the outputs of a component to the input sockets that it is connected to.
+
         :param component_name: The name of the component.
         :param component_outputs: The outputs of the component.
         :param inputs: The current global input state.
@@ -268,6 +273,7 @@ class Pipeline(PipelineBase):
     ) -> Dict:
         """
         Merges the outputs of a component with the current pipeline outputs.
+
         :param component_name: The name of the component.
         :param component_outputs: The outputs of the component.
         :param pipeline_outputs: The pipeline outputs.
@@ -288,13 +294,11 @@ class Pipeline(PipelineBase):
     def _is_queue_stale(priority_queue: FIFOPriorityQueue) -> bool:
         """
         Checks if the priority queue needs to be recomputed because the priorities might have changed.
+
         :param priority_queue: Priority queue of component names.
         """
-        next_priority_and_component = priority_queue and priority_queue.peek()
-        if not next_priority_and_component or next_priority_and_component[0] > ComponentPriority.READY:
-            return True
+        return len(priority_queue) == 0 or priority_queue.peek()[0] > ComponentPriority.READY
 
-        return False
 
     def run(  # noqa: PLR0915, PLR0912
         self, data: Dict[str, Any], include_outputs_from: Optional[Set[str]] = None

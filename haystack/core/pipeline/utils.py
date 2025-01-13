@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-
 import heapq
 
 from itertools import count
@@ -26,8 +25,8 @@ def parse_connect_string(connection: str) -> Tuple[str, Optional[str]]:
 class FIFOPriorityQueue:
     """
     A priority queue that maintains FIFO order for items of equal priority.
-    Items with the same priority are processed in the order they were added.
 
+    Items with the same priority are processed in the order they were added.
     This queue ensures that when multiple items share the same priority level,
     they are dequeued in the same order they were enqueued (First-In-First-Out).
     """

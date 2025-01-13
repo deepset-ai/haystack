@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-
 from typing import Any, Dict, List
 
 from haystack.core.component.types import _empty, InputSocket
@@ -12,6 +11,7 @@ _NO_OUTPUT_PRODUCED = _empty
 def can_component_run(component: Dict, inputs: Dict) -> bool:
     """
     Checks if the component can run, given the current state of its inputs.
+
     A component needs to pass two gates so that it is ready to run:
     1. It has received all mandatory inputs.
     2. It has received a trigger.
@@ -51,6 +51,7 @@ def has_any_trigger(component: Dict, inputs: Dict) -> bool:
 def are_all_mandatory_sockets_ready(component: Dict, inputs: Dict) -> bool:
     """
     Checks if all mandatory sockets of a component have enough inputs for the component to execute.
+
     :param component: Component metadata and the component instance.
     :param inputs: Inputs for the component.
     """
@@ -84,6 +85,7 @@ def any_predecessors_provided_input(component: Dict, inputs: Dict) -> bool:
 def any_socket_value_from_predecessor_received(socket_inputs: List[Dict[str, Any]]) -> bool:
     """
     Checks if a component socket received input from any predecessors.
+
     :param socket_inputs: Inputs for the component's socket.
     """
     # When sender is None, the input was provided from outside the pipeline.
@@ -93,6 +95,7 @@ def any_socket_value_from_predecessor_received(socket_inputs: List[Dict[str, Any
 def has_user_input(inputs: Dict) -> bool:
     """
     Checks if a component has received input from outside the pipeline (e.g. user input).
+
     :param inputs: Inputs for the component.
     """
     return any(inp for socket in inputs.values() for inp in socket if inp["sender"] is None)
@@ -101,6 +104,7 @@ def has_user_input(inputs: Dict) -> bool:
 def can_not_receive_inputs_from_pipeline(component: Dict) -> bool:
     """
     Checks if a component can not receive inputs from any other components in the pipeline.
+
     :param: Component metadata and the component instance.
     """
     return all(len(sock.senders) == 0 for sock in component["input_sockets"].values())
@@ -109,6 +113,7 @@ def can_not_receive_inputs_from_pipeline(component: Dict) -> bool:
 def all_socket_predecessors_executed(socket: InputSocket, socket_inputs: List[Dict]) -> bool:
     """
     Checks if all components connecting to an InputSocket have executed.
+
     :param: The InputSocket of a component.
     :param: socket_inputs: Inputs for the socket.
     """
@@ -121,6 +126,7 @@ def all_socket_predecessors_executed(socket: InputSocket, socket_inputs: List[Di
 def any_socket_input_received(socket_inputs: List[Dict]) -> bool:
     """
     Checks if a socket has received any input from any other components in the pipeline or from outside the pipeline.
+
     :param socket_inputs: Inputs for the socket.
     """
     return any(inp["value"] != _NO_OUTPUT_PRODUCED for inp in socket_inputs)
@@ -129,6 +135,7 @@ def any_socket_input_received(socket_inputs: List[Dict]) -> bool:
 def has_lazy_variadic_socket_received_all_inputs(socket: InputSocket, socket_inputs: List[Dict]) -> bool:
     """
     Checks if a lazy variadic socket has received all expected inputs from other components in the pipeline.
+
     :param socket: The InputSocket of a component.
     :param socket_inputs: Inputs for the socket.
     """
@@ -143,6 +150,7 @@ def has_lazy_variadic_socket_received_all_inputs(socket: InputSocket, socket_inp
 def is_socket_lazy_variadic(socket: InputSocket) -> bool:
     """
     Checks if an InputSocket is a lazy variadic socket.
+
     :param socket: The InputSocket of a component.
     """
     return socket.is_variadic and not socket.is_greedy
@@ -151,6 +159,7 @@ def is_socket_lazy_variadic(socket: InputSocket) -> bool:
 def has_socket_received_all_inputs(socket: InputSocket, socket_inputs: List[Dict]) -> bool:
     """
     Checks if a socket has received all expected inputs.
+
     :param socket: The InputSocket of a component.
     :param socket_inputs: Inputs for the socket.
     """
@@ -181,6 +190,7 @@ def has_socket_received_all_inputs(socket: InputSocket, socket_inputs: List[Dict
 def all_predecessors_executed(component: Dict, inputs: Dict) -> bool:
     """
     Checks if all predecessors of a component have executed.
+
     :param component: Component metadata and the component instance.
     :param inputs: Inputs for the component.
     """
@@ -193,7 +203,7 @@ def all_predecessors_executed(component: Dict, inputs: Dict) -> bool:
 def are_all_lazy_variadic_sockets_resolved(component: Dict, inputs: Dict) -> bool:
     """
     Checks if the final state for all lazy variadic sockets of a component is resolved.
-    Either because all inputs were received, or because all predecessors executed.
+
     :param component: Component metadata and the component instance.
     :param inputs: Inputs for the component.
     """
@@ -212,6 +222,7 @@ def are_all_lazy_variadic_sockets_resolved(component: Dict, inputs: Dict) -> boo
 def is_any_greedy_socket_ready(component: Dict, inputs: Dict) -> bool:
     """
     Checks if the component has any greedy socket that is ready to run.
+
     :param component: Component metadata and the component instance.
     :param inputs: Inputs for the component.
     """
