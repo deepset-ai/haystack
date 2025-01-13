@@ -1,7 +1,7 @@
 loaders:
   - type: haystack_pydoc_tools.loaders.CustomPythonLoader
     search_path: [../../../haystack/components/preprocessors]
-    modules: ["document_cleaner", "document_splitter", "text_cleaner", "nltk_document_splitter"]
+    modules: ["document_cleaner", "document_splitter", "nltk_document_splitter", "recursive_splitter", "text_cleaner"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
