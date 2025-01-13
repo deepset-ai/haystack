@@ -17,6 +17,7 @@ from haystack.core.errors import (
     PipelineConnectError,
     PipelineDrawingError,
     PipelineError,
+    PipelineRuntimeError,
     PipelineMaxComponentRuns,
 )
 from haystack.core.pipeline import Pipeline, PredefinedPipeline
@@ -1025,52 +1026,43 @@ class TestPipeline:
         with pytest.raises(PipelineConnectError):
             pipe.connect("single_component.out", "single_component.in")
 
-    def test__run_component(self, spying_tracer, caplog):
-        caplog.set_level(logging.INFO)
-        sentence_builder = component_class(
-            "SentenceBuilder", input_types={"words": List[str]}, output={"text": "some words"}
-        )()
-        document_builder = component_class(
-            "DocumentBuilder", input_types={"text": str}, output={"doc": Document(content="some words")}
-        )()
-        document_cleaner = component_class(
-            "DocumentCleaner",
-            input_types={"doc": Document},
-            output={"cleaned_doc": Document(content="some cleaner words")},
-        )()
+    def test__run_component_success(self):
+        """Test successful component execution"""
+        joiner_1 = BranchJoiner(type_=str)
+        joiner_2 = BranchJoiner(type_=str)
+        pp = Pipeline()
+        pp.add_component("joiner_1", joiner_1)
+        pp.add_component("joiner_2", joiner_2)
+        pp.connect("joiner_1", "joiner_2")
+        inputs = {"joiner_1": {"value": [{"sender": None, "value": "test_value"}]}}
 
-        pipe = Pipeline()
-        pipe.add_component("sentence_builder", sentence_builder)
-        pipe.add_component("document_builder", document_builder)
-        pipe.add_component("document_cleaner", document_cleaner)
-        pipe.connect("sentence_builder.text", "document_builder.text")
-        pipe.connect("document_builder.doc", "document_cleaner.doc")
-        assert spying_tracer.spans == []
-        res = pipe._run_component("document_builder", {"text": "whatever"})
-        assert res == {"doc": Document(content="some words")}
+        outputs, updated_inputs = pp._run_component(
+            component=pp._get_component_with_graph_metadata("joiner_1"), inputs=inputs
+        )
 
-        assert len(spying_tracer.spans) == 1
-        span = spying_tracer.spans[0]
-        assert span.operation_name == "haystack.component.run"
-        assert span.tags == {
-            "haystack.component.name": "document_builder",
-            "haystack.component.type": "DocumentBuilder",
-            "haystack.component.input_types": {"text": "str"},
-            "haystack.component.input_spec": {"text": {"type": "str", "senders": ["sentence_builder"]}},
-            "haystack.component.output_spec": {"doc": {"type": "Document", "receivers": ["document_cleaner"]}},
-            "haystack.component.visits": 1,
-        }
+        assert outputs == {"value": "test_value"}
+        # We remove input in greedy variadic sockets, even if they are from the user
+        assert "value" not in updated_inputs["joiner_1"]
 
-        assert caplog.messages == ["Running component document_builder"]
+    def test__run_component_fail(self):
+        """Test error when component doesn't return a dictionary"""
 
-    def test__run_component_with_variadic_input(self):
-        document_joiner = component_class("DocumentJoiner", input_types={"docs": Variadic[Document]})()
+        @component
+        class WrongOutput:
+            @component.output_types(output=str)
+            def run(self, value: str):
+                return "not_a_dict"
 
-        pipe = Pipeline()
-        pipe.add_component("document_joiner", document_joiner)
-        inputs = {"docs": [Document(content="doc1"), Document(content="doc2")]}
-        pipe._run_component("document_joiner", inputs)
-        assert inputs == {"docs": []}
+        wrong = WrongOutput()
+        pp = Pipeline()
+        pp.add_component("wrong", wrong)
+
+        inputs = {"wrong": {"value": [{"sender": None, "value": "test_value"}]}}
+
+        with pytest.raises(PipelineRuntimeError) as exc_info:
+            pp._run_component(component=pp._get_component_with_graph_metadata("wrong"), inputs=inputs)
+
+        assert "didn't return a dictionary" in str(exc_info.value)
 
     def test__find_receivers_from(self):
         sentence_builder = component_class(
