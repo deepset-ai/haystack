@@ -12,9 +12,16 @@ from haystack.components.builders import PromptBuilder, AnswerBuilder
 from haystack.components.joiners import BranchJoiner
 from haystack.core.component import component
 from haystack.core.component.types import InputSocket, OutputSocket, Variadic, GreedyVariadic, _empty
-from haystack.core.errors import DeserializationError, PipelineConnectError, PipelineDrawingError, PipelineError
+from haystack.core.errors import (
+    DeserializationError,
+    PipelineConnectError,
+    PipelineDrawingError,
+    PipelineError,
+    PipelineMaxComponentRuns,
+)
 from haystack.core.pipeline import Pipeline, PredefinedPipeline
 from haystack.core.pipeline.pipeline import ComponentPriority, _NO_OUTPUT_PRODUCED
+from haystack.core.pipeline.utils import FIFOPriorityQueue
 
 from haystack.core.serialization import DeserializationCallbacks
 from haystack.testing.factory import component_class
@@ -42,6 +49,24 @@ class FakeComponentSquared:
     @component.output_types(value=str)
     def run(self, input_: str):
         return {"value": input_}
+
+
+@pytest.fixture
+def regular_output_socket():
+    """Output socket for a regular (non-variadic) connection with receivers"""
+    return OutputSocket("output1", int, receivers=["receiver1", "receiver2"])
+
+
+@pytest.fixture
+def regular_input_socket():
+    """Regular (non-variadic) input socket with a single sender"""
+    return InputSocket("input1", int, senders=["sender1"])
+
+
+@pytest.fixture
+def lazy_variadic_input_socket():
+    """Lazy variadic input socket with multiple senders"""
+    return InputSocket("variadic_input", Variadic[int], senders=["sender1", "sender2"])
 
 
 class TestPipeline:
@@ -1296,3 +1321,177 @@ class TestPipeline:
         """Test conversion of legacy pipeline inputs to internal format."""
         result = Pipeline._convert_from_legacy_format(pipeline_inputs)
         assert result == expected_output
+
+    @pytest.mark.parametrize(
+        "socket_type,existing_inputs,expected_count",
+        [
+            ("regular", None, 1),  # Regular socket should overwrite
+            ("regular", [{"sender": "other", "value": 24}], 1),  # Should still overwrite
+            ("lazy_variadic", None, 1),  # First input to lazy variadic
+            ("lazy_variadic", [{"sender": "other", "value": 24}], 2),  # Should append
+        ],
+        ids=["regular-new", "regular-existing", "variadic-new", "variadic-existing"],
+    )
+    def test__write_component_outputs_different_sockets(
+        self,
+        socket_type,
+        existing_inputs,
+        expected_count,
+        regular_output_socket,
+        regular_input_socket,
+        lazy_variadic_input_socket,
+    ):
+        """Test writing to different socket types with various existing input states"""
+        receiver_socket = lazy_variadic_input_socket if socket_type == "lazy_variadic" else regular_input_socket
+        socket_name = receiver_socket.name
+        receivers = [("receiver1", regular_output_socket, receiver_socket)]
+
+        inputs = {}
+        if existing_inputs:
+            inputs = {"receiver1": {socket_name: existing_inputs}}
+
+        component_outputs = {"output1": 42}
+
+        pruned_outputs, updated_inputs = Pipeline._write_component_outputs(
+            component_name="sender1",
+            component_outputs=component_outputs,
+            inputs=inputs,
+            receivers=receivers,
+            include_outputs_from=[],
+        )
+
+        assert len(updated_inputs["receiver1"][socket_name]) == expected_count
+        assert {"sender": "sender1", "value": 42} in updated_inputs["receiver1"][socket_name]
+
+    @pytest.mark.parametrize(
+        "component_outputs,include_outputs,expected_pruned",
+        [
+            ({"output1": 42, "output2": 24}, [], {"output2": 24}),  # Prune consumed outputs only
+            ({"output1": 42, "output2": 24}, ["sender1"], {"output1": 42, "output2": 24}),  # Keep all outputs
+            ({}, [], {}),  # No outputs case
+        ],
+        ids=["prune-consumed", "keep-all", "no-outputs"],
+    )
+    def test__write_component_outputs_output_pruning(
+        self, component_outputs, include_outputs, expected_pruned, regular_output_socket, regular_input_socket
+    ):
+        """Test output pruning behavior under different scenarios"""
+        receivers = [("receiver1", regular_output_socket, regular_input_socket)]
+
+        pruned_outputs, _ = Pipeline._write_component_outputs(
+            component_name="sender1",
+            component_outputs=component_outputs,
+            inputs={},
+            receivers=receivers,
+            include_outputs_from=include_outputs,
+        )
+
+        assert pruned_outputs == expected_pruned
+
+    @pytest.mark.parametrize(
+        "output_value",
+        [42, None, _NO_OUTPUT_PRODUCED, "string_value", 3.14],
+        ids=["int", "none", "no-output", "string", "float"],
+    )
+    def test__write_component_outputs_different_output_values(
+        self, output_value, regular_output_socket, regular_input_socket
+    ):
+        """Test handling of different output values"""
+        receivers = [("receiver1", regular_output_socket, regular_input_socket)]
+        component_outputs = {"output1": output_value}
+
+        _, updated_inputs = Pipeline._write_component_outputs(
+            component_name="sender1",
+            component_outputs=component_outputs,
+            inputs={},
+            receivers=receivers,
+            include_outputs_from=[],
+        )
+
+        assert updated_inputs["receiver1"]["input1"] == [{"sender": "sender1", "value": output_value}]
+
+    @pytest.mark.parametrize("receivers_count", [1, 2, 3], ids=["single-receiver", "two-receivers", "three-receivers"])
+    def test__write_component_outputs_multiple_receivers(
+        self, receivers_count, regular_output_socket, regular_input_socket
+    ):
+        """Test writing to multiple receivers"""
+        receivers = [(f"receiver{i}", regular_output_socket, regular_input_socket) for i in range(receivers_count)]
+        component_outputs = {"output1": 42}
+
+        _, updated_inputs = Pipeline._write_component_outputs(
+            component_name="sender1",
+            component_outputs=component_outputs,
+            inputs={},
+            receivers=receivers,
+            include_outputs_from=[],
+        )
+
+        for i in range(receivers_count):
+            receiver_name = f"receiver{i}"
+            assert receiver_name in updated_inputs
+            assert updated_inputs[receiver_name]["input1"] == [{"sender": "sender1", "value": 42}]
+
+    def test__get_next_runnable_component_empty(self):
+        """Test with empty queue returns None"""
+        queue = FIFOPriorityQueue()
+        pipeline = Pipeline()
+        result = pipeline._get_next_runnable_component(queue)
+        assert result is None
+
+    def test__get_next_runnable_component_blocked(self):
+        """Test component with BLOCKED priority returns None"""
+        pipeline = Pipeline()
+        queue = FIFOPriorityQueue()
+        queue.push("blocked_component", ComponentPriority.BLOCKED)
+        result = pipeline._get_next_runnable_component(queue)
+        assert result is None
+
+    @patch("haystack.core.pipeline.Pipeline._get_component_with_graph_metadata")
+    def test__get_next_runnable_component_max_visits(self, mock_get_component_with_graph_metadata):
+        """Test component exceeding max visits raises exception"""
+        pipeline = Pipeline(max_runs_per_component=2)
+        queue = FIFOPriorityQueue()
+        queue.push("ready_component", ComponentPriority.READY)
+        mock_get_component_with_graph_metadata.return_value = {"instance": "test", "visits": 3}
+
+        with pytest.raises(PipelineMaxComponentRuns) as exc_info:
+            pipeline._get_next_runnable_component(queue)
+
+        assert "Maximum run count 2 reached for component 'ready_component'" in str(exc_info.value)
+
+    @patch("haystack.core.pipeline.Pipeline._get_component_with_graph_metadata")
+    def test__get_next_runnable_component_ready(self, mock_get_component_with_graph_metadata):
+        """Test component that is READY"""
+        pipeline = Pipeline()
+        queue = FIFOPriorityQueue()
+        queue.push("ready_component", ComponentPriority.READY)
+        mock_get_component_with_graph_metadata.return_value = {"instance": "test", "visits": 1}
+
+        priority, component_name, component = pipeline._get_next_runnable_component(queue)
+
+        assert priority == ComponentPriority.READY
+        assert component_name == "ready_component"
+        assert component == {"instance": "test", "visits": 1}
+
+    @pytest.mark.parametrize(
+        "queue_setup,expected_stale",
+        [
+            # Empty queue case
+            (None, True),
+            # READY priority case
+            ((ComponentPriority.READY, "component1"), False),
+            # DEFER priority case
+            ((ComponentPriority.DEFER, "component1"), True),
+        ],
+        ids=["empty-queue", "ready-component", "deferred-component"],
+    )
+    def test__is_queue_stale(self, queue_setup, expected_stale):
+        # Setup queue
+        queue = FIFOPriorityQueue()
+        if queue_setup:
+            priority, component_name = queue_setup
+            queue.push(component_name, priority)
+
+        # Check if queue is stale
+        result = Pipeline._is_queue_stale(queue)
+        assert result == expected_stale
