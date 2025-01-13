@@ -1493,3 +1493,127 @@ class TestPipeline:
 
         result = Pipeline._is_queue_stale(queue)
         assert result == expected_stale
+
+    @patch("haystack.core.pipeline.Pipeline._calculate_priority")
+    @patch("haystack.core.pipeline.Pipeline._get_component_with_graph_metadata")
+    def test_fill_queue(self, mock_get_metadata, mock_calc_priority):
+        pipeline = Pipeline()
+        component_names = ["comp1", "comp2"]
+        inputs = {"comp1": {"input1": "value1"}, "comp2": {"input2": "value2"}}
+
+        mock_get_metadata.side_effect = lambda name: {"component": f"mock_{name}"}
+        mock_calc_priority.side_effect = [1, 2]  # Different priorities for testing
+
+        queue = pipeline._fill_queue(component_names, inputs)
+
+        assert mock_get_metadata.call_count == 2
+        assert mock_calc_priority.call_count == 2
+
+        # Verify correct calls for first component
+        mock_get_metadata.assert_any_call("comp1")
+        mock_calc_priority.assert_any_call({"component": "mock_comp1"}, {"input1": "value1"})
+
+        # Verify correct calls for second component
+        mock_get_metadata.assert_any_call("comp2")
+        mock_calc_priority.assert_any_call({"component": "mock_comp2"}, {"input2": "value2"})
+
+        assert queue.pop() == (1, "comp1")
+        assert queue.pop() == (2, "comp2")
+
+    @pytest.mark.parametrize(
+        "input_sockets,component_inputs,expected_consumed,expected_remaining",
+        [
+            # Regular socket test
+            (
+                {"input1": InputSocket("input1", int)},
+                {"input1": [{"sender": "comp1", "value": 42}, {"sender": "comp2", "value": 24}]},
+                {"input1": 42},  # Should take first valid input
+                {},  # All pipeline inputs should be removed
+            ),
+            # Regular socket with user input
+            (
+                {"input1": InputSocket("input1", int)},
+                {
+                    "input1": [
+                        {"sender": "comp1", "value": 42},
+                        {"sender": None, "value": 24},  # User input
+                    ]
+                },
+                {"input1": 42},
+                {"input1": [{"sender": None, "value": 24}]},  # User input should remain
+            ),
+            # Greedy variadic socket
+            (
+                {"greedy": InputSocket("greedy", GreedyVariadic[int])},
+                {
+                    "greedy": [
+                        {"sender": "comp1", "value": 42},
+                        {"sender": None, "value": 24},  # User input
+                        {"sender": "comp2", "value": 33},
+                    ]
+                },
+                {"greedy": [42]},  # Takes first valid input
+                {},  # All inputs removed for greedy sockets
+            ),
+            # Lazy variadic socket
+            (
+                {"lazy": InputSocket("lazy", Variadic[int])},
+                {
+                    "lazy": [
+                        {"sender": "comp1", "value": 42},
+                        {"sender": "comp2", "value": 24},
+                        {"sender": None, "value": 33},  # User input
+                    ]
+                },
+                {"lazy": [42, 24, 33]},  # Takes all valid inputs
+                {"lazy": [{"sender": None, "value": 33}]},  # User input remains
+            ),
+            # Mixed socket types
+            (
+                {
+                    "regular": InputSocket("regular", int),
+                    "greedy": InputSocket("greedy", GreedyVariadic[int]),
+                    "lazy": InputSocket("lazy", Variadic[int]),
+                },
+                {
+                    "regular": [{"sender": "comp1", "value": 42}, {"sender": None, "value": 24}],
+                    "greedy": [{"sender": "comp2", "value": 33}, {"sender": None, "value": 15}],
+                    "lazy": [{"sender": "comp3", "value": 55}, {"sender": "comp4", "value": 66}],
+                },
+                {"regular": 42, "greedy": [33], "lazy": [55, 66]},
+                {"regular": [{"sender": None, "value": 24}]},  # Only non-greedy user input remains
+            ),
+            # Filtering _NO_OUTPUT_PRODUCED
+            (
+                {"input1": InputSocket("input1", int)},
+                {
+                    "input1": [
+                        {"sender": "comp1", "value": _NO_OUTPUT_PRODUCED},
+                        {"sender": "comp2", "value": 42},
+                        {"sender": "comp2", "value": _NO_OUTPUT_PRODUCED},
+                    ]
+                },
+                {"input1": 42},  # Should skip _NO_OUTPUT_PRODUCED values
+                {},  # All inputs consumed
+            ),
+        ],
+        ids=[
+            "regular-socket",
+            "regular-with-user-input",
+            "greedy-variadic",
+            "lazy-variadic",
+            "mixed-sockets",
+            "no-output-filtering",
+        ],
+    )
+    def test__consume_component_inputs(self, input_sockets, component_inputs, expected_consumed, expected_remaining):
+        # Setup
+        component = {"input_sockets": input_sockets}
+        inputs = {"test_component": component_inputs}
+
+        # Run
+        consumed, updated_inputs = Pipeline._consume_component_inputs("test_component", component, inputs)
+
+        # Verify
+        assert consumed == expected_consumed
+        assert updated_inputs["test_component"] == expected_remaining
