@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fixed error for Pipeline.from_dict on invalid type (e.g. empty string).
