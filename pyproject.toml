@@ -126,6 +126,9 @@ extra-dependencies = [
   # Structured logging
   "structlog",
 
+  # ComponentTool
+  "docstring-parser",
+
   # Test
   "pytest",
   "pytest-bdd",
