@@ -103,7 +103,7 @@ def can_not_receive_inputs_from_pipeline(component: Dict) -> bool:
     Checks if a component can not receive inputs from any other components in the pipeline.
     :param: Component metadata and the component instance.
     """
-    return all([len(sock.senders) == 0 for sock in component["input_sockets"].values()])
+    return all(len(sock.senders) == 0 for sock in component["input_sockets"].values())
 
 
 def all_socket_predecessors_executed(socket: InputSocket, socket_inputs: List[Dict]) -> bool:
@@ -163,7 +163,7 @@ def has_socket_received_all_inputs(socket: InputSocket, socket_inputs: List[Dict
         socket.is_variadic
         and socket.is_greedy
         and len(socket_inputs) > 0
-        and any([sock["value"] != _NO_OUTPUT_PRODUCED for sock in socket_inputs])
+        and any(sock["value"] != _NO_OUTPUT_PRODUCED for sock in socket_inputs)
     ):
         return True
 

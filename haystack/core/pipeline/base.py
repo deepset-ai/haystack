@@ -7,7 +7,7 @@ from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional, Set, TextIO, Tuple, Type, TypeVar, Union
+from typing import Any, Dict, Iterator, List, Optional, TextIO, Tuple, Type, TypeVar, Union
 
 import networkx  # type:ignore
 
@@ -18,7 +18,6 @@ from haystack.core.errors import (
     PipelineConnectError,
     PipelineDrawingError,
     PipelineError,
-    PipelineRuntimeError,
     PipelineUnmarshalError,
     PipelineValidationError,
 )

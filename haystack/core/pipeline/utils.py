@@ -70,7 +70,7 @@ class FIFOPriorityQueue:
         """
         if not self._queue:
             raise IndexError("pop from empty queue")
-        priority, count, item = heapq.heappop(self._queue)
+        priority, _, item = heapq.heappop(self._queue)
         return priority, item
 
     def peek(self) -> Tuple[int, Any]:
@@ -86,7 +86,7 @@ class FIFOPriorityQueue:
         """
         if not self._queue:
             raise IndexError("peek at empty queue")
-        priority, count, item = self._queue[0]
+        priority, _, item = self._queue[0]
         return priority, item
 
     def get(self) -> Optional[Tuple[int, Any]]:
@@ -101,7 +101,7 @@ class FIFOPriorityQueue:
         """
         if not self._queue:
             return None
-        priority, count, item = heapq.heappop(self._queue)
+        priority, _, item = heapq.heappop(self._queue)
         return priority, item
 
     def __len__(self) -> int:

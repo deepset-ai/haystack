@@ -431,7 +431,7 @@ class Pipeline(PipelineBase):
                 if candidate is None:
                     break
 
-                priority, component_name, component = candidate
+                _, component_name, component = candidate
                 component_outputs, inputs = self._run_component(component, inputs, parent_span=span)
                 component_pipeline_outputs, inputs = self._write_component_outputs(
                     component_name=component_name,
