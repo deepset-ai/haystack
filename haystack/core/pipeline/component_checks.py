@@ -62,9 +62,9 @@ def are_all_mandatory_sockets_ready(component: Dict, inputs: Dict) -> bool:
             socket_inputs = inputs.get(socket_name, [])
             expected_mandatory_sockets.add(socket_name)
             if (
-                    is_socket_lazy_variadic(socket) and
-                    any_socket_input_received(socket_inputs) or
-                    has_socket_received_all_inputs(socket, socket_inputs)
+                is_socket_lazy_variadic(socket)
+                and any_socket_input_received(socket_inputs)
+                or has_socket_received_all_inputs(socket, socket_inputs)
             ):
                 filled_mandatory_sockets.add(socket_name)
 

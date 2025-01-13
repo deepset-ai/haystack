@@ -297,7 +297,6 @@ class Pipeline(PipelineBase):
         """
         return len(priority_queue) == 0 or priority_queue.peek()[0] > ComponentPriority.READY
 
-
     def run(  # noqa: PLR0915, PLR0912
         self, data: Dict[str, Any], include_outputs_from: Optional[Set[str]] = None
     ) -> Dict[str, Any]:
