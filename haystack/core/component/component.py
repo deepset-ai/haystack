@@ -268,9 +268,9 @@ class ComponentMeta(type):
             try:
                 pre_init_hook.in_progress = True
                 named_positional_args = ComponentMeta._positional_to_kwargs(cls, args)
-                assert (
-                    set(named_positional_args.keys()).intersection(kwargs.keys()) == set()
-                ), "positional and keyword arguments overlap"
+                assert set(named_positional_args.keys()).intersection(kwargs.keys()) == set(), (
+                    "positional and keyword arguments overlap"
+                )
                 kwargs.update(named_positional_args)
                 pre_init_hook.callback(cls, kwargs)
                 instance = super().__call__(**kwargs)

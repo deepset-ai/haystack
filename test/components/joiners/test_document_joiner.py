@@ -302,6 +302,6 @@ class TestDocumentJoiner:
                 for i in range(len(join_results["documents"]) - 1)
             )
 
-            assert (
-                is_sorted
-            ), "Documents are not sorted in descending order by score, there is an issue with rff ranking"
+            assert is_sorted, (
+                "Documents are not sorted in descending order by score, there is an issue with rff ranking"
+            )
