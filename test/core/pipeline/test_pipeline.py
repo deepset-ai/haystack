@@ -1292,7 +1292,7 @@ class TestPipeline:
         ],
         ids=["empty_input", "single_component_multiple_inputs", "multiple_components"],
     )
-    def test_convert_from_legacy_format(self, pipeline_inputs, expected_output):
+    def test__convert_from_legacy_format(self, pipeline_inputs, expected_output):
         """Test conversion of legacy pipeline inputs to internal format."""
         result = Pipeline._convert_from_legacy_format(pipeline_inputs)
         assert result == expected_output
