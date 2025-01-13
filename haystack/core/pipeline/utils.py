@@ -22,6 +22,7 @@ def parse_connect_string(connection: str) -> Tuple[str, Optional[str]]:
         return (split_str[0], split_str[1])
     return connection, None
 
+
 class FIFOPriorityQueue:
     """
     A priority queue that maintains FIFO order for items of equal priority.
