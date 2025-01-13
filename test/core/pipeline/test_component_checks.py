@@ -14,12 +14,11 @@ def basic_component():
         "visits": 0,
         "input_sockets": {
             "mandatory_input": InputSocket("mandatory_input", int),
-            "optional_input": InputSocket("optional_input", str, default_value="default")
+            "optional_input": InputSocket("optional_input", str, default_value="default"),
         },
-        "output_sockets": {
-            "output": OutputSocket("output", int)
-        }
+        "output_sockets": {"output": OutputSocket("output", int)},
     }
+
 
 @pytest.fixture
 def variadic_component():
@@ -29,12 +28,11 @@ def variadic_component():
         "visits": 0,
         "input_sockets": {
             "variadic_input": InputSocket("variadic_input", Variadic[int]),
-            "normal_input": InputSocket("normal_input", str)
+            "normal_input": InputSocket("normal_input", str),
         },
-        "output_sockets": {
-            "output": OutputSocket("output", int)
-        }
+        "output_sockets": {"output": OutputSocket("output", int)},
     }
+
 
 @pytest.fixture
 def greedy_variadic_component():
@@ -44,12 +42,11 @@ def greedy_variadic_component():
         "visits": 0,
         "input_sockets": {
             "greedy_input": InputSocket("greedy_input", GreedyVariadic[int]),
-            "normal_input": InputSocket("normal_input", str)
+            "normal_input": InputSocket("normal_input", str),
         },
-        "output_sockets": {
-            "output": OutputSocket("output", int)
-        }
+        "output_sockets": {"output": OutputSocket("output", int)},
     }
+
 
 @pytest.fixture
 def input_socket_with_sender():
@@ -58,12 +55,14 @@ def input_socket_with_sender():
     socket.senders = ["component1"]
     return socket
 
+
 @pytest.fixture
 def variadic_socket_with_senders():
     """Variadic input socket with multiple senders."""
     socket = InputSocket("test_variadic", Variadic[int])
     socket.senders = ["component1", "component2"]
     return socket
+
 
 @pytest.fixture
 def component_with_multiple_sockets(input_socket_with_sender, variadic_socket_with_senders):
@@ -73,9 +72,10 @@ def component_with_multiple_sockets(input_socket_with_sender, variadic_socket_wi
         "input_sockets": {
             "socket1": input_socket_with_sender,
             "socket2": variadic_socket_with_senders,
-            "socket3": InputSocket("socket3", str)  # No senders
-        }
+            "socket3": InputSocket("socket3", str),  # No senders
+        },
     }
+
 
 @pytest.fixture
 def regular_socket():
@@ -84,6 +84,7 @@ def regular_socket():
     socket.senders = ["component1"]
     return socket
 
+
 @pytest.fixture
 def lazy_variadic_socket():
     """Lazy variadic input socket with multiple senders."""
@@ -91,12 +92,14 @@ def lazy_variadic_socket():
     socket.senders = ["component1", "component2"]
     return socket
 
+
 @pytest.fixture
 def greedy_variadic_socket():
     """Greedy variadic input socket with multiple senders."""
     socket = InputSocket("greedy_variadic", GreedyVariadic[int])
     socket.senders = ["component1", "component2", "component3"]
     return socket
+
 
 @pytest.fixture
 def complex_component(regular_socket, lazy_variadic_socket, greedy_variadic_socket):
@@ -106,24 +109,20 @@ def complex_component(regular_socket, lazy_variadic_socket, greedy_variadic_sock
         "input_sockets": {
             "regular": regular_socket,
             "lazy_var": lazy_variadic_socket,
-            "greedy_var": greedy_variadic_socket
-        }
+            "greedy_var": greedy_variadic_socket,
+        },
     }
 
 
 class TestCanComponentRun:
     def test_component_with_all_mandatory_inputs_and_trigger(self, basic_component):
         """Checks that the component runs if all mandatory inputs are received and triggered."""
-        inputs = {
-            "mandatory_input": [{"sender": "previous_component", "value": 42}]
-        }
+        inputs = {"mandatory_input": [{"sender": "previous_component", "value": 42}]}
         assert can_component_run(basic_component, inputs) is True
 
     def test_component_missing_mandatory_input(self, basic_component):
         """Checks that the component won't run if mandatory inputs are missing."""
-        inputs = {
-            "optional_input": [{"sender": "previous_component", "value": "test"}]
-        }
+        inputs = {"optional_input": [{"sender": "previous_component", "value": "test"}]}
         assert can_component_run(basic_component, inputs) is False
 
     def test_component_with_no_trigger_but_all_inputs(self, basic_component):
@@ -132,17 +131,13 @@ class TestCanComponentRun:
         but there is no trigger (no new input from predecessor, not first visit).
         """
         basic_component["visits"] = 1
-        inputs = {
-            "mandatory_input": [{"sender": None, "value": 42}]
-        }
+        inputs = {"mandatory_input": [{"sender": None, "value": 42}]}
         assert can_component_run(basic_component, inputs) is False
 
     def test_component_with_multiple_visits(self, basic_component):
         """Checks that a component can still be triggered on subsequent visits by a predecessor."""
         basic_component["visits"] = 2
-        inputs = {
-            "mandatory_input": [{"sender": "previous_component", "value": 42}]
-        }
+        inputs = {"mandatory_input": [{"sender": "previous_component", "value": 42}]}
         assert can_component_run(basic_component, inputs) is True
 
     def test_component_with_no_inputs_first_visit(self, basic_component):
@@ -160,33 +155,25 @@ class TestCanComponentRun:
         basic_component["visits"] = 1
 
         # Now a predecessor provides a new input; this should re-trigger execution.
-        inputs = {
-            "mandatory_input": [{"sender": "previous_component", "value": 99}]
-        }
+        inputs = {"mandatory_input": [{"sender": "previous_component", "value": 99}]}
         assert can_component_run(basic_component, inputs) is True
 
 
 class TestHasAnyTrigger:
     def test_trigger_from_predecessor(self, basic_component):
         """Ensures that new data from a predecessor can trigger a component."""
-        inputs = {
-            "mandatory_input": [{"sender": "previous_component", "value": 42}]
-        }
+        inputs = {"mandatory_input": [{"sender": "previous_component", "value": 42}]}
         assert has_any_trigger(basic_component, inputs) is True
 
     def test_trigger_from_user_first_visit(self, basic_component):
         """Checks that user input (sender=None) triggers the component on the first visit."""
-        inputs = {
-            "mandatory_input": [{"sender": None, "value": 42}]
-        }
+        inputs = {"mandatory_input": [{"sender": None, "value": 42}]}
         assert has_any_trigger(basic_component, inputs) is True
 
     def test_no_trigger_from_user_after_first_visit(self, basic_component):
         """Checks that user input no longer triggers the component after the first visit."""
         basic_component["visits"] = 1
-        inputs = {
-            "mandatory_input": [{"sender": None, "value": 42}]
-        }
+        inputs = {"mandatory_input": [{"sender": None, "value": 42}]}
         assert has_any_trigger(basic_component, inputs) is False
 
     def test_trigger_without_inputs_first_visit(self, basic_component):
@@ -206,23 +193,19 @@ class TestHasAnyTrigger:
 class TestAllMandatorySocketsReady:
     def test_all_mandatory_sockets_filled(self, basic_component):
         """Checks that all mandatory sockets are ready when they have valid input."""
-        inputs = {
-            "mandatory_input": [{"sender": "previous_component", "value": 42}]
-        }
+        inputs = {"mandatory_input": [{"sender": "previous_component", "value": 42}]}
         assert are_all_mandatory_sockets_ready(basic_component, inputs) is True
 
     def test_missing_mandatory_socket(self, basic_component):
         """Ensures that if a mandatory socket is missing, the component is not ready."""
-        inputs = {
-            "optional_input": [{"sender": "previous_component", "value": "test"}]
-        }
+        inputs = {"optional_input": [{"sender": "previous_component", "value": "test"}]}
         assert are_all_mandatory_sockets_ready(basic_component, inputs) is False
 
     def test_variadic_socket_with_input(self, variadic_component):
         """Verifies that a variadic socket is considered filled if it has at least one input."""
         inputs = {
             "variadic_input": [{"sender": "previous_component", "value": 42}],
-            "normal_input": [{"sender": "previous_component", "value": "test"}]
+            "normal_input": [{"sender": "previous_component", "value": "test"}],
         }
         assert are_all_mandatory_sockets_ready(variadic_component, inputs) is True
 
@@ -230,15 +213,13 @@ class TestAllMandatorySocketsReady:
         """Greedy variadic sockets are ready with at least one valid input."""
         inputs = {
             "greedy_input": [{"sender": "previous_component", "value": 42}],
-            "normal_input": [{"sender": "previous_component", "value": "test"}]
+            "normal_input": [{"sender": "previous_component", "value": "test"}],
         }
         assert are_all_mandatory_sockets_ready(greedy_variadic_component, inputs) is True
 
     def test_variadic_socket_no_input(self, variadic_component):
         """A variadic socket is not filled if it has zero valid inputs."""
-        inputs = {
-            "normal_input": [{"sender": "previous_component", "value": "test"}]
-        }
+        inputs = {"normal_input": [{"sender": "previous_component", "value": "test"}]}
         assert are_all_mandatory_sockets_ready(variadic_component, inputs) is False
 
     def test_empty_inputs(self, basic_component):
@@ -250,7 +231,7 @@ class TestAllMandatorySocketsReady:
         """Ensures that if there are no mandatory sockets, the component is considered ready."""
         basic_component["input_sockets"] = {
             "optional_1": InputSocket("optional_1", str, default_value="default1"),
-            "optional_2": InputSocket("optional_2", str, default_value="default2")
+            "optional_2": InputSocket("optional_2", str, default_value="default2"),
         }
         inputs = {}
         assert are_all_mandatory_sockets_ready(basic_component, inputs) is True
@@ -260,19 +241,16 @@ class TestAllMandatorySocketsReady:
         basic_component["input_sockets"] = {
             "mandatory_1": InputSocket("mandatory_1", int),
             "mandatory_2": InputSocket("mandatory_2", str),
-            "optional": InputSocket("optional", bool, default_value=False)
+            "optional": InputSocket("optional", bool, default_value=False),
         }
         inputs = {
             "mandatory_1": [{"sender": "comp1", "value": 42}],
-            "mandatory_2": [{"sender": "comp2", "value": "test"}]
+            "mandatory_2": [{"sender": "comp2", "value": "test"}],
         }
         assert are_all_mandatory_sockets_ready(basic_component, inputs) is True
 
         # Missing one mandatory input
-        inputs = {
-            "mandatory_1": [{"sender": "comp1", "value": 42}],
-            "optional": [{"sender": "comp3", "value": True}]
-        }
+        inputs = {"mandatory_1": [{"sender": "comp1", "value": 42}], "optional": [{"sender": "comp3", "value": True}]}
         assert are_all_mandatory_sockets_ready(basic_component, inputs) is False
 
 
@@ -281,20 +259,14 @@ class TestPredecessorInputDetection:
         """
         Tests detection of predecessor input when a valid predecessor sends data.
         """
-        inputs = {
-            "socket1": [{"sender": "component1", "value": 42}],
-            "socket2": [{"sender": None, "value": "test"}]
-        }
+        inputs = {"socket1": [{"sender": "component1", "value": 42}], "socket2": [{"sender": None, "value": "test"}]}
         assert any_predecessors_provided_input(component_with_multiple_sockets, inputs) is True
 
     def test_any_predecessors_provided_input_no_predecessor(self, component_with_multiple_sockets):
         """
         Checks that no predecessor inputs are detected if all senders are None (user inputs).
         """
-        inputs = {
-            "socket1": [{"sender": None, "value": 42}],
-            "socket2": [{"sender": None, "value": "test"}]
-        }
+        inputs = {"socket1": [{"sender": None, "value": 42}], "socket2": [{"sender": None, "value": "test"}]}
         assert any_predecessors_provided_input(component_with_multiple_sockets, inputs) is False
 
     def test_any_predecessors_provided_input_with_no_output(self, component_with_multiple_sockets):
@@ -303,7 +275,7 @@ class TestPredecessorInputDetection:
         """
         inputs = {
             "socket1": [{"sender": "component1", "value": _NO_OUTPUT_PRODUCED}],
-            "socket2": [{"sender": None, "value": "test"}]
+            "socket2": [{"sender": None, "value": "test"}],
         }
         assert any_predecessors_provided_input(component_with_multiple_sockets, inputs) is False
 
@@ -322,29 +294,17 @@ class TestSocketValueFromPredecessor:
     @pytest.mark.parametrize(
         "socket_inputs, expected_result",
         [
-            pytest.param(
-                [{"sender": "component1", "value": 42}],
-                True,
-                id="valid_input"
-            ),
-            pytest.param(
-                [{"sender": "component1", "value": _NO_OUTPUT_PRODUCED}],
-                False,
-                id="no_output"
-            ),
-            pytest.param(
-                [{"sender": None, "value": 42}],
-                False,
-                id="user_input"
-            ),
+            pytest.param([{"sender": "component1", "value": 42}], True, id="valid_input"),
+            pytest.param([{"sender": "component1", "value": _NO_OUTPUT_PRODUCED}], False, id="no_output"),
+            pytest.param([{"sender": None, "value": 42}], False, id="user_input"),
             pytest.param(
                 [
                     {"sender": None, "value": 42},
                     {"sender": "component1", "value": _NO_OUTPUT_PRODUCED},
-                    {"sender": "component2", "value": 100}
+                    {"sender": "component2", "value": 100},
                 ],
                 True,
-                id="mixed_inputs"
+                id="mixed_inputs",
             ),
             pytest.param([], False, id="empty_list"),
         ],
@@ -360,17 +320,14 @@ class TestSocketValueFromPredecessor:
 class TestUserInputDetection:
     def test_has_user_input_with_user_input(self):
         """Checks that having a sender=None input means user input is present."""
-        inputs = {
-            "socket1": [{"sender": None, "value": 42}],
-            "socket2": [{"sender": "component1", "value": "test"}]
-        }
+        inputs = {"socket1": [{"sender": None, "value": 42}], "socket2": [{"sender": "component1", "value": "test"}]}
         assert has_user_input(inputs) is True
 
     def test_has_user_input_without_user_input(self):
         """Ensures that if all senders are component-based, there's no user input."""
         inputs = {
             "socket1": [{"sender": "component1", "value": 42}],
-            "socket2": [{"sender": "component2", "value": "test"}]
+            "socket2": [{"sender": "component2", "value": "test"}],
         }
         assert has_user_input(inputs) is False
 
@@ -384,21 +341,14 @@ class TestUserInputDetection:
         Even if the input value is _NO_OUTPUT_PRODUCED, if sender=None
         it still counts as user input being provided.
         """
-        inputs = {
-            "socket1": [{"sender": None, "value": _NO_OUTPUT_PRODUCED}]
-        }
+        inputs = {"socket1": [{"sender": None, "value": _NO_OUTPUT_PRODUCED}]}
         assert has_user_input(inputs) is True
 
 
 class TestPipelineInputCapability:
     def test_cannot_receive_inputs_no_senders(self):
         """Checks that a component with zero senders for each socket cannot receive pipeline inputs."""
-        component = {
-            "input_sockets": {
-                "socket1": InputSocket("socket1", int),
-                "socket2": InputSocket("socket2", str)
-            }
-        }
+        component = {"input_sockets": {"socket1": InputSocket("socket1", int), "socket2": InputSocket("socket2", str)}}
         assert can_not_receive_inputs_from_pipeline(component) is True
 
     def test_cannot_receive_inputs_with_senders(self, component_with_multiple_sockets):
@@ -410,7 +360,7 @@ class TestPipelineInputCapability:
         component = {
             "input_sockets": {
                 "socket1": input_socket_with_sender,
-                "socket2": InputSocket("socket2", str)  # No senders
+                "socket2": InputSocket("socket2", str),  # No senders
             }
         }
         assert can_not_receive_inputs_from_pipeline(component) is False
@@ -434,10 +384,7 @@ class TestSocketExecutionStatus:
 
     def test_variadic_socket_all_predecessors_executed(self, variadic_socket_with_senders):
         """Variadic socket is executed only if all senders have produced at least one valid result."""
-        socket_inputs = [
-            {"sender": "component1", "value": 42},
-            {"sender": "component2", "value": 43}
-        ]
+        socket_inputs = [{"sender": "component1", "value": 42}, {"sender": "component2", "value": 43}]
         assert all_socket_predecessors_executed(variadic_socket_with_senders, socket_inputs) is True
 
     def test_variadic_socket_partial_execution(self, variadic_socket_with_senders):
@@ -453,7 +400,7 @@ class TestSocketExecutionStatus:
         socket_inputs = [
             {"sender": "component1", "value": 42},
             {"sender": None, "value": 43},
-            {"sender": "component2", "value": 44}
+            {"sender": "component2", "value": 44},
         ]
         assert all_socket_predecessors_executed(variadic_socket_with_senders, socket_inputs) is True
 
@@ -476,10 +423,7 @@ class TestSocketInputReceived:
 
     def test_any_socket_input_received_mixed_inputs(self):
         """A single valid input among many is enough to consider the socket as having input."""
-        socket_inputs = [
-            {"sender": "component1", "value": _NO_OUTPUT_PRODUCED},
-            {"sender": "component2", "value": 42}
-        ]
+        socket_inputs = [{"sender": "component1", "value": _NO_OUTPUT_PRODUCED}, {"sender": "component2", "value": 42}]
         assert any_socket_input_received(socket_inputs) is True
 
     def test_any_socket_input_received_empty_list(self):
@@ -490,10 +434,7 @@ class TestSocketInputReceived:
 class TestLazyVariadicSocket:
     def test_lazy_variadic_all_inputs_received(self, variadic_socket_with_senders):
         """Lazy variadic socket is ready only if all named senders provided outputs."""
-        socket_inputs = [
-            {"sender": "component1", "value": 42},
-            {"sender": "component2", "value": 43}
-        ]
+        socket_inputs = [{"sender": "component1", "value": 42}, {"sender": "component2", "value": 43}]
         assert has_lazy_variadic_socket_received_all_inputs(variadic_socket_with_senders, socket_inputs) is True
 
     def test_lazy_variadic_partial_inputs(self, variadic_socket_with_senders):
@@ -503,10 +444,7 @@ class TestLazyVariadicSocket:
 
     def test_lazy_variadic_with_no_output(self, variadic_socket_with_senders):
         """_NO_OUTPUT_PRODUCED from a sender doesn't count as valid input, so it's not fully received."""
-        socket_inputs = [
-            {"sender": "component1", "value": _NO_OUTPUT_PRODUCED},
-            {"sender": "component2", "value": 42}
-        ]
+        socket_inputs = [{"sender": "component1", "value": _NO_OUTPUT_PRODUCED}, {"sender": "component2", "value": 42}]
         assert has_lazy_variadic_socket_received_all_inputs(variadic_socket_with_senders, socket_inputs) is False
 
     def test_lazy_variadic_with_user_input(self, variadic_socket_with_senders):
@@ -517,7 +455,7 @@ class TestLazyVariadicSocket:
         socket_inputs = [
             {"sender": "component1", "value": 42},
             {"sender": None, "value": 43},
-            {"sender": "component2", "value": 44}
+            {"sender": "component2", "value": 44},
         ]
         assert has_lazy_variadic_socket_received_all_inputs(variadic_socket_with_senders, socket_inputs) is True
 
@@ -558,10 +496,7 @@ class TestSocketInputCompletion:
 
     def test_lazy_variadic_socket_all_inputs(self, lazy_variadic_socket):
         """Lazy variadic socket is complete only if all senders have produced valid outputs."""
-        inputs = [
-            {"sender": "component1", "value": 42},
-            {"sender": "component2", "value": 43}
-        ]
+        inputs = [{"sender": "component1", "value": 42}, {"sender": "component2", "value": 43}]
         assert has_socket_received_all_inputs(lazy_variadic_socket, inputs) is True
 
     def test_lazy_variadic_socket_partial_inputs(self, lazy_variadic_socket):
@@ -571,10 +506,7 @@ class TestSocketInputCompletion:
 
     def test_lazy_variadic_socket_with_no_output(self, lazy_variadic_socket):
         """A sender that produces _NO_OUTPUT_PRODUCED does not fulfill the lazy socket requirement."""
-        inputs = [
-            {"sender": "component1", "value": 42},
-            {"sender": "component2", "value": _NO_OUTPUT_PRODUCED}
-        ]
+        inputs = [{"sender": "component1", "value": 42}, {"sender": "component2", "value": _NO_OUTPUT_PRODUCED}]
         assert has_socket_received_all_inputs(lazy_variadic_socket, inputs) is False
 
     def test_greedy_variadic_socket_one_input(self, greedy_variadic_socket):
@@ -584,10 +516,7 @@ class TestSocketInputCompletion:
 
     def test_greedy_variadic_socket_multiple_inputs(self, greedy_variadic_socket):
         """A greedy variadic socket with multiple inputs remains complete as soon as one is valid."""
-        inputs = [
-            {"sender": "component1", "value": 42},
-            {"sender": "component2", "value": 43}
-        ]
+        inputs = [{"sender": "component1", "value": 42}, {"sender": "component2", "value": 43}]
         assert has_socket_received_all_inputs(greedy_variadic_socket, inputs) is True
 
     def test_greedy_variadic_socket_no_valid_inputs(self, greedy_variadic_socket):
@@ -604,15 +533,12 @@ class TestPredecessorExecution:
         """
         inputs = {
             "regular": [{"sender": "component1", "value": 42}],
-            "lazy_var": [
-                {"sender": "component1", "value": 42},
-                {"sender": "component2", "value": 43}
-            ],
+            "lazy_var": [{"sender": "component1", "value": 42}, {"sender": "component2", "value": 43}],
             "greedy_var": [
                 {"sender": "component1", "value": 42},
                 {"sender": "component2", "value": 43},
-                {"sender": "component3", "value": 44}
-            ]
+                {"sender": "component3", "value": 44},
+            ],
         }
         assert all_predecessors_executed(complex_component, inputs) is True
 
@@ -621,10 +547,7 @@ class TestPredecessorExecution:
         inputs = {
             "regular": [{"sender": "component1", "value": 42}],
             "lazy_var": [{"sender": "component1", "value": 42}],  # Missing component2
-            "greedy_var": [
-                {"sender": "component1", "value": 42},
-                {"sender": "component2", "value": 43}
-            ]
+            "greedy_var": [{"sender": "component1", "value": 42}, {"sender": "component2", "value": 43}],
         }
         assert all_predecessors_executed(complex_component, inputs) is False
 
@@ -635,15 +558,12 @@ class TestPredecessorExecution:
         """
         inputs = {
             "regular": [{"sender": "component1", "value": 42}],
-            "lazy_var": [
-                {"sender": "component1", "value": 42},
-                {"sender": None, "value": 43}
-            ],
+            "lazy_var": [{"sender": "component1", "value": 42}, {"sender": None, "value": 43}],
             "greedy_var": [
                 {"sender": "component1", "value": 42},
                 {"sender": "component2", "value": 43},
-                {"sender": "component3", "value": 44}
-            ]
+                {"sender": "component3", "value": 44},
+            ],
         }
         assert all_predecessors_executed(complex_component, inputs) is False
 
@@ -651,12 +571,7 @@ class TestPredecessorExecution:
 class TestLazyVariadicResolution:
     def test_lazy_variadic_sockets_all_resolved(self, complex_component):
         """Checks that lazy variadic sockets are resolved when all inputs have arrived."""
-        inputs = {
-            "lazy_var": [
-                {"sender": "component1", "value": 42},
-                {"sender": "component2", "value": 43}
-            ]
-        }
+        inputs = {"lazy_var": [{"sender": "component1", "value": 42}, {"sender": "component2", "value": 43}]}
         assert are_all_lazy_variadic_sockets_resolved(complex_component, inputs) is True
 
     def test_lazy_variadic_sockets_partially_resolved(self, complex_component):
@@ -679,7 +594,7 @@ class TestLazyVariadicResolution:
         inputs = {
             "lazy_var": [
                 {"sender": "component1", "value": _NO_OUTPUT_PRODUCED},
-                {"sender": "component2", "value": _NO_OUTPUT_PRODUCED}
+                {"sender": "component2", "value": _NO_OUTPUT_PRODUCED},
             ]
         }
         assert are_all_lazy_variadic_sockets_resolved(complex_component, inputs) is True
@@ -688,26 +603,17 @@ class TestLazyVariadicResolution:
 class TestGreedySocketReadiness:
     def test_greedy_socket_ready(self, complex_component):
         """A single valid input is enough for a greedy variadic socket to be considered ready."""
-        inputs = {
-            "greedy_var": [{"sender": "component1", "value": 42}]
-        }
+        inputs = {"greedy_var": [{"sender": "component1", "value": 42}]}
         assert is_any_greedy_socket_ready(complex_component, inputs) is True
 
     def test_greedy_socket_multiple_inputs_ready(self, complex_component):
         """Multiple valid inputs on a greedy socket is also fine—it's still ready."""
-        inputs = {
-            "greedy_var": [
-                {"sender": "component1", "value": 42},
-                {"sender": "component2", "value": 43}
-            ]
-        }
+        inputs = {"greedy_var": [{"sender": "component1", "value": 42}, {"sender": "component2", "value": 43}]}
         assert is_any_greedy_socket_ready(complex_component, inputs) is True
 
     def test_greedy_socket_not_ready(self, complex_component):
         """If the only input is _NO_OUTPUT_PRODUCED, the greedy socket isn't ready."""
-        inputs = {
-            "greedy_var": [{"sender": "component1", "value": _NO_OUTPUT_PRODUCED}]
-        }
+        inputs = {"greedy_var": [{"sender": "component1", "value": _NO_OUTPUT_PRODUCED}]}
         assert is_any_greedy_socket_ready(complex_component, inputs) is False
 
     def test_greedy_socket_no_inputs(self, complex_component):
@@ -717,7 +623,5 @@ class TestGreedySocketReadiness:
 
     def test_greedy_socket_with_user_input(self, complex_component):
         """User input can also trigger readiness for a greedy variadic socket."""
-        inputs = {
-            "greedy_var": [{"sender": None, "value": 42}]
-        }
+        inputs = {"greedy_var": [{"sender": None, "value": 42}]}
         assert is_any_greedy_socket_ready(complex_component, inputs) is True

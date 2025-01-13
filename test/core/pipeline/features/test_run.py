@@ -10,7 +10,7 @@ from haystack.document_stores.types import DuplicatePolicy
 from haystack.dataclasses import ChatMessage, GeneratedAnswer
 from haystack.components.routers import ConditionalRouter
 from haystack.components.builders import PromptBuilder, AnswerBuilder, ChatPromptBuilder
-from haystack.components.converters.output_adapter import  OutputAdapter
+from haystack.components.converters.output_adapter import OutputAdapter
 from haystack.components.preprocessors import DocumentCleaner
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -1809,6 +1809,7 @@ def that_has_a_variadic_component_that_receives_partial_inputs():
         ],
     )
 
+
 @given(
     "a pipeline that has a variadic component that receives partial inputs in a different order",
     target_fixture="pipeline_data",
@@ -2283,6 +2284,7 @@ def that_has_a_string_variadic_component():
             )
         ],
     )
+
 
 @given("a pipeline that is an agent that can use RAG", target_fixture="pipeline_data")
 def an_agent_that_can_use_RAG():
@@ -2822,6 +2824,7 @@ Provide additional feedback on why it fails.
         ],
     )
 
+
 @given("a pipeline that passes outputs that are consumed in cycle to outside the cycle", target_fixture="pipeline_data")
 def passes_outputs_outside_cycle():
     @component
@@ -2850,7 +2853,6 @@ def passes_outputs_outside_cycle():
 
             if prompt is not None:
                 answer.meta["prompt"] = prompt
-
 
             return {"answers": [answer]}
 
@@ -2894,7 +2896,9 @@ def generate_santa_sleigh():
 
     router = ConditionalRouter(routes=routes)
     joiner = BranchJoiner(type_=str)
-    concatenator = OutputAdapter(template="{{code_prompt + '\n' + generated_code[0] + '\n' + feedback}}", output_type=str)
+    concatenator = OutputAdapter(
+        template="{{code_prompt + '\n' + generated_code[0] + '\n' + feedback}}", output_type=str
+    )
 
     answer_builder = AnswerBuilderWithPrompt()
 
@@ -2936,7 +2940,13 @@ FAIL, come on, try again."""
             PipelineRunData(
                 inputs={"joiner": {"value": task}, "answer_builder": {"query": task}},
                 expected_outputs={
-                    "answer_builder": {"answers": [GeneratedAnswer(data=valid_response, query=task, documents=[], meta={"prompt": expected_prompt})]}
+                    "answer_builder": {
+                        "answers": [
+                            GeneratedAnswer(
+                                data=valid_response, query=task, documents=[], meta={"prompt": expected_prompt}
+                            )
+                        ]
+                    }
                 },
                 expected_run_order=[
                     "joiner",
@@ -2964,5 +2974,3 @@ FAIL, come on, try again."""
             )
         ],
     )
-
-

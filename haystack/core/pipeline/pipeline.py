@@ -10,14 +10,22 @@ from haystack import logging, tracing
 from haystack.core.component import Component
 from haystack.core.errors import PipelineMaxComponentRuns, PipelineRuntimeError
 from haystack.core.pipeline.base import PipelineBase
-from haystack.core.pipeline.component_checks import can_component_run, is_any_greedy_socket_ready, \
-    is_socket_lazy_variadic
-from haystack.core.pipeline.component_checks import all_predecessors_executed, are_all_lazy_variadic_sockets_resolved, _NO_OUTPUT_PRODUCED
+from haystack.core.pipeline.component_checks import (
+    can_component_run,
+    is_any_greedy_socket_ready,
+    is_socket_lazy_variadic,
+)
+from haystack.core.pipeline.component_checks import (
+    all_predecessors_executed,
+    are_all_lazy_variadic_sockets_resolved,
+    _NO_OUTPUT_PRODUCED,
+)
 from haystack.core.pipeline.utils import FIFOPriorityQueue
 
 from haystack.telemetry import pipeline_running
 
 logger = logging.getLogger(__name__)
+
 
 class ComponentPriority(IntEnum):
     HIGHEST = 1
@@ -25,6 +33,7 @@ class ComponentPriority(IntEnum):
     DEFER = 3
     DEFER_LAST = 4
     BLOCKED = 5
+
 
 class Pipeline(PipelineBase):
     """
@@ -72,9 +81,7 @@ class Pipeline(PipelineBase):
             parent_span=parent_span,
         ) as span:
             component_inputs, inputs = self._consume_component_inputs(
-                component_name=component_name,
-                component=component,
-                inputs=inputs
+                component_name=component_name, component=component, inputs=inputs
             )
             # We deepcopy the inputs otherwise we might lose that information
             # when we delete them in case they're sent to other Components
@@ -125,9 +132,9 @@ class Pipeline(PipelineBase):
         # We prune all inputs except for those that were provided from outside the pipeline (e.g. user inputs).
         pruned_inputs = {
             socket_name: [
-                sock for sock in socket if sock["sender"] is None
-                and not socket_name in greedy_inputs_to_remove
-            ] for socket_name, socket in component_inputs.items()
+                sock for sock in socket if sock["sender"] is None and not socket_name in greedy_inputs_to_remove
+            ]
+            for socket_name, socket in component_inputs.items()
         }
         pruned_inputs = {socket_name: socket for socket_name, socket in pruned_inputs.items() if len(socket) > 0}
 
@@ -188,7 +195,9 @@ class Pipeline(PipelineBase):
     def _get_component_with_graph_metadata(self, component_name: str) -> Dict[str, Any]:
         return self.graph.nodes[component_name]
 
-    def _get_next_runnable_component(self, priority_queue: FIFOPriorityQueue) -> Union[Tuple[Component, str, Dict], None]:
+    def _get_next_runnable_component(
+        self, priority_queue: FIFOPriorityQueue
+    ) -> Union[Tuple[Component, str, Dict], None]:
         """
         Returns the next runnable component alongside its metadata from the priority queue.
         :param priority_queue: Priority queue of component names.
@@ -209,7 +218,9 @@ class Pipeline(PipelineBase):
         return None
 
     @staticmethod
-    def _write_component_outputs(component_name, component_outputs, inputs, receivers, include_outputs_from) -> Tuple[Dict, Dict]:
+    def _write_component_outputs(
+        component_name, component_outputs, inputs, receivers, include_outputs_from
+    ) -> Tuple[Dict, Dict]:
         """
         Distributes the outputs of a component to the input sockets that it is connected to.
         :param component_name: The name of the component.
@@ -252,7 +263,9 @@ class Pipeline(PipelineBase):
         return pruned_outputs, inputs
 
     @staticmethod
-    def _merge_component_and_pipeline_outputs(component_name: str, component_outputs: Dict, pipeline_outputs: Dict) -> Dict:
+    def _merge_component_and_pipeline_outputs(
+        component_name: str, component_outputs: Dict, pipeline_outputs: Dict
+    ) -> Dict:
         """
         Merges the outputs of a component with the current pipeline outputs.
         :param component_name: The name of the component.
@@ -425,7 +438,7 @@ class Pipeline(PipelineBase):
                     component_outputs=component_outputs,
                     inputs=inputs,
                     receivers=cached_receivers[component_name],
-                    include_outputs_from=include_outputs_from
+                    include_outputs_from=include_outputs_from,
                 )
                 # TODO check original logic in pipeline, it looks like we don't want to override existing outputs
                 # e.g. for cycles but the tests check if intermediate outputs from components in cycles are overwritten

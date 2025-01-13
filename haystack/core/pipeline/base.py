@@ -815,6 +815,7 @@ class PipelineBase:
             res.append((receiver_name, sender_socket, receiver_socket))
         return res
 
+
 def _connections_status(
     sender_node: str, receiver_node: str, sender_sockets: List[OutputSocket], receiver_sockets: List[InputSocket]
 ):
@@ -838,4 +839,3 @@ def _connections_status(
     receiver_sockets_list = "\n".join(receiver_sockets_entries)
 
     return f"'{sender_node}':\n{sender_sockets_list}\n'{receiver_node}':\n{receiver_sockets_list}"
-
