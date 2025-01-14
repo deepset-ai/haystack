@@ -148,7 +148,7 @@ class Pipeline(PipelineBase):
         :param pipeline_inputs: Inputs to the pipeline.
         :returns: Converted inputs that can be used by the internal `Pipeline.run` logic.
         """
-        inputs = {}
+        inputs: Dict[str, Dict[str, List[Dict[str, Any]]]] = {}
         for component_name, socket_dict in pipeline_inputs.items():
             inputs[component_name] = {}
             for socket_name, value in socket_dict.items():
@@ -197,7 +197,7 @@ class Pipeline(PipelineBase):
 
     def _get_next_runnable_component(
         self, priority_queue: FIFOPriorityQueue
-    ) -> Union[Tuple[Component, str, Dict], None]:
+    ) -> Union[Tuple[ComponentPriority, str, Dict], None]:
         """
         Returns the next runnable component alongside its metadata from the priority queue.
 

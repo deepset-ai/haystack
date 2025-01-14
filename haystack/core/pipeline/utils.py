@@ -4,7 +4,7 @@
 
 import heapq
 from itertools import count
-from typing import Any, Optional, Tuple
+from typing import Any, Optional, Tuple, List
 
 
 def parse_connect_string(connection: str) -> Tuple[str, Optional[str]]:
@@ -36,7 +36,7 @@ class FIFOPriorityQueue:
         Initialize a new FIFO priority queue.
         """
         # List of tuples (priority, count, item) where count ensures FIFO order
-        self._queue = []
+        self._queue: List[Tuple[int, int, Any]]= []
         # Counter to maintain insertion order for equal priorities
         self._counter = count()
 
