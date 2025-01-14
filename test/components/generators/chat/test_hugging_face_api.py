@@ -540,7 +540,7 @@ class TestHuggingFaceAPIChatGenerator:
         assert "Paris" in tool_call.arguments["city"]
         assert message.meta["finish_reason"] == "stop"
 
-        new_messages = chat_messages + [message, ChatMessage.from_tool(tool_result="22° C", origin=tool_call)]
+        new_messages = chat_messages + [message, ChatMessage.from_tool(tool_result="22°", origin=tool_call)]
 
         # the model tends to make tool calls if provided with tools, so we don't pass them here
         results = generator.run(new_messages, generation_kwargs={"max_tokens": 50})
