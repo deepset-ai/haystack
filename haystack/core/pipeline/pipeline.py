@@ -54,12 +54,15 @@ class Pipeline(PipelineBase):
         """
         instance: Component = component["instance"]
         component_name = self.get_component_name(instance)
+        component_inputs, inputs = self._consume_component_inputs(
+            component_name=component_name, component=component, inputs=inputs
+        )
         with tracing.tracer.trace(
             "haystack.component.run",
             tags={
                 "haystack.component.name": component_name,
                 "haystack.component.type": instance.__class__.__name__,
-                "haystack.component.input_types": {k: type(v).__name__ for k, v in inputs.items()},
+                "haystack.component.input_types": {k: type(v).__name__ for k, v in component_inputs.items()},
                 "haystack.component.input_spec": {
                     key: {
                         "type": (value.type.__name__ if isinstance(value.type, type) else str(value.type)),
@@ -77,9 +80,6 @@ class Pipeline(PipelineBase):
             },
             parent_span=parent_span,
         ) as span:
-            component_inputs, inputs = self._consume_component_inputs(
-                component_name=component_name, component=component, inputs=inputs
-            )
             # We deepcopy the inputs otherwise we might lose that information
             # when we delete them in case they're sent to other Components
             span.set_content_tag("haystack.component.input", deepcopy(component_inputs))
@@ -444,7 +444,7 @@ class Pipeline(PipelineBase):
                 # TODO check original logic in pipeline, it looks like we don't want to override existing outputs
                 # e.g. for cycles but the tests check if intermediate outputs from components in cycles are overwritten
                 if component_pipeline_outputs:
-                    pipeline_outputs = {**pipeline_outputs, component_name: component_pipeline_outputs}
+                    pipeline_outputs[component_name] = component_pipeline_outputs
                 if self._is_queue_stale(priority_queue):
                     priority_queue = self._fill_queue(ordered_component_names, inputs)
 
