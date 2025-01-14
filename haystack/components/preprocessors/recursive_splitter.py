@@ -34,20 +34,20 @@ class RecursiveDocumentSplitter:
     from haystack import Document
     from haystack.components.preprocessors import RecursiveDocumentSplitter
 
-    chunker = RecursiveDocumentSplitter(split_length=260, split_overlap=0, separators=["\n\n", "\n", ".", " "])
-    text = '''Artificial intelligence (AI) - Introduction
+    chunker = RecursiveDocumentSplitter(split_length=260, split_overlap=0, separators=["\\n\\n", "\\n", ".", " "])
+    text = ('''Artificial intelligence (AI) - Introduction
 
     AI, in its broadest sense, is intelligence exhibited by machines, particularly computer systems.
-    AI technology is widely used throughout industry, government, and science. Some high-profile applications include advanced web search engines; recommendation systems; interacting via human speech; autonomous vehicles; generative and creative tools; and superhuman play and analysis in strategy games.'''
+    AI technology is widely used throughout industry, government, and science. Some high-profile applications include advanced web search engines; recommendation systems; interacting via human speech; autonomous vehicles; generative and creative tools; and superhuman play and analysis in strategy games.''')
     chunker.warm_up()
     doc = Document(content=text)
     doc_chunks = chunker.run([doc])
     print(doc_chunks["documents"])
     >[
-    >Document(id=..., content: 'Artificial intelligence (AI) - Introduction\n\n', meta: {'original_id': '65167a9823dd883de577e828ca4fd529e6f7241f0ff616acfce454d808478951', 'split_id': 0, 'split_idx_start': 0, '_split_overlap': []})
-    >Document(id=..., content: 'AI, in its broadest sense, is intelligence exhibited by machines, particularly computer systems.\n', meta: {'original_id': '65167a9823dd883de577e828ca4fd529e6f7241f0ff616acfce454d808478951', 'split_id': 1, 'split_idx_start': 45, '_split_overlap': []})
-    >Document(id=..., content: 'AI technology is widely used throughout industry, government, and science.', meta: {'original_id': '65167a9823dd883de577e828ca4fd529e6f7241f0ff616acfce454d808478951', 'split_id': 2, 'split_idx_start': 142, '_split_overlap': []})
-    >Document(id=..., content: ' Some high-profile applications include advanced web search engines; recommendation systems; interac...', meta: {'original_id': '65167a9823dd883de577e828ca4fd529e6f7241f0ff616acfce454d808478951', 'split_id': 3, 'split_idx_start': 216, '_split_overlap': []})
+    >Document(id=..., content: 'Artificial intelligence (AI) - Introduction\\n\\n', meta: {'original_id': '...', 'split_id': 0, 'split_idx_start': 0, '_split_overlap': []})
+    >Document(id=..., content: 'AI, in its broadest sense, is intelligence exhibited by machines, particularly computer systems.\\n', meta: {'original_id': '...', 'split_id': 1, 'split_idx_start': 45, '_split_overlap': []})
+    >Document(id=..., content: 'AI technology is widely used throughout industry, government, and science.', meta: {'original_id': '...', 'split_id': 2, 'split_idx_start': 142, '_split_overlap': []})
+    >Document(id=..., content: ' Some high-profile applications include advanced web search engines; recommendation systems; interac...', meta: {'original_id': '...', 'split_id': 3, 'split_idx_start': 216, '_split_overlap': []})
     >]
     ```
     """  # noqa: E501
@@ -72,7 +72,7 @@ class RecursiveDocumentSplitter:
             separators will be treated as regular expressions unless the separator is "sentence", in that case the
             text will be split into sentences using a custom sentence tokenizer based on NLTK.
             See: haystack.components.preprocessors.sentence_tokenizer.SentenceSplitter.
-            If no separators are provided, the default separators ["\n\n", "sentence", "\n", " "] are used.
+            If no separators are provided, the default separators ["\\n\\n", "sentence", "\\n", " "] are used.
         :param sentence_splitter_params: Optional parameters to pass to the sentence tokenizer.
             See: haystack.components.preprocessors.sentence_tokenizer.SentenceSplitter for more information.
 
