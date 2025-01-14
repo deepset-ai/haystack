@@ -197,7 +197,7 @@ class Pipeline(PipelineBase):
 
     def _get_next_runnable_component(
         self, priority_queue: FIFOPriorityQueue
-    ) -> Union[Tuple[ComponentPriority, str, Dict], None]:
+    ) -> Union[Tuple[ComponentPriority, str, Dict[str, Any]], None]:
         """
         Returns the next runnable component alongside its metadata from the priority queue.
 
@@ -206,7 +206,7 @@ class Pipeline(PipelineBase):
             or None if no component in the queue can run.
         :raises: PipelineMaxComponentRuns if the next runnable component has exceeded the maximum number of runs.
         """
-        priority_and_component_name = priority_queue.get()
+        priority_and_component_name: Union[Tuple[ComponentPriority, str], None] = priority_queue.get()
 
         if priority_and_component_name is not None and priority_and_component_name[0] != ComponentPriority.BLOCKED:
             priority, component_name = priority_and_component_name
