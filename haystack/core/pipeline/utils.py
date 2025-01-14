@@ -4,7 +4,7 @@
 
 import heapq
 from itertools import count
-from typing import Any, Optional, Tuple, List
+from typing import Any, List, Optional, Tuple
 
 
 def parse_connect_string(connection: str) -> Tuple[str, Optional[str]]:
