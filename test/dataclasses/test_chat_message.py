@@ -146,17 +146,14 @@ def test_mixed_content():
     assert message.tool_call == content[1]
 
 
-def test_from_function():
-    # check warning is raised
-    with pytest.warns():
-        message = ChatMessage.from_function("Result of function invocation", "my_function")
+def test_function_role_removed():
+    with pytest.raises(ValueError):
+        ChatRole.from_str("function")
 
-    assert message.role == ChatRole.TOOL
-    assert message.tool_call_result == ToolCallResult(
-        result="Result of function invocation",
-        origin=ToolCall(id=None, tool_name="my_function", arguments={}),
-        error=False,
-    )
+
+def test_from_function_class_method_removed():
+    with pytest.raises(AttributeError):
+        ChatMessage.from_function("Result of function invocation", "my_function")
 
 
 def test_serde():
@@ -232,11 +229,6 @@ def test_chat_message_init_parameters_removed():
 def test_chat_message_init_content_parameter_type():
     with pytest.raises(TypeError):
         ChatMessage(ChatRole.USER, "This is a message")
-
-
-def test_chat_message_function_role_deprecated():
-    with pytest.warns(DeprecationWarning):
-        ChatMessage(ChatRole.FUNCTION, TextContent("This is a message"))
 
 
 def test_to_openai_dict_format():
