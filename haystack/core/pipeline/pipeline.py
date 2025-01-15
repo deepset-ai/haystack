@@ -7,7 +7,7 @@ from enum import IntEnum
 from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, Union
 
 from haystack import logging, tracing
-from haystack.core.component import Component
+from haystack.core.component import Component, InputSocket
 from haystack.core.errors import PipelineMaxComponentRuns, PipelineRuntimeError
 from haystack.core.pipeline.base import PipelineBase
 from haystack.core.pipeline.component_checks import (
@@ -39,6 +39,23 @@ class Pipeline(PipelineBase):
     Orchestrates component execution according to the execution graph, one after the other.
     """
 
+    @staticmethod
+    def _add_missing_input_defaults(component_inputs: Dict[str, Any], component_input_sockets: Dict[str, InputSocket]):
+        """
+        Updates the inputs with the default values for the inputs that are missing
+
+        :param component_inputs: Inputs for the component.
+        :param component_input_sockets: Input sockets of the component.
+        """
+        for name, socket in component_input_sockets.items():
+            if not socket.is_mandatory and name not in component_inputs:
+                if socket.is_variadic:
+                    component_inputs[name] = [socket.default_value]
+                else:
+                    component_inputs[name] = socket.default_value
+
+        return component_inputs
+
     def _run_component(
         self, component: Dict[str, Any], inputs: Dict[str, Any], parent_span: Optional[tracing.Span] = None
     ) -> Tuple[Dict, Dict]:
@@ -57,6 +74,11 @@ class Pipeline(PipelineBase):
         component_inputs, inputs = self._consume_component_inputs(
             component_name=component_name, component=component, inputs=inputs
         )
+
+        # We need to add missing defaults using default values from input sockets because the run signature
+        # might not provide these defaults for components with inputs defined dynamically upon component initialization
+        component_inputs = self._add_missing_input_defaults(component_inputs, component["input_sockets"])
+
         with tracing.tracer.trace(
             "haystack.component.run",
             tags={

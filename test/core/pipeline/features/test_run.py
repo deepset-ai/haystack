@@ -15,6 +15,7 @@ from haystack.components.preprocessors import DocumentCleaner
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.joiners import BranchJoiner, DocumentJoiner, AnswerJoiner, StringJoiner
+from haystack.core.component.types import Variadic
 from haystack.testing.sample_components import (
     Accumulate,
     AddFixedValue,
@@ -2972,5 +2973,69 @@ FAIL, come on, try again."""
                     "answer_builder",
                 ],
             )
+        ],
+    )
+
+
+@given("a pipeline with a component that has dynamic default inputs", target_fixture="pipeline_data")
+def pipeline_that_is_linear():
+    @component
+    class ParrotWithDynamicDefaultInputs:
+        def __init__(self, input_variable: str):
+            self.input_variable = input_variable
+            component.set_input_type(self, input_variable, str, default="Parrot doesn't only parrot!")
+
+        @component.output_types(response=str)
+        def run(self, **kwargs):
+            return {"response": kwargs[self.input_variable]}
+
+    parrot = ParrotWithDynamicDefaultInputs("parrot")
+    pipeline = Pipeline()
+    pipeline.add_component("parrot", parrot)
+    return (
+        pipeline,
+        [
+            PipelineRunData(
+                inputs={"parrot": {"parrot": "Are you a parrot?"}},
+                expected_outputs={"parrot": {"response": "Are you a parrot?"}},
+                expected_run_order=["parrot"],
+            ),
+            PipelineRunData(
+                inputs={},
+                expected_outputs={"parrot": {"response": "Parrot doesn't only parrot!"}},
+                expected_run_order=["parrot"],
+            ),
+        ],
+    )
+
+
+@given("a pipeline with a component that has variadic dynamic default inputs", target_fixture="pipeline_data")
+def pipeline_that_is_linear():
+    @component
+    class ParrotWithVariadicDynamicDefaultInputs:
+        def __init__(self, input_variable: str):
+            self.input_variable = input_variable
+            component.set_input_type(self, input_variable, Variadic[str], default="Parrot doesn't only parrot!")
+
+        @component.output_types(response=List[str])
+        def run(self, **kwargs):
+            return {"response": kwargs[self.input_variable]}
+
+    parrot = ParrotWithVariadicDynamicDefaultInputs("parrot")
+    pipeline = Pipeline()
+    pipeline.add_component("parrot", parrot)
+    return (
+        pipeline,
+        [
+            PipelineRunData(
+                inputs={"parrot": {"parrot": "Are you a parrot?"}},
+                expected_outputs={"parrot": {"response": ["Are you a parrot?"]}},
+                expected_run_order=["parrot"],
+            ),
+            PipelineRunData(
+                inputs={},
+                expected_outputs={"parrot": {"response": ["Parrot doesn't only parrot!"]}},
+                expected_run_order=["parrot"],
+            ),
         ],
     )

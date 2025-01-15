@@ -50,6 +50,8 @@ Feature: Pipeline running
         | created in a non-standard order that has a loop |
         | that has an agent with a feedback cycle |
         | that passes outputs that are consumed in cycle to outside the cycle |
+        | with a component that has dynamic default inputs |
+        | with a component that has variadic dynamic default inputs |
 
     Scenario Outline: Running a bad Pipeline
         Given a pipeline <kind>

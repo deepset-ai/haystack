@@ -1026,6 +1026,40 @@ class TestPipeline:
         with pytest.raises(PipelineConnectError):
             pipe.connect("single_component.out", "single_component.in")
 
+    @pytest.mark.parametrize(
+        "component_inputs,sockets,expected_inputs",
+        [
+            ({"mandatory": 1}, {"mandatory": InputSocket("mandatory", int)}, {"mandatory": 1}),
+            ({}, {"optional": InputSocket("optional", str, default_value="test")}, {"optional": "test"}),
+            (
+                {"mandatory": 1},
+                {
+                    "mandatory": InputSocket("mandatory", int),
+                    "optional": InputSocket("optional", str, default_value="test"),
+                },
+                {"mandatory": 1, "optional": "test"},
+            ),
+            (
+                {},
+                {"optional_variadic": InputSocket("optional_variadic", Variadic[str], default_value="test")},
+                {"optional_variadic": ["test"]},
+            ),
+            (
+                {},
+                {
+                    "optional_1": InputSocket("optional_1", int, default_value=1),
+                    "optional_2": InputSocket("optional_2", int, default_value=2),
+                },
+                {"optional_1": 1, "optional_2": 2},
+            ),
+        ],
+        ids=["no-defaults", "only-default", "mixed-default", "variadic-default", "multiple_defaults"],
+    )
+    def test__add_missing_defaults(self, component_inputs, sockets, expected_inputs):
+        filled_inputs = Pipeline._add_missing_input_defaults(component_inputs, sockets)
+
+        assert filled_inputs == expected_inputs
+
     def test__run_component_success(self):
         """Test successful component execution"""
         joiner_1 = BranchJoiner(type_=str)
