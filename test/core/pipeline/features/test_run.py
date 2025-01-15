@@ -2978,7 +2978,7 @@ FAIL, come on, try again."""
 
 
 @given("a pipeline with a component that has dynamic default inputs", target_fixture="pipeline_data")
-def pipeline_that_is_linear():
+def pipeline_with_dynamic_defaults():
     @component
     class ParrotWithDynamicDefaultInputs:
         def __init__(self, input_variable: str):
@@ -3010,7 +3010,7 @@ def pipeline_that_is_linear():
 
 
 @given("a pipeline with a component that has variadic dynamic default inputs", target_fixture="pipeline_data")
-def pipeline_that_is_linear():
+def pipeline_with_variadic_dynamic_defaults():
     @component
     class ParrotWithVariadicDynamicDefaultInputs:
         def __init__(self, input_variable: str):
