@@ -13,7 +13,7 @@ def basic_component():
         "instance": "mock_instance",
         "visits": 0,
         "input_sockets": {
-            "mandatory_input": InputSocket("mandatory_input", int),
+            "mandatory_input": InputSocket("mandatory_input", int, senders=["previous_component"]),
             "optional_input": InputSocket("optional_input", str, default_value="default"),
         },
         "output_sockets": {"output": OutputSocket("output", int)},
@@ -27,8 +27,8 @@ def variadic_component():
         "instance": "mock_instance",
         "visits": 0,
         "input_sockets": {
-            "variadic_input": InputSocket("variadic_input", Variadic[int]),
-            "normal_input": InputSocket("normal_input", str),
+            "variadic_input": InputSocket("variadic_input", Variadic[int], senders=["previous_component"]),
+            "normal_input": InputSocket("normal_input", str, senders=["another_component"]),
         },
         "output_sockets": {"output": OutputSocket("output", int)},
     }
@@ -41,7 +41,9 @@ def greedy_variadic_component():
         "instance": "mock_instance",
         "visits": 0,
         "input_sockets": {
-            "greedy_input": InputSocket("greedy_input", GreedyVariadic[int]),
+            "greedy_input": InputSocket(
+                "greedy_input", GreedyVariadic[int], senders=["previous_component", "other_component"]
+            ),
             "normal_input": InputSocket("normal_input", str),
         },
         "output_sockets": {"output": OutputSocket("output", int)},
@@ -194,12 +196,12 @@ class TestAllMandatorySocketsReady:
     def test_all_mandatory_sockets_filled(self, basic_component):
         """Checks that all mandatory sockets are ready when they have valid input."""
         inputs = {"mandatory_input": [{"sender": "previous_component", "value": 42}]}
-        assert are_all_mandatory_sockets_ready(basic_component, inputs) is True
+        assert are_all_sockets_ready(basic_component, inputs) is True
 
     def test_missing_mandatory_socket(self, basic_component):
         """Ensures that if a mandatory socket is missing, the component is not ready."""
         inputs = {"optional_input": [{"sender": "previous_component", "value": "test"}]}
-        assert are_all_mandatory_sockets_ready(basic_component, inputs) is False
+        assert are_all_sockets_ready(basic_component, inputs) is False
 
     def test_variadic_socket_with_input(self, variadic_component):
         """Verifies that a variadic socket is considered filled if it has at least one input."""
@@ -207,25 +209,41 @@ class TestAllMandatorySocketsReady:
             "variadic_input": [{"sender": "previous_component", "value": 42}],
             "normal_input": [{"sender": "previous_component", "value": "test"}],
         }
-        assert are_all_mandatory_sockets_ready(variadic_component, inputs) is True
+        assert are_all_sockets_ready(variadic_component, inputs) is True
 
-    def test_greedy_variadic_socket_with_partial_input(self, greedy_variadic_component):
+    def test_greedy_variadic_socket(self, greedy_variadic_component):
         """Greedy variadic sockets are ready with at least one valid input."""
         inputs = {
             "greedy_input": [{"sender": "previous_component", "value": 42}],
             "normal_input": [{"sender": "previous_component", "value": "test"}],
         }
-        assert are_all_mandatory_sockets_ready(greedy_variadic_component, inputs) is True
+        assert are_all_sockets_ready(greedy_variadic_component, inputs) is True
+
+    def test_greedy_variadic_socket_and_missing_mandatory(self, greedy_variadic_component):
+        """All mandatory sockets need to be filled even with GreedyVariadic sockets."""
+        inputs = {"greedy_input": [{"sender": "previous_component", "value": 42}]}
+        assert are_all_sockets_ready(greedy_variadic_component, inputs, only_check_mandatory=True) is False
 
     def test_variadic_socket_no_input(self, variadic_component):
         """A variadic socket is not filled if it has zero valid inputs."""
         inputs = {"normal_input": [{"sender": "previous_component", "value": "test"}]}
-        assert are_all_mandatory_sockets_ready(variadic_component, inputs) is False
+        assert are_all_sockets_ready(variadic_component, inputs) is False
+
+    def test_mandatory_and_optional_sockets(self):
+        input_sockets = {
+            "mandatory": InputSocket("mandatory", str, senders=["previous_component"]),
+            "optional": InputSocket("optional", str, senders=["previous_component"], default_value="test"),
+        }
+
+        component = {"input_sockets": input_sockets}
+        inputs = {"mandatory": [{"sender": "previous_component", "value": "hello"}]}
+        assert are_all_sockets_ready(component, inputs) is False
+        assert are_all_sockets_ready(component, inputs, only_check_mandatory=True) is True
 
     def test_empty_inputs(self, basic_component):
         """Checks that if there are no inputs at all, mandatory sockets are not ready."""
         inputs = {}
-        assert are_all_mandatory_sockets_ready(basic_component, inputs) is False
+        assert are_all_sockets_ready(basic_component, inputs) is False
 
     def test_no_mandatory_sockets(self, basic_component):
         """Ensures that if there are no mandatory sockets, the component is considered ready."""
@@ -234,24 +252,24 @@ class TestAllMandatorySocketsReady:
             "optional_2": InputSocket("optional_2", str, default_value="default2"),
         }
         inputs = {}
-        assert are_all_mandatory_sockets_ready(basic_component, inputs) is True
+        assert are_all_sockets_ready(basic_component, inputs) is True
 
     def test_multiple_mandatory_sockets(self, basic_component):
         """Checks readiness when multiple mandatory sockets are defined."""
         basic_component["input_sockets"] = {
-            "mandatory_1": InputSocket("mandatory_1", int),
-            "mandatory_2": InputSocket("mandatory_2", str),
+            "mandatory_1": InputSocket("mandatory_1", int, senders=["previous_component"]),
+            "mandatory_2": InputSocket("mandatory_2", str, senders=["some other component"]),
             "optional": InputSocket("optional", bool, default_value=False),
         }
         inputs = {
             "mandatory_1": [{"sender": "comp1", "value": 42}],
             "mandatory_2": [{"sender": "comp2", "value": "test"}],
         }
-        assert are_all_mandatory_sockets_ready(basic_component, inputs) is True
+        assert are_all_sockets_ready(basic_component, inputs) is True
 
         # Missing one mandatory input
         inputs = {"mandatory_1": [{"sender": "comp1", "value": 42}], "optional": [{"sender": "comp3", "value": True}]}
-        assert are_all_mandatory_sockets_ready(basic_component, inputs) is False
+        assert are_all_sockets_ready(basic_component, inputs) is False
 
 
 class TestPredecessorInputDetection:

@@ -13,6 +13,7 @@ from haystack.core.pipeline.base import PipelineBase
 from haystack.core.pipeline.component_checks import (
     _NO_OUTPUT_PRODUCED,
     all_predecessors_executed,
+    are_all_sockets_ready,
     are_all_lazy_variadic_sockets_resolved,
     can_component_run,
     is_any_greedy_socket_ready,
@@ -205,7 +206,7 @@ class Pipeline(PipelineBase):
         """
         if not can_component_run(component, inputs):
             return ComponentPriority.BLOCKED
-        elif is_any_greedy_socket_ready(component, inputs):
+        elif is_any_greedy_socket_ready(component, inputs) and are_all_sockets_ready(component, inputs):
             return ComponentPriority.HIGHEST
         elif all_predecessors_executed(component, inputs):
             return ComponentPriority.READY

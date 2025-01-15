@@ -1210,6 +1210,22 @@ class TestPipeline:
                 ComponentPriority.HIGHEST,
                 "Component should have HIGHEST priority when greedy socket has valid input",
             ),
+            # Test case 4: DEFER - Greedy socket ready but optional missing
+            (
+                {
+                    "instance": "mock_instance",
+                    "visits": 0,
+                    "input_sockets": {
+                        "greedy_input": InputSocket("greedy_input", GreedyVariadic[int], senders=["component1"]),
+                        "optional_input": InputSocket(
+                            "optional_input", str, senders=["component2"], default_value="test"
+                        ),
+                    },
+                },
+                {"greedy_input": [{"sender": "component1", "value": 42}]},
+                ComponentPriority.DEFER,
+                "Component should DEFER when greedy socket has valid input but expected optional input is missing",
+            ),
             # Test case 4: READY - All predecessors executed
             (
                 {

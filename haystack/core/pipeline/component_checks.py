@@ -19,7 +19,7 @@ def can_component_run(component: Dict, inputs: Dict) -> bool:
     :param component: Component metadata and the component instance.
     :param inputs: Inputs for the component.
     """
-    received_all_mandatory_inputs = are_all_mandatory_sockets_ready(component, inputs)
+    received_all_mandatory_inputs = are_all_sockets_ready(component, inputs, only_check_mandatory=True)
     received_trigger = has_any_trigger(component, inputs)
 
     return received_all_mandatory_inputs and received_trigger
@@ -49,27 +49,38 @@ def has_any_trigger(component: Dict, inputs: Dict) -> bool:
     return trigger_from_predecessor or trigger_from_user or trigger_without_inputs
 
 
-def are_all_mandatory_sockets_ready(component: Dict, inputs: Dict) -> bool:
+def are_all_sockets_ready(component: Dict, inputs: Dict, only_check_mandatory: bool = False) -> bool:
     """
-    Checks if all mandatory sockets of a component have enough inputs for the component to execute.
+    Checks if all sockets of a component have enough inputs for the component to execute.
 
     :param component: Component metadata and the component instance.
     :param inputs: Inputs for the component.
+    :param only_check_mandatory: If only mandatory sockets should be checked.
     """
-    filled_mandatory_sockets = set()
-    expected_mandatory_sockets = set()
-    for socket_name, socket in component["input_sockets"].items():
-        if socket.is_mandatory:
-            socket_inputs = inputs.get(socket_name, [])
-            expected_mandatory_sockets.add(socket_name)
-            if (
-                is_socket_lazy_variadic(socket)
-                and any_socket_input_received(socket_inputs)
-                or has_socket_received_all_inputs(socket, socket_inputs)
-            ):
-                filled_mandatory_sockets.add(socket_name)
+    filled_sockets = set()
+    expected_sockets = set()
+    if only_check_mandatory:
+        sockets_to_check = {
+            socket_name: socket for socket_name, socket in component["input_sockets"].items() if socket.is_mandatory
+        }
+    else:
+        sockets_to_check = {
+            socket_name: socket
+            for socket_name, socket in component["input_sockets"].items()
+            if socket.is_mandatory or len(socket.senders)
+        }
 
-    return filled_mandatory_sockets == expected_mandatory_sockets
+    for socket_name, socket in sockets_to_check.items():
+        socket_inputs = inputs.get(socket_name, [])
+        expected_sockets.add(socket_name)
+        if (
+            is_socket_lazy_variadic(socket)
+            and any_socket_input_received(socket_inputs)
+            or has_socket_received_all_inputs(socket, socket_inputs)
+        ):
+            filled_sockets.add(socket_name)
+
+    return filled_sockets == expected_sockets
 
 
 def any_predecessors_provided_input(component: Dict, inputs: Dict) -> bool:
