@@ -1,0 +1,4 @@
+---
+upgrade:
+  - |
+    Removed `NLTKDocumentSplitter` it's functionalities are now available in DocumentSplitter.
