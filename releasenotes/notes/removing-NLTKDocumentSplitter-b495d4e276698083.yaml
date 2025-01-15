@@ -1,0 +1,4 @@
+---
+upgrade:
+  - |
+    Removed the deprecated `NLTKDocumentSplitter`, it's functionalities are now supported by the `DocumentSplitter`.
