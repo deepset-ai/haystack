@@ -13,8 +13,8 @@ from haystack.core.pipeline.base import PipelineBase
 from haystack.core.pipeline.component_checks import (
     _NO_OUTPUT_PRODUCED,
     all_predecessors_executed,
-    are_all_sockets_ready,
     are_all_lazy_variadic_sockets_resolved,
+    are_all_sockets_ready,
     can_component_run,
     is_any_greedy_socket_ready,
     is_socket_lazy_variadic,
