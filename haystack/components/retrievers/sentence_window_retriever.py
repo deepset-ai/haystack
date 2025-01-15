@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import warnings
 from typing import Any, Dict, List, Optional
 
 from haystack import Document, component, default_from_dict, default_to_dict
@@ -92,13 +91,6 @@ class SentenceWindowRetriever:
 
         self.window_size = window_size
         self.document_store = document_store
-
-        warnings.warn(
-            "The output of `context_documents` will change in the next release. Instead of a "
-            "List[List[Document]], the output will be a List[Document], where the documents are ordered by "
-            "`split_idx_start`.",
-            DeprecationWarning,
-        )
 
     @staticmethod
     def merge_documents_text(documents: List[Document]) -> str:
