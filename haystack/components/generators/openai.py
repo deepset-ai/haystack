@@ -9,7 +9,6 @@ from openai import OpenAI, Stream
 from openai.types.chat import ChatCompletion, ChatCompletionChunk
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.components.generators.openai_utils import _convert_message_to_openai_format
 from haystack.dataclasses import ChatMessage, StreamingChunk
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 
@@ -49,7 +48,7 @@ class OpenAIGenerator:
     ```
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
         model: str = "gpt-4o-mini",
@@ -170,6 +169,7 @@ class OpenAIGenerator:
     def run(
         self,
         prompt: str,
+        system_prompt: Optional[str] = None,
         streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
     ):
@@ -178,6 +178,9 @@ class OpenAIGenerator:
 
         :param prompt:
             The string prompt to use for text generation.
+        :param system_prompt:
+            The system prompt to use for text generation. If this run time system prompt is omitted, the system
+            prompt, if defined at initialisation time, is used.
         :param streaming_callback:
             A callback function that is called when a new token is received from the stream.
         :param generation_kwargs:
@@ -189,7 +192,9 @@ class OpenAIGenerator:
         for each response.
         """
         message = ChatMessage.from_user(prompt)
-        if self.system_prompt:
+        if system_prompt is not None:
+            messages = [ChatMessage.from_system(system_prompt), message]
+        elif self.system_prompt:
             messages = [ChatMessage.from_system(self.system_prompt), message]
         else:
             messages = [message]
@@ -201,7 +206,7 @@ class OpenAIGenerator:
         streaming_callback = streaming_callback or self.streaming_callback
 
         # adapt ChatMessage(s) to the format expected by the OpenAI API
-        openai_formatted_messages = [_convert_message_to_openai_format(message) for message in messages]
+        openai_formatted_messages = [message.to_openai_dict_format() for message in messages]
 
         completion: Union[Stream[ChatCompletionChunk], ChatCompletion] = self.client.chat.completions.create(
             model=self.model,
@@ -216,15 +221,17 @@ class OpenAIGenerator:
             if num_responses > 1:
                 raise ValueError("Cannot stream multiple responses, please set n=1.")
             chunks: List[StreamingChunk] = []
-            chunk = None
+            completion_chunk: Optional[ChatCompletionChunk] = None
 
             # pylint: disable=not-an-iterable
-            for chunk in completion:
-                if chunk.choices and streaming_callback:
-                    chunk_delta: StreamingChunk = self._build_chunk(chunk)
+            for completion_chunk in completion:
+                if completion_chunk.choices and streaming_callback:
+                    chunk_delta: StreamingChunk = self._build_chunk(completion_chunk)
                     chunks.append(chunk_delta)
                     streaming_callback(chunk_delta)  # invoke callback with the chunk_delta
-            completions = [self._connect_chunks(chunk, chunks)]
+            # Makes type checkers happy
+            assert completion_chunk is not None
+            completions = [self._create_message_from_chunks(completion_chunk, chunks)]
         elif isinstance(completion, ChatCompletion):
             completions = [self._build_message(completion, choice) for choice in completion.choices]
 
@@ -232,27 +239,30 @@ class OpenAIGenerator:
         for response in completions:
             self._check_finish_reason(response)
 
-        return {
-            "replies": [message.content for message in completions],
-            "meta": [message.meta for message in completions],
-        }
+        return {"replies": [message.text for message in completions], "meta": [message.meta for message in completions]}
 
-    def _connect_chunks(self, chunk: Any, chunks: List[StreamingChunk]) -> ChatMessage:
+    @staticmethod
+    def _create_message_from_chunks(
+        completion_chunk: ChatCompletionChunk, streamed_chunks: List[StreamingChunk]
+    ) -> ChatMessage:
         """
-        Connects the streaming chunks into a single ChatMessage.
+        Creates a single ChatMessage from the streamed chunks. Some data is retrieved from the completion chunk.
         """
-        complete_response = ChatMessage.from_assistant("".join([chunk.content for chunk in chunks]))
+        complete_response = ChatMessage.from_assistant("".join([chunk.content for chunk in streamed_chunks]))
+        finish_reason = streamed_chunks[-1].meta["finish_reason"]
         complete_response.meta.update(
             {
-                "model": chunk.model,
+                "model": completion_chunk.model,
                 "index": 0,
-                "finish_reason": chunk.choices[0].finish_reason,
-                "usage": {},  # we don't have usage data for streaming responses
+                "finish_reason": finish_reason,
+                # Usage is available when streaming only if the user explicitly requests it
+                "usage": dict(completion_chunk.usage or {}),
             }
         )
         return complete_response
 
-    def _build_message(self, completion: Any, choice: Any) -> ChatMessage:
+    @staticmethod
+    def _build_message(completion: Any, choice: Any) -> ChatMessage:
         """
         Converts the response from the OpenAI API to a ChatMessage.
 
@@ -276,7 +286,8 @@ class OpenAIGenerator:
         )
         return chat_message
 
-    def _build_chunk(self, chunk: Any) -> StreamingChunk:
+    @staticmethod
+    def _build_chunk(chunk: Any) -> StreamingChunk:
         """
         Converts the response from the OpenAI API to a StreamingChunk.
 
@@ -293,7 +304,8 @@ class OpenAIGenerator:
         chunk_message.meta.update({"model": chunk.model, "index": choice.index, "finish_reason": choice.finish_reason})
         return chunk_message
 
-    def _check_finish_reason(self, message: ChatMessage) -> None:
+    @staticmethod
+    def _check_finish_reason(message: ChatMessage) -> None:
         """
         Check the `finish_reason` returned with the OpenAI completions.
 

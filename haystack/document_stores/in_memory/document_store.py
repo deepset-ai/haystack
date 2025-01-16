@@ -58,7 +58,7 @@ class InMemoryDocumentStore:
     Stores data in-memory. It's ephemeral and cannot be saved to disk.
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         bm25_tokenization_regex: str = r"(?u)\b\w\w+\b",
         bm25_algorithm: Literal["BM25Okapi", "BM25L", "BM25Plus"] = "BM25L",
@@ -396,8 +396,7 @@ class InMemoryDocumentStore:
         if filters:
             if "operator" not in filters and "conditions" not in filters:
                 raise ValueError(
-                    "Invalid filter syntax. See https://docs.haystack.deepset.ai/docs/metadata-filtering "
-                    "for details."
+                    "Invalid filter syntax. See https://docs.haystack.deepset.ai/docs/metadata-filtering for details."
                 )
             return [doc for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc)]
         return list(self.storage.values())
@@ -506,8 +505,7 @@ class InMemoryDocumentStore:
         if filters:
             if "operator" not in filters:
                 raise ValueError(
-                    "Invalid filter syntax. See https://docs.haystack.deepset.ai/docs/metadata-filtering "
-                    "for details."
+                    "Invalid filter syntax. See https://docs.haystack.deepset.ai/docs/metadata-filtering for details."
                 )
             filters = {"operator": "AND", "conditions": [content_type_filter, filters]}
         else:
@@ -541,7 +539,7 @@ class InMemoryDocumentStore:
 
         return return_documents
 
-    def embedding_retrieval(
+    def embedding_retrieval(  # pylint: disable=too-many-positional-arguments
         self,
         query_embedding: List[float],
         filters: Optional[Dict[str, Any]] = None,
@@ -574,8 +572,7 @@ class InMemoryDocumentStore:
             return []
         elif len(documents_with_embeddings) < len(all_documents):
             logger.info(
-                "Skipping some Documents that don't have an embedding. "
-                "To generate embeddings, use a DocumentEmbedder."
+                "Skipping some Documents that don't have an embedding. To generate embeddings, use a DocumentEmbedder."
             )
 
         scores = self._compute_query_embedding_similarity_scores(

@@ -8,7 +8,7 @@ from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from haystack import logging
-from haystack.dataclasses import StreamingChunk
+from haystack.dataclasses import ChatMessage, StreamingChunk
 from haystack.lazy_imports import LazyImport
 from haystack.utils.auth import Secret
 from haystack.utils.device import ComponentDevice
@@ -16,7 +16,7 @@ from haystack.utils.device import ComponentDevice
 with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as torch_import:
     import torch
 
-with LazyImport(message="Run 'pip install \"huggingface_hub>=0.23.0\"'") as huggingface_hub_import:
+with LazyImport(message="Run 'pip install \"huggingface_hub>=0.27.0\"'") as huggingface_hub_import:
     from huggingface_hub import HfApi, InferenceClient, model_info
     from huggingface_hub.utils import RepositoryNotFoundError
 
@@ -166,7 +166,7 @@ def resolve_hf_device_map(device: Optional[ComponentDevice], model_kwargs: Optio
     return model_kwargs
 
 
-def resolve_hf_pipeline_kwargs(
+def resolve_hf_pipeline_kwargs(  # pylint: disable=too-many-positional-arguments
     huggingface_pipeline_kwargs: Dict[str, Any],
     model: str,
     task: Optional[str],
@@ -205,7 +205,7 @@ def resolve_hf_pipeline_kwargs(
         task = model_info(huggingface_pipeline_kwargs["model"], token=huggingface_pipeline_kwargs["token"]).pipeline_tag
 
     if task not in supported_tasks:
-        raise ValueError(f"Task '{task}' is not supported. " f"The supported tasks are: {', '.join(supported_tasks)}.")
+        raise ValueError(f"Task '{task}' is not supported. The supported tasks are: {', '.join(supported_tasks)}.")
     huggingface_pipeline_kwargs["task"] = task
     return huggingface_pipeline_kwargs
 
@@ -268,6 +268,44 @@ def check_generation_params(kwargs: Optional[Dict[str, Any]], additional_accepte
             raise ValueError(
                 f"Unknown text generation parameters: {unknown_params}. The valid parameters are: {accepted_params}."
             )
+
+
+def convert_message_to_hf_format(message: ChatMessage) -> Dict[str, Any]:
+    """
+    Convert a message to the format expected by Hugging Face.
+    """
+    text_contents = message.texts
+    tool_calls = message.tool_calls
+    tool_call_results = message.tool_call_results
+
+    if not text_contents and not tool_calls and not tool_call_results:
+        raise ValueError("A `ChatMessage` must contain at least one `TextContent`, `ToolCall`, or `ToolCallResult`.")
+    if len(text_contents) + len(tool_call_results) > 1:
+        raise ValueError("A `ChatMessage` can only contain one `TextContent` or one `ToolCallResult`.")
+
+    # HF always expects a content field, even if it is empty
+    hf_msg: Dict[str, Any] = {"role": message._role.value, "content": ""}
+
+    if tool_call_results:
+        result = tool_call_results[0]
+        hf_msg["content"] = result.result
+        if tc_id := result.origin.id:
+            hf_msg["tool_call_id"] = tc_id
+        # HF does not provide a way to communicate errors in tool invocations, so we ignore the error field
+        return hf_msg
+
+    if text_contents:
+        hf_msg["content"] = text_contents[0]
+    if tool_calls:
+        hf_tool_calls = []
+        for tc in tool_calls:
+            hf_tool_call = {"type": "function", "function": {"name": tc.tool_name, "arguments": tc.arguments}}
+            if tc.id is not None:
+                hf_tool_call["id"] = tc.id
+            hf_tool_calls.append(hf_tool_call)
+        hf_msg["tool_calls"] = hf_tool_calls
+
+    return hf_msg
 
 
 with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transformers_import:

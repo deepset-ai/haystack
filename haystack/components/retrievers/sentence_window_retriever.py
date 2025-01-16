@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.document_stores.types import DocumentStore
@@ -84,7 +84,7 @@ class SentenceWindowRetriever:
 
         :param document_store: The Document Store to retrieve the surrounding documents from.
         :param window_size: The number of documents to retrieve before and after the relevant one.
-        For example, `window_size: 2` fetches 2 preceding and 2 following documents.
+                For example, `window_size: 2` fetches 2 preceding and 2 following documents.
         """
         if window_size < 1:
             raise ValueError("The window_size parameter must be greater than 0.")
@@ -143,8 +143,8 @@ class SentenceWindowRetriever:
         # deserialize the component
         return default_from_dict(cls, data)
 
-    @component.output_types(context_windows=List[str], context_documents=List[List[Document]])
-    def run(self, retrieved_documents: List[Document]):
+    @component.output_types(context_windows=List[str], context_documents=List[Document])
+    def run(self, retrieved_documents: List[Document], window_size: Optional[int] = None):
         """
         Based on the `source_id` and on the `doc.meta['split_id']` get surrounding documents from the document store.
 
@@ -152,15 +152,21 @@ class SentenceWindowRetriever:
         document from the document store.
 
         :param retrieved_documents: List of retrieved documents from the previous retriever.
+        :param window_size: The number of documents to retrieve before and after the relevant one. This will overwrite
+                            the `window_size` parameter set in the constructor.
         :returns:
             A dictionary with the following keys:
                 - `context_windows`: A list of strings, where each string represents the concatenated text from the
                                      context window of the corresponding document in `retrieved_documents`.
-                - `context_documents`: A list of lists of `Document` objects, where each inner list contains the
-                                     documents that come from the context window for the corresponding document in
-                                     `retrieved_documents`.
+                - `context_documents`: A list `Document` objects, containing the retrieved documents plus the context
+                                      document surrounding them. The documents are sorted by the `split_idx_start`
+                                      meta field.
 
         """
+        window_size = window_size or self.window_size
+
+        if window_size < 1:
+            raise ValueError("The window_size parameter must be greater than 0.")
 
         if not all("split_id" in doc.meta for doc in retrieved_documents):
             raise ValueError("The retrieved documents must have 'split_id' in the metadata.")
@@ -173,8 +179,8 @@ class SentenceWindowRetriever:
         for doc in retrieved_documents:
             source_id = doc.meta["source_id"]
             split_id = doc.meta["split_id"]
-            min_before = min(list(range(split_id - 1, split_id - self.window_size - 1, -1)))
-            max_after = max(list(range(split_id + 1, split_id + self.window_size + 1, 1)))
+            min_before = min(list(range(split_id - 1, split_id - window_size - 1, -1)))
+            max_after = max(list(range(split_id + 1, split_id + window_size + 1, 1)))
             context_docs = self.document_store.filter_documents(
                 {
                     "operator": "AND",
@@ -186,6 +192,7 @@ class SentenceWindowRetriever:
                 }
             )
             context_text.append(self.merge_documents_text(context_docs))
-            context_documents.append(context_docs)
+            context_docs_sorted = sorted(context_docs, key=lambda doc: doc.meta["split_idx_start"])
+            context_documents.extend(context_docs_sorted)
 
         return {"context_windows": context_text, "context_documents": context_documents}

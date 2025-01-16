@@ -2,11 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import importlib
 import itertools
-import warnings
 from collections import defaultdict
-from copy import copy, deepcopy
+from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional, Set, TextIO, Tuple, Type, TypeVar, Union
@@ -20,13 +18,14 @@ from haystack.core.errors import (
     PipelineConnectError,
     PipelineDrawingError,
     PipelineError,
+    PipelineRuntimeError,
     PipelineUnmarshalError,
     PipelineValidationError,
 )
 from haystack.core.serialization import DeserializationCallbacks, component_from_dict, component_to_dict
 from haystack.core.type_utils import _type_name, _types_are_compatible
 from haystack.marshal import Marshaller, YamlMarshaller
-from haystack.utils import is_in_jupyter
+from haystack.utils import is_in_jupyter, type_serialization
 
 from .descriptions import find_pipeline_inputs, find_pipeline_outputs
 from .draw import _to_mermaid_image
@@ -42,11 +41,6 @@ T = TypeVar("T", bound="PipelineBase")
 
 logger = logging.getLogger(__name__)
 
-_MAX_LOOPS_ALLOWED_DEPRECATION_MESSAGE = (
-    "'max_loops_allowed' argument is deprecated and will be removed in version '2.7.0'. "
-    "Use 'max_runs_per_component' instead."
-)
-
 
 class PipelineBase:
     """
@@ -55,24 +49,13 @@ class PipelineBase:
     Builds a graph of components and orchestrates their execution according to the execution graph.
     """
 
-    def __init__(
-        self,
-        metadata: Optional[Dict[str, Any]] = None,
-        max_loops_allowed: Optional[int] = None,
-        debug_path: Optional[Union[Path, str]] = None,
-        max_runs_per_component: int = 100,
-    ):
+    def __init__(self, metadata: Optional[Dict[str, Any]] = None, max_runs_per_component: int = 100):
         """
         Creates the Pipeline.
 
         :param metadata:
             Arbitrary dictionary to store metadata about this `Pipeline`. Make sure all the values contained in
             this dictionary can be serialized and deserialized if you wish to save this `Pipeline` to file.
-        :param max_loops_allowed:
-            How many times the `Pipeline` can run the same node before throwing an exception.
-            This is deprecated and will be removed in version 2.7.0, use `max_runs_per_component` instead.
-        :param debug_path:
-            When debug is enabled in `run()`, where to save the debug data.
         :param max_runs_per_component:
             How many times the `Pipeline` can run the same Component.
             If this limit is reached a `PipelineMaxComponentRuns` exception is raised.
@@ -82,44 +65,7 @@ class PipelineBase:
         self._last_telemetry_sent: Optional[datetime] = None
         self.metadata = metadata or {}
         self.graph = networkx.MultiDiGraph()
-        self._debug: Dict[int, Dict[str, Any]] = {}
-        if debug_path is None:
-            self._debug_path = Path(".haystack_debug/")
-        else:
-            warnings.warn(
-                "The 'debug_path' argument is deprecated and will be removed in version '2.7.0'.", DeprecationWarning
-            )
-            self._debug_path = Path(debug_path)
-
-        if max_loops_allowed is not None:
-            warnings.warn(_MAX_LOOPS_ALLOWED_DEPRECATION_MESSAGE, DeprecationWarning)
-            self._max_runs_per_component = max_loops_allowed
-        else:
-            self._max_runs_per_component = max_runs_per_component
-
-    @property
-    def max_loops_allowed(self) -> int:
-        """
-        Returns the maximum number of runs per Component allowed in this Pipeline.
-
-        This is a deprecated field, use `max_runs_per_component` instead.
-
-        :return: Maximum number of runs per Component
-        """
-        warnings.warn(_MAX_LOOPS_ALLOWED_DEPRECATION_MESSAGE, DeprecationWarning)
-        return self._max_runs_per_component
-
-    @max_loops_allowed.setter
-    def max_loops_allowed(self, value: int):
-        """
-        Sets the maximum number of runs per Component allowed in this Pipeline.
-
-        This is a deprecated property, use `max_runs_per_component` instead.
-
-        :param value: Maximum number of runs per Component
-        """
-        warnings.warn(_MAX_LOOPS_ALLOWED_DEPRECATION_MESSAGE, DeprecationWarning)
-        self._max_runs_per_component = value
+        self._max_runs_per_component = max_runs_per_component
 
     def __eq__(self, other) -> bool:
         """
@@ -165,7 +111,7 @@ class PipelineBase:
         """
         components = {}
         for name, instance in self.graph.nodes(data="instance"):  # type:ignore
-            components[name] = component_to_dict(instance)
+            components[name] = component_to_dict(instance, name)
 
         connections = []
         for sender, receiver, edge_data in self.graph.edges.data():
@@ -199,14 +145,7 @@ class PipelineBase:
         data_copy = deepcopy(data)  # to prevent modification of original data
         metadata = data_copy.get("metadata", {})
         max_runs_per_component = data_copy.get("max_runs_per_component", 100)
-        max_loops_allowed = data_copy.get("max_loops_allowed", None)
-        debug_path = Path(data_copy.get("debug_path", ".haystack_debug/"))
-        pipe = cls(
-            metadata=metadata,
-            max_loops_allowed=max_loops_allowed,
-            max_runs_per_component=max_runs_per_component,
-            debug_path=debug_path,
-        )
+        pipe = cls(metadata=metadata, max_runs_per_component=max_runs_per_component)
         components_to_reuse = kwargs.get("components", {})
         for name, component_data in data_copy.get("components", {}).items():
             if name in components_to_reuse:
@@ -221,7 +160,7 @@ class PipelineBase:
                         # Import the module first...
                         module, _ = component_data["type"].rsplit(".", 1)
                         logger.debug("Trying to import module {module_name}", module_name=module)
-                        importlib.import_module(module)
+                        type_serialization.thread_safe_import(module)
                         # ...then try again
                         if component_data["type"] not in component.registry:
                             raise PipelineError(
@@ -428,7 +367,7 @@ class PipelineBase:
 
         return instance
 
-    def connect(self, sender: str, receiver: str) -> "PipelineBase":
+    def connect(self, sender: str, receiver: str) -> "PipelineBase":  # noqa: PLR0915
         """
         Connects two components together.
 
@@ -452,6 +391,9 @@ class PipelineBase:
         # Edges may be named explicitly by passing 'node_name.edge_name' to connect().
         sender_component_name, sender_socket_name = parse_connect_string(sender)
         receiver_component_name, receiver_socket_name = parse_connect_string(receiver)
+
+        if sender_component_name == receiver_component_name:
+            raise PipelineConnectError("Connecting a Component to itself is not supported.")
 
         # Get the nodes data.
         try:
@@ -823,7 +765,10 @@ class PipelineBase:
 
         return data
 
-    def _init_inputs_state(self, data: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+    def _normalize_varidiac_input_data(self, data: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+        """
+        Variadic inputs expect their value to be a list, this utility method creates that list from the user's input.
+        """
         for component_name, component_inputs in data.items():
             if component_name not in self.graph.nodes:
                 # This is not a component name, it must be the name of one or more input sockets.
@@ -831,8 +776,6 @@ class PipelineBase:
                 continue
             instance = self.graph.nodes[component_name]["instance"]
             for component_input, input_value in component_inputs.items():
-                # Handle mutable input data
-                data[component_name][component_input] = copy(input_value)
                 if instance.__haystack_input__._sockets_dict[component_input].is_variadic:
                     # Components that have variadic inputs need to receive lists as input.
                     # We don't want to force the user to always pass lists, so we convert single values to lists here.
@@ -841,41 +784,6 @@ class PipelineBase:
                     data[component_name][component_input] = [input_value]
 
         return {**data}
-
-    def _init_run_queue(self, pipeline_inputs: Dict[str, Any]) -> List[Tuple[str, Component]]:
-        run_queue: List[Tuple[str, Component]] = []
-
-        # HACK: Quick workaround for the issue of execution order not being
-        # well-defined (NB - https://github.com/deepset-ai/haystack/issues/7985).
-        # We should fix the original execution logic instead.
-        if networkx.is_directed_acyclic_graph(self.graph):
-            # If the Pipeline is linear we can easily determine the order of execution with
-            # a topological sort.
-            # So use that to get the run order.
-            for node in networkx.topological_sort(self.graph):
-                run_queue.append((node, self.graph.nodes[node]["instance"]))
-            return run_queue
-
-        for node_name in self.graph.nodes:
-            component = self.graph.nodes[node_name]["instance"]
-
-            if len(component.__haystack_input__._sockets_dict) == 0:
-                # Component has no input, can run right away
-                run_queue.append((node_name, component))
-                continue
-
-            if node_name in pipeline_inputs:
-                # This component is in the input data, if it has enough inputs it can run right away
-                run_queue.append((node_name, component))
-                continue
-
-            for socket in component.__haystack_input__._sockets_dict.values():
-                if not socket.senders or socket.is_variadic:
-                    # Component has at least one input not connected or is variadic, can run right away.
-                    run_queue.append((node_name, component))
-                    break
-
-        return run_queue
 
     @classmethod
     def from_template(
@@ -909,9 +817,27 @@ class PipelineBase:
         for node in self.graph.nodes:
             self.graph.nodes[node]["visits"] = 0
 
-    def _distribute_output(
+    def _find_receivers_from(self, component_name: str) -> List[Tuple[str, OutputSocket, InputSocket]]:
+        """
+        Utility function to find all Components that receive input form `component_name`.
+
+        :param component_name:
+            Name of the sender Component
+
+        :returns:
+            List of tuples containing name of the receiver Component and sender OutputSocket
+            and receiver InputSocket instances
+        """
+        res = []
+        for _, receiver_name, connection in self.graph.edges(nbunch=component_name, data=True):
+            sender_socket: OutputSocket = connection["from_socket"]
+            receiver_socket: InputSocket = connection["to_socket"]
+            res.append((receiver_name, sender_socket, receiver_socket))
+        return res
+
+    def _distribute_output(  # pylint: disable=too-many-positional-arguments
         self,
-        component_name: str,
+        receiver_components: List[Tuple[str, OutputSocket, InputSocket]],
         component_result: Dict[str, Any],
         components_inputs: Dict[str, Dict[str, Any]],
         run_queue: List[Tuple[str, Component]],
@@ -923,23 +849,27 @@ class PipelineBase:
         This also updates the queues that keep track of which Components are ready to run and which are waiting for
         input.
 
-        :param component_name: Name of the Component that created the output
-        :param component_result: The output of the Component
-        :paramt components_inputs: The current state of the inputs divided by Component name
-        :param run_queue: Queue of Components to run
-        :param waiting_queue: Queue of Components waiting for input
+        :param receiver_components:
+            List of tuples containing name of receiver Components and relative sender OutputSocket
+            and receiver InputSocket instances
+        :param component_result:
+            The output of the Component
+        :param components_inputs:
+            The current state of the inputs divided by Component name
+        :param run_queue:
+            Queue of Components to run
+        :param waiting_queue:
+            Queue of Components waiting for input
 
-        :returns: The updated output of the Component without the keys that were distributed to other Components
+        :returns:
+            The updated output of the Component without the keys that were distributed to other Components
         """
         # We keep track of which keys to remove from component_result at the end of the loop.
         # This is done after the output has been distributed to the next components, so that
         # we're sure all components that need this output have received it.
         to_remove_from_component_result = set()
 
-        for _, receiver_name, connection in self.graph.edges(nbunch=component_name, data=True):
-            sender_socket: OutputSocket = connection["from_socket"]
-            receiver_socket: InputSocket = connection["to_socket"]
-
+        for receiver_name, sender_socket, receiver_socket in receiver_components:
             if sender_socket.name not in component_result:
                 # This output wasn't created by the sender, nothing we can do.
                 #
@@ -978,9 +908,8 @@ class PipelineBase:
             receiver = self.graph.nodes[receiver_name]["instance"]
             pair = (receiver_name, receiver)
 
-            is_greedy = getattr(receiver, "__haystack_is_greedy__", False)
             if receiver_socket.is_variadic:
-                if is_greedy:
+                if receiver_socket.is_greedy:
                     # If the receiver is greedy, we can run it as soon as possible.
                     # First we remove it from the status lists it's in if it's there or
                     # we risk running it multiple times.
@@ -988,7 +917,7 @@ class PipelineBase:
                         run_queue.remove(pair)
                     if pair in waiting_queue:
                         waiting_queue.remove(pair)
-                    run_queue.append(pair)
+                    run_queue.insert(0, pair)
                 else:
                     # If the receiver Component has a variadic input that is not greedy
                     # we put it in the waiting queue.
@@ -1107,16 +1036,33 @@ class PipelineBase:
         """
 
         # Simplifies the check if a Component is Variadic and received some input from other Components.
-        def is_variadic_with_existing_inputs(comp: Component) -> bool:
-            for receiver_socket in comp.__haystack_input__._sockets_dict.values():  # type: ignore
-                if component_name not in receiver_socket.senders:
+        def has_variadic_socket_with_existing_inputs(
+            component: Component, component_name: str, sender_name: str, components_inputs: Dict[str, Dict[str, Any]]
+        ) -> bool:
+            for socket in component.__haystack_input__._sockets_dict.values():  # type: ignore
+                if sender_name not in socket.senders:
                     continue
-                if (
-                    receiver_socket.is_variadic
-                    and len(components_inputs.get(receiver, {}).get(receiver_socket.name, [])) > 0
-                ):
-                    # This Component already received some input to its Variadic socket from other Components.
-                    # It should be able to run even if it doesn't receive any input from component_name.
+                if socket.is_variadic and len(components_inputs.get(component_name, {}).get(socket.name, [])) > 0:
+                    return True
+            return False
+
+        # Makes it easier to verify if all connections between two Components are optional
+        def all_connections_are_optional(sender_name: str, receiver: Component) -> bool:
+            for socket in receiver.__haystack_input__._sockets_dict.values():  # type: ignore
+                if sender_name not in socket.senders:
+                    continue
+                if socket.is_mandatory:
+                    return False
+            return True
+
+        # Eases checking if other connections that are not between sender_name and receiver_name
+        # already received inputs
+        def other_connections_received_input(sender_name: str, receiver_name: str) -> bool:
+            receiver: Component = self.graph.nodes[receiver_name]["instance"]
+            for receiver_socket in receiver.__haystack_input__._sockets_dict.values():  # type: ignore
+                if sender_name in receiver_socket.senders:
+                    continue
+                if components_inputs.get(receiver_name, {}).get(receiver_socket.name) is not None:
                     return True
             return False
 
@@ -1128,7 +1074,21 @@ class PipelineBase:
             for receiver in socket.receivers:
                 receiver_instance: Component = self.graph.nodes[receiver]["instance"]
 
-                if is_variadic_with_existing_inputs(receiver_instance):
+                if has_variadic_socket_with_existing_inputs(
+                    receiver_instance, receiver, component_name, components_inputs
+                ):
+                    # Components with Variadic input that already received some input
+                    # can still run, even if branch is skipped.
+                    # If we remove them they won't run.
+                    continue
+
+                if all_connections_are_optional(component_name, receiver_instance) and other_connections_received_input(
+                    component_name, receiver
+                ):
+                    # If all the connections between component_name and receiver are optional
+                    # and receiver received other inputs already it still has enough inputs to run.
+                    # Even if it didn't receive input from component_name, so we can't remove it or its
+                    # descendants.
                     continue
 
                 components.add((receiver, receiver_instance))
@@ -1137,7 +1097,18 @@ class PipelineBase:
                 # This is fine even if the Pipeline will merge back into a single Component
                 # at a certain point. The merging Component will be put back into the run
                 # queue at a later stage.
-                components |= {(d, self.graph.nodes[d]["instance"]) for d in networkx.descendants(self.graph, receiver)}
+                for descendant_name in networkx.descendants(self.graph, receiver):
+                    descendant = self.graph.nodes[descendant_name]["instance"]
+
+                    # Components with Variadic input that already received some input
+                    # can still run, even if branch is skipped.
+                    # If we remove them they won't run.
+                    if has_variadic_socket_with_existing_inputs(
+                        descendant, descendant_name, receiver, components_inputs
+                    ):
+                        continue
+
+                    components.add((descendant_name, descendant))
 
         return components
 
@@ -1186,6 +1157,90 @@ class PipelineBase:
         current_inputs = inputs[name].keys()
         return expected_inputs == current_inputs
 
+    def _break_supported_cycles_in_graph(self) -> Tuple[networkx.MultiDiGraph, Dict[str, List[List[str]]]]:
+        """
+        Utility function to remove supported cycles in the Pipeline's graph.
+
+        Given that the Pipeline execution would wait to run a Component until it has received
+        all its mandatory inputs, it doesn't make sense for us to try and break cycles by
+        removing a connection to a mandatory input. The Pipeline would just get stuck at a later time.
+
+        So we can only break connections in cycles that have a Variadic or GreedyVariadic type or a default value.
+
+        This will raise a PipelineRuntimeError if we there are cycles that can't be broken.
+        That is bound to happen when at least one of the inputs in a cycle is mandatory.
+
+        If the Pipeline's graph doesn't have any cycle it will just return that graph and an empty dictionary.
+
+        :returns:
+            A tuple containing:
+                * A copy of the Pipeline's graph without cycles
+                * A dictionary of Component's names and a list of all the cycles they were part of.
+                  The cycles are a list of Component's names that create that cycle.
+        """
+        if networkx.is_directed_acyclic_graph(self.graph):
+            return self.graph, {}
+
+        temp_graph: networkx.MultiDiGraph = self.graph.copy()
+        # A list of all the cycles that are found in the graph, each inner list contains
+        # the Component names that create that cycle.
+        cycles: List[List[str]] = list(networkx.simple_cycles(self.graph))
+        # Maps a Component name to a list of its output socket names that have been broken
+        edges_removed: Dict[str, List[str]] = defaultdict(list)
+        # This keeps track of all the cycles that a component is part of.
+        # Maps a Component name to a list of cycles, each inner list contains
+        # the Component names that create that cycle (the key will also be
+        # an element in each list). The last Component in each list is implicitly
+        # connected to the first.
+        components_in_cycles: Dict[str, List[List[str]]] = defaultdict(list)
+
+        # Used to minimize the number of time we check whether the graph has any more
+        # cycles left to break or not.
+        graph_has_cycles = True
+
+        # Iterate all the cycles to find the least amount of connections that we can remove
+        # to make the Pipeline graph acyclic.
+        # As soon as the graph is acyclic we stop breaking connections and return.
+        for cycle in cycles:
+            for comp in cycle:
+                components_in_cycles[comp].append(cycle)
+
+            # Iterate this cycle, we zip the cycle with itself so that at the last iteration
+            # sender_comp will be the last element of cycle and receiver_comp will be the first.
+            # So if cycle is [1, 2, 3, 4] we would call zip([1, 2, 3, 4], [2, 3, 4, 1]).
+            for sender_comp, receiver_comp in zip(cycle, cycle[1:] + cycle[:1]):
+                # We get the key and iterate those as we want to edit the graph data while
+                # iterating the edges and that would raise.
+                # Even though the connection key set in Pipeline.connect() uses only the
+                # sockets name we don't have clashes since it's only used to differentiate
+                # multiple edges between two nodes.
+                edge_keys = list(temp_graph.get_edge_data(sender_comp, receiver_comp).keys())
+                for edge_key in edge_keys:
+                    edge_data = temp_graph.get_edge_data(sender_comp, receiver_comp)[edge_key]
+                    receiver_socket = edge_data["to_socket"]
+                    if not receiver_socket.is_variadic and receiver_socket.is_mandatory:
+                        continue
+
+                    # We found a breakable edge
+                    sender_socket = edge_data["from_socket"]
+                    edges_removed[sender_comp].append(sender_socket.name)
+                    temp_graph.remove_edge(sender_comp, receiver_comp, edge_key)
+
+                    graph_has_cycles = not networkx.is_directed_acyclic_graph(temp_graph)
+                    if not graph_has_cycles:
+                        # We removed all the cycles, we can stop
+                        break
+
+            if not graph_has_cycles:
+                # We removed all the cycles, nice
+                break
+
+        if graph_has_cycles:
+            msg = "Pipeline contains a cycle that we can't execute"
+            raise PipelineRuntimeError(msg)
+
+        return temp_graph, components_in_cycles
+
 
 def _connections_status(
     sender_node: str, receiver_node: str, sender_sockets: List[OutputSocket], receiver_sockets: List[InputSocket]
@@ -1214,7 +1269,7 @@ def _connections_status(
 
 def _is_lazy_variadic(c: Component) -> bool:
     """
-    Small utility function to check if a Component has a Variadic input that is not greedy
+    Small utility function to check if a Component has at least a Variadic input and no GreedyVariadic input.
     """
     is_variadic = any(
         socket.is_variadic
@@ -1222,7 +1277,10 @@ def _is_lazy_variadic(c: Component) -> bool:
     )
     if not is_variadic:
         return False
-    return not getattr(c, "__haystack_is_greedy__", False)
+    return not any(
+        socket.is_greedy
+        for socket in c.__haystack_input__._sockets_dict.values()  # type: ignore
+    )
 
 
 def _has_all_inputs_with_defaults(c: Component) -> bool:

@@ -39,15 +39,15 @@ class TestTracing:
         assert len(spying_tracer.spans) == 3
 
         assert spying_tracer.spans == [
-            SpyingSpan(
+            pipeline_span := SpyingSpan(
                 operation_name="haystack.pipeline.run",
                 tags={
                     "haystack.pipeline.input_data": {"hello": {"word": "world"}},
                     "haystack.pipeline.output_data": {"hello2": {"output": "Hello, Hello, world!!"}},
                     "haystack.pipeline.metadata": {},
-                    "haystack.pipeline.max_loops_allowed": 100,
                     "haystack.pipeline.max_runs_per_component": 100,
                 },
+                parent_span=None,
                 trace_id=ANY,
                 span_id=ANY,
             ),
@@ -61,6 +61,7 @@ class TestTracing:
                     "haystack.component.output_spec": {"output": {"type": "str", "receivers": ["hello2"]}},
                     "haystack.component.visits": 1,
                 },
+                parent_span=pipeline_span,
                 trace_id=ANY,
                 span_id=ANY,
             ),
@@ -74,6 +75,7 @@ class TestTracing:
                     "haystack.component.output_spec": {"output": {"type": "str", "receivers": []}},
                     "haystack.component.visits": 1,
                 },
+                parent_span=pipeline_span,
                 trace_id=ANY,
                 span_id=ANY,
             ),
@@ -96,11 +98,10 @@ class TestTracing:
 
         assert len(spying_tracer.spans) == 3
         assert spying_tracer.spans == [
-            SpyingSpan(
+            pipeline_span := SpyingSpan(
                 operation_name="haystack.pipeline.run",
                 tags={
                     "haystack.pipeline.metadata": {},
-                    "haystack.pipeline.max_loops_allowed": 100,
                     "haystack.pipeline.max_runs_per_component": 100,
                     "haystack.pipeline.input_data": {"hello": {"word": "world"}},
                     "haystack.pipeline.output_data": {"hello2": {"output": "Hello, Hello, world!!"}},
@@ -120,6 +121,7 @@ class TestTracing:
                     "haystack.component.visits": 1,
                     "haystack.component.output": {"output": "Hello, world!"},
                 },
+                parent_span=pipeline_span,
                 trace_id=ANY,
                 span_id=ANY,
             ),
@@ -135,6 +137,7 @@ class TestTracing:
                     "haystack.component.visits": 1,
                     "haystack.component.output": {"output": "Hello, Hello, world!!"},
                 },
+                parent_span=pipeline_span,
                 trace_id=ANY,
                 span_id=ANY,
             ),

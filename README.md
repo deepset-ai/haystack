@@ -6,7 +6,7 @@
 | CI/CD   | [![Tests](https://github.com/deepset-ai/haystack/actions/workflows/tests.yml/badge.svg)](https://github.com/deepset-ai/haystack/actions/workflows/tests.yml) [![types - Mypy](https://img.shields.io/badge/types-Mypy-blue.svg)](https://github.com/python/mypy) [![Coverage Status](https://coveralls.io/repos/github/deepset-ai/haystack/badge.svg?branch=main)](https://coveralls.io/github/deepset-ai/haystack?branch=main) [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff) |
 | Docs    | [![Website](https://img.shields.io/website?label=documentation&up_message=online&url=https%3A%2F%2Fdocs.haystack.deepset.ai)](https://docs.haystack.deepset.ai)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | Package | [![PyPI](https://img.shields.io/pypi/v/haystack-ai)](https://pypi.org/project/haystack-ai/) ![PyPI - Downloads](https://img.shields.io/pypi/dm/haystack-ai?color=blue&logo=pypi&logoColor=gold) ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/haystack-ai?logo=python&logoColor=gold) [![Conda Version](https://img.shields.io/conda/vn/conda-forge/haystack-ai.svg)](https://anaconda.org/conda-forge/haystack-ai) [![GitHub](https://img.shields.io/github/license/deepset-ai/haystack?color=blue)](LICENSE) [![License Compliance](https://github.com/deepset-ai/haystack/actions/workflows/license_compliance.yml/badge.svg)](https://github.com/deepset-ai/haystack/actions/workflows/license_compliance.yml) |
-| Meta    | [![Discord](https://img.shields.io/discord/993534733298450452?logo=discord)](https://discord.com/invite/VBpFzsgRVF) [![Twitter Follow](https://img.shields.io/twitter/follow/haystack_ai)](https://twitter.com/haystack_ai)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Meta    | [![Discord](https://img.shields.io/discord/993534733298450452?logo=discord)](https://discord.com/invite/xYvH6drSmA) [![Twitter Follow](https://img.shields.io/twitter/follow/haystack_ai)](https://twitter.com/haystack_ai)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 </div>
 
 [Haystack](https://haystack.deepset.ai/) is an end-to-end LLM framework that allows you to build applications powered by
@@ -22,18 +22,23 @@ The simplest way to get Haystack is via pip:
 pip install haystack-ai
 ```
 
+Install from the `main` branch to try the newest features:
+```sh
+pip install git+https://github.com/deepset-ai/haystack.git@main
+```
+
 Haystack supports multiple installation methods including Docker images. For a comprehensive guide please refer
-to the [documentation](https://docs.haystack.deepset.ai/v2.0/docs/installation).
+to the [documentation](https://docs.haystack.deepset.ai/docs/installation).
 
 ## Documentation
 
 If you're new to the project, check out ["What is Haystack?"](https://haystack.deepset.ai/overview/intro) then go
 through the ["Get Started Guide"](https://haystack.deepset.ai/overview/quick-start) and build your first LLM application
-in a matter of minutes. Keep learning with the [tutorials](https://haystack.deepset.ai/tutorials?v=2.0). For more advanced
+in a matter of minutes. Keep learning with the [tutorials](https://haystack.deepset.ai/tutorials). For more advanced
 use cases, or just to get some inspiration, you can browse our Haystack recipes in the
-[Cookbook](https://github.com/deepset-ai/haystack-cookbook).
+[Cookbook](https://haystack.deepset.ai/cookbook).
 
-At any given point, hit the [documentation](https://docs.haystack.deepset.ai/v2.0/docs/intro) to learn more about Haystack, what can it do for you and the technology behind.
+At any given point, hit the [documentation](https://docs.haystack.deepset.ai/docs/intro) to learn more about Haystack, what can it do for you and the technology behind.
 
 ## Features
 
@@ -61,20 +66,20 @@ Some examples of what you can do with Haystack:
 >
 > Are you looking for a managed solution that benefits from Haystack? [deepset Cloud](https://www.deepset.ai/deepset-cloud?utm_campaign=developer-relations&utm_source=haystack&utm_medium=readme) is our fully managed, end-to-end platform to integrate LLMs with your data, which uses Haystack for the LLM pipelines architecture.
 
-## 🔜 Visual Pipeline Editor
+## 🆕 deepset Studio: Your Development Environment for Haystack
 
-Use **deepset Studio** to visually create and export your Haystack pipeline architecture as a YAML or as Python code. Learn more about it in [our announcement post](https://haystack.deepset.ai/blog/announcing-studio).
+Use **deepset Studio** to visually create, deploy, and test your Haystack pipelines. Learn more about it in [our announcement post](https://haystack.deepset.ai/blog/announcing-studio).
 
 ![studio](https://github.com/user-attachments/assets/e4f09746-20b5-433e-8261-eca224ac23b3)
 
 
-👉 [Join the waitlist](https://landing.deepset.ai/deepset-studio-waitlist?utm_campaign=2408%20-%20Campaign%20-%20Studio%20Launch&utm_source=github&utm_medium=referral)!
+👉 [Sign up](https://landing.deepset.ai/deepset-studio-signup)!
 
 ## Telemetry
 
 Haystack collects **anonymous** usage statistics of pipeline components. We receive an event every time these components are initialized. This way, we know which components are most relevant to our community.
 
-Read more about telemetry in Haystack or how you can opt out in [Haystack docs](https://docs.haystack.deepset.ai/v2.0/docs/telemetry).
+Read more about telemetry in Haystack or how you can opt out in [Haystack docs](https://docs.haystack.deepset.ai/docs/telemetry).
 
 ## 🖖 Community
 

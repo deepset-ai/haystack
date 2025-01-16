@@ -83,12 +83,16 @@ class Tracer(abc.ABC):
 
     @abc.abstractmethod
     @contextlib.contextmanager
-    def trace(self, operation_name: str, tags: Optional[Dict[str, Any]] = None) -> Iterator[Span]:
+    def trace(
+        self, operation_name: str, tags: Optional[Dict[str, Any]] = None, parent_span: Optional[Span] = None
+    ) -> Iterator[Span]:
         """
         Trace the execution of a block of code.
 
         :param operation_name: the name of the operation being traced.
         :param tags: tags to apply to the newly created span.
+        :param parent_span: the parent span to use for the newly created span.
+            If `None`, the newly created span will be a root span.
         :return: the newly created span.
         """
         pass
@@ -117,9 +121,11 @@ class ProxyTracer(Tracer):
         self.is_content_tracing_enabled = os.getenv(HAYSTACK_CONTENT_TRACING_ENABLED_ENV_VAR, "false").lower() == "true"
 
     @contextlib.contextmanager
-    def trace(self, operation_name: str, tags: Optional[Dict[str, Any]] = None) -> Iterator[Span]:
+    def trace(
+        self, operation_name: str, tags: Optional[Dict[str, Any]] = None, parent_span: Optional[Span] = None
+    ) -> Iterator[Span]:
         """Activate and return a new span that inherits from the current active span."""
-        with self.actual_tracer.trace(operation_name, tags=tags) as span:
+        with self.actual_tracer.trace(operation_name, tags=tags, parent_span=parent_span) as span:
             yield span
 
     def current_span(self) -> Optional[Span]:
@@ -139,7 +145,9 @@ class NullTracer(Tracer):
     """A no-op implementation of the `Tracer` interface. This is used when tracing is disabled."""
 
     @contextlib.contextmanager
-    def trace(self, operation_name: str, tags: Optional[Dict[str, Any]] = None) -> Iterator[Span]:
+    def trace(
+        self, operation_name: str, tags: Optional[Dict[str, Any]] = None, parent_span: Optional[Span] = None
+    ) -> Iterator[Span]:
         """Activate and return a new span that inherits from the current active span."""
         yield NullSpan()
 

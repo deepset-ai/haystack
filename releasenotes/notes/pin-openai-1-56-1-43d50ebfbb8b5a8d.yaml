@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Pin OpenAI client to >=1.56.1 to avoid issues related to changes in the httpx library.

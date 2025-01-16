@@ -140,7 +140,7 @@ class TestOpenAPIServiceConnector:
 
         connector.run(messages=messages, service_openapi_spec=spec, service_credentials="fake_key")
 
-        openapi_mock.assert_called_once_with(spec)
+        openapi_mock.assert_called_once_with(spec, ssl_verify=None)
         mock_service.authenticate.assert_called_once_with("apikey", "fake_key")
 
         # verify call went through on the wire with the correct parameters
@@ -182,7 +182,7 @@ class TestOpenAPIServiceConnector:
         # verify call went through on the wire
         mock_service.call_greet.assert_called_once_with(parameters={"name": "John"}, data={"message": "Hello"})
 
-        response = json.loads(result["service_response"][0].content)
+        response = json.loads(result["service_response"][0].text)
         assert response == "Hello, John"
 
     @patch("haystack.components.connectors.openapi_service.OpenAPI")
@@ -259,7 +259,7 @@ class TestOpenAPIServiceConnector:
             }
         )
 
-        response = json.loads(result["service_response"][0].content)
+        response = json.loads(result["service_response"][0].text)
         assert response == {"result": "accepted"}
 
     @patch("haystack.components.connectors.openapi_service.OpenAPI")
@@ -331,3 +331,11 @@ class TestOpenAPIServiceConnector:
             ValueError, match="Missing requestBody parameter: 'message' required for the 'greet' operation."
         ):
             connector.run(messages=messages, service_openapi_spec=spec)
+
+    def test_serialization(self):
+        for test_val in ("myvalue", True, None):
+            openapi_service_connector = OpenAPIServiceConnector(test_val)
+            serialized = openapi_service_connector.to_dict()
+            assert serialized["init_parameters"]["ssl_verify"] == test_val
+            deserialized = OpenAPIServiceConnector.from_dict(serialized)
+            assert deserialized.ssl_verify == test_val

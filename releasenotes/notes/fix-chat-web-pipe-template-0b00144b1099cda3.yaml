@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Update the `CHAT_WITH_WEBSITE` Pipeline template to reflect the changes in
+    the `HTMLToDocument` converter component.

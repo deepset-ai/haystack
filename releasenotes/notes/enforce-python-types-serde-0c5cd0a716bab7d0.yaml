@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Improved serialization/deserialization errors to provide extra context about the delinquent components when possible.
+
+fixes:
+  - |
+    Serialized data of components are now explicitly enforced to be one of the following basic Python datatypes: str, int, float, bool, list, dict, set, tuple or None.

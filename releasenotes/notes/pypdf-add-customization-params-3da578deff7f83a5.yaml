@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Added new initialization parameters to the `PyPDFToDocument` component to customize the text extraction process
+    from PDF files.

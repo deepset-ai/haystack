@@ -1,0 +1,23 @@
+---
+highlights: >
+    We are introducing a refactored ChatMessage dataclass. It is more flexible, future-proof, and compatible with
+    different types of content: text, tool calls, tool calls results.
+    For information about the new API and how to migrate, see the documentation:
+    https://docs.haystack.deepset.ai/docs/chatmessage
+upgrade:
+  - |
+    The refactoring of the ChatMessage dataclass includes some breaking changes, involving ChatMessage creation and
+    accessing attributes. If you have a Pipeline containing a ChatPromptBuilder, serialized using Haystack<2.9.0,
+    deserialization may break.
+    For detailed information about the changes and how to migrate, see the documentation:
+    https://docs.haystack.deepset.ai/docs/chatmessage
+features:
+  - |
+    Changed the ChatMessage dataclass to support different types of content, including tool calls, and tool call
+    results.
+deprecations:
+  - |
+    The function role and ChatMessage.from_function class method have been deprecated and will be removed in
+    Haystack 2.10.0. ChatMessage.from_function also attempts to produce a valid tool message.
+    For more information, see the documentation:
+    https://docs.haystack.deepset.ai/docs/chatmessage

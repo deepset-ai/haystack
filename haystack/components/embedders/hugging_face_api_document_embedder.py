@@ -14,7 +14,7 @@ from haystack.utils import Secret, deserialize_secrets_inplace
 from haystack.utils.hf import HFEmbeddingAPIType, HFModelType, check_valid_model
 from haystack.utils.url_validation import is_valid_http_url
 
-with LazyImport(message="Run 'pip install \"huggingface_hub>=0.23.0\"'") as huggingface_hub_import:
+with LazyImport(message="Run 'pip install \"huggingface_hub>=0.27.0\"'") as huggingface_hub_import:
     from huggingface_hub import InferenceClient
 
 logger = logging.getLogger(__name__)
@@ -102,7 +102,7 @@ class HuggingFaceAPIDocumentEmbedder:
         progress_bar: bool = True,
         meta_fields_to_embed: Optional[List[str]] = None,
         embedding_separator: str = "\n",
-    ):
+    ):  # pylint: disable=too-many-positional-arguments
         """
         Creates a HuggingFaceAPIDocumentEmbedder component.
 
@@ -168,7 +168,7 @@ class HuggingFaceAPIDocumentEmbedder:
             model_or_url = url
         else:
             msg = f"Unknown api_type {api_type}"
-            raise ValueError(api_type)
+            raise ValueError(msg)
 
         self.api_type = api_type
         self.api_params = api_params

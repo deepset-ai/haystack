@@ -13,13 +13,13 @@ class TestChatPromptBuilder:
     def test_init(self):
         builder = ChatPromptBuilder(
             template=[
-                ChatMessage.from_user(content="This is a {{ variable }}"),
-                ChatMessage.from_system(content="This is a {{ variable2 }}"),
+                ChatMessage.from_user("This is a {{ variable }}"),
+                ChatMessage.from_system("This is a {{ variable2 }}"),
             ]
         )
         assert builder.required_variables == []
-        assert builder.template[0].content == "This is a {{ variable }}"
-        assert builder.template[1].content == "This is a {{ variable2 }}"
+        assert builder.template[0].text == "This is a {{ variable }}"
+        assert builder.template[1].text == "This is a {{ variable2 }}"
         assert builder._variables is None
         assert builder._required_variables is None
 
@@ -62,7 +62,7 @@ class TestChatPromptBuilder:
             template=[ChatMessage.from_user("This is a {{ variable }}")], required_variables=["variable"]
         )
         assert builder.required_variables == ["variable"]
-        assert builder.template[0].content == "This is a {{ variable }}"
+        assert builder.template[0].text == "This is a {{ variable }}"
         assert builder._variables is None
         assert builder._required_variables == ["variable"]
 
@@ -84,7 +84,7 @@ class TestChatPromptBuilder:
         builder = ChatPromptBuilder(template=template, variables=variables)
         assert builder.required_variables == []
         assert builder._variables == variables
-        assert builder.template[0].content == "Hello, {{ var1 }}, {{ var2 }}!"
+        assert builder.template[0].text == "Hello, {{ var1 }}, {{ var2 }}!"
         assert builder._required_variables is None
 
         # we have inputs that contain: template, template_variables + variables
@@ -135,6 +135,17 @@ class TestChatPromptBuilder:
         with pytest.raises(ValueError, match="bar"):
             builder.run(foo="foo")
         with pytest.raises(ValueError, match="foo, bar"):
+            builder.run()
+
+    def test_run_with_missing_required_input_using_star(self):
+        builder = ChatPromptBuilder(
+            template=[ChatMessage.from_user("This is a {{ foo }}, not a {{ bar }}")], required_variables="*"
+        )
+        with pytest.raises(ValueError, match="foo"):
+            builder.run(bar="bar")
+        with pytest.raises(ValueError, match="bar"):
+            builder.run(foo="foo")
+        with pytest.raises(ValueError, match="bar, foo"):
             builder.run()
 
     def test_run_with_variables(self):
@@ -199,11 +210,14 @@ class TestChatPromptBuilder:
         Test that the ChatPromptBuilder correctly handles meta data.
         It should render the message and copy the meta data from the original message.
         """
-        m = ChatMessage(content="This is a {{ variable }}", role=ChatRole.USER, name=None, meta={"test": "test"})
+        m = ChatMessage.from_user("This is a {{ variable }}")
+        m.meta["meta_field"] = "meta_value"
         builder = ChatPromptBuilder(template=[m])
         res = builder.run(variable="test")
-        res_msg = ChatMessage(content="This is a test", role=ChatRole.USER, name=None, meta={"test": "test"})
-        assert res == {"prompt": [res_msg]}
+
+        expected_msg = ChatMessage.from_user("This is a test")
+        expected_msg.meta["meta_field"] = "meta_value"
+        assert res == {"prompt": [expected_msg]}
 
     def test_run_with_invalid_template(self):
         builder = ChatPromptBuilder()
@@ -517,8 +531,13 @@ class TestChatPromptBuilderDynamic:
             "type": "haystack.components.builders.chat_prompt_builder.ChatPromptBuilder",
             "init_parameters": {
                 "template": [
-                    {"content": "text and {var}", "role": "user", "name": None, "meta": {}},
-                    {"content": "content {required_var}", "role": "assistant", "name": None, "meta": {}},
+                    {"_content": [{"text": "text and {var}"}], "_role": "user", "_meta": {}, "_name": None},
+                    {
+                        "_content": [{"text": "content {required_var}"}],
+                        "_role": "assistant",
+                        "_meta": {},
+                        "_name": None,
+                    },
                 ],
                 "variables": ["var", "required_var"],
                 "required_variables": ["required_var"],
@@ -531,8 +550,13 @@ class TestChatPromptBuilderDynamic:
                 "type": "haystack.components.builders.chat_prompt_builder.ChatPromptBuilder",
                 "init_parameters": {
                     "template": [
-                        {"content": "text and {var}", "role": "user", "name": None, "meta": {}},
-                        {"content": "content {required_var}", "role": "assistant", "name": None, "meta": {}},
+                        {"_content": [{"text": "text and {var}"}], "_role": "user", "_meta": {}, "_name": None},
+                        {
+                            "_content": [{"text": "content {required_var}"}],
+                            "_role": "assistant",
+                            "_meta": {},
+                            "_name": None,
+                        },
                     ],
                     "variables": ["var", "required_var"],
                     "required_variables": ["required_var"],

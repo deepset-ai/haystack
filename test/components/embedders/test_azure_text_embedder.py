@@ -19,6 +19,7 @@ class TestAzureOpenAITextEmbedder:
         assert embedder.organization is None
         assert embedder.prefix == ""
         assert embedder.suffix == ""
+        assert embedder.default_headers == {}
 
     def test_to_dict(self, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
@@ -38,8 +39,38 @@ class TestAzureOpenAITextEmbedder:
                 "timeout": 30.0,
                 "prefix": "",
                 "suffix": "",
+                "default_headers": {},
             },
         }
+
+    def test_from_dict(self, monkeypatch):
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
+        data = {
+            "type": "haystack.components.embedders.azure_text_embedder.AzureOpenAITextEmbedder",
+            "init_parameters": {
+                "api_key": {"env_vars": ["AZURE_OPENAI_API_KEY"], "strict": False, "type": "env_var"},
+                "azure_ad_token": {"env_vars": ["AZURE_OPENAI_AD_TOKEN"], "strict": False, "type": "env_var"},
+                "azure_deployment": "text-embedding-ada-002",
+                "dimensions": None,
+                "organization": None,
+                "azure_endpoint": "https://example-resource.azure.openai.com/",
+                "api_version": "2023-05-15",
+                "max_retries": 5,
+                "timeout": 30.0,
+                "prefix": "",
+                "suffix": "",
+                "default_headers": {},
+            },
+        }
+        component = AzureOpenAITextEmbedder.from_dict(data)
+        assert component.azure_deployment == "text-embedding-ada-002"
+        assert component.azure_endpoint == "https://example-resource.azure.openai.com/"
+        assert component.api_version == "2023-05-15"
+        assert component.max_retries == 5
+        assert component.timeout == 30.0
+        assert component.prefix == ""
+        assert component.suffix == ""
+        assert component.default_headers == {}
 
     @pytest.mark.integration
     @pytest.mark.skipif(

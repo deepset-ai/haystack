@@ -2,8 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import json
-
 from haystack import Pipeline
 from haystack.components.classifiers import DocumentLanguageClassifier
 from haystack.components.converters import TextFileToDocument
@@ -25,9 +23,7 @@ def test_preprocessing_pipeline(tmp_path):
         instance=MetadataRouter(rules={"en": {"field": "language", "operator": "==", "value": "en"}}), name="router"
     )
     preprocessing_pipeline.add_component(instance=DocumentCleaner(), name="cleaner")
-    preprocessing_pipeline.add_component(
-        instance=DocumentSplitter(split_by="sentence", split_length=1), name="splitter"
-    )
+    preprocessing_pipeline.add_component(instance=DocumentSplitter(split_by="period", split_length=1), name="splitter")
     preprocessing_pipeline.add_component(
         instance=SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"), name="embedder"
     )

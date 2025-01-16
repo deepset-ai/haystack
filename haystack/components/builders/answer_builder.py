@@ -58,7 +58,7 @@ class AnswerBuilder:
         self.reference_pattern = reference_pattern
 
     @component.output_types(answers=List[GeneratedAnswer])
-    def run(
+    def run(  # pylint: disable=too-many-positional-arguments
         self,
         query: str,
         replies: Union[List[str], List[ChatMessage]],
@@ -111,10 +111,18 @@ class AnswerBuilder:
         pattern = pattern or self.pattern
         reference_pattern = reference_pattern or self.reference_pattern
         all_answers = []
-        for reply, metadata in zip(replies, meta):
+        for reply, given_metadata in zip(replies, meta):
             # Extract content from ChatMessage objects if reply is a ChatMessages, else use the string as is
-            extracted_reply: str = reply.content if isinstance(reply, ChatMessage) else reply  # type: ignore
-            extracted_metadata = reply.meta if isinstance(reply, ChatMessage) else metadata
+            if isinstance(reply, ChatMessage):
+                if reply.text is None:
+                    raise ValueError(f"The provided ChatMessage has no text. ChatMessage: {reply}")
+                extracted_reply = reply.text
+            else:
+                extracted_reply = str(reply)
+            extracted_metadata = reply.meta if isinstance(reply, ChatMessage) else {}
+
+            extracted_metadata = {**extracted_metadata, **given_metadata}
+
             referenced_docs = []
             if documents:
                 if reference_pattern:

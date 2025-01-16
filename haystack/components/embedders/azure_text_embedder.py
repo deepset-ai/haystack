@@ -33,7 +33,7 @@ class AzureOpenAITextEmbedder:
     ```
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         azure_endpoint: Optional[str] = None,
         api_version: Optional[str] = "2023-05-15",
@@ -46,6 +46,8 @@ class AzureOpenAITextEmbedder:
         max_retries: Optional[int] = None,
         prefix: str = "",
         suffix: str = "",
+        *,
+        default_headers: Optional[Dict[str, str]] = None,
     ):
         """
         Creates an AzureOpenAITextEmbedder component.
@@ -82,6 +84,7 @@ class AzureOpenAITextEmbedder:
             A string to add at the beginning of each text.
         :param suffix:
             A string to add at the end of each text.
+        :param default_headers: Default headers to send to the AzureOpenAI client.
         """
         # Why is this here?
         # AzureOpenAI init is forcing us to use an init method that takes either base_url or azure_endpoint as not
@@ -105,6 +108,7 @@ class AzureOpenAITextEmbedder:
         self.max_retries = max_retries or int(os.environ.get("OPENAI_MAX_RETRIES", 5))
         self.prefix = prefix
         self.suffix = suffix
+        self.default_headers = default_headers or {}
 
         self._client = AzureOpenAI(
             api_version=api_version,
@@ -115,6 +119,7 @@ class AzureOpenAITextEmbedder:
             organization=organization,
             timeout=self.timeout,
             max_retries=self.max_retries,
+            default_headers=self.default_headers,
         )
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
@@ -143,6 +148,7 @@ class AzureOpenAITextEmbedder:
             azure_ad_token=self.azure_ad_token.to_dict() if self.azure_ad_token is not None else None,
             timeout=self.timeout,
             max_retries=self.max_retries,
+            default_headers=self.default_headers,
         )
 
     @classmethod

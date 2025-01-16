@@ -5,6 +5,7 @@ import logging
 
 import pytest
 
+from haystack import Document
 from haystack.dataclasses import ByteStream
 from haystack.components.converters.pdfminer import PDFMinerToDocument
 
@@ -28,9 +29,25 @@ class TestPDFMinerToDocument:
         """
         Test if init arguments are passed successfully to PDFMinerToDocument layout parameters
         """
-        converter = PDFMinerToDocument(char_margin=0.5, all_texts=True)
+        converter = PDFMinerToDocument(char_margin=0.5, all_texts=True, store_full_path=False)
         assert converter.layout_params.char_margin == 0.5
         assert converter.layout_params.all_texts is True
+        assert converter.store_full_path is False
+
+    def test_run_with_store_full_path_false(self, test_files_path):
+        """
+        Test if the component runs correctly with store_full_path=False
+        """
+        converter = PDFMinerToDocument(store_full_path=False)
+        sources = [test_files_path / "pdf" / "sample_pdf_1.pdf"]
+        results = converter.run(sources=sources)
+        docs = results["documents"]
+
+        assert len(docs) == 1
+        for doc in docs:
+            assert "the page 3 is empty" in doc.content
+            assert "Page 4 of Sample PDF" in doc.content
+            assert doc.meta["file_path"] == "sample_pdf_1.pdf"
 
     def test_run_wrong_file_type(self, test_files_path, caplog):
         """
@@ -126,3 +143,15 @@ class TestPDFMinerToDocument:
             results = converter.run(sources=sources)
             assert "Could not read non_existing_file.pdf" in caplog.text
             assert results["documents"] == []
+
+    def test_run_empty_document(self, caplog, test_files_path):
+        sources = [test_files_path / "pdf" / "non_text_searchable.pdf"]
+        converter = PDFMinerToDocument()
+        with caplog.at_level(logging.WARNING):
+            results = converter.run(sources=sources)
+            assert "PDFMinerToDocument could not extract text from the file" in caplog.text
+            assert results["documents"][0].content == ""
+
+            # Check that not only content is used when the returned document is initialized and doc id is generated
+            assert results["documents"][0].meta["file_path"] == "non_text_searchable.pdf"
+            assert results["documents"][0].id != Document(content="").id

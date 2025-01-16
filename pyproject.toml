@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "LLM framework to build customizable, production-ready LLM applications. Connect components (models, vector DBs, file converters) to pipelines or agents that can interact with your data."
 readme = "README.md"
 license = "Apache-2.0"
-requires-python = ">=3.8"
+requires-python = ">=3.8,<3.13"
 authors = [{ name = "deepset.ai", email = "malte.pietsch@deepset.ai" }]
 keywords = [
   "BERT",
@@ -46,7 +46,8 @@ dependencies = [
   "tqdm",
   "tenacity!=8.4.0",
   "lazy-imports",
-  "openai>=1.1.0",
+  "openai>=1.56.1",
+  "pydantic",
   "Jinja2",
   "posthog",                # telemetry
   "pyyaml",
@@ -54,12 +55,13 @@ dependencies = [
   "networkx",               # Pipeline graphs
   "typing_extensions>=4.7", # typing support for Python 3.8
   "requests",
-  "numpy<2",
+  "numpy",
   "python-dateutil",
   "haystack-experimental",
 ]
 
 [tool.hatch.envs.default]
+installer = "uv"
 dependencies = [
   "pre-commit",
   "ruff",
@@ -80,17 +82,19 @@ format-check = "ruff format --check {args}"
 
 [tool.hatch.envs.test]
 extra-dependencies = [
+  "numpy>=2", # Haystack is compatible both with numpy 1.x and 2.x, but we test with 2.x
+
   "transformers[torch,sentencepiece]==4.44.2", # ExtractiveReader, TransformersSimilarityRanker, LocalWhisperTranscriber, HFGenerators...
-  "huggingface_hub>=0.23.0",                   # Hugging Face API Generators and Embedders
+  "huggingface_hub>=0.27.0",                   # Hugging Face API Generators and Embedders
   "sentence-transformers>=3.0.0",              # SentenceTransformersTextEmbedder and SentenceTransformersDocumentEmbedder
   "langdetect",                                # TextLanguageRouter and DocumentLanguageClassifier
   "openai-whisper>=20231106",                  # LocalWhisperTranscriber
   "arrow>=1.3.0",                              # Jinja2TimeExtension
 
   # NamedEntityExtractor
-  "spacy>=3.7,<3.8",
+  "spacy>=3.8,<3.9",
   "spacy-curated-transformers>=0.2,<=0.3",
-  "en-core-web-trf @ https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.7.3/en_core_web_trf-3.7.3-py3-none-any.whl",
+  "en-core-web-trf @ https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.8.0/en_core_web_trf-3.8.0-py3-none-any.whl",
 
   # Converters
   "pypdf",                            # PyPDFToDocument
@@ -102,14 +106,17 @@ extra-dependencies = [
   "trafilatura",                      # HTMLToDocument
   "python-pptx",                      # PPTXToDocument
   "python-docx",                      # DocxToDocument
+  "jq",                               # JSONConverter
+  "openpyxl",                         # XLSXToDocument
+  "tabulate",                         # XLSXToDocument
 
-  "nltk",                             # NLTKDocumentSplitter
+  "nltk", # NLTKDocumentSplitter
 
   # OpenAPI
   "jsonref",  # OpenAPIServiceConnector, OpenAPIServiceToFunctions
   "openapi3",
 
-  # Validation
+  # JsonSchemaValidator, Tool
   "jsonschema",
 
   # Tracing
@@ -119,9 +126,8 @@ extra-dependencies = [
   # Structured logging
   "structlog",
 
-  # Looking for missing imports
-  "isort",
-  "pyproject-parser",
+  # ComponentTool
+  "docstring-parser",
 
   # Test
   "pytest",
@@ -136,6 +142,7 @@ extra-dependencies = [
   "python-multipart",
   "psutil",
   "mypy",
+  "pip",                     # mypy needs pip to install missing stub packages
   "pylint",
   "ipython",
 ]
@@ -150,6 +157,7 @@ types = "mypy --install-types --non-interactive --cache-dir=.mypy_cache/ {args:h
 lint = "pylint -ry -j 0 {args:haystack}"
 
 [tool.hatch.envs.readme]
+installer = "uv"
 detached = true                         # To avoid installing the dependencies from the default environment
 dependencies = ["haystack-pydoc-tools"]
 
@@ -180,7 +188,7 @@ packages = ["haystack"]
 [tool.codespell]
 ignore-words-list = "ans,astroid,nd,ned,nin,ue,rouge,ist"
 quiet-level = 3
-skip = "test/nodes/*,test/others/*,test/samples/*,e2e/*"
+skip = "./test,./e2e"
 
 [tool.pylint.'MESSAGES CONTROL']
 max-line-length = 120
@@ -240,6 +248,7 @@ max-locals = 45         # Default is 15
 max-module-lines = 2468 # Default is 1000
 max-nested-blocks = 9   # Default is 5
 max-statements = 206    # Default is 50
+
 [tool.pylint.'SIMILARITIES']
 min-similarity-lines = 6
 

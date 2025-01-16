@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import io
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
@@ -37,7 +38,7 @@ class PDFMinerToDocument:
     ```
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         line_overlap: float = 0.5,
         char_margin: float = 2.0,
@@ -46,6 +47,7 @@ class PDFMinerToDocument:
         boxes_flow: Optional[float] = 0.5,
         detect_vertical: bool = True,
         all_texts: bool = False,
+        store_full_path: bool = False,
     ) -> None:
         """
         Create a PDFMinerToDocument component.
@@ -78,6 +80,9 @@ class PDFMinerToDocument:
             This parameter determines whether vertical text should be considered during layout analysis.
         :param all_texts:
             If layout analysis should be performed on text in figures.
+        :param store_full_path:
+            If True, the full path of the file is stored in the metadata of the document.
+            If False, only the file name is stored.
         """
 
         pdfminer_import.check()
@@ -91,16 +96,17 @@ class PDFMinerToDocument:
             detect_vertical=detect_vertical,
             all_texts=all_texts,
         )
+        self.store_full_path = store_full_path
 
-    def __converter(self, extractor) -> Document:
+    def _converter(self, extractor) -> str:
         """
-        Extracts text from PDF pages then convert the text into Documents
+        Extracts text from PDF pages then converts the text into a single str
 
         :param extractor:
             Python generator that yields PDF pages.
 
         :returns:
-            PDF text converted to Haystack Document
+            PDF text converted to single str
         """
         pages = []
         for page in extractor:
@@ -112,9 +118,9 @@ class PDFMinerToDocument:
             pages.append(text)
 
         # Add a page delimiter
-        concat = "\f".join(pages)
+        delimited_pages = "\f".join(pages)
 
-        return Document(content=concat)
+        return delimited_pages
 
     @component.output_types(documents=List[Document])
     def run(
@@ -151,15 +157,24 @@ class PDFMinerToDocument:
                 continue
             try:
                 pdf_reader = extract_pages(io.BytesIO(bytestream.data), laparams=self.layout_params)
-                document = self.__converter(pdf_reader)
+                text = self._converter(pdf_reader)
             except Exception as e:
                 logger.warning(
                     "Could not read {source} and convert it to Document, skipping. {error}", source=source, error=e
                 )
                 continue
 
+            if text is None or text.strip() == "":
+                logger.warning(
+                    "PDFMinerToDocument could not extract text from the file {source}. Returning an empty document.",
+                    source=source,
+                )
+
             merged_metadata = {**bytestream.meta, **metadata}
-            document.meta = merged_metadata
+
+            if not self.store_full_path and (file_path := bytestream.meta.get("file_path")):
+                merged_metadata["file_path"] = os.path.basename(file_path)
+            document = Document(content=text, meta=merged_metadata)
             documents.append(document)
 
         return {"documents": documents}

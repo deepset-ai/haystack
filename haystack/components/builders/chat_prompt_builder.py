@@ -3,13 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from copy import deepcopy
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Literal, Optional, Set, Union
 
 from jinja2 import meta
 from jinja2.sandbox import SandboxedEnvironment
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.dataclasses.chat_message import ChatMessage, ChatRole
+from haystack.dataclasses.chat_message import ChatMessage, ChatRole, TextContent
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +100,7 @@ class ChatPromptBuilder:
     def __init__(
         self,
         template: Optional[List[ChatMessage]] = None,
-        required_variables: Optional[List[str]] = None,
+        required_variables: Optional[Union[List[str], Literal["*"]]] = None,
         variables: Optional[List[str]] = None,
     ):
         """
@@ -112,7 +112,8 @@ class ChatPromptBuilder:
             the `init` method` or the `run` method.
         :param required_variables:
             List variables that must be provided as input to ChatPromptBuilder.
-            If a variable listed as required is not provided, an exception is raised. Optional.
+            If a variable listed as required is not provided, an exception is raised.
+            If set to "*", all variables found in the prompt are required. Optional.
         :param variables:
             List input variables to use in prompt templates instead of the ones inferred from the
             `template` parameter. For example, to use more variables during prompt engineering than the ones present
@@ -127,14 +128,17 @@ class ChatPromptBuilder:
         if template and not variables:
             for message in template:
                 if message.is_from(ChatRole.USER) or message.is_from(ChatRole.SYSTEM):
-                    # infere variables from template
-                    ast = self._env.parse(message.content)
+                    # infer variables from template
+                    if message.text is None:
+                        raise ValueError(f"The provided ChatMessage has no text. ChatMessage: {message}")
+                    ast = self._env.parse(message.text)
                     template_variables = meta.find_undeclared_variables(ast)
                     variables += list(template_variables)
+        self.variables = variables
 
         # setup inputs
-        for var in variables:
-            if var in self.required_variables:
+        for var in self.variables:
+            if self.required_variables == "*" or var in self.required_variables:
                 component.set_input_type(self, var, Any)
             else:
                 component.set_input_type(self, var, Any, "")
@@ -190,12 +194,13 @@ class ChatPromptBuilder:
         for message in template:
             if message.is_from(ChatRole.USER) or message.is_from(ChatRole.SYSTEM):
                 self._validate_variables(set(template_variables_combined.keys()))
-
-                compiled_template = self._env.from_string(message.content)
-                rendered_content = compiled_template.render(template_variables_combined)
+                if message.text is None:
+                    raise ValueError(f"The provided ChatMessage has no text. ChatMessage: {message}")
+                compiled_template = self._env.from_string(message.text)
+                rendered_text = compiled_template.render(template_variables_combined)
                 # deep copy the message to avoid modifying the original message
                 rendered_message: ChatMessage = deepcopy(message)
-                rendered_message.content = rendered_content
+                rendered_message._content = [TextContent(text=rendered_text)]
                 processed_messages.append(rendered_message)
             else:
                 processed_messages.append(message)
@@ -211,12 +216,16 @@ class ChatPromptBuilder:
         :raises ValueError:
             If no template is provided or if all the required template variables are not provided.
         """
-        missing_variables = [var for var in self.required_variables if var not in provided_variables]
+        if self.required_variables == "*":
+            required_variables = sorted(self.variables)
+        else:
+            required_variables = self.required_variables
+        missing_variables = [var for var in required_variables if var not in provided_variables]
         if missing_variables:
             missing_vars_str = ", ".join(missing_variables)
             raise ValueError(
                 f"Missing required input variables in ChatPromptBuilder: {missing_vars_str}. "
-                f"Required variables: {self.required_variables}. Provided variables: {provided_variables}."
+                f"Required variables: {required_variables}. Provided variables: {provided_variables}."
             )
 
     def to_dict(self) -> Dict[str, Any]:

@@ -268,9 +268,9 @@ class ComponentMeta(type):
             try:
                 pre_init_hook.in_progress = True
                 named_positional_args = ComponentMeta._positional_to_kwargs(cls, args)
-                assert (
-                    set(named_positional_args.keys()).intersection(kwargs.keys()) == set()
-                ), "positional and keyword arguments overlap"
+                assert set(named_positional_args.keys()).intersection(kwargs.keys()) == set(), (
+                    "positional and keyword arguments overlap"
+                )
                 kwargs.update(named_positional_args)
                 pre_init_hook.callback(cls, kwargs)
                 instance = super().__call__(**kwargs)
@@ -292,17 +292,6 @@ class ComponentMeta(type):
         # We use this flag to check that.
         instance.__haystack_added_to_pipeline__ = None
 
-        # Only Components with variadic inputs can be greedy. If the user set the greedy flag
-        # to True, but the component doesn't have a variadic input, we set it to False.
-        # We can have this information only at instance creation time, so we do it here.
-        is_variadic = any(socket.is_variadic for socket in instance.__haystack_input__._sockets_dict.values())
-        if not is_variadic and cls.__haystack_is_greedy__:
-            logger.warning(
-                "Component '{component}' has no variadic input, but it's marked as greedy. "
-                "This is not supported and can lead to unexpected behavior.",
-                component=cls.__name__,
-            )
-
         return instance
 
 
@@ -320,8 +309,8 @@ def _component_repr(component: Component) -> str:
     # We're explicitly ignoring the type here because we're sure that the component
     # has the __haystack_input__ and __haystack_output__ attributes at this point
     return (
-        f'{result}\n{getattr(component, "__haystack_input__", "<invalid_input_sockets>")}'
-        f'\n{getattr(component, "__haystack_output__", "<invalid_output_sockets>")}'
+        f"{result}\n{getattr(component, '__haystack_input__', '<invalid_input_sockets>')}"
+        f"\n{getattr(component, '__haystack_output__', '<invalid_output_sockets>')}"
     )
 
 
@@ -449,6 +438,13 @@ class _Component:
                 return {"output_1": 1, "output_2": "2"}
         ```
         """
+        has_decorator = hasattr(instance.run, "_output_types_cache")
+        if has_decorator:
+            raise ComponentError(
+                "Cannot call `set_output_types` on a component that already has "
+                "the 'output_types' decorator on its `run` method"
+            )
+
         instance.__haystack_output__ = Sockets(
             instance, {name: OutputSocket(name=name, type=type_) for name, type_ in types.items()}, OutputSocket
         )
@@ -490,7 +486,7 @@ class _Component:
 
         return output_types_decorator
 
-    def _component(self, cls, is_greedy: bool = False):
+    def _component(self, cls: Any):
         """
         Decorator validating the structure of the component and registering it in the components registry.
         """
@@ -535,19 +531,13 @@ class _Component:
         # Override the __repr__ method with a default one
         cls.__repr__ = _component_repr
 
-        # The greedy flag can be True only if the component has a variadic input.
-        # At this point of the lifetime of the component, we can't reliably know if it has a variadic input.
-        # So we set it to whatever the user specified, during the instance creation we'll change it if needed
-        # since we'll have access to the input sockets and check if any of them is variadic.
-        setattr(cls, "__haystack_is_greedy__", is_greedy)
-
         return cls
 
-    def __call__(self, cls: Optional[type] = None, is_greedy: bool = False):
+    def __call__(self, cls: Optional[type] = None):
         # We must wrap the call to the decorator in a function for it to work
         # correctly with or without parens
         def wrap(cls):
-            return self._component(cls, is_greedy=is_greedy)
+            return self._component(cls)
 
         if cls:
             # Decorator is called without parens
