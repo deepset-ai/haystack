@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-
+import warnings
 from copy import deepcopy
 from enum import IntEnum
 from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, Union
@@ -39,6 +39,72 @@ class Pipeline(PipelineBase):
 
     Orchestrates component execution according to the execution graph, one after the other.
     """
+
+    def _warn_if_ambiguous_intent(
+        self, inputs: Dict[str, Any], component_names: List[str], receivers: Dict[str, Any]
+    ) -> None:
+        """
+        Issues warnings if the running order of the pipeline is potentially ambiguous.
+
+        We simulate a full pass through the pipeline where all components produce outputs.
+        At every step, we check if more than one component is waiting for optional inputs.
+        If two components wait for optional input with the same priority, the user intention for the execution
+        order of these components is not clear.
+        A warning does not mean that the running order must be ambiguous when real data flows through the pipeline.
+        Depending on the users data and business logic, the running order might still be clear, but we can not check
+        for this before running the pipeline.
+
+        :param inputs: The inputs to the pipeline.
+        :param component_names: Names of all components in the pipeline.
+        :param receivers: The receivers for each component in the pipeline.
+        """
+        inp_cpy = deepcopy(inputs)
+        remaining_components = set(component_names)
+        pq = self._fill_queue(component_names, inp_cpy)
+
+        # Pipeline has no components.
+        if len(pq) == 0:
+            return
+
+        while True:
+            candidate = pq.pop()
+
+            # We don't have any components left that could run.
+            if candidate is None or candidate[0] == ComponentPriority.BLOCKED:
+                return
+
+            priority, component_name = candidate
+
+            # The queue is empty so the next component can't have the same priority as the current component.
+            if len(pq) == 0:
+                return
+
+            # We get the next component and its priority to check if the current component and the next component are
+            # both waiting for inputs with the same priority.
+            next_prio, next_name = pq.peek()
+            if priority in [ComponentPriority.DEFER, ComponentPriority.DEFER_LAST] and next_prio == priority:
+                msg = (
+                    f"Ambiguous running order: Components '{component_name}' and '{next_name}' are waiting for "
+                    f"optional inputs at the same time. Component '{component_name}' executes first."
+                )
+                warnings.warn(msg)
+
+            # We simulate output distribution for the current component by filling all its output sockets.
+            comp_with_metadata = self._get_component_with_graph_metadata(component_name)
+            component_outputs = {
+                socket_name: "simulation" for socket_name in comp_with_metadata["output_sockets"].keys()
+            }
+            comp_receivers = receivers[component_name]
+            _, inp_cpy = self._write_component_outputs(
+                component_name, component_outputs, inp_cpy, comp_receivers, set()
+            )
+
+            # We need to remove the component that we just checked so that we don't get into an infinite loop.
+            remaining_components.remove(component_name)
+
+            # We re-prioritize the queue to capture if any components changed priority after simulating a run for
+            # the current component.
+            pq = self._fill_queue(remaining_components, inp_cpy)
 
     @staticmethod
     def _add_missing_input_defaults(component_inputs: Dict[str, Any], component_input_sockets: Dict[str, InputSocket]):
