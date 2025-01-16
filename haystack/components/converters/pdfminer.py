@@ -117,7 +117,7 @@ class PDFMinerToDocument:
                 if isinstance(container, LTTextContainer):
                     container_text = container.get_text()
                     if container_text:
-                        text += "\n"
+                        text += "\n\n"
                     text += container_text
             pages.append(text)
 
