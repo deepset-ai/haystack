@@ -14,7 +14,7 @@ from haystack.lazy_imports import LazyImport
 
 with LazyImport("Run 'pip install pdfminer.six'") as pdfminer_import:
     from pdfminer.high_level import extract_pages
-    from pdfminer.layout import LAParams, LTPage, LTTextContainer
+    from pdfminer.layout import LAParams, LTTextContainer
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +99,7 @@ class PDFMinerToDocument:
         self.store_full_path = store_full_path
 
     @staticmethod
-    def _converter(lt_page_objs: Iterator[LTPage]) -> str:
+    def _converter(lt_page_objs: Iterator) -> str:
         """
         Extracts text from PDF pages then converts the text into a single str
 
