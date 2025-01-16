@@ -507,7 +507,7 @@ class TestHuggingFaceAPIChatGenerator:
 
         response_meta = response["replies"][0].meta
         assert "completion_start_time" in response_meta
-        assert datetime.fromisoformat(response_meta["completion_start_time"]) < datetime.now()
+        assert datetime.fromisoformat(response_meta["completion_start_time"]) <= datetime.now()
         assert "usage" in response_meta
         assert "prompt_tokens" in response_meta["usage"]
         assert "completion_tokens" in response_meta["usage"]
