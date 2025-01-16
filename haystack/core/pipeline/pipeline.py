@@ -513,7 +513,9 @@ class Pipeline(PipelineBase):
             },
         ) as span:
             inputs = self._convert_from_legacy_format(pipeline_inputs=data)
-
+            self._warn_if_ambiguous_intent(
+                inputs=inputs, component_names=ordered_component_names, receivers=cached_receivers
+            )
             priority_queue = self._fill_queue(ordered_component_names, inputs)
 
             while True:
@@ -521,7 +523,18 @@ class Pipeline(PipelineBase):
                 if candidate is None:
                     break
 
-                _, component_name, component = candidate
+                priority, component_name, component = candidate
+                if len(priority_queue) > 0:
+                    next_priority, next_name = priority_queue.peek()
+
+                # alternative to _warn_if_ambiguous_intent
+                if priority in [ComponentPriority.DEFER, ComponentPriority.DEFER_LAST] and next_priority == priority:
+                    msg = (
+                        f"Ambiguous running order: Components '{component_name}' and '{next_name}' are waiting for "
+                        f"optional inputs at the same time. Component '{component_name}' executes first."
+                    )
+                    warnings.warn(msg)
+
                 component_outputs, inputs = self._run_component(component, inputs, parent_span=span)
                 component_pipeline_outputs, inputs = self._write_component_outputs(
                     component_name=component_name,
