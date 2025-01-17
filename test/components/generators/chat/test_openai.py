@@ -546,6 +546,10 @@ class TestOpenAIChatGenerator:
         assert callback.counter > 1
         assert "Paris" in callback.responses
 
+        # check that the completion_start_time is set and valid ISO format
+        assert "completion_start_time" in message.meta
+        assert datetime.fromisoformat(message.meta["completion_start_time"]) < datetime.now()
+
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
