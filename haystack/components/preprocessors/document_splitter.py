@@ -324,10 +324,10 @@ class DocumentSplitter:
 
         for i, (txt, split_idx) in enumerate(zip(text_splits, splits_start_idxs)):
             meta = deepcopy(meta)
+            meta["page_number"] = splits_pages[i]
+            meta["split_id"] = i
+            meta["split_idx_start"] = split_idx
             doc = Document(content=txt, meta=meta)
-            doc.meta["page_number"] = splits_pages[i]
-            doc.meta["split_id"] = i
-            doc.meta["split_idx_start"] = split_idx
             documents.append(doc)
 
             if self.split_overlap <= 0:
