@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from openai import OpenAI, Stream
@@ -255,7 +256,7 @@ class OpenAIGenerator:
                 "model": completion_chunk.model,
                 "index": 0,
                 "finish_reason": finish_reason,
-                # Usage is available when streaming only if the user explicitly requests it
+                "completion_start_time": streamed_chunks[0].meta.get("received_at"),  # first chunk received
                 "usage": dict(completion_chunk.usage or {}),
             }
         )
@@ -296,12 +297,17 @@ class OpenAIGenerator:
         :returns:
             The StreamingChunk.
         """
-        # function or tools calls are not going to happen in non-chat generation
-        # as users can not send ChatMessage with function or tools calls
         choice = chunk.choices[0]
         content = choice.delta.content or ""
         chunk_message = StreamingChunk(content)
-        chunk_message.meta.update({"model": chunk.model, "index": choice.index, "finish_reason": choice.finish_reason})
+        chunk_message.meta.update(
+            {
+                "model": chunk.model,
+                "index": choice.index,
+                "finish_reason": choice.finish_reason,
+                "received_at": datetime.now().isoformat(),
+            }
+        )
         return chunk_message
 
     @staticmethod

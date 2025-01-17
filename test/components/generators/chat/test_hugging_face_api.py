@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+from datetime import datetime
 import os
 from unittest.mock import MagicMock, Mock, patch
 
@@ -465,6 +466,7 @@ class TestHuggingFaceAPIChatGenerator:
         not os.environ.get("HF_API_TOKEN", None),
         reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
     )
+    @pytest.mark.flaky(reruns=3, reruns_delay=10)
     def test_live_run_serverless(self):
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
@@ -488,6 +490,7 @@ class TestHuggingFaceAPIChatGenerator:
         not os.environ.get("HF_API_TOKEN", None),
         reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
     )
+    @pytest.mark.flaky(reruns=3, reruns_delay=10)
     def test_live_run_serverless_streaming(self):
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
@@ -503,28 +506,31 @@ class TestHuggingFaceAPIChatGenerator:
         assert isinstance(response["replies"], list)
         assert len(response["replies"]) > 0
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
-        assert "usage" in response["replies"][0].meta
-        assert "prompt_tokens" in response["replies"][0].meta["usage"]
-        assert "completion_tokens" in response["replies"][0].meta["usage"]
+
+        response_meta = response["replies"][0].meta
+        assert "completion_start_time" in response_meta
+        assert datetime.fromisoformat(response_meta["completion_start_time"]) <= datetime.now()
+        assert "usage" in response_meta
+        assert "prompt_tokens" in response_meta["usage"]
+        assert "completion_tokens" in response_meta["usage"]
 
     @pytest.mark.integration
     @pytest.mark.skipif(
         not os.environ.get("HF_API_TOKEN", None),
         reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
     )
-    @pytest.mark.integration
+    @pytest.mark.flaky(reruns=3, reruns_delay=10)
     def test_live_run_with_tools(self, tools):
         """
         We test the round trip: generate tool call, pass tool message, generate response.
 
-        The model used here (zephyr-7b-beta) is always available and not gated.
-        Even if it does not officially support tools, TGI+HF API make it work.
+        The model used here (Hermes-3-Llama-3.1-8B) is not gated and kept in a warm state.
         """
 
-        chat_messages = [ChatMessage.from_user("What's the weather like in Paris and Munich?")]
+        chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
+            api_params={"model": "NousResearch/Hermes-3-Llama-3.1-8B"},
             generation_kwargs={"temperature": 0.5},
         )
 
@@ -540,7 +546,7 @@ class TestHuggingFaceAPIChatGenerator:
         assert "Paris" in tool_call.arguments["city"]
         assert message.meta["finish_reason"] == "stop"
 
-        new_messages = chat_messages + [message, ChatMessage.from_tool(tool_result="22°", origin=tool_call)]
+        new_messages = chat_messages + [message, ChatMessage.from_tool(tool_result="22° C", origin=tool_call)]
 
         # the model tends to make tool calls if provided with tools, so we don't pass them here
         results = generator.run(new_messages, generation_kwargs={"max_tokens": 50})

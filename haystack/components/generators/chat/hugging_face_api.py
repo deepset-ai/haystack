@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from datetime import datetime
 from typing import Any, Callable, Dict, Iterable, List, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
@@ -259,6 +260,7 @@ class HuggingFaceAPIChatGenerator:
         )
 
         generated_text = ""
+        first_chunk_time = None
 
         for chunk in api_output:
             # n is unused, so the API always returns only one choice
@@ -276,6 +278,9 @@ class HuggingFaceAPIChatGenerator:
             if finish_reason:
                 meta["finish_reason"] = finish_reason
 
+            if first_chunk_time is None:
+                first_chunk_time = datetime.now().isoformat()
+
             stream_chunk = StreamingChunk(text, meta)
             self.streaming_callback(stream_chunk)  # type: ignore # streaming_callback is not None (verified in the run method)
 
@@ -285,6 +290,7 @@ class HuggingFaceAPIChatGenerator:
                 "finish_reason": finish_reason,
                 "index": 0,
                 "usage": {"prompt_tokens": 0, "completion_tokens": 0},  # not available in streaming
+                "completion_start_time": first_chunk_time,
             }
         )
 

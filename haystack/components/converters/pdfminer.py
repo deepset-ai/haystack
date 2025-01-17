@@ -5,7 +5,7 @@
 import io
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, Iterator, List, Optional, Union
 
 from haystack import Document, component, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
@@ -98,23 +98,27 @@ class PDFMinerToDocument:
         )
         self.store_full_path = store_full_path
 
-    def _converter(self, extractor) -> str:
+    @staticmethod
+    def _converter(lt_page_objs: Iterator) -> str:
         """
         Extracts text from PDF pages then converts the text into a single str
 
-        :param extractor:
+        :param lt_page_objs:
             Python generator that yields PDF pages.
 
         :returns:
             PDF text converted to single str
         """
         pages = []
-        for page in extractor:
+        for page in lt_page_objs:
             text = ""
             for container in page:
                 # Keep text only
                 if isinstance(container, LTTextContainer):
-                    text += container.get_text()
+                    container_text = container.get_text()
+                    if container_text:
+                        text += "\n\n"
+                    text += container_text
             pages.append(text)
 
         # Add a page delimiter
@@ -156,8 +160,8 @@ class PDFMinerToDocument:
                 logger.warning("Could not read {source}. Skipping it. Error: {error}", source=source, error=e)
                 continue
             try:
-                pdf_reader = extract_pages(io.BytesIO(bytestream.data), laparams=self.layout_params)
-                text = self._converter(pdf_reader)
+                pages = extract_pages(io.BytesIO(bytestream.data), laparams=self.layout_params)
+                text = self._converter(pages)
             except Exception as e:
                 logger.warning(
                     "Could not read {source} and convert it to Document, skipping. {error}", source=source, error=e

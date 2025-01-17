@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import asdict
+from datetime import datetime
 from typing import Any, Callable, Dict, Iterable, List, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
@@ -217,18 +218,26 @@ class HuggingFaceAPIGenerator:
         self, hf_output: Iterable["TextGenerationStreamOutput"], streaming_callback: Callable[[StreamingChunk], None]
     ):
         chunks: List[StreamingChunk] = []
+        first_chunk_time = None
+
         for chunk in hf_output:
             token: TextGenerationOutputToken = chunk.token
             if token.special:
                 continue
+
             chunk_metadata = {**asdict(token), **(asdict(chunk.details) if chunk.details else {})}
+            if first_chunk_time is None:
+                first_chunk_time = datetime.now().isoformat()
+
             stream_chunk = StreamingChunk(token.text, chunk_metadata)
             chunks.append(stream_chunk)
             streaming_callback(stream_chunk)
+
         metadata = {
             "finish_reason": chunks[-1].meta.get("finish_reason", None),
             "model": self._client.model,
             "usage": {"completion_tokens": chunks[-1].meta.get("generated_tokens", 0)},
+            "completion_start_time": first_chunk_time,
         }
         return {"replies": ["".join([chunk.content for chunk in chunks])], "meta": [metadata]}
 

@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import os
 from unittest.mock import MagicMock, Mock, patch
+from datetime import datetime
 
 import pytest
 from huggingface_hub import (
@@ -312,3 +313,25 @@ class TestHuggingFaceAPIGenerator:
         assert isinstance(response["meta"], list)
         assert len(response["meta"]) > 0
         assert [isinstance(meta, dict) for meta in response["meta"]]
+
+    @pytest.mark.integration
+    @pytest.mark.skipif(
+        not os.environ.get("HF_API_TOKEN", None),
+        reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
+    )
+    def test_live_run_streaming_check_completion_start_time(self):
+        generator = HuggingFaceAPIGenerator(
+            api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
+            api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
+            streaming_callback=streaming_callback_handler,
+        )
+
+        results = generator.run("What is the capital of France?")
+
+        assert len(results["replies"]) == 1
+        assert "Paris" in results["replies"][0]
+
+        # Verify completion start time in final metadata
+        assert "completion_start_time" in results["meta"][0]
+        completion_start = datetime.fromisoformat(results["meta"][0]["completion_start_time"])
+        assert completion_start <= datetime.now()
