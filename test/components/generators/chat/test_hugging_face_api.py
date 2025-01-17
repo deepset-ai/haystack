@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+from datetime import datetime
 import os
 from unittest.mock import MagicMock, Mock, patch
 
@@ -503,9 +504,13 @@ class TestHuggingFaceAPIChatGenerator:
         assert isinstance(response["replies"], list)
         assert len(response["replies"]) > 0
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
-        assert "usage" in response["replies"][0].meta
-        assert "prompt_tokens" in response["replies"][0].meta["usage"]
-        assert "completion_tokens" in response["replies"][0].meta["usage"]
+
+        response_meta = response["replies"][0].meta
+        assert "completion_start_time" in response_meta
+        assert datetime.fromisoformat(response_meta["completion_start_time"]) <= datetime.now()
+        assert "usage" in response_meta
+        assert "prompt_tokens" in response_meta["usage"]
+        assert "completion_tokens" in response_meta["usage"]
 
     @pytest.mark.integration
     @pytest.mark.skipif(

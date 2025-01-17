@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+from datetime import datetime
 import logging
 import os
 from typing import List
@@ -285,6 +286,9 @@ class TestOpenAIGenerator:
 
         assert "gpt-4o-mini" in metadata["model"]
         assert metadata["finish_reason"] == "stop"
+
+        assert "completion_start_time" in metadata
+        assert datetime.fromisoformat(metadata["completion_start_time"]) <= datetime.now()
 
         # unfortunately, the usage is not available for streaming calls
         # we keep the key in the metadata for compatibility
