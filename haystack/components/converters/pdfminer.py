@@ -160,8 +160,8 @@ class PDFMinerToDocument:
                 logger.warning("Could not read {source}. Skipping it. Error: {error}", source=source, error=e)
                 continue
             try:
-                pdf_reader = extract_pages(io.BytesIO(bytestream.data), laparams=self.layout_params)
-                text = self._converter(pdf_reader)
+                pages = extract_pages(io.BytesIO(bytestream.data), laparams=self.layout_params)
+                text = self._converter(pages)
             except Exception as e:
                 logger.warning(
                     "Could not read {source} and convert it to Document, skipping. {error}", source=source, error=e
