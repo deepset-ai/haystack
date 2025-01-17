@@ -275,14 +275,12 @@ class HuggingFaceAPIChatGenerator:
 
             finish_reason = choice.finish_reason
 
-            meta = {
-                "finish_reason": finish_reason if finish_reason else None,
-                "received_at": datetime.now().isoformat(),
-            }
-            chunks_meta.append(meta)
+            meta = {}
+            if finish_reason:
+                meta["finish_reason"] = finish_reason
 
             if first_chunk_time is None:
-                first_chunk_time = meta["received_at"]
+                first_chunk_time = datetime.now().isoformat()
 
             stream_chunk = StreamingChunk(text, meta)
             self.streaming_callback(stream_chunk)  # type: ignore # streaming_callback is not None (verified in the run method)
