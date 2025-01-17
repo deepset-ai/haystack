@@ -225,14 +225,9 @@ class HuggingFaceAPIGenerator:
             if token.special:
                 continue
 
-            chunk_metadata = {
-                **asdict(token),
-                **(asdict(chunk.details) if chunk.details else {}),
-                "received_at": datetime.now().isoformat(),
-            }
-
+            chunk_metadata = {**asdict(token), **(asdict(chunk.details) if chunk.details else {})}
             if first_chunk_time is None:
-                first_chunk_time = chunk_metadata["received_at"]
+                first_chunk_time = datetime.now().isoformat()
 
             stream_chunk = StreamingChunk(token.text, chunk_metadata)
             chunks.append(stream_chunk)

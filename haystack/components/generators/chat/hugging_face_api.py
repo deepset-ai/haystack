@@ -260,7 +260,6 @@ class HuggingFaceAPIChatGenerator:
         )
 
         generated_text = ""
-        chunks_meta = []
         first_chunk_time = None
 
         for chunk in api_output:
