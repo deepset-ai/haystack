@@ -24,6 +24,12 @@ class SpyingSpan(Span):
     def get_correlation_data_for_logs(self) -> Dict[str, Any]:
         return {"trace_id": self.trace_id, "span_id": self.span_id}
 
+    def set_content_tag(self, key: str, value: Any) -> None:
+        """
+        Set a content tag, but only if content tracing is enabled in the tracer.
+        """
+        self.set_tag(key, value)
+
 
 class SpyingTracer(Tracer):
     def current_span(self) -> Optional[Span]:
@@ -31,13 +37,13 @@ class SpyingTracer(Tracer):
 
     def __init__(self) -> None:
         self.spans: List[SpyingSpan] = []
+        self.is_content_tracing_enabled = True
 
     @contextlib.contextmanager
     def trace(
         self, operation_name: str, tags: Optional[Dict[str, Any]] = None, parent_span: Optional[Span] = None
     ) -> Iterator[Span]:
         new_span = SpyingSpan(operation_name, parent_span)
-
         for key, value in (tags or {}).items():
             new_span.set_tag(key, value)
 

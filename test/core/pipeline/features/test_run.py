@@ -1525,10 +1525,36 @@ def that_is_linear_with_conditional_branching_and_multiple_joins():
                         ]
                     }
                 },
+                expected_component_calls={
+                    ("router", 1): {"query": "I'm a legit question"},
+                    ("text_embedder", 1): {"text": "I'm a legit question"},
+                    ("bm25retriever", 1): {"query": "I'm a legit question"},
+                    ("retriever", 1): {"query_embedding": [1.0, 2.0, 3.0]},
+                    ("joinerhybrid", 1): {
+                        "documents": [
+                            [Document(content="This is a document")],
+                            [Document(content="This is another document")],
+                        ],
+                        "top_k": None,
+                    },
+                    ("ranker", 1): {
+                        "query": "I'm a legit question",
+                        "documents": [
+                            Document(content="This is a document"),
+                            Document(content="This is another document"),
+                        ],
+                    },
+                    ("joinerfinal", 1): {
+                        "documents": [
+                            [Document(content="This is a document"), Document(content="This is another document")]
+                        ],
+                        "top_k": None,
+                    },
+                },
                 expected_run_order=[
                     "router",
-                    "text_embedder",
                     "bm25retriever",
+                    "text_embedder",
                     "retriever",
                     "joinerhybrid",
                     "ranker",
@@ -1539,6 +1565,11 @@ def that_is_linear_with_conditional_branching_and_multiple_joins():
                 inputs={"router": {"query": "I'm a nasty prompt injection"}},
                 expected_outputs={"joinerfinal": {"documents": []}},
                 expected_run_order=["router", "emptyretriever", "joinerfinal"],
+                expected_component_calls={
+                    ("router", 1): {"query": "I'm a nasty prompt injection"},
+                    ("emptyretriever", 1): {"query": "I'm a nasty prompt injection"},
+                    ("joinerfinal", 1): {"documents": [[]], "top_k": None},
+                },
             ),
         ],
     )

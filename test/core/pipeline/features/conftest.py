@@ -20,6 +20,7 @@ class PipelineRunData:
     include_outputs_from: Set[str] = field(default_factory=set)
     expected_outputs: Dict[str, Any] = field(default_factory=dict)
     expected_run_order: List[str] = field(default_factory=list)
+    expected_component_calls: Dict[Tuple[str, int], Dict[str, Any]] = field(default_factory=dict)
 
 
 @dataclass
@@ -30,6 +31,7 @@ class _PipelineResult:
 
     outputs: Dict[str, Any]
     run_order: List[str]
+    component_calls: Dict[Tuple[str, int], Dict[str, Any]] = field(default_factory=dict)
 
 
 @when("I run the Pipeline", target_fixture="pipeline_result")
@@ -57,7 +59,30 @@ def run_pipeline(
                 for span in spying_tracer.spans
                 if "haystack.component.name" in span.tags
             ]
-            results.append(_PipelineResult(outputs=outputs, run_order=run_order))
+
+            component_calls = {
+                (span.tags["haystack.component.name"], span.tags["haystack.component.visits"]): span.tags[
+                    "haystack.component.input"
+                ]
+                for span in spying_tracer.spans
+                if "haystack.component.name" in span.tags and "haystack.component.visits" in span.tags
+            }
+            results.append(_PipelineResult(outputs=outputs, run_order=run_order, component_calls=component_calls))
+
+            print("Debug - Raw span tags:")
+            for span in spying_tracer.spans:
+                if "haystack.component.input" in span.tags:
+                    print(
+                        f"Input for {span.tags.get('haystack.component.name')}: {span.tags['haystack.component.input']}"
+                    )
+
+            component_calls = {
+                (span.tags["haystack.component.name"], span.tags["haystack.component.visits"]): span.tags[
+                    "haystack.component.input"
+                ]
+                for span in spying_tracer.spans
+                if "haystack.component.name" in span.tags and "haystack.component.visits" in span.tags
+            }
             spying_tracer.spans.clear()
         except Exception as e:
             return e
@@ -81,6 +106,12 @@ def draw_pipeline(pipeline_data: Tuple[Pipeline, List[PipelineRunData]], request
 def check_pipeline_result(pipeline_result: List[Tuple[_PipelineResult, PipelineRunData]]):
     for res, data in pipeline_result:
         assert res.outputs == data.expected_outputs
+
+
+@then("components are called with the expected inputs")
+def check_component_calls(pipeline_result: List[Tuple[_PipelineResult, PipelineRunData]]):
+    for res, data in pipeline_result:
+        assert res.component_calls == data.expected_component_calls
 
 
 @then("components ran in the expected order")

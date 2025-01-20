@@ -57,6 +57,7 @@ def request_blocker(request: pytest.FixtureRequest, monkeypatch):
 def spying_tracer() -> Generator[SpyingTracer, None, None]:
     tracer = SpyingTracer()
     tracing.enable_tracing(tracer)
+    tracer.is_content_tracing_enabled = True
 
     yield tracer
 

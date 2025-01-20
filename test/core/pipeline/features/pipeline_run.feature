@@ -5,6 +5,7 @@ Feature: Pipeline running
         When I run the Pipeline
         Then it should return the expected result
         And components ran in the expected order
+        And components are called with the expected inputs
 
         Examples:
         | kind |
