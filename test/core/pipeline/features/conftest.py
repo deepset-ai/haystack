@@ -69,13 +69,6 @@ def run_pipeline(
             }
             results.append(_PipelineResult(outputs=outputs, run_order=run_order, component_calls=component_calls))
 
-            print("Debug - Raw span tags:")
-            for span in spying_tracer.spans:
-                if "haystack.component.input" in span.tags:
-                    print(
-                        f"Input for {span.tags.get('haystack.component.name')}: {span.tags['haystack.component.input']}"
-                    )
-
             component_calls = {
                 (span.tags["haystack.component.name"], span.tags["haystack.component.visits"]): span.tags[
                     "haystack.component.input"
