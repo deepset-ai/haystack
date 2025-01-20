@@ -73,12 +73,11 @@ def are_all_sockets_ready(component: Dict, inputs: Dict, only_check_mandatory: b
     for socket_name, socket in sockets_to_check.items():
         socket_inputs = inputs.get(socket_name, [])
         expected_sockets.add(socket_name)
-        # Check if socket has all required inputs or is a lazy variadic socket with any input
-
-       if (
-    has_socket_received_all_inputs(socket, socket_inputs)
-    or (is_socket_lazy_variadic(socket) and any_socket_input_received(socket_inputs))
-):
+        if (
+            is_socket_lazy_variadic(socket)
+            and any_socket_input_received(socket_inputs)
+            or has_socket_received_all_inputs(socket, socket_inputs)
+        ):
             filled_sockets.add(socket_name)
 
     return filled_sockets == expected_sockets
