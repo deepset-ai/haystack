@@ -5,12 +5,10 @@
 import json
 from typing import Any, Dict, List, Optional
 
+from jsonschema import ValidationError, validate
+
 from haystack import component
 from haystack.dataclasses import ChatMessage
-from haystack.lazy_imports import LazyImport
-
-with LazyImport(message="Run 'pip install jsonschema'") as jsonschema_import:
-    from jsonschema import ValidationError, validate
 
 
 def is_valid_json(s: str) -> bool:
@@ -110,7 +108,6 @@ class JsonSchemaValidator:
             the messages' content is validated.
         :param error_template: A custom template string for formatting the error message in case of validation failure.
         """
-        jsonschema_import.check()
         self.json_schema = json_schema
         self.error_template = error_template
 

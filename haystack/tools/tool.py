@@ -5,14 +5,12 @@
 from dataclasses import asdict, dataclass
 from typing import Any, Callable, Dict, List, Optional
 
+from jsonschema import Draft202012Validator
+from jsonschema.exceptions import SchemaError
+
 from haystack.core.serialization import generate_qualified_class_name, import_class_by_name
-from haystack.lazy_imports import LazyImport
 from haystack.tools.errors import ToolInvocationError
 from haystack.utils import deserialize_callable, serialize_callable
-
-with LazyImport(message="Run 'pip install jsonschema'") as jsonschema_import:
-    from jsonschema import Draft202012Validator
-    from jsonschema.exceptions import SchemaError
 
 
 @dataclass
@@ -39,7 +37,6 @@ class Tool:
     function: Callable
 
     def __post_init__(self):
-        jsonschema_import.check()
         # Check that the parameters define a valid JSON schema
         try:
             Draft202012Validator.check_schema(self.parameters)
