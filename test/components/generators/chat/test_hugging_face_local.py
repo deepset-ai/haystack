@@ -42,6 +42,7 @@ def mock_pipeline_tokenizer():
     # Mocking the tokenizer
     mock_tokenizer = Mock(spec=PreTrainedTokenizer)
     mock_tokenizer.encode.return_value = ["Berlin", "is", "cool"]
+    mock_tokenizer.pad_token_id = 100
     mock_pipeline.tokenizer = mock_tokenizer
 
     return mock_pipeline
