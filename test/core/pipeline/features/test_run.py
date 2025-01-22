@@ -1553,8 +1553,8 @@ def that_is_linear_with_conditional_branching_and_multiple_joins():
                 },
                 expected_run_order=[
                     "router",
-                    "bm25retriever",
                     "text_embedder",
+                    "bm25retriever",
                     "retriever",
                     "joinerhybrid",
                     "ranker",
