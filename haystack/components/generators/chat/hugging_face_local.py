@@ -233,12 +233,18 @@ class HuggingFaceLocalChatGenerator:
         return default_from_dict(cls, data)
 
     @component.output_types(replies=List[ChatMessage])
-    def run(self, messages: List[ChatMessage], generation_kwargs: Optional[Dict[str, Any]] = None):
+    def run(
+        self,
+        messages: List[ChatMessage],
+        generation_kwargs: Optional[Dict[str, Any]] = None,
+        streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
+    ):
         """
         Invoke text generation inference based on the provided messages and generation parameters.
 
         :param messages: A list of ChatMessage objects representing the input messages.
         :param generation_kwargs: Additional keyword arguments for text generation.
+        :param streaming_callback: An optional callable for handling streaming responses.
         :returns:
             A list containing the generated responses as ChatMessage instances.
         """
@@ -259,7 +265,8 @@ class HuggingFaceLocalChatGenerator:
         if stop_words_criteria:
             generation_kwargs["stopping_criteria"] = StoppingCriteriaList([stop_words_criteria])
 
-        if self.streaming_callback:
+        streaming_callback = streaming_callback or self.streaming_callback
+        if streaming_callback:
             num_responses = generation_kwargs.get("num_return_sequences", 1)
             if num_responses > 1:
                 msg = (
@@ -270,7 +277,7 @@ class HuggingFaceLocalChatGenerator:
                 logger.warning(msg, num_responses=num_responses)
                 generation_kwargs["num_return_sequences"] = 1
             # streamer parameter hooks into HF streaming, HFTokenStreamingHandler is an adapter to our streaming
-            generation_kwargs["streamer"] = HFTokenStreamingHandler(tokenizer, self.streaming_callback, stop_words)
+            generation_kwargs["streamer"] = HFTokenStreamingHandler(tokenizer, streaming_callback, stop_words)
 
         hf_messages = [convert_message_to_hf_format(message) for message in messages]
 
