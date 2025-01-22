@@ -395,6 +395,70 @@ class TestHuggingFaceAPIChatGenerator:
         assert len(response["replies"]) > 0
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
 
+    def test_run_with_streaming_callback_in_run_method(
+        self, mock_check_valid_model, mock_chat_completion, chat_messages
+    ):
+        streaming_call_count = 0
+
+        # Define the streaming callback function
+        def streaming_callback_fn(chunk: StreamingChunk):
+            nonlocal streaming_call_count
+            streaming_call_count += 1
+            assert isinstance(chunk, StreamingChunk)
+
+        generator = HuggingFaceAPIChatGenerator(
+            api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
+            api_params={"model": "meta-llama/Llama-2-13b-chat-hf"},
+        )
+
+        # Create a fake streamed response
+        # self needed here, don't remove
+        def mock_iter(self):
+            yield ChatCompletionStreamOutput(
+                choices=[
+                    ChatCompletionStreamOutputChoice(
+                        delta=ChatCompletionStreamOutputDelta(content="The", role="assistant"),
+                        index=0,
+                        finish_reason=None,
+                    )
+                ],
+                id="some_id",
+                model="some_model",
+                system_fingerprint="some_fingerprint",
+                created=1710498504,
+            )
+
+            yield ChatCompletionStreamOutput(
+                choices=[
+                    ChatCompletionStreamOutputChoice(
+                        delta=ChatCompletionStreamOutputDelta(content=None, role=None), index=0, finish_reason="length"
+                    )
+                ],
+                id="some_id",
+                model="some_model",
+                system_fingerprint="some_fingerprint",
+                created=1710498504,
+            )
+
+        mock_response = Mock(**{"__iter__": mock_iter})
+        mock_chat_completion.return_value = mock_response
+
+        # Generate text response with streaming callback
+        response = generator.run(chat_messages, streaming_callback=streaming_callback_fn)
+
+        # check kwargs passed to text_generation
+        _, kwargs = mock_chat_completion.call_args
+        assert kwargs == {"stop": [], "stream": True, "max_tokens": 512}
+
+        # Assert that the streaming callback was called twice
+        assert streaming_call_count == 2
+
+        # Assert that the response contains the generated replies
+        assert "replies" in response
+        assert isinstance(response["replies"], list)
+        assert len(response["replies"]) > 0
+        assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
+
     def test_run_fail_with_tools_and_streaming(self, tools, mock_check_valid_model):
         component = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
