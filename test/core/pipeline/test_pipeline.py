@@ -584,7 +584,7 @@ class TestPipeline:
         with pytest.raises(PipelineError) as err:
             Pipeline.from_dict(data)
 
-        err.match(r"Component .+ not imported.")
+        err.match(r"Component '' \(name: 'add_two'\) not imported.")
 
     # UNIT
     def test_from_dict_without_connection_sender(self):
