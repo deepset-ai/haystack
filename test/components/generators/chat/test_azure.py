@@ -27,7 +27,7 @@ def tools():
     return [tool]
 
 
-class TestOpenAIChatGenerator:
+class TestAzureOpenAIChatGenerator:
     def test_init_default(self, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         component = AzureOpenAIChatGenerator(azure_endpoint="some-non-existing-endpoint")
@@ -49,12 +49,14 @@ class TestOpenAIChatGenerator:
             streaming_callback=print_streaming_chunk,
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
             tools=tools,
+            tools_strict=True,
         )
         assert component.client.api_key == "test-api-key"
         assert component.azure_deployment == "gpt-4o-mini"
         assert component.streaming_callback is print_streaming_chunk
         assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
         assert component.tools == tools
+        assert component.tools_strict
 
     def test_to_dict_default(self, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")

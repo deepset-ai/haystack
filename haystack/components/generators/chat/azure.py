@@ -115,6 +115,11 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
             - `logit_bias`: Adds a logit bias to specific tokens. The keys of the dictionary are tokens, and the
                 values are the bias to add to that token.
         :param default_headers: Default headers to use for the AzureOpenAI client.
+        :param tools:
+            A list of tools for which the model can prepare calls.
+        :param tools_strict:
+            Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
+            the schema provided in the `parameters` field of the tool definition, but this may increase latency.
         """
         # We intentionally do not call super().__init__ here because we only need to instantiate the client to interact
         # with the API.
