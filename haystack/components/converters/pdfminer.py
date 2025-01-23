@@ -5,7 +5,7 @@
 import io
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, Iterator, List, Optional, Union
 
 from haystack import Document, component, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
@@ -98,29 +98,33 @@ class PDFMinerToDocument:
         )
         self.store_full_path = store_full_path
 
-    def _converter(self, extractor) -> Document:
+    @staticmethod
+    def _converter(lt_page_objs: Iterator) -> str:
         """
-        Extracts text from PDF pages then convert the text into Documents
+        Extracts text from PDF pages then converts the text into a single str
 
-        :param extractor:
+        :param lt_page_objs:
             Python generator that yields PDF pages.
 
         :returns:
-            PDF text converted to Haystack Document
+            PDF text converted to single str
         """
         pages = []
-        for page in extractor:
+        for page in lt_page_objs:
             text = ""
             for container in page:
                 # Keep text only
                 if isinstance(container, LTTextContainer):
-                    text += container.get_text()
+                    container_text = container.get_text()
+                    if container_text:
+                        text += "\n\n"
+                    text += container_text
             pages.append(text)
 
         # Add a page delimiter
-        concat = "\f".join(pages)
+        delimited_pages = "\f".join(pages)
 
-        return Document(content=concat)
+        return delimited_pages
 
     @component.output_types(documents=List[Document])
     def run(
@@ -156,15 +160,15 @@ class PDFMinerToDocument:
                 logger.warning("Could not read {source}. Skipping it. Error: {error}", source=source, error=e)
                 continue
             try:
-                pdf_reader = extract_pages(io.BytesIO(bytestream.data), laparams=self.layout_params)
-                document = self._converter(pdf_reader)
+                pages = extract_pages(io.BytesIO(bytestream.data), laparams=self.layout_params)
+                text = self._converter(pages)
             except Exception as e:
                 logger.warning(
                     "Could not read {source} and convert it to Document, skipping. {error}", source=source, error=e
                 )
                 continue
 
-            if document.content is None or document.content.strip() == "":
+            if text is None or text.strip() == "":
                 logger.warning(
                     "PDFMinerToDocument could not extract text from the file {source}. Returning an empty document.",
                     source=source,
@@ -174,7 +178,7 @@ class PDFMinerToDocument:
 
             if not self.store_full_path and (file_path := bytestream.meta.get("file_path")):
                 merged_metadata["file_path"] = os.path.basename(file_path)
-            document.meta = merged_metadata
+            document = Document(content=text, meta=merged_metadata)
             documents.append(document)
 
         return {"documents": documents}

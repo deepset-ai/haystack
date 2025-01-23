@@ -9,11 +9,25 @@ from openai import OpenAIError
 from haystack import Pipeline
 from haystack.components.generators.chat import AzureOpenAIChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
-from haystack.dataclasses import ChatMessage
+from haystack.dataclasses import ChatMessage, ToolCall
+from haystack.tools.tool import Tool
 from haystack.utils.auth import Secret
 
 
-class TestOpenAIChatGenerator:
+@pytest.fixture
+def tools():
+    tool_parameters = {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}
+    tool = Tool(
+        name="weather",
+        description="useful to determine the weather in a given location",
+        parameters=tool_parameters,
+        function=lambda x: x,
+    )
+
+    return [tool]
+
+
+class TestAzureOpenAIChatGenerator:
     def test_init_default(self, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         component = AzureOpenAIChatGenerator(azure_endpoint="some-non-existing-endpoint")
@@ -28,17 +42,21 @@ class TestOpenAIChatGenerator:
         with pytest.raises(OpenAIError):
             AzureOpenAIChatGenerator(azure_endpoint="some-non-existing-endpoint")
 
-    def test_init_with_parameters(self):
+    def test_init_with_parameters(self, tools):
         component = AzureOpenAIChatGenerator(
             api_key=Secret.from_token("test-api-key"),
             azure_endpoint="some-non-existing-endpoint",
             streaming_callback=print_streaming_chunk,
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
+            tools=tools,
+            tools_strict=True,
         )
         assert component.client.api_key == "test-api-key"
         assert component.azure_deployment == "gpt-4o-mini"
         assert component.streaming_callback is print_streaming_chunk
         assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
+        assert component.tools == tools
+        assert component.tools_strict
 
     def test_to_dict_default(self, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
@@ -58,6 +76,8 @@ class TestOpenAIChatGenerator:
                 "timeout": 30.0,
                 "max_retries": 5,
                 "default_headers": {},
+                "tools": None,
+                "tools_strict": False,
             },
         }
 
@@ -85,15 +105,94 @@ class TestOpenAIChatGenerator:
                 "timeout": 2.5,
                 "max_retries": 10,
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
+                "tools": None,
+                "tools_strict": False,
                 "default_headers": {},
             },
         }
+
+    def test_from_dict(self, monkeypatch):
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
+        monkeypatch.setenv("AZURE_OPENAI_AD_TOKEN", "test-ad-token")
+        data = {
+            "type": "haystack.components.generators.chat.azure.AzureOpenAIChatGenerator",
+            "init_parameters": {
+                "api_key": {"env_vars": ["AZURE_OPENAI_API_KEY"], "strict": False, "type": "env_var"},
+                "azure_ad_token": {"env_vars": ["AZURE_OPENAI_AD_TOKEN"], "strict": False, "type": "env_var"},
+                "api_version": "2023-05-15",
+                "azure_endpoint": "some-non-existing-endpoint",
+                "azure_deployment": "gpt-4o-mini",
+                "organization": None,
+                "streaming_callback": None,
+                "generation_kwargs": {},
+                "timeout": 30.0,
+                "max_retries": 5,
+                "default_headers": {},
+                "tools": [
+                    {
+                        "type": "haystack.tools.tool.Tool",
+                        "data": {
+                            "description": "description",
+                            "function": "builtins.print",
+                            "name": "name",
+                            "parameters": {"x": {"type": "string"}},
+                        },
+                    }
+                ],
+                "tools_strict": False,
+            },
+        }
+
+        generator = AzureOpenAIChatGenerator.from_dict(data)
+        assert isinstance(generator, AzureOpenAIChatGenerator)
+
+        assert generator.api_key == Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=False)
+        assert generator.azure_ad_token == Secret.from_env_var("AZURE_OPENAI_AD_TOKEN", strict=False)
+        assert generator.api_version == "2023-05-15"
+        assert generator.azure_endpoint == "some-non-existing-endpoint"
+        assert generator.azure_deployment == "gpt-4o-mini"
+        assert generator.organization is None
+        assert generator.streaming_callback is None
+        assert generator.generation_kwargs == {}
+        assert generator.timeout == 30.0
+        assert generator.max_retries == 5
+        assert generator.default_headers == {}
+        assert generator.tools == [
+            Tool(name="name", description="description", parameters={"x": {"type": "string"}}, function=print)
+        ]
+        assert generator.tools_strict == False
 
     def test_pipeline_serialization_deserialization(self, tmp_path, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         generator = AzureOpenAIChatGenerator(azure_endpoint="some-non-existing-endpoint")
         p = Pipeline()
         p.add_component(instance=generator, name="generator")
+
+        assert p.to_dict() == {
+            "metadata": {},
+            "max_runs_per_component": 100,
+            "components": {
+                "generator": {
+                    "type": "haystack.components.generators.chat.azure.AzureOpenAIChatGenerator",
+                    "init_parameters": {
+                        "azure_endpoint": "some-non-existing-endpoint",
+                        "azure_deployment": "gpt-4o-mini",
+                        "organization": None,
+                        "api_version": "2023-05-15",
+                        "streaming_callback": None,
+                        "generation_kwargs": {},
+                        "timeout": 30.0,
+                        "max_retries": 5,
+                        "api_key": {"type": "env_var", "env_vars": ["AZURE_OPENAI_API_KEY"], "strict": False},
+                        "azure_ad_token": {"type": "env_var", "env_vars": ["AZURE_OPENAI_AD_TOKEN"], "strict": False},
+                        "default_headers": {},
+                        "tools": None,
+                        "tools_strict": False,
+                    },
+                }
+            },
+            "connections": [],
+        }
         p_str = p.dumps()
         q = Pipeline.loads(p_str)
         assert p.to_dict() == q.to_dict(), "Pipeline serialization/deserialization w/ AzureOpenAIChatGenerator failed."
@@ -116,5 +215,30 @@ class TestOpenAIChatGenerator:
         assert "Paris" in message.text
         assert "gpt-4o-mini" in message.meta["model"]
         assert message.meta["finish_reason"] == "stop"
+
+    @pytest.mark.integration
+    @pytest.mark.skipif(
+        not os.environ.get("AZURE_OPENAI_API_KEY", None) or not os.environ.get("AZURE_OPENAI_ENDPOINT", None),
+        reason=(
+            "Please export env variables called AZURE_OPENAI_API_KEY containing "
+            "the Azure OpenAI key, AZURE_OPENAI_ENDPOINT containing "
+            "the Azure OpenAI endpoint URL to run this test."
+        ),
+    )
+    def test_live_run_with_tools(self, tools):
+        chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
+        component = AzureOpenAIChatGenerator(organization="HaystackCI", tools=tools)
+        results = component.run(chat_messages)
+        assert len(results["replies"]) == 1
+        message = results["replies"][0]
+
+        assert not message.texts
+        assert not message.text
+        assert message.tool_calls
+        tool_call = message.tool_call
+        assert isinstance(tool_call, ToolCall)
+        assert tool_call.tool_name == "weather"
+        assert tool_call.arguments == {"city": "Paris"}
+        assert message.meta["finish_reason"] == "tool_calls"
 
     # additional tests intentionally omitted as they are covered by test_openai.py

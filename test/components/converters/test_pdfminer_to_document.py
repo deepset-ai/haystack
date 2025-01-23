@@ -5,6 +5,8 @@ import logging
 
 import pytest
 
+from haystack import Document
+from haystack.components.preprocessors import DocumentSplitter
 from haystack.dataclasses import ByteStream
 from haystack.components.converters.pdfminer import PDFMinerToDocument
 
@@ -150,3 +152,36 @@ class TestPDFMinerToDocument:
             results = converter.run(sources=sources)
             assert "PDFMinerToDocument could not extract text from the file" in caplog.text
             assert results["documents"][0].content == ""
+
+            # Check that not only content is used when the returned document is initialized and doc id is generated
+            assert results["documents"][0].meta["file_path"] == "non_text_searchable.pdf"
+            assert results["documents"][0].id != Document(content="").id
+
+    def test_run_detect_pages_and_split_by_passage(self, test_files_path):
+        converter = PDFMinerToDocument()
+        sources = [test_files_path / "pdf" / "sample_pdf_2.pdf"]
+        pdf_doc = converter.run(sources=sources)
+        splitter = DocumentSplitter(split_length=1, split_by="page")
+        docs = splitter.run(pdf_doc["documents"])
+        assert len(docs["documents"]) == 4
+
+    def test_run_detect_paragraphs_to_be_used_in_split_passage(self, test_files_path):
+        converter = PDFMinerToDocument()
+        sources = [test_files_path / "pdf" / "sample_pdf_2.pdf"]
+        pdf_doc = converter.run(sources=sources)
+        splitter = DocumentSplitter(split_length=1, split_by="passage")
+        docs = splitter.run(pdf_doc["documents"])
+
+        assert len(docs["documents"]) == 29
+
+        expected = (
+            "\nA wiki (/ˈwɪki/ (About this soundlisten) WIK-ee) is a hypertext publication collaboratively"
+            " \nedited and managed by its own audience directly using a web browser. A typical wiki \ncontains "
+            "multiple pages for the subjects or scope of the project and may be either open \nto the public or "
+            "limited to use within an organization for maintaining its internal knowledge \nbase. Wikis are "
+            "enabled by wiki software, otherwise known as wiki engines. A wiki engine, \nbeing a form of a "
+            "content management system, diﬀers from other web-based systems \nsuch as blog software, in that "
+            "the content is created without any deﬁned owner or leader, \nand wikis have little inherent "
+            "structure, allowing structure to emerge according to the \nneeds of the users.[1] \n\n"
+        )
+        assert docs["documents"][6].content == expected

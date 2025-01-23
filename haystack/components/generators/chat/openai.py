@@ -4,6 +4,7 @@
 
 import json
 import os
+from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from openai import OpenAI, Stream
@@ -381,6 +382,7 @@ class OpenAIChatGenerator:
             "model": chunk.model,
             "index": 0,
             "finish_reason": chunk.choices[0].finish_reason,
+            "completion_start_time": chunks[0].meta.get("received_at"),  # first chunk received
             "usage": {},  # we don't have usage data for streaming responses
         }
 
@@ -444,6 +446,7 @@ class OpenAIChatGenerator:
                 "index": choice.index,
                 "tool_calls": choice.delta.tool_calls,
                 "finish_reason": choice.finish_reason,
+                "received_at": datetime.now().isoformat(),
             }
         )
         return chunk_message
