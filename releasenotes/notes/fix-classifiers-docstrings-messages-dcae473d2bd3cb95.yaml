@@ -1,5 +1,5 @@
 ---
 fixes:
   - |
-    Fix docstrings and error messages for Document Classifier components, that were suggesting to use inexistent
+    Fix docstrings and error messages for Document Classifier components, that suggested using nonexistent
     components for text classification.
