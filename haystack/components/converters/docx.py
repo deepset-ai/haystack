@@ -23,6 +23,8 @@ with LazyImport("Run 'pip install python-docx'") as docx_import:
     from docx.document import Document as DocxDocument
     from docx.table import Table
     from docx.text.paragraph import Paragraph
+with LazyImport("Run 'pip install lxml'") as lxml_import:
+    from lxml.etree import _Comment
 
 
 @dataclass
@@ -119,6 +121,7 @@ class DOCXToDocument:
             If False, only the file name is stored.
         """
         docx_import.check()
+        lxml_import.check()
         self.table_format = DOCXTableFormat.from_str(table_format) if isinstance(table_format, str) else table_format
         self.store_full_path = store_full_path
 
@@ -210,6 +213,8 @@ class DOCXToDocument:
         """
         elements = []
         for element in document.element.body:
+            if isinstance(element, _Comment):
+                continue
             if element.tag.endswith("p"):
                 paragraph = Paragraph(element, document)
                 if paragraph.contains_page_break:
