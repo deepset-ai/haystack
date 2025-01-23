@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 # pylint: disable=import-error
 from openai.lib.azure import AzureOpenAI
@@ -11,6 +11,7 @@ from openai.lib.azure import AzureOpenAI
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import StreamingChunk
+from haystack.tools.tool import Tool, _check_duplicate_tool_names, deserialize_tools_inplace
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 
 logger = logging.getLogger(__name__)
@@ -75,6 +76,8 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         max_retries: Optional[int] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
         default_headers: Optional[Dict[str, str]] = None,
+        tools: Optional[List[Tool]] = None,
+        tools_strict: bool = False,
     ):
         """
         Initialize the Azure OpenAI Chat Generator component.
@@ -112,6 +115,11 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
             - `logit_bias`: Adds a logit bias to specific tokens. The keys of the dictionary are tokens, and the
                 values are the bias to add to that token.
         :param default_headers: Default headers to use for the AzureOpenAI client.
+        :param tools:
+            A list of tools for which the model can prepare calls.
+        :param tools_strict:
+            Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
+            the schema provided in the `parameters` field of the tool definition, but this may increase latency.
         """
         # We intentionally do not call super().__init__ here because we only need to instantiate the client to interact
         # with the API.
@@ -142,10 +150,9 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         self.max_retries = max_retries or int(os.environ.get("OPENAI_MAX_RETRIES", 5))
         self.default_headers = default_headers or {}
 
-        # This ChatGenerator does not yet supports tools. The following workaround ensures that we do not
-        # get an error when invoking the run method of the parent class (OpenAIChatGenerator).
-        self.tools = None
-        self.tools_strict = False
+        _check_duplicate_tool_names(tools)
+        self.tools = tools
+        self.tools_strict = tools_strict
 
         self.client = AzureOpenAI(
             api_version=api_version,
@@ -180,6 +187,8 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
             api_key=self.api_key.to_dict() if self.api_key is not None else None,
             azure_ad_token=self.azure_ad_token.to_dict() if self.azure_ad_token is not None else None,
             default_headers=self.default_headers,
+            tools=[tool.to_dict() for tool in self.tools] if self.tools else None,
+            tools_strict=self.tools_strict,
         )
 
     @classmethod
@@ -192,6 +201,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
             The deserialized component instance.
         """
         deserialize_secrets_inplace(data["init_parameters"], keys=["api_key", "azure_ad_token"])
+        deserialize_tools_inplace(data["init_parameters"], key="tools")
         init_params = data.get("init_parameters", {})
         serialized_callback_handler = init_params.get("streaming_callback")
         if serialized_callback_handler:
