@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fix docstrings and error messages for Document Classifier components, that were suggesting to use inexistent
+    components for text classification.

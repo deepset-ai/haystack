@@ -211,8 +211,8 @@ class TransformersZeroShotDocumentClassifier:
 
         if not isinstance(documents, list) or documents and not isinstance(documents[0], Document):
             raise TypeError(
-                "DocumentLanguageClassifier expects a list of documents as input. "
-                "In case you want to classify a text, please use the TextLanguageClassifier."
+                "TransformerZeroShotDocumentClassifier expects a list of documents as input. "
+                "In case you want to classify and route a text, please use the TransformersZeroShotTextRouter."
             )
 
         invalid_doc_ids = []
