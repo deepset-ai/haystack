@@ -1,3 +1,4 @@
+---
 enhancements:
   - |
     When `Pipeline.from_dict` receives an invalid type (e.g. empty string), an informative `PipelineError` is now
