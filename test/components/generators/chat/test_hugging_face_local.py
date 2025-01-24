@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from unittest.mock import Mock, patch
 
+from haystack.dataclasses.streaming_chunk import StreamingChunk
 import pytest
 from transformers import PreTrainedTokenizer
 
@@ -232,6 +233,46 @@ class TestHuggingFaceLocalChatGenerator:
         chat_message = results["replies"][0]
         assert chat_message.is_from(ChatRole.ASSISTANT)
         assert chat_message.text == "Berlin is cool"
+
+    def test_run_with_streaming_callback(self, model_info_mock, mock_pipeline_tokenizer, chat_messages):
+        # Define the streaming callback function
+        def streaming_callback_fn(chunk: StreamingChunk): ...
+
+        generator = HuggingFaceLocalChatGenerator(
+            model="meta-llama/Llama-2-13b-chat-hf", streaming_callback=streaming_callback_fn
+        )
+
+        # Use the mocked pipeline from the fixture and simulate warm_up
+        generator.pipeline = mock_pipeline_tokenizer
+
+        results = generator.run(messages=chat_messages)
+
+        assert "replies" in results
+        assert isinstance(results["replies"][0], ChatMessage)
+        chat_message = results["replies"][0]
+        assert chat_message.is_from(ChatRole.ASSISTANT)
+        assert chat_message.text == "Berlin is cool"
+        generator.pipeline.assert_called_once()
+        generator.pipeline.call_args[1]["streamer"].token_handler == streaming_callback_fn
+
+    def test_run_with_streaming_callback_in_run_method(self, model_info_mock, mock_pipeline_tokenizer, chat_messages):
+        # Define the streaming callback function
+        def streaming_callback_fn(chunk: StreamingChunk): ...
+
+        generator = HuggingFaceLocalChatGenerator(model="meta-llama/Llama-2-13b-chat-hf")
+
+        # Use the mocked pipeline from the fixture and simulate warm_up
+        generator.pipeline = mock_pipeline_tokenizer
+
+        results = generator.run(messages=chat_messages, streaming_callback=streaming_callback_fn)
+
+        assert "replies" in results
+        assert isinstance(results["replies"][0], ChatMessage)
+        chat_message = results["replies"][0]
+        assert chat_message.is_from(ChatRole.ASSISTANT)
+        assert chat_message.text == "Berlin is cool"
+        generator.pipeline.assert_called_once()
+        generator.pipeline.call_args[1]["streamer"].token_handler == streaming_callback_fn
 
     @patch("haystack.components.generators.chat.hugging_face_local.convert_message_to_hf_format")
     def test_messages_conversion_is_called(self, mock_convert, model_info_mock):
