@@ -512,10 +512,12 @@ class _Component:
         # We must explicitly redefine the type of the class to make sure language servers
         # and type checkers understand that the class is of the correct type.
         # mypy doesn't like that we do this though so we explicitly ignore the type check.
-        cls: cls.__name__ = new_class(cls.__name__, cls.__bases__, {"metaclass": ComponentMeta}, copy_class_namespace)  # type: ignore[no-redef]
+        new_cls: cls.__name__ = new_class(
+            cls.__name__, cls.__bases__, {"metaclass": ComponentMeta}, copy_class_namespace
+        )  # type: ignore[no-redef]
 
         # Save the component in the class registry (for deserialization)
-        class_path = f"{cls.__module__}.{cls.__name__}"
+        class_path = f"{new_cls.__module__}.{new_cls.__name__}"
         if class_path in self.registry:
             # Corner case, but it may occur easily in notebooks when re-running cells.
             logger.debug(
@@ -523,15 +525,15 @@ class _Component:
                 new imported from '{new_module_name}'",
                 component=class_path,
                 module_name=self.registry[class_path],
-                new_module_name=cls,
+                new_module_name=new_cls,
             )
-        self.registry[class_path] = cls
-        logger.debug("Registered Component {component}", component=cls)
+        self.registry[class_path] = new_cls
+        logger.debug("Registered Component {component}", component=new_cls)
 
         # Override the __repr__ method with a default one
-        cls.__repr__ = _component_repr
+        new_cls.__repr__ = _component_repr
 
-        return cls
+        return new_cls
 
     def __call__(self, cls: Optional[type] = None):
         # We must wrap the call to the decorator in a function for it to work
