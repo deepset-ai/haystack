@@ -77,7 +77,7 @@ def _to_mermaid_image(graph: networkx.MultiDiGraph):
     compressed_data = compressor.compress(json_string.encode("utf-8")) + compressor.flush()
     compressed_url_safe_base64 = base64.urlsafe_b64encode(compressed_data).decode("utf-8").strip()
 
-    url = f"https://mermaid.ink/img/pako:{url_safe_base64}?type=png"
+    url = f"https://mermaid.ink/img/pako:{compressed_url_safe_base64}?type=png"
 
     logger.debug("Rendering graph at {url}", url=url)
     try:
