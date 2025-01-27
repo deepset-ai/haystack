@@ -84,6 +84,7 @@ format-check = "ruff format --check {args}"
 [tool.hatch.envs.test]
 extra-dependencies = [
   "numpy>=2", # Haystack is compatible both with numpy 1.x and 2.x, but we test with 2.x
+  "numba>=0.54.0", # This pin helps uv resolve the dependency tree. See https://github.com/astral-sh/uv/issues/7881
 
   "transformers[torch,sentencepiece]==4.47.1", # ExtractiveReader, TransformersSimilarityRanker, LocalWhisperTranscriber, HFGenerators...
   "huggingface_hub>=0.27.0",                   # Hugging Face API Generators and Embedders
