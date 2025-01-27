@@ -75,7 +75,7 @@ def _to_mermaid_image(graph: networkx.MultiDiGraph):
     #  Uses the DEFLATE algorithm at the highest level for smallest size
     compressor = zlib.compressobj(level=9)
     compressed_data = compressor.compress(json_string.encode("utf-8")) + compressor.flush()
-    url_safe_base64 = base64.urlsafe_b64encode(compressed_data).decode("utf-8").strip()
+    compressed_url_safe_base64 = base64.urlsafe_b64encode(compressed_data).decode("utf-8").strip()
 
     url = f"https://mermaid.ink/img/pako:{url_safe_base64}?type=png"
 
