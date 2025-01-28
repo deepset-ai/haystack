@@ -236,6 +236,25 @@ def test_run_with_bad_filter(tmpdir, caplog):
     assert result == {"documents": []}
 
 
+def test_run_with_bad_encoding(tmpdir, caplog):
+    test_file = Path(tmpdir / "test_file.json")
+    test_file.write_text(json.dumps(test_data[0]), "utf-16")
+
+    sources = [test_file]
+    converter = JSONConverter(".laureates")
+
+    caplog.clear()
+    with caplog.at_level(logging.WARNING):
+        result = converter.run(sources=sources)
+
+    records = caplog.records
+    assert len(records) == 1
+    assert records[0].msg.startswith(
+        f"Failed to extract text from {test_file}. Skipping it. Error: 'utf-8' codec can't decode byte"
+    )
+    assert result == {"documents": []}
+
+
 def test_run_with_single_meta(tmpdir):
     first_test_file = Path(tmpdir / "first_test_file.json")
     second_test_file = Path(tmpdir / "second_test_file.json")
