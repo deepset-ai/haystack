@@ -3,6 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import base64
+import json
+import zlib
 
 import networkx  # type:ignore
 import requests
@@ -68,11 +70,14 @@ def _to_mermaid_image(graph: networkx.MultiDiGraph):
     """
     # Copy the graph to avoid modifying the original
     graph_styled = _to_mermaid_text(graph.copy())
+    json_string = json.dumps({"code": graph_styled})
 
-    graphbytes = graph_styled.encode("ascii")
-    base64_bytes = base64.b64encode(graphbytes)
-    base64_string = base64_bytes.decode("ascii")
-    url = f"https://mermaid.ink/img/{base64_string}?type=png"
+    #  Uses the DEFLATE algorithm at the highest level for smallest size
+    compressor = zlib.compressobj(level=9)
+    compressed_data = compressor.compress(json_string.encode("utf-8")) + compressor.flush()
+    compressed_url_safe_base64 = base64.urlsafe_b64encode(compressed_data).decode("utf-8").strip()
+
+    url = f"https://mermaid.ink/img/pako:{compressed_url_safe_base64}?type=png"
 
     logger.debug("Rendering graph at {url}", url=url)
     try:
