@@ -23,6 +23,7 @@ with LazyImport("Run 'pip install python-docx'") as docx_import:
     from docx.document import Document as DocxDocument
     from docx.table import Table
     from docx.text.paragraph import Paragraph
+    from lxml.etree import _Comment
 
 
 @dataclass
@@ -210,6 +211,8 @@ class DOCXToDocument:
         """
         elements = []
         for element in document.element.body:
+            if isinstance(element, _Comment):
+                continue
             if element.tag.endswith("p"):
                 paragraph = Paragraph(element, document)
                 if paragraph.contains_page_break:
