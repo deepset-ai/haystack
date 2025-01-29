@@ -7,6 +7,7 @@ import json
 import zlib
 from typing import Optional
 
+
 import networkx  # type:ignore
 import requests
 
@@ -163,7 +164,7 @@ def _to_mermaid_image(
     # Compress the JSON string with zlib (RFC 1950)
     compressor = zlib.compressobj(level=9, wbits=15)
     compressed_data = compressor.compress(json_string.encode("utf-8")) + compressor.flush()
-    url_safe_base64 = base64.urlsafe_b64encode(compressed_data).decode("utf-8").strip()
+    compressed_url_safe_base64 = base64.urlsafe_b64encode(compressed_data).decode("utf-8").strip()
 
     # Determine the correct endpoint
     endpoint_format = params.get("format", "img")  # Default to /img endpoint
@@ -171,7 +172,7 @@ def _to_mermaid_image(
         raise ValueError(f"Invalid format: {endpoint_format}. Valid options are 'img', 'svg', or 'pdf'.")
 
     # Construct the URL without query parameters
-    url = f"{server_url}/{endpoint_format}/pako:{url_safe_base64}"
+    url = f"{server_url}/{endpoint_format}/pako:{compressed_url_safe_base64}"
 
     # Add query parameters adhering to mermaid.ink documentation
     query_params = []

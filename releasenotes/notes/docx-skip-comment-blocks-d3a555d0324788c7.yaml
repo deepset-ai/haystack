@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    The DOCXToDocument component now skips comment blocks in DOCX files that previously caused errors.

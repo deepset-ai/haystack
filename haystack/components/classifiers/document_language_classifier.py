@@ -83,7 +83,7 @@ class DocumentLanguageClassifier:
         if not isinstance(documents, list) or documents and not isinstance(documents[0], Document):
             raise TypeError(
                 "DocumentLanguageClassifier expects a list of Document as input. "
-                "In case you want to classify a text, please use the TextLanguageClassifier."
+                "In case you want to classify and route a text, please use the TextLanguageRouter."
             )
 
         output: Dict[str, List[Document]] = {language: [] for language in self.languages}

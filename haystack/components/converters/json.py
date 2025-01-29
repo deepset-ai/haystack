@@ -194,6 +194,7 @@ class JSONConverter:
                 source=source.meta["file_path"],
                 error=exc,
             )
+            return []
 
         meta_fields = self._meta_fields or set()
 

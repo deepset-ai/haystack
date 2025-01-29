@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fix error messages for Document Classifier components, that suggested using nonexistent components for text
+    classification.
