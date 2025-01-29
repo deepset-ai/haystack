@@ -685,7 +685,7 @@ class PipelineBase:
         """
         # Before drawing we edit a bit the graph, to avoid modifying the original that is
         # used for running the pipeline we copy it.
-        image_data = _to_mermaid_image(self.graph.copy(), server_url=server_url, params=params)
+        image_data = _to_mermaid_image(self.graph, server_url=server_url, params=params)
         Path(path).write_bytes(image_data)
 
     def walk(self) -> Iterator[Tuple[str, Component]]:
