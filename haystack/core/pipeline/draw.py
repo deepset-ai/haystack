@@ -7,7 +7,6 @@ import json
 import zlib
 from typing import Optional
 
-
 import networkx  # type:ignore
 import requests
 
