@@ -628,7 +628,7 @@ class PipelineBase:
 
         :param server_url:
             The base URL of the Mermaid server used for rendering (default: 'https://mermaid.ink').
-            See https://github.com/jihchi/mermaid.ink and https://github.com/mermaid-js/mermaid-live-editor for more
+            See https://github.com/jihchi/mermaid.ink or https://github.com/mermaid-js/mermaid-live-editor for more
             info on how to set up your own Mermaid server.
 
         :param params:
@@ -667,7 +667,7 @@ class PipelineBase:
             The file path where the generated image will be saved.
         :param server_url:
             The base URL of the Mermaid server used for rendering (default: 'https://mermaid.ink').
-            See https://github.com/jihchi/mermaid.ink and https://github.com/mermaid-js/mermaid-live-editor for more
+            See https://github.com/jihchi/mermaid.ink or https://github.com/mermaid-js/mermaid-live-editor for more
             info on how to set up your own Mermaid server.
         :param params:
             Dictionary of customization parameters to modify the output. Refer to Mermaid documentation for more details
