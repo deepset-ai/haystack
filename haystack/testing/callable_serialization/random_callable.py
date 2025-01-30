@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+
 def callable_to_deserialize(hello: str) -> str:
     """
     A function to test callable deserialization.
