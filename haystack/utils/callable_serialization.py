@@ -50,18 +50,22 @@ def deserialize_callable(callable_handle: str) -> Callable:
     :return: The callable
     :raises DeserializationError: If the callable cannot be found
     """
-    module_name, *attribute_chain = callable_handle.split(".")
+    parts = callable_handle.split(".")
 
-    try:
-        current = thread_safe_import(module_name)
-    except Exception as e:
-        raise DeserializationError(f"Could not locate the module: {module_name}") from e
-
-    for attr in attribute_chain:
+    for i in range(len(parts), 0, -1):
+        module_name = ".".join(parts[:i])
         try:
-            attr_value = getattr(current, attr)
-        except AttributeError as e:
-            raise DeserializationError(f"Could not find attribute '{attr}' in {current.__name__}") from e
+            mod = thread_safe_import(module_name)
+        except Exception:
+            # keep reducing i until we find a valid module import
+            continue
+
+        attr_value = mod
+        for part in parts[i:]:
+            try:
+                attr_value = getattr(attr_value, part)
+            except AttributeError as e:
+                raise DeserializationError(f"Could not find attribute '{part}' in {attr_value.__name__}") from e
 
         # when the attribute is a classmethod, we need the underlying function
         if isinstance(attr_value, (classmethod, staticmethod)):
@@ -69,7 +73,10 @@ def deserialize_callable(callable_handle: str) -> Callable:
 
         current = attr_value
 
-    if not callable(current):
-        raise DeserializationError(f"The final attribute is not callable: {current}")
+        if not callable(current):
+            raise DeserializationError(f"The final attribute is not callable: {current}")
 
-    return current
+        return current
+
+    # Fallback if we never find anything
+    raise DeserializationError(f"Could not import '{callable_handle}' as a module or callable.")
