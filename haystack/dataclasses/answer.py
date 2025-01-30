@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import io
+import warnings
 from dataclasses import asdict, dataclass, field
 from typing import Any, Dict, List, Optional, Protocol, runtime_checkable
 
@@ -97,6 +98,10 @@ class ExtractedTableAnswer:
     document_cells: List["Cell"] = field(default_factory=list)
     context_cells: List["Cell"] = field(default_factory=list)
     meta: Dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self):
+        msg = "The `ExtractedTableAnswer` dataclass is deprecated and will be removed in Haystack 2.11.0."
+        warnings.warn(msg, DeprecationWarning)
 
     @dataclass
     class Cell:

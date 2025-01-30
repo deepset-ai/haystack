@@ -4,6 +4,7 @@
 
 import hashlib
 import io
+import warnings
 from dataclasses import asdict, dataclass, field, fields
 from typing import Any, Dict, List, Optional
 
@@ -113,6 +114,10 @@ class Document(metaclass=_BackwardCompatible):
         """
         # Generate an id only if not explicitly set
         self.id = self.id or self._create_id()
+
+        if self.dataframe is not None:
+            msg = "The `dataframe` field is deprecated and will be removed in Haystack 2.11.0."
+            warnings.warn(msg, DeprecationWarning)
 
     def _create_id(self):
         """
