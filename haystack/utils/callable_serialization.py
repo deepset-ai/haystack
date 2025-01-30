@@ -69,9 +69,9 @@ def deserialize_callable(callable_handle: str) -> Callable:
 
         # when the attribute is a classmethod, we need the underlying function
         if isinstance(attr_value, (classmethod, staticmethod)):
-            attr_value = attr_value.__func__
-
-        current = attr_value
+            current = attr_value.__func__
+        else:
+            current = attr_value
 
         if not callable(current):
             raise DeserializationError(f"The final attribute is not callable: {current}")
