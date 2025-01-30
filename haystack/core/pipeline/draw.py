@@ -209,7 +209,7 @@ def _to_mermaid_image(
     return resp.content
 
 
-def _to_mermaid_text(graph: networkx.MultiDiGraph, init_params: Dict[str, Any]) -> str:
+def _to_mermaid_text(graph: networkx.MultiDiGraph, init_params: str) -> str:
     """
     Converts a Networkx graph into Mermaid syntax.
 
