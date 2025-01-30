@@ -34,7 +34,7 @@ from .utils import parse_connect_string
 
 DEFAULT_MARSHALLER = YamlMarshaller()
 
-# We use a generic type to annotate the return value of classmethods,
+# We use a generic type to annotate the return value of class methods,
 # so that static analyzers won't be confused when derived classes
 # use those methods.
 T = TypeVar("T", bound="PipelineBase")
@@ -623,11 +623,14 @@ class PipelineBase:
         """
         Display an image representing this `Pipeline` in a Jupyter notebook.
 
-        This function generates a diagram of the `Pipeline` using the Mermaid server
-        and displays it directly in the notebook.
+        This function generates a diagram of the `Pipeline` using a Mermaid server and displays it directly in
+        the notebook.
 
         :param server_url:
             The base URL of the Mermaid server used for rendering (default: 'https://mermaid.ink').
+            See https://github.com/jihchi/mermaid.ink and https://github.com/mermaid-js/mermaid-live-editor for more
+            info on how to set up your own Mermaid server.
+
         :param params:
             Dictionary of customization parameters to modify the output. Refer to Mermaid documentation for more details
             Supported keys:
@@ -649,7 +652,6 @@ class PipelineBase:
             from IPython.display import Image, display  # type: ignore
 
             image_data = _to_mermaid_image(self.graph, server_url=server_url, params=params)
-
             display(Image(image_data))
         else:
             msg = "This method is only supported in Jupyter notebooks. Use Pipeline.draw() to save an image locally."
@@ -659,13 +661,14 @@ class PipelineBase:
         """
         Save an image representing this `Pipeline` to the specified file path.
 
-        This function generates a diagram of the `Pipeline` using the Mermaid server
-        and saves it to the provided path.
+        This function generates a diagram of the `Pipeline` using the Mermaid server and saves it to the provided path.
 
         :param path:
             The file path where the generated image will be saved.
         :param server_url:
             The base URL of the Mermaid server used for rendering (default: 'https://mermaid.ink').
+            See https://github.com/jihchi/mermaid.ink and https://github.com/mermaid-js/mermaid-live-editor for more
+            info on how to set up your own Mermaid server.
         :param params:
             Dictionary of customization parameters to modify the output. Refer to Mermaid documentation for more details
             Supported keys:

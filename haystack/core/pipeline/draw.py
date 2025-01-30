@@ -5,7 +5,7 @@
 import base64
 import json
 import zlib
-from typing import Optional
+from typing import Any, Dict, Optional
 
 import networkx  # type:ignore
 import requests
@@ -65,7 +65,7 @@ classDef component text-align:center;
 """
 
 
-def _validate_mermaid_params(params: dict) -> None:
+def _validate_mermaid_params(params: Dict[str, Any]) -> None:
     """
     Validates and sets default values for Mermaid parameters.
 
@@ -209,7 +209,7 @@ def _to_mermaid_image(
     return resp.content
 
 
-def _to_mermaid_text(graph: networkx.MultiDiGraph, init_params: str) -> str:
+def _to_mermaid_text(graph: networkx.MultiDiGraph, init_params: Dict[str, Any]) -> str:
     """
     Converts a Networkx graph into Mermaid syntax.
 
