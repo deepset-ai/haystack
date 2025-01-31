@@ -87,7 +87,7 @@ extra-dependencies = [
   "numba>=0.54.0", # This pin helps uv resolve the dependency tree. See https://github.com/astral-sh/uv/issues/7881
 
   "transformers[torch,sentencepiece]==4.47.1", # ExtractiveReader, TransformersSimilarityRanker, LocalWhisperTranscriber, HFGenerators...
-  "huggingface_hub>=0.27.0, <0.28.0",                   # Hugging Face API Generators and Embedders
+  "huggingface_hub>=0.27.0",                   # Hugging Face API Generators and Embedders
   "sentence-transformers>=3.0.0",              # SentenceTransformersTextEmbedder and SentenceTransformersDocumentEmbedder
   "langdetect",                                # TextLanguageRouter and DocumentLanguageClassifier
   "openai-whisper>=20231106",                  # LocalWhisperTranscriber
