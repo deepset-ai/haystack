@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Literal, Tuple
 from haystack import logging
 from haystack.lazy_imports import LazyImport
 
-with LazyImport("Run 'pip install nltk'") as nltk_imports:
+with LazyImport("Run 'pip install nltk>=3.9.1'") as nltk_imports:
     import nltk
 
 logger = logging.getLogger(__name__)
