@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import inspect
-from typing import Callable
+from typing import Any, Callable
 
 from haystack.core.errors import DeserializationError, SerializationError
 from haystack.utils.type_serialization import thread_safe_import
@@ -55,7 +55,7 @@ def deserialize_callable(callable_handle: str) -> Callable:
     for i in range(len(parts), 0, -1):
         module_name = ".".join(parts[:i])
         try:
-            mod = thread_safe_import(module_name)
+            mod: Any = thread_safe_import(module_name)
         except Exception:
             # keep reducing i until we find a valid module import
             continue
@@ -69,14 +69,12 @@ def deserialize_callable(callable_handle: str) -> Callable:
 
         # when the attribute is a classmethod, we need the underlying function
         if isinstance(attr_value, (classmethod, staticmethod)):
-            current = attr_value.__func__
-        else:
-            current = attr_value
+            attr_value = attr_value.__func__
 
-        if not callable(current):
-            raise DeserializationError(f"The final attribute is not callable: {current}")
+        if not callable(attr_value):
+            raise DeserializationError(f"The final attribute is not callable: {attr_value}")
 
-        return current
+        return attr_value
 
     # Fallback if we never find anything
     raise DeserializationError(f"Could not import '{callable_handle}' as a module or callable.")
