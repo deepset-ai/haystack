@@ -242,7 +242,7 @@ class HuggingFaceAPIDocumentEmbedder:
         ):
             batch = texts_to_embed[i : i + batch_size]
 
-            embeddings = self._client.feature_extraction(
+            np_embeddings = self._client.feature_extraction(
                 # this method does not officially support list of strings, but works as expected
                 text=batch,  # type: ignore[arg-type]
                 # Serverless Inference API does not support truncate and normalize, so we pass None in the request
@@ -250,10 +250,10 @@ class HuggingFaceAPIDocumentEmbedder:
                 normalize=self.normalize if self.api_type != HFEmbeddingAPIType.SERVERLESS_INFERENCE_API else None,
             )
 
-            if embeddings.ndim != 2 or embeddings.shape[0] != len(batch):
-                raise ValueError(f"Expected embedding shape ({batch_size}, embedding_dim), got {embeddings.shape}")
+            if np_embeddings.ndim != 2 or np_embeddings.shape[0] != len(batch):
+                raise ValueError(f"Expected embedding shape ({batch_size}, embedding_dim), got {np_embeddings.shape}")
 
-            all_embeddings.extend(embeddings.tolist())
+            all_embeddings.extend(np_embeddings.tolist())
 
         return all_embeddings
 

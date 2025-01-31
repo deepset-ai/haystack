@@ -198,19 +198,20 @@ class HuggingFaceAPITextEmbedder:
 
         text_to_embed = self.prefix + text + self.suffix
 
-        response = self._client.feature_extraction(
+        np_embedding = self._client.feature_extraction(
             text=text_to_embed,
             # Serverless Inference API does not support truncate and normalize, so we pass None in the request
             truncate=self.truncate if self.api_type != HFEmbeddingAPIType.SERVERLESS_INFERENCE_API else None,
             normalize=self.normalize if self.api_type != HFEmbeddingAPIType.SERVERLESS_INFERENCE_API else None,
         )
 
-        if response.ndim > 2:
-            raise ValueError(f"Expected embedding shape (1, embedding_dim) or (embedding_dim,), got {response.shape}")
+        error_msg = f"Expected embedding shape (1, embedding_dim) or (embedding_dim,), got {np_embedding.shape}"
+        if np_embedding.ndim > 2:
+            raise ValueError(error_msg)
 
-        if response.ndim == 2 and response.shape[0] != 1:
-            raise ValueError(f"Expected embedding shape (1, embedding_dim) or (embedding_dim,), got {response.shape}")
+        if np_embedding.ndim == 2 and np_embedding.shape[0] != 1:
+            raise ValueError(error_msg)
 
-        embedding = response.flatten().tolist()
+        embedding = np_embedding.flatten().tolist()
 
         return {"embedding": embedding}
