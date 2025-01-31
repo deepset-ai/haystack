@@ -208,7 +208,6 @@ class HuggingFaceAPITextEmbedder:
         error_msg = f"Expected embedding shape (1, embedding_dim) or (embedding_dim,), got {np_embedding.shape}"
         if np_embedding.ndim > 2:
             raise ValueError(error_msg)
-
         if np_embedding.ndim == 2 and np_embedding.shape[0] != 1:
             raise ValueError(error_msg)
 

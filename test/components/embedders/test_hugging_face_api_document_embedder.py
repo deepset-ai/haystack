@@ -351,7 +351,7 @@ class TestHuggingFaceAPIDocumentEmbedder:
             assert len(doc.embedding) == 384
             assert all(isinstance(x, float) for x in doc.embedding)
 
-    # @pytest.mark.flaky(reruns=5, reruns_delay=5)
+    @pytest.mark.flaky(reruns=5, reruns_delay=5)
     @pytest.mark.integration
     @pytest.mark.skipif(
         not os.environ.get("HF_API_TOKEN", None),
