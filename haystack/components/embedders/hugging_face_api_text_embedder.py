@@ -104,13 +104,11 @@ class HuggingFaceAPITextEmbedder:
             Applicable when `api_type` is `TEXT_EMBEDDINGS_INFERENCE`, or `INFERENCE_ENDPOINTS`
             if the backend uses Text Embeddings Inference.
             If `api_type` is `SERVERLESS_INFERENCE_API`, this parameter is ignored.
-            It is always set to `True` and cannot be changed.
         :param normalize:
             Normalizes the embeddings to unit length.
             Applicable when `api_type` is `TEXT_EMBEDDINGS_INFERENCE`, or `INFERENCE_ENDPOINTS`
             if the backend uses Text Embeddings Inference.
             If `api_type` is `SERVERLESS_INFERENCE_API`, this parameter is ignored.
-            It is always set to `False` and cannot be changed.
         """
         huggingface_hub_import.check()
 
@@ -200,10 +198,19 @@ class HuggingFaceAPITextEmbedder:
 
         text_to_embed = self.prefix + text + self.suffix
 
-        response = self._client.post(
-            json={"inputs": [text_to_embed], "truncate": self.truncate, "normalize": self.normalize},
-            task="feature-extraction",
+        response = self._client.feature_extraction(
+            text=text_to_embed,
+            # Serverless Inference API does not support truncate and normalize, so we pass None in the request
+            truncate=self.truncate if self.api_type != HFEmbeddingAPIType.SERVERLESS_INFERENCE_API else None,
+            normalize=self.normalize if self.api_type != HFEmbeddingAPIType.SERVERLESS_INFERENCE_API else None,
         )
-        embedding = json.loads(response.decode())[0]
+
+        if response.ndim > 2:
+            raise ValueError(f"Expected embedding shape (1, embedding_dim) or (embedding_dim,), got {response.shape}")
+
+        if response.ndim == 2 and response.shape[0] != 1:
+            raise ValueError(f"Expected embedding shape (1, embedding_dim) or (embedding_dim,), got {response.shape}")
+
+        embedding = response.flatten().tolist()
 
         return {"embedding": embedding}

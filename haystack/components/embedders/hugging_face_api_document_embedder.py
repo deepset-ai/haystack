@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import json
 from typing import Any, Dict, List, Optional, Union
 
 from tqdm import tqdm
@@ -124,13 +123,11 @@ class HuggingFaceAPIDocumentEmbedder:
             Applicable when `api_type` is `TEXT_EMBEDDINGS_INFERENCE`, or `INFERENCE_ENDPOINTS`
             if the backend uses Text Embeddings Inference.
             If `api_type` is `SERVERLESS_INFERENCE_API`, this parameter is ignored.
-            It is always set to `True` and cannot be changed.
         :param normalize:
             Normalizes the embeddings to unit length.
             Applicable when `api_type` is `TEXT_EMBEDDINGS_INFERENCE`, or `INFERENCE_ENDPOINTS`
             if the backend uses Text Embeddings Inference.
             If `api_type` is `SERVERLESS_INFERENCE_API`, this parameter is ignored.
-            It is always set to `False` and cannot be changed.
         :param batch_size:
             Number of documents to process at once.
         :param progress_bar:
@@ -239,18 +236,24 @@ class HuggingFaceAPIDocumentEmbedder:
         """
         Embed a list of texts in batches.
         """
-
         all_embeddings = []
         for i in tqdm(
             range(0, len(texts_to_embed), batch_size), disable=not self.progress_bar, desc="Calculating embeddings"
         ):
             batch = texts_to_embed[i : i + batch_size]
-            response = self._client.post(
-                json={"inputs": batch, "truncate": self.truncate, "normalize": self.normalize},
-                task="feature-extraction",
+
+            embeddings = self._client.feature_extraction(
+                # this method does not officially support list of strings, but works as expected
+                text=batch,  # type: ignore[arg-type]
+                # Serverless Inference API does not support truncate and normalize, so we pass None in the request
+                truncate=self.truncate if self.api_type != HFEmbeddingAPIType.SERVERLESS_INFERENCE_API else None,
+                normalize=self.normalize if self.api_type != HFEmbeddingAPIType.SERVERLESS_INFERENCE_API else None,
             )
-            embeddings = json.loads(response.decode())
-            all_embeddings.extend(embeddings)
+
+            if embeddings.ndim != 2 or embeddings.shape[0] != len(batch):
+                raise ValueError(f"Expected embedding shape ({batch_size}, embedding_dim), got {embeddings.shape}")
+
+            all_embeddings.extend(embeddings.tolist())
 
         return all_embeddings
 
