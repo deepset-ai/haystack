@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import warnings
 from typing import Any, Dict, List, Optional, Union
 
 from tqdm import tqdm
@@ -95,8 +96,8 @@ class HuggingFaceAPIDocumentEmbedder:
         token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         prefix: str = "",
         suffix: str = "",
-        truncate: bool = True,
-        normalize: bool = False,
+        truncate: Optional[bool] = True,
+        normalize: Optional[bool] = False,
         batch_size: int = 32,
         progress_bar: bool = True,
         meta_fields_to_embed: Optional[List[str]] = None,
@@ -236,6 +237,19 @@ class HuggingFaceAPIDocumentEmbedder:
         """
         Embed a list of texts in batches.
         """
+        truncate = self.truncate
+        normalize = self.normalize
+
+        if self.api_type == HFEmbeddingAPIType.SERVERLESS_INFERENCE_API:
+            if truncate is not None:
+                msg = "`truncate` parameter is not supported for Serverless Inference API. It will be ignored."
+                warnings.warn(msg)
+                truncate = None
+            if normalize is not None:
+                msg = "`normalize` parameter is not supported for Serverless Inference API. It will be ignored."
+                warnings.warn(msg)
+                normalize = None
+
         all_embeddings = []
         for i in tqdm(
             range(0, len(texts_to_embed), batch_size), disable=not self.progress_bar, desc="Calculating embeddings"
@@ -245,9 +259,8 @@ class HuggingFaceAPIDocumentEmbedder:
             np_embeddings = self._client.feature_extraction(
                 # this method does not officially support list of strings, but works as expected
                 text=batch,  # type: ignore[arg-type]
-                # Serverless Inference API does not support truncate and normalize, so we pass None in the request
-                truncate=self.truncate if self.api_type != HFEmbeddingAPIType.SERVERLESS_INFERENCE_API else None,
-                normalize=self.normalize if self.api_type != HFEmbeddingAPIType.SERVERLESS_INFERENCE_API else None,
+                truncate=truncate,
+                normalize=normalize,
             )
 
             if np_embeddings.ndim != 2 or np_embeddings.shape[0] != len(batch):
