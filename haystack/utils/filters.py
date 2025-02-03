@@ -6,6 +6,7 @@ from dataclasses import fields
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+import dateutil.parser
 import pandas as pd
 
 from haystack.dataclasses import Document
@@ -69,18 +70,48 @@ def _greater_than(document_value: Any, filter_value: Any) -> bool:
 
     if isinstance(document_value, str) or isinstance(filter_value, str):
         try:
-            document_value = datetime.fromisoformat(document_value)
-            filter_value = datetime.fromisoformat(filter_value)
+            document_value = _parse_date(document_value)
+            filter_value = _parse_date(filter_value)
+            document_value, filter_value = _ensure_both_dates_naive_or_aware(document_value, filter_value)
+        except FilterError as exc:
+            raise exc
+    if type(filter_value) in [list, pd.DataFrame]:
+        msg = f"Filter value can't be of type {type(filter_value)} using operators '>', '>=', '<', '<='"
+        raise FilterError(msg)
+    return document_value > filter_value
+
+
+def _parse_date(value):
+    """Try parsing the value as an ISO format date, then fall back to dateutil.parser."""
+    try:
+        return datetime.fromisoformat(value)
+    except (ValueError, TypeError):
+        try:
+            return dateutil.parser.parse(value)
         except (ValueError, TypeError) as exc:
             msg = (
                 "Can't compare strings using operators '>', '>=', '<', '<='. "
                 "Strings are only comparable if they are ISO formatted dates."
             )
             raise FilterError(msg) from exc
-    if type(filter_value) in [list, pd.DataFrame]:
-        msg = f"Filter value can't be of type {type(filter_value)} using operators '>', '>=', '<', '<='"
-        raise FilterError(msg)
-    return document_value > filter_value
+
+
+def _ensure_both_dates_naive_or_aware(date1: datetime, date2: datetime):
+    """Ensure that both dates are either naive or aware."""
+    # Both naive
+    if date1.tzinfo is None and date2.tzinfo is None:
+        return date1, date2
+
+    # Both aware
+    if date1.tzinfo is not None and date2.tzinfo is not None:
+        return date1, date2
+
+    # One naive, one aware
+    if date1.tzinfo is None:
+        date1 = date1.replace(tzinfo=date2.tzinfo)
+    else:
+        date2 = date2.replace(tzinfo=date1.tzinfo)
+    return date1, date2
 
 
 def _greater_than_equal(document_value: Any, filter_value: Any) -> bool:
