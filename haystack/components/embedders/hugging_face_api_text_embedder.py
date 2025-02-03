@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import json
+import warnings
 from typing import Any, Dict, List, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
@@ -80,8 +80,8 @@ class HuggingFaceAPITextEmbedder:
         token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         prefix: str = "",
         suffix: str = "",
-        truncate: bool = True,
-        normalize: bool = False,
+        truncate: Optional[bool] = True,
+        normalize: Optional[bool] = False,
     ):  # pylint: disable=too-many-positional-arguments
         """
         Creates a HuggingFaceAPITextEmbedder component.
@@ -104,13 +104,11 @@ class HuggingFaceAPITextEmbedder:
             Applicable when `api_type` is `TEXT_EMBEDDINGS_INFERENCE`, or `INFERENCE_ENDPOINTS`
             if the backend uses Text Embeddings Inference.
             If `api_type` is `SERVERLESS_INFERENCE_API`, this parameter is ignored.
-            It is always set to `True` and cannot be changed.
         :param normalize:
             Normalizes the embeddings to unit length.
             Applicable when `api_type` is `TEXT_EMBEDDINGS_INFERENCE`, or `INFERENCE_ENDPOINTS`
             if the backend uses Text Embeddings Inference.
             If `api_type` is `SERVERLESS_INFERENCE_API`, this parameter is ignored.
-            It is always set to `False` and cannot be changed.
         """
         huggingface_hub_import.check()
 
@@ -198,12 +196,29 @@ class HuggingFaceAPITextEmbedder:
                 "In case you want to embed a list of Documents, please use the HuggingFaceAPIDocumentEmbedder."
             )
 
+        truncate = self.truncate
+        normalize = self.normalize
+
+        if self.api_type == HFEmbeddingAPIType.SERVERLESS_INFERENCE_API:
+            if truncate is not None:
+                msg = "`truncate` parameter is not supported for Serverless Inference API. It will be ignored."
+                warnings.warn(msg)
+                truncate = None
+            if normalize is not None:
+                msg = "`normalize` parameter is not supported for Serverless Inference API. It will be ignored."
+                warnings.warn(msg)
+                normalize = None
+
         text_to_embed = self.prefix + text + self.suffix
 
-        response = self._client.post(
-            json={"inputs": [text_to_embed], "truncate": self.truncate, "normalize": self.normalize},
-            task="feature-extraction",
-        )
-        embedding = json.loads(response.decode())[0]
+        np_embedding = self._client.feature_extraction(text=text_to_embed, truncate=truncate, normalize=normalize)
+
+        error_msg = f"Expected embedding shape (1, embedding_dim) or (embedding_dim,), got {np_embedding.shape}"
+        if np_embedding.ndim > 2:
+            raise ValueError(error_msg)
+        if np_embedding.ndim == 2 and np_embedding.shape[0] != 1:
+            raise ValueError(error_msg)
+
+        embedding = np_embedding.flatten().tolist()
 
         return {"embedding": embedding}
