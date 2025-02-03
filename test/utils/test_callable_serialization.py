@@ -1,10 +1,12 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+
 import pytest
 import requests
 from haystack.core.errors import DeserializationError, SerializationError
 from haystack.components.generators.utils import print_streaming_chunk
+from haystack.testing.callable_serialization.random_callable import callable_to_deserialize
 from haystack.utils import serialize_callable, deserialize_callable
 
 
@@ -38,6 +40,13 @@ def test_callable_serialization_non_local():
     # check serialization of another library's callable
     result = serialize_callable(requests.api.get)
     assert result == "requests.api.get"
+
+
+def test_fully_qualified_import_deserialization():
+    func = deserialize_callable("haystack.testing.callable_serialization.random_callable.callable_to_deserialize")
+
+    assert func is callable_to_deserialize
+    assert func("Hello") == "Hello, world!"
 
 
 def test_callable_serialization_instance_methods_fail():
