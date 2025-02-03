@@ -48,6 +48,7 @@ def test_fully_qualified_import_deserialization():
     assert func is callable_to_deserialize
     assert func("Hello") == "Hello, world!"
 
+
 def test_callable_serialization_instance_methods_fail():
     with pytest.raises(SerializationError):
         serialize_callable(TestClass.my_method)
