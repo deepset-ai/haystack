@@ -8,7 +8,7 @@ import os
 import warnings
 from collections import deque
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Deque, Dict, List, Optional, Tuple, Union
 
 from haystack import Document, component, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
@@ -108,7 +108,7 @@ class CSVToDocument:
 
 
 @component
-class CSVSplitter:
+class CSVDocumentSplitter:
     """
     A component to split a CSV document into multiple CSV documents
 
@@ -122,7 +122,6 @@ class CSVSplitter:
         quotechar (str): The quote character used in the CSV. Default is '"'.
         trim_empty_rows (bool): Whether to trim leading/trailing empty rows in each block. Default is True.
         skip_errors (bool): Whether to skip documents with parsing errors. Default is True.
-        split_index_meta_key (Optional[str]): Metadata key to store the split index. Default is 'csv_split_index'.
         detect_side_tables (bool): Whether to detect tables that sit side-by-side in different columns.
                                    If True, a more expensive BFS-based approach is used.
     """
@@ -134,9 +133,8 @@ class CSVSplitter:
         quotechar: str = '"',
         trim_empty_rows: bool = True,
         skip_errors: bool = True,
-        split_index_meta_key: Optional[str] = "csv_split_index",
         detect_side_tables: bool = False,
-    ):
+    ) -> None:
         if split_threshold < 1:
             raise ValueError("split_threshold must be at least 1")
         self.split_threshold = split_threshold
@@ -144,7 +142,6 @@ class CSVSplitter:
         self.quotechar = quotechar
         self.trim_empty_rows = trim_empty_rows
         self.skip_errors = skip_errors
-        self.split_index_meta_key = split_index_meta_key
         self.detect_side_tables = detect_side_tables
 
     def _split_csv_content(self, content: str) -> List[str]:
@@ -170,7 +167,9 @@ class CSVSplitter:
 
         Controlled by `split_threshold`.
         """
-        blocks, current_block, empty_count = [], [], 0
+        blocks: List[List[List[str]]] = []
+        current_block: List[List[str]] = []
+        empty_count: int = 0
 
         for row in rows:
             # row is considered empty if all cells are blank
@@ -199,10 +198,10 @@ class CSVSplitter:
             return []
 
         # 1) Normalize row lengths so we have a 2D grid
-        max_cols = max(len(r) for r in rows)
-        for r in rows:
-            while len(r) < max_cols:
-                r.append("")
+        max_cols = max(len(row) for row in rows)
+        for row in rows:
+            while len(row) < max_cols:
+                row.append("")
 
         R, C = len(rows), max_cols
         visited = [[False] * C for _ in range(R)]
@@ -212,7 +211,7 @@ class CSVSplitter:
 
         def bfs(start_r: int, start_c: int) -> List[Tuple[int, int]]:
             """Collect all connected (non-empty) cells using BFS starting from (start_r, start_c)."""
-            queue = deque()
+            queue: Deque[Tuple[int, int]] = deque()
             queue.append((start_r, start_c))
             visited[start_r][start_c] = True
             connected_cells = [(start_r, start_c)]
@@ -272,7 +271,7 @@ class CSVSplitter:
 
     def _clean_single_block_2d(self, block_2d: List[List[str]]) -> List[List[str]]:
         """
-        For a 2D block remove empty top/bottom rows, and empty left/right columns
+        For a 2D block remove empty top/bottom rows, and empty left/right columns.
         """
         if not block_2d:
             return []
@@ -314,9 +313,9 @@ class CSVSplitter:
         return output.getvalue().strip()
 
     @component.output_types(documents=List[Document])
-    def run(self, documents: List[Document]):
+    def run(self, documents: List[Document]) -> Dict[str, List[Document]]:
         """Processes documents to split CSV content."""
-        split_docs = []
+        split_docs: List[Document] = []
         for doc in documents:
             if not doc.content:
                 continue
@@ -330,8 +329,7 @@ class CSVSplitter:
 
             for idx, csv_text in enumerate(blocks):
                 meta = doc.meta.copy()
-                if self.split_index_meta_key:
-                    meta[self.split_index_meta_key] = idx
+                meta["split_id"] = idx
                 split_docs.append(Document(content=csv_text, meta=meta))
 
         return {"documents": split_docs}

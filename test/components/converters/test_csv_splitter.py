@@ -1,24 +1,28 @@
+import io
+import csv
+import time
 import pytest
+from typing import List, Tuple
+
 from haystack import Document
-from haystack.components.converters.csv import CSVSplitter
+from haystack.components.converters.csv import CSVDocumentSplitter
 
 
-class TestCSVSplitter:
+class TestCSVDocumentSplitter:
     def test_empty_file(self) -> None:
         """
         Completely empty CSV content should produce zero documents.
         """
-        splitter = CSVSplitter(detect_side_tables=True)
+        splitter = CSVDocumentSplitter(detect_side_tables=True)
         result = splitter.run([Document(content="")])
         docs = result["documents"]
-        assert len(docs) == 0
 
     def test_minimal_single_row(self) -> None:
         """
         Single row CSV to confirm we get exactly one block.
         """
         csv_data = "OnlyCol1,OnlyCol2,OnlyCol3"
-        splitter = CSVSplitter(detect_side_tables=True)
+        splitter = CSVDocumentSplitter(detect_side_tables=True)
         result = splitter.run([Document(content=csv_data)])
         docs = result["documents"]
         assert len(docs) == 1
@@ -32,7 +36,7 @@ class TestCSVSplitter:
 L1A,L1B,,,R1A,R1B
 L2A,L2B,,,R2A,R2B
 """
-        splitter = CSVSplitter(detect_side_tables=False)
+        splitter = CSVDocumentSplitter(detect_side_tables=False)
         result = splitter.run([Document(content=csv_data)])
         docs = result["documents"]
         assert len(docs) == 1
@@ -49,7 +53,7 @@ C1,C2,,,D1,D2
 
 X1,X2,,,Y1,Y2
 """
-        splitter = CSVSplitter(split_threshold=2, detect_side_tables=False)
+        splitter = CSVDocumentSplitter(split_threshold=2, detect_side_tables=False)
         result = splitter.run([Document(content=csv_data)])
         docs = result["documents"]
         assert len(docs) == 2
@@ -65,7 +69,7 @@ X1,X2,,,Y1,Y2
 L1A,L1B,,,R1A,R1B
 L2A,L2B,,,R2A,R2B
 """
-        splitter = CSVSplitter(detect_side_tables=True)
+        splitter = CSVDocumentSplitter(detect_side_tables=True)
         result = splitter.run([Document(content=csv_data)])
         docs = result["documents"]
         assert len(docs) == 2
@@ -85,7 +89,7 @@ A3,A4,,,B3,B4
 X1,X2,,,Y1,Y2
 X3,X4,,,Y3,Y4
 """
-        splitter = CSVSplitter(split_threshold=2, detect_side_tables=True)
+        splitter = CSVDocumentSplitter(split_threshold=2, detect_side_tables=True)
         result = splitter.run([Document(content=csv_data)])
         docs = result["documents"]
         assert len(docs) == 4
@@ -106,7 +110,7 @@ X3,X4,,,Y3,Y4
 A,B,,,C,D
 E,F,,,G,H
 """
-        splitter = CSVSplitter(split_threshold=1, detect_side_tables=True)
+        splitter = CSVDocumentSplitter(split_threshold=1, detect_side_tables=True)
         result = splitter.run([Document(content=csv_data)])
         docs = result["documents"]
         assert len(docs) == 4
@@ -132,7 +136,7 @@ multiline description"
 But still single
 field",,RightCol,Yes
 """
-        splitter = CSVSplitter(detect_side_tables=True)
+        splitter = CSVDocumentSplitter(detect_side_tables=True)
         result = splitter.run([Document(content=csv_data)])
         docs = result["documents"]
         assert len(docs) >= 1
@@ -155,7 +159,7 @@ field",,RightCol,Yes
 5,6
 7,8
 """
-        splitter = CSVSplitter(split_threshold=2, detect_side_tables=True)
+        splitter = CSVDocumentSplitter(split_threshold=2, detect_side_tables=True)
         result = splitter.run([Document(content=csv_data)])
         docs = result["documents"]
         assert len(docs) == 2
@@ -170,7 +174,7 @@ field",,RightCol,Yes
 7,,,,8,9
 10
 """
-        splitter = CSVSplitter(detect_side_tables=True)
+        splitter = CSVDocumentSplitter(detect_side_tables=True)
         result = splitter.run([Document(content=csv_data)])
         docs = result["documents"]
         assert len(docs) >= 1
@@ -192,7 +196,7 @@ Val2
 Val3
 Val4
 """
-        splitter = CSVSplitter(split_threshold=1, detect_side_tables=True)
+        splitter = CSVDocumentSplitter(split_threshold=1, detect_side_tables=True)
         result = splitter.run([Document(content=csv_data)])
         docs = result["documents"]
         assert len(docs) == 3
@@ -211,7 +215,7 @@ A,B,,,C,D
 "Broken,Row
 X,Y,,,Z,W
 """
-        splitter = CSVSplitter(skip_errors=True, detect_side_tables=True)
+        splitter = CSVDocumentSplitter(skip_errors=True, detect_side_tables=True)
         result = splitter.run([Document(content=csv_data)])
         docs = result["documents"]
         assert len(docs) > 0
@@ -225,10 +229,80 @@ A,B,,,C,D
 "Broken,Row
 X,Y,,,Z,W
 """
-        splitter = CSVSplitter(skip_errors=False, detect_side_tables=True)
+        splitter = CSVDocumentSplitter(skip_errors=False, detect_side_tables=True)
         result = splitter.run([Document(content=csv_data)])
         docs = result["documents"]
         assert len(docs) > 0
+
+    def _generate_large_csv(self, side_by_side: bool = False) -> str:
+        """Helper to create a large CSV.
+
+        Overall grid dimensions:
+        - Total rows: 2 * row_count + 2 (≈ 60002 rows)
+        - Total columns: 1000
+
+        Note: Two rows (at row_count and row_count+1) are left entirely empty as vertical separators,
+            and in the side‑by‑side case one column (column 100) is left empty as a horizontal separator.
+        """
+        rows = []
+        row_count = 30000
+        total_columns = 1000
+
+        if side_by_side:
+            regions = [
+                (0, row_count - 1, 0, 99),
+                (row_count + 2, 2 * row_count + 1, 0, 99),
+                (0, row_count - 1, 101, 200),
+                (row_count + 2, 2 * row_count + 1, 101, 200),
+            ]
+        else:
+            regions = [(0, row_count - 1, 0, 199), (row_count + 2, 2 * row_count + 1, 0, 199)]
+
+        total_rows = 2 * row_count + 2
+
+        for row_idx in range(total_rows):
+            if row_count <= row_idx < row_count + 2:
+                rows.append([""] * total_columns)
+                continue
+
+            row = [""] * total_columns
+            for r_start, r_end, c_start, c_end in regions:
+                if r_start <= row_idx <= r_end:
+                    for col in range(c_start, c_end + 1):
+                        row[col] = f"Table{r_start // row_count + 1}_{row_idx}_{col}"
+            rows.append(row)
+
+        output = io.StringIO()
+        csv.writer(output).writerows(rows)
+        return output.getvalue()
+
+    @pytest.mark.slow
+    def test_large_standard_case(self):
+        """Large CSV with only vertical splits (no side-by-side tables)"""
+        csv_data = self._generate_large_csv(side_by_side=False)
+        doc = Document(content=csv_data)
+
+        splitter = CSVDocumentSplitter(detect_side_tables=False, split_threshold=2)
+        start_time = time.time()
+        result = splitter.run([doc])
+        duration = time.time() - start_time
+
+        assert len(result["documents"]) == 2
+        print(f"\nStandard large CSV processed in {duration:.2f}s")
+
+    @pytest.mark.slow
+    def test_large_side_by_side_case(self):
+        """Large CSV with both vertical and horizontal splits"""
+        csv_data = self._generate_large_csv(side_by_side=True)
+        doc = Document(content=csv_data)
+
+        splitter = CSVDocumentSplitter(detect_side_tables=True, split_threshold=2)
+        start_time = time.time()
+        result = splitter.run([doc])
+        duration = time.time() - start_time
+
+        assert len(result["documents"]) == 4
+        print(f"Side-by-side large CSV processed in {duration:.2f}s")
 
 
 if __name__ == "__main__":
