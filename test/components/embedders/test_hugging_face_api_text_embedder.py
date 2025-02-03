@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 import random
 import pytest
 from huggingface_hub.utils import RepositoryNotFoundError
-
+from numpy import array
 from haystack.components.embedders import HuggingFaceAPITextEmbedder
 from haystack.utils.auth import Secret
 from haystack.utils.hf import HFEmbeddingAPIType
@@ -19,11 +19,6 @@ def mock_check_valid_model():
         "haystack.components.embedders.hugging_face_api_text_embedder.check_valid_model", MagicMock(return_value=None)
     ) as mock:
         yield mock
-
-
-def mock_embedding_generation(json, **kwargs):
-    response = str([[random.random() for _ in range(384)] for _ in range(len(json["inputs"]))]).encode()
-    return response
 
 
 class TestHuggingFaceAPITextEmbedder:
@@ -141,9 +136,9 @@ class TestHuggingFaceAPITextEmbedder:
         with pytest.raises(TypeError):
             embedder.run(text=list_integers_input)
 
-    def test_run(self, mock_check_valid_model):
-        with patch("huggingface_hub.InferenceClient.post") as mock_embedding_patch:
-            mock_embedding_patch.side_effect = mock_embedding_generation
+    def test_run(self, mock_check_valid_model, recwarn):
+        with patch("huggingface_hub.InferenceClient.feature_extraction") as mock_embedding_patch:
+            mock_embedding_patch.return_value = array([[random.random() for _ in range(384)]])
 
             embedder = HuggingFaceAPITextEmbedder(
                 api_type=HFEmbeddingAPIType.SERVERLESS_INFERENCE_API,
@@ -156,12 +151,39 @@ class TestHuggingFaceAPITextEmbedder:
             result = embedder.run(text="The food was delicious")
 
             mock_embedding_patch.assert_called_once_with(
-                json={"inputs": ["prefix The food was delicious suffix"], "truncate": True, "normalize": False},
-                task="feature-extraction",
+                text="prefix The food was delicious suffix", truncate=None, normalize=None
             )
 
         assert len(result["embedding"]) == 384
         assert all(isinstance(x, float) for x in result["embedding"])
+
+        # Check that warnings about ignoring truncate and normalize are raised
+        assert len(recwarn) == 2
+        assert "truncate" in str(recwarn[0].message)
+        assert "normalize" in str(recwarn[1].message)
+
+    def test_run_wrong_embedding_shape(self, mock_check_valid_model):
+        # embedding ndim > 2
+        with patch("huggingface_hub.InferenceClient.feature_extraction") as mock_embedding_patch:
+            mock_embedding_patch.return_value = array([[[0.1, 0.2, 0.3], [0.4, 0.5, 0.6], [0.7, 0.8, 0.9]]])
+
+            embedder = HuggingFaceAPITextEmbedder(
+                api_type=HFEmbeddingAPIType.SERVERLESS_INFERENCE_API, api_params={"model": "BAAI/bge-small-en-v1.5"}
+            )
+
+            with pytest.raises(ValueError):
+                embedder.run(text="The food was delicious")
+
+        # embedding ndim == 2 but shape[0] != 1
+        with patch("huggingface_hub.InferenceClient.feature_extraction") as mock_embedding_patch:
+            mock_embedding_patch.return_value = array([[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]])
+
+            embedder = HuggingFaceAPITextEmbedder(
+                api_type=HFEmbeddingAPIType.SERVERLESS_INFERENCE_API, api_params={"model": "BAAI/bge-small-en-v1.5"}
+            )
+
+            with pytest.raises(ValueError):
+                embedder.run(text="The food was delicious")
 
     @pytest.mark.flaky(reruns=5, reruns_delay=5)
     @pytest.mark.integration
