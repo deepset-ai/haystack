@@ -6,6 +6,7 @@ import pytest
 import requests
 from haystack.core.errors import DeserializationError, SerializationError
 from haystack.components.generators.utils import print_streaming_chunk
+from haystack.testing.callable_serialization.random_callable import callable_to_deserialize
 from haystack.utils import serialize_callable, deserialize_callable
 
 
@@ -42,8 +43,10 @@ def test_callable_serialization_non_local():
 
 
 def test_fully_qualified_import_deserialization():
-    assert deserialize_callable("haystack.testing.callable_serialization.random_callable.callable_to_deserialize")
+    func = deserialize_callable("haystack.testing.callable_serialization.random_callable.callable_to_deserialize")
 
+    assert func is callable_to_deserialize
+    assert func("Hello") == "Hello, world!"
 
 def test_callable_serialization_instance_methods_fail():
     with pytest.raises(SerializationError):
