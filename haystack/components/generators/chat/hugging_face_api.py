@@ -220,6 +220,7 @@ class HuggingFaceAPIChatGenerator:
         messages: List[ChatMessage],
         generation_kwargs: Optional[Dict[str, Any]] = None,
         tools: Optional[List[Tool]] = None,
+        streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
     ):
         """
         Invoke the text generation inference based on the provided messages and generation parameters.
@@ -231,6 +232,9 @@ class HuggingFaceAPIChatGenerator:
         :param tools:
             A list of tools for which the model can prepare calls. If set, it will override the `tools` parameter set
             during component initialization.
+        :param streaming_callback:
+            An optional callable for handling streaming responses. If set, it will override the `streaming_callback`
+            parameter set during component initialization.
         :returns: A dictionary with the following keys:
             - `replies`: A list containing the generated responses as ChatMessage objects.
         """
@@ -245,8 +249,9 @@ class HuggingFaceAPIChatGenerator:
             raise ValueError("Using tools and streaming at the same time is not supported. Please choose one.")
         _check_duplicate_tool_names(tools)
 
-        if self.streaming_callback:
-            return self._run_streaming(formatted_messages, generation_kwargs)
+        streaming_callback = streaming_callback or self.streaming_callback
+        if streaming_callback:
+            return self._run_streaming(formatted_messages, generation_kwargs, streaming_callback)
 
         hf_tools = None
         if tools:
@@ -254,7 +259,12 @@ class HuggingFaceAPIChatGenerator:
 
         return self._run_non_streaming(formatted_messages, generation_kwargs, hf_tools)
 
-    def _run_streaming(self, messages: List[Dict[str, str]], generation_kwargs: Dict[str, Any]):
+    def _run_streaming(
+        self,
+        messages: List[Dict[str, str]],
+        generation_kwargs: Dict[str, Any],
+        streaming_callback: Callable[[StreamingChunk], None],
+    ):
         api_output: Iterable[ChatCompletionStreamOutput] = self._client.chat_completion(
             messages, stream=True, **generation_kwargs
         )
@@ -282,7 +292,7 @@ class HuggingFaceAPIChatGenerator:
                 first_chunk_time = datetime.now().isoformat()
 
             stream_chunk = StreamingChunk(text, meta)
-            self.streaming_callback(stream_chunk)  # type: ignore # streaming_callback is not None (verified in the run method)
+            streaming_callback(stream_chunk)
 
         meta.update(
             {

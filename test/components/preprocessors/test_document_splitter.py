@@ -827,3 +827,11 @@ class TestSplittingNLTKSentenceSplitter:
         assert deserialized.respect_sentence_boundary == True
         assert hasattr(deserialized, "sentence_splitter")
         assert deserialized.language == "de"
+
+    def test_duplicate_pages_get_different_doc_id(self):
+        splitter = DocumentSplitter(split_by="page", split_length=1)
+        doc1 = Document(content="This is some text.\fThis is some text.\fThis is some text.\fThis is some text.")
+        splitter.warm_up()
+        result = splitter.run(documents=[doc1])
+
+        assert len({doc.id for doc in result["documents"]}) == 4
