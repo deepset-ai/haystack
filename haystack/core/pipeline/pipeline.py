@@ -259,7 +259,7 @@ class Pipeline(PipelineBase):
                 )
 
                 if component_pipeline_outputs:
-                    pipeline_outputs[component_name] = component_pipeline_outputs
+                    pipeline_outputs[component_name] = deepcopy(component_pipeline_outputs)
                 if self._is_queue_stale(priority_queue):
                     priority_queue = self._fill_queue(ordered_component_names, inputs, component_visits)
 
