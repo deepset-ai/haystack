@@ -92,29 +92,6 @@ class Pipeline(PipelineBase):
 
             return cast(Dict[Any, Any], component_output), inputs
 
-    @staticmethod
-    def _merge_component_and_pipeline_outputs(
-        component_name: str, component_outputs: Dict, pipeline_outputs: Dict
-    ) -> Dict:
-        """
-        Merges the outputs of a component with the current pipeline outputs.
-
-        :param component_name: The name of the component.
-        :param component_outputs: The outputs of the component.
-        :param pipeline_outputs: The pipeline outputs.
-        :returns: New pipeline outputs.
-        """
-        if not component_outputs:
-            return pipeline_outputs
-        elif component_name not in pipeline_outputs:
-            pipeline_outputs[component_name] = component_outputs
-        else:
-            for key, value in component_outputs.items():
-                if key not in pipeline_outputs[component_name]:
-                    pipeline_outputs[component_name][key] = value
-
-        return pipeline_outputs
-
     def run(  # noqa: PLR0915, PLR0912
         self, data: Dict[str, Any], include_outputs_from: Optional[Set[str]] = None
     ) -> Dict[str, Any]:
