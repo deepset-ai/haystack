@@ -7,7 +7,7 @@ import pytest
 
 from haystack import Pipeline, Document, component
 from haystack.document_stores.types import DuplicatePolicy
-from haystack.dataclasses import ChatMessage, GeneratedAnswer
+from haystack.dataclasses import ChatMessage, GeneratedAnswer, TextContent
 from haystack.components.routers import ConditionalRouter
 from haystack.components.builders import PromptBuilder, AnswerBuilder, ChatPromptBuilder
 from haystack.components.converters.output_adapter import OutputAdapter
@@ -64,6 +64,11 @@ def pipeline_that_is_linear():
             PipelineRunData(
                 inputs={"first_addition": {"value": 1}},
                 expected_outputs={"second_addition": {"result": 7}},
+                expected_component_calls={
+                    ("first_addition", 1): {"value": 1, "add": None},
+                    ("double", 1): {"value": 3},
+                    ("second_addition", 1): {"value": 6, "add": None},
+                },
                 expected_run_order=["first_addition", "double", "second_addition"],
             )
         ],
@@ -156,6 +161,32 @@ def pipeline_complex():
             PipelineRunData(
                 inputs={"greet_first": {"value": 1}, "greet_enumerator": {"value": 1}},
                 expected_outputs={"accumulate_3": {"value": -7}, "add_five": {"result": -6}},
+                expected_component_calls={
+                    ("greet_first", 1): {"value": 1, "log_level": None, "message": None},
+                    ("greet_enumerator", 1): {"value": 1, "log_level": None, "message": None},
+                    ("accumulate_1", 1): {"value": 1},
+                    ("add_two", 1): {"value": 1, "add": None},
+                    ("parity", 1): {"value": 3},
+                    ("add_one", 1): {"value": 3, "add": None},
+                    ("branch_joiner", 1): {"value": [4]},
+                    ("below_10", 1): {"value": 4, "threshold": None},
+                    ("double", 1): {"value": 4},
+                    ("branch_joiner", 2): {"value": [8]},
+                    ("below_10", 2): {"value": 8, "threshold": None},
+                    ("double", 2): {"value": 8},
+                    ("branch_joiner", 3): {"value": [16]},
+                    ("below_10", 3): {"value": 16, "threshold": None},
+                    ("accumulate_2", 1): {"value": 16},
+                    ("enumerate", 1): {"value": 1},
+                    ("add_three", 1): {"value": 1, "add": None},
+                    ("sum", 1): {"values": [1, 4]},
+                    ("diff", 1): {"first_value": 5, "second_value": 16},
+                    ("greet_one_last_time", 1): {"value": -11, "log_level": None, "message": None},
+                    ("replicate", 1): {"value": -11},
+                    ("add_five", 1): {"value": -11, "add": None},
+                    ("add_four", 1): {"value": -11, "add": None},
+                    ("accumulate_3", 1): {"value": -7},
+                },
                 expected_run_order=[
                     "greet_first",
                     "greet_enumerator",
@@ -204,11 +235,13 @@ def pipeline_that_has_a_single_component_with_a_default_input():
             PipelineRunData(
                 inputs={"with_defaults": {"a": 40, "b": 30}},
                 expected_outputs={"with_defaults": {"c": 70}},
+                expected_component_calls={("with_defaults", 1): {"a": 40, "b": 30}},
                 expected_run_order=["with_defaults"],
             ),
             PipelineRunData(
                 inputs={"with_defaults": {"a": 40}},
                 expected_outputs={"with_defaults": {"c": 42}},
+                expected_component_calls={("with_defaults", 1): {"a": 40, "b": 2}},
                 expected_run_order=["with_defaults"],
             ),
         ],
@@ -234,26 +267,43 @@ def pipeline_that_has_two_loops_of_identical_lengths():
             PipelineRunData(
                 inputs={"branch_joiner": {"value": 0}},
                 expected_outputs={"remainder": {"remainder_is_0": 0}},
+                expected_component_calls={("branch_joiner", 1): {"value": [0]}, ("remainder", 1): {"value": 0}},
                 expected_run_order=["branch_joiner", "remainder"],
             ),
             PipelineRunData(
                 inputs={"branch_joiner": {"value": 3}},
                 expected_outputs={"remainder": {"remainder_is_0": 3}},
+                expected_component_calls={("branch_joiner", 1): {"value": [3]}, ("remainder", 1): {"value": 3}},
                 expected_run_order=["branch_joiner", "remainder"],
             ),
             PipelineRunData(
                 inputs={"branch_joiner": {"value": 4}},
                 expected_outputs={"remainder": {"remainder_is_0": 6}},
+                expected_component_calls={
+                    ("branch_joiner", 1): {"value": [4]},
+                    ("remainder", 1): {"value": 4},
+                    ("add_two", 1): {"value": 4, "add": None},
+                    ("branch_joiner", 2): {"value": [6]},
+                    ("remainder", 2): {"value": 6},
+                },
                 expected_run_order=["branch_joiner", "remainder", "add_two", "branch_joiner", "remainder"],
             ),
             PipelineRunData(
                 inputs={"branch_joiner": {"value": 5}},
                 expected_outputs={"remainder": {"remainder_is_0": 6}},
+                expected_component_calls={
+                    ("branch_joiner", 1): {"value": [5]},
+                    ("remainder", 1): {"value": 5},
+                    ("add_one", 1): {"value": 5, "add": None},
+                    ("branch_joiner", 2): {"value": [6]},
+                    ("remainder", 2): {"value": 6},
+                },
                 expected_run_order=["branch_joiner", "remainder", "add_one", "branch_joiner", "remainder"],
             ),
             PipelineRunData(
                 inputs={"branch_joiner": {"value": 6}},
                 expected_outputs={"remainder": {"remainder_is_0": 6}},
+                expected_component_calls={("branch_joiner", 1): {"value": [6]}, ("remainder", 1): {"value": 6}},
                 expected_run_order=["branch_joiner", "remainder"],
             ),
         ],
@@ -282,16 +332,26 @@ def pipeline_that_has_two_loops_of_different_lengths():
             PipelineRunData(
                 inputs={"branch_joiner": {"value": 0}},
                 expected_outputs={"remainder": {"remainder_is_0": 0}},
+                expected_component_calls={("branch_joiner", 1): {"value": [0]}, ("remainder", 1): {"value": 0}},
                 expected_run_order=["branch_joiner", "remainder"],
             ),
             PipelineRunData(
                 inputs={"branch_joiner": {"value": 3}},
                 expected_outputs={"remainder": {"remainder_is_0": 3}},
+                expected_component_calls={("branch_joiner", 1): {"value": [3]}, ("remainder", 1): {"value": 3}},
                 expected_run_order=["branch_joiner", "remainder"],
             ),
             PipelineRunData(
                 inputs={"branch_joiner": {"value": 4}},
                 expected_outputs={"remainder": {"remainder_is_0": 6}},
+                expected_component_calls={
+                    ("branch_joiner", 1): {"value": [4]},
+                    ("remainder", 1): {"value": 4},
+                    ("add_two_1", 1): {"value": 4, "add": None},
+                    ("add_two_2", 1): {"value": 5, "add": None},
+                    ("branch_joiner", 2): {"value": [6]},
+                    ("remainder", 2): {"value": 6},
+                },
                 expected_run_order=[
                     "branch_joiner",
                     "remainder",
@@ -304,11 +364,19 @@ def pipeline_that_has_two_loops_of_different_lengths():
             PipelineRunData(
                 inputs={"branch_joiner": {"value": 5}},
                 expected_outputs={"remainder": {"remainder_is_0": 6}},
+                expected_component_calls={
+                    ("branch_joiner", 1): {"value": [5]},
+                    ("remainder", 1): {"value": 5},
+                    ("add_one", 1): {"value": 5, "add": None},
+                    ("branch_joiner", 2): {"value": [6]},
+                    ("remainder", 2): {"value": 6},
+                },
                 expected_run_order=["branch_joiner", "remainder", "add_one", "branch_joiner", "remainder"],
             ),
             PipelineRunData(
                 inputs={"branch_joiner": {"value": 6}},
                 expected_outputs={"remainder": {"remainder_is_0": 6}},
+                expected_component_calls={("branch_joiner", 1): {"value": [6]}, ("remainder", 1): {"value": 6}},
                 expected_run_order=["branch_joiner", "remainder"],
             ),
         ],
@@ -343,6 +411,21 @@ def pipeline_that_has_a_single_loop_with_two_conditional_branches():
             PipelineRunData(
                 inputs={"add_one": {"value": 3}},
                 expected_outputs={"add_two": {"result": 13}},
+                expected_component_calls={
+                    ("accumulator", 1): {"value": 4},
+                    ("accumulator", 2): {"value": 4},
+                    ("add_one", 1): {"add": None, "value": 3},
+                    ("add_three", 1): {"add": None, "value": 8},
+                    ("add_two", 1): {"add": None, "value": 11},
+                    ("below_10", 1): {"threshold": None, "value": 4},
+                    ("below_10", 2): {"threshold": None, "value": 4},
+                    ("below_10", 3): {"threshold": None, "value": 11},
+                    ("below_5", 1): {"threshold": None, "value": 4},
+                    ("below_5", 2): {"threshold": None, "value": 8},
+                    ("branch_joiner", 1): {"value": [4]},
+                    ("branch_joiner", 2): {"value": [4]},
+                    ("branch_joiner", 3): {"value": [11]},
+                },
                 expected_run_order=[
                     "add_one",
                     "branch_joiner",
@@ -378,11 +461,21 @@ def pipeline_that_has_a_component_with_dynamic_inputs_defined_in_init():
             PipelineRunData(
                 inputs={"hello": {"word": "Alice"}},
                 expected_outputs={"splitter": {"output": ["This", "is", "the", "greeting:", "Hello,", "Alice!!"]}},
+                expected_component_calls={
+                    ("fstring", 1): {"greeting": "Hello, Alice!", "template": None},
+                    ("hello", 1): {"word": "Alice"},
+                    ("splitter", 1): {"sentence": "This is the greeting: Hello, Alice!!"},
+                },
                 expected_run_order=["hello", "fstring", "splitter"],
             ),
             PipelineRunData(
                 inputs={"hello": {"word": "Alice"}, "fstring": {"template": "Received: {greeting}"}},
                 expected_outputs={"splitter": {"output": ["Received:", "Hello,", "Alice!"]}},
+                expected_component_calls={
+                    ("fstring", 1): {"greeting": "Hello, Alice!", "template": "Received: {greeting}"},
+                    ("hello", 1): {"word": "Alice"},
+                    ("splitter", 1): {"sentence": "Received: Hello, Alice!"},
+                },
                 expected_run_order=["hello", "fstring", "splitter"],
             ),
         ],
@@ -409,11 +502,22 @@ def pipeline_that_has_two_branches_that_dont_merge():
             PipelineRunData(
                 inputs={"add_one": {"value": 1}},
                 expected_outputs={"add_three": {"result": 15}},
+                expected_component_calls={
+                    ("add_one", 1): {"add": None, "value": 1},
+                    ("add_ten", 1): {"add": None, "value": 2},
+                    ("add_three", 1): {"add": None, "value": 12},
+                    ("parity", 1): {"value": 2},
+                },
                 expected_run_order=["add_one", "parity", "add_ten", "add_three"],
             ),
             PipelineRunData(
                 inputs={"add_one": {"value": 2}},
                 expected_outputs={"double": {"value": 6}},
+                expected_component_calls={
+                    ("add_one", 1): {"add": None, "value": 2},
+                    ("double", 1): {"value": 3},
+                    ("parity", 1): {"value": 3},
+                },
                 expected_run_order=["add_one", "parity", "double"],
             ),
         ],
@@ -442,6 +546,14 @@ def pipeline_that_has_three_branches_that_dont_merge():
             PipelineRunData(
                 inputs={"add_one": {"value": 1}},
                 expected_outputs={"add_one_again": {"result": 6}, "add_ten": {"result": 12}, "double": {"value": 4}},
+                expected_component_calls={
+                    ("add_one", 1): {"add": None, "value": 1},
+                    ("add_one_again", 1): {"add": None, "value": 5},
+                    ("add_ten", 1): {"add": None, "value": 2},
+                    ("add_three", 1): {"add": None, "value": 2},
+                    ("double", 1): {"value": 2},
+                    ("repeat", 1): {"value": 2},
+                },
                 expected_run_order=["add_one", "repeat", "add_ten", "double", "add_three", "add_one_again"],
             )
         ],
@@ -467,6 +579,13 @@ def pipeline_that_has_two_branches_that_merge():
             PipelineRunData(
                 inputs={"first_addition": {"value": 1}, "third_addition": {"value": 1}},
                 expected_outputs={"fourth_addition": {"result": 3}},
+                expected_component_calls={
+                    ("diff", 1): {"first_value": 5, "second_value": 3},
+                    ("first_addition", 1): {"add": None, "value": 1},
+                    ("fourth_addition", 1): {"add": None, "value": 2},
+                    ("second_addition", 1): {"add": None, "value": 3},
+                    ("third_addition", 1): {"add": None, "value": 1},
+                },
                 expected_run_order=["first_addition", "third_addition", "second_addition", "diff", "fourth_addition"],
             )
         ],
@@ -502,11 +621,25 @@ def pipeline_that_has_different_combinations_of_branches_that_merge_and_do_not_m
             PipelineRunData(
                 inputs={"add_one": {"value": 1}, "add_two": {"add": 2}, "add_two_as_well": {"add": 2}},
                 expected_outputs={"add_two": {"result": 8}, "add_two_as_well": {"result": 8}},
+                expected_component_calls={
+                    ("add_four", 1): {"add": None, "value": 2},
+                    ("add_one", 1): {"add": None, "value": 1},
+                    ("add_two", 1): {"add": 2, "value": 6},
+                    ("add_two_as_well", 1): {"add": 2, "value": 6},
+                    ("parity", 1): {"value": 2},
+                },
                 expected_run_order=["add_one", "parity", "add_four", "add_two", "add_two_as_well"],
             ),
             PipelineRunData(
                 inputs={"add_one": {"value": 2}, "add_two": {"add": 2}, "add_two_as_well": {"add": 2}},
                 expected_outputs={"diff": {"difference": 7}},
+                expected_component_calls={
+                    ("add_one", 1): {"add": None, "value": 2},
+                    ("add_ten", 1): {"add": None, "value": 3},
+                    ("diff", 1): {"first_value": 13, "second_value": 6},
+                    ("double", 1): {"value": 3},
+                    ("parity", 1): {"value": 3},
+                },
                 expected_run_order=["add_one", "parity", "double", "add_ten", "diff"],
             ),
         ],
@@ -538,6 +671,21 @@ def pipeline_that_has_two_branches_one_of_which_loops_back():
             PipelineRunData(
                 inputs={"add_zero": {"value": 8}, "sum": {"values": 2}},
                 expected_outputs={"sum": {"total": 23}},
+                expected_component_calls={
+                    ("add_one", 1): {"add": None, "value": 8},
+                    ("add_one", 2): {"add": None, "value": 9},
+                    ("add_two", 1): {"add": None, "value": 19},
+                    ("add_zero", 1): {"add": None, "value": 8},
+                    ("below_10", 1): {"threshold": None, "value": 8},
+                    ("below_10", 2): {"threshold": None, "value": 9},
+                    ("below_10", 3): {"threshold": None, "value": 19},
+                    ("branch_joiner", 1): {"value": [8]},
+                    ("branch_joiner", 2): {"value": [9]},
+                    ("branch_joiner", 3): {"value": [19]},
+                    ("counter", 1): {"value": 9},
+                    ("counter", 2): {"value": 10},
+                    ("sum", 1): {"values": [2, 21]},
+                },
                 expected_run_order=[
                     "add_zero",
                     "branch_joiner",
@@ -585,6 +733,12 @@ def pipeline_that_has_a_component_with_mutable_input():
                 expected_outputs={
                     "concat1": {"output": ["foo", "bar", "extra_item"]},
                     "concat2": {"output": ["foo", "bar", "extra_item"]},
+                },
+                expected_component_calls={
+                    ("concat1", 1): {"inputs": [["foo", "bar", "extra_item"]]},
+                    ("concat2", 1): {"inputs": [["foo", "bar", "extra_item"]]},
+                    ("mangler1", 1): {"input_list": ["foo", "bar"]},
+                    ("mangler2", 1): {"input_list": ["foo", "bar"]},
                 },
                 expected_run_order=["mangler1", "mangler2", "concat1", "concat2"],
             )
@@ -652,6 +806,68 @@ def pipeline_that_has_a_component_with_mutable_output_sent_to_multiple_inputs():
                     },
                     "mm2": {"merged_message": "Fake message"},
                 },
+                expected_component_calls={
+                    ("llm", 1): {
+                        "messages": [
+                            ChatMessage(
+                                _role="system",
+                                _content=[
+                                    TextContent(
+                                        text="Always respond in English even if some input data is in other languages."
+                                    )
+                                ],
+                                _name=None,
+                                _meta={},
+                            ),
+                            ChatMessage(
+                                _role="user", _content=[TextContent(text="Tell me about Berlin")], _name=None, _meta={}
+                            ),
+                        ]
+                    },
+                    ("mm1", 1): {
+                        "messages": [
+                            ChatMessage(
+                                _role="system",
+                                _content=[
+                                    TextContent(
+                                        text="Always respond in English even if some input data is in other languages."
+                                    )
+                                ],
+                                _name=None,
+                                _meta={},
+                            ),
+                            ChatMessage(
+                                _role="user", _content=[TextContent(text="Tell me about Berlin")], _name=None, _meta={}
+                            ),
+                        ],
+                        "metadata": {"meta2": "value2", "metadata_key": "metadata_value"},
+                    },
+                    ("mm2", 1): {
+                        "messages": [
+                            ChatMessage(
+                                _role="assistant", _content=[TextContent(text="Fake message")], _name=None, _meta={}
+                            )
+                        ],
+                        "metadata": {"meta2": "value2", "metadata_key": "metadata_value"},
+                    },
+                    ("prompt_builder", 1): {
+                        "prompt_source": [
+                            ChatMessage(
+                                _role="system",
+                                _content=[
+                                    TextContent(
+                                        text="Always respond in English even if some input data is in other languages."
+                                    )
+                                ],
+                                _name=None,
+                                _meta={},
+                            ),
+                            ChatMessage(
+                                _role="user", _content=[TextContent(text="Tell me about Berlin")], _name=None, _meta={}
+                            ),
+                        ]
+                    },
+                },
                 expected_run_order=["prompt_builder", "llm", "mm1", "mm2"],
             )
         ],
@@ -701,6 +917,37 @@ def pipeline_that_has_a_greedy_and_variadic_component_after_a_component_with_def
                         "question"
                     }
                 },
+                expected_component_calls={
+                    ("branch_joiner", 1): {
+                        "value": [
+                            [
+                                Document(
+                                    id="328f0cbb6722c5cfa290aa2b78bcda8dc5afa09f0e2c23092afc502ba89c85e7",
+                                    content="This is a simple document",
+                                    score=0.5993376509412102,
+                                )
+                            ]
+                        ]
+                    },
+                    ("prompt_builder", 1): {
+                        "documents": [
+                            Document(
+                                id="328f0cbb6722c5cfa290aa2b78bcda8dc5afa09f0e2c23092afc502ba89c85e7",
+                                content="This is a simple document",
+                                score=0.5993376509412102,
+                            )
+                        ],
+                        "query": "This is my question",
+                        "template": None,
+                        "template_variables": None,
+                    },
+                    ("retriever", 1): {
+                        "filters": None,
+                        "query": "This is my question",
+                        "scale_score": None,
+                        "top_k": None,
+                    },
+                },
                 expected_run_order=["retriever", "branch_joiner", "prompt_builder"],
             )
         ],
@@ -719,71 +966,6 @@ def pipeline_that_has_a_component_that_doesnt_return_a_dictionary():
     pipe = Pipeline(max_runs_per_component=10)
     pipe.add_component("comp", BrokenComponent())
     return pipe, [PipelineRunData({"comp": {"a": 1}})]
-
-
-@given(
-    "a pipeline that has components added in a different order from the order of execution",
-    target_fixture="pipeline_data",
-)
-def pipeline_that_has_components_added_in_a_different_order_from_the_order_of_execution():
-    """
-    We enqueue the Components in internal `to_run` data structure at the start of `Pipeline.run()` using the order
-    they are added in the Pipeline with `Pipeline.add_component()`.
-    If a Component A with defaults is added before a Component B that has no defaults, but in the Pipeline
-    logic A must be executed after B it could run instead before.
-
-    This test verifies that the order of execution is correct.
-    """
-    docs = [Document(content="Rome is the capital of Italy"), Document(content="Paris is the capital of France")]
-    doc_store = InMemoryDocumentStore()
-    doc_store.write_documents(docs)
-    template = (
-        "Given the following information, answer the question.\n"
-        "Context:\n"
-        "{% for document in documents %}"
-        "    {{ document.content }}\n"
-        "{% endfor %}"
-        "Question: {{ query }}"
-    )
-
-    pipe = Pipeline(max_runs_per_component=1)
-
-    # The order of this addition is important for the test
-    # Do not edit them.
-    pipe.add_component("prompt_builder", PromptBuilder(template=template))
-    pipe.add_component("retriever", InMemoryBM25Retriever(document_store=doc_store))
-    pipe.connect("retriever", "prompt_builder.documents")
-
-    query = "What is the capital of France?"
-    return (
-        pipe,
-        [
-            PipelineRunData(
-                inputs={"prompt_builder": {"query": query}, "retriever": {"query": query}},
-                expected_outputs={
-                    "prompt_builder": {
-                        "prompt": "Given the "
-                        "following "
-                        "information, "
-                        "answer the "
-                        "question.\n"
-                        "Context:\n"
-                        "    Paris is "
-                        "the capital "
-                        "of France\n"
-                        "    Rome is "
-                        "the capital "
-                        "of Italy\n"
-                        "Question: "
-                        "What is the "
-                        "capital of "
-                        "France?"
-                    }
-                },
-                expected_run_order=["retriever", "prompt_builder"],
-            )
-        ],
-    )
 
 
 @given("a pipeline that has a component with only default inputs", target_fixture="pipeline_data")
@@ -842,6 +1024,58 @@ def pipeline_that_has_a_component_with_only_default_inputs():
                             )
                         ]
                     }
+                },
+                expected_component_calls={
+                    ("answer_builder", 1): {
+                        "documents": [
+                            Document(
+                                id="413dccdf51a54cca75b7ed2eddac04e6e58560bd2f0caf4106a3efc023fe3651",
+                                content="Paris is the capital of France",
+                                score=1.600237583702734,
+                            ),
+                            Document(
+                                id="a4a874fc2ef75015da7924d709fbdd2430e46a8e94add6e0f26cd32c1c03435d",
+                                content="Rome is the capital of Italy",
+                                score=1.2536639934227616,
+                            ),
+                        ],
+                        "meta": None,
+                        "pattern": None,
+                        "query": "What is the capital of France?",
+                        "reference_pattern": None,
+                        "replies": ["Paris"],
+                    },
+                    ("generator", 1): {
+                        "prompt": "Given the following information, answer the "
+                        "question.\n"
+                        "Context:\n"
+                        "    Paris is the capital of France\n"
+                        "    Rome is the capital of Italy\n"
+                        "Question: What is the capital of France?"
+                    },
+                    ("prompt_builder", 1): {
+                        "documents": [
+                            Document(
+                                id="413dccdf51a54cca75b7ed2eddac04e6e58560bd2f0caf4106a3efc023fe3651",
+                                content="Paris is the capital of France",
+                                score=1.600237583702734,
+                            ),
+                            Document(
+                                id="a4a874fc2ef75015da7924d709fbdd2430e46a8e94add6e0f26cd32c1c03435d",
+                                content="Rome is the capital of Italy",
+                                score=1.2536639934227616,
+                            ),
+                        ],
+                        "query": "What is the capital of France?",
+                        "template": None,
+                        "template_variables": None,
+                    },
+                    ("retriever", 1): {
+                        "filters": None,
+                        "query": "What is the capital of France?",
+                        "scale_score": None,
+                        "top_k": None,
+                    },
                 },
                 expected_run_order=["retriever", "prompt_builder", "generator", "answer_builder"],
             )
@@ -920,6 +1154,37 @@ def pipeline_that_has_a_component_with_only_default_inputs_as_first_to_run_and_r
             PipelineRunData(
                 inputs={"prompt_builder": {"query": "What is the capital of Italy?"}},
                 expected_outputs={"router": {"correct_replies": ["Rome"]}},
+                expected_component_calls={
+                    ("generator", 1): {
+                        "generation_kwargs": None,
+                        "prompt": "Answer the following question.\n\nQuestion: What is the capital of Italy?",
+                    },
+                    ("generator", 2): {
+                        "generation_kwargs": None,
+                        "prompt": "Answer the following question.\n"
+                        "\n"
+                        "Previously you replied incorrectly this:\n"
+                        "\n"
+                        " - Paris\n"
+                        "\n"
+                        "\n"
+                        "Question: What is the capital of Italy?",
+                    },
+                    ("prompt_builder", 1): {
+                        "previous_replies": "",
+                        "query": "What is the capital of Italy?",
+                        "template": None,
+                        "template_variables": None,
+                    },
+                    ("prompt_builder", 2): {
+                        "previous_replies": ["Paris"],
+                        "query": "What is the capital of Italy?",
+                        "template": None,
+                        "template_variables": None,
+                    },
+                    ("router", 1): {"replies": ["Paris"]},
+                    ("router", 2): {"replies": ["Rome"]},
+                },
                 expected_run_order=["prompt_builder", "generator", "router", "prompt_builder", "generator", "router"],
             )
         ],
@@ -956,11 +1221,25 @@ def pipeline_that_has_multiple_branches_that_merge_into_a_component_with_a_singl
             PipelineRunData(
                 inputs={"add_one": {"value": 1}},
                 expected_outputs={"sum": {"total": 14}},
+                expected_component_calls={
+                    ("add_one", 1): {"add": None, "value": 1},
+                    ("add_ten", 1): {"add": None, "value": 2},
+                    ("parity", 1): {"value": 2},
+                    ("sum", 1): {"values": [2, 12]},
+                },
                 expected_run_order=["add_one", "parity", "add_ten", "sum"],
             ),
             PipelineRunData(
                 inputs={"add_one": {"value": 2}},
                 expected_outputs={"sum": {"total": 17}},
+                expected_component_calls={
+                    ("add_four", 1): {"add": None, "value": 3},
+                    ("add_one", 1): {"add": None, "value": 2},
+                    ("add_one_again", 1): {"add": None, "value": 7},
+                    ("double", 1): {"value": 3},
+                    ("parity", 1): {"value": 3},
+                    ("sum", 1): {"values": [3, 6, 8]},
+                },
                 expected_run_order=["add_one", "parity", "double", "add_four", "add_one_again", "sum"],
             ),
         ],
@@ -991,6 +1270,13 @@ def pipeline_that_has_multiple_branches_of_different_lengths_that_merge_into_a_c
             PipelineRunData(
                 inputs={"first_addition": {"value": 1}, "third_addition": {"value": 1}},
                 expected_outputs={"fourth_addition": {"result": 12}},
+                expected_component_calls={
+                    ("first_addition", 1): {"add": None, "value": 1},
+                    ("fourth_addition", 1): {"add": None, "value": 11},
+                    ("second_addition", 1): {"add": None, "value": 3},
+                    ("sum", 1): {"values": [3, 3, 5]},
+                    ("third_addition", 1): {"add": None, "value": 1},
+                },
                 expected_run_order=["first_addition", "third_addition", "second_addition", "sum", "fourth_addition"],
             )
         ],
@@ -1017,12 +1303,22 @@ def pipeline_that_is_linear_and_returns_intermediate_outputs():
                     "first_addition": {"result": 3},
                     "second_addition": {"result": 7},
                 },
+                expected_component_calls={
+                    ("double", 1): {"value": 3},
+                    ("first_addition", 1): {"add": None, "value": 1},
+                    ("second_addition", 1): {"add": None, "value": 6},
+                },
                 expected_run_order=["first_addition", "double", "second_addition"],
             ),
             PipelineRunData(
                 inputs={"first_addition": {"value": 1}},
                 include_outputs_from={"double"},
                 expected_outputs={"double": {"value": 6}, "second_addition": {"result": 7}},
+                expected_component_calls={
+                    ("double", 1): {"value": 3},
+                    ("first_addition", 1): {"add": None, "value": 1},
+                    ("second_addition", 1): {"add": None, "value": 6},
+                },
                 expected_run_order=["first_addition", "double", "second_addition"],
             ),
         ],
@@ -1071,6 +1367,21 @@ def pipeline_that_has_a_loop_and_returns_intermediate_outputs_from_it():
                     "accumulator": {"value": 8},
                     "below_5": {"above": 8},
                     "add_three": {"result": 11},
+                },
+                expected_component_calls={
+                    ("accumulator", 1): {"value": 4},
+                    ("accumulator", 2): {"value": 4},
+                    ("add_one", 1): {"add": None, "value": 3},
+                    ("add_three", 1): {"add": None, "value": 8},
+                    ("add_two", 1): {"add": None, "value": 11},
+                    ("below_10", 1): {"threshold": None, "value": 4},
+                    ("below_10", 2): {"threshold": None, "value": 4},
+                    ("below_10", 3): {"threshold": None, "value": 11},
+                    ("below_5", 1): {"threshold": None, "value": 4},
+                    ("below_5", 2): {"threshold": None, "value": 8},
+                    ("branch_joiner", 1): {"value": [4]},
+                    ("branch_joiner", 2): {"value": [4]},
+                    ("branch_joiner", 3): {"value": [11]},
                 },
                 expected_run_order=[
                     "add_one",
@@ -1124,12 +1435,22 @@ def pipeline_that_is_linear_and_returns_intermediate_outputs_from_multiple_socke
                     "first_addition": {"result": 3},
                     "second_addition": {"result": 7},
                 },
+                expected_component_calls={
+                    ("double", 1): {"value": 3},
+                    ("first_addition", 1): {"add": None, "value": 1},
+                    ("second_addition", 1): {"add": None, "value": 6},
+                },
                 expected_run_order=["first_addition", "double", "second_addition"],
             ),
             PipelineRunData(
                 inputs={"first_addition": {"value": 1}},
                 include_outputs_from={"double"},
                 expected_outputs={"double": {"original": 3, "value": 6}, "second_addition": {"result": 7}},
+                expected_component_calls={
+                    ("double", 1): {"value": 3},
+                    ("first_addition", 1): {"add": None, "value": 1},
+                    ("second_addition", 1): {"add": None, "value": 6},
+                },
                 expected_run_order=["first_addition", "double", "second_addition"],
             ),
         ],
@@ -1158,11 +1479,16 @@ def pipeline_that_has_a_component_with_default_inputs_that_doesnt_receive_anythi
             PipelineRunData(
                 inputs={"router": {"sentence": "Wir mussen reisen"}},
                 expected_outputs={"router": {"language_1": "German"}},
+                expected_component_calls={("router", 1): {"sentence": "Wir mussen reisen"}},
                 expected_run_order=["router"],
             ),
             PipelineRunData(
                 inputs={"router": {"sentence": "Yo tengo que viajar"}},
                 expected_outputs={"pb": {"prompt": "Ok, I know, that's Spanish"}},
+                expected_component_calls={
+                    ("pb", 1): {"language": "Spanish", "template": None, "template_variables": None},
+                    ("router", 1): {"sentence": "Yo tengo que viajar"},
+                },
                 expected_run_order=["router", "pb"],
             ),
         ],
@@ -1247,6 +1573,45 @@ def pipeline_that_has_a_component_with_default_inputs_that_doesnt_receive_anythi
                     "router": {"question": "This is a question with no_answer"},
                 },
                 expected_outputs={"fallback_llm": {"replies": ["There's simply no_answer to this question"]}},
+                expected_component_calls={
+                    ("fallback_llm", 1): {
+                        "prompt": "User entered a query that cannot be answered "
+                        "with the given table.\n"
+                        "                    The query was: This is a "
+                        "question with no_answer and the table had "
+                        "columns: .\n"
+                        "                    Let the user know why "
+                        "the question cannot be answered"
+                    },
+                    ("fallback_prompt", 1): {
+                        "columns": "",
+                        "question": "This is a question with no_answer",
+                        "template": None,
+                        "template_variables": None,
+                    },
+                    ("llm", 1): {
+                        "prompt": "Please generate an SQL query. The query should answer "
+                        "the following Question: This is a question with "
+                        "no_answer;\n"
+                        "            If the question cannot be answered given "
+                        "the provided table and columns, return 'no_answer'\n"
+                        "            The query is to be answered for the table "
+                        "is called 'absenteeism' with the following\n"
+                        "            Columns: Age, Absenteeism_time_in_hours, "
+                        "Days, Disciplinary_failure;\n"
+                        "            Answer:"
+                    },
+                    ("prompt", 1): {
+                        "columns": "Age, Absenteeism_time_in_hours, Days, Disciplinary_failure",
+                        "question": "This is a question with no_answer",
+                        "template": None,
+                        "template_variables": None,
+                    },
+                    ("router", 1): {
+                        "question": "This is a question with no_answer",
+                        "replies": ["There's simply no_answer to this question"],
+                    },
+                },
                 expected_run_order=["prompt", "llm", "router", "fallback_prompt", "fallback_llm"],
             )
         ],
@@ -1257,6 +1622,104 @@ def pipeline_that_has_a_component_with_default_inputs_that_doesnt_receive_anythi
                     "router": {"question": "This is a question that has an answer"},
                 },
                 expected_outputs={"sql_querier": {"results": "This is the query result", "query": "Some SQL query"}},
+                expected_component_calls={
+                    ("llm", 1): {
+                        "prompt": "\n"
+                        "    You are an experienced and accurate Turkish CX "
+                        "speacialist that classifies customer comments into "
+                        "pre-defined categories below:\n"
+                        "\n"
+                        "    Negative experience labels:\n"
+                        "    - Late delivery\n"
+                        "    - Rotten/spoilt item\n"
+                        "    - Bad Courier behavior\n"
+                        "\n"
+                        "    Positive experience labels:\n"
+                        "    - Good courier behavior\n"
+                        "    - Thanks & appreciation\n"
+                        "    - Love message to courier\n"
+                        "    - Fast delivery\n"
+                        "    - Quality of products\n"
+                        "\n"
+                        "    Create a JSON object as a response. The fields "
+                        "are: 'positive_experience', 'negative_experience'.\n"
+                        "    Assign at least one of the pre-defined labels to "
+                        "the given customer comment under positive and "
+                        "negative experience fields.\n"
+                        "    If the comment has a positive experience, list "
+                        "the label under 'positive_experience' field.\n"
+                        "    If the comments has a negative_experience, list "
+                        "it under the 'negative_experience' field.\n"
+                        "    Here is the comment:\n"
+                        "I loved the quality of the meal but the courier was "
+                        "rude\n"
+                        ". Just return the category names in the list. If "
+                        "there aren't any, return an empty list.\n"
+                        "\n"
+                        "    \n"
+                        "    "
+                    },
+                    ("llm", 2): {
+                        "prompt": "\n"
+                        "    You are an experienced and accurate Turkish CX "
+                        "speacialist that classifies customer comments into "
+                        "pre-defined categories below:\n"
+                        "\n"
+                        "    Negative experience labels:\n"
+                        "    - Late delivery\n"
+                        "    - Rotten/spoilt item\n"
+                        "    - Bad Courier behavior\n"
+                        "\n"
+                        "    Positive experience labels:\n"
+                        "    - Good courier behavior\n"
+                        "    - Thanks & appreciation\n"
+                        "    - Love message to courier\n"
+                        "    - Fast delivery\n"
+                        "    - Quality of products\n"
+                        "\n"
+                        "    Create a JSON object as a response. The fields "
+                        "are: 'positive_experience', 'negative_experience'.\n"
+                        "    Assign at least one of the pre-defined labels to "
+                        "the given customer comment under positive and "
+                        "negative experience fields.\n"
+                        "    If the comment has a positive experience, list "
+                        "the label under 'positive_experience' field.\n"
+                        "    If the comments has a negative_experience, list "
+                        "it under the 'negative_experience' field.\n"
+                        "    Here is the comment:\n"
+                        "I loved the quality of the meal but the courier was "
+                        "rude\n"
+                        ". Just return the category names in the list. If "
+                        "there aren't any, return an empty list.\n"
+                        "\n"
+                        "    \n"
+                        "    You already created the following output in a "
+                        "previous attempt: ['This is an invalid reply']\n"
+                        "    However, this doesn't comply with the format "
+                        "requirements from above and triggered this Python "
+                        "exception: this is an error message\n"
+                        "    Correct the output and try again. Just return the "
+                        "corrected output without any extra explanations.\n"
+                        "    \n"
+                        "    "
+                    },
+                    ("output_validator", 1): {"replies": ["This is a valid reply"]},
+                    ("output_validator", 2): {"replies": ["This is a valid reply"]},
+                    ("prompt_builder", 1): {
+                        "comment": "",
+                        "error_message": "",
+                        "invalid_replies": "",
+                        "template": None,
+                        "template_variables": {"comment": "I loved the quality of the meal but the courier was rude"},
+                    },
+                    ("prompt_builder", 2): {
+                        "comment": "",
+                        "error_message": "this is an error message",
+                        "invalid_replies": ["This is an invalid reply"],
+                        "template": None,
+                        "template_variables": {"comment": "I loved the quality of the meal but the courier was rude"},
+                    },
+                },
                 expected_run_order=["prompt", "llm", "router", "sql_querier"],
             )
         ],
@@ -1335,6 +1798,104 @@ def pipeline_that_has_a_loop_and_a_component_with_default_inputs_that_doesnt_rec
             PipelineRunData(
                 inputs={"prompt_builder": {"template_variables": {"comment": comment}}},
                 expected_outputs={"output_validator": {"valid_replies": ["This is a valid reply"]}},
+                expected_component_calls={
+                    ("llm", 1): {
+                        "prompt": "\n"
+                        "    You are an experienced and accurate Turkish CX "
+                        "speacialist that classifies customer comments into "
+                        "pre-defined categories below:\n"
+                        "\n"
+                        "    Negative experience labels:\n"
+                        "    - Late delivery\n"
+                        "    - Rotten/spoilt item\n"
+                        "    - Bad Courier behavior\n"
+                        "\n"
+                        "    Positive experience labels:\n"
+                        "    - Good courier behavior\n"
+                        "    - Thanks & appreciation\n"
+                        "    - Love message to courier\n"
+                        "    - Fast delivery\n"
+                        "    - Quality of products\n"
+                        "\n"
+                        "    Create a JSON object as a response. The fields "
+                        "are: 'positive_experience', 'negative_experience'.\n"
+                        "    Assign at least one of the pre-defined labels to "
+                        "the given customer comment under positive and "
+                        "negative experience fields.\n"
+                        "    If the comment has a positive experience, list "
+                        "the label under 'positive_experience' field.\n"
+                        "    If the comments has a negative_experience, list "
+                        "it under the 'negative_experience' field.\n"
+                        "    Here is the comment:\n"
+                        "I loved the quality of the meal but the courier was "
+                        "rude\n"
+                        ". Just return the category names in the list. If "
+                        "there aren't any, return an empty list.\n"
+                        "\n"
+                        "    \n"
+                        "    "
+                    },
+                    ("llm", 2): {
+                        "prompt": "\n"
+                        "    You are an experienced and accurate Turkish CX "
+                        "speacialist that classifies customer comments into "
+                        "pre-defined categories below:\n"
+                        "\n"
+                        "    Negative experience labels:\n"
+                        "    - Late delivery\n"
+                        "    - Rotten/spoilt item\n"
+                        "    - Bad Courier behavior\n"
+                        "\n"
+                        "    Positive experience labels:\n"
+                        "    - Good courier behavior\n"
+                        "    - Thanks & appreciation\n"
+                        "    - Love message to courier\n"
+                        "    - Fast delivery\n"
+                        "    - Quality of products\n"
+                        "\n"
+                        "    Create a JSON object as a response. The fields "
+                        "are: 'positive_experience', 'negative_experience'.\n"
+                        "    Assign at least one of the pre-defined labels to "
+                        "the given customer comment under positive and "
+                        "negative experience fields.\n"
+                        "    If the comment has a positive experience, list "
+                        "the label under 'positive_experience' field.\n"
+                        "    If the comments has a negative_experience, list "
+                        "it under the 'negative_experience' field.\n"
+                        "    Here is the comment:\n"
+                        "I loved the quality of the meal but the courier was "
+                        "rude\n"
+                        ". Just return the category names in the list. If "
+                        "there aren't any, return an empty list.\n"
+                        "\n"
+                        "    \n"
+                        "    You already created the following output in a "
+                        "previous attempt: ['This is an invalid reply']\n"
+                        "    However, this doesn't comply with the format "
+                        "requirements from above and triggered this Python "
+                        "exception: this is an error message\n"
+                        "    Correct the output and try again. Just return the "
+                        "corrected output without any extra explanations.\n"
+                        "    \n"
+                        "    "
+                    },
+                    ("output_validator", 1): {"replies": ["This is a valid reply"]},
+                    ("output_validator", 2): {"replies": ["This is a valid reply"]},
+                    ("prompt_builder", 1): {
+                        "comment": "",
+                        "error_message": "",
+                        "invalid_replies": "",
+                        "template": None,
+                        "template_variables": {"comment": "I loved the quality of the meal but the courier was rude"},
+                    },
+                    ("prompt_builder", 2): {
+                        "comment": "",
+                        "error_message": "this is an error message",
+                        "invalid_replies": ["This is an invalid reply"],
+                        "template": None,
+                        "template_variables": {"comment": "I loved the quality of the meal but the courier was rude"},
+                    },
+                },
                 expected_run_order=[
                     "prompt_builder",
                     "llm",
@@ -1439,6 +2000,76 @@ def pipeline_that_has_multiple_components_with_only_default_inputs_and_are_added
                 expected_outputs={
                     "llm": {"replies": ["This is a reply"], "meta": {"meta_key": "meta_value"}},
                     "spellchecker": {"meta": {"meta_key": "meta_value"}},
+                },
+                expected_component_calls={
+                    ("llm", 1): {
+                        "generation_kwargs": None,
+                        "prompt": "\n"
+                        "    According to these documents:\n"
+                        "\n"
+                        "    \n"
+                        "    This is a document\n"
+                        "    \n"
+                        "\n"
+                        "    Answer the given question: \n"
+                        "    \n"
+                        "    This is a reply\n"
+                        "    \n"
+                        "    \n"
+                        "    Answer:\n"
+                        "    ",
+                    },
+                    ("prompt_builder1", 1): {
+                        "question": "Wha i Acromegaly?",
+                        "template": None,
+                        "template_variables": None,
+                    },
+                    ("prompt_builder2", 1): {
+                        "documents": [
+                            Document(
+                                id="9d51914541072d3d822910785727db8a3838dba5ca6ebb0a543969260ecdeda6",
+                                content="This is a document",
+                            )
+                        ],
+                        "question": "\n    \n    This is a reply\n    \n    ",
+                        "template": None,
+                        "template_variables": None,
+                    },
+                    ("prompt_builder3", 1): {
+                        "replies": ["This is a reply"],
+                        "template": None,
+                        "template_variables": None,
+                    },
+                    ("ranker", 1): {
+                        "calibration_factor": None,
+                        "documents": [
+                            Document(
+                                id="9d51914541072d3d822910785727db8a3838dba5ca6ebb0a543969260ecdeda6",
+                                content="This is a document",
+                            )
+                        ],
+                        "query": "\n    \n    This is a reply\n    \n    ",
+                        "scale_score": None,
+                        "score_threshold": None,
+                        "top_k": None,
+                    },
+                    ("retriever", 1): {
+                        "filters": None,
+                        "query": "\n    \n    This is a reply\n    \n    ",
+                        "scale_score": None,
+                        "top_k": None,
+                    },
+                    ("spellchecker", 1): {
+                        "generation_kwargs": None,
+                        "prompt": "\n"
+                        "    You are a spellchecking system. Check "
+                        "the given query and fill in the corrected "
+                        "query.\n"
+                        "\n"
+                        "    Question: Wha i Acromegaly?\n"
+                        "    Corrected question:\n"
+                        "    ",
+                    },
                 },
                 expected_run_order=[
                     "prompt_builder1",
@@ -1763,6 +2394,256 @@ def that_is_a_simple_agent():
                 "search_prompt_builder": {"template": search_message},
             },
             expected_outputs={"router": {"finish": "Eiffel Tower"}},
+            expected_component_calls={
+                ("llm", 1): {
+                    "generation_kwargs": None,
+                    "messages": [
+                        ChatMessage(
+                            _role="user",
+                            _content=[
+                                TextContent(
+                                    text="\n    Solve a question answering task with interleaving Thought, Action, Observation steps.\n\n    Thought reasons about the current situation\n\n    Action can be:\n    google_search - Searches Google for the exact concept/entity (given in square brackets) and returns the results for you to use\n    finish - Returns the final answer (given in square brackets) and finishes the task\n\n    Observation summarizes the Action outcome and helps in formulating the next\n    Thought in Thought, Action, Observation interleaving triplet of steps.\n\n    After each Observation, provide the next Thought and next Action.\n    Don't execute multiple steps even though you know the answer.\n    Only generate Thought and Action, never Observation, you'll get Observation from Action.\n    Follow the pattern in the example below.\n\n    Example:\n    ###########################\n    Question: Which magazine was started first Arthur’s Magazine or First for Women?\n    Thought: I need to search Arthur’s Magazine and First for Women, and find which was started\n    first.\n    Action: google_search[When was 'Arthur’s Magazine' started?]\n    Observation: Arthur’s Magazine was an American literary periodical ˘\n    published in Philadelphia and founded in 1844. Edited by Timothy Shay Arthur, it featured work by\n    Edgar A. Poe, J.H. Ingraham, Sarah Josepha Hale, Thomas G. Spear, and others. In May 1846\n    it was merged into Godey’s Lady’s Book.\n    Thought: Arthur’s Magazine was started in 1844. I need to search First for Women founding date next\n    Action: google_search[When was 'First for Women' magazine started?]\n    Observation: First for Women is a woman’s magazine published by Bauer Media Group in the\n    USA. The magazine was started in 1989. It is based in Englewood Cliffs, New Jersey. In 2011\n    the circulation of the magazine was 1,310,696 copies.\n    Thought: First for Women was started in 1989. 1844 (Arthur’s Magazine) ¡ 1989 (First for\n    Women), so Arthur’s Magazine was started first.\n    Action: finish[Arthur’s Magazine]\n    ############################\n\n    Let's start, the question is: which tower is taller: eiffel tower or tower of pisa?\n\n    Thought:\n    "
+                                )
+                            ],
+                            _name=None,
+                            _meta={},
+                        )
+                    ],
+                },
+                ("llm", 2): {
+                    "generation_kwargs": None,
+                    "messages": [
+                        ChatMessage(
+                            _role="user",
+                            _content=[
+                                TextContent(
+                                    text="\n    Solve a question answering task with interleaving Thought, Action, Observation steps.\n\n    Thought reasons about the current situation\n\n    Action can be:\n    google_search - Searches Google for the exact concept/entity (given in square brackets) and returns the results for you to use\n    finish - Returns the final answer (given in square brackets) and finishes the task\n\n    Observation summarizes the Action outcome and helps in formulating the next\n    Thought in Thought, Action, Observation interleaving triplet of steps.\n\n    After each Observation, provide the next Thought and next Action.\n    Don't execute multiple steps even though you know the answer.\n    Only generate Thought and Action, never Observation, you'll get Observation from Action.\n    Follow the pattern in the example below.\n\n    Example:\n    ###########################\n    Question: Which magazine was started first Arthur’s Magazine or First for Women?\n    Thought: I need to search Arthur’s Magazine and First for Women, and find which was started\n    first.\n    Action: google_search[When was 'Arthur’s Magazine' started?]\n    Observation: Arthur’s Magazine was an American literary periodical ˘\n    published in Philadelphia and founded in 1844. Edited by Timothy Shay Arthur, it featured work by\n    Edgar A. Poe, J.H. Ingraham, Sarah Josepha Hale, Thomas G. Spear, and others. In May 1846\n    it was merged into Godey’s Lady’s Book.\n    Thought: Arthur’s Magazine was started in 1844. I need to search First for Women founding date next\n    Action: google_search[When was 'First for Women' magazine started?]\n    Observation: First for Women is a woman’s magazine published by Bauer Media Group in the\n    USA. The magazine was started in 1989. It is based in Englewood Cliffs, New Jersey. In 2011\n    the circulation of the magazine was 1,310,696 copies.\n    Thought: First for Women was started in 1989. 1844 (Arthur’s Magazine) ¡ 1989 (First for\n    Women), so Arthur’s Magazine was started first.\n    Action: finish[Arthur’s Magazine]\n    ############################\n\n    Let's start, the question is: which tower is taller: eiffel tower or tower of pisa?\n\n    Thought:\n    thinking\n Action: google_search[What is taller, Eiffel Tower or Leaning Tower of Pisa]\nObservation: Tower of Pisa is 55 meters tall\n\n\nThought: "
+                                )
+                            ],
+                            _name=None,
+                            _meta={},
+                        )
+                    ],
+                },
+                ("main_input", 1): {
+                    "value": [
+                        [
+                            ChatMessage(
+                                _role="user",
+                                _content=[
+                                    TextContent(
+                                        text="\n    Solve a question answering task with interleaving Thought, Action, Observation steps.\n\n    Thought reasons about the current situation\n\n    Action can be:\n    google_search - Searches Google for the exact concept/entity (given in square brackets) and returns the results for you to use\n    finish - Returns the final answer (given in square brackets) and finishes the task\n\n    Observation summarizes the Action outcome and helps in formulating the next\n    Thought in Thought, Action, Observation interleaving triplet of steps.\n\n    After each Observation, provide the next Thought and next Action.\n    Don't execute multiple steps even though you know the answer.\n    Only generate Thought and Action, never Observation, you'll get Observation from Action.\n    Follow the pattern in the example below.\n\n    Example:\n    ###########################\n    Question: Which magazine was started first Arthur’s Magazine or First for Women?\n    Thought: I need to search Arthur’s Magazine and First for Women, and find which was started\n    first.\n    Action: google_search[When was 'Arthur’s Magazine' started?]\n    Observation: Arthur’s Magazine was an American literary periodical ˘\n    published in Philadelphia and founded in 1844. Edited by Timothy Shay Arthur, it featured work by\n    Edgar A. Poe, J.H. Ingraham, Sarah Josepha Hale, Thomas G. Spear, and others. In May 1846\n    it was merged into Godey’s Lady’s Book.\n    Thought: Arthur’s Magazine was started in 1844. I need to search First for Women founding date next\n    Action: google_search[When was 'First for Women' magazine started?]\n    Observation: First for Women is a woman’s magazine published by Bauer Media Group in the\n    USA. The magazine was started in 1989. It is based in Englewood Cliffs, New Jersey. In 2011\n    the circulation of the magazine was 1,310,696 copies.\n    Thought: First for Women was started in 1989. 1844 (Arthur’s Magazine) ¡ 1989 (First for\n    Women), so Arthur’s Magazine was started first.\n    Action: finish[Arthur’s Magazine]\n    ############################\n\n    Let's start, the question is: {{query}}\n\n    Thought:\n    "
+                                    )
+                                ],
+                                _name=None,
+                                _meta={},
+                            )
+                        ]
+                    ]
+                },
+                ("main_input", 2): {
+                    "value": [
+                        [
+                            ChatMessage(
+                                _role="user",
+                                _content=[
+                                    TextContent(
+                                        text="\n    Solve a question answering task with interleaving Thought, Action, Observation steps.\n\n    Thought reasons about the current situation\n\n    Action can be:\n    google_search - Searches Google for the exact concept/entity (given in square brackets) and returns the results for you to use\n    finish - Returns the final answer (given in square brackets) and finishes the task\n\n    Observation summarizes the Action outcome and helps in formulating the next\n    Thought in Thought, Action, Observation interleaving triplet of steps.\n\n    After each Observation, provide the next Thought and next Action.\n    Don't execute multiple steps even though you know the answer.\n    Only generate Thought and Action, never Observation, you'll get Observation from Action.\n    Follow the pattern in the example below.\n\n    Example:\n    ###########################\n    Question: Which magazine was started first Arthur’s Magazine or First for Women?\n    Thought: I need to search Arthur’s Magazine and First for Women, and find which was started\n    first.\n    Action: google_search[When was 'Arthur’s Magazine' started?]\n    Observation: Arthur’s Magazine was an American literary periodical ˘\n    published in Philadelphia and founded in 1844. Edited by Timothy Shay Arthur, it featured work by\n    Edgar A. Poe, J.H. Ingraham, Sarah Josepha Hale, Thomas G. Spear, and others. In May 1846\n    it was merged into Godey’s Lady’s Book.\n    Thought: Arthur’s Magazine was started in 1844. I need to search First for Women founding date next\n    Action: google_search[When was 'First for Women' magazine started?]\n    Observation: First for Women is a woman’s magazine published by Bauer Media Group in the\n    USA. The magazine was started in 1989. It is based in Englewood Cliffs, New Jersey. In 2011\n    the circulation of the magazine was 1,310,696 copies.\n    Thought: First for Women was started in 1989. 1844 (Arthur’s Magazine) ¡ 1989 (First for\n    Women), so Arthur’s Magazine was started first.\n    Action: finish[Arthur’s Magazine]\n    ############################\n\n    Let's start, the question is: which tower is taller: eiffel tower or tower of pisa?\n\n    Thought:\n    thinking\n Action: google_search[What is taller, Eiffel Tower or Leaning Tower of Pisa]\nObservation: Tower of Pisa is 55 meters tall\n\n\nThought: "
+                                    )
+                                ],
+                                _name=None,
+                                _meta={},
+                            )
+                        ]
+                    ]
+                },
+                ("prompt_builder", 1): {
+                    "query": "which tower is taller: eiffel tower or tower of pisa?",
+                    "template": [
+                        ChatMessage(
+                            _role="user",
+                            _content=[
+                                TextContent(
+                                    text="\n    Solve a question answering task with interleaving Thought, Action, Observation steps.\n\n    Thought reasons about the current situation\n\n    Action can be:\n    google_search - Searches Google for the exact concept/entity (given in square brackets) and returns the results for you to use\n    finish - Returns the final answer (given in square brackets) and finishes the task\n\n    Observation summarizes the Action outcome and helps in formulating the next\n    Thought in Thought, Action, Observation interleaving triplet of steps.\n\n    After each Observation, provide the next Thought and next Action.\n    Don't execute multiple steps even though you know the answer.\n    Only generate Thought and Action, never Observation, you'll get Observation from Action.\n    Follow the pattern in the example below.\n\n    Example:\n    ###########################\n    Question: Which magazine was started first Arthur’s Magazine or First for Women?\n    Thought: I need to search Arthur’s Magazine and First for Women, and find which was started\n    first.\n    Action: google_search[When was 'Arthur’s Magazine' started?]\n    Observation: Arthur’s Magazine was an American literary periodical ˘\n    published in Philadelphia and founded in 1844. Edited by Timothy Shay Arthur, it featured work by\n    Edgar A. Poe, J.H. Ingraham, Sarah Josepha Hale, Thomas G. Spear, and others. In May 1846\n    it was merged into Godey’s Lady’s Book.\n    Thought: Arthur’s Magazine was started in 1844. I need to search First for Women founding date next\n    Action: google_search[When was 'First for Women' magazine started?]\n    Observation: First for Women is a woman’s magazine published by Bauer Media Group in the\n    USA. The magazine was started in 1989. It is based in Englewood Cliffs, New Jersey. In 2011\n    the circulation of the magazine was 1,310,696 copies.\n    Thought: First for Women was started in 1989. 1844 (Arthur’s Magazine) ¡ 1989 (First for\n    Women), so Arthur’s Magazine was started first.\n    Action: finish[Arthur’s Magazine]\n    ############################\n\n    Let's start, the question is: {{query}}\n\n    Thought:\n    "
+                                )
+                            ],
+                            _name=None,
+                            _meta={},
+                        )
+                    ],
+                    "template_variables": None,
+                },
+                ("prompt_builder", 2): {
+                    "query": "which tower is taller: eiffel tower or tower of pisa?",
+                    "template": [
+                        ChatMessage(
+                            _role="user",
+                            _content=[
+                                TextContent(
+                                    text="\n    Solve a question answering task with interleaving Thought, Action, Observation steps.\n\n    Thought reasons about the current situation\n\n    Action can be:\n    google_search - Searches Google for the exact concept/entity (given in square brackets) and returns the results for you to use\n    finish - Returns the final answer (given in square brackets) and finishes the task\n\n    Observation summarizes the Action outcome and helps in formulating the next\n    Thought in Thought, Action, Observation interleaving triplet of steps.\n\n    After each Observation, provide the next Thought and next Action.\n    Don't execute multiple steps even though you know the answer.\n    Only generate Thought and Action, never Observation, you'll get Observation from Action.\n    Follow the pattern in the example below.\n\n    Example:\n    ###########################\n    Question: Which magazine was started first Arthur’s Magazine or First for Women?\n    Thought: I need to search Arthur’s Magazine and First for Women, and find which was started\n    first.\n    Action: google_search[When was 'Arthur’s Magazine' started?]\n    Observation: Arthur’s Magazine was an American literary periodical ˘\n    published in Philadelphia and founded in 1844. Edited by Timothy Shay Arthur, it featured work by\n    Edgar A. Poe, J.H. Ingraham, Sarah Josepha Hale, Thomas G. Spear, and others. In May 1846\n    it was merged into Godey’s Lady’s Book.\n    Thought: Arthur’s Magazine was started in 1844. I need to search First for Women founding date next\n    Action: google_search[When was 'First for Women' magazine started?]\n    Observation: First for Women is a woman’s magazine published by Bauer Media Group in the\n    USA. The magazine was started in 1989. It is based in Englewood Cliffs, New Jersey. In 2011\n    the circulation of the magazine was 1,310,696 copies.\n    Thought: First for Women was started in 1989. 1844 (Arthur’s Magazine) ¡ 1989 (First for\n    Women), so Arthur’s Magazine was started first.\n    Action: finish[Arthur’s Magazine]\n    ############################\n\n    Let's start, the question is: which tower is taller: eiffel tower or tower of pisa?\n\n    Thought:\n    thinking\n Action: google_search[What is taller, Eiffel Tower or Leaning Tower of Pisa]\nObservation: Tower of Pisa is 55 meters tall\n\n\nThought: "
+                                )
+                            ],
+                            _name=None,
+                            _meta={},
+                        )
+                    ],
+                    "template_variables": None,
+                },
+                ("prompt_concatenator_after_action", 1): {
+                    "current_prompt": [
+                        ChatMessage(
+                            _role="user",
+                            _content=[
+                                TextContent(
+                                    text="\n    Solve a question answering task with interleaving Thought, Action, Observation steps.\n\n    Thought reasons about the current situation\n\n    Action can be:\n    google_search - Searches Google for the exact concept/entity (given in square brackets) and returns the results for you to use\n    finish - Returns the final answer (given in square brackets) and finishes the task\n\n    Observation summarizes the Action outcome and helps in formulating the next\n    Thought in Thought, Action, Observation interleaving triplet of steps.\n\n    After each Observation, provide the next Thought and next Action.\n    Don't execute multiple steps even though you know the answer.\n    Only generate Thought and Action, never Observation, you'll get Observation from Action.\n    Follow the pattern in the example below.\n\n    Example:\n    ###########################\n    Question: Which magazine was started first Arthur’s Magazine or First for Women?\n    Thought: I need to search Arthur’s Magazine and First for Women, and find which was started\n    first.\n    Action: google_search[When was 'Arthur’s Magazine' started?]\n    Observation: Arthur’s Magazine was an American literary periodical ˘\n    published in Philadelphia and founded in 1844. Edited by Timothy Shay Arthur, it featured work by\n    Edgar A. Poe, J.H. Ingraham, Sarah Josepha Hale, Thomas G. Spear, and others. In May 1846\n    it was merged into Godey’s Lady’s Book.\n    Thought: Arthur’s Magazine was started in 1844. I need to search First for Women founding date next\n    Action: google_search[When was 'First for Women' magazine started?]\n    Observation: First for Women is a woman’s magazine published by Bauer Media Group in the\n    USA. The magazine was started in 1989. It is based in Englewood Cliffs, New Jersey. In 2011\n    the circulation of the magazine was 1,310,696 copies.\n    Thought: First for Women was started in 1989. 1844 (Arthur’s Magazine) ¡ 1989 (First for\n    Women), so Arthur’s Magazine was started first.\n    Action: finish[Arthur’s Magazine]\n    ############################\n\n    Let's start, the question is: which tower is taller: eiffel tower or tower of pisa?\n\n    Thought:\n    "
+                                )
+                            ],
+                            _name=None,
+                            _meta={},
+                        )
+                    ],
+                    "replies": [
+                        ChatMessage(
+                            _role="assistant",
+                            _content=[
+                                TextContent(
+                                    text="thinking\n Action: google_search[What is taller, Eiffel Tower or Leaning Tower of Pisa]\n"
+                                )
+                            ],
+                            _name=None,
+                            _meta={},
+                        )
+                    ],
+                },
+                ("prompt_concatenator_after_action", 2): {
+                    "current_prompt": [
+                        ChatMessage(
+                            _role="user",
+                            _content=[
+                                TextContent(
+                                    text="\n    Solve a question answering task with interleaving Thought, Action, Observation steps.\n\n    Thought reasons about the current situation\n\n    Action can be:\n    google_search - Searches Google for the exact concept/entity (given in square brackets) and returns the results for you to use\n    finish - Returns the final answer (given in square brackets) and finishes the task\n\n    Observation summarizes the Action outcome and helps in formulating the next\n    Thought in Thought, Action, Observation interleaving triplet of steps.\n\n    After each Observation, provide the next Thought and next Action.\n    Don't execute multiple steps even though you know the answer.\n    Only generate Thought and Action, never Observation, you'll get Observation from Action.\n    Follow the pattern in the example below.\n\n    Example:\n    ###########################\n    Question: Which magazine was started first Arthur’s Magazine or First for Women?\n    Thought: I need to search Arthur’s Magazine and First for Women, and find which was started\n    first.\n    Action: google_search[When was 'Arthur’s Magazine' started?]\n    Observation: Arthur’s Magazine was an American literary periodical ˘\n    published in Philadelphia and founded in 1844. Edited by Timothy Shay Arthur, it featured work by\n    Edgar A. Poe, J.H. Ingraham, Sarah Josepha Hale, Thomas G. Spear, and others. In May 1846\n    it was merged into Godey’s Lady’s Book.\n    Thought: Arthur’s Magazine was started in 1844. I need to search First for Women founding date next\n    Action: google_search[When was 'First for Women' magazine started?]\n    Observation: First for Women is a woman’s magazine published by Bauer Media Group in the\n    USA. The magazine was started in 1989. It is based in Englewood Cliffs, New Jersey. In 2011\n    the circulation of the magazine was 1,310,696 copies.\n    Thought: First for Women was started in 1989. 1844 (Arthur’s Magazine) ¡ 1989 (First for\n    Women), so Arthur’s Magazine was started first.\n    Action: finish[Arthur’s Magazine]\n    ############################\n\n    Let's start, the question is: which tower is taller: eiffel tower or tower of pisa?\n\n    Thought:\n    thinking\n Action: google_search[What is taller, Eiffel Tower or Leaning Tower of Pisa]\nObservation: Tower of Pisa is 55 meters tall\n\n\nThought: "
+                                )
+                            ],
+                            _name=None,
+                            _meta={},
+                        )
+                    ],
+                    "replies": [
+                        ChatMessage(
+                            _role="assistant",
+                            _content=[TextContent(text="thinking\n Action: finish[Eiffel Tower]\n")],
+                            _name=None,
+                            _meta={},
+                        )
+                    ],
+                },
+                ("prompt_concatenator_after_observation", 1): {
+                    "current_prompt": [
+                        ChatMessage(
+                            _role="user",
+                            _content=[
+                                TextContent(
+                                    text="\n    Solve a question answering task with interleaving Thought, Action, Observation steps.\n\n    Thought reasons about the current situation\n\n    Action can be:\n    google_search - Searches Google for the exact concept/entity (given in square brackets) and returns the results for you to use\n    finish - Returns the final answer (given in square brackets) and finishes the task\n\n    Observation summarizes the Action outcome and helps in formulating the next\n    Thought in Thought, Action, Observation interleaving triplet of steps.\n\n    After each Observation, provide the next Thought and next Action.\n    Don't execute multiple steps even though you know the answer.\n    Only generate Thought and Action, never Observation, you'll get Observation from Action.\n    Follow the pattern in the example below.\n\n    Example:\n    ###########################\n    Question: Which magazine was started first Arthur’s Magazine or First for Women?\n    Thought: I need to search Arthur’s Magazine and First for Women, and find which was started\n    first.\n    Action: google_search[When was 'Arthur’s Magazine' started?]\n    Observation: Arthur’s Magazine was an American literary periodical ˘\n    published in Philadelphia and founded in 1844. Edited by Timothy Shay Arthur, it featured work by\n    Edgar A. Poe, J.H. Ingraham, Sarah Josepha Hale, Thomas G. Spear, and others. In May 1846\n    it was merged into Godey’s Lady’s Book.\n    Thought: Arthur’s Magazine was started in 1844. I need to search First for Women founding date next\n    Action: google_search[When was 'First for Women' magazine started?]\n    Observation: First for Women is a woman’s magazine published by Bauer Media Group in the\n    USA. The magazine was started in 1989. It is based in Englewood Cliffs, New Jersey. In 2011\n    the circulation of the magazine was 1,310,696 copies.\n    Thought: First for Women was started in 1989. 1844 (Arthur’s Magazine) ¡ 1989 (First for\n    Women), so Arthur’s Magazine was started first.\n    Action: finish[Arthur’s Magazine]\n    ############################\n\n    Let's start, the question is: which tower is taller: eiffel tower or tower of pisa?\n\n    Thought:\n    thinking\n Action: google_search[What is taller, Eiffel Tower or Leaning Tower of Pisa]\n"
+                                )
+                            ],
+                            _name=None,
+                            _meta={},
+                        )
+                    ],
+                    "replies": [
+                        ChatMessage(
+                            _role="assistant",
+                            _content=[TextContent(text="Observation: Tower of Pisa is 55 meters tall\n\n")],
+                            _name=None,
+                            _meta={},
+                        )
+                    ],
+                },
+                ("router", 1): {
+                    "tool_id_and_param": ["google_search", "What is taller, Eiffel Tower or Leaning Tower of Pisa"]
+                },
+                ("router", 2): {"tool_id_and_param": ["finish", "Eiffel Tower"]},
+                ("router_search", 1): {"query": "What is taller, Eiffel Tower or Leaning Tower of Pisa"},
+                ("search_llm", 1): {
+                    "generation_kwargs": None,
+                    "messages": [
+                        ChatMessage(
+                            _role="user",
+                            _content=[
+                                TextContent(
+                                    text="\n    Given these web search results:\n\n    \n        Eiffel Tower is 300 meters tall\n    \n        Tower of Pisa is 55 meters tall\n    \n\n    Be as brief as possible, max one sentence.\n    Answer the question: What is taller, Eiffel Tower or Leaning Tower of Pisa\n    "
+                                )
+                            ],
+                            _name=None,
+                            _meta={},
+                        )
+                    ],
+                },
+                ("search_output_adapter", 1): {
+                    "replies": [
+                        ChatMessage(
+                            _role="assistant",
+                            _content=[TextContent(text="Tower of Pisa is 55 meters tall\n")],
+                            _name=None,
+                            _meta={},
+                        )
+                    ]
+                },
+                ("search_prompt_builder", 1): {
+                    "documents": [
+                        Document(
+                            id="c37eb19352b261b17314cac9e1539921b5996f88c99ad0b134f12effb38ed467",
+                            content="Eiffel Tower is 300 meters tall",
+                        ),
+                        Document(
+                            id="c5281056a220c32e6fa1c4ae7d3f263c0f25fd620592c5e45049a9dcb778f129",
+                            content="Tower of Pisa is 55 meters tall",
+                        ),
+                    ],
+                    "search_query": "What is taller, Eiffel Tower or Leaning Tower of Pisa",
+                    "template": [
+                        ChatMessage(
+                            _role="user",
+                            _content=[
+                                TextContent(
+                                    text="\n    Given these web search results:\n\n    {% for doc in documents %}\n        {{ doc.content }}\n    {% endfor %}\n\n    Be as brief as possible, max one sentence.\n    Answer the question: {{search_query}}\n    "
+                                )
+                            ],
+                            _name=None,
+                            _meta={},
+                        )
+                    ],
+                    "template_variables": None,
+                },
+                ("tool_extractor", 1): {
+                    "messages": [
+                        ChatMessage(
+                            _role="user",
+                            _content=[
+                                TextContent(
+                                    text="\n    Solve a question answering task with interleaving Thought, Action, Observation steps.\n\n    Thought reasons about the current situation\n\n    Action can be:\n    google_search - Searches Google for the exact concept/entity (given in square brackets) and returns the results for you to use\n    finish - Returns the final answer (given in square brackets) and finishes the task\n\n    Observation summarizes the Action outcome and helps in formulating the next\n    Thought in Thought, Action, Observation interleaving triplet of steps.\n\n    After each Observation, provide the next Thought and next Action.\n    Don't execute multiple steps even though you know the answer.\n    Only generate Thought and Action, never Observation, you'll get Observation from Action.\n    Follow the pattern in the example below.\n\n    Example:\n    ###########################\n    Question: Which magazine was started first Arthur’s Magazine or First for Women?\n    Thought: I need to search Arthur’s Magazine and First for Women, and find which was started\n    first.\n    Action: google_search[When was 'Arthur’s Magazine' started?]\n    Observation: Arthur’s Magazine was an American literary periodical ˘\n    published in Philadelphia and founded in 1844. Edited by Timothy Shay Arthur, it featured work by\n    Edgar A. Poe, J.H. Ingraham, Sarah Josepha Hale, Thomas G. Spear, and others. In May 1846\n    it was merged into Godey’s Lady’s Book.\n    Thought: Arthur’s Magazine was started in 1844. I need to search First for Women founding date next\n    Action: google_search[When was 'First for Women' magazine started?]\n    Observation: First for Women is a woman’s magazine published by Bauer Media Group in the\n    USA. The magazine was started in 1989. It is based in Englewood Cliffs, New Jersey. In 2011\n    the circulation of the magazine was 1,310,696 copies.\n    Thought: First for Women was started in 1989. 1844 (Arthur’s Magazine) ¡ 1989 (First for\n    Women), so Arthur’s Magazine was started first.\n    Action: finish[Arthur’s Magazine]\n    ############################\n\n    Let's start, the question is: which tower is taller: eiffel tower or tower of pisa?\n\n    Thought:\n    thinking\n Action: google_search[What is taller, Eiffel Tower or Leaning Tower of Pisa]\n"
+                                )
+                            ],
+                            _name=None,
+                            _meta={},
+                        )
+                    ]
+                },
+                ("tool_extractor", 2): {
+                    "messages": [
+                        ChatMessage(
+                            _role="user",
+                            _content=[
+                                TextContent(
+                                    text="\n    Solve a question answering task with interleaving Thought, Action, Observation steps.\n\n    Thought reasons about the current situation\n\n    Action can be:\n    google_search - Searches Google for the exact concept/entity (given in square brackets) and returns the results for you to use\n    finish - Returns the final answer (given in square brackets) and finishes the task\n\n    Observation summarizes the Action outcome and helps in formulating the next\n    Thought in Thought, Action, Observation interleaving triplet of steps.\n\n    After each Observation, provide the next Thought and next Action.\n    Don't execute multiple steps even though you know the answer.\n    Only generate Thought and Action, never Observation, you'll get Observation from Action.\n    Follow the pattern in the example below.\n\n    Example:\n    ###########################\n    Question: Which magazine was started first Arthur’s Magazine or First for Women?\n    Thought: I need to search Arthur’s Magazine and First for Women, and find which was started\n    first.\n    Action: google_search[When was 'Arthur’s Magazine' started?]\n    Observation: Arthur’s Magazine was an American literary periodical ˘\n    published in Philadelphia and founded in 1844. Edited by Timothy Shay Arthur, it featured work by\n    Edgar A. Poe, J.H. Ingraham, Sarah Josepha Hale, Thomas G. Spear, and others. In May 1846\n    it was merged into Godey’s Lady’s Book.\n    Thought: Arthur’s Magazine was started in 1844. I need to search First for Women founding date next\n    Action: google_search[When was 'First for Women' magazine started?]\n    Observation: First for Women is a woman’s magazine published by Bauer Media Group in the\n    USA. The magazine was started in 1989. It is based in Englewood Cliffs, New Jersey. In 2011\n    the circulation of the magazine was 1,310,696 copies.\n    Thought: First for Women was started in 1989. 1844 (Arthur’s Magazine) ¡ 1989 (First for\n    Women), so Arthur’s Magazine was started first.\n    Action: finish[Arthur’s Magazine]\n    ############################\n\n    Let's start, the question is: which tower is taller: eiffel tower or tower of pisa?\n\n    Thought:\n    thinking\n Action: google_search[What is taller, Eiffel Tower or Leaning Tower of Pisa]\nObservation: Tower of Pisa is 55 meters tall\n\n\nThought: thinking\n Action: finish[Eiffel Tower]\n"
+                                )
+                            ],
+                            _name=None,
+                            _meta={},
+                        )
+                    ]
+                },
+            },
             expected_run_order=[
                 "main_input",
                 "prompt_builder",
@@ -1823,6 +2704,18 @@ def that_has_a_variadic_component_that_receives_partial_inputs():
                         ]
                     },
                 },
+                expected_component_calls={
+                    ("documents_joiner", 1): {
+                        "documents": [
+                            [Document(id="First document", content="First document")],
+                            [Document(id="Third document", content="Third document")],
+                        ],
+                        "top_k": None,
+                    },
+                    ("first_creator", 1): {"create_document": True},
+                    ("second_creator", 1): {"create_document": False},
+                    ("third_creator", 1): {"create_document": True},
+                },
                 expected_run_order=["first_creator", "second_creator", "third_creator", "documents_joiner"],
             ),
             PipelineRunData(
@@ -1835,6 +2728,18 @@ def that_has_a_variadic_component_that_receives_partial_inputs():
                             Document(id="Second document", content="Second document"),
                         ]
                     },
+                },
+                expected_component_calls={
+                    ("documents_joiner", 1): {
+                        "documents": [
+                            [Document(id="First document", content="First document")],
+                            [Document(id="Second document", content="Second document")],
+                        ],
+                        "top_k": None,
+                    },
+                    ("first_creator", 1): {"create_document": True},
+                    ("second_creator", 1): {"create_document": True},
+                    ("third_creator", 1): {"create_document": False},
                 },
                 expected_run_order=["first_creator", "second_creator", "third_creator", "documents_joiner"],
             ),
@@ -1882,6 +2787,18 @@ def that_has_a_variadic_component_that_receives_partial_inputs_different_order()
                         ]
                     },
                 },
+                expected_component_calls={
+                    ("documents_joiner", 1): {
+                        "documents": [
+                            [Document(id="First document", content="First document")],
+                            [Document(id="Third document", content="Third document")],
+                        ],
+                        "top_k": None,
+                    },
+                    ("first_creator", 1): {"create_document": True},
+                    ("second_creator", 1): {"create_document": False},
+                    ("third_creator", 1): {"create_document": True},
+                },
                 expected_run_order=["first_creator", "second_creator", "third_creator", "documents_joiner"],
             ),
             PipelineRunData(
@@ -1894,6 +2811,18 @@ def that_has_a_variadic_component_that_receives_partial_inputs_different_order()
                             Document(id="Second document", content="Second document"),
                         ]
                     },
+                },
+                expected_component_calls={
+                    ("documents_joiner", 1): {
+                        "documents": [
+                            [Document(id="First document", content="First document")],
+                            [Document(id="Second document", content="Second document")],
+                        ],
+                        "top_k": None,
+                    },
+                    ("first_creator", 1): {"create_document": True},
+                    ("second_creator", 1): {"create_document": True},
+                    ("third_creator", 1): {"create_document": False},
                 },
                 expected_run_order=["first_creator", "second_creator", "third_creator", "documents_joiner"],
             ),
@@ -1938,6 +2867,45 @@ def that_has_an_answer_joiner_variadic_component():
                             ),
                         ]
                     }
+                },
+                expected_component_calls={
+                    ("answer_builder_1", 1): {
+                        "documents": None,
+                        "meta": None,
+                        "pattern": None,
+                        "query": "What's Natural Language Processing?",
+                        "reference_pattern": None,
+                        "replies": ["This is a test answer"],
+                    },
+                    ("answer_builder_2", 1): {
+                        "documents": None,
+                        "meta": None,
+                        "pattern": None,
+                        "query": "What's Natural Language Processing?",
+                        "reference_pattern": None,
+                        "replies": ["This is a second test answer"],
+                    },
+                    ("answer_joiner", 1): {
+                        "answers": [
+                            [
+                                GeneratedAnswer(
+                                    data="This is a test answer",
+                                    query="What's Natural Language Processing?",
+                                    documents=[],
+                                    meta={},
+                                )
+                            ],
+                            [
+                                GeneratedAnswer(
+                                    data="This is a second test answer",
+                                    query="What's Natural Language Processing?",
+                                    documents=[],
+                                    meta={},
+                                )
+                            ],
+                        ],
+                        "top_k": None,
+                    },
                 },
                 expected_run_order=["answer_builder_1", "answer_builder_2", "answer_joiner"],
             )
@@ -2014,6 +2982,35 @@ def that_is_linear_and_a_component_in_the_middle_receives_optional_input_from_ot
                             )
                         ]
                     }
+                },
+                expected_component_calls={
+                    ("builder", 1): {"template": None, "template_variables": None},
+                    ("document_joiner", 1): {
+                        "documents": [
+                            [
+                                Document(
+                                    id="doc2",
+                                    content="some text about investigation and treatment of Alzheimer disease",
+                                    meta={"year": 2023, "disease": "Alzheimer", "author": "John Bread"},
+                                    score=3.324112496100923,
+                                )
+                            ]
+                        ],
+                        "top_k": None,
+                    },
+                    ("metadata_extractor", 1): {"prompt": '{"disease": "Alzheimer", "year": 2023}'},
+                    ("retriever", 1): {
+                        "filters": {
+                            "conditions": [
+                                {"field": "meta.disease", "operator": "==", "value": "Alzheimer"},
+                                {"field": "meta.year", "operator": "==", "value": 2023},
+                            ],
+                            "operator": "AND",
+                        },
+                        "query": "publications 2023 Alzheimer's disease",
+                        "scale_score": None,
+                        "top_k": None,
+                    },
                 },
                 expected_run_order=["builder", "metadata_extractor", "retriever", "document_joiner"],
             )
@@ -2150,6 +3147,33 @@ def that_has_a_loop_in_the_middle():
                 expected_outputs={
                     "answer_builder": {"answers": [GeneratedAnswer(data="42", query=question, documents=[])]}
                 },
+                expected_component_calls={
+                    ("answer_builder", 1): {
+                        "documents": None,
+                        "meta": None,
+                        "pattern": None,
+                        "query": "What is the answer?",
+                        "reference_pattern": None,
+                        "replies": ["42"],
+                    },
+                    ("answer_validator", 1): {"replies": ["No answer"]},
+                    ("answer_validator", 2): {"replies": ["42"]},
+                    ("llm", 1): {"prompt": "Random template"},
+                    ("llm", 2): {"prompt": ""},
+                    ("prompt_builder", 1): {
+                        "invalid_replies": "",
+                        "question": "What is the answer?",
+                        "template": "Random template",
+                        "template_variables": None,
+                    },
+                    ("prompt_builder", 2): {
+                        "invalid_replies": ["No answer"],
+                        "question": "What is the answer?",
+                        "template": None,
+                        "template_variables": None,
+                    },
+                    ("prompt_cleaner", 1): {"prompt": "Random template"},
+                },
                 expected_run_order=[
                     "prompt_cleaner",
                     "prompt_builder",
@@ -2246,6 +3270,62 @@ def that_has_variadic_component_that_receives_a_conditional_input():
                     ]
                 },
             },
+            expected_component_calls={
+                ("comma_splitter", 1): {
+                    "documents": [
+                        Document(
+                            id="1000",
+                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                        )
+                    ]
+                },
+                ("conditional_router", 1): {
+                    "documents": [
+                        Document(
+                            id="1000",
+                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                        )
+                    ]
+                },
+                ("document_cleaner", 1): {
+                    "documents": [
+                        Document(id="0", content="This document has so many"),
+                        Document(id="1", content=" sentences. Like this one"),
+                        Document(id="2", content=" or this one. Or even this other one."),
+                    ]
+                },
+                ("document_joiner", 1): {
+                    "documents": [
+                        [
+                            Document(id="0", content="This document has so many"),
+                            Document(id="1", content=" sentences. Like this one"),
+                            Document(id="2", content=" or this one. Or even this other one."),
+                        ],
+                        [
+                            Document(id="0", content="This document has so many"),
+                            Document(id="1", content="sentences. Like this one"),
+                            Document(id="2", content="or this one. Or even this other one."),
+                        ],
+                    ],
+                    "top_k": None,
+                },
+                ("noop2", 1): {
+                    "documents": [
+                        Document(
+                            id="1000",
+                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                        )
+                    ]
+                },
+                ("noop3", 1): {
+                    "documents": [
+                        Document(
+                            id="1000",
+                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                        )
+                    ]
+                },
+            },
             expected_run_order=[
                 "comma_splitter",
                 "noop2",
@@ -2275,6 +3355,109 @@ def that_has_variadic_component_that_receives_a_conditional_input():
                         ),
                     ]
                 }
+            },
+            expected_component_calls={
+                ("comma_splitter", 1): {
+                    "documents": [
+                        Document(
+                            id="1000",
+                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                        ),
+                        Document(
+                            id="1000",
+                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                        ),
+                    ]
+                },
+                ("conditional_router", 1): {
+                    "documents": [
+                        Document(
+                            id="1000",
+                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                        ),
+                        Document(
+                            id="1000",
+                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                        ),
+                    ]
+                },
+                ("document_cleaner", 1): {
+                    "documents": [
+                        Document(id="0", content="This document has so many"),
+                        Document(id="1", content=" sentences. Like this one"),
+                        Document(id="2", content=" or this one. Or even this other one."),
+                        Document(id="3", content="This document has so many"),
+                        Document(id="4", content=" sentences. Like this one"),
+                        Document(id="5", content=" or this one. Or even this other one."),
+                    ]
+                },
+                ("document_joiner", 1): {
+                    "documents": [
+                        [
+                            Document(id="0", content="This document has so many"),
+                            Document(id="1", content=" sentences. Like this one"),
+                            Document(id="2", content=" or this one. Or even this other one."),
+                            Document(id="3", content="This document has so many"),
+                            Document(id="4", content=" sentences. Like this one"),
+                            Document(id="5", content=" or this one. Or even this other one."),
+                        ],
+                        [
+                            Document(id="0", content="This document has so many"),
+                            Document(id="1", content="sentences. Like this one"),
+                            Document(id="2", content="or this one. Or even this other one."),
+                            Document(id="3", content="This document has so many"),
+                            Document(id="4", content="sentences. Like this one"),
+                            Document(id="5", content="or this one. Or even this other one."),
+                        ],
+                        [
+                            Document(
+                                id="1000",
+                                content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                            ),
+                            Document(
+                                id="1000",
+                                content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                            ),
+                        ],
+                    ],
+                    "top_k": None,
+                },
+                ("empty_lines_cleaner", 1): {
+                    "documents": [
+                        Document(
+                            id="1000",
+                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                        ),
+                        Document(
+                            id="1000",
+                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                        ),
+                    ]
+                },
+                ("noop2", 1): {
+                    "documents": [
+                        Document(
+                            id="1000",
+                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                        ),
+                        Document(
+                            id="1000",
+                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                        ),
+                    ]
+                },
+                ("noop3", 1): {
+                    "documents": [
+                        Document(
+                            id="1000",
+                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                        ),
+                        Document(
+                            id="1000",
+                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                        ),
+                    ]
+                },
             },
             expected_run_order=[
                 "comma_splitter",
@@ -2311,6 +3494,17 @@ def that_has_a_string_variadic_component():
                     "string_joiner": {
                         "strings": ["Builder 1: What's Natural Language Processing?", "Builder 2: What's is life?"]
                     }
+                },
+                expected_component_calls={
+                    ("prompt_builder_1", 1): {
+                        "query": "What's Natural Language Processing?",
+                        "template": None,
+                        "template_variables": None,
+                    },
+                    ("prompt_builder_2", 1): {"query": "What's is life?", "template": None, "template_variables": None},
+                    ("string_joiner", 1): {
+                        "strings": ["Builder 1: What's Natural Language Processing?", "Builder 2: What's is life?"]
+                    },
                 },
                 expected_run_order=["prompt_builder_1", "prompt_builder_2", "string_joiner"],
             )
@@ -2437,6 +3631,130 @@ Documents:
                         "answers": [GeneratedAnswer(data="answer: here is my answer", query=query, documents=[])]
                     }
                 },
+                expected_component_calls={
+                    ("agent_llm", 1): {
+                        "prompt": "\n"
+                        "Your task is to answer the user's question.\n"
+                        "You can use a RAG system to find information.\n"
+                        "Use the RAG system until you have sufficient "
+                        "information to answer the question.\n"
+                        'To use the RAG system, output "search:" '
+                        "followed by your question.\n"
+                        'Once you have an answer, output "answer:" '
+                        "followed by your answer.\n"
+                        "\n"
+                        "Here is the question: Does this run reliably?\n"
+                        "    "
+                    },
+                    ("agent_llm", 2): {
+                        "prompt": "\n"
+                        "Your task is to answer the user's question.\n"
+                        "You can use a RAG system to find information.\n"
+                        "Use the RAG system until you have sufficient "
+                        "information to answer the question.\n"
+                        'To use the RAG system, output "search:" '
+                        "followed by your question.\n"
+                        'Once you have an answer, output "answer:" '
+                        "followed by your answer.\n"
+                        "\n"
+                        "Here is the question: Does this run reliably?\n"
+                        "    \n"
+                        "This is all the information I found!"
+                    },
+                    ("agent_prompt", 1): {
+                        "query": "Does this run reliably?",
+                        "template": None,
+                        "template_variables": None,
+                    },
+                    ("answer_builder", 1): {
+                        "documents": None,
+                        "meta": None,
+                        "pattern": None,
+                        "query": "Does this run reliably?",
+                        "reference_pattern": None,
+                        "replies": ["answer: here is my answer"],
+                    },
+                    ("concatenator", 1): {
+                        "current_prompt": "\n"
+                        "Your task is to answer the user's "
+                        "question.\n"
+                        "You can use a RAG system to find "
+                        "information.\n"
+                        "Use the RAG system until you have "
+                        "sufficient information to answer the "
+                        "question.\n"
+                        "To use the RAG system, output "
+                        '"search:" followed by your '
+                        "question.\n"
+                        "Once you have an answer, output "
+                        '"answer:" followed by your answer.\n'
+                        "\n"
+                        "Here is the question: Does this run "
+                        "reliably?\n"
+                        "    ",
+                        "rag_answer": ["This is all the information I found!"],
+                    },
+                    ("joiner", 1): {
+                        "value": [
+                            "\n"
+                            "Your task is to answer the user's question.\n"
+                            "You can use a RAG system to find information.\n"
+                            "Use the RAG system until you have sufficient "
+                            "information to answer the question.\n"
+                            'To use the RAG system, output "search:" followed '
+                            "by your question.\n"
+                            'Once you have an answer, output "answer:" followed '
+                            "by your answer.\n"
+                            "\n"
+                            "Here is the question: Does this run reliably?\n"
+                            "    "
+                        ]
+                    },
+                    ("joiner", 2): {
+                        "value": [
+                            "\n"
+                            "Your task is to answer the user's question.\n"
+                            "You can use a RAG system to find information.\n"
+                            "Use the RAG system until you have sufficient "
+                            "information to answer the question.\n"
+                            'To use the RAG system, output "search:" followed '
+                            "by your question.\n"
+                            'Once you have an answer, output "answer:" followed '
+                            "by your answer.\n"
+                            "\n"
+                            "Here is the question: Does this run reliably?\n"
+                            "    \n"
+                            "This is all the information I found!"
+                        ]
+                    },
+                    ("rag_llm", 1): {
+                        "prompt": "\n"
+                        "Answer the question based on the provided "
+                        "documents.\n"
+                        "Question: Does this run reliably?\n"
+                        "Documents:\n"
+                        "\n"
+                        "This is a document potentially answering the "
+                        "question.\n"
+                        "\n"
+                        "    "
+                    },
+                    ("rag_prompt", 1): {
+                        "documents": [
+                            Document(
+                                id="969664d0cf76e52b0ffb719d00d3e5a6b1c90bb29e56f6107dfd87bf2f5388ed",
+                                content="This is a document potentially answering the question.",
+                                meta={"access_group": 1},
+                            )
+                        ],
+                        "query": "Does this run reliably?",
+                        "template": None,
+                        "template_variables": None,
+                    },
+                    ("retriever", 1): {"query": "search: Can you help me?"},
+                    ("router", 1): {"replies": ["search: Can you help me?"]},
+                    ("router", 2): {"replies": ["answer: here is my answer"]},
+                },
                 expected_run_order=[
                     "agent_prompt",
                     "joiner",
@@ -2547,6 +3865,73 @@ Provide additional feedback on why it fails.
                 inputs={"code_prompt": {"task": task}, "answer_builder": {"query": task}},
                 expected_outputs={
                     "answer_builder": {"answers": [GeneratedAnswer(data="valid code", query=task, documents=[])]}
+                },
+                expected_component_calls={
+                    ("answer_builder", 1): {
+                        "documents": None,
+                        "meta": None,
+                        "pattern": None,
+                        "query": "Generate code to generate christmas ascii-art",
+                        "reference_pattern": None,
+                        "replies": ["valid code"],
+                    },
+                    ("code_llm", 1): {
+                        "prompt": "\n"
+                        "Generate code to solve the task: Generate code "
+                        "to generate christmas ascii-art\n"
+                        "\n"
+                        "\n"
+                        "    "
+                    },
+                    ("code_llm", 2): {
+                        "prompt": "\n"
+                        "Generate code to solve the task: Generate code "
+                        "to generate christmas ascii-art\n"
+                        "\n"
+                        "\n"
+                        "Here is your initial attempt and some feedback:\n"
+                        "invalid code\n"
+                        "F\n"
+                        "\n"
+                        "    "
+                    },
+                    ("code_prompt", 1): {
+                        "feedback": "",
+                        "task": "Generate code to generate christmas ascii-art",
+                        "template": None,
+                        "template_variables": None,
+                    },
+                    ("code_prompt", 2): {
+                        "feedback": "invalid code\nF",
+                        "task": "Generate code to generate christmas ascii-art",
+                        "template": None,
+                        "template_variables": None,
+                    },
+                    ("concatenator", 1): {"current_prompt": ["invalid code"], "feedback": "FAIL"},
+                    ("feedback_llm", 1): {
+                        "prompt": "\n"
+                        "Check if this code is valid and can run: "
+                        "invalid code\n"
+                        'Return "PASS" if it passes and "FAIL" if it '
+                        "fails.\n"
+                        "Provide additional feedback on why it "
+                        "fails.\n"
+                        "    "
+                    },
+                    ("feedback_llm", 2): {
+                        "prompt": "\n"
+                        "Check if this code is valid and can run: "
+                        "valid code\n"
+                        'Return "PASS" if it passes and "FAIL" if it '
+                        "fails.\n"
+                        "Provide additional feedback on why it "
+                        "fails.\n"
+                        "    "
+                    },
+                    ("feedback_prompt", 1): {"code": ["invalid code"], "template": None, "template_variables": None},
+                    ("feedback_prompt", 2): {"code": ["valid code"], "template": None, "template_variables": None},
+                    ("router", 1): {"code": ["invalid code"], "replies": ["FAIL"]},
+                    ("router", 2): {"code": ["valid code"], "replies": ["PASS"]},
                 },
                 expected_run_order=[
                     "code_prompt",
@@ -2659,6 +4044,73 @@ Provide additional feedback on why it fails.
                 inputs={"code_prompt": {"task": task}, "answer_builder": {"query": task}},
                 expected_outputs={
                     "answer_builder": {"answers": [GeneratedAnswer(data="valid code", query=task, documents=[])]}
+                },
+                expected_component_calls={
+                    ("answer_builder", 1): {
+                        "documents": None,
+                        "meta": None,
+                        "pattern": None,
+                        "query": "Generate code to generate christmas ascii-art",
+                        "reference_pattern": None,
+                        "replies": ["valid code"],
+                    },
+                    ("code_llm", 1): {
+                        "prompt": "\n"
+                        "Generate code to solve the task: Generate code "
+                        "to generate christmas ascii-art\n"
+                        "\n"
+                        "\n"
+                        "    "
+                    },
+                    ("code_llm", 2): {
+                        "prompt": "\n"
+                        "Generate code to solve the task: Generate code "
+                        "to generate christmas ascii-art\n"
+                        "\n"
+                        "\n"
+                        "Here is your initial attempt and some feedback:\n"
+                        "invalid code\n"
+                        "F\n"
+                        "\n"
+                        "    "
+                    },
+                    ("code_prompt", 1): {
+                        "feedback": "",
+                        "task": "Generate code to generate christmas ascii-art",
+                        "template": None,
+                        "template_variables": None,
+                    },
+                    ("code_prompt", 2): {
+                        "feedback": "invalid code\nF",
+                        "task": "Generate code to generate christmas ascii-art",
+                        "template": None,
+                        "template_variables": None,
+                    },
+                    ("concatenator", 1): {"current_prompt": ["invalid code"], "feedback": "FAIL"},
+                    ("feedback_llm", 1): {
+                        "prompt": "\n"
+                        "Check if this code is valid and can run: "
+                        "invalid code\n"
+                        'Return "PASS" if it passes and "FAIL" if it '
+                        "fails.\n"
+                        "Provide additional feedback on why it "
+                        "fails.\n"
+                        "    "
+                    },
+                    ("feedback_llm", 2): {
+                        "prompt": "\n"
+                        "Check if this code is valid and can run: "
+                        "valid code\n"
+                        'Return "PASS" if it passes and "FAIL" if it '
+                        "fails.\n"
+                        "Provide additional feedback on why it "
+                        "fails.\n"
+                        "    "
+                    },
+                    ("feedback_prompt", 1): {"code": ["invalid code"], "template": None, "template_variables": None},
+                    ("feedback_prompt", 2): {"code": ["valid code"], "template": None, "template_variables": None},
+                    ("router", 1): {"code": ["invalid code"], "replies": ["FAIL"]},
+                    ("router", 2): {"code": ["valid code"], "replies": ["PASS"]},
                 },
                 expected_run_order=[
                     "code_prompt",
@@ -2807,6 +4259,607 @@ Provide additional feedback on why it fails.
             PipelineRunData(
                 inputs={"code_prompt": {"task": task}},
                 expected_outputs={"feedback_router": {"pass": ["PASS"]}},
+                expected_component_calls={
+                    ("agent_concatenator", 1): {
+                        "current_prompt": "\n"
+                        "Generate code to solve the "
+                        "task: Generate code to "
+                        "generate christmas ascii-art\n"
+                        "\n"
+                        "You can edit files by "
+                        "returning:\n"
+                        "Edit: file_name\n"
+                        "\n"
+                        "Once you solved the task, "
+                        "respond with:\n"
+                        "Task finished!\n"
+                        "\n"
+                        "\n"
+                        "    ",
+                        "files": "This is the edited file content.",
+                    },
+                    ("agent_concatenator", 2): {
+                        "current_prompt": "\n"
+                        "Generate code to solve the "
+                        "task: Generate code to "
+                        "generate christmas ascii-art\n"
+                        "\n"
+                        "You can edit files by "
+                        "returning:\n"
+                        "Edit: file_name\n"
+                        "\n"
+                        "Once you solved the task, "
+                        "respond with:\n"
+                        "Task finished!\n"
+                        "\n"
+                        "\n"
+                        "    \n"
+                        "This is the edited file "
+                        "content.",
+                        "files": "This is the edited file content.",
+                    },
+                    ("agent_concatenator", 3): {
+                        "current_prompt": "\n"
+                        "Generate code to solve the "
+                        "task: Generate code to "
+                        "generate christmas ascii-art\n"
+                        "\n"
+                        "You can edit files by "
+                        "returning:\n"
+                        "Edit: file_name\n"
+                        "\n"
+                        "Once you solved the task, "
+                        "respond with:\n"
+                        "Task finished!\n"
+                        "\n"
+                        "\n"
+                        "    \n"
+                        "This is the edited file "
+                        "content.\n"
+                        "This is the edited file "
+                        "content.",
+                        "files": "This is the edited file content.",
+                    },
+                    ("agent_concatenator", 4): {
+                        "current_prompt": "\n"
+                        "Generate code to solve the "
+                        "task: Generate code to "
+                        "generate christmas ascii-art\n"
+                        "\n"
+                        "You can edit files by "
+                        "returning:\n"
+                        "Edit: file_name\n"
+                        "\n"
+                        "Once you solved the task, "
+                        "respond with:\n"
+                        "Task finished!\n"
+                        "\n"
+                        "\n"
+                        "    \n"
+                        "This is the edited file "
+                        "content.\n"
+                        "This is the edited file "
+                        "content.\n"
+                        "This is the edited file "
+                        "content.\n"
+                        "FAIL",
+                        "files": "This is the edited file content.",
+                    },
+                    ("agent_concatenator", 5): {
+                        "current_prompt": "\n"
+                        "Generate code to solve the "
+                        "task: Generate code to "
+                        "generate christmas ascii-art\n"
+                        "\n"
+                        "You can edit files by "
+                        "returning:\n"
+                        "Edit: file_name\n"
+                        "\n"
+                        "Once you solved the task, "
+                        "respond with:\n"
+                        "Task finished!\n"
+                        "\n"
+                        "\n"
+                        "    \n"
+                        "This is the edited file "
+                        "content.\n"
+                        "This is the edited file "
+                        "content.\n"
+                        "This is the edited file "
+                        "content.\n"
+                        "FAIL\n"
+                        "This is the edited file "
+                        "content.",
+                        "files": "This is the edited file content.",
+                    },
+                    ("agent_concatenator", 6): {
+                        "current_prompt": "\n"
+                        "Generate code to solve the "
+                        "task: Generate code to "
+                        "generate christmas ascii-art\n"
+                        "\n"
+                        "You can edit files by "
+                        "returning:\n"
+                        "Edit: file_name\n"
+                        "\n"
+                        "Once you solved the task, "
+                        "respond with:\n"
+                        "Task finished!\n"
+                        "\n"
+                        "\n"
+                        "    \n"
+                        "This is the edited file "
+                        "content.\n"
+                        "This is the edited file "
+                        "content.\n"
+                        "This is the edited file "
+                        "content.\n"
+                        "FAIL\n"
+                        "This is the edited file "
+                        "content.\n"
+                        "This is the edited file "
+                        "content.",
+                        "files": "This is the edited file content.",
+                    },
+                    ("code_llm", 1): {
+                        "prompt": "\n"
+                        "Generate code to solve the task: Generate code "
+                        "to generate christmas ascii-art\n"
+                        "\n"
+                        "You can edit files by returning:\n"
+                        "Edit: file_name\n"
+                        "\n"
+                        "Once you solved the task, respond with:\n"
+                        "Task finished!\n"
+                        "\n"
+                        "\n"
+                        "    "
+                    },
+                    ("code_llm", 2): {
+                        "prompt": "\n"
+                        "Generate code to solve the task: Generate code "
+                        "to generate christmas ascii-art\n"
+                        "\n"
+                        "You can edit files by returning:\n"
+                        "Edit: file_name\n"
+                        "\n"
+                        "Once you solved the task, respond with:\n"
+                        "Task finished!\n"
+                        "\n"
+                        "\n"
+                        "    \n"
+                        "This is the edited file content."
+                    },
+                    ("code_llm", 3): {
+                        "prompt": "\n"
+                        "Generate code to solve the task: Generate code "
+                        "to generate christmas ascii-art\n"
+                        "\n"
+                        "You can edit files by returning:\n"
+                        "Edit: file_name\n"
+                        "\n"
+                        "Once you solved the task, respond with:\n"
+                        "Task finished!\n"
+                        "\n"
+                        "\n"
+                        "    \n"
+                        "This is the edited file content.\n"
+                        "This is the edited file content."
+                    },
+                    ("code_llm", 4): {
+                        "prompt": "\n"
+                        "Generate code to solve the task: Generate code "
+                        "to generate christmas ascii-art\n"
+                        "\n"
+                        "You can edit files by returning:\n"
+                        "Edit: file_name\n"
+                        "\n"
+                        "Once you solved the task, respond with:\n"
+                        "Task finished!\n"
+                        "\n"
+                        "\n"
+                        "    \n"
+                        "This is the edited file content.\n"
+                        "This is the edited file content.\n"
+                        "This is the edited file content."
+                    },
+                    ("code_llm", 5): {
+                        "prompt": "\n"
+                        "Generate code to solve the task: Generate code "
+                        "to generate christmas ascii-art\n"
+                        "\n"
+                        "You can edit files by returning:\n"
+                        "Edit: file_name\n"
+                        "\n"
+                        "Once you solved the task, respond with:\n"
+                        "Task finished!\n"
+                        "\n"
+                        "\n"
+                        "    \n"
+                        "This is the edited file content.\n"
+                        "This is the edited file content.\n"
+                        "This is the edited file content.\n"
+                        "FAIL"
+                    },
+                    ("code_llm", 6): {
+                        "prompt": "\n"
+                        "Generate code to solve the task: Generate code "
+                        "to generate christmas ascii-art\n"
+                        "\n"
+                        "You can edit files by returning:\n"
+                        "Edit: file_name\n"
+                        "\n"
+                        "Once you solved the task, respond with:\n"
+                        "Task finished!\n"
+                        "\n"
+                        "\n"
+                        "    \n"
+                        "This is the edited file content.\n"
+                        "This is the edited file content.\n"
+                        "This is the edited file content.\n"
+                        "FAIL\n"
+                        "This is the edited file content."
+                    },
+                    ("code_llm", 7): {
+                        "prompt": "\n"
+                        "Generate code to solve the task: Generate code "
+                        "to generate christmas ascii-art\n"
+                        "\n"
+                        "You can edit files by returning:\n"
+                        "Edit: file_name\n"
+                        "\n"
+                        "Once you solved the task, respond with:\n"
+                        "Task finished!\n"
+                        "\n"
+                        "\n"
+                        "    \n"
+                        "This is the edited file content.\n"
+                        "This is the edited file content.\n"
+                        "This is the edited file content.\n"
+                        "FAIL\n"
+                        "This is the edited file content.\n"
+                        "This is the edited file content."
+                    },
+                    ("code_llm", 8): {
+                        "prompt": "\n"
+                        "Generate code to solve the task: Generate code "
+                        "to generate christmas ascii-art\n"
+                        "\n"
+                        "You can edit files by returning:\n"
+                        "Edit: file_name\n"
+                        "\n"
+                        "Once you solved the task, respond with:\n"
+                        "Task finished!\n"
+                        "\n"
+                        "\n"
+                        "    \n"
+                        "This is the edited file content.\n"
+                        "This is the edited file content.\n"
+                        "This is the edited file content.\n"
+                        "FAIL\n"
+                        "This is the edited file content.\n"
+                        "This is the edited file content.\n"
+                        "This is the edited file content."
+                    },
+                    ("code_prompt", 1): {
+                        "feedback": "",
+                        "task": "Generate code to generate christmas ascii-art",
+                        "template": None,
+                        "template_variables": None,
+                    },
+                    ("feedback_llm", 1): {
+                        "prompt": "\n"
+                        "\n"
+                        "Check if this code is valid and can run: \n"
+                        "Generate code to solve the task: Generate "
+                        "code to generate christmas ascii-art\n"
+                        "\n"
+                        "You can edit files by returning:\n"
+                        "Edit: file_name\n"
+                        "\n"
+                        "Once you solved the task, respond with:\n"
+                        "Task finished!\n"
+                        "\n"
+                        "\n"
+                        "    \n"
+                        "This is the edited file content.\n"
+                        "This is the edited file content.\n"
+                        "This is the edited file content.\n"
+                        'Return "PASS" if it passes and "FAIL" if it '
+                        "fails.\n"
+                        "Provide additional feedback on why it "
+                        "fails.\n"
+                        "\n"
+                        "    "
+                    },
+                    ("feedback_llm", 2): {
+                        "prompt": "\n"
+                        "\n"
+                        "Check if this code is valid and can run: \n"
+                        "Generate code to solve the task: Generate "
+                        "code to generate christmas ascii-art\n"
+                        "\n"
+                        "You can edit files by returning:\n"
+                        "Edit: file_name\n"
+                        "\n"
+                        "Once you solved the task, respond with:\n"
+                        "Task finished!\n"
+                        "\n"
+                        "\n"
+                        "    \n"
+                        "This is the edited file content.\n"
+                        "This is the edited file content.\n"
+                        "This is the edited file content.\n"
+                        "FAIL\n"
+                        "This is the edited file content.\n"
+                        "This is the edited file content.\n"
+                        "This is the edited file content.\n"
+                        'Return "PASS" if it passes and "FAIL" if it '
+                        "fails.\n"
+                        "Provide additional feedback on why it "
+                        "fails.\n"
+                        "\n"
+                        "    "
+                    },
+                    ("feedback_prompt", 1): {
+                        "code": "\n"
+                        "Generate code to solve the task: Generate "
+                        "code to generate christmas ascii-art\n"
+                        "\n"
+                        "You can edit files by returning:\n"
+                        "Edit: file_name\n"
+                        "\n"
+                        "Once you solved the task, respond with:\n"
+                        "Task finished!\n"
+                        "\n"
+                        "\n"
+                        "    \n"
+                        "This is the edited file content.\n"
+                        "This is the edited file content.\n"
+                        "This is the edited file content.",
+                        "task_finished": ["Task finished!"],
+                        "template": None,
+                        "template_variables": None,
+                    },
+                    ("feedback_prompt", 2): {
+                        "code": "\n"
+                        "Generate code to solve the task: Generate "
+                        "code to generate christmas ascii-art\n"
+                        "\n"
+                        "You can edit files by returning:\n"
+                        "Edit: file_name\n"
+                        "\n"
+                        "Once you solved the task, respond with:\n"
+                        "Task finished!\n"
+                        "\n"
+                        "\n"
+                        "    \n"
+                        "This is the edited file content.\n"
+                        "This is the edited file content.\n"
+                        "This is the edited file content.\n"
+                        "FAIL\n"
+                        "This is the edited file content.\n"
+                        "This is the edited file content.\n"
+                        "This is the edited file content.",
+                        "task_finished": ["Task finished!"],
+                        "template": None,
+                        "template_variables": None,
+                    },
+                    ("feedback_router", 1): {
+                        "current_prompt": "\n"
+                        "Generate code to solve the task: "
+                        "Generate code to generate "
+                        "christmas ascii-art\n"
+                        "\n"
+                        "You can edit files by returning:\n"
+                        "Edit: file_name\n"
+                        "\n"
+                        "Once you solved the task, respond "
+                        "with:\n"
+                        "Task finished!\n"
+                        "\n"
+                        "\n"
+                        "    \n"
+                        "This is the edited file content.\n"
+                        "This is the edited file content.\n"
+                        "This is the edited file content.",
+                        "replies": ["FAIL"],
+                    },
+                    ("feedback_router", 2): {
+                        "current_prompt": "\n"
+                        "Generate code to solve the task: "
+                        "Generate code to generate "
+                        "christmas ascii-art\n"
+                        "\n"
+                        "You can edit files by returning:\n"
+                        "Edit: file_name\n"
+                        "\n"
+                        "Once you solved the task, respond "
+                        "with:\n"
+                        "Task finished!\n"
+                        "\n"
+                        "\n"
+                        "    \n"
+                        "This is the edited file content.\n"
+                        "This is the edited file content.\n"
+                        "This is the edited file content.\n"
+                        "FAIL\n"
+                        "This is the edited file content.\n"
+                        "This is the edited file content.\n"
+                        "This is the edited file content.",
+                        "replies": ["PASS"],
+                    },
+                    ("file_editor", 1): {"replies": ["Edit: file_1.py"]},
+                    ("file_editor", 2): {"replies": ["Edit: file_2.py"]},
+                    ("file_editor", 3): {"replies": ["Edit: file_3.py"]},
+                    ("file_editor", 4): {"replies": ["Edit: file_1.py"]},
+                    ("file_editor", 5): {"replies": ["Edit: file_2.py"]},
+                    ("file_editor", 6): {"replies": ["Edit: file_3.py"]},
+                    ("joiner", 1): {
+                        "value": [
+                            "\n"
+                            "Generate code to solve the task: Generate code to "
+                            "generate christmas ascii-art\n"
+                            "\n"
+                            "You can edit files by returning:\n"
+                            "Edit: file_name\n"
+                            "\n"
+                            "Once you solved the task, respond with:\n"
+                            "Task finished!\n"
+                            "\n"
+                            "\n"
+                            "    "
+                        ]
+                    },
+                    ("joiner", 2): {
+                        "value": [
+                            "\n"
+                            "Generate code to solve the task: Generate code to "
+                            "generate christmas ascii-art\n"
+                            "\n"
+                            "You can edit files by returning:\n"
+                            "Edit: file_name\n"
+                            "\n"
+                            "Once you solved the task, respond with:\n"
+                            "Task finished!\n"
+                            "\n"
+                            "\n"
+                            "    \n"
+                            "This is the edited file content."
+                        ]
+                    },
+                    ("joiner", 3): {
+                        "value": [
+                            "\n"
+                            "Generate code to solve the task: Generate code to "
+                            "generate christmas ascii-art\n"
+                            "\n"
+                            "You can edit files by returning:\n"
+                            "Edit: file_name\n"
+                            "\n"
+                            "Once you solved the task, respond with:\n"
+                            "Task finished!\n"
+                            "\n"
+                            "\n"
+                            "    \n"
+                            "This is the edited file content.\n"
+                            "This is the edited file content."
+                        ]
+                    },
+                    ("joiner", 4): {
+                        "value": [
+                            "\n"
+                            "Generate code to solve the task: Generate code to "
+                            "generate christmas ascii-art\n"
+                            "\n"
+                            "You can edit files by returning:\n"
+                            "Edit: file_name\n"
+                            "\n"
+                            "Once you solved the task, respond with:\n"
+                            "Task finished!\n"
+                            "\n"
+                            "\n"
+                            "    \n"
+                            "This is the edited file content.\n"
+                            "This is the edited file content.\n"
+                            "This is the edited file content."
+                        ]
+                    },
+                    ("joiner", 5): {
+                        "value": [
+                            "\n"
+                            "Generate code to solve the task: Generate code to "
+                            "generate christmas ascii-art\n"
+                            "\n"
+                            "You can edit files by returning:\n"
+                            "Edit: file_name\n"
+                            "\n"
+                            "Once you solved the task, respond with:\n"
+                            "Task finished!\n"
+                            "\n"
+                            "\n"
+                            "    \n"
+                            "This is the edited file content.\n"
+                            "This is the edited file content.\n"
+                            "This is the edited file content.\n"
+                            "FAIL"
+                        ]
+                    },
+                    ("joiner", 6): {
+                        "value": [
+                            "\n"
+                            "Generate code to solve the task: Generate code to "
+                            "generate christmas ascii-art\n"
+                            "\n"
+                            "You can edit files by returning:\n"
+                            "Edit: file_name\n"
+                            "\n"
+                            "Once you solved the task, respond with:\n"
+                            "Task finished!\n"
+                            "\n"
+                            "\n"
+                            "    \n"
+                            "This is the edited file content.\n"
+                            "This is the edited file content.\n"
+                            "This is the edited file content.\n"
+                            "FAIL\n"
+                            "This is the edited file content."
+                        ]
+                    },
+                    ("joiner", 7): {
+                        "value": [
+                            "\n"
+                            "Generate code to solve the task: Generate code to "
+                            "generate christmas ascii-art\n"
+                            "\n"
+                            "You can edit files by returning:\n"
+                            "Edit: file_name\n"
+                            "\n"
+                            "Once you solved the task, respond with:\n"
+                            "Task finished!\n"
+                            "\n"
+                            "\n"
+                            "    \n"
+                            "This is the edited file content.\n"
+                            "This is the edited file content.\n"
+                            "This is the edited file content.\n"
+                            "FAIL\n"
+                            "This is the edited file content.\n"
+                            "This is the edited file content."
+                        ]
+                    },
+                    ("joiner", 8): {
+                        "value": [
+                            "\n"
+                            "Generate code to solve the task: Generate code to "
+                            "generate christmas ascii-art\n"
+                            "\n"
+                            "You can edit files by returning:\n"
+                            "Edit: file_name\n"
+                            "\n"
+                            "Once you solved the task, respond with:\n"
+                            "Task finished!\n"
+                            "\n"
+                            "\n"
+                            "    \n"
+                            "This is the edited file content.\n"
+                            "This is the edited file content.\n"
+                            "This is the edited file content.\n"
+                            "FAIL\n"
+                            "This is the edited file content.\n"
+                            "This is the edited file content.\n"
+                            "This is the edited file content."
+                        ]
+                    },
+                    ("tool_use_router", 1): {"replies": ["Edit: file_1.py"]},
+                    ("tool_use_router", 2): {"replies": ["Edit: file_2.py"]},
+                    ("tool_use_router", 3): {"replies": ["Edit: file_3.py"]},
+                    ("tool_use_router", 4): {"replies": ["Task finished!"]},
+                    ("tool_use_router", 5): {"replies": ["Edit: file_1.py"]},
+                    ("tool_use_router", 6): {"replies": ["Edit: file_2.py"]},
+                    ("tool_use_router", 7): {"replies": ["Edit: file_3.py"]},
+                    ("tool_use_router", 8): {"replies": ["Task finished!"]},
+                },
                 expected_run_order=[
                     "code_prompt",
                     "joiner",
@@ -2980,6 +5033,148 @@ FAIL, come on, try again."""
                         ]
                     }
                 },
+                expected_component_calls={
+                    ("answer_builder", 1): {
+                        "prompt": "Generate code to generate christmas "
+                        "ascii-art\n"
+                        "invalid code\n"
+                        "FAIL\n"
+                        "invalid code\n"
+                        "FAIL, come on, try again.",
+                        "query": "Generate code to generate christmas ascii-art",
+                        "replies": [
+                            "\n"
+                            "def generate_santa_sleigh():\n"
+                            "    '''\n"
+                            "    Returns ASCII art of Santa Claus on "
+                            "his sleigh with Rudolph leading the "
+                            "way.\n"
+                            "    '''\n"
+                            "    # implementation goes here.\n"
+                            "    return art\n"
+                            "    "
+                        ],
+                    },
+                    ("code_llm", 1): {"prompt": "Generate code to generate christmas ascii-art"},
+                    ("code_llm", 2): {"prompt": "Generate code to generate christmas ascii-art\ninvalid code\nFAIL"},
+                    ("code_llm", 3): {
+                        "prompt": "Generate code to generate christmas ascii-art\n"
+                        "invalid code\n"
+                        "FAIL\n"
+                        "invalid code\n"
+                        "FAIL, come on, try again."
+                    },
+                    ("code_prompt", 1): {
+                        "task": "Generate code to generate christmas ascii-art",
+                        "template": None,
+                        "template_variables": None,
+                    },
+                    ("code_prompt", 2): {
+                        "task": "Generate code to generate christmas ascii-art\ninvalid code\nFAIL",
+                        "template": None,
+                        "template_variables": None,
+                    },
+                    ("code_prompt", 3): {
+                        "task": "Generate code to generate christmas ascii-art\n"
+                        "invalid code\n"
+                        "FAIL\n"
+                        "invalid code\n"
+                        "FAIL, come on, try again.",
+                        "template": None,
+                        "template_variables": None,
+                    },
+                    ("concatenator", 1): {
+                        "code_prompt": "Generate code to generate christmas ascii-art",
+                        "feedback": "FAIL",
+                        "generated_code": ["invalid code"],
+                    },
+                    ("concatenator", 2): {
+                        "code_prompt": "Generate code to generate christmas ascii-art\ninvalid code\nFAIL",
+                        "feedback": "FAIL, come on, try again.",
+                        "generated_code": ["invalid code"],
+                    },
+                    ("feedback_llm", 1): {
+                        "prompt": "\n"
+                        "Check if this code is valid and can run: "
+                        "invalid code\n"
+                        'Return "PASS" if it passes and "FAIL" if it '
+                        "fails.\n"
+                        "Provide additional feedback on why it "
+                        "fails.\n"
+                        "    "
+                    },
+                    ("feedback_llm", 2): {
+                        "prompt": "\n"
+                        "Check if this code is valid and can run: "
+                        "invalid code\n"
+                        'Return "PASS" if it passes and "FAIL" if it '
+                        "fails.\n"
+                        "Provide additional feedback on why it "
+                        "fails.\n"
+                        "    "
+                    },
+                    ("feedback_llm", 3): {
+                        "prompt": "\n"
+                        "Check if this code is valid and can run: \n"
+                        "def generate_santa_sleigh():\n"
+                        "    '''\n"
+                        "    Returns ASCII art of Santa Claus on his "
+                        "sleigh with Rudolph leading the way.\n"
+                        "    '''\n"
+                        "    # implementation goes here.\n"
+                        "    return art\n"
+                        "    \n"
+                        'Return "PASS" if it passes and "FAIL" if it '
+                        "fails.\n"
+                        "Provide additional feedback on why it "
+                        "fails.\n"
+                        "    "
+                    },
+                    ("feedback_prompt", 1): {"code": ["invalid code"], "template": None, "template_variables": None},
+                    ("feedback_prompt", 2): {"code": ["invalid code"], "template": None, "template_variables": None},
+                    ("feedback_prompt", 3): {
+                        "code": [
+                            "\n"
+                            "def generate_santa_sleigh():\n"
+                            "    '''\n"
+                            "    Returns ASCII art of Santa Claus on "
+                            "his sleigh with Rudolph leading the way.\n"
+                            "    '''\n"
+                            "    # implementation goes here.\n"
+                            "    return art\n"
+                            "    "
+                        ],
+                        "template": None,
+                        "template_variables": None,
+                    },
+                    ("joiner", 1): {"value": ["Generate code to generate christmas ascii-art"]},
+                    ("joiner", 2): {"value": ["Generate code to generate christmas ascii-art\ninvalid code\nFAIL"]},
+                    ("joiner", 3): {
+                        "value": [
+                            "Generate code to generate christmas ascii-art\n"
+                            "invalid code\n"
+                            "FAIL\n"
+                            "invalid code\n"
+                            "FAIL, come on, try again."
+                        ]
+                    },
+                    ("router", 1): {"code": ["invalid code"], "replies": ["FAIL"]},
+                    ("router", 2): {"code": ["invalid code"], "replies": ["FAIL, come on, try again."]},
+                    ("router", 3): {
+                        "code": [
+                            "\n"
+                            "def generate_santa_sleigh():\n"
+                            "    '''\n"
+                            "    Returns ASCII art of Santa Claus on his sleigh "
+                            "with Rudolph leading the way.\n"
+                            "    '''\n"
+                            "    # implementation goes here.\n"
+                            "    return art\n"
+                            "    "
+                        ],
+                        "replies": ["PASS"],
+                    },
+                },
                 expected_run_order=[
                     "joiner",
                     "code_prompt",
@@ -3029,11 +5224,13 @@ def pipeline_with_dynamic_defaults():
             PipelineRunData(
                 inputs={"parrot": {"parrot": "Are you a parrot?"}},
                 expected_outputs={"parrot": {"response": "Are you a parrot?"}},
+                expected_component_calls={("parrot", 1): {"parrot": "Are you a parrot?"}},
                 expected_run_order=["parrot"],
             ),
             PipelineRunData(
                 inputs={},
                 expected_outputs={"parrot": {"response": "Parrot doesn't only parrot!"}},
+                expected_component_calls={("parrot", 1): {"parrot": "Parrot doesn't only parrot!"}},
                 expected_run_order=["parrot"],
             ),
         ],
@@ -3061,11 +5258,13 @@ def pipeline_with_variadic_dynamic_defaults():
             PipelineRunData(
                 inputs={"parrot": {"parrot": "Are you a parrot?"}},
                 expected_outputs={"parrot": {"response": ["Are you a parrot?"]}},
+                expected_component_calls={("parrot", 1): {"parrot": ["Are you a parrot?"]}},
                 expected_run_order=["parrot"],
             ),
             PipelineRunData(
                 inputs={},
                 expected_outputs={"parrot": {"response": ["Parrot doesn't only parrot!"]}},
+                expected_component_calls={("parrot", 1): {"parrot": ["Parrot doesn't only parrot!"]}},
                 expected_run_order=["parrot"],
             ),
         ],
