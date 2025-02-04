@@ -2,10 +2,9 @@ import io
 import csv
 import time
 import pytest
-from typing import List, Tuple
 
 from haystack import Document
-from haystack.components.converters.csv import CSVDocumentSplitter
+from haystack.components.preprocessors.csv_document_splitter import CSVDocumentSplitter
 
 
 class TestCSVDocumentSplitter:
