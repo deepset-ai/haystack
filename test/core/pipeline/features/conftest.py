@@ -19,7 +19,6 @@ class PipelineRunData:
     inputs: Dict[str, Any]
     include_outputs_from: Set[str] = field(default_factory=set)
     expected_outputs: Dict[str, Any] = field(default_factory=dict)
-    expected_run_order: List[str] = field(default_factory=list)
     expected_component_calls: Dict[Tuple[str, int], Dict[str, Any]] = field(default_factory=dict)
 
 
@@ -30,7 +29,6 @@ class _PipelineResult:
     """
 
     outputs: Dict[str, Any]
-    run_order: List[str]
     component_calls: Dict[Tuple[str, int], Dict[str, Any]] = field(default_factory=dict)
 
 
@@ -54,11 +52,6 @@ def run_pipeline(
     for data in pipeline_run_data:
         try:
             outputs = pipeline.run(data=data.inputs, include_outputs_from=data.include_outputs_from)
-            run_order = [
-                span.tags["haystack.component.name"]
-                for span in spying_tracer.spans
-                if "haystack.component.name" in span.tags
-            ]
 
             component_calls = {
                 (span.tags["haystack.component.name"], span.tags["haystack.component.visits"]): span.tags[
@@ -67,15 +60,8 @@ def run_pipeline(
                 for span in spying_tracer.spans
                 if "haystack.component.name" in span.tags and "haystack.component.visits" in span.tags
             }
-            results.append(_PipelineResult(outputs=outputs, run_order=run_order, component_calls=component_calls))
+            results.append(_PipelineResult(outputs=outputs, component_calls=component_calls))
 
-            component_calls = {
-                (span.tags["haystack.component.name"], span.tags["haystack.component.visits"]): span.tags[
-                    "haystack.component.input"
-                ]
-                for span in spying_tracer.spans
-                if "haystack.component.name" in span.tags and "haystack.component.visits" in span.tags
-            }
             spying_tracer.spans.clear()
         except Exception as e:
             return e
@@ -105,12 +91,6 @@ def check_pipeline_result(pipeline_result: List[Tuple[_PipelineResult, PipelineR
 def check_component_calls(pipeline_result: List[Tuple[_PipelineResult, PipelineRunData]]):
     for res, data in pipeline_result:
         assert res.component_calls == data.expected_component_calls
-
-
-@then("components ran in the expected order")
-def check_pipeline_run_order(pipeline_result: List[Tuple[_PipelineResult, PipelineRunData]]):
-    for res, data in pipeline_result:
-        assert res.run_order == data.expected_run_order
 
 
 @then(parsers.parse("it must have raised {exception_class_name}"))

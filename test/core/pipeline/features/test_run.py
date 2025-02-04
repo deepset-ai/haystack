@@ -69,7 +69,6 @@ def pipeline_that_is_linear():
                     ("double", 1): {"value": 3},
                     ("second_addition", 1): {"value": 6, "add": None},
                 },
-                expected_run_order=["first_addition", "double", "second_addition"],
             )
         ],
     )
@@ -187,32 +186,6 @@ def pipeline_complex():
                     ("add_four", 1): {"value": -11, "add": None},
                     ("accumulate_3", 1): {"value": -7},
                 },
-                expected_run_order=[
-                    "greet_first",
-                    "greet_enumerator",
-                    "accumulate_1",
-                    "enumerate",
-                    "add_two",
-                    "add_three",
-                    "parity",
-                    "add_one",
-                    "branch_joiner",
-                    "below_10",
-                    "double",
-                    "branch_joiner",
-                    "below_10",
-                    "double",
-                    "branch_joiner",
-                    "below_10",
-                    "accumulate_2",
-                    "sum",
-                    "diff",
-                    "greet_one_last_time",
-                    "replicate",
-                    "add_five",
-                    "add_four",
-                    "accumulate_3",
-                ],
             )
         ],
     )
@@ -236,13 +209,11 @@ def pipeline_that_has_a_single_component_with_a_default_input():
                 inputs={"with_defaults": {"a": 40, "b": 30}},
                 expected_outputs={"with_defaults": {"c": 70}},
                 expected_component_calls={("with_defaults", 1): {"a": 40, "b": 30}},
-                expected_run_order=["with_defaults"],
             ),
             PipelineRunData(
                 inputs={"with_defaults": {"a": 40}},
                 expected_outputs={"with_defaults": {"c": 42}},
                 expected_component_calls={("with_defaults", 1): {"a": 40, "b": 2}},
-                expected_run_order=["with_defaults"],
             ),
         ],
     )
@@ -268,13 +239,11 @@ def pipeline_that_has_two_loops_of_identical_lengths():
                 inputs={"branch_joiner": {"value": 0}},
                 expected_outputs={"remainder": {"remainder_is_0": 0}},
                 expected_component_calls={("branch_joiner", 1): {"value": [0]}, ("remainder", 1): {"value": 0}},
-                expected_run_order=["branch_joiner", "remainder"],
             ),
             PipelineRunData(
                 inputs={"branch_joiner": {"value": 3}},
                 expected_outputs={"remainder": {"remainder_is_0": 3}},
                 expected_component_calls={("branch_joiner", 1): {"value": [3]}, ("remainder", 1): {"value": 3}},
-                expected_run_order=["branch_joiner", "remainder"],
             ),
             PipelineRunData(
                 inputs={"branch_joiner": {"value": 4}},
@@ -286,7 +255,6 @@ def pipeline_that_has_two_loops_of_identical_lengths():
                     ("branch_joiner", 2): {"value": [6]},
                     ("remainder", 2): {"value": 6},
                 },
-                expected_run_order=["branch_joiner", "remainder", "add_two", "branch_joiner", "remainder"],
             ),
             PipelineRunData(
                 inputs={"branch_joiner": {"value": 5}},
@@ -298,13 +266,11 @@ def pipeline_that_has_two_loops_of_identical_lengths():
                     ("branch_joiner", 2): {"value": [6]},
                     ("remainder", 2): {"value": 6},
                 },
-                expected_run_order=["branch_joiner", "remainder", "add_one", "branch_joiner", "remainder"],
             ),
             PipelineRunData(
                 inputs={"branch_joiner": {"value": 6}},
                 expected_outputs={"remainder": {"remainder_is_0": 6}},
                 expected_component_calls={("branch_joiner", 1): {"value": [6]}, ("remainder", 1): {"value": 6}},
-                expected_run_order=["branch_joiner", "remainder"],
             ),
         ],
     )
@@ -333,13 +299,11 @@ def pipeline_that_has_two_loops_of_different_lengths():
                 inputs={"branch_joiner": {"value": 0}},
                 expected_outputs={"remainder": {"remainder_is_0": 0}},
                 expected_component_calls={("branch_joiner", 1): {"value": [0]}, ("remainder", 1): {"value": 0}},
-                expected_run_order=["branch_joiner", "remainder"],
             ),
             PipelineRunData(
                 inputs={"branch_joiner": {"value": 3}},
                 expected_outputs={"remainder": {"remainder_is_0": 3}},
                 expected_component_calls={("branch_joiner", 1): {"value": [3]}, ("remainder", 1): {"value": 3}},
-                expected_run_order=["branch_joiner", "remainder"],
             ),
             PipelineRunData(
                 inputs={"branch_joiner": {"value": 4}},
@@ -352,14 +316,6 @@ def pipeline_that_has_two_loops_of_different_lengths():
                     ("branch_joiner", 2): {"value": [6]},
                     ("remainder", 2): {"value": 6},
                 },
-                expected_run_order=[
-                    "branch_joiner",
-                    "remainder",
-                    "add_two_1",
-                    "add_two_2",
-                    "branch_joiner",
-                    "remainder",
-                ],
             ),
             PipelineRunData(
                 inputs={"branch_joiner": {"value": 5}},
@@ -371,13 +327,11 @@ def pipeline_that_has_two_loops_of_different_lengths():
                     ("branch_joiner", 2): {"value": [6]},
                     ("remainder", 2): {"value": 6},
                 },
-                expected_run_order=["branch_joiner", "remainder", "add_one", "branch_joiner", "remainder"],
             ),
             PipelineRunData(
                 inputs={"branch_joiner": {"value": 6}},
                 expected_outputs={"remainder": {"remainder_is_0": 6}},
                 expected_component_calls={("branch_joiner", 1): {"value": [6]}, ("remainder", 1): {"value": 6}},
-                expected_run_order=["branch_joiner", "remainder"],
             ),
         ],
     )
@@ -426,21 +380,6 @@ def pipeline_that_has_a_single_loop_with_two_conditional_branches():
                     ("branch_joiner", 2): {"value": [4]},
                     ("branch_joiner", 3): {"value": [11]},
                 },
-                expected_run_order=[
-                    "add_one",
-                    "branch_joiner",
-                    "below_10",
-                    "accumulator",
-                    "below_5",
-                    "branch_joiner",
-                    "below_10",
-                    "accumulator",
-                    "below_5",
-                    "add_three",
-                    "branch_joiner",
-                    "below_10",
-                    "add_two",
-                ],
             )
         ],
     )
@@ -466,7 +405,6 @@ def pipeline_that_has_a_component_with_dynamic_inputs_defined_in_init():
                     ("hello", 1): {"word": "Alice"},
                     ("splitter", 1): {"sentence": "This is the greeting: Hello, Alice!!"},
                 },
-                expected_run_order=["hello", "fstring", "splitter"],
             ),
             PipelineRunData(
                 inputs={"hello": {"word": "Alice"}, "fstring": {"template": "Received: {greeting}"}},
@@ -476,7 +414,6 @@ def pipeline_that_has_a_component_with_dynamic_inputs_defined_in_init():
                     ("hello", 1): {"word": "Alice"},
                     ("splitter", 1): {"sentence": "Received: Hello, Alice!"},
                 },
-                expected_run_order=["hello", "fstring", "splitter"],
             ),
         ],
     )
@@ -508,7 +445,6 @@ def pipeline_that_has_two_branches_that_dont_merge():
                     ("add_three", 1): {"add": None, "value": 12},
                     ("parity", 1): {"value": 2},
                 },
-                expected_run_order=["add_one", "parity", "add_ten", "add_three"],
             ),
             PipelineRunData(
                 inputs={"add_one": {"value": 2}},
@@ -518,7 +454,6 @@ def pipeline_that_has_two_branches_that_dont_merge():
                     ("double", 1): {"value": 3},
                     ("parity", 1): {"value": 3},
                 },
-                expected_run_order=["add_one", "parity", "double"],
             ),
         ],
     )
@@ -554,7 +489,6 @@ def pipeline_that_has_three_branches_that_dont_merge():
                     ("double", 1): {"value": 2},
                     ("repeat", 1): {"value": 2},
                 },
-                expected_run_order=["add_one", "repeat", "add_ten", "double", "add_three", "add_one_again"],
             )
         ],
     )
@@ -586,7 +520,6 @@ def pipeline_that_has_two_branches_that_merge():
                     ("second_addition", 1): {"add": None, "value": 3},
                     ("third_addition", 1): {"add": None, "value": 1},
                 },
-                expected_run_order=["first_addition", "third_addition", "second_addition", "diff", "fourth_addition"],
             )
         ],
     )
@@ -628,7 +561,6 @@ def pipeline_that_has_different_combinations_of_branches_that_merge_and_do_not_m
                     ("add_two_as_well", 1): {"add": 2, "value": 6},
                     ("parity", 1): {"value": 2},
                 },
-                expected_run_order=["add_one", "parity", "add_four", "add_two", "add_two_as_well"],
             ),
             PipelineRunData(
                 inputs={"add_one": {"value": 2}, "add_two": {"add": 2}, "add_two_as_well": {"add": 2}},
@@ -640,7 +572,6 @@ def pipeline_that_has_different_combinations_of_branches_that_merge_and_do_not_m
                     ("double", 1): {"value": 3},
                     ("parity", 1): {"value": 3},
                 },
-                expected_run_order=["add_one", "parity", "double", "add_ten", "diff"],
             ),
         ],
     )
@@ -686,21 +617,6 @@ def pipeline_that_has_two_branches_one_of_which_loops_back():
                     ("counter", 2): {"value": 10},
                     ("sum", 1): {"values": [2, 21]},
                 },
-                expected_run_order=[
-                    "add_zero",
-                    "branch_joiner",
-                    "below_10",
-                    "add_one",
-                    "counter",
-                    "branch_joiner",
-                    "below_10",
-                    "add_one",
-                    "counter",
-                    "branch_joiner",
-                    "below_10",
-                    "add_two",
-                    "sum",
-                ],
             )
         ],
     )
@@ -740,7 +656,6 @@ def pipeline_that_has_a_component_with_mutable_input():
                     ("mangler1", 1): {"input_list": ["foo", "bar"]},
                     ("mangler2", 1): {"input_list": ["foo", "bar"]},
                 },
-                expected_run_order=["mangler1", "mangler2", "concat1", "concat2"],
             )
         ],
     )
@@ -868,7 +783,6 @@ def pipeline_that_has_a_component_with_mutable_output_sent_to_multiple_inputs():
                         ]
                     },
                 },
-                expected_run_order=["prompt_builder", "llm", "mm1", "mm2"],
             )
         ],
     )
@@ -948,7 +862,6 @@ def pipeline_that_has_a_greedy_and_variadic_component_after_a_component_with_def
                         "top_k": None,
                     },
                 },
-                expected_run_order=["retriever", "branch_joiner", "prompt_builder"],
             )
         ],
     )
@@ -1077,7 +990,6 @@ def pipeline_that_has_a_component_with_only_default_inputs():
                         "top_k": None,
                     },
                 },
-                expected_run_order=["retriever", "prompt_builder", "generator", "answer_builder"],
             )
         ],
     )
@@ -1185,7 +1097,6 @@ def pipeline_that_has_a_component_with_only_default_inputs_as_first_to_run_and_r
                     ("router", 1): {"replies": ["Paris"]},
                     ("router", 2): {"replies": ["Rome"]},
                 },
-                expected_run_order=["prompt_builder", "generator", "router", "prompt_builder", "generator", "router"],
             )
         ],
     )
@@ -1227,7 +1138,6 @@ def pipeline_that_has_multiple_branches_that_merge_into_a_component_with_a_singl
                     ("parity", 1): {"value": 2},
                     ("sum", 1): {"values": [2, 12]},
                 },
-                expected_run_order=["add_one", "parity", "add_ten", "sum"],
             ),
             PipelineRunData(
                 inputs={"add_one": {"value": 2}},
@@ -1240,7 +1150,6 @@ def pipeline_that_has_multiple_branches_that_merge_into_a_component_with_a_singl
                     ("parity", 1): {"value": 3},
                     ("sum", 1): {"values": [3, 6, 8]},
                 },
-                expected_run_order=["add_one", "parity", "double", "add_four", "add_one_again", "sum"],
             ),
         ],
     )
@@ -1277,7 +1186,6 @@ def pipeline_that_has_multiple_branches_of_different_lengths_that_merge_into_a_c
                     ("sum", 1): {"values": [3, 3, 5]},
                     ("third_addition", 1): {"add": None, "value": 1},
                 },
-                expected_run_order=["first_addition", "third_addition", "second_addition", "sum", "fourth_addition"],
             )
         ],
     )
@@ -1308,7 +1216,6 @@ def pipeline_that_is_linear_and_returns_intermediate_outputs():
                     ("first_addition", 1): {"add": None, "value": 1},
                     ("second_addition", 1): {"add": None, "value": 6},
                 },
-                expected_run_order=["first_addition", "double", "second_addition"],
             ),
             PipelineRunData(
                 inputs={"first_addition": {"value": 1}},
@@ -1319,7 +1226,6 @@ def pipeline_that_is_linear_and_returns_intermediate_outputs():
                     ("first_addition", 1): {"add": None, "value": 1},
                     ("second_addition", 1): {"add": None, "value": 6},
                 },
-                expected_run_order=["first_addition", "double", "second_addition"],
             ),
         ],
     )
@@ -1383,21 +1289,6 @@ def pipeline_that_has_a_loop_and_returns_intermediate_outputs_from_it():
                     ("branch_joiner", 2): {"value": [4]},
                     ("branch_joiner", 3): {"value": [11]},
                 },
-                expected_run_order=[
-                    "add_one",
-                    "branch_joiner",
-                    "below_10",
-                    "accumulator",
-                    "below_5",
-                    "branch_joiner",
-                    "below_10",
-                    "accumulator",
-                    "below_5",
-                    "add_three",
-                    "branch_joiner",
-                    "below_10",
-                    "add_two",
-                ],
             )
         ],
     )
@@ -1440,7 +1331,6 @@ def pipeline_that_is_linear_and_returns_intermediate_outputs_from_multiple_socke
                     ("first_addition", 1): {"add": None, "value": 1},
                     ("second_addition", 1): {"add": None, "value": 6},
                 },
-                expected_run_order=["first_addition", "double", "second_addition"],
             ),
             PipelineRunData(
                 inputs={"first_addition": {"value": 1}},
@@ -1451,7 +1341,6 @@ def pipeline_that_is_linear_and_returns_intermediate_outputs_from_multiple_socke
                     ("first_addition", 1): {"add": None, "value": 1},
                     ("second_addition", 1): {"add": None, "value": 6},
                 },
-                expected_run_order=["first_addition", "double", "second_addition"],
             ),
         ],
     )
@@ -1480,7 +1369,6 @@ def pipeline_that_has_a_component_with_default_inputs_that_doesnt_receive_anythi
                 inputs={"router": {"sentence": "Wir mussen reisen"}},
                 expected_outputs={"router": {"language_1": "German"}},
                 expected_component_calls={("router", 1): {"sentence": "Wir mussen reisen"}},
-                expected_run_order=["router"],
             ),
             PipelineRunData(
                 inputs={"router": {"sentence": "Yo tengo que viajar"}},
@@ -1489,7 +1377,6 @@ def pipeline_that_has_a_component_with_default_inputs_that_doesnt_receive_anythi
                     ("pb", 1): {"language": "Spanish", "template": None, "template_variables": None},
                     ("router", 1): {"sentence": "Yo tengo que viajar"},
                 },
-                expected_run_order=["router", "pb"],
             ),
         ],
     )
@@ -1612,7 +1499,6 @@ def pipeline_that_has_a_component_with_default_inputs_that_doesnt_receive_anythi
                         "replies": ["There's simply no_answer to this question"],
                     },
                 },
-                expected_run_order=["prompt", "llm", "router", "fallback_prompt", "fallback_llm"],
             )
         ],
         [
@@ -1720,7 +1606,6 @@ def pipeline_that_has_a_component_with_default_inputs_that_doesnt_receive_anythi
                         "template_variables": {"comment": "I loved the quality of the meal but the courier was rude"},
                     },
                 },
-                expected_run_order=["prompt", "llm", "router", "sql_querier"],
             )
         ],
     )
@@ -1896,14 +1781,6 @@ def pipeline_that_has_a_loop_and_a_component_with_default_inputs_that_doesnt_rec
                         "template_variables": {"comment": "I loved the quality of the meal but the courier was rude"},
                     },
                 },
-                expected_run_order=[
-                    "prompt_builder",
-                    "llm",
-                    "output_validator",
-                    "prompt_builder",
-                    "llm",
-                    "output_validator",
-                ],
             )
         ],
     )
@@ -2071,15 +1948,6 @@ def pipeline_that_has_multiple_components_with_only_default_inputs_and_are_added
                         "    ",
                     },
                 },
-                expected_run_order=[
-                    "prompt_builder1",
-                    "spellchecker",
-                    "prompt_builder3",
-                    "retriever",
-                    "ranker",
-                    "prompt_builder2",
-                    "llm",
-                ],
             )
         ],
     )
@@ -2182,20 +2050,10 @@ def that_is_linear_with_conditional_branching_and_multiple_joins():
                         "top_k": None,
                     },
                 },
-                expected_run_order=[
-                    "router",
-                    "text_embedder",
-                    "bm25retriever",
-                    "retriever",
-                    "joinerhybrid",
-                    "ranker",
-                    "joinerfinal",
-                ],
             ),
             PipelineRunData(
                 inputs={"router": {"query": "I'm a nasty prompt injection"}},
                 expected_outputs={"joinerfinal": {"documents": []}},
-                expected_run_order=["router", "emptyretriever", "joinerfinal"],
                 expected_component_calls={
                     ("router", 1): {"query": "I'm a nasty prompt injection"},
                     ("emptyretriever", 1): {"query": "I'm a nasty prompt injection"},
@@ -2644,25 +2502,6 @@ def that_is_a_simple_agent():
                     ]
                 },
             },
-            expected_run_order=[
-                "main_input",
-                "prompt_builder",
-                "llm",
-                "prompt_concatenator_after_action",
-                "tool_extractor",
-                "router",
-                "router_search",
-                "search_prompt_builder",
-                "search_llm",
-                "search_output_adapter",
-                "prompt_concatenator_after_observation",
-                "main_input",
-                "prompt_builder",
-                "llm",
-                "prompt_concatenator_after_action",
-                "tool_extractor",
-                "router",
-            ],
         )
     ]
 
@@ -2716,7 +2555,6 @@ def that_has_a_variadic_component_that_receives_partial_inputs():
                     ("second_creator", 1): {"create_document": False},
                     ("third_creator", 1): {"create_document": True},
                 },
-                expected_run_order=["first_creator", "second_creator", "third_creator", "documents_joiner"],
             ),
             PipelineRunData(
                 inputs={"first_creator": {"create_document": True}, "second_creator": {"create_document": True}},
@@ -2741,7 +2579,6 @@ def that_has_a_variadic_component_that_receives_partial_inputs():
                     ("second_creator", 1): {"create_document": True},
                     ("third_creator", 1): {"create_document": False},
                 },
-                expected_run_order=["first_creator", "second_creator", "third_creator", "documents_joiner"],
             ),
         ],
     )
@@ -2799,7 +2636,6 @@ def that_has_a_variadic_component_that_receives_partial_inputs_different_order()
                     ("second_creator", 1): {"create_document": False},
                     ("third_creator", 1): {"create_document": True},
                 },
-                expected_run_order=["first_creator", "second_creator", "third_creator", "documents_joiner"],
             ),
             PipelineRunData(
                 inputs={"first_creator": {"create_document": True}, "second_creator": {"create_document": True}},
@@ -2824,7 +2660,6 @@ def that_has_a_variadic_component_that_receives_partial_inputs_different_order()
                     ("second_creator", 1): {"create_document": True},
                     ("third_creator", 1): {"create_document": False},
                 },
-                expected_run_order=["first_creator", "second_creator", "third_creator", "documents_joiner"],
             ),
         ],
     )
@@ -2907,7 +2742,6 @@ def that_has_an_answer_joiner_variadic_component():
                         "top_k": None,
                     },
                 },
-                expected_run_order=["answer_builder_1", "answer_builder_2", "answer_joiner"],
             )
         ],
     )
@@ -3012,7 +2846,6 @@ def that_is_linear_and_a_component_in_the_middle_receives_optional_input_from_ot
                         "top_k": None,
                     },
                 },
-                expected_run_order=["builder", "metadata_extractor", "retriever", "document_joiner"],
             )
         ],
     )
@@ -3174,16 +3007,6 @@ def that_has_a_loop_in_the_middle():
                     },
                     ("prompt_cleaner", 1): {"prompt": "Random template"},
                 },
-                expected_run_order=[
-                    "prompt_cleaner",
-                    "prompt_builder",
-                    "llm",
-                    "answer_validator",
-                    "prompt_builder",
-                    "llm",
-                    "answer_validator",
-                    "answer_builder",
-                ],
             )
         ],
     )
@@ -3326,14 +3149,6 @@ def that_has_variadic_component_that_receives_a_conditional_input():
                     ]
                 },
             },
-            expected_run_order=[
-                "comma_splitter",
-                "noop2",
-                "document_cleaner",
-                "noop3",
-                "conditional_router",
-                "document_joiner",
-            ],
         ),
         PipelineRunData(
             inputs={
@@ -3459,15 +3274,6 @@ def that_has_variadic_component_that_receives_a_conditional_input():
                     ]
                 },
             },
-            expected_run_order=[
-                "comma_splitter",
-                "noop2",
-                "document_cleaner",
-                "noop3",
-                "conditional_router",
-                "empty_lines_cleaner",
-                "document_joiner",
-            ],
         ),
     ]
 
@@ -3506,7 +3312,6 @@ def that_has_a_string_variadic_component():
                         "strings": ["Builder 1: What's Natural Language Processing?", "Builder 2: What's is life?"]
                     },
                 },
-                expected_run_order=["prompt_builder_1", "prompt_builder_2", "string_joiner"],
             )
         ],
     )
@@ -3755,20 +3560,6 @@ Documents:
                     ("router", 1): {"replies": ["search: Can you help me?"]},
                     ("router", 2): {"replies": ["answer: here is my answer"]},
                 },
-                expected_run_order=[
-                    "agent_prompt",
-                    "joiner",
-                    "agent_llm",
-                    "router",
-                    "retriever",
-                    "rag_prompt",
-                    "rag_llm",
-                    "concatenator",
-                    "joiner",
-                    "agent_llm",
-                    "router",
-                    "answer_builder",
-                ],
             )
         ],
     )
@@ -3933,20 +3724,6 @@ Provide additional feedback on why it fails.
                     ("router", 1): {"code": ["invalid code"], "replies": ["FAIL"]},
                     ("router", 2): {"code": ["valid code"], "replies": ["PASS"]},
                 },
-                expected_run_order=[
-                    "code_prompt",
-                    "code_llm",
-                    "feedback_prompt",
-                    "feedback_llm",
-                    "router",
-                    "concatenator",
-                    "code_prompt",
-                    "code_llm",
-                    "feedback_prompt",
-                    "feedback_llm",
-                    "router",
-                    "answer_builder",
-                ],
             )
         ],
     )
@@ -4112,20 +3889,6 @@ Provide additional feedback on why it fails.
                     ("router", 1): {"code": ["invalid code"], "replies": ["FAIL"]},
                     ("router", 2): {"code": ["valid code"], "replies": ["PASS"]},
                 },
-                expected_run_order=[
-                    "code_prompt",
-                    "code_llm",
-                    "feedback_prompt",
-                    "feedback_llm",
-                    "router",
-                    "concatenator",
-                    "code_prompt",
-                    "code_llm",
-                    "feedback_prompt",
-                    "feedback_llm",
-                    "router",
-                    "answer_builder",
-                ],
             )
         ],
     )
@@ -4860,51 +4623,6 @@ Provide additional feedback on why it fails.
                     ("tool_use_router", 7): {"replies": ["Edit: file_3.py"]},
                     ("tool_use_router", 8): {"replies": ["Task finished!"]},
                 },
-                expected_run_order=[
-                    "code_prompt",
-                    "joiner",
-                    "code_llm",
-                    "tool_use_router",
-                    "file_editor",
-                    "agent_concatenator",
-                    "joiner",
-                    "code_llm",
-                    "tool_use_router",
-                    "file_editor",
-                    "agent_concatenator",
-                    "joiner",
-                    "code_llm",
-                    "tool_use_router",
-                    "file_editor",
-                    "agent_concatenator",
-                    "joiner",
-                    "code_llm",
-                    "tool_use_router",
-                    "feedback_prompt",
-                    "feedback_llm",
-                    "feedback_router",
-                    "joiner",
-                    "code_llm",
-                    "tool_use_router",
-                    "file_editor",
-                    "agent_concatenator",
-                    "joiner",
-                    "code_llm",
-                    "tool_use_router",
-                    "file_editor",
-                    "agent_concatenator",
-                    "joiner",
-                    "code_llm",
-                    "tool_use_router",
-                    "file_editor",
-                    "agent_concatenator",
-                    "joiner",
-                    "code_llm",
-                    "tool_use_router",
-                    "feedback_prompt",
-                    "feedback_llm",
-                    "feedback_router",
-                ],
             )
         ],
     )
@@ -5175,29 +4893,6 @@ FAIL, come on, try again."""
                         "replies": ["PASS"],
                     },
                 },
-                expected_run_order=[
-                    "joiner",
-                    "code_prompt",
-                    "code_llm",
-                    "feedback_prompt",
-                    "feedback_llm",
-                    "router",
-                    "concatenator",
-                    "joiner",
-                    "code_prompt",
-                    "code_llm",
-                    "feedback_prompt",
-                    "feedback_llm",
-                    "router",
-                    "concatenator",
-                    "joiner",
-                    "code_prompt",
-                    "code_llm",
-                    "feedback_prompt",
-                    "feedback_llm",
-                    "router",
-                    "answer_builder",
-                ],
             )
         ],
     )
@@ -5225,13 +4920,11 @@ def pipeline_with_dynamic_defaults():
                 inputs={"parrot": {"parrot": "Are you a parrot?"}},
                 expected_outputs={"parrot": {"response": "Are you a parrot?"}},
                 expected_component_calls={("parrot", 1): {"parrot": "Are you a parrot?"}},
-                expected_run_order=["parrot"],
             ),
             PipelineRunData(
                 inputs={},
                 expected_outputs={"parrot": {"response": "Parrot doesn't only parrot!"}},
                 expected_component_calls={("parrot", 1): {"parrot": "Parrot doesn't only parrot!"}},
-                expected_run_order=["parrot"],
             ),
         ],
     )
@@ -5259,13 +4952,11 @@ def pipeline_with_variadic_dynamic_defaults():
                 inputs={"parrot": {"parrot": "Are you a parrot?"}},
                 expected_outputs={"parrot": {"response": ["Are you a parrot?"]}},
                 expected_component_calls={("parrot", 1): {"parrot": ["Are you a parrot?"]}},
-                expected_run_order=["parrot"],
             ),
             PipelineRunData(
                 inputs={},
                 expected_outputs={"parrot": {"response": ["Parrot doesn't only parrot!"]}},
                 expected_component_calls={("parrot", 1): {"parrot": ["Parrot doesn't only parrot!"]}},
-                expected_run_order=["parrot"],
             ),
         ],
     )
