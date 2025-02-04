@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Literal, Tuple
 from haystack import logging
 from haystack.lazy_imports import LazyImport
 
-with LazyImport("Run 'pip install nltk'") as nltk_imports:
+with LazyImport("Run 'pip install nltk>=3.9.1'") as nltk_imports:
     import nltk
 
 logger = logging.getLogger(__name__)
@@ -135,6 +135,7 @@ class SentenceSplitter:  # pylint: disable=too-few-public-methods
             Currently supported languages are: en, de.
         :param keep_white_spaces: If True, the tokenizer will keep white spaces between sentences.
         """
+        nltk_imports.check()
         self.language = language
         self.sentence_tokenizer = load_sentence_tokenizer(language, keep_white_spaces=keep_white_spaces)
         self.use_split_rules = use_split_rules

@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Add jsonschema library as a core dependency. It is used in Tool and JsonSchemaValidator.

@@ -4,6 +4,7 @@
 
 import json
 import os
+from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from openai import OpenAI, Stream
@@ -286,12 +287,13 @@ class OpenAIChatGenerator:
         tools_strict = tools_strict if tools_strict is not None else self.tools_strict
         _check_duplicate_tool_names(tools)
 
-        openai_tools = None
+        openai_tools = {}
         if tools:
-            openai_tools = [
+            tool_definitions = [
                 {"type": "function", "function": {**t.tool_spec, **({"strict": tools_strict} if tools_strict else {})}}
                 for t in tools
             ]
+            openai_tools = {"tools": tool_definitions}
 
         is_streaming = streaming_callback is not None
         num_responses = generation_kwargs.pop("n", 1)
@@ -302,8 +304,8 @@ class OpenAIChatGenerator:
             "model": self.model,
             "messages": openai_formatted_messages,  # type: ignore[arg-type] # openai expects list of specific message types
             "stream": streaming_callback is not None,
-            "tools": openai_tools,  # type: ignore[arg-type]
             "n": num_responses,
+            **openai_tools,
             **generation_kwargs,
         }
 
@@ -380,6 +382,7 @@ class OpenAIChatGenerator:
             "model": chunk.model,
             "index": 0,
             "finish_reason": chunk.choices[0].finish_reason,
+            "completion_start_time": chunks[0].meta.get("received_at"),  # first chunk received
             "usage": {},  # we don't have usage data for streaming responses
         }
 
@@ -443,6 +446,7 @@ class OpenAIChatGenerator:
                 "index": choice.index,
                 "tool_calls": choice.delta.tool_calls,
                 "finish_reason": choice.finish_reason,
+                "received_at": datetime.now().isoformat(),
             }
         )
         return chunk_message

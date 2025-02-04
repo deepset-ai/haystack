@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    OpenAIChatGenerator no longer passes tools to the OpenAI client if none are provided.
+    Previously, a null value was passed.
+    This change improves compatibility with OpenAI-compatible APIs that do not support tools.

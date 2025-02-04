@@ -155,22 +155,21 @@ class PyPDFToDocument:
         """
         return default_from_dict(cls, data)
 
-    def _default_convert(self, reader: "PdfReader") -> Document:
+    def _default_convert(self, reader: "PdfReader") -> str:
         texts = []
         for page in reader.pages:
-            texts.append(
-                page.extract_text(
-                    orientations=self.plain_mode_orientations,
-                    extraction_mode=self.extraction_mode.value,
-                    space_width=self.plain_mode_space_width,
-                    layout_mode_space_vertically=self.layout_mode_space_vertically,
-                    layout_mode_scale_weight=self.layout_mode_scale_weight,
-                    layout_mode_strip_rotated=self.layout_mode_strip_rotated,
-                    layout_mode_font_height_weight=self.layout_mode_font_height_weight,
-                )
+            extracted_text = page.extract_text(
+                orientations=self.plain_mode_orientations,
+                extraction_mode=self.extraction_mode.value,
+                space_width=self.plain_mode_space_width,
+                layout_mode_space_vertically=self.layout_mode_space_vertically,
+                layout_mode_scale_weight=self.layout_mode_scale_weight,
+                layout_mode_strip_rotated=self.layout_mode_strip_rotated,
+                layout_mode_font_height_weight=self.layout_mode_font_height_weight,
             )
+            texts.append(extracted_text)
         text = "\f".join(texts)
-        return Document(content=text)
+        return text
 
     @component.output_types(documents=List[Document])
     def run(
@@ -205,14 +204,14 @@ class PyPDFToDocument:
                 continue
             try:
                 pdf_reader = PdfReader(io.BytesIO(bytestream.data))
-                document = self._default_convert(pdf_reader)
+                text = self._default_convert(pdf_reader)
             except Exception as e:
                 logger.warning(
                     "Could not read {source} and convert it to Document, skipping. {error}", source=source, error=e
                 )
                 continue
 
-            if document.content is None or document.content.strip() == "":
+            if text is None or text.strip() == "":
                 logger.warning(
                     "PyPDFToDocument could not extract text from the file {source}. Returning an empty document.",
                     source=source,
@@ -222,7 +221,7 @@ class PyPDFToDocument:
 
             if not self.store_full_path and (file_path := bytestream.meta.get("file_path")):
                 merged_metadata["file_path"] = os.path.basename(file_path)
-            document.meta = merged_metadata
+            document = Document(content=text, meta=merged_metadata)
             documents.append(document)
 
         return {"documents": documents}
