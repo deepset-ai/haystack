@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    Enhancements to Date Filtering in MetadataRouter
+    - Improved date parsing in filter utilities by introducing `_parse_date`, which first attempts `datetime.fromisoformat(value)` for backward compatibility and then falls back to dateutil.parser.parse() for broader ISO 8601 support.
+    - Resolved a common issue where comparing naive and timezone-aware datetimes resulted in TypeError. Added `_ensure_both_dates_naive_or_aware`, which ensures both datetimes are either naive or aware. If one is missing a timezone, it is assigned the timezone of the other for consistency.
