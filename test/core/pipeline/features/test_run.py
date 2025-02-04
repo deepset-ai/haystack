@@ -7,11 +7,11 @@ import pytest
 
 from haystack import Pipeline, Document, component
 from haystack.document_stores.types import DuplicatePolicy
-from haystack.dataclasses import ChatMessage, GeneratedAnswer
-from haystack.components.routers import ConditionalRouter
+from haystack.dataclasses import ChatMessage, GeneratedAnswer, ByteStream
+from haystack.components.routers import ConditionalRouter, FileTypeRouter
 from haystack.components.builders import PromptBuilder, AnswerBuilder, ChatPromptBuilder
-from haystack.components.converters import OutputAdapter
-from haystack.components.preprocessors import DocumentCleaner
+from haystack.components.converters import OutputAdapter, TextFileToDocument, CSVToDocument, JSONConverter
+from haystack.components.preprocessors import DocumentCleaner, DocumentSplitter
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.joiners import BranchJoiner, DocumentJoiner, AnswerJoiner, StringJoiner
@@ -32,6 +32,7 @@ from haystack.testing.sample_components import (
     StringListJoiner,
 )
 from haystack.testing.factory import component_class
+from test.components.converters.test_csv_to_document import csv_converter
 
 from test.core.pipeline.features.conftest import PipelineRunData
 
@@ -2821,6 +2822,102 @@ Provide additional feedback on why it fails.
                     "feedback_llm",
                     "feedback_router",
                 ],
+            )
+        ],
+    )
+
+
+@given("a pipeline that is a file conversion pipeline with two joiners", target_fixture="pipeline_data")
+def pipeline_that_converts_files():
+    csv_data = """
+some,header,row
+0,1,0
+    """
+
+    txt_data = "Text file content for testing this."
+
+    json_data = '{"content": "Some test content"}'
+
+    sources = [
+        ByteStream.from_string(text=csv_data, mime_type="text/csv", meta={"file_type": "csv"}),
+        ByteStream.from_string(text=txt_data, mime_type="text/plain", meta={"file_type": "txt"}),
+        ByteStream.from_string(text=json_data, mime_type="application/json", meta={"file_type": "json"}),
+    ]
+
+    router = FileTypeRouter(mime_types=["text/csv", "text/plain", "application/json"])
+    splitter = DocumentSplitter(split_by="word", split_length=3, split_overlap=0)
+    txt_converter = TextFileToDocument()
+    csv_converter = CSVToDocument()
+    json_converter = JSONConverter(content_key="content")
+
+    b_joiner = DocumentJoiner()
+    a_joiner = DocumentJoiner()
+
+    pp = Pipeline(max_runs_per_component=1)
+
+    pp.add_component("router", router)
+    pp.add_component("splitter", splitter)
+    pp.add_component("txt_converter", txt_converter)
+    pp.add_component("csv_converter", csv_converter)
+    pp.add_component("json_converter", json_converter)
+    pp.add_component("b_joiner", b_joiner)
+    pp.add_component("a_joiner", a_joiner)
+
+    pp.connect("router.text/plain", "txt_converter.sources")
+    pp.connect("router.application/json", "json_converter.sources")
+    pp.connect("router.text/csv", "csv_converter.sources")
+    pp.connect("txt_converter.documents", "b_joiner.documents")
+    pp.connect("json_converter.documents", "b_joiner.documents")
+    pp.connect("csv_converter.documents", "a_joiner.documents")
+    pp.connect("b_joiner.documents", "splitter.documents")
+    pp.connect("splitter.documents", "a_joiner.documents")
+
+    return (
+        pp,
+        [
+            PipelineRunData(
+                inputs={"router": {"sources": sources}},
+                expected_outputs={
+                    "a_joiner": {
+                        "documents": [
+                            Document(content=csv_data, meta={"file_type": "csv"}),
+                            Document(
+                                id="191726aa5b9aac93f376cc9b364cd07ee5c2a957383ed6d9b901cfc61d0a2b0f",
+                                content="Text file content ",
+                                meta={
+                                    "file_type": "txt",
+                                    "source_id": "41cb91740f6e64ab542122936ea746c238ae0a92fd29b698efabbe23d0ba4c42",
+                                    "page_number": 1,
+                                    "split_id": 0,
+                                    "split_idx_start": 0,
+                                },
+                            ),
+                            Document(
+                                id="424e39c85775b9dc32d61406cbe9b19ba234a4a2f26f59a1285120f10bb38ca1",
+                                content="for testing this.",
+                                meta={
+                                    "file_type": "txt",
+                                    "source_id": "41cb91740f6e64ab542122936ea746c238ae0a92fd29b698efabbe23d0ba4c42",
+                                    "page_number": 1,
+                                    "split_id": 1,
+                                    "split_idx_start": 18,
+                                },
+                            ),
+                            Document(
+                                id="d6145ad0bf5454b0e0c56f14b1da11c95076fb7961a2df1631d191ba8e174cf6",
+                                content="Some test content",
+                                meta={
+                                    "file_type": "json",
+                                    "source_id": "0c6c5951d18da2935c7af3e24d417a9f94ca85403866dcfee1de93922504e1e5",
+                                    "page_number": 1,
+                                    "split_id": 0,
+                                    "split_idx_start": 0,
+                                },
+                            ),
+                        ]
+                    }
+                },
+                expected_run_order=[],
             )
         ],
     )

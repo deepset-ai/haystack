@@ -49,6 +49,7 @@ Feature: Pipeline running
         | that has a feedback loop |
         | created in a non-standard order that has a loop |
         | that has an agent with a feedback cycle |
+        | that is a file conversion pipeline with two joiners |
 
     Scenario Outline: Running a bad Pipeline
         Given a pipeline <kind>
