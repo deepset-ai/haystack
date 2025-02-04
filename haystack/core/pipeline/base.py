@@ -145,7 +145,7 @@ class PipelineBase:
 
     @classmethod
     def from_dict(
-            cls: Type[T], data: Dict[str, Any], callbacks: Optional[DeserializationCallbacks] = None, **kwargs
+        cls: Type[T], data: Dict[str, Any], callbacks: Optional[DeserializationCallbacks] = None, **kwargs
     ) -> T:
         """
         Deserializes the pipeline from a dictionary.
