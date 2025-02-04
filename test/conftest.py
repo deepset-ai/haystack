@@ -20,6 +20,7 @@ set_all_seeds(0)
 # Tracing is disable by default to avoid failures in CI
 tracing.disable_tracing()
 
+
 @pytest.fixture()
 def waiting_component():
     @component
@@ -27,14 +28,15 @@ def waiting_component():
         @component.output_types(waited_for=int)
         def run(self, wait_for: int) -> Dict[str, int]:
             time.sleep(wait_for)
-            return {'waited_for': wait_for}
+            return {"waited_for": wait_for}
 
         @component.output_types(waited_for=int)
         async def run_async(self, wait_for: int) -> Dict[str, int]:
             await asyncio.sleep(wait_for)
-            return {'waited_for': wait_for}
+            return {"waited_for": wait_for}
 
     return Waiter
+
 
 @pytest.fixture()
 def mock_tokenizer():
