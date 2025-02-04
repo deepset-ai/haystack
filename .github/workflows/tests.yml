@@ -285,7 +285,7 @@ jobs:
 
   integration-tests-linux:
     name: Integration / ubuntu-latest
-    needs: unit-tests
+#    needs: unit-tests
     runs-on: ubuntu-latest
     services:
       tika:

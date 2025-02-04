@@ -172,7 +172,8 @@ class TestTransformersTextRouter:
         assert out == {"en": "What is the color of the sky?"}
 
     @pytest.mark.integration
-    def test_run(self):
+    def test_run(self, monkeypatch):
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
         router = TransformersTextRouter(model="papluca/xlm-roberta-base-language-detection")
         router.warm_up()
         out = router.run("What is the color of the sky?")
@@ -202,7 +203,8 @@ class TestTransformersTextRouter:
         assert out == {"en": "What is the color of the sky?"}
 
     @pytest.mark.integration
-    def test_wrong_labels(self):
+    def test_wrong_labels(self, monkeypatch):
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
         router = TransformersTextRouter(model="papluca/xlm-roberta-base-language-detection", labels=["en", "de"])
         with pytest.raises(ValueError):
             router.warm_up()
