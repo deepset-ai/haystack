@@ -265,8 +265,7 @@ class TestSentenceTransformersTextEmbedder:
         """
         sentence-transformers/paraphrase-albert-small-v2 maps sentences & paragraphs to a 768 dimensional dense vector space
         """
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)
-        monkeypatch.delenv("HF_TOKEN", raising=False)
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
         checkpoint = "sentence-transformers/paraphrase-albert-small-v2"
         text = "a nice text to embed"
 
