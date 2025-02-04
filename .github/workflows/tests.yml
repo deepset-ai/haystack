@@ -285,7 +285,7 @@ jobs:
 
   integration-tests-linux:
     name: Integration / ubuntu-latest
-    # needs: unit-tests
+    needs: unit-tests
     runs-on: ubuntu-latest
     services:
       tika:
@@ -353,7 +353,7 @@ jobs:
 
   integration-tests-macos:
     name: Integration / macos-latest
-    # needs: unit-tests
+    needs: unit-tests
     runs-on: macos-latest
     env:
       HAYSTACK_MPS_ENABLED: false
@@ -418,7 +418,7 @@ jobs:
 
   integration-tests-windows:
     name: Integration / windows-latest
-    # needs: unit-tests
+    needs: unit-tests
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
