@@ -4961,6 +4961,7 @@ def pipeline_with_variadic_dynamic_defaults():
         ],
     )
 
+
 @given("a pipeline that is a file conversion pipeline with two joiners", target_fixture="pipeline_data")
 def pipeline_that_converts_files():
     csv_data = """
@@ -5043,26 +5044,23 @@ some,header,row
         ),
     ]
 
-    expected_csv_docs = [
-        Document(content=csv_data, meta={"file_type": "csv"})
-    ]
+    expected_csv_docs = [Document(content=csv_data, meta={"file_type": "csv"})]
 
     return (
         pp,
         [
             PipelineRunData(
                 inputs={"router": {"sources": sources}},
-                expected_outputs={
-                    "a_joiner": {
-                        "documents": expected_csv_docs + expected_splits_docs,
-                    }
-                },
+                expected_outputs={"a_joiner": {"documents": expected_csv_docs + expected_splits_docs}},
                 expected_component_calls={
                     ("router", 1): {"sources": sources, "meta": None},
                     ("csv_converter", 1): {"sources": [sources[0]], "meta": None},
                     ("txt_converter", 1): {"sources": [sources[1]], "meta": None},
                     ("json_converter", 1): {"sources": [sources[2]], "meta": None},
-                    ("b_joiner", 1): {"documents": [[expected_pre_split_docs[0]], [expected_pre_split_docs[1]]], "top_k": None},
+                    ("b_joiner", 1): {
+                        "documents": [[expected_pre_split_docs[0]], [expected_pre_split_docs[1]]],
+                        "top_k": None,
+                    },
                     ("splitter", 1): {"documents": expected_pre_split_docs},
                     ("a_joiner", 1): {"documents": [expected_csv_docs, expected_splits_docs], "top_k": None},
                 },
