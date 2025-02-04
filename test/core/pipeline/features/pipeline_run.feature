@@ -51,6 +51,7 @@ Feature: Pipeline running
         | that passes outputs that are consumed in cycle to outside the cycle |
         | with a component that has dynamic default inputs |
         | with a component that has variadic dynamic default inputs |
+        | that is a file conversion pipeline with two joiners |
 
     Scenario Outline: Running a bad Pipeline
         Given a pipeline <kind>

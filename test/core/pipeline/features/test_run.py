@@ -7,11 +7,11 @@ import pytest
 
 from haystack import Pipeline, Document, component
 from haystack.document_stores.types import DuplicatePolicy
-from haystack.dataclasses import ChatMessage, GeneratedAnswer, TextContent
-from haystack.components.routers import ConditionalRouter
+from haystack.dataclasses import ChatMessage, GeneratedAnswer, TextContent, ByteStream
+from haystack.components.routers import ConditionalRouter, FileTypeRouter
 from haystack.components.builders import PromptBuilder, AnswerBuilder, ChatPromptBuilder
-from haystack.components.converters.output_adapter import OutputAdapter
-from haystack.components.preprocessors import DocumentCleaner
+from haystack.components.converters import OutputAdapter, JSONConverter, TextFileToDocument, CSVToDocument
+from haystack.components.preprocessors import DocumentCleaner, DocumentSplitter
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.joiners import BranchJoiner, DocumentJoiner, AnswerJoiner, StringJoiner
@@ -4958,5 +4958,114 @@ def pipeline_with_variadic_dynamic_defaults():
                 expected_outputs={"parrot": {"response": ["Parrot doesn't only parrot!"]}},
                 expected_component_calls={("parrot", 1): {"parrot": ["Parrot doesn't only parrot!"]}},
             ),
+        ],
+    )
+
+@given("a pipeline that is a file conversion pipeline with two joiners", target_fixture="pipeline_data")
+def pipeline_that_converts_files():
+    csv_data = """
+some,header,row
+0,1,0
+    """
+
+    txt_data = "Text file content for testing this."
+
+    json_data = '{"content": "Some test content"}'
+
+    sources = [
+        ByteStream.from_string(text=csv_data, mime_type="text/csv", meta={"file_type": "csv"}),
+        ByteStream.from_string(text=txt_data, mime_type="text/plain", meta={"file_type": "txt"}),
+        ByteStream.from_string(text=json_data, mime_type="application/json", meta={"file_type": "json"}),
+    ]
+
+    router = FileTypeRouter(mime_types=["text/csv", "text/plain", "application/json"])
+    splitter = DocumentSplitter(split_by="word", split_length=3, split_overlap=0)
+    txt_converter = TextFileToDocument()
+    csv_converter = CSVToDocument()
+    json_converter = JSONConverter(content_key="content")
+
+    b_joiner = DocumentJoiner()
+    a_joiner = DocumentJoiner()
+
+    pp = Pipeline(max_runs_per_component=1)
+
+    pp.add_component("router", router)
+    pp.add_component("splitter", splitter)
+    pp.add_component("txt_converter", txt_converter)
+    pp.add_component("csv_converter", csv_converter)
+    pp.add_component("json_converter", json_converter)
+    pp.add_component("b_joiner", b_joiner)
+    pp.add_component("a_joiner", a_joiner)
+
+    pp.connect("router.text/plain", "txt_converter.sources")
+    pp.connect("router.application/json", "json_converter.sources")
+    pp.connect("router.text/csv", "csv_converter.sources")
+    pp.connect("txt_converter.documents", "b_joiner.documents")
+    pp.connect("json_converter.documents", "b_joiner.documents")
+    pp.connect("csv_converter.documents", "a_joiner.documents")
+    pp.connect("b_joiner.documents", "splitter.documents")
+    pp.connect("splitter.documents", "a_joiner.documents")
+
+    expected_pre_split_docs = [
+        Document(content="Some test content", meta={"file_type": "json"}),
+        Document(content=txt_data, meta={"file_type": "txt"}),
+    ]
+    expected_splits_docs = [
+        Document(
+            content="Some test content",
+            meta={
+                "file_type": "json",
+                "source_id": "0c6c5951d18da2935c7af3e24d417a9f94ca85403866dcfee1de93922504e1e5",
+                "page_number": 1,
+                "split_id": 0,
+                "split_idx_start": 0,
+            },
+        ),
+        Document(
+            content="Text file content ",
+            meta={
+                "file_type": "txt",
+                "source_id": "41cb91740f6e64ab542122936ea746c238ae0a92fd29b698efabbe23d0ba4c42",
+                "page_number": 1,
+                "split_id": 0,
+                "split_idx_start": 0,
+            },
+        ),
+        Document(
+            content="for testing this.",
+            meta={
+                "file_type": "txt",
+                "source_id": "41cb91740f6e64ab542122936ea746c238ae0a92fd29b698efabbe23d0ba4c42",
+                "page_number": 1,
+                "split_id": 1,
+                "split_idx_start": 18,
+            },
+        ),
+    ]
+
+    expected_csv_docs = [
+        Document(content=csv_data, meta={"file_type": "csv"})
+    ]
+
+    return (
+        pp,
+        [
+            PipelineRunData(
+                inputs={"router": {"sources": sources}},
+                expected_outputs={
+                    "a_joiner": {
+                        "documents": expected_csv_docs + expected_splits_docs,
+                    }
+                },
+                expected_component_calls={
+                    ("router", 1): {"sources": sources, "meta": None},
+                    ("csv_converter", 1): {"sources": [sources[0]], "meta": None},
+                    ("txt_converter", 1): {"sources": [sources[1]], "meta": None},
+                    ("json_converter", 1): {"sources": [sources[2]], "meta": None},
+                    ("b_joiner", 1): {"documents": [[expected_pre_split_docs[0]], [expected_pre_split_docs[1]]], "top_k": None},
+                    ("splitter", 1): {"documents": expected_pre_split_docs},
+                    ("a_joiner", 1): {"documents": [expected_csv_docs, expected_splits_docs], "top_k": None},
+                },
+            )
         ],
     )
