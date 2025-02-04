@@ -811,7 +811,6 @@ class TestPipelineBase:
         pipeline.connect("hello_again.intermediate", "hello.intermediate")
         assert {("hello", hello), ("hello_again", hello_again)} == set(pipeline.walk())
 
-
     def test__prepare_component_input_data(self):
         MockComponent = component_class("MockComponent", input_types={"x": List[str], "y": str})
         pipe = PipelineBase()
