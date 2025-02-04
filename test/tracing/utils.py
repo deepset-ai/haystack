@@ -48,6 +48,5 @@ class SpyingTracer(Tracer):
             new_span.set_tag(key, value)
 
         self.spans.append(new_span)
-        print(self.spans)
 
         yield new_span
