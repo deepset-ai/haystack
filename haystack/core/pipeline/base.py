@@ -144,8 +144,8 @@ class PipelineBase:
         }
 
     @classmethod
-    def from_dict(  # noqa: PLR0912
-        cls: Type[T], data: Dict[str, Any], callbacks: Optional[DeserializationCallbacks] = None, **kwargs
+    def from_dict(
+            cls: Type[T], data: Dict[str, Any], callbacks: Optional[DeserializationCallbacks] = None, **kwargs
     ) -> T:
         """
         Deserializes the pipeline from a dictionary.
@@ -185,8 +185,10 @@ class PipelineBase:
                                 f"Successfully imported module {module} but can't find it in the component registry."
                                 "This is unexpected and most likely a bug."
                             )
-                    except (ImportError, PipelineError) as e:
-                        raise PipelineError(f"Component '{component_data['type']}' not imported.") from e
+                    except (ImportError, PipelineError, ValueError) as e:
+                        raise PipelineError(
+                            f"Component '{component_data['type']}' (name: '{name}') not imported."
+                        ) from e
 
                 # Create a new one
                 component_class = component.registry[component_data["type"]]
