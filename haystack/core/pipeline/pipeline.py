@@ -254,8 +254,7 @@ class Pipeline(PipelineBase):
                     receivers=cached_receivers[component_name],
                     include_outputs_from=include_outputs_from,
                 )
-                # TODO check original logic in pipeline, it looks like we don't want to override existing outputs
-                # e.g. for cycles but the tests check if intermediate outputs from components in cycles are overwritten
+
                 if component_pipeline_outputs:
                     pipeline_outputs[component_name] = component_pipeline_outputs
                 if self._is_queue_stale(priority_queue):
