@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixes multiple bugs in the pipeline-run-method:
+    - acyclic pipelines with multiple lazy variadic components not running all components
+    - cyclic pipelines not passing intermediate outputs to components outside the cycle
+    - cyclic pipelines with two or more optional or greedy variadic edges showing unexpected execution behavior
+    - cyclic pipelines with two cycles sharing an edge raising errors
