@@ -1,6 +1,7 @@
 import logging
 from typing import Any, Dict, Optional
-from haystack import component, default_to_dict, default_from_dict
+
+from haystack import component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
 from haystack.utils import Secret, deserialize_secrets_inplace
 
@@ -14,6 +15,7 @@ logger = logging.getLogger(__name__)
 class OpenAPIConnector:
     """
     OpenAPIConnector enables direct invocation of REST endpoints defined in an OpenAPI specification.
+
     This component is designed for direct REST endpoint invocation without LLM-generated payloads.
 
     Example:
@@ -31,6 +33,10 @@ class OpenAPIConnector:
         parameters={"q": "Who was Nikola Tesla?"}
     )
     ```
+    Note:
+    - The `parameters` argument is required for this component.
+    - The `service_kwargs` argument is optional, it can be used to pass additional options to the OpenAPIClient.
+
     """
 
     def __init__(
