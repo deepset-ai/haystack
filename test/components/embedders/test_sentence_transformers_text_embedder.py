@@ -70,6 +70,7 @@ class TestSentenceTransformersTextEmbedder:
                 "truncate_dim": None,
                 "model_kwargs": None,
                 "tokenizer_kwargs": None,
+                "encode_kwargs": None,
                 "config_kwargs": None,
                 "precision": "float32",
             },
@@ -90,6 +91,7 @@ class TestSentenceTransformersTextEmbedder:
             model_kwargs={"torch_dtype": torch.float32},
             tokenizer_kwargs={"model_max_length": 512},
             config_kwargs={"use_memory_efficient_attention": False},
+            encode_kwargs={"task": "clustering"},
             precision="int8",
         )
         data = component.to_dict()
@@ -109,6 +111,7 @@ class TestSentenceTransformersTextEmbedder:
                 "model_kwargs": {"torch_dtype": "torch.float32"},
                 "tokenizer_kwargs": {"model_max_length": 512},
                 "config_kwargs": {"use_memory_efficient_attention": False},
+                "encode_kwargs": {"task": "clustering"},
                 "precision": "int8",
             },
         }

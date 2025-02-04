@@ -49,6 +49,7 @@ class SentenceTransformersTextEmbedder:
         model_kwargs: Optional[Dict[str, Any]] = None,
         tokenizer_kwargs: Optional[Dict[str, Any]] = None,
         config_kwargs: Optional[Dict[str, Any]] = None,
+        encode_kwargs: Optional[Dict[str, Any]] = None,
         precision: Literal["float32", "int8", "uint8", "binary", "ubinary"] = "float32",
     ):
         """
@@ -89,6 +90,8 @@ class SentenceTransformersTextEmbedder:
             Refer to specific model documentation for available kwargs.
         :param config_kwargs:
             Additional keyword arguments for `AutoConfig.from_pretrained` when loading the model configuration.
+        :param encode_kwargs:
+            Additional keyword arguments for `SentenceTransformer.encode` when embedding texts.
         :param precision:
             The precision to use for the embeddings.
             All non-float32 precisions are quantized embeddings.
@@ -109,6 +112,7 @@ class SentenceTransformersTextEmbedder:
         self.model_kwargs = model_kwargs
         self.tokenizer_kwargs = tokenizer_kwargs
         self.config_kwargs = config_kwargs
+        self.encode_kwargs = encode_kwargs
         self.embedding_backend = None
         self.precision = precision
 
@@ -140,6 +144,7 @@ class SentenceTransformersTextEmbedder:
             model_kwargs=self.model_kwargs,
             tokenizer_kwargs=self.tokenizer_kwargs,
             config_kwargs=self.config_kwargs,
+            encode_kwargs=self.encode_kwargs,
             precision=self.precision,
         )
         if serialization_dict["init_parameters"].get("model_kwargs") is not None:
@@ -209,5 +214,6 @@ class SentenceTransformersTextEmbedder:
             show_progress_bar=self.progress_bar,
             normalize_embeddings=self.normalize_embeddings,
             precision=self.precision,
+            **(self.encode_kwargs if self.encode_kwargs else {}),
         )[0]
         return {"embedding": embedding}
