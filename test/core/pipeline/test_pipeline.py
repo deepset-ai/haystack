@@ -29,7 +29,7 @@ class TestPipeline:
         pp.connect("joiner_1", "joiner_2")
         inputs = {"joiner_1": {"value": [{"sender": None, "value": "test_value"}]}}
 
-        outputs, updated_inputs = pp._run_component(
+        outputs = pp._run_component(
             component=pp._get_component_with_graph_metadata_and_visits("joiner_1", 0),
             inputs=inputs,
             component_visits={"joiner_1": 0, "joiner_2": 0},
@@ -37,7 +37,7 @@ class TestPipeline:
 
         assert outputs == {"value": "test_value"}
         # We remove input in greedy variadic sockets, even if they are from the user
-        assert "value" not in updated_inputs["joiner_1"]
+        assert "value" not in inputs["joiner_1"]
 
     def test__run_component_fail(self):
         """Test error when component doesn't return a dictionary"""
