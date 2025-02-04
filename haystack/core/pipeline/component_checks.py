@@ -73,10 +73,10 @@ def are_all_sockets_ready(component: Dict, inputs: Dict, only_check_mandatory: b
     for socket_name, socket in sockets_to_check.items():
         socket_inputs = inputs.get(socket_name, [])
         expected_sockets.add(socket_name)
-        if (
-            is_socket_lazy_variadic(socket)
-            and any_socket_input_received(socket_inputs)
-            or has_socket_received_all_inputs(socket, socket_inputs)
+
+        # Check if socket has all required inputs or is a lazy variadic socket with any input
+        if has_socket_received_all_inputs(socket, socket_inputs) or (
+            is_socket_lazy_variadic(socket) and any_socket_input_received(socket_inputs)
         ):
             filled_sockets.add(socket_name)
 
@@ -185,7 +185,6 @@ def has_socket_received_all_inputs(socket: InputSocket, socket_inputs: List[Dict
     if (
         socket.is_variadic
         and socket.is_greedy
-        and len(socket_inputs) > 0
         and any(sock["value"] != _NO_OUTPUT_PRODUCED for sock in socket_inputs)
     ):
         return True
@@ -221,6 +220,12 @@ def are_all_lazy_variadic_sockets_resolved(component: Dict, inputs: Dict) -> boo
     for socket_name, socket in component["input_sockets"].items():
         if is_socket_lazy_variadic(socket):
             socket_inputs = inputs.get(socket_name, [])
+
+            # Checks if a lazy variadic socket is ready to run.
+            # A socket is ready if either:
+            # - it has received all expected inputs, or
+            # - all its predecessors have executed
+            # If none of the conditions are met, the socket is not ready to run and we defer the component.
             if not (
                 has_lazy_variadic_socket_received_all_inputs(socket, socket_inputs)
                 or all_socket_predecessors_executed(socket, socket_inputs)
