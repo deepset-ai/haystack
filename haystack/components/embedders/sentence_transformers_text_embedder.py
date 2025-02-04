@@ -50,6 +50,7 @@ class SentenceTransformersTextEmbedder:
         tokenizer_kwargs: Optional[Dict[str, Any]] = None,
         config_kwargs: Optional[Dict[str, Any]] = None,
         precision: Literal["float32", "int8", "uint8", "binary", "ubinary"] = "float32",
+        backend: Literal["torch", "onnx", "openvino"] = "torch",
     ):
         """
         Create a SentenceTransformersTextEmbedder component.
@@ -111,6 +112,7 @@ class SentenceTransformersTextEmbedder:
         self.config_kwargs = config_kwargs
         self.embedding_backend = None
         self.precision = precision
+        self.backend = backend
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -141,6 +143,7 @@ class SentenceTransformersTextEmbedder:
             tokenizer_kwargs=self.tokenizer_kwargs,
             config_kwargs=self.config_kwargs,
             precision=self.precision,
+            backend=self.backend,
         )
         if serialization_dict["init_parameters"].get("model_kwargs") is not None:
             serialize_hf_model_kwargs(serialization_dict["init_parameters"]["model_kwargs"])
@@ -178,6 +181,7 @@ class SentenceTransformersTextEmbedder:
                 model_kwargs=self.model_kwargs,
                 tokenizer_kwargs=self.tokenizer_kwargs,
                 config_kwargs=self.config_kwargs,
+                backend=self.backend,
             )
             if self.tokenizer_kwargs and self.tokenizer_kwargs.get("model_max_length"):
                 self.embedding_backend.model.max_seq_length = self.tokenizer_kwargs["model_max_length"]

@@ -72,6 +72,7 @@ class TestSentenceTransformersTextEmbedder:
                 "tokenizer_kwargs": None,
                 "config_kwargs": None,
                 "precision": "float32",
+                "backend": "torch",
             },
         }
 
@@ -110,6 +111,7 @@ class TestSentenceTransformersTextEmbedder:
                 "tokenizer_kwargs": {"model_max_length": 512},
                 "config_kwargs": {"use_memory_efficient_attention": False},
                 "precision": "int8",
+                "backend": "torch",
             },
         }
 
@@ -224,6 +226,7 @@ class TestSentenceTransformersTextEmbedder:
             model_kwargs=None,
             tokenizer_kwargs={"model_max_length": 512},
             config_kwargs=None,
+            backend="torch",
         )
 
     @patch(
@@ -302,7 +305,7 @@ class TestSentenceTransformersTextEmbedder:
         text = "a nice text to embed"
 
         onnx_embedder_def = SentenceTransformersTextEmbedder(
-            model="sentence-transformers/all-MiniLM-L6-v2", model_kwargs={"backend": "onnx"}
+            model="sentence-transformers/all-MiniLM-L6-v2", backend="onnx"
         )
         onnx_embedder_def.warm_up()
 
@@ -319,7 +322,7 @@ class TestSentenceTransformersTextEmbedder:
         text = "a nice text to embed"
 
         openvino_embedder_def = SentenceTransformersTextEmbedder(
-            model="sentence-transformers/all-MiniLM-L6-v2", model_kwargs={"backend": "openvino"}
+            model="sentence-transformers/all-MiniLM-L6-v2", backend="openvino"
         )
         openvino_embedder_def.warm_up()
 

@@ -81,6 +81,7 @@ class TestSentenceTransformersDocumentEmbedder:
                 "tokenizer_kwargs": None,
                 "config_kwargs": None,
                 "precision": "float32",
+                "backend": "torch",
             },
         }
 
@@ -124,6 +125,7 @@ class TestSentenceTransformersDocumentEmbedder:
                 "tokenizer_kwargs": {"model_max_length": 512},
                 "config_kwargs": {"use_memory_efficient_attention": True},
                 "precision": "int8",
+                "backend": "torch",
             },
         }
 
@@ -249,6 +251,7 @@ class TestSentenceTransformersDocumentEmbedder:
             model_kwargs=None,
             tokenizer_kwargs={"model_max_length": 512},
             config_kwargs={"use_memory_efficient_attention": True},
+            backend="torch",
         )
 
     @patch(
@@ -345,7 +348,7 @@ class TestSentenceTransformersDocumentEmbedder:
     def test_model_onnx_quantization(self):
         documents = [Document(content="document number 0"), Document(content="document number 1")]
         onnx_embedder = SentenceTransformersDocumentEmbedder(
-            model="sentence-transformers/all-MiniLM-L6-v2", model_kwargs={"backend": "onnx"}
+            model="sentence-transformers/all-MiniLM-L6-v2", backend="onnx"
         )
         onnx_embedder.warm_up()
 
@@ -362,7 +365,7 @@ class TestSentenceTransformersDocumentEmbedder:
     def test_model_openvino_quantization(self):
         documents = [Document(content="document number 0"), Document(content="document number 1")]
         openvino_embedder = SentenceTransformersDocumentEmbedder(
-            model="sentence-transformers/all-MiniLM-L6-v2", model_kwargs={"backend": "openvino"}
+            model="sentence-transformers/all-MiniLM-L6-v2", backend="openvino"
         )
         openvino_embedder.warm_up()
 

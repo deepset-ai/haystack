@@ -30,13 +30,6 @@ class _SentenceTransformersEmbeddingBackendFactory:
         config_kwargs: Optional[Dict[str, Any]] = None,
         backend: Optional[Literal["torch", "onnx", "openvino"]] = "torch",
     ):
-        model_kwargs = model_kwargs or {}
-
-        if "backend" in model_kwargs:
-            backend = model_kwargs.pop("backend")
-            if backend not in {"torch", "onnx", "openvino"}:
-                raise ValueError(f"Invalid backend: {backend}. Supported backends: 'torch', 'onnx', 'openvino'")
-
         embedding_backend_id = f"{model}{device}{auth_token}{truncate_dim}{backend}"
 
         if embedding_backend_id in _SentenceTransformersEmbeddingBackendFactory._instances:
@@ -76,6 +69,7 @@ class _SentenceTransformersEmbeddingBackend:
         sentence_transformers_import.check()
 
         # this line is necessary to avoid an arg-type error for the type checker
+        # or we can make backend not optional
         if backend is None:
             backend = "torch"
 
