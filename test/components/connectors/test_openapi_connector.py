@@ -150,7 +150,7 @@ class TestOpenAPIConnector:
         pipeline_dict = pipeline.to_dict()
         assert pipeline_dict == {
             "metadata": {},
-            "max_loops_allowed": 100,
+            "max_runs_per_component": 100,
             "components": {
                 "api": {
                     "type": "haystack.components.connectors.openapi.OpenAPIConnector",
