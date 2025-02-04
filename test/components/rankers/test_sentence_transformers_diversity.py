@@ -574,10 +574,11 @@ class TestSentenceTransformersDiversityRanker:
 
     @pytest.mark.integration
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
-    def test_run(self, similarity):
+    def test_run(self, similarity, monkeypatch):
         """
         Tests that run method returns documents in the correct order
         """
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
         ranker = SentenceTransformersDiversityRanker(
             model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity
         )
@@ -601,7 +602,8 @@ class TestSentenceTransformersDiversityRanker:
 
     @pytest.mark.integration
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
-    def test_run_real_world_use_case(self, similarity):
+    def test_run_real_world_use_case(self, similarity, monkeypatch):
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
         ranker = SentenceTransformersDiversityRanker(
             model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity
         )
@@ -673,7 +675,8 @@ class TestSentenceTransformersDiversityRanker:
 
     @pytest.mark.integration
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
-    def test_run_with_maximum_margin_relevance_strategy(self, similarity):
+    def test_run_with_maximum_margin_relevance_strategy(self, similarity, monkeypatch):
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
         query = "renewable energy sources"
         docs = [
             Document(content="18th-century French literature"),
