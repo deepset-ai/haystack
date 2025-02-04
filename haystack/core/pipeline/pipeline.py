@@ -4,14 +4,13 @@
 
 import warnings
 from copy import deepcopy
-from typing import Any, Dict, Mapping, Optional, Set, Tuple, cast
+from typing import Any, Dict, Mapping, Optional, Set, cast
 
 from haystack import logging, tracing
 from haystack.core.component import Component
 from haystack.core.errors import PipelineRuntimeError
-from haystack.telemetry import pipeline_running
-
 from haystack.core.pipeline.base import ComponentPriority, PipelineBase
+from haystack.telemetry import pipeline_running
 
 logger = logging.getLogger(__name__)
 
