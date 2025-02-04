@@ -455,8 +455,8 @@ class TestHuggingFaceLocalGenerator:
 
     @pytest.mark.integration
     def test_hf_pipeline_runs_with_our_criteria(self, monkeypatch):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
         """Test that creating our own StopWordsCriteria and passing it to a Huggingface pipeline works."""
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
         generator = HuggingFaceLocalGenerator(
             model="google/flan-t5-small", task="text2text-generation", stop_words=["unambiguously"]
         )
