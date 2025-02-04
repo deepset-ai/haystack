@@ -1360,7 +1360,7 @@ class TestPipelineBase:
 
         component_outputs = {"output1": 42}
 
-        pruned_outputs, updated_inputs = PipelineBase._write_component_outputs(
+        PipelineBase._write_component_outputs(
             component_name="sender1",
             component_outputs=component_outputs,
             inputs=inputs,
@@ -1368,8 +1368,8 @@ class TestPipelineBase:
             include_outputs_from=[],
         )
 
-        assert len(updated_inputs["receiver1"][socket_name]) == expected_count
-        assert {"sender": "sender1", "value": 42} in updated_inputs["receiver1"][socket_name]
+        assert len(inputs["receiver1"][socket_name]) == expected_count
+        assert {"sender": "sender1", "value": 42} in inputs["receiver1"][socket_name]
 
     @pytest.mark.parametrize(
         "component_outputs,include_outputs,expected_pruned",
@@ -1386,7 +1386,7 @@ class TestPipelineBase:
         """Test output pruning behavior under different scenarios"""
         receivers = [("receiver1", regular_output_socket, regular_input_socket)]
 
-        pruned_outputs, _ = PipelineBase._write_component_outputs(
+        pruned_outputs = PipelineBase._write_component_outputs(
             component_name="sender1",
             component_outputs=component_outputs,
             inputs={},
@@ -1407,16 +1407,16 @@ class TestPipelineBase:
         """Test handling of different output values"""
         receivers = [("receiver1", regular_output_socket, regular_input_socket)]
         component_outputs = {"output1": output_value}
-
-        _, updated_inputs = PipelineBase._write_component_outputs(
+        inputs = {}
+        PipelineBase._write_component_outputs(
             component_name="sender1",
             component_outputs=component_outputs,
-            inputs={},
+            inputs=inputs,
             receivers=receivers,
             include_outputs_from=[],
         )
 
-        assert updated_inputs["receiver1"]["input1"] == [{"sender": "sender1", "value": output_value}]
+        assert inputs["receiver1"]["input1"] == [{"sender": "sender1", "value": output_value}]
 
     @pytest.mark.parametrize("receivers_count", [1, 2, 3], ids=["single-receiver", "two-receivers", "three-receivers"])
     def test__write_component_outputs_multiple_receivers(
@@ -1426,18 +1426,19 @@ class TestPipelineBase:
         receivers = [(f"receiver{i}", regular_output_socket, regular_input_socket) for i in range(receivers_count)]
         component_outputs = {"output1": 42}
 
-        _, updated_inputs = PipelineBase._write_component_outputs(
+        inputs = {}
+        PipelineBase._write_component_outputs(
             component_name="sender1",
             component_outputs=component_outputs,
-            inputs={},
+            inputs=inputs,
             receivers=receivers,
             include_outputs_from=[],
         )
 
         for i in range(receivers_count):
             receiver_name = f"receiver{i}"
-            assert receiver_name in updated_inputs
-            assert updated_inputs[receiver_name]["input1"] == [{"sender": "sender1", "value": 42}]
+            assert receiver_name in inputs
+            assert inputs[receiver_name]["input1"] == [{"sender": "sender1", "value": 42}]
 
     def test__get_next_runnable_component_empty(self):
         """Test with empty queue returns None"""
@@ -1622,8 +1623,8 @@ class TestPipelineBase:
         inputs = {"test_component": component_inputs}
 
         # Run
-        consumed, updated_inputs = PipelineBase._consume_component_inputs("test_component", component, inputs)
+        consumed = PipelineBase._consume_component_inputs("test_component", component, inputs)
 
         # Verify
         assert consumed == expected_consumed
-        assert updated_inputs["test_component"] == expected_remaining
+        assert inputs["test_component"] == expected_remaining

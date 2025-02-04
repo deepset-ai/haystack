@@ -852,14 +852,14 @@ class PipelineBase:
         return inputs
 
     @staticmethod
-    def _consume_component_inputs(component_name: str, component: Dict, inputs: Dict) -> Tuple[Dict, Dict]:
+    def _consume_component_inputs(component_name: str, component: Dict, inputs: Dict) -> Dict[str, Any]:
         """
         Extracts the inputs needed to run for the component and removes them from the global inputs state.
 
         :param component_name: The name of a component.
         :param component: Component with component metadata.
         :param inputs: Global inputs state.
-        :returns: The inputs for the component and the new state of global inputs.
+        :returns: The inputs for the component.
         """
         component_inputs = inputs.get(component_name, {})
         consumed_inputs = {}
@@ -892,7 +892,7 @@ class PipelineBase:
 
         inputs[component_name] = pruned_inputs
 
-        return consumed_inputs, inputs
+        return consumed_inputs
 
     def _fill_queue(
         self, component_names: List[str], inputs: Dict[str, Any], component_visits: Dict[str, int]
@@ -998,7 +998,7 @@ class PipelineBase:
     @staticmethod
     def _write_component_outputs(
         component_name, component_outputs, inputs, receivers, include_outputs_from
-    ) -> Tuple[Dict, Dict]:
+    ) -> Dict[str, Any]:
         """
         Distributes the outputs of a component to the input sockets that it is connected to.
 
@@ -1032,14 +1032,14 @@ class PipelineBase:
         # If we want to include all outputs from this actor in the final outputs, we don't need to prune any consumed
         # outputs
         if component_name in include_outputs_from:
-            return component_outputs, inputs
+            return component_outputs
 
         # We prune outputs that were consumed by any receiving sockets.
         # All remaining outputs will be added to the final outputs of the pipeline.
         consumed_outputs = {sender_socket.name for _, sender_socket, __ in receivers}
         pruned_outputs = {key: value for key, value in component_outputs.items() if key not in consumed_outputs}
 
-        return pruned_outputs, inputs
+        return pruned_outputs
 
     @staticmethod
     def _is_queue_stale(priority_queue: FIFOPriorityQueue) -> bool:

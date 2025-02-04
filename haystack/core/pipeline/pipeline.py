@@ -29,7 +29,7 @@ class Pipeline(PipelineBase):
         inputs: Dict[str, Any],
         component_visits: Dict[str, int],
         parent_span: Optional[tracing.Span] = None,
-    ) -> Tuple[Dict, Dict]:
+    ) -> Dict[str, Any]:
         """
         Runs a Component with the given inputs.
 
@@ -39,11 +39,11 @@ class Pipeline(PipelineBase):
         :param parent_span: The parent span to use for the newly created span.
             This is to allow tracing to be correctly linked to the pipeline run.
         :raises PipelineRuntimeError: If Component doesn't return a dictionary.
-        :return: The output of the Component and the new state of inputs.
+        :return: The output of the Component.
         """
         instance: Component = component["instance"]
         component_name = self.get_component_name(instance)
-        component_inputs, inputs = self._consume_component_inputs(
+        component_inputs = self._consume_component_inputs(
             component_name=component_name, component=component, inputs=inputs
         )
 
@@ -90,7 +90,7 @@ class Pipeline(PipelineBase):
             span.set_tag("haystack.component.visits", component_visits[component_name])
             span.set_content_tag("haystack.component.output", component_output)
 
-            return cast(Dict[Any, Any], component_output), inputs
+            return cast(Dict[Any, Any], component_output)
 
     def run(  # noqa: PLR0915, PLR0912
         self, data: Dict[str, Any], include_outputs_from: Optional[Set[str]] = None
@@ -246,8 +246,11 @@ class Pipeline(PipelineBase):
                         )
                         warnings.warn(msg)
 
-                component_outputs, inputs = self._run_component(component, inputs, component_visits, parent_span=span)
-                component_pipeline_outputs, inputs = self._write_component_outputs(
+                component_outputs = self._run_component(component, inputs, component_visits, parent_span=span)
+
+                # Updates global input state with component outputs and returns outputs that should go to
+                # pipeline outputs.
+                component_pipeline_outputs = self._write_component_outputs(
                     component_name=component_name,
                     component_outputs=component_outputs,
                     inputs=inputs,
