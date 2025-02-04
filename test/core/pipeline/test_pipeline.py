@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from typing import Optional
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
@@ -18,6 +19,37 @@ class TestPipeline:
     This class contains only unit tests for the Pipeline class.
     It doesn't test Pipeline.run(), that is done separately in a different way.
     """
+
+    def test_pipeline_thread_safety(self, waiting_component, spying_tracer):
+        # Initialize pipeline with synchronous components
+        pp = Pipeline()
+        pp.add_component("wait", waiting_component())
+
+        run_data = [
+            {"wait_for": 1},
+            {"wait_for": 2},
+        ]
+
+        # Use ThreadPoolExecutor to run pipeline calls in parallel
+        with ThreadPoolExecutor(max_workers=len(run_data)) as executor:
+            # Submit pipeline runs to the executor
+            futures = [
+                executor.submit(pp.run, data)
+                for data in run_data
+            ]
+
+            # Wait for all futures to complete
+            for future in futures:
+                future.result()
+
+        # Verify component visits using tracer
+        component_spans = [
+            sp for sp in spying_tracer.spans
+            if sp.operation_name == "haystack.component.run"
+        ]
+
+        for span in component_spans:
+            assert span.tags["haystack.component.visits"] == 1
 
     def test__run_component_success(self):
         """Test successful component execution"""

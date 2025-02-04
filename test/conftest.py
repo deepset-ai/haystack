@@ -4,14 +4,17 @@
 from datetime import datetime
 from pathlib import Path
 from test.tracing.utils import SpyingTracer
-from typing import Generator
+from typing import Generator, Dict
 from unittest.mock import Mock, patch
 
 import pytest
+import time
+import asyncio
+
 from openai.types.chat import ChatCompletion, ChatCompletionMessage
 from openai.types.chat.chat_completion import Choice
 
-from haystack import tracing
+from haystack import tracing, component
 from haystack.testing.test_utils import set_all_seeds
 
 set_all_seeds(0)
@@ -19,6 +22,21 @@ set_all_seeds(0)
 # Tracing is disable by default to avoid failures in CI
 tracing.disable_tracing()
 
+@pytest.fixture()
+def waiting_component():
+    @component
+    class Waiter:
+        @component.output_types(waited_for=int)
+        def run(self, wait_for: int) -> Dict[str, int]:
+            time.sleep(wait_for)
+            return {'waited_for': wait_for}
+
+        @component.output_types(waited_for=int)
+        async def run_async(self, wait_for: int) -> Dict[str, int]:
+            await asyncio.sleep(wait_for)
+            return {'waited_for': wait_for}
+
+    return Waiter
 
 @pytest.fixture()
 def mock_tokenizer():
