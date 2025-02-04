@@ -106,7 +106,8 @@ class TestTransformersZeroShotTextRouter:
         assert out == {"query": "What is the color of the sky?"}
 
     @pytest.mark.integration
-    def test_run(self):
+    def test_run(self, monkeypatch):
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
         router = TransformersZeroShotTextRouter(labels=["query", "passage"])
         router.warm_up()
         out = router.run("What is the color of the sky?")

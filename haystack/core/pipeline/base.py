@@ -34,7 +34,7 @@ from .utils import parse_connect_string
 
 DEFAULT_MARSHALLER = YamlMarshaller()
 
-# We use a generic type to annotate the return value of classmethods,
+# We use a generic type to annotate the return value of class methods,
 # so that static analyzers won't be confused when derived classes
 # use those methods.
 T = TypeVar("T", bound="PipelineBase")
@@ -619,31 +619,76 @@ class PipelineBase:
         }
         return outputs
 
-    def show(self) -> None:
+    def show(self, server_url: str = "https://mermaid.ink", params: Optional[dict] = None) -> None:
         """
-        If running in a Jupyter notebook, display an image representing this `Pipeline`.
+        Display an image representing this `Pipeline` in a Jupyter notebook.
 
+        This function generates a diagram of the `Pipeline` using a Mermaid server and displays it directly in
+        the notebook.
+
+        :param server_url:
+            The base URL of the Mermaid server used for rendering (default: 'https://mermaid.ink').
+            See https://github.com/jihchi/mermaid.ink and https://github.com/mermaid-js/mermaid-live-editor for more
+            info on how to set up your own Mermaid server.
+
+        :param params:
+            Dictionary of customization parameters to modify the output. Refer to Mermaid documentation for more details
+            Supported keys:
+                - format: Output format ('img', 'svg', or 'pdf'). Default: 'img'.
+                - type: Image type for /img endpoint ('jpeg', 'png', 'webp'). Default: 'png'.
+                - theme: Mermaid theme ('default', 'neutral', 'dark', 'forest'). Default: 'neutral'.
+                - bgColor: Background color in hexadecimal (e.g., 'FFFFFF') or named format (e.g., '!white').
+                - width: Width of the output image (integer).
+                - height: Height of the output image (integer).
+                - scale: Scaling factor (1–3). Only applicable if 'width' or 'height' is specified.
+                - fit: Whether to fit the diagram size to the page (PDF only, boolean).
+                - paper: Paper size for PDFs (e.g., 'a4', 'a3'). Ignored if 'fit' is true.
+                - landscape: Landscape orientation for PDFs (boolean). Ignored if 'fit' is true.
+
+        :raises PipelineDrawingError:
+            If the function is called outside of a Jupyter notebook or if there is an issue with rendering.
         """
         if is_in_jupyter():
             from IPython.display import Image, display  # type: ignore
 
-            image_data = _to_mermaid_image(self.graph)
-
+            image_data = _to_mermaid_image(self.graph, server_url=server_url, params=params)
             display(Image(image_data))
         else:
             msg = "This method is only supported in Jupyter notebooks. Use Pipeline.draw() to save an image locally."
             raise PipelineDrawingError(msg)
 
-    def draw(self, path: Path) -> None:
+    def draw(self, path: Path, server_url: str = "https://mermaid.ink", params: Optional[dict] = None) -> None:
         """
-        Save an image representing this `Pipeline` to `path`.
+        Save an image representing this `Pipeline` to the specified file path.
+
+        This function generates a diagram of the `Pipeline` using the Mermaid server and saves it to the provided path.
 
         :param path:
-            The path to save the image to.
+            The file path where the generated image will be saved.
+        :param server_url:
+            The base URL of the Mermaid server used for rendering (default: 'https://mermaid.ink').
+            See https://github.com/jihchi/mermaid.ink and https://github.com/mermaid-js/mermaid-live-editor for more
+            info on how to set up your own Mermaid server.
+        :param params:
+            Dictionary of customization parameters to modify the output. Refer to Mermaid documentation for more details
+            Supported keys:
+                - format: Output format ('img', 'svg', or 'pdf'). Default: 'img'.
+                - type: Image type for /img endpoint ('jpeg', 'png', 'webp'). Default: 'png'.
+                - theme: Mermaid theme ('default', 'neutral', 'dark', 'forest'). Default: 'neutral'.
+                - bgColor: Background color in hexadecimal (e.g., 'FFFFFF') or named format (e.g., '!white').
+                - width: Width of the output image (integer).
+                - height: Height of the output image (integer).
+                - scale: Scaling factor (1–3). Only applicable if 'width' or 'height' is specified.
+                - fit: Whether to fit the diagram size to the page (PDF only, boolean).
+                - paper: Paper size for PDFs (e.g., 'a4', 'a3'). Ignored if 'fit' is true.
+                - landscape: Landscape orientation for PDFs (boolean). Ignored if 'fit' is true.
+
+        :raises PipelineDrawingError:
+            If there is an issue with rendering or saving the image.
         """
         # Before drawing we edit a bit the graph, to avoid modifying the original that is
         # used for running the pipeline we copy it.
-        image_data = _to_mermaid_image(self.graph)
+        image_data = _to_mermaid_image(self.graph, server_url=server_url, params=params)
         Path(path).write_bytes(image_data)
 
     def walk(self) -> Iterator[Tuple[str, Component]]:

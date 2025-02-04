@@ -264,10 +264,11 @@ class TestSentenceTransformersTextEmbedder:
             embedder.run(text=list_integers_input)
 
     @pytest.mark.integration
-    def test_run_trunc(self):
+    def test_run_trunc(self, monkeypatch):
         """
         sentence-transformers/paraphrase-albert-small-v2 maps sentences & paragraphs to a 768 dimensional dense vector space
         """
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
         checkpoint = "sentence-transformers/paraphrase-albert-small-v2"
         text = "a nice text to embed"
 
@@ -316,7 +317,7 @@ class TestSentenceTransformersTextEmbedder:
         assert onnx_embedding_def[0] == pytest.approx(0.0, abs=0.1)
 
     @pytest.mark.skip(
-        reason="OpenVINO backend does not support our current transformers + sentence transformers depdenencies versions"
+        reason="OpenVINO backend does not support our current transformers + sentence transformers dependencies versions"
     )
     def test_model_openvino_quantization(self):
         text = "a nice text to embed"

@@ -8,6 +8,8 @@ import random
 import pytest
 from huggingface_hub.utils import RepositoryNotFoundError
 
+from numpy import array
+
 from haystack.components.embedders import HuggingFaceAPIDocumentEmbedder
 from haystack.dataclasses import Document
 from haystack.utils.auth import Secret
@@ -23,8 +25,8 @@ def mock_check_valid_model():
         yield mock
 
 
-def mock_embedding_generation(json, **kwargs):
-    response = str([[random.random() for _ in range(384)] for _ in range(len(json["inputs"]))]).encode()
+def mock_embedding_generation(text, **kwargs):
+    response = array([[random.random() for _ in range(384)] for _ in range(len(text))])
     return response
 
 
@@ -201,10 +203,10 @@ class TestHuggingFaceAPIDocumentEmbedder:
             "my_prefix document number 4 my_suffix",
         ]
 
-    def test_embed_batch(self, mock_check_valid_model):
+    def test_embed_batch(self, mock_check_valid_model, recwarn):
         texts = ["text 1", "text 2", "text 3", "text 4", "text 5"]
 
-        with patch("huggingface_hub.InferenceClient.post") as mock_embedding_patch:
+        with patch("huggingface_hub.InferenceClient.feature_extraction") as mock_embedding_patch:
             mock_embedding_patch.side_effect = mock_embedding_generation
 
             embedder = HuggingFaceAPIDocumentEmbedder(
@@ -222,6 +224,40 @@ class TestHuggingFaceAPIDocumentEmbedder:
             assert isinstance(embedding, list)
             assert len(embedding) == 384
             assert all(isinstance(x, float) for x in embedding)
+
+        # Check that warnings about ignoring truncate and normalize are raised
+        assert len(recwarn) == 2
+        assert "truncate" in str(recwarn[0].message)
+        assert "normalize" in str(recwarn[1].message)
+
+    def test_embed_batch_wrong_embedding_shape(self, mock_check_valid_model):
+        texts = ["text 1", "text 2", "text 3", "text 4", "text 5"]
+
+        # embedding ndim != 2
+        with patch("huggingface_hub.InferenceClient.feature_extraction") as mock_embedding_patch:
+            mock_embedding_patch.return_value = array([0.1, 0.2, 0.3])
+
+            embedder = HuggingFaceAPIDocumentEmbedder(
+                api_type=HFEmbeddingAPIType.SERVERLESS_INFERENCE_API,
+                api_params={"model": "BAAI/bge-small-en-v1.5"},
+                token=Secret.from_token("fake-api-token"),
+            )
+
+            with pytest.raises(ValueError):
+                embedder._embed_batch(texts_to_embed=texts, batch_size=2)
+
+        # embedding ndim == 2 but shape[0] != len(batch)
+        with patch("huggingface_hub.InferenceClient.feature_extraction") as mock_embedding_patch:
+            mock_embedding_patch.return_value = array([[0.1, 0.2, 0.3], [0.4, 0.5, 0.6], [0.7, 0.8, 0.9]])
+
+            embedder = HuggingFaceAPIDocumentEmbedder(
+                api_type=HFEmbeddingAPIType.SERVERLESS_INFERENCE_API,
+                api_params={"model": "BAAI/bge-small-en-v1.5"},
+                token=Secret.from_token("fake-api-token"),
+            )
+
+            with pytest.raises(ValueError):
+                embedder._embed_batch(texts_to_embed=texts, batch_size=2)
 
     def test_run_wrong_input_format(self, mock_check_valid_model):
         embedder = HuggingFaceAPIDocumentEmbedder(
@@ -252,7 +288,7 @@ class TestHuggingFaceAPIDocumentEmbedder:
             Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
         ]
 
-        with patch("huggingface_hub.InferenceClient.post") as mock_embedding_patch:
+        with patch("huggingface_hub.InferenceClient.feature_extraction") as mock_embedding_patch:
             mock_embedding_patch.side_effect = mock_embedding_generation
 
             embedder = HuggingFaceAPIDocumentEmbedder(
@@ -268,16 +304,14 @@ class TestHuggingFaceAPIDocumentEmbedder:
             result = embedder.run(documents=docs)
 
             mock_embedding_patch.assert_called_once_with(
-                json={
-                    "inputs": [
-                        "prefix Cuisine | I love cheese suffix",
-                        "prefix ML | A transformer is a deep learning architecture suffix",
-                    ],
-                    "truncate": True,
-                    "normalize": False,
-                },
-                task="feature-extraction",
+                text=[
+                    "prefix Cuisine | I love cheese suffix",
+                    "prefix ML | A transformer is a deep learning architecture suffix",
+                ],
+                truncate=None,
+                normalize=None,
             )
+
         documents_with_embeddings = result["documents"]
 
         assert isinstance(documents_with_embeddings, list)
@@ -294,7 +328,7 @@ class TestHuggingFaceAPIDocumentEmbedder:
             Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
         ]
 
-        with patch("huggingface_hub.InferenceClient.post") as mock_embedding_patch:
+        with patch("huggingface_hub.InferenceClient.feature_extraction") as mock_embedding_patch:
             mock_embedding_patch.side_effect = mock_embedding_generation
 
             embedder = HuggingFaceAPIDocumentEmbedder(

@@ -360,7 +360,7 @@ class TestSentenceTransformersDocumentEmbedder:
         assert result["documents"][0].embedding[0] == pytest.approx(0.0, abs=0.1)
 
     @pytest.mark.skip(
-        reason="OpenVINO backend does not support our current transformers + sentence transformers depdenencies versions"
+        reason="OpenVINO backend does not support our current transformers + sentence transformers dependencies versions"
     )
     def test_model_openvino_quantization(self):
         documents = [Document(content="document number 0"), Document(content="document number 1")]

@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import warnings
 from copy import deepcopy
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple
 
@@ -111,14 +110,6 @@ class DocumentSplitter:
         if self._use_sentence_splitter:
             nltk_imports.check()
             self.sentence_splitter = None
-
-        if split_by == "sentence":
-            # ToDo: remove this warning in the next major release
-            msg = (
-                "The `split_by='sentence'` no longer splits by '.' and now relies on custom sentence tokenizer "
-                "based on NLTK. To achieve the previous behaviour use `split_by='period'."
-            )
-            warnings.warn(msg)
 
     def _init_checks(
         self,
