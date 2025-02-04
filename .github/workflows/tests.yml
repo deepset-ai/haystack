@@ -286,7 +286,7 @@ jobs:
   integration-tests-linux:
     name: Integration / ubuntu-latest
     # needs: unit-tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     services:
       tika:
         image: apache/tika:2.9.0.0
@@ -306,11 +306,11 @@ jobs:
           pip install hatch==${{ env.HATCH_VERSION }}
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
-      # - uses: actions/cache/restore@v4
-      #   id: cache
-      #   with:
-      #     path: ${{ steps.hatch.outputs.env }}
-      #     key: ${{ runner.os }}-${{ github.sha }}
+      - uses: actions/cache/restore@v4
+        id: cache
+        with:
+          path: ${{ steps.hatch.outputs.env }}
+          key: ${{ runner.os }}-${{ github.sha }}
 
       - name: Install dependencies
         run: |
