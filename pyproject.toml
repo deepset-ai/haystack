@@ -354,5 +354,3 @@ max-statements = 60                               # Default is 50
 
 [tool.coverage.run]
 omit = ["haystack/testing/*"]
-
-# trigger
