@@ -11,8 +11,6 @@ import pytest
 import time
 import asyncio
 
-from openai.types.chat import ChatCompletion, ChatCompletionMessage
-from openai.types.chat.chat_completion import Choice
 
 from haystack import tracing, component
 from haystack.testing.test_utils import set_all_seeds
