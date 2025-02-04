@@ -182,11 +182,7 @@ def has_socket_received_all_inputs(socket: InputSocket, socket_inputs: List[Dict
         return False
 
     # The socket is greedy variadic and at least one input was produced, it is complete.
-    if (
-        socket.is_variadic
-        and socket.is_greedy
-        and any(sock["value"] != _NO_OUTPUT_PRODUCED for sock in socket_inputs)
-    ):
+    if socket.is_variadic and socket.is_greedy and any(sock["value"] != _NO_OUTPUT_PRODUCED for sock in socket_inputs):
         return True
 
     # The socket is lazy variadic and all expected inputs were produced.

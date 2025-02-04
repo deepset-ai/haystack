@@ -6,10 +6,9 @@ import itertools
 from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime
+from enum import IntEnum
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional, TextIO, Tuple, Type, TypeVar, Union
-
-import networkx  # type:ignore
 
 from haystack import logging
 from haystack.core.component import Component, InputSocket, OutputSocket, component
@@ -18,27 +17,48 @@ from haystack.core.errors import (
     PipelineConnectError,
     PipelineDrawingError,
     PipelineError,
+    PipelineMaxComponentRuns,
+    PipelineRuntimeError,
     PipelineUnmarshalError,
     PipelineValidationError,
 )
+from haystack.core.pipeline.descriptions import find_pipeline_inputs, find_pipeline_outputs
+from haystack.core.pipeline.draw import _to_mermaid_image
+from haystack.core.pipeline.template import PipelineTemplate, PredefinedPipeline
+from haystack.core.pipeline.utils import parse_connect_string
 from haystack.core.serialization import DeserializationCallbacks, component_from_dict, component_to_dict
 from haystack.core.type_utils import _type_name, _types_are_compatible
 from haystack.marshal import Marshaller, YamlMarshaller
 from haystack.utils import is_in_jupyter, type_serialization
+from networkx import MultiDiGraph  # type:ignore
 
-from .descriptions import find_pipeline_inputs, find_pipeline_outputs
-from .draw import _to_mermaid_image
-from .template import PipelineTemplate, PredefinedPipeline
-from .utils import parse_connect_string
+from haystack.core.pipeline.component_checks import (
+    _NO_OUTPUT_PRODUCED,
+    all_predecessors_executed,
+    are_all_lazy_variadic_sockets_resolved,
+    are_all_sockets_ready,
+    can_component_run,
+    is_any_greedy_socket_ready,
+    is_socket_lazy_variadic,
+)
+from haystack.core.pipeline.utils import FIFOPriorityQueue
 
 DEFAULT_MARSHALLER = YamlMarshaller()
 
-# We use a generic type to annotate the return value of class methods,
+# We use a generic type to annotate the return value of classmethods,
 # so that static analyzers won't be confused when derived classes
 # use those methods.
 T = TypeVar("T", bound="PipelineBase")
 
 logger = logging.getLogger(__name__)
+
+
+class ComponentPriority(IntEnum):
+    HIGHEST = 1
+    READY = 2
+    DEFER = 3
+    DEFER_LAST = 4
+    BLOCKED = 5
 
 
 class PipelineBase:
@@ -63,7 +83,7 @@ class PipelineBase:
         self._telemetry_runs = 0
         self._last_telemetry_sent: Optional[datetime] = None
         self.metadata = metadata or {}
-        self.graph = networkx.MultiDiGraph()
+        self.graph = MultiDiGraph()
         self._max_runs_per_component = max_runs_per_component
 
     def __eq__(self, other) -> bool:
@@ -125,7 +145,7 @@ class PipelineBase:
         }
 
     @classmethod
-    def from_dict(
+    def from_dict(  # noqa: PLR0912
         cls: Type[T], data: Dict[str, Any], callbacks: Optional[DeserializationCallbacks] = None, **kwargs
     ) -> T:
         """
@@ -166,10 +186,8 @@ class PipelineBase:
                                 f"Successfully imported module {module} but can't find it in the component registry."
                                 "This is unexpected and most likely a bug."
                             )
-                    except (ImportError, PipelineError, ValueError) as e:
-                        raise PipelineError(
-                            f"Component '{component_data['type']}' (name: '{name}') not imported."
-                        ) from e
+                    except (ImportError, PipelineError) as e:
+                        raise PipelineError(f"Component '{component_data['type']}' not imported.") from e
 
                 # Create a new one
                 component_class = component.registry[component_data["type"]]
@@ -368,7 +386,7 @@ class PipelineBase:
 
         return instance
 
-    def connect(self, sender: str, receiver: str) -> "PipelineBase":  # noqa: PLR0915
+    def connect(self, sender: str, receiver: str) -> "PipelineBase":  # noqa: PLR0915 PLR0912
         """
         Connects two components together.
 
@@ -618,76 +636,31 @@ class PipelineBase:
         }
         return outputs
 
-    def show(self, server_url: str = "https://mermaid.ink", params: Optional[dict] = None) -> None:
+    def show(self) -> None:
         """
-        Display an image representing this `Pipeline` in a Jupyter notebook.
+        If running in a Jupyter notebook, display an image representing this `Pipeline`.
 
-        This function generates a diagram of the `Pipeline` using a Mermaid server and displays it directly in
-        the notebook.
-
-        :param server_url:
-            The base URL of the Mermaid server used for rendering (default: 'https://mermaid.ink').
-            See https://github.com/jihchi/mermaid.ink and https://github.com/mermaid-js/mermaid-live-editor for more
-            info on how to set up your own Mermaid server.
-
-        :param params:
-            Dictionary of customization parameters to modify the output. Refer to Mermaid documentation for more details
-            Supported keys:
-                - format: Output format ('img', 'svg', or 'pdf'). Default: 'img'.
-                - type: Image type for /img endpoint ('jpeg', 'png', 'webp'). Default: 'png'.
-                - theme: Mermaid theme ('default', 'neutral', 'dark', 'forest'). Default: 'neutral'.
-                - bgColor: Background color in hexadecimal (e.g., 'FFFFFF') or named format (e.g., '!white').
-                - width: Width of the output image (integer).
-                - height: Height of the output image (integer).
-                - scale: Scaling factor (1–3). Only applicable if 'width' or 'height' is specified.
-                - fit: Whether to fit the diagram size to the page (PDF only, boolean).
-                - paper: Paper size for PDFs (e.g., 'a4', 'a3'). Ignored if 'fit' is true.
-                - landscape: Landscape orientation for PDFs (boolean). Ignored if 'fit' is true.
-
-        :raises PipelineDrawingError:
-            If the function is called outside of a Jupyter notebook or if there is an issue with rendering.
         """
         if is_in_jupyter():
             from IPython.display import Image, display  # type: ignore
 
-            image_data = _to_mermaid_image(self.graph, server_url=server_url, params=params)
+            image_data = _to_mermaid_image(self.graph)
+
             display(Image(image_data))
         else:
             msg = "This method is only supported in Jupyter notebooks. Use Pipeline.draw() to save an image locally."
             raise PipelineDrawingError(msg)
 
-    def draw(self, path: Path, server_url: str = "https://mermaid.ink", params: Optional[dict] = None) -> None:
+    def draw(self, path: Path) -> None:
         """
-        Save an image representing this `Pipeline` to the specified file path.
-
-        This function generates a diagram of the `Pipeline` using the Mermaid server and saves it to the provided path.
+        Save an image representing this `Pipeline` to `path`.
 
         :param path:
-            The file path where the generated image will be saved.
-        :param server_url:
-            The base URL of the Mermaid server used for rendering (default: 'https://mermaid.ink').
-            See https://github.com/jihchi/mermaid.ink and https://github.com/mermaid-js/mermaid-live-editor for more
-            info on how to set up your own Mermaid server.
-        :param params:
-            Dictionary of customization parameters to modify the output. Refer to Mermaid documentation for more details
-            Supported keys:
-                - format: Output format ('img', 'svg', or 'pdf'). Default: 'img'.
-                - type: Image type for /img endpoint ('jpeg', 'png', 'webp'). Default: 'png'.
-                - theme: Mermaid theme ('default', 'neutral', 'dark', 'forest'). Default: 'neutral'.
-                - bgColor: Background color in hexadecimal (e.g., 'FFFFFF') or named format (e.g., '!white').
-                - width: Width of the output image (integer).
-                - height: Height of the output image (integer).
-                - scale: Scaling factor (1–3). Only applicable if 'width' or 'height' is specified.
-                - fit: Whether to fit the diagram size to the page (PDF only, boolean).
-                - paper: Paper size for PDFs (e.g., 'a4', 'a3'). Ignored if 'fit' is true.
-                - landscape: Landscape orientation for PDFs (boolean). Ignored if 'fit' is true.
-
-        :raises PipelineDrawingError:
-            If there is an issue with rendering or saving the image.
+            The path to save the image to.
         """
         # Before drawing we edit a bit the graph, to avoid modifying the original that is
         # used for running the pipeline we copy it.
-        image_data = _to_mermaid_image(self.graph, server_url=server_url, params=params)
+        image_data = _to_mermaid_image(self.graph)
         Path(path).write_bytes(image_data)
 
     def walk(self) -> Iterator[Tuple[str, Component]]:
@@ -860,6 +833,247 @@ class PipelineBase:
             receiver_socket: InputSocket = connection["to_socket"]
             res.append((receiver_name, sender_socket, receiver_socket))
         return res
+
+    @staticmethod
+    def _convert_to_internal_format(pipeline_inputs: Dict[str, Any]) -> Dict[str, Dict[str, List]]:
+        """
+        Converts the inputs to the pipeline to the format that is needed for the internal `Pipeline.run` logic.
+
+        Example Input:
+        {'prompt_builder': {'question': 'Who lives in Paris?'}, 'retriever': {'query': 'Who lives in Paris?'}}
+        Example Output:
+        {'prompt_builder': {'question': [{'sender': None, 'value': 'Who lives in Paris?'}]},
+         'retriever': {'query': [{'sender': None, 'value': 'Who lives in Paris?'}]}}
+
+        :param pipeline_inputs: Inputs to the pipeline.
+        :returns: Converted inputs that can be used by the internal `Pipeline.run` logic.
+        """
+        inputs: Dict[str, Dict[str, List[Dict[str, Any]]]] = {}
+        for component_name, socket_dict in pipeline_inputs.items():
+            inputs[component_name] = {}
+            for socket_name, value in socket_dict.items():
+                inputs[component_name][socket_name] = [{"sender": None, "value": value}]
+
+        return inputs
+
+    @staticmethod
+    def _consume_component_inputs(component_name: str, component: Dict, inputs: Dict) -> Tuple[Dict, Dict]:
+        """
+        Extracts the inputs needed to run for the component and removes them from the global inputs state.
+
+        :param component_name: The name of a component.
+        :param component: Component with component metadata.
+        :param inputs: Global inputs state.
+        :returns: The inputs for the component and the new state of global inputs.
+        """
+        component_inputs = inputs.get(component_name, {})
+        consumed_inputs = {}
+        greedy_inputs_to_remove = set()
+        for socket_name, socket in component["input_sockets"].items():
+            socket_inputs = component_inputs.get(socket_name, [])
+            socket_inputs = [sock["value"] for sock in socket_inputs if sock["value"] != _NO_OUTPUT_PRODUCED]
+            if socket_inputs:
+                if not socket.is_variadic:
+                    # We only care about the first input provided to the socket.
+                    consumed_inputs[socket_name] = socket_inputs[0]
+                elif socket.is_greedy:
+                    # We need to keep track of greedy inputs because we always remove them, even if they come from
+                    # outside the pipeline. Otherwise, a greedy input from the user would trigger a pipeline to run
+                    # indefinitely.
+                    greedy_inputs_to_remove.add(socket_name)
+                    consumed_inputs[socket_name] = [socket_inputs[0]]
+                elif is_socket_lazy_variadic(socket):
+                    # We use all inputs provided to the socket on a lazy variadic socket.
+                    consumed_inputs[socket_name] = socket_inputs
+
+        # We prune all inputs except for those that were provided from outside the pipeline (e.g. user inputs).
+        pruned_inputs = {
+            socket_name: [
+                sock for sock in socket if sock["sender"] is None and not socket_name in greedy_inputs_to_remove
+            ]
+            for socket_name, socket in component_inputs.items()
+        }
+        pruned_inputs = {socket_name: socket for socket_name, socket in pruned_inputs.items() if len(socket) > 0}
+
+        inputs[component_name] = pruned_inputs
+
+        return consumed_inputs, inputs
+
+    def _fill_queue(
+        self, component_names: List[str], inputs: Dict[str, Any], component_visits: Dict[str, int]
+    ) -> FIFOPriorityQueue:
+        """
+        Calculates the execution priority for each component and inserts it into the priority queue.
+
+        :param component_names: Names of the components to put into the queue.
+        :param inputs: Inputs to the components.
+        :param component_visits: Current state of component visits.
+        :returns: A prioritized queue of component names.
+        """
+        priority_queue = FIFOPriorityQueue()
+        for component_name in component_names:
+            component = self._get_component_with_graph_metadata_and_visits(
+                component_name, component_visits[component_name]
+            )
+            priority = self._calculate_priority(component, inputs.get(component_name, {}))
+            priority_queue.push(component_name, priority)
+
+        return priority_queue
+
+    @staticmethod
+    def _calculate_priority(component: Dict, inputs: Dict) -> ComponentPriority:
+        """
+        Calculates the execution priority for a component depending on the component's inputs.
+
+        :param component: Component metadata and component instance.
+        :param inputs: Inputs to the component.
+        :returns: Priority value for the component.
+        """
+        if not can_component_run(component, inputs):
+            return ComponentPriority.BLOCKED
+        elif is_any_greedy_socket_ready(component, inputs) and are_all_sockets_ready(component, inputs):
+            return ComponentPriority.HIGHEST
+        elif all_predecessors_executed(component, inputs):
+            return ComponentPriority.READY
+        elif are_all_lazy_variadic_sockets_resolved(component, inputs):
+            return ComponentPriority.DEFER
+        else:
+            return ComponentPriority.DEFER_LAST
+
+    def _get_component_with_graph_metadata_and_visits(self, component_name: str, visits: int) -> Dict[str, Any]:
+        """
+        Returns the component instance alongside input/output-socket metadata from the graph and adds current visits.
+
+        We can't store visits in the pipeline graph because this would prevent reentrance / thread-safe execution.
+
+        :param component_name: The name of the component.
+        :param visits: Number of visits for the component.
+        :returns: Dict including component instance, input/output-sockets and visits.
+        """
+        comp_dict = self.graph.nodes[component_name]
+        comp_dict = {**comp_dict, "visits": visits}
+        return comp_dict
+
+    def _get_next_runnable_component(
+        self, priority_queue: FIFOPriorityQueue, component_visits: Dict[str, int]
+    ) -> Union[Tuple[ComponentPriority, str, Dict[str, Any]], None]:
+        """
+        Returns the next runnable component alongside its metadata from the priority queue.
+
+        :param priority_queue: Priority queue of component names.
+        :param component_visits: Current state of component visits.
+        :returns: The next runnable component, the component name, and its priority
+            or None if no component in the queue can run.
+        :raises: PipelineMaxComponentRuns if the next runnable component has exceeded the maximum number of runs.
+        """
+        priority_and_component_name: Union[Tuple[ComponentPriority, str], None] = (
+            None if (item := priority_queue.get()) is None else (ComponentPriority(item[0]), str(item[1]))
+        )
+
+        if priority_and_component_name is not None and priority_and_component_name[0] != ComponentPriority.BLOCKED:
+            priority, component_name = priority_and_component_name
+            component = self._get_component_with_graph_metadata_and_visits(
+                component_name, component_visits[component_name]
+            )
+            if component["visits"] > self._max_runs_per_component:
+                msg = f"Maximum run count {self._max_runs_per_component} reached for component '{component_name}'"
+                raise PipelineMaxComponentRuns(msg)
+
+            return priority, component_name, component
+
+        return None
+
+    @staticmethod
+    def _add_missing_input_defaults(component_inputs: Dict[str, Any], component_input_sockets: Dict[str, InputSocket]):
+        """
+        Updates the inputs with the default values for the inputs that are missing
+
+        :param component_inputs: Inputs for the component.
+        :param component_input_sockets: Input sockets of the component.
+        """
+        for name, socket in component_input_sockets.items():
+            if not socket.is_mandatory and name not in component_inputs:
+                if socket.is_variadic:
+                    component_inputs[name] = [socket.default_value]
+                else:
+                    component_inputs[name] = socket.default_value
+
+        return component_inputs
+
+    @staticmethod
+    def _write_component_outputs(
+        component_name, component_outputs, inputs, receivers, include_outputs_from
+    ) -> Tuple[Dict, Dict]:
+        """
+        Distributes the outputs of a component to the input sockets that it is connected to.
+
+        :param component_name: The name of the component.
+        :param component_outputs: The outputs of the component.
+        :param inputs: The current global input state.
+        :param receivers: List of receiver_name, sender_socket, receiver_socket for connected components.
+        :param include_outputs_from: List of component names that should always return an output from the pipeline.
+        """
+        for receiver_name, sender_socket, receiver_socket in receivers:
+            # We either get the value that was produced by the actor or we use the _NO_OUTPUT_PRODUCED class to indicate
+            # that the sender did not produce an output for this socket.
+            # This allows us to track if a pre-decessor already ran but did not produce an output.
+            value = component_outputs.get(sender_socket.name, _NO_OUTPUT_PRODUCED)
+            if receiver_name not in inputs:
+                inputs[receiver_name] = {}
+
+            # If we have a non-variadic or a greedy variadic receiver socket, we can just overwrite any inputs
+            # that might already exist (to be reconsidered but mirrors current behavior).
+            if not is_socket_lazy_variadic(receiver_socket):
+                inputs[receiver_name][receiver_socket.name] = [{"sender": component_name, "value": value}]
+
+            # If the receiver socket is lazy variadic, and it already has an input, we need to append the new input.
+            # Lazy variadic sockets can collect multiple inputs.
+            else:
+                if not inputs[receiver_name].get(receiver_socket.name):
+                    inputs[receiver_name][receiver_socket.name] = []
+
+                inputs[receiver_name][receiver_socket.name].append({"sender": component_name, "value": value})
+
+        # If we want to include all outputs from this actor in the final outputs, we don't need to prune any consumed
+        # outputs
+        if component_name in include_outputs_from:
+            return component_outputs, inputs
+
+        # We prune outputs that were consumed by any receiving sockets.
+        # All remaining outputs will be added to the final outputs of the pipeline.
+        consumed_outputs = {sender_socket.name for _, sender_socket, __ in receivers}
+        pruned_outputs = {key: value for key, value in component_outputs.items() if key not in consumed_outputs}
+
+        return pruned_outputs, inputs
+
+    @staticmethod
+    def _is_queue_stale(priority_queue: FIFOPriorityQueue) -> bool:
+        """
+        Checks if the priority queue needs to be recomputed because the priorities might have changed.
+
+        :param priority_queue: Priority queue of component names.
+        """
+        return len(priority_queue) == 0 or priority_queue.peek()[0] > ComponentPriority.READY
+
+    @staticmethod
+    def validate_pipeline(priority_queue: FIFOPriorityQueue) -> None:
+        """
+        Validate the pipeline to check if it is blocked or has no valid entry point.
+
+        :param priority_queue: Priority queue of component names.
+        """
+        if len(priority_queue) == 0:
+            return
+
+        candidate = priority_queue.peek()
+        if candidate is not None and candidate[0] == ComponentPriority.BLOCKED:
+            raise PipelineRuntimeError(
+                "Cannot run pipeline - all components are blocked. "
+                "This typically happens when:\n"
+                "1. There is no valid entry point for the pipeline\n"
+                "2. There is a circular dependency preventing the pipeline from running\n"
+                "Check the connections between these components and ensure all required inputs are provided."
+            )
 
 
 def _connections_status(
