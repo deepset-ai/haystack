@@ -296,3 +296,35 @@ class TestSentenceTransformersTextEmbedder:
 
         assert len(embedding_def) == 768
         assert all(isinstance(el, int) for el in embedding_def)
+
+    @pytest.mark.integration
+    def test_model_onnx_quantization(self):
+        text = "a nice text to embed"
+
+        onnx_embedder_def = SentenceTransformersTextEmbedder(
+            model="sentence-transformers/all-MiniLM-L6-v2", model_kwargs={"backend": "onnx"}
+        )
+        onnx_embedder_def.warm_up()
+
+        onnx_result_def = onnx_embedder_def.run(text=text)
+        onnx_embedding_def = onnx_result_def["embedding"]
+
+        assert len(onnx_embedding_def) == 384
+        assert onnx_embedding_def[0] == pytest.approx(0.0, abs=0.1)
+
+    @pytest.mark.skip(
+        reason="OpenVINO backend does not support our current transformers + sentence transformers depdenencies versions"
+    )
+    def test_model_openvino_quantization(self):
+        text = "a nice text to embed"
+
+        openvino_embedder_def = SentenceTransformersTextEmbedder(
+            model="sentence-transformers/all-MiniLM-L6-v2", model_kwargs={"backend": "openvino"}
+        )
+        openvino_embedder_def.warm_up()
+
+        openvino_result_def = openvino_embedder_def.run(text=text)
+        openvino_embedding_def = openvino_result_def["embedding"]
+
+        assert len(openvino_embedding_def) == 384
+        assert openvino_embedding_def[0] == pytest.approx(0.0, abs=0.1)

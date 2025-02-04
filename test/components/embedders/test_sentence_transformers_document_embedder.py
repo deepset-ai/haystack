@@ -340,3 +340,35 @@ class TestSentenceTransformersDocumentEmbedder:
             normalize_embeddings=False,
             precision="float32",
         )
+
+    @pytest.mark.integration
+    def test_model_onnx_quantization(self):
+        documents = [Document(content="document number 0"), Document(content="document number 1")]
+        onnx_embedder = SentenceTransformersDocumentEmbedder(
+            model="sentence-transformers/all-MiniLM-L6-v2", model_kwargs={"backend": "onnx"}
+        )
+        onnx_embedder.warm_up()
+
+        result = onnx_embedder.run(documents=documents)
+
+        assert len(result["documents"]) == 2
+        assert len(result["documents"][0].embedding) == 384
+        assert len(result["documents"][1].embedding) == 384
+        assert result["documents"][0].embedding[0] == pytest.approx(0.0, abs=0.1)
+
+    @pytest.mark.skip(
+        reason="OpenVINO backend does not support our current transformers + sentence transformers depdenencies versions"
+    )
+    def test_model_openvino_quantization(self):
+        documents = [Document(content="document number 0"), Document(content="document number 1")]
+        openvino_embedder = SentenceTransformersDocumentEmbedder(
+            model="sentence-transformers/all-MiniLM-L6-v2", model_kwargs={"backend": "openvino"}
+        )
+        openvino_embedder.warm_up()
+
+        result = openvino_embedder.run(documents=documents)
+
+        assert len(result["documents"]) == 2
+        assert len(result["documents"][0].embedding) == 384
+        assert len(result["documents"][1].embedding) == 384
+        assert result["documents"][0].embedding[0] == pytest.approx(0.0, abs=0.1)
