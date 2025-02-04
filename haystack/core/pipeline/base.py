@@ -811,11 +811,6 @@ class PipelineBase:
             msg += f"Source:\n{rendered}"
             raise PipelineUnmarshalError(msg)
 
-    def _init_graph(self):
-        """Resets the visits count for each component"""
-        for node in self.graph.nodes:
-            self.graph.nodes[node]["visits"] = 0
-
     def _find_receivers_from(self, component_name: str) -> List[Tuple[str, OutputSocket, InputSocket]]:
         """
         Utility function to find all Components that receive input form `component_name`.

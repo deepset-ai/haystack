@@ -811,14 +811,6 @@ class TestPipelineBase:
         pipeline.connect("hello_again.intermediate", "hello.intermediate")
         assert {("hello", hello), ("hello_again", hello_again)} == set(pipeline.walk())
 
-    def test__init_graph(self):
-        pipe = PipelineBase()
-        pipe.add_component("greet", Greet())
-        pipe.add_component("adder", AddFixedValue())
-        pipe.connect("greet", "adder")
-        pipe._init_graph()
-        for node in pipe.graph.nodes:
-            assert pipe.graph.nodes[node]["visits"] == 0
 
     def test__prepare_component_input_data(self):
         MockComponent = component_class("MockComponent", input_types={"x": List[str], "y": str})
