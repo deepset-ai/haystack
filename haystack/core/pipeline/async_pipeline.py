@@ -345,9 +345,15 @@ class AsyncPipeline(PipelineBase):
                     async for partial_result in _wait_for_one_task_to_complete():
                         yield partial_result
 
-                elif priority in (ComponentPriority.DEFER, ComponentPriority.DEFER_LAST):
+                elif priority in (ComponentPriority.DEFER, ComponentPriority.DEFER_LAST) and running_tasks:
                     # We do incremental waiting
-                    async for partial_result in _schedule_defer_incrementally(component_name):
+                    async for partial_result in _wait_for_one_task_to_complete():
+                        yield partial_result
+
+                elif priority in (ComponentPriority.DEFER, ComponentPriority.DEFER_LAST) and not running_tasks:
+                    await _schedule_ready_task(component_name)
+
+                    async for partial_result in _wait_for_one_task_to_complete():
                         yield partial_result
 
             # End main loop
