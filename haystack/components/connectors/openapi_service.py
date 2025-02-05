@@ -23,35 +23,40 @@ with LazyImport("Run 'pip install openapi3'") as openapi_imports:
     # If you see that https://github.com/Dorthu/openapi3/pull/124/
     # is merged, we can remove this patch - notify authors of this code
     def patch_request(
-        self, base_url, data=None, parameters={}, raw_response=False, security={}, session=None, verify=True
-    ):
+        self,
+        base_url: str,
+        *,
+        data: Optional[Any] = None,
+        parameters: Optional[Dict[str, Any]] = None,
+        raw_response: bool = False,
+        security: Optional[Dict[str, str]] = None,
+        session: Optional[Any] = None,
+        verify: Union[bool, str] = True,
+    ) -> Optional[Any]:
         """
         Sends an HTTP request as described by this Path
 
         :param base_url: The URL to append this operation's path to when making
                          the call.
-        :type base_url: str
-        :param security: The security scheme to use, and the values it needs to
-                         process successfully.
-        :type security: dict{str: str}
         :param data: The request body to send.
-        :type data: any, should match content/type
         :param parameters: The parameters used to create the path
-        :type parameters: dict{str: str}
-        :param verify: Should we do an ssl verification on the request or not,
-                       In case str was provided, will use that as the CA.
-        :type verify: bool/str
-        :param session: a persistent request session
-        :type session: None, requests.Session
         :param raw_response: If true, return the raw response instead of validating
                              and exterpolating it.
-        :type raw_response: bool
+        :param security: The security scheme to use, and the values it needs to
+                         process successfully.
+        :param session: a persistent request session
+        :param verify: Should we do an ssl verification on the request or not,
+                       In case str was provided, will use that as the CA.
+        :return: The response data, either raw or processed depending on raw_response flag
         """
         # Set request method (e.g. 'GET')
         self._request = requests.Request(self.path[-1])
 
         # Set self._request.url to base_url w/ path
         self._request.url = base_url + self.path[-2]
+
+        parameters = parameters or {}
+        security = security or {}
 
         if security and self.security:
             security_requirement = None
@@ -98,7 +103,7 @@ with LazyImport("Run 'pip install openapi3'") as openapi_imports:
         # if we got back a valid response code (or there was a default) and no
         # response content was expected, return None
         if expected_response.content is None:
-            return
+            return None
 
         content_type = result.headers["Content-Type"]
         if ";" in content_type:
@@ -133,8 +138,8 @@ with LazyImport("Run 'pip install openapi3'") as openapi_imports:
 
         if content_type.lower() == "application/json":
             return expected_media.schema.model(result.json())
-        else:
-            raise NotImplementedError()
+
+        raise NotImplementedError("Only application/json content type is supported")
 
     # Apply the patch
     Operation.request = patch_request
