@@ -52,8 +52,8 @@ class FIFOPriorityQueue:
         :param priority:
             Priority level for the item. Lower numbers indicate higher priority.
         """
-        count = next(self._counter)
-        entry = (priority, count, item)
+        next_count = next(self._counter)
+        entry = (priority, next_count, item)
         heapq.heappush(self._queue, entry)
 
     def pop(self) -> Tuple[int, Any]:
