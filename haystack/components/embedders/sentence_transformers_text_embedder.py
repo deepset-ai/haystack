@@ -50,6 +50,7 @@ class SentenceTransformersTextEmbedder:
         tokenizer_kwargs: Optional[Dict[str, Any]] = None,
         config_kwargs: Optional[Dict[str, Any]] = None,
         precision: Literal["float32", "int8", "uint8", "binary", "ubinary"] = "float32",
+        encode_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
         Create a SentenceTransformersTextEmbedder component.
@@ -94,6 +95,10 @@ class SentenceTransformersTextEmbedder:
             All non-float32 precisions are quantized embeddings.
             Quantized embeddings are smaller in size and faster to compute, but may have a lower accuracy.
             They are useful for reducing the size of the embeddings of a corpus for semantic search, among other tasks.
+        :param encode_kwargs:
+            Additional keyword arguments for `SentenceTransformer.encode` when embedding texts.
+            This parameter is provided for fine customization. Be careful not to clash with already set parameters and
+            avoid passing parameters that change the output type.
         """
 
         self.model = model
@@ -109,6 +114,7 @@ class SentenceTransformersTextEmbedder:
         self.model_kwargs = model_kwargs
         self.tokenizer_kwargs = tokenizer_kwargs
         self.config_kwargs = config_kwargs
+        self.encode_kwargs = encode_kwargs
         self.embedding_backend = None
         self.precision = precision
 
@@ -141,6 +147,7 @@ class SentenceTransformersTextEmbedder:
             tokenizer_kwargs=self.tokenizer_kwargs,
             config_kwargs=self.config_kwargs,
             precision=self.precision,
+            encode_kwargs=self.encode_kwargs,
         )
         if serialization_dict["init_parameters"].get("model_kwargs") is not None:
             serialize_hf_model_kwargs(serialization_dict["init_parameters"]["model_kwargs"])
@@ -209,5 +216,6 @@ class SentenceTransformersTextEmbedder:
             show_progress_bar=self.progress_bar,
             normalize_embeddings=self.normalize_embeddings,
             precision=self.precision,
+            **(self.encode_kwargs if self.encode_kwargs else {}),
         )[0]
         return {"embedding": embedding}
