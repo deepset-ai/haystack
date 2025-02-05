@@ -306,7 +306,11 @@ class TestSentenceTransformersTextEmbedder:
         text = "a nice text to embed"
 
         onnx_embedder_def = SentenceTransformersTextEmbedder(
-            model="sentence-transformers/all-MiniLM-L6-v2", backend="onnx"
+            model="sentence-transformers/all-MiniLM-L6-v2",
+            backend="onnx",
+            model_kwargs={
+                "file_name": "onnx/model.onnx"
+            },  # setting the path isn't necessary if the repo contains a "onnx/model.onnx" file but this is to prevent a HF warning
         )
         onnx_embedder_def.warm_up()
 
@@ -323,7 +327,11 @@ class TestSentenceTransformersTextEmbedder:
         text = "a nice text to embed"
 
         openvino_embedder_def = SentenceTransformersTextEmbedder(
-            model="sentence-transformers/all-MiniLM-L6-v2", backend="openvino"
+            model="sentence-transformers/all-MiniLM-L6-v2",
+            backend="openvino",
+            model_kwargs={
+                "file_name": "openvino/openvino_model.xml"
+            },  # setting the path isn't necessary if the repo contains a "openvino/openvino_model.xml" file but this is to prevent a HF warning
         )
         openvino_embedder_def.warm_up()
 

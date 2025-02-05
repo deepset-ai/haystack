@@ -348,7 +348,11 @@ class TestSentenceTransformersDocumentEmbedder:
     def test_model_onnx_quantization(self):
         documents = [Document(content="document number 0"), Document(content="document number 1")]
         onnx_embedder = SentenceTransformersDocumentEmbedder(
-            model="sentence-transformers/all-MiniLM-L6-v2", backend="onnx"
+            model="sentence-transformers/all-MiniLM-L6-v2",
+            backend="onnx",
+            model_kwargs={
+                "file_name": "onnx/model.onnx"
+            },  # setting the path isn't necessary if the repo contains a "onnx/model.onnx" file but this is to prevent a HF warning
         )
         onnx_embedder.warm_up()
 
@@ -365,7 +369,11 @@ class TestSentenceTransformersDocumentEmbedder:
     def test_model_openvino_quantization(self):
         documents = [Document(content="document number 0"), Document(content="document number 1")]
         openvino_embedder = SentenceTransformersDocumentEmbedder(
-            model="sentence-transformers/all-MiniLM-L6-v2", backend="openvino"
+            model="sentence-transformers/all-MiniLM-L6-v2",
+            backend="openvino",
+            model_kwargs={
+                "file_name": "openvino/openvino_model.xml"
+            },  # setting the path isn't necessary if the repo contains a "openvino/openvino_model.xml" file but this is to prevent a HF warning
         )
         openvino_embedder.warm_up()
 
