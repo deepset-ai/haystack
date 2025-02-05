@@ -33,9 +33,6 @@ from haystack.core.pipeline.component_checks import (
     is_any_greedy_socket_ready,
     is_socket_lazy_variadic,
 )
-from haystack.core.pipeline.descriptions import find_pipeline_inputs, find_pipeline_outputs
-from haystack.core.pipeline.draw import _to_mermaid_image
-from haystack.core.pipeline.template import PipelineTemplate, PredefinedPipeline
 from haystack.core.pipeline.utils import FIFOPriorityQueue, parse_connect_string
 from haystack.core.serialization import DeserializationCallbacks, component_from_dict, component_to_dict
 from haystack.core.type_utils import _type_name, _types_are_compatible
@@ -45,7 +42,6 @@ from haystack.utils import is_in_jupyter, type_serialization
 from .descriptions import find_pipeline_inputs, find_pipeline_outputs
 from .draw import _to_mermaid_image
 from .template import PipelineTemplate, PredefinedPipeline
-from .utils import parse_connect_string
 
 DEFAULT_MARSHALLER = YamlMarshaller()
 
