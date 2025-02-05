@@ -73,7 +73,10 @@ class CSVDocumentSplitter:
             )
             for split_df in split_dfs:
                 cleaned_documents.append(
-                    Document(content=split_df.to_csv(index=False, header=False), meta=document.meta.copy())
+                    Document(
+                        content=split_df.to_csv(index=False, header=False, lineterminator="\n"),
+                        meta=document.meta.copy(),
+                    )
                 )
 
         return {"documents": cleaned_documents}
