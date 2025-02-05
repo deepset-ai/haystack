@@ -112,6 +112,8 @@ class CSVDocumentCleaner:
                 final_df = pd.concat([ignored_columns, final_df], axis=1)
 
             cleaned_documents.append(
-                Document(content=final_df.to_csv(index=False, header=False), meta=document.meta.copy())
+                Document(
+                    content=final_df.to_csv(index=False, header=False, lineterminator="\n"), meta=document.meta.copy()
+                )
             )
         return {"documents": cleaned_documents}
