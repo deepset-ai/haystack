@@ -261,10 +261,11 @@ class TestSentenceTransformersTextEmbedder:
             embedder.run(text=list_integers_input)
 
     @pytest.mark.integration
-    def test_run_trunc(self):
+    def test_run_trunc(self, monkeypatch):
         """
         sentence-transformers/paraphrase-albert-small-v2 maps sentences & paragraphs to a 768 dimensional dense vector space
         """
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
         checkpoint = "sentence-transformers/paraphrase-albert-small-v2"
         text = "a nice text to embed"
 
