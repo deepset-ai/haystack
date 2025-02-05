@@ -189,9 +189,9 @@ class AsyncPipeline(PipelineBase):
                 if result:
                     yield {component_name: deepcopy(result)}
 
-            async def _schedule_ready_task(component_name: str) -> None:
+            async def _schedule_task(component_name: str) -> None:
                 """
-                Schedule a component that is considered READY (or just turned READY).
+                Schedule a component to run.
 
                 We do NOT wait for it to finish here. This allows us to run other components concurrently.
 
@@ -247,48 +247,6 @@ class AsyncPipeline(PipelineBase):
                         if partial_result:
                             yield {finished_component_name: deepcopy(partial_result)}
 
-            async def _schedule_defer_incrementally(component_name: str) -> AsyncIterator[Dict[str, Any]]:
-                """
-                Schedule a component that has priority DEFER or DEFER_LAST.
-
-                Waits for tasks to complete one-by-one. Schedules the component as soon as it turns READY.
-                If the component does not turn READY, it drains the queue completely before scheduling the component.
-
-                :param component_name: The name of the component.
-                :returns: An async iterator of partial outputs.
-                """
-                comp_dict = self._get_component_with_graph_metadata_and_visits(
-                    component_name, component_visits[component_name]
-                )
-                while True:
-                    # Already scheduled => stop
-                    if component_name in scheduled_components:
-                        return
-                    # Priority is recalculated after each completed task
-
-                    new_prio = self._calculate_priority(comp_dict, inputs_state.get(component_name, {}))
-                    if new_prio == ComponentPriority.READY:
-                        # It's now ready => schedule it
-                        await _schedule_ready_task(component_name)
-                        return
-
-                    elif new_prio == ComponentPriority.HIGHEST:
-                        # Edge case: somehow became HIGHEST => run in isolation
-                        async for partial_out in _run_highest_in_isolation(component_name):
-                            yield partial_out
-                        return
-
-                    # else it remains DEFER or DEFER_LAST, keep waiting
-                    if running_tasks:
-                        # Wait for just one task to finish
-                        async for part in _wait_for_one_task_to_complete():
-                            yield part
-                    else:
-                        # No tasks left => schedule anyway (end of pipeline)
-                        # This ensures we don't deadlock forever.
-                        await _schedule_ready_task(component_name)
-                        return
-
             # -------------------------------------------------
             # MAIN SCHEDULING LOOP
             # -------------------------------------------------
@@ -323,7 +281,7 @@ class AsyncPipeline(PipelineBase):
 
                 if priority == ComponentPriority.READY:
                     # 1) schedule this one
-                    await _schedule_ready_task(component_name)
+                    await _schedule_task(component_name)
 
                     # 2) Possibly schedule more READY tasks if concurrency not fully used
                     while len(priority_queue) > 0 and not ready_sem.locked():
@@ -333,7 +291,7 @@ class AsyncPipeline(PipelineBase):
                             break
                         if peek_prio == ComponentPriority.READY:
                             priority_queue.pop()
-                            await _schedule_ready_task(peek_name)
+                            await _schedule_task(peek_name)
                             # keep adding while concurrency is not locked
                             continue
 
@@ -341,20 +299,13 @@ class AsyncPipeline(PipelineBase):
                         # We'll handle it in the next iteration or with incremental waiting
                         break
 
-                    # 3) Wait for at least 1 task to finish => yield partial
-                    async for partial_result in _wait_for_one_task_to_complete():
-                        yield partial_result
-
-                elif priority in (ComponentPriority.DEFER, ComponentPriority.DEFER_LAST) and running_tasks:
-                    # We do incremental waiting
-                    async for partial_result in _wait_for_one_task_to_complete():
-                        yield partial_result
-
+                # We only schedule components with priority DEFER or DEFER_LAST when no other tasks are running
                 elif priority in (ComponentPriority.DEFER, ComponentPriority.DEFER_LAST) and not running_tasks:
-                    await _schedule_ready_task(component_name)
+                    await _schedule_task(component_name)
 
-                    async for partial_result in _wait_for_one_task_to_complete():
-                        yield partial_result
+                # To make progress, we wait for one task to complete before re-starting the loop
+                async for partial_result in _wait_for_one_task_to_complete():
+                    yield partial_result
 
             # End main loop
 
