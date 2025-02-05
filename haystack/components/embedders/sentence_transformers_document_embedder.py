@@ -160,8 +160,8 @@ class SentenceTransformersDocumentEmbedder:
             model_kwargs=self.model_kwargs,
             tokenizer_kwargs=self.tokenizer_kwargs,
             config_kwargs=self.config_kwargs,
-            encode_kwargs=self.encode_kwargs,
             precision=self.precision,
+            encode_kwargs=self.encode_kwargs,
         )
         if serialization_dict["init_parameters"].get("model_kwargs") is not None:
             serialize_hf_model_kwargs(serialization_dict["init_parameters"]["model_kwargs"])

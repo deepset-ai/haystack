@@ -49,8 +49,8 @@ class SentenceTransformersTextEmbedder:
         model_kwargs: Optional[Dict[str, Any]] = None,
         tokenizer_kwargs: Optional[Dict[str, Any]] = None,
         config_kwargs: Optional[Dict[str, Any]] = None,
-        encode_kwargs: Optional[Dict[str, Any]] = None,
         precision: Literal["float32", "int8", "uint8", "binary", "ubinary"] = "float32",
+        encode_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
         Create a SentenceTransformersTextEmbedder component.
