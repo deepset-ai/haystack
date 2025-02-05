@@ -102,8 +102,8 @@ class TestSentenceTransformersDocumentEmbedder:
             model_kwargs={"torch_dtype": torch.float32},
             tokenizer_kwargs={"model_max_length": 512},
             config_kwargs={"use_memory_efficient_attention": True},
-            encode_kwargs={"task": "clustering"},
             precision="int8",
+            encode_kwargs={"task": "clustering"},
         )
         data = component.to_dict()
 
@@ -125,8 +125,8 @@ class TestSentenceTransformersDocumentEmbedder:
                 "model_kwargs": {"torch_dtype": "torch.float32"},
                 "tokenizer_kwargs": {"model_max_length": 512},
                 "config_kwargs": {"use_memory_efficient_attention": True},
-                "encode_kwargs": {"task": "clustering"},
                 "precision": "int8",
+                "encode_kwargs": {"task": "clustering"},
             },
         }
 
