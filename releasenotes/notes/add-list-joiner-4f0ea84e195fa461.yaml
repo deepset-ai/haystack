@@ -1,4 +1,4 @@
 ---
 features:
   - |
-    Added component ListJoiner to join lists of values from different components to a single list.
+    Added a new component `ListJoiner` which joins lists of values from different components to a single list.

@@ -65,15 +65,15 @@ class ListJoiner:
     ```
     """
 
-    def __init__(self, type_: Type):
+    def __init__(self, list_type_: Type):
         """
         Creates a ListJoiner component.
 
-        :param type_: The type of list that this joiner will handle (e.g., List[ChatMessage]).
+        :param list_type_: The type of list that this joiner will handle (e.g., List[ChatMessage]).
                      All input lists must be of this type.
         """
-        self.type_ = type_
-        component.set_output_types(self, values=type_)
+        self.list_type_ = list_type_
+        component.set_output_types(self, values=list_type_)
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -81,7 +81,7 @@ class ListJoiner:
 
         :returns: Dictionary with serialized data.
         """
-        return default_to_dict(self, type_=serialize_type(self.type_))
+        return default_to_dict(self, list_type_=serialize_type(self.list_type_))
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ListJoiner":
@@ -91,7 +91,7 @@ class ListJoiner:
         :param data: Dictionary to deserialize from.
         :returns: Deserialized component.
         """
-        data["init_parameters"]["type_"] = deserialize_type(data["init_parameters"]["type_"])
+        data["init_parameters"]["list_type_"] = deserialize_type(data["init_parameters"]["list_type_"])
         return default_from_dict(cls, data)
 
     def run(self, values: Variadic[Any]) -> Dict[str, Any]:

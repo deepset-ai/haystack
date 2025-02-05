@@ -14,24 +14,24 @@ class TestListJoiner:
     def test_init(self):
         joiner = ListJoiner(List[ChatMessage])
         assert isinstance(joiner, ListJoiner)
-        assert joiner.type_ == List[ChatMessage]
+        assert joiner.list_type_ == List[ChatMessage]
 
     def test_to_dict(self):
         joiner = ListJoiner(List[ChatMessage])
         data = joiner.to_dict()
         assert data == {
             "type": "haystack.components.joiners.list_joiner.ListJoiner",
-            "init_parameters": {"type_": "typing.List[haystack.dataclasses.chat_message.ChatMessage]"},
+            "init_parameters": {"list_type_": "typing.List[haystack.dataclasses.chat_message.ChatMessage]"},
         }
 
     def test_from_dict(self):
         data = {
             "type": "haystack.components.joiners.list_joiner.ListJoiner",
-            "init_parameters": {"type_": "typing.List[haystack.dataclasses.chat_message.ChatMessage]"},
+            "init_parameters": {"list_type_": "typing.List[haystack.dataclasses.chat_message.ChatMessage]"},
         }
         list_joiner = ListJoiner.from_dict(data)
         assert isinstance(list_joiner, ListJoiner)
-        assert list_joiner.type_ == List[ChatMessage]
+        assert list_joiner.list_type_ == List[ChatMessage]
 
     def test_empty_list(self):
         joiner = ListJoiner(List[ChatMessage])
