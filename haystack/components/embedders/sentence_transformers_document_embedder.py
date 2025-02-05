@@ -107,7 +107,6 @@ class SentenceTransformersDocumentEmbedder:
             They are useful for reducing the size of the embeddings of a corpus for semantic search, among other tasks.
         :param encode_kwargs:
             Additional keyword arguments for `SentenceTransformer.encode` when embedding documents.
-
             This parameter is provided for fine customization. Be careful not to clash with already set parameters and
             avoid passing parameters that change the output type.
         """
