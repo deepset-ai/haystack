@@ -137,7 +137,8 @@ class TestTransformersZeroShotDocumentClassifier:
         assert result["documents"][1].to_dict()["classification"]["label"] == "negative"
 
     @pytest.mark.integration
-    def test_run(self):
+    def test_run(self, monkeypatch):
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
         component = TransformersZeroShotDocumentClassifier(
             model="cross-encoder/nli-deberta-v3-xsmall", labels=["positive", "negative"]
         )

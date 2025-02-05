@@ -76,6 +76,11 @@ class MetadataRouter:
             ```
         """
         self.rules = rules
+        for rule in self.rules.values():
+            if "operator" not in rule:
+                raise ValueError(
+                    "Invalid filter syntax. See https://docs.haystack.deepset.ai/docs/metadata-filtering for details."
+                )
         component.set_output_types(self, unmatched=List[Document], **{edge: List[Document] for edge in rules})
 
     def run(self, documents: List[Document]):
@@ -95,11 +100,6 @@ class MetadataRouter:
         for document in documents:
             cur_document_matched = False
             for edge, rule in self.rules.items():
-                if "operator" not in rule:
-                    raise ValueError(
-                        "Invalid filter syntax. "
-                        "See https://docs.haystack.deepset.ai/docs/metadata-filtering for details."
-                    )
                 if document_matches_filter(rule, document):
                     output[edge].append(document)
                     cur_document_matched = True

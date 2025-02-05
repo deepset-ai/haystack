@@ -776,7 +776,8 @@ class TestDeduplication:
 
 
 @pytest.mark.integration
-def test_t5():
+def test_t5(monkeypatch):
+    monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
     reader = ExtractiveReader("sjrhuschlee/flan-t5-base-squad2")
     reader.warm_up()
     answers = reader.run(example_queries[0], example_documents[0], top_k=2)[
@@ -800,7 +801,8 @@ def test_t5():
 
 
 @pytest.mark.integration
-def test_roberta():
+def test_roberta(monkeypatch):
+    monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
     reader = ExtractiveReader("deepset/tinyroberta-squad2")
     reader.warm_up()
     answers = reader.run(example_queries[0], example_documents[0], top_k=2)[
@@ -829,7 +831,8 @@ def test_roberta():
 
 
 @pytest.mark.integration
-def test_matches_hf_pipeline():
+def test_matches_hf_pipeline(monkeypatch):
+    monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
     reader = ExtractiveReader(
         "deepset/tinyroberta-squad2", device=ComponentDevice.from_str("cpu"), overlap_threshold=None
     )
