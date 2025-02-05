@@ -90,13 +90,16 @@ class SentenceTransformersTextEmbedder:
             Refer to specific model documentation for available kwargs.
         :param config_kwargs:
             Additional keyword arguments for `AutoConfig.from_pretrained` when loading the model configuration.
-        :param encode_kwargs:
-            Additional keyword arguments for `SentenceTransformer.encode` when embedding texts.
         :param precision:
             The precision to use for the embeddings.
             All non-float32 precisions are quantized embeddings.
             Quantized embeddings are smaller in size and faster to compute, but may have a lower accuracy.
             They are useful for reducing the size of the embeddings of a corpus for semantic search, among other tasks.
+        :param encode_kwargs:
+            Additional keyword arguments for `SentenceTransformer.encode` when embedding texts.
+
+            This parameter is provided for fine customization. Be careful not to clash with already set parameters and
+            avoid passing parameters that change the output type.
         """
 
         self.model = model
