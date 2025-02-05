@@ -291,6 +291,7 @@ class TestSentenceTransformersDiversityRanker:
                 model_name_or_path="mock_model_name",
                 device=ComponentDevice.resolve_device(None).to_torch_str(),
                 use_auth_token=None,
+                backend="torch",
             )
             assert ranker.model == mock_model_instance
 
@@ -674,8 +675,11 @@ class TestSentenceTransformersDiversityRanker:
         assert result_content == expected_content
 
     @pytest.mark.integration
-    @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
-    def test_run_with_maximum_margin_relevance_strategy(self, similarity, monkeypatch):
+    @pytest.mark.parametrize(
+        "similarity,backend",
+        [("dot_product", "torch"), ("dot_product", "onnx"), ("cosine", "torch"), ("cosine", "onnx")],
+    )  # we don't use "openvino" due to dependency issues
+    def test_run_with_maximum_margin_relevance_strategy(self, similarity, backend, monkeypatch):
         monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
         query = "renewable energy sources"
         docs = [
@@ -690,7 +694,10 @@ class TestSentenceTransformersDiversityRanker:
         ]
 
         ranker = SentenceTransformersDiversityRanker(
-            model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity, strategy="maximum_margin_relevance"
+            model="sentence-transformers/all-MiniLM-L6-v2",
+            similarity=similarity,
+            strategy="maximum_margin_relevance",
+            backend=backend,
         )
         ranker.warm_up()
 

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.lazy_imports import LazyImport
@@ -126,6 +126,7 @@ class SentenceTransformersDiversityRanker:
         embedding_separator: str = "\n",
         strategy: Union[str, DiversityRankingStrategy] = "greedy_diversity_order",
         lambda_threshold: float = 0.5,
+        backend: Literal["torch", "onnx", "openvino"] = "torch",
     ):  # pylint: disable=too-many-positional-arguments
         """
         Initialize a SentenceTransformersDiversityRanker.
@@ -172,6 +173,7 @@ class SentenceTransformersDiversityRanker:
         self.strategy = DiversityRankingStrategy.from_str(strategy) if isinstance(strategy, str) else strategy
         self.lambda_threshold = lambda_threshold or 0.5
         self._check_lambda_threshold(self.lambda_threshold, self.strategy)
+        self.backend = backend
 
     def warm_up(self):
         """
@@ -182,6 +184,7 @@ class SentenceTransformersDiversityRanker:
                 model_name_or_path=self.model_name_or_path,
                 device=self.device.to_torch_str(),
                 use_auth_token=self.token.resolve_value() if self.token else None,
+                backend=self.backend,
             )
 
     def to_dict(self) -> Dict[str, Any]:

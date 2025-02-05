@@ -28,7 +28,7 @@ class _SentenceTransformersEmbeddingBackendFactory:
         model_kwargs: Optional[Dict[str, Any]] = None,
         tokenizer_kwargs: Optional[Dict[str, Any]] = None,
         config_kwargs: Optional[Dict[str, Any]] = None,
-        backend: Optional[Literal["torch", "onnx", "openvino"]] = "torch",
+        backend: Literal["torch", "onnx", "openvino"] = "torch",
     ):
         embedding_backend_id = f"{model}{device}{auth_token}{truncate_dim}{backend}"
 
@@ -64,14 +64,9 @@ class _SentenceTransformersEmbeddingBackend:
         model_kwargs: Optional[Dict[str, Any]] = None,
         tokenizer_kwargs: Optional[Dict[str, Any]] = None,
         config_kwargs: Optional[Dict[str, Any]] = None,
-        backend: Optional[Literal["torch", "onnx", "openvino"]] = "torch",
+        backend: Literal["torch", "onnx", "openvino"] = "torch",
     ):
         sentence_transformers_import.check()
-
-        # this line is necessary to avoid an arg-type error for the type checker
-        # or we can make backend not optional
-        if backend is None:
-            backend = "torch"
 
         self.model = SentenceTransformer(
             model_name_or_path=model,
