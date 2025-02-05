@@ -454,8 +454,9 @@ class TestHuggingFaceLocalGenerator:
         assert criteria(generated_text_ids, scores=None) is True
 
     @pytest.mark.integration
-    def test_hf_pipeline_runs_with_our_criteria(self):
+    def test_hf_pipeline_runs_with_our_criteria(self, monkeypatch):
         """Test that creating our own StopWordsCriteria and passing it to a Huggingface pipeline works."""
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
         generator = HuggingFaceLocalGenerator(
             model="google/flan-t5-small", task="text2text-generation", stop_words=["unambiguously"]
         )
@@ -466,7 +467,8 @@ class TestHuggingFaceLocalGenerator:
 
     @pytest.mark.integration
     @pytest.mark.flaky(reruns=3, reruns_delay=10)
-    def test_live_run(self):
+    def test_live_run(self, monkeypatch):
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
         llm = HuggingFaceLocalGenerator(model="Qwen/Qwen2.5-0.5B-Instruct", generation_kwargs={"max_new_tokens": 50})
         llm.warm_up()
 
