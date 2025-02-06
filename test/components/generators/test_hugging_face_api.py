@@ -7,6 +7,7 @@ from datetime import datetime
 
 import pytest
 from huggingface_hub import (
+    TextGenerationOutput,
     TextGenerationOutputToken,
     TextGenerationStreamOutput,
     TextGenerationStreamOutputStreamDetails,
@@ -30,7 +31,7 @@ def mock_check_valid_model():
 @pytest.fixture
 def mock_text_generation():
     with patch("huggingface_hub.InferenceClient.text_generation", autospec=True) as mock_text_generation:
-        mock_response = Mock()
+        mock_response = Mock(spec=TextGenerationOutput)
         mock_response.generated_text = "I'm fine, thanks."
         details = Mock()
         details.finish_reason = MagicMock(field1="value")
