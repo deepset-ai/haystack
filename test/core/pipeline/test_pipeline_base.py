@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+
 import logging
 from typing import List, Optional
 from unittest.mock import patch
@@ -8,8 +9,6 @@ from unittest.mock import patch
 import pytest
 
 from haystack import Document
-from haystack.components.builders import PromptBuilder, AnswerBuilder
-from haystack.components.joiners import BranchJoiner
 from haystack.core.component import component
 from haystack.core.component.types import InputSocket, OutputSocket, Variadic, GreedyVariadic, _empty
 from haystack.core.errors import (
@@ -17,7 +16,6 @@ from haystack.core.errors import (
     PipelineConnectError,
     PipelineDrawingError,
     PipelineError,
-    PipelineRuntimeError,
     PipelineMaxComponentRuns,
 )
 from haystack.core.pipeline import PredefinedPipeline
