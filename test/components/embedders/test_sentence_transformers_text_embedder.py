@@ -360,6 +360,7 @@ class TestSentenceTransformersTextEmbedder:
         assert len(openvino_embedding_def) == 384
         assert openvino_embedding_def[0] == pytest.approx(0.0, abs=0.1)
 
+    @pytest.mark.skip(reason="Test env doesn't compile Torch with CUDA support")
     @pytest.mark.integration
     @pytest.mark.parametrize("model_kwargs", [{"torch_dtype": "bfloat16"}, {"torch_dtype": "float16"}])
     def test_dtype_on_gpu(self, model_kwargs, monkeypatch):

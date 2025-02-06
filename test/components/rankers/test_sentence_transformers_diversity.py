@@ -732,6 +732,7 @@ class TestSentenceTransformersDiversityRanker:
         ]
         assert [doc.content for doc in results["documents"]] == expected
 
+    @pytest.mark.skip(reason="Test env doesn't compile Torch with CUDA support")
     @pytest.mark.integration
     @pytest.mark.parametrize("model_kwargs", [{"torch_dtype": "float16"}, {"torch_dtype": "bfloat16"}])
     def test_run_with_maximum_margin_relevance_strategy(self, model_kwargs, monkeypatch):
@@ -750,6 +751,7 @@ class TestSentenceTransformersDiversityRanker:
 
         ranker = SentenceTransformersDiversityRanker(
             model="sentence-transformers/all-MiniLM-L6-v2",
+            device=ComponentDevice.from_str("cuda:0"),
             strategy="maximum_margin_relevance",
             model_kwargs=model_kwargs,
         )
