@@ -4,7 +4,7 @@
 
 from dataclasses import asdict
 from datetime import datetime
-from typing import Any, Callable, Dict, Iterable, List, Optional, Union
+from typing import Any, Callable, Dict, Iterable, List, Optional, Union, cast
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import StreamingChunk
@@ -212,8 +212,8 @@ class HuggingFaceAPIGenerator:
         if streaming_callback is not None:
             return self._stream_and_build_response(hf_output, streaming_callback)
 
-        assert isinstance(hf_output, TextGenerationOutput)  # The output is non streaming, but mypy doesn't know that.
-        return self._build_non_streaming_response(hf_output)
+        # mypy doesn't know that hf_output is a TextGenerationOutput, so we cast it
+        return self._build_non_streaming_response(cast(TextGenerationOutput, hf_output))
 
     def _stream_and_build_response(
         self, hf_output: Iterable["TextGenerationStreamOutput"], streaming_callback: Callable[[StreamingChunk], None]
