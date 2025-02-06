@@ -291,6 +291,9 @@ class TestSentenceTransformersDiversityRanker:
                 model_name_or_path="mock_model_name",
                 device=ComponentDevice.resolve_device(None).to_torch_str(),
                 use_auth_token=None,
+                model_kwargs=None,
+                tokenizer_kwargs=None,
+                config_kwargs=None,
                 backend="torch",
             )
             assert ranker.model == mock_model_instance
@@ -698,6 +701,57 @@ class TestSentenceTransformersDiversityRanker:
             similarity=similarity,
             strategy="maximum_margin_relevance",
             backend=backend,
+        )
+        ranker.warm_up()
+
+        # lambda_threshold=1, the most relevant document should be returned first
+        results = ranker.run(query=query, documents=docs, lambda_threshold=1, top_k=len(docs))
+        expected = [
+            "Solar power generation",
+            "Wind turbine technology",
+            "Geothermal energy extraction",
+            "Hydroelectric dam systems",
+            "Biomass fuel production",
+            "Ancient Egyptian hieroglyphics",
+            "Baking sourdough bread",
+            "18th-century French literature",
+        ]
+        assert [doc.content for doc in results["documents"]] == expected
+
+        # lambda_threshold=0, after the most relevant one, diverse documents should be returned
+        results = ranker.run(query=query, documents=docs, lambda_threshold=0, top_k=len(docs))
+        expected = [
+            "Solar power generation",
+            "Ancient Egyptian hieroglyphics",
+            "Baking sourdough bread",
+            "18th-century French literature",
+            "Biomass fuel production",
+            "Hydroelectric dam systems",
+            "Geothermal energy extraction",
+            "Wind turbine technology",
+        ]
+        assert [doc.content for doc in results["documents"]] == expected
+
+    @pytest.mark.integration
+    @pytest.mark.parametrize("model_kwargs", [{"torch_dtype": "float16"}, {"torch_dtype": "bfloat16"}])
+    def test_run_with_maximum_margin_relevance_strategy(self, model_kwargs, monkeypatch):
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+        query = "renewable energy sources"
+        docs = [
+            Document(content="18th-century French literature"),
+            Document(content="Solar power generation"),
+            Document(content="Ancient Egyptian hieroglyphics"),
+            Document(content="Wind turbine technology"),
+            Document(content="Baking sourdough bread"),
+            Document(content="Hydroelectric dam systems"),
+            Document(content="Geothermal energy extraction"),
+            Document(content="Biomass fuel production"),
+        ]
+
+        ranker = SentenceTransformersDiversityRanker(
+            model="sentence-transformers/all-MiniLM-L6-v2",
+            strategy="maximum_margin_relevance",
+            model_kwargs=model_kwargs,
         )
         ranker.warm_up()
 

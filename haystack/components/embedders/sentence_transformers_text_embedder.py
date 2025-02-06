@@ -100,6 +100,10 @@ class SentenceTransformersTextEmbedder:
             Additional keyword arguments for `SentenceTransformer.encode` when embedding texts.
             This parameter is provided for fine customization. Be careful not to clash with already set parameters and
             avoid passing parameters that change the output type.
+        :param backend:
+            The backend to use for the Sentence Transformers model. Choose from "torch", "onnx", or "openvino".
+            Refer to the [Sentence Transformers documentation](https://sbert.net/docs/sentence_transformer/usage/efficiency.html)
+            for more information on acceleration and quantization options.
         """
 
         self.model = model

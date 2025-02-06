@@ -402,3 +402,22 @@ class TestSentenceTransformersDocumentEmbedder:
         assert len(result["documents"][0].embedding) == 384
         assert len(result["documents"][1].embedding) == 384
         assert result["documents"][0].embedding[0] == pytest.approx(0.0, abs=0.1)
+
+    @pytest.mark.integration
+    @pytest.mark.parametrize("model_kwargs", [{"torch_dtype": "bfloat16"}, {"torch_dtype": "float16"}])
+    def test_dtype_on_gpu(self, model_kwargs, monkeypatch):
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+        documents = [Document(content="document number 0"), Document(content="document number 1")]
+        torch_dtype_embedder = SentenceTransformersDocumentEmbedder(
+            model="sentence-transformers/all-MiniLM-L6-v2",
+            device=ComponentDevice.from_str("cuda:0"),
+            model_kwargs=model_kwargs,
+        )
+        torch_dtype_embedder.warm_up()
+
+        result = torch_dtype_embedder.run(documents=documents)
+
+        assert len(result["documents"]) == 2
+        assert len(result["documents"][0].embedding) == 384
+        assert len(result["documents"][1].embedding) == 384
+        assert result["documents"][0].embedding[0] == pytest.approx(0.0, abs=0.1)

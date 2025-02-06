@@ -359,3 +359,22 @@ class TestSentenceTransformersTextEmbedder:
 
         assert len(openvino_embedding_def) == 384
         assert openvino_embedding_def[0] == pytest.approx(0.0, abs=0.1)
+
+    @pytest.mark.integration
+    @pytest.mark.parametrize("model_kwargs", [{"torch_dtype": "bfloat16"}, {"torch_dtype": "float16"}])
+    def test_dtype_on_gpu(self, model_kwargs, monkeypatch):
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+        text = "a nice text to embed"
+
+        dtype_embedder_def = SentenceTransformersTextEmbedder(
+            model="sentence-transformers/all-MiniLM-L6-v2",
+            device=ComponentDevice.from_str("cuda:0"),
+            model_kwargs=model_kwargs,
+        )
+        dtype_embedder_def.warm_up()
+
+        dtype_result_def = dtype_embedder_def.run(text=text)
+        dtype_embedding_def = dtype_result_def["embedding"]
+
+        assert len(dtype_embedding_def) == 384
+        assert dtype_embedding_def[0] == pytest.approx(0.0, abs=0.1)
