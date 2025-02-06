@@ -1,11 +1,11 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from datetime import datetime
+
 from pathlib import Path
 from test.tracing.utils import SpyingTracer
 from typing import Generator, Dict
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 import time

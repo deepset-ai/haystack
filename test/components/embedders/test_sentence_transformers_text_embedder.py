@@ -1,11 +1,11 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+import random
 from unittest.mock import MagicMock, patch
 
-import torch
-import random
 import pytest
+import torch
 
 from haystack.components.embedders.sentence_transformers_text_embedder import SentenceTransformersTextEmbedder
 from haystack.utils import ComponentDevice, Secret
@@ -70,6 +70,7 @@ class TestSentenceTransformersTextEmbedder:
                 "truncate_dim": None,
                 "model_kwargs": None,
                 "tokenizer_kwargs": None,
+                "encode_kwargs": None,
                 "config_kwargs": None,
                 "precision": "float32",
             },
@@ -91,6 +92,7 @@ class TestSentenceTransformersTextEmbedder:
             tokenizer_kwargs={"model_max_length": 512},
             config_kwargs={"use_memory_efficient_attention": False},
             precision="int8",
+            encode_kwargs={"task": "clustering"},
         )
         data = component.to_dict()
         assert data == {
@@ -110,6 +112,7 @@ class TestSentenceTransformersTextEmbedder:
                 "tokenizer_kwargs": {"model_max_length": 512},
                 "config_kwargs": {"use_memory_efficient_attention": False},
                 "precision": "int8",
+                "encode_kwargs": {"task": "clustering"},
             },
         }
 
@@ -297,3 +300,17 @@ class TestSentenceTransformersTextEmbedder:
 
         assert len(embedding_def) == 768
         assert all(isinstance(el, int) for el in embedding_def)
+
+    def test_embed_encode_kwargs(self):
+        embedder = SentenceTransformersTextEmbedder(model="model", encode_kwargs={"task": "retrieval.query"})
+        embedder.embedding_backend = MagicMock()
+        text = "a nice text to embed"
+        embedder.run(text=text)
+        embedder.embedding_backend.embed.assert_called_once_with(
+            [text],
+            batch_size=32,
+            show_progress_bar=True,
+            normalize_embeddings=False,
+            precision="float32",
+            task="retrieval.query",
+        )

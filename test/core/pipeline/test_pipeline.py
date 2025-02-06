@@ -2,14 +2,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Optional
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
 from haystack.components.joiners import BranchJoiner
 from haystack.core.component import component
-from haystack.core.component.types import InputSocket, OutputSocket, Variadic
 from haystack.core.errors import PipelineRuntimeError
 from haystack.core.pipeline import Pipeline
 

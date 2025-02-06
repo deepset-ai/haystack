@@ -1,5 +1,8 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
-from typing import Dict, Any
 
 from haystack.core.pipeline.component_checks import *
 from haystack.core.pipeline.component_checks import _NO_OUTPUT_PRODUCED
