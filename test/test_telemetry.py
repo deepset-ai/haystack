@@ -12,10 +12,8 @@ from haystack.core.serialization import generate_qualified_class_name
 from haystack.telemetry._telemetry import pipeline_running
 from haystack.utils.auth import Secret, TokenSecret
 
-@pytest.mark.parametrize(
-    "pipeline_class",
-    [Pipeline, AsyncPipeline]
-)
+
+@pytest.mark.parametrize("pipeline_class", [Pipeline, AsyncPipeline])
 @patch("haystack.telemetry._telemetry.telemetry")
 def test_pipeline_running(telemetry, pipeline_class):
     telemetry.send_event = Mock()
