@@ -2,12 +2,15 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import json
+import re
 import sys
 from typing import Any, Callable, Dict, List, Literal, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.dataclasses import ChatMessage, StreamingChunk
+from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall
 from haystack.lazy_imports import LazyImport
+from haystack.tools import Tool, _check_duplicate_tool_names
 from haystack.utils import (
     ComponentDevice,
     Secret,
@@ -32,6 +35,12 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as torch_an
 
 
 PIPELINE_SUPPORTED_TASKS = ["text-generation", "text2text-generation"]
+
+DEFAULT_TOOL_PATTERN = (
+    r"(?:<tool_call>)?"
+    r'(?:\s*\{.*?"name"\s*:\s*"([^"]+)".*?"arguments"\s*:\s*(\{[^}]+\}).*?\}'
+    r'|\{.*?"function"\s*:\s*\{.*?"name"\s*:\s*"([^"]+)".*?"arguments"\s*:\s*(\{[^}]+\}).*?\})'
+)
 
 
 @component
@@ -83,6 +92,8 @@ class HuggingFaceLocalChatGenerator:
         huggingface_pipeline_kwargs: Optional[Dict[str, Any]] = None,
         stop_words: Optional[List[str]] = None,
         streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
+        tools: Optional[List[Tool]] = None,
+        tool_pattern: Optional[Union[str, Callable[[str], Optional[List[ToolCall]]]]] = None,
     ):
         """
         Initializes the HuggingFaceLocalChatGenerator component.
@@ -121,8 +132,18 @@ class HuggingFaceLocalChatGenerator:
             For some chat models, the output includes both the new text and the original prompt.
             In these cases, make sure your prompt has no stop words.
         :param streaming_callback: An optional callable for handling streaming responses.
+        :param tools: A list of tools for which the model can prepare calls.
+        :param tool_pattern:
+            A pattern or callable to parse tool calls from model output.
+            If a string, it will be used as a regex pattern to extract ToolCall object.
+            If a callable, it should take a string and return a ToolCall object or None.
+            If None, a default pattern will be used.
         """
         torch_and_transformers_import.check()
+
+        if tools and streaming_callback is not None:
+            raise ValueError("Using tools and streaming at the same time is not supported. Please choose one.")
+        _check_duplicate_tool_names(tools)
 
         huggingface_pipeline_kwargs = huggingface_pipeline_kwargs or {}
         generation_kwargs = generation_kwargs or {}
@@ -167,11 +188,13 @@ class HuggingFaceLocalChatGenerator:
         generation_kwargs["stop_sequences"] = generation_kwargs.get("stop_sequences", [])
         generation_kwargs["stop_sequences"].extend(stop_words or [])
 
+        self.tool_pattern = tool_pattern or DEFAULT_TOOL_PATTERN
         self.huggingface_pipeline_kwargs = huggingface_pipeline_kwargs
         self.generation_kwargs = generation_kwargs
         self.chat_template = chat_template
         self.streaming_callback = streaming_callback
         self.pipeline = None
+        self.tools = tools
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -238,6 +261,7 @@ class HuggingFaceLocalChatGenerator:
         messages: List[ChatMessage],
         generation_kwargs: Optional[Dict[str, Any]] = None,
         streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
+        tools: Optional[List[Tool]] = None,
     ):
         """
         Invoke text generation inference based on the provided messages and generation parameters.
@@ -245,11 +269,19 @@ class HuggingFaceLocalChatGenerator:
         :param messages: A list of ChatMessage objects representing the input messages.
         :param generation_kwargs: Additional keyword arguments for text generation.
         :param streaming_callback: An optional callable for handling streaming responses.
+        :param tools:
+            A list of tools for which the model can prepare calls. If set, it will override the `tools` parameter
+            provided during initialization.
         :returns:
             A list containing the generated responses as ChatMessage instances.
         """
         if self.pipeline is None:
             raise RuntimeError("The generation model has not been loaded. Please call warm_up() before running.")
+
+        tools = tools or self.tools
+        if tools and streaming_callback is not None:
+            raise ValueError("Using tools and streaming at the same time is not supported. Please choose one.")
+        _check_duplicate_tool_names(tools)
 
         tokenizer = self.pipeline.tokenizer
 
@@ -279,11 +311,14 @@ class HuggingFaceLocalChatGenerator:
             # streamer parameter hooks into HF streaming, HFTokenStreamingHandler is an adapter to our streaming
             generation_kwargs["streamer"] = HFTokenStreamingHandler(tokenizer, streaming_callback, stop_words)
 
+        # convert messages to HF format
         hf_messages = [convert_message_to_hf_format(message) for message in messages]
-
-        # Prepare the prompt for the model
         prepared_prompt = tokenizer.apply_chat_template(
-            hf_messages, tokenize=False, chat_template=self.chat_template, add_generation_prompt=True
+            hf_messages,
+            tokenize=False,
+            chat_template=self.chat_template,
+            add_generation_prompt=True,
+            tools=[tc.tool_spec for tc in tools] if tools else None,
         )
 
         # Avoid some unnecessary warnings in the generation pipeline call
@@ -299,11 +334,13 @@ class HuggingFaceLocalChatGenerator:
         for stop_word in stop_words:
             replies = [reply.replace(stop_word, "").rstrip() for reply in replies]
 
-        # Create ChatMessage instances for each reply
         chat_messages = [
-            self.create_message(reply, r_index, tokenizer, prepared_prompt, generation_kwargs)
+            self.create_message(
+                reply, r_index, tokenizer, prepared_prompt, generation_kwargs, parse_tool_calls=bool(tools)
+            )
             for r_index, reply in enumerate(replies)
         ]
+
         return {"replies": chat_messages}
 
     def create_message(  # pylint: disable=too-many-positional-arguments
@@ -313,6 +350,7 @@ class HuggingFaceLocalChatGenerator:
         tokenizer: Union["PreTrainedTokenizer", "PreTrainedTokenizerFast"],
         prompt: str,
         generation_kwargs: Dict[str, Any],
+        parse_tool_calls: bool = False,
     ) -> ChatMessage:
         """
         Create a ChatMessage instance from the provided text, populated with metadata.
@@ -322,17 +360,23 @@ class HuggingFaceLocalChatGenerator:
         :param tokenizer: The tokenizer used for generation.
         :param prompt: The prompt used for generation.
         :param generation_kwargs: The generation parameters.
+        :param parse_tool_calls: Whether to attempt parsing tool calls from the text.
         :returns: A ChatMessage instance.
         """
+
         completion_tokens = len(tokenizer.encode(text, add_special_tokens=False))
         prompt_token_count = len(tokenizer.encode(prompt, add_special_tokens=False))
         total_tokens = prompt_token_count + completion_tokens
 
-        # not the most sophisticated finish_reason detection, improve later to match
-        # https://platform.openai.com/docs/guides/text-generation/chat-completions-response-format
-        finish_reason = (
-            "length" if completion_tokens >= generation_kwargs.get("max_new_tokens", sys.maxsize) else "stop"
-        )
+        tool_calls = self._parse_tool_call(text) if parse_tool_calls else None
+
+        # Determine finish reason based on context
+        if completion_tokens >= generation_kwargs.get("max_new_tokens", sys.maxsize):
+            finish_reason = "length"
+        elif tool_calls:
+            finish_reason = "tool_calls"
+        else:
+            finish_reason = "stop"
 
         meta = {
             "finish_reason": finish_reason,
@@ -345,7 +389,7 @@ class HuggingFaceLocalChatGenerator:
             },
         }
 
-        return ChatMessage.from_assistant(text, meta=meta)
+        return ChatMessage.from_assistant(tool_calls=tool_calls, text=text, meta=meta)
 
     def _validate_stop_words(self, stop_words: Optional[List[str]]) -> Optional[List[str]]:
         """
@@ -362,6 +406,32 @@ class HuggingFaceLocalChatGenerator:
             )
             return None
 
-        # deduplicate stop words
-        stop_words = list(set(stop_words or []))
-        return stop_words
+        return list(set(stop_words or []))
+
+    def _parse_tool_call(self, text: str) -> Optional[List[ToolCall]]:
+        """
+        Parse a tool call from model output text.
+
+        :param text: The text to parse for tool calls.
+        :returns: A ToolCall object if a valid tool call is found, None otherwise.
+        """
+        # if the tool pattern is a callable, call it with the text and return the result
+        if callable(self.tool_pattern):
+            return self.tool_pattern(text)
+
+        # if the tool pattern is a regex pattern, search for it in the text
+        match = re.search(self.tool_pattern, text, re.DOTALL)
+        if not match:
+            return None
+
+        # seem like most models are not producing tool ids, so we omit them
+        # and just use the tool name and arguments
+        name = match.group(1) or match.group(3)
+        args_str = match.group(2) or match.group(4)
+
+        try:
+            arguments = json.loads(args_str)
+            return [ToolCall(tool_name=name, arguments=arguments)]
+        except json.JSONDecodeError:
+            logger.warning("Failed to parse tool call arguments: {args_str}", args_str=args_str)
+            return None
