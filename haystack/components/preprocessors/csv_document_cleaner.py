@@ -5,9 +5,11 @@
 from io import StringIO
 from typing import Dict, List
 
-import pandas as pd
-
 from haystack import Document, component, logging
+from haystack.lazy_imports import LazyImport
+
+with LazyImport("Run 'pip install pandas'") as pandas_import:
+    import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +36,7 @@ class CSVDocumentCleaner:
         """
         self.ignore_rows = ignore_rows
         self.ignore_columns = ignore_columns
+        pandas_import.check()
 
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document]) -> Dict[str, List[Document]]:
