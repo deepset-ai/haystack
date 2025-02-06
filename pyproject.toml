@@ -185,7 +185,7 @@ include = ["/haystack", "/VERSION.txt"]
 packages = ["haystack"]
 
 [tool.codespell]
-ignore-words-list = "ans,astroid,nd,ned,nin,ue,rouge,ist"
+ignore-words-list = "ans,astroid,nd,ned,nin,ue,rouge,ist, Claus"
 quiet-level = 3
 skip = "./test,./e2e"
 

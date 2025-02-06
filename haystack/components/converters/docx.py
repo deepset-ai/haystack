@@ -5,7 +5,7 @@
 import csv
 import io
 import os
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from enum import Enum
 from io import StringIO
 from pathlib import Path
@@ -189,7 +189,7 @@ class DOCXToDocument:
                 )
                 continue
 
-            docx_metadata = self._get_docx_metadata(document=docx_document)
+            docx_metadata = asdict(self._get_docx_metadata(document=docx_document))
             merged_metadata = {**bytestream.meta, **metadata, "docx": docx_metadata}
 
             if not self.store_full_path and "file_path" in bytestream.meta:
