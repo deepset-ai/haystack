@@ -212,7 +212,7 @@ class HuggingFaceAPIGenerator:
         if streaming_callback is not None:
             return self._stream_and_build_response(hf_output, streaming_callback)
 
-        assert isinstance(hf_output, TextGenerationOutput)  # to make mypy happy. We know that this is non streaming.
+        assert isinstance(hf_output, TextGenerationOutput)  # The output is non streaming, but mypy doesn't know that.
         return self._build_non_streaming_response(hf_output)
 
     def _stream_and_build_response(
