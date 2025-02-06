@@ -68,35 +68,31 @@ class CSVDocumentCleaner:
                 cleaned_documents.append(document)
                 continue
 
-            # Save ignored rows
-            ignored_rows = None
-            if ignore_rows > 0:
-                if ignore_rows > df.shape[0]:
-                    logger.warning(
-                        "Document {id} has fewer rows {shape} than the number of rows to ignore {rows}. "
-                        "Keeping the entire document.",
-                        id=document.id,
-                        shape=df.shape[0],
-                        rows=ignore_rows,
-                    )
-                    cleaned_documents.append(document)
-                    continue
-                ignored_rows = df.iloc[:ignore_rows, :]
+            if ignore_rows > df.shape[0]:
+                logger.warning(
+                    "Document {id} has fewer rows {shape} than the number of rows to ignore {rows}. "
+                    "Keeping the entire document.",
+                    id=document.id,
+                    shape=df.shape[0],
+                    rows=ignore_rows,
+                )
+                cleaned_documents.append(document)
+                continue
 
-            # Save ignored columns
-            ignored_columns = None
-            if ignore_columns > 0:
-                if ignore_columns > df.shape[1]:
-                    logger.warning(
-                        "Document {id} has fewer columns {shape} than the number of columns to ignore {columns}. "
-                        "Keeping the entire document.",
-                        id=document.id,
-                        shape=df.shape[1],
-                        columns=ignore_columns,
-                    )
-                    cleaned_documents.append(document)
-                    continue
-                ignored_columns = df.iloc[:, :ignore_columns]
+            if ignore_columns > df.shape[1]:
+                logger.warning(
+                    "Document {id} has fewer columns {shape} than the number of columns to ignore {columns}. "
+                    "Keeping the entire document.",
+                    id=document.id,
+                    shape=df.shape[1],
+                    columns=ignore_columns,
+                )
+                cleaned_documents.append(document)
+                continue
+
+            # Save ignored rows and columns
+            ignored_rows = df.iloc[:ignore_rows, :]
+            ignored_columns = df.iloc[:, :ignore_columns]
 
             # Drop rows and columns that are entirely empty
             remaining_df = df.iloc[ignore_rows:, ignore_columns:]
