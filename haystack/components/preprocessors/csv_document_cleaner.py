@@ -68,31 +68,29 @@ class CSVDocumentCleaner:
                 cleaned_documents.append(document)
                 continue
 
-            if ignore_rows > df.shape[0]:
+            if ignore_rows > df.shape[0] or ignore_columns > df.shape[1]:
                 logger.warning(
-                    "Document {id} has fewer rows {shape} than the number of rows to ignore {rows}. "
+                    "Document {id} has fewer rows {df_rows} or columns {df_cols} "
+                    "than the number of rows {rows} or columns {cols} to ignore. "
                     "Keeping the entire document.",
                     id=document.id,
-                    shape=df.shape[0],
+                    df_rows=df.shape[0],
+                    df_cols=df.shape[1],
                     rows=ignore_rows,
+                    cols=ignore_columns,
                 )
                 cleaned_documents.append(document)
                 continue
 
-            if ignore_columns > df.shape[1]:
-                logger.warning(
-                    "Document {id} has fewer columns {shape} than the number of columns to ignore {columns}. "
-                    "Keeping the entire document.",
-                    id=document.id,
-                    shape=df.shape[1],
-                    columns=ignore_columns,
-                )
-                cleaned_documents.append(document)
-                continue
+            # Save ignored rows
+            ignored_rows = None
+            if ignore_rows > 0:
+                ignored_rows = df.iloc[:ignore_rows, :]
 
-            # Save ignored rows and columns
-            ignored_rows = df.iloc[:ignore_rows, :]
-            ignored_columns = df.iloc[:, :ignore_columns]
+            # Save ignored columns
+            ignored_columns = None
+            if ignore_columns > 0:
+                ignored_columns = df.iloc[:, :ignore_columns]
 
             # Drop rows and columns that are entirely empty
             remaining_df = df.iloc[ignore_rows:, ignore_columns:]

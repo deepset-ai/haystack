@@ -132,3 +132,15 @@ def test_ignore_rows_and_columns() -> None:
     result = csv_document_cleaner.run([csv_document])
     cleaned_document = result["documents"][0]
     assert cleaned_document.content == ",A,B\n1,item,s\n2,item2,fd\n"
+
+
+def test_zero_ignore_rows_and_columns() -> None:
+    csv_content = """,A,B,C
+1,item,s,
+2,item2,fd,
+"""
+    csv_document = Document(content=csv_content)
+    csv_document_cleaner = CSVDocumentCleaner(ignore_columns=0, ignore_rows=0)
+    result = csv_document_cleaner.run([csv_document])
+    cleaned_document = result["documents"][0]
+    assert cleaned_document.content == ",A,B,C\n1,item,s,\n2,item2,fd,\n"
