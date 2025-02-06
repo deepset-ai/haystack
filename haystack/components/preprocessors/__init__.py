@@ -8,4 +8,4 @@ from .document_splitter import DocumentSplitter
 from .recursive_splitter import RecursiveDocumentSplitter
 from .text_cleaner import TextCleaner
 
-__all__ = ["DocumentSplitter", "DocumentCleaner", "RecursiveDocumentSplitter", "TextCleaner", "CSVDocumentCleaner"]
+__all__ = ["CSVDocumentCleaner", "DocumentCleaner", "DocumentSplitter", "RecursiveDocumentSplitter", "TextCleaner"]
