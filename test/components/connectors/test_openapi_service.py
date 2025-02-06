@@ -163,6 +163,33 @@ class TestOpenAPIServiceConnector:
             deserialized = OpenAPIServiceConnector.from_dict(serialized)
             assert deserialized.ssl_verify == test_val
 
+    def test_serde_in_pipeline(self):
+        """
+        Test serialization/deserialization of OpenAPIServiceConnector in a Pipeline,
+        including YAML conversion and detailed dictionary validation
+        """
+        connector = OpenAPIServiceConnector(ssl_verify=True)
+
+        pipeline = Pipeline()
+        pipeline.add_component("connector", connector)
+
+        pipeline_dict = pipeline.to_dict()
+        assert pipeline_dict == {
+            "metadata": {},
+            "max_runs_per_component": 100,
+            "components": {
+                "connector": {
+                    "type": "haystack.components.connectors.openapi_service.OpenAPIServiceConnector",
+                    "init_parameters": {"ssl_verify": True},
+                }
+            },
+            "connections": [],
+        }
+
+        pipeline_yaml = pipeline.dumps()
+        new_pipeline = Pipeline.loads(pipeline_yaml)
+        assert new_pipeline == pipeline
+
     @pytest.mark.skipif(not os.getenv("SERPERDEV_API_KEY"), reason="SERPERDEV_API_KEY is not set")
     @pytest.mark.skipif(not os.getenv("OPENAI_API_KEY"), reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
