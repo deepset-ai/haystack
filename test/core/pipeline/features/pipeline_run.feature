@@ -4,7 +4,7 @@ Feature: Pipeline running
         Given a pipeline <kind>
         When I run the Pipeline
         Then it should return the expected result
-        And components ran in the expected order
+        And components are called with the expected inputs
 
         Examples:
         | kind |
@@ -24,7 +24,6 @@ Feature: Pipeline running
         | that has a component with mutable input |
         | that has a component with mutable output sent to multiple inputs |
         | that has a greedy and variadic component after a component with default input |
-        | that has components added in a different order from the order of execution |
         | that has a component with only default inputs |
         | that has a component with only default inputs as first to run and receives inputs from a loop |
         | that has multiple branches that merge into a component with a single variadic input |
@@ -39,11 +38,20 @@ Feature: Pipeline running
         | that is linear with conditional branching and multiple joins |
         | that is a simple agent |
         | that has a variadic component that receives partial inputs |
+        | that has a variadic component that receives partial inputs in a different order |
         | that has an answer joiner variadic component |
         | that is linear and a component in the middle receives optional input from other components and input from the user |
         | that has a loop in the middle |
         | that has variadic component that receives a conditional input |
         | that has a string variadic component |
+        | that is an agent that can use RAG |
+        | that has a feedback loop |
+        | created in a non-standard order that has a loop |
+        | that has an agent with a feedback cycle |
+        | that passes outputs that are consumed in cycle to outside the cycle |
+        | with a component that has dynamic default inputs |
+        | with a component that has variadic dynamic default inputs |
+        | that is a file conversion pipeline with two joiners |
 
     Scenario Outline: Running a bad Pipeline
         Given a pipeline <kind>
