@@ -13,6 +13,7 @@ from haystack.tracing import Span, Tracer
 class SpyingSpan(Span):
     operation_name: str
     parent_span: Optional[Span] = None
+
     tags: Dict[str, Any] = dataclasses.field(default_factory=dict)
 
     trace_id: Optional[str] = dataclasses.field(default_factory=lambda: str(uuid.uuid4()))
@@ -23,6 +24,12 @@ class SpyingSpan(Span):
 
     def get_correlation_data_for_logs(self) -> Dict[str, Any]:
         return {"trace_id": self.trace_id, "span_id": self.span_id}
+
+    def set_content_tag(self, key: str, value: Any) -> None:
+        """
+        Set a content tag, but only if content tracing is enabled in the tracer.
+        """
+        self.set_tag(key, value)
 
 
 class SpyingTracer(Tracer):
@@ -37,7 +44,6 @@ class SpyingTracer(Tracer):
         self, operation_name: str, tags: Optional[Dict[str, Any]] = None, parent_span: Optional[Span] = None
     ) -> Iterator[Span]:
         new_span = SpyingSpan(operation_name, parent_span)
-
         for key, value in (tags or {}).items():
             new_span.set_tag(key, value)
 
