@@ -1,6 +1,6 @@
 ---
 highlights: >
-  Major refactoring of `Pipeline.run()` to fix multiple bugs.
+    Major refactoring of `Pipeline.run()` to fix multiple bugs.
     We moved from a mostly graph-based to a dynamic dataflow driven execution logic.
     Check your pipeline executions carefully to see if their output changes.
 fixes:
