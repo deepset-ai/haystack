@@ -164,9 +164,11 @@ class HuggingFaceLocalChatGenerator:
             if "task" in huggingface_pipeline_kwargs:
                 task = huggingface_pipeline_kwargs["task"]
             elif isinstance(huggingface_pipeline_kwargs["model"], str):
-                task = model_info(
+                pipeline_tag = model_info(
                     huggingface_pipeline_kwargs["model"], token=huggingface_pipeline_kwargs["token"]
                 ).pipeline_tag
+                # Ensure pipeline_tag is one of our supported tasks
+                task = pipeline_tag if pipeline_tag in PIPELINE_SUPPORTED_TASKS else None
 
         if task not in PIPELINE_SUPPORTED_TASKS:
             raise ValueError(
