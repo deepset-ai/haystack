@@ -17,8 +17,8 @@ with LazyImport(message="Run 'pip install \"huggingface_hub>=0.27.0\"'") as hugg
     from huggingface_hub import (
         InferenceClient,
         TextGenerationOutput,
-        TextGenerationOutputToken,
         TextGenerationStreamOutput,
+        TextGenerationStreamOutputToken,
     )
 
 
@@ -212,6 +212,7 @@ class HuggingFaceAPIGenerator:
         if streaming_callback is not None:
             return self._stream_and_build_response(hf_output, streaming_callback)
 
+        assert isinstance(hf_output, TextGenerationOutput)  # to make mypy happy. We know that this is non streaming.
         return self._build_non_streaming_response(hf_output)
 
     def _stream_and_build_response(
@@ -221,7 +222,7 @@ class HuggingFaceAPIGenerator:
         first_chunk_time = None
 
         for chunk in hf_output:
-            token: TextGenerationOutputToken = chunk.token
+            token: TextGenerationStreamOutputToken = chunk.token
             if token.special:
                 continue
 
