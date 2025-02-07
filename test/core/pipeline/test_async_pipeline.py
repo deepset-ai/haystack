@@ -14,7 +14,6 @@ def test_async_pipeline_reentrance(waiting_component, spying_tracer):
         tasks = [pp.run_async(data) for data in run_data]
         await asyncio.gather(*tasks)
 
-
     asyncio.run(run_all())
     component_spans = [sp for sp in spying_tracer.spans if sp.operation_name == "haystack.component.run_async"]
     for span in component_spans:
