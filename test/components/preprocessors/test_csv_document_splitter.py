@@ -101,6 +101,22 @@ P,Q,R
         assert result == [(2, 3), (6, 7)]
 
 
+class TestInit:
+    def test_row_split_threshold_raises_error(self) -> None:
+        with pytest.raises(ValueError, match="row_split_threshold must be greater than 0"):
+            CSVDocumentSplitter(row_split_threshold=-1)
+
+    def test_column_split_threshold_raises_error(self) -> None:
+        with pytest.raises(ValueError, match="column_split_threshold must be greater than 0"):
+            CSVDocumentSplitter(column_split_threshold=-1)
+
+    def test_row_split_threshold_and_row_column_threshold_none(self) -> None:
+        with pytest.raises(
+            ValueError, match="At least one of row_split_threshold or column_split_threshold must be specified."
+        ):
+            CSVDocumentSplitter(row_split_threshold=None, column_split_threshold=None)
+
+
 class TestCSVDocumentSplitter:
     def test_single_table_no_split(self, splitter: CSVDocumentSplitter) -> None:
         csv_content = """A,B,C
