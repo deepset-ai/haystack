@@ -70,14 +70,12 @@ def run_async_pipeline(
     results: List[_PipelineResult] = []
 
     async def run_inner(data, include_outputs_from):
-   """Wrapper function to call pipeline.run_async method with required params."""
-
+        """Wrapper function to call pipeline.run_async method with required params."""
         return await pipeline.run_async(data=data.inputs, include_outputs_from=include_outputs_from)
 
     for data in pipeline_run_data:
         try:
             outputs = asyncio.run(run_inner(data, data.include_outputs_from))
-
 
             component_calls = {
                 (span.tags["haystack.component.name"], span.tags["haystack.component.visits"]): span.tags[
@@ -90,8 +88,7 @@ def run_async_pipeline(
             spying_tracer.spans.clear()
         except Exception as e:
             return e
-        finally:
-            async_loop.close()
+
     return [e for e in zip(results, pipeline_run_data)]
 
 
