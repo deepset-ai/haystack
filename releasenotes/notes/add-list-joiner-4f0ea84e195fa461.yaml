@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Added a new component `ListJoiner` which joins lists of values from different components to a single list.
