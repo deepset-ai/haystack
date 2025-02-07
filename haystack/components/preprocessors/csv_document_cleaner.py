@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from io import StringIO
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from haystack import Document, component, logging
 from haystack.lazy_imports import LazyImport
@@ -24,7 +24,14 @@ class CSVDocumentCleaner:
     the cleaning operation.
     """
 
-    def __init__(self, ignore_rows: int = 0, ignore_columns: int = 0) -> None:
+    def __init__(
+        self,
+        ignore_rows: int = 0,
+        ignore_columns: int = 0,
+        remove_empty_rows: bool = True,
+        remove_empty_columns: bool = True,
+        keep_id: bool = False,
+    ) -> None:
         """
         Initializes the CSVDocumentCleaner component.
 
@@ -36,6 +43,9 @@ class CSVDocumentCleaner:
         """
         self.ignore_rows = ignore_rows
         self.ignore_columns = ignore_columns
+        self.remove_empty_rows = remove_empty_rows
+        self.remove_empty_columns = remove_empty_columns
+        self.keep_id = keep_id
         pandas_import.check()
 
     @component.output_types(documents=List[Document])
@@ -52,6 +62,9 @@ class CSVDocumentCleaner:
         4. Reattaches the ignored rows and columns to maintain their original positions.
         5. Returns the cleaned CSV content as a new `Document` object.
         """
+        if len(documents) == 0:
+            return {"documents": []}
+
         ignore_rows = self.ignore_rows
         ignore_columns = self.ignore_columns
 
@@ -82,31 +95,7 @@ class CSVDocumentCleaner:
                 cleaned_documents.append(document)
                 continue
 
-            # Save ignored rows
-            ignored_rows = None
-            if ignore_rows > 0:
-                ignored_rows = df.iloc[:ignore_rows, :]
-
-            # Save ignored columns
-            ignored_columns = None
-            if ignore_columns > 0:
-                ignored_columns = df.iloc[:, :ignore_columns]
-
-            # Drop rows and columns that are entirely empty
-            remaining_df = df.iloc[ignore_rows:, ignore_columns:]
-            final_df = remaining_df.dropna(axis=0, how="all").dropna(axis=1, how="all")
-
-            # Reattach ignored rows
-            if ignore_rows > 0 and ignored_rows is not None:
-                # Keep only relevant columns
-                ignored_rows = ignored_rows.loc[:, final_df.columns]
-                final_df = pd.concat([ignored_rows, final_df], axis=0)
-
-            # Reattach ignored columns
-            if ignore_columns > 0 and ignored_columns is not None:
-                # Keep only relevant rows
-                ignored_columns = ignored_columns.loc[final_df.index, :]
-                final_df = pd.concat([ignored_columns, final_df], axis=1)
+            final_df = self._clean_df(df=df, ignore_rows=ignore_rows, ignore_columns=ignore_columns)
 
             cleaned_documents.append(
                 Document(
@@ -114,3 +103,43 @@ class CSVDocumentCleaner:
                 )
             )
         return {"documents": cleaned_documents}
+
+    def _clean_df(self, df: "pd.DataFrame", ignore_rows: int, ignore_columns: int) -> "pd.DataFrame":
+        # Get ignored rows and columns
+        ignored_rows = self._get_ignored_rows(df=df, ignore_rows=ignore_rows)
+        ignored_columns = self._get_ignored_columns(df=df, ignore_columns=ignore_columns)
+        final_df = df.iloc[ignore_rows:, ignore_columns:]
+
+        # Drop rows that are entirely empty
+        if self.remove_empty_rows:
+            final_df = final_df.dropna(axis=0, how="all")
+
+        # Drop columns that are entirely empty
+        if self.remove_empty_columns:
+            final_df = final_df.dropna(axis=1, how="all")
+
+        # Reattach ignored rows
+        if ignore_rows > 0 and ignored_rows is not None:
+            # Keep only relevant columns
+            ignored_rows = ignored_rows.loc[:, final_df.columns]
+            final_df = pd.concat([ignored_rows, final_df], axis=0)
+
+        # Reattach ignored columns
+        if ignore_columns > 0 and ignored_columns is not None:
+            # Keep only relevant rows
+            ignored_columns = ignored_columns.loc[final_df.index, :]
+            final_df = pd.concat([ignored_columns, final_df], axis=1)
+
+        return final_df
+
+    @staticmethod
+    def _get_ignored_rows(df: "pd.DataFrame", ignore_rows: int) -> Optional["pd.DataFrame"]:
+        if ignore_rows > 0:
+            return df.iloc[:ignore_rows, :]
+        return None
+
+    @staticmethod
+    def _get_ignored_columns(df: "pd.DataFrame", ignore_columns: int) -> Optional["pd.DataFrame"]:
+        if ignore_columns > 0:
+            return df.iloc[:, :ignore_columns]
+        return None
