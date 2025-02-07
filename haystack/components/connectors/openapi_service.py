@@ -47,7 +47,7 @@ with LazyImport("Run 'pip install openapi3'") as openapi_imports:
         :param session: A persistent request session.
         :param verify: Should we do an ssl verification on the request or not,
                        In case str was provided, will use that as the CA.
-        :return: The response data, either raw or processed depending on raw_response flag
+        :return: The response data, either raw or processed depending on raw_response flag.
         """
         # Set request method (e.g. 'GET')
         self._request = requests.Request(self.path[-1])
