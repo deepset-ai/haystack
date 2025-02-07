@@ -15,6 +15,7 @@ from haystack.utils.url_validation import is_valid_http_url
 
 with LazyImport(message="Run 'pip install \"huggingface_hub[inference]>=0.27.0\"'") as huggingface_hub_import:
     from huggingface_hub import (
+        ChatCompletionInputFunctionDefinition,
         ChatCompletionInputTool,
         ChatCompletionOutput,
         ChatCompletionStreamOutput,
@@ -255,8 +256,15 @@ class HuggingFaceAPIChatGenerator:
 
         hf_tools = None
         if tools:
-            hf_tools = [{"type": "function", "function": {**t.tool_spec}} for t in tools]
-
+            hf_tools = [
+                ChatCompletionInputTool(
+                    function=ChatCompletionInputFunctionDefinition(
+                        name=tool.name, description=tool.description, arguments=tool.parameters
+                    ),
+                    type="function",
+                )
+                for tool in tools
+            ]
         return self._run_non_streaming(formatted_messages, generation_kwargs, hf_tools)
 
     def _run_streaming(
@@ -278,13 +286,12 @@ class HuggingFaceAPIChatGenerator:
             # see https://huggingface.co/docs/huggingface_hub/package_reference/inference_client#huggingface_hub.InferenceClient.chat_completion.n
             choice = chunk.choices[0]
 
-            text = choice.delta.content
-            if text:
-                generated_text += text
+            text = choice.delta.content or ""
+            generated_text += text
 
             finish_reason = choice.finish_reason
 
-            meta = {}
+            meta: Dict[str, Any] = {}
             if finish_reason:
                 meta["finish_reason"] = finish_reason
 
@@ -336,7 +343,11 @@ class HuggingFaceAPIChatGenerator:
                 )
                 tool_calls.append(tool_call)
 
-        meta = {"model": self._client.model, "finish_reason": choice.finish_reason, "index": choice.index}
+        meta: Dict[str, Any] = {
+            "model": self._client.model,
+            "finish_reason": choice.finish_reason,
+            "index": choice.index,
+        }
 
         usage = {"prompt_tokens": 0, "completion_tokens": 0}
         if api_chat_output.usage:

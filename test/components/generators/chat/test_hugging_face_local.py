@@ -293,7 +293,8 @@ class TestHuggingFaceLocalChatGenerator:
 
     @pytest.mark.integration
     @pytest.mark.flaky(reruns=3, reruns_delay=10)
-    def test_live_run(self):
+    def test_live_run(self, monkeypatch):
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
         messages = [ChatMessage.from_user("Please create a summary about the following topic: Climate change")]
 
         llm = HuggingFaceLocalChatGenerator(

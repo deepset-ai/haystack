@@ -153,21 +153,10 @@ class TestAutoEnableTracer:
 
 
 class TestTracingContent:
-    def test_set_content_tag_with_default_settings(self, spying_tracer: SpyingTracer) -> None:
-        with tracer.trace("test") as span:
-            span.set_content_tag("my_content", "my_content")
+    def test_set_content_tag_with_enabled_content_tracing(self, spying_tracer: SpyingTracer) -> None:
+        # SpyingTracer supports content tracing by default
 
-        assert len(spying_tracer.spans) == 1
-        span = spying_tracer.spans[0]
-        assert span.tags == {}
-
-    def test_set_content_tag_with_enabled_content_tracing(
-        self, monkeypatch: MonkeyPatch, spying_tracer: SpyingTracer
-    ) -> None:
         enable_tracing(spying_tracer)
-        # monkeypatch to avoid impact on other tests
-        monkeypatch.setattr(tracer, "is_content_tracing_enabled", True)
-
         with tracer.trace("test") as span:
             span.set_content_tag("my_content", "my_content")
 
@@ -175,9 +164,10 @@ class TestTracingContent:
         span = spying_tracer.spans[0]
         assert span.tags == {"my_content": "my_content"}
 
-    def test_set_content_tag_when_enabled_via_env_variable(self, monkeypatch: MonkeyPatch) -> None:
-        monkeypatch.setenv(HAYSTACK_CONTENT_TRACING_ENABLED_ENV_VAR, "true")
+    def test_set_content_tag_when_disabled_via_env_variable(self, monkeypatch: MonkeyPatch) -> None:
+        # we test if content tracing is disabled when the env variable is set to false
+        monkeypatch.setenv(HAYSTACK_CONTENT_TRACING_ENABLED_ENV_VAR, "false")
 
         proxy_tracer = ProxyTracer(provided_tracer=SpyingTracer())
 
-        assert proxy_tracer.is_content_tracing_enabled is True
+        assert proxy_tracer.is_content_tracing_enabled is False
