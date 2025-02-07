@@ -70,6 +70,8 @@ def run_async_pipeline(
     results: List[_PipelineResult] = []
 
     async def run_inner(data, include_outputs_from):
+   """Wrapper function to call pipeline.run_async method with required params."""
+
         return await pipeline.run_async(data=data.inputs, include_outputs_from=include_outputs_from)
 
     for data in pipeline_run_data:
