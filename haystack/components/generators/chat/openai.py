@@ -348,9 +348,11 @@ class OpenAIChatGenerator:
         text = "".join([chunk.content for chunk in chunks])
         tool_calls = []
 
-        # if it's a tool call , we need to build the payload dict from all the chunks
-        if bool(chunks[0].meta.get("tool_calls")):
-            tools_len = len(chunks[0].meta.get("tool_calls", []))
+        # are there any tool calls in the chunks?
+        if any(chunk.meta.get("tool_calls") for chunk in chunks):
+            ## get the index of the first chunk with tool calls
+            tool_call_index = next((i for i, chunk in enumerate(chunks) if chunk.meta.get("tool_calls")), None)
+            tools_len = len(chunks[tool_call_index].meta.get("tool_calls", []))
 
             payloads = [{"arguments": "", "name": ""} for _ in range(tools_len)]
             for chunk_payload in chunks:
