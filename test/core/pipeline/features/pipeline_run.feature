@@ -3,8 +3,8 @@ Feature: Pipeline running
     Scenario Outline: Running a correct Pipeline
         Given a pipeline <kind>
         When I run the Pipeline
-        Then it should return the expected result
-        And components are called with the expected inputs
+        Then components are called with the expected inputs
+        And it should return the expected result
 
         Examples:
         | kind |

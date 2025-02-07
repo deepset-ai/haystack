@@ -2,12 +2,23 @@ from dataclasses import dataclass, field
 from typing import Tuple, List, Dict, Any, Set, Union
 from pathlib import Path
 import re
+import pytest
+import asyncio
 
 from pytest_bdd import when, then, parsers
 
-from haystack import Pipeline
+from haystack import Pipeline, AsyncPipeline
 
 PIPELINE_NAME_REGEX = re.compile(r"\[(.*)\]")
+
+
+@pytest.fixture(params=[AsyncPipeline, Pipeline])
+def pipeline_class(request):
+    """
+    A parametrized fixture that will yield AsyncPipeline for one test run
+    and Pipeline for the next test run.
+    """
+    return request.param
 
 
 @dataclass
@@ -34,6 +45,54 @@ class _PipelineResult:
 
 @when("I run the Pipeline", target_fixture="pipeline_result")
 def run_pipeline(
+    pipeline_data: Tuple[Union[AsyncPipeline, Pipeline], List[PipelineRunData]], spying_tracer
+) -> Union[List[Tuple[_PipelineResult, PipelineRunData]], Exception]:
+    if isinstance(pipeline_data[0], AsyncPipeline):
+        return run_async_pipeline(pipeline_data, spying_tracer)
+    else:
+        return run_sync_pipeline(pipeline_data, spying_tracer)
+
+
+def run_async_pipeline(
+    pipeline_data: Tuple[Union[AsyncPipeline], List[PipelineRunData]], spying_tracer
+) -> Union[List[Tuple[_PipelineResult, PipelineRunData]], Exception]:
+    """
+    Attempts to run a pipeline with the given inputs.
+    `pipeline_data` is a tuple that must contain:
+    * A Pipeline instance
+    * The data to run the pipeline with
+
+    If successful returns a tuple of the run outputs and the expected outputs.
+    In case an exceptions is raised returns that.
+    """
+    pipeline, pipeline_run_data = pipeline_data[0], pipeline_data[1]
+
+    results: List[_PipelineResult] = []
+
+    async def run_inner(data, include_outputs_from):
+        """Wrapper function to call pipeline.run_async method with required params."""
+        return await pipeline.run_async(data=data.inputs, include_outputs_from=include_outputs_from)
+
+    for data in pipeline_run_data:
+        try:
+            outputs = asyncio.run(run_inner(data, data.include_outputs_from))
+
+            component_calls = {
+                (span.tags["haystack.component.name"], span.tags["haystack.component.visits"]): span.tags[
+                    "haystack.component.input"
+                ]
+                for span in spying_tracer.spans
+                if "haystack.component.name" in span.tags and "haystack.component.visits" in span.tags
+            }
+            results.append(_PipelineResult(outputs=outputs, component_calls=component_calls))
+            spying_tracer.spans.clear()
+        except Exception as e:
+            return e
+
+    return [e for e in zip(results, pipeline_run_data)]
+
+
+def run_sync_pipeline(
     pipeline_data: Tuple[Pipeline, List[PipelineRunData]], spying_tracer
 ) -> Union[List[Tuple[_PipelineResult, PipelineRunData]], Exception]:
     """
@@ -61,7 +120,6 @@ def run_pipeline(
                 if "haystack.component.name" in span.tags and "haystack.component.visits" in span.tags
             }
             results.append(_PipelineResult(outputs=outputs, component_calls=component_calls))
-
             spying_tracer.spans.clear()
         except Exception as e:
             return e
