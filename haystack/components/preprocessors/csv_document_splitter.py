@@ -17,7 +17,10 @@ logger = logging.getLogger(__name__)
 @component
 class CSVDocumentSplitter:
     """
-    A component for splitting CSV documents
+    A component for splitting CSV documents into sub-tables based on empty rows and columns.
+
+    The splitter identifies consecutive empty rows or columns that exceed a given threshold
+    and uses them as delimiters to segment the document into smaller tables.
     """
 
     def __init__(self, row_split_threshold: Optional[int] = 2, column_split_threshold: Optional[int] = 2) -> None:
@@ -26,12 +29,8 @@ class CSVDocumentSplitter:
 
         :param row_split_threshold:
             The minimum number of consecutive empty rows required to trigger a split.
-            A higher threshold prevents excessive splitting, while a lower threshold may lead
-            to more fragmented sub-tables.
         :param column_split_threshold:
             The minimum number of consecutive empty columns required to trigger a split.
-            A higher threshold prevents excessive splitting, while a lower threshold may lead
-            to more fragmented sub-tables.
         """
         pandas_import.check()
         if row_split_threshold is not None and row_split_threshold < 1:
@@ -52,10 +51,11 @@ class CSVDocumentSplitter:
         Processes and splits a list of CSV documents into multiple sub-tables.
 
         **Splitting Process:**
-        1. Row Splitting: Detects empty rows and separates tables stacked vertically.
-        2. Column Splitting: Detects empty columns and separates side-by-side tables.
-        3. Recursive Row Check: After splitting by columns, it checks for new row splits
-           introduced by the column split.
+        1. Applies a row-based split if `row_split_threshold` is provided.
+        2. Applies a column-based split if `column_split_threshold` is provided.
+        3. If both thresholds are specified, performs a recursive split by rows first, then columns, ensuring
+           further fragmentation of any sub-tables that still contain empty sections.
+        4. Sorts the resulting sub-tables based on their original positions within the document.
 
         :param documents: A list of Documents containing CSV-formatted content.
             Each document is assumed to contain one or more tables separated by empty rows or columns.
@@ -206,14 +206,6 @@ class CSVDocumentSplitter:
         :param df: A Pandas DataFrame representing a table (or multiple tables) extracted from a CSV.
         :param row_split_threshold: The minimum number of consecutive empty rows required to trigger a split.
         :param column_split_threshold: The minimum number of consecutive empty columns to trigger a split.
-
-        **Splitting Process:**
-        1. Row Splitting: Detects empty rows and separates tables stacked vertically.
-        2. Column Splitting: Detects empty columns and separates side-by-side tables.
-        3. Recursive Row Check: After splitting by columns, it checks for new row splits
-           introduced by the column split.
-
-        Termination Condition: If no further splits are detected, the recursion stops.
         """
 
         # Step 1: Split by rows
