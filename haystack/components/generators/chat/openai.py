@@ -350,22 +350,22 @@ class OpenAIChatGenerator:
 
         # are there any tool calls in the chunks?
         if any(chunk.meta.get("tool_calls") for chunk in chunks):
-            ## get the index of the first chunk with tool calls
-            tool_call_index = next((i for i, chunk in enumerate(chunks) if chunk.meta.get("tool_calls")), 0)
-            tools_len = len(chunks[tool_call_index].meta.get("tool_calls", []))
-
-            payloads = [{"arguments": "", "name": ""} for _ in range(tools_len)]
+            payloads = {}  # Use a dict to track tool calls by ID
             for chunk_payload in chunks:
                 deltas = chunk_payload.meta.get("tool_calls") or []
 
                 # deltas is a list of ChoiceDeltaToolCall or ChoiceDeltaFunctionCall
-                for i, delta in enumerate(deltas):
-                    payloads[i]["id"] = delta.id or payloads[i].get("id", "")
+                for delta in deltas:
+                    if delta.id not in payloads:
+                        payloads[delta.id] = {"id": delta.id, "arguments": "", "name": ""}
                     if delta.function:
-                        payloads[i]["name"] += delta.function.name or ""
-                        payloads[i]["arguments"] += delta.function.arguments or ""
+                        # For tool calls with the same ID, use the latest values
+                        if delta.function.name:
+                            payloads[delta.id]["name"] = delta.function.name
+                        if delta.function.arguments:
+                            payloads[delta.id]["arguments"] = delta.function.arguments
 
-            for payload in payloads:
+            for payload in payloads.values():
                 arguments_str = payload["arguments"]
                 try:
                     arguments = json.loads(arguments_str)
