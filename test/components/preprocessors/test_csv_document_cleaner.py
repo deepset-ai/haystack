@@ -144,3 +144,78 @@ def test_zero_ignore_rows_and_columns() -> None:
     result = csv_document_cleaner.run([csv_document])
     cleaned_document = result["documents"][0]
     assert cleaned_document.content == ",A,B,C\n1,item,s,\n2,item2,fd,\n"
+
+
+def test_empty_document() -> None:
+    csv_document = Document(content="")
+    csv_document_cleaner = CSVDocumentCleaner()
+    result = csv_document_cleaner.run([csv_document])
+    cleaned_document = result["documents"][0]
+    assert cleaned_document.content == ""
+    assert cleaned_document.meta == {}
+
+
+def test_empty_documents() -> None:
+    csv_document_cleaner = CSVDocumentCleaner()
+    result = csv_document_cleaner.run([])
+    assert result["documents"] == []
+
+
+def test_keep_id() -> None:
+    csv_content = """,A,B,C
+1,item,s,
+"""
+    csv_document = Document(id="123", content=csv_content)
+    csv_document_cleaner = CSVDocumentCleaner(keep_id=True)
+    result = csv_document_cleaner.run([csv_document])
+    cleaned_document = result["documents"][0]
+    assert cleaned_document.id == "123"
+    assert cleaned_document.content == ",A,B,C\n1,item,s,\n"
+
+
+def test_id_not_none() -> None:
+    csv_content = """,A,B,C
+1,item,s,
+"""
+    csv_document = Document(content=csv_content)
+    csv_document_cleaner = CSVDocumentCleaner()
+    result = csv_document_cleaner.run([csv_document])
+    cleaned_document = result["documents"][0]
+    assert cleaned_document.id != ""
+    assert cleaned_document.content == ",A,B,C\n1,item,s,\n"
+
+
+def test_remove_empty_rows_false() -> None:
+    csv_content = """,B,C
+,,
+,5,6
+"""
+    csv_document = Document(content=csv_content)
+    csv_document_cleaner = CSVDocumentCleaner(remove_empty_rows=False)
+    result = csv_document_cleaner.run([csv_document])
+    cleaned_document = result["documents"][0]
+    assert cleaned_document.content == "B,C\n,\n5,6\n"
+
+
+def test_remove_empty_columns_false() -> None:
+    csv_content = """,B,C
+,,
+,,4
+"""
+    csv_document = Document(content=csv_content)
+    csv_document_cleaner = CSVDocumentCleaner(remove_empty_columns=False)
+    result = csv_document_cleaner.run([csv_document])
+    cleaned_document = result["documents"][0]
+    assert cleaned_document.content == ",B,C\n,,4\n"
+
+
+def test_remove_empty_rows_and_columns_false() -> None:
+    csv_content = """,B,C
+,,4
+,,
+"""
+    csv_document = Document(content=csv_content)
+    csv_document_cleaner = CSVDocumentCleaner(remove_empty_rows=False, remove_empty_columns=False)
+    result = csv_document_cleaner.run([csv_document])
+    cleaned_document = result["documents"][0]
+    assert cleaned_document.content == ",B,C\n,,4\n,,\n"

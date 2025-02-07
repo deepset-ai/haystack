@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from copy import deepcopy
 from io import StringIO
 from typing import Dict, List, Optional
 
@@ -97,11 +98,16 @@ class CSVDocumentCleaner:
 
             final_df = self._clean_df(df=df, ignore_rows=ignore_rows, ignore_columns=ignore_columns)
 
-            cleaned_documents.append(
-                Document(
-                    content=final_df.to_csv(index=False, header=False, lineterminator="\n"), meta=document.meta.copy()
-                )
+            clean_doc = Document(
+                id=document.id if self.keep_id else "",
+                content=final_df.to_csv(index=False, header=False, lineterminator="\n"),
+                blob=document.blob,
+                meta=deepcopy(document.meta),
+                score=document.score,
+                embedding=document.embedding,
+                sparse_embedding=document.sparse_embedding,
             )
+            cleaned_documents.append(clean_doc)
         return {"documents": cleaned_documents}
 
     def _clean_df(self, df: "pd.DataFrame", ignore_rows: int, ignore_columns: int) -> "pd.DataFrame":
