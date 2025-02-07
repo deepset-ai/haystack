@@ -431,8 +431,9 @@ class OpenAIChatGenerator:
         Converts the streaming response chunk from the OpenAI API to a StreamingChunk.
 
         :param chunk: The chunk returned by the OpenAI API.
-        :param choice: The choice returned by the OpenAI API.
-        :return: The StreamingChunk.
+
+        :returns:
+            The StreamingChunk.
         """
         # we stream the content of the chunk if it's not a tool or function call
         choice: ChunkChoice = chunk.choices[0]
