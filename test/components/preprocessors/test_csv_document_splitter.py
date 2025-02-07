@@ -26,6 +26,18 @@ X,Y,Z
 
 
 @pytest.fixture
+def three_tables_sep_by_empty_rows() -> str:
+    return """A,B,C
+,,
+1,2,3
+,,
+,,
+X,Y,Z
+7,8,9
+"""
+
+
+@pytest.fixture
 def two_tables_sep_by_two_empty_columns() -> str:
     return """A,B,,,X,Y
 1,2,,,7,8
@@ -41,16 +53,10 @@ class TestFindSplitIndices:
         result = splitter._find_split_indices(df, split_threshold=2, axis="row")
         assert result == [(2, 3)]
 
-    def test_find_split_indices_row_two_tables_with_empty_row(self, splitter: CSVDocumentSplitter) -> None:
-        csv_content = """A,B,C
-,,
-1,2,3
-,,
-,,
-X,Y,Z
-7,8,9
-"""
-        df = pd.read_csv(StringIO(csv_content), header=None, dtype=object)  # type: ignore
+    def test_find_split_indices_row_two_tables_with_empty_row(
+        self, splitter: CSVDocumentSplitter, three_tables_sep_by_empty_rows: str
+    ) -> None:
+        df = pd.read_csv(StringIO(three_tables_sep_by_empty_rows), header=None, dtype=object)  # type: ignore
         result = splitter._find_split_indices(df, split_threshold=2, axis="row")
         assert result == [(3, 4)]
 
@@ -114,12 +120,8 @@ class TestCSVDocumentSplitter:
         for i, table in enumerate(result):
             assert table.content == expected_tables[i]
 
-    def test_column_split(self, splitter: CSVDocumentSplitter) -> None:
-        csv_content = """A,B,,,X,Y
-1,2,,,7,8
-3,4,,,9,10
-"""
-        doc = Document(content=csv_content)
+    def test_column_split(self, splitter: CSVDocumentSplitter, two_tables_sep_by_two_empty_columns: str) -> None:
+        doc = Document(content=two_tables_sep_by_two_empty_columns)
         result = splitter.run([doc])["documents"]
         assert len(result) == 2
         expected_tables = ["A,B\n1,2\n3,4\n", "X,Y\n7,8\n9,10\n"]

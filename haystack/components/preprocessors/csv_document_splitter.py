@@ -79,10 +79,10 @@ class CSVDocumentSplitter:
                 split_documents.append(document)
                 continue
 
-            if self.row_split_threshold is not None:
+            if self.row_split_threshold is not None and self.column_split_threshold is None:
                 # split by rows
                 split_dfs = self._split_dataframe(df=df, split_threshold=self.row_split_threshold, axis="row")
-            elif self.column_split_threshold is not None:
+            elif self.column_split_threshold is not None and self.row_split_threshold is None:
                 # split by columns
                 split_dfs = self._split_dataframe(df=df, split_threshold=self.column_split_threshold, axis="column")
             else:
