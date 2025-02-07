@@ -74,9 +74,8 @@ def run_async_pipeline(
 
     for data in pipeline_run_data:
         try:
-            async_loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(async_loop)
-            outputs = async_loop.run_until_complete(run_inner(data, data.include_outputs_from))
+            outputs = asyncio.run(run_inner(data, data.include_outputs_from))
+
 
             component_calls = {
                 (span.tags["haystack.component.name"], span.tags["haystack.component.visits"]): span.tags[
