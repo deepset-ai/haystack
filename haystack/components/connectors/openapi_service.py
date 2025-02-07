@@ -34,7 +34,7 @@ with LazyImport("Run 'pip install openapi3'") as openapi_imports:
         verify: Union[bool, str] = True,
     ) -> Optional[Any]:
         """
-        Sends an HTTP request as described by this Path
+        Sends an HTTP request as described by this path.
 
         :param base_url: The URL to append this operation's path to when making
                          the call.
