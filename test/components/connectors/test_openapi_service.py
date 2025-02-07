@@ -18,6 +18,7 @@ from haystack.dataclasses.byte_stream import ByteStream
 from openapi3 import OpenAPI
 
 from haystack.components.connectors import OpenAPIServiceConnector
+from haystack.components.connectors.openapi_service import patch_request
 from haystack.dataclasses import ChatMessage, ToolCall
 
 
@@ -154,6 +155,46 @@ class TestOpenAPIServiceConnector:
 
         with pytest.raises(ValueError, match="Missing parameter: 'name' required for the 'greet' operation"):
             connector.run(messages=[message], service_openapi_spec={})
+
+    @patch("haystack.components.connectors.openapi_service.OpenAPI")
+    def test_run_with_missing_required_parameters_in_request_body(self, openapi_mock):
+        """
+        Test that the connector raises a ValueError when the request body is missing required parameters.
+        """
+        connector = OpenAPIServiceConnector()
+        tool_call = ToolCall(
+            tool_name="post_message",
+            arguments={"recipient": "John"},  # only providing URL parameter, no request body data
+        )
+        message = ChatMessage.from_assistant(tool_calls=[tool_call])
+
+        # Mock the OpenAPI service
+        call_post_message = Mock()
+        call_post_message.operation.__self__ = Mock()
+        call_post_message.operation.__self__.raw_element = {
+            "parameters": [{"name": "recipient"}],
+            "requestBody": {
+                "required": True,
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "required": ["message"],  # Mark message as required in schema
+                            "properties": {"message": {"type": "string"}},
+                        }
+                    }
+                },
+            },
+        }
+        mock_service = Mock(call_post_message=call_post_message, raw_element={})
+        openapi_mock.return_value = mock_service
+
+        with pytest.raises(
+            ValueError, match="Missing requestBody parameter: 'message' required for the 'post_message' operation"
+        ):
+            connector.run(messages=[message], service_openapi_spec={})
+
+        # Verify that the service was never called since validation failed
+        call_post_message.assert_not_called()
 
     def test_serialization(self):
         for test_val in ("myvalue", True, None):
