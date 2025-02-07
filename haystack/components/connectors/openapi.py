@@ -19,7 +19,11 @@ class OpenAPIConnector:
     """
     OpenAPIConnector enables direct invocation of REST endpoints defined in an OpenAPI specification.
 
-    This component is designed for direct REST endpoint invocation without LLM-generated payloads.
+    The OpenAPIConnector serves as a bridge between Haystack pipelines and any REST API that follows
+    the OpenAPI(formerly Swagger) specification. It dynamically interprets the API specification and
+    provides an interface for executing API operations. It is usually invoked by passing input
+    arguments to it from a Haystack pipeline run method or by other components in a pipeline that
+    pass input arguments to this component.
 
     Example:
     ```python
