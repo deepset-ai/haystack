@@ -63,6 +63,12 @@ class CSVDocumentSplitter:
         :return:
             A dictionary with a key `"documents"`, mapping to a list of new `Document` objects,
             each representing an extracted sub-table from the original CSV.
+            The metadata of each document includes:
+                - A field `source_id` to track the original document.
+                - A field `row_idx_start` to indicate the starting row index of the sub-table in the original table.
+                - A field `col_idx_start` to indicate the starting column index of the sub-table in the original table.
+                - A field `split_id` to indicate the order of the split in the original document.
+                - All other metadata copied from the original document.
 
         - If a document cannot be processed, it is returned unchanged.
         - The `meta` field from the original document is preserved in the split documents.
@@ -93,11 +99,20 @@ class CSVDocumentSplitter:
                     column_split_threshold=self.column_split_threshold,
                 )
 
-            for split_df in split_dfs:
+            # Sort split_dfs first by row index, then by column index
+            split_dfs.sort(key=lambda dataframe: (dataframe.index[0], dataframe.columns[0]))
+
+            for split_id, split_df in enumerate(split_dfs):
                 split_documents.append(
                     Document(
                         content=split_df.to_csv(index=False, header=False, lineterminator="\n"),
-                        meta=document.meta.copy(),
+                        meta={
+                            **document.meta.copy(),
+                            "source_id": document.id,
+                            "row_idx_start": int(split_df.index[0]),
+                            "col_idx_start": int(split_df.columns[0]),
+                            "split_id": split_id,
+                        },
                     )
                 )
 

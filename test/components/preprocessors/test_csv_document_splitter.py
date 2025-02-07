@@ -107,26 +107,37 @@ class TestCSVDocumentSplitter:
 1,2,3
 4,5,6
 """
-        doc = Document(content=csv_content)
+        doc = Document(content=csv_content, id="test_id")
         result = splitter.run([doc])["documents"]
         assert len(result) == 1
         assert result[0].content == csv_content
+        assert result[0].meta == {"source_id": "test_id", "row_idx_start": 0, "col_idx_start": 0, "split_id": 0}
 
     def test_row_split(self, splitter: CSVDocumentSplitter, two_tables_sep_by_two_empty_rows: str) -> None:
-        doc = Document(content=two_tables_sep_by_two_empty_rows)
+        doc = Document(content=two_tables_sep_by_two_empty_rows, id="test_id")
         result = splitter.run([doc])["documents"]
         assert len(result) == 2
         expected_tables = ["A,B,C\n1,2,3\n", "X,Y,Z\n7,8,9\n"]
+        expected_meta = [
+            {"source_id": "test_id", "row_idx_start": 0, "col_idx_start": 0, "split_id": 0},
+            {"source_id": "test_id", "row_idx_start": 4, "col_idx_start": 0, "split_id": 1},
+        ]
         for i, table in enumerate(result):
             assert table.content == expected_tables[i]
+            assert table.meta == expected_meta[i]
 
     def test_column_split(self, splitter: CSVDocumentSplitter, two_tables_sep_by_two_empty_columns: str) -> None:
-        doc = Document(content=two_tables_sep_by_two_empty_columns)
+        doc = Document(content=two_tables_sep_by_two_empty_columns, id="test_id")
         result = splitter.run([doc])["documents"]
         assert len(result) == 2
         expected_tables = ["A,B\n1,2\n3,4\n", "X,Y\n7,8\n9,10\n"]
+        expected_meta = [
+            {"source_id": "test_id", "row_idx_start": 0, "col_idx_start": 0, "split_id": 0},
+            {"source_id": "test_id", "row_idx_start": 0, "col_idx_start": 4, "split_id": 1},
+        ]
         for i, table in enumerate(result):
             assert table.content == expected_tables[i]
+            assert table.meta == expected_meta[i]
 
     def test_recursive_split_one_level(self, splitter: CSVDocumentSplitter) -> None:
         csv_content = """A,B,,,X,Y
@@ -136,12 +147,19 @@ class TestCSVDocumentSplitter:
 P,Q,,,M,N
 3,4,,,9,10
 """
-        doc = Document(content=csv_content)
+        doc = Document(content=csv_content, id="test_id")
         result = splitter.run([doc])["documents"]
         assert len(result) == 4
         expected_tables = ["A,B\n1,2\n", "X,Y\n7,8\n", "P,Q\n3,4\n", "M,N\n9,10\n"]
+        expected_meta = [
+            {"source_id": "test_id", "row_idx_start": 0, "col_idx_start": 0, "split_id": 0},
+            {"source_id": "test_id", "row_idx_start": 0, "col_idx_start": 4, "split_id": 1},
+            {"source_id": "test_id", "row_idx_start": 4, "col_idx_start": 0, "split_id": 2},
+            {"source_id": "test_id", "row_idx_start": 4, "col_idx_start": 4, "split_id": 3},
+        ]
         for i, table in enumerate(result):
             assert table.content == expected_tables[i]
+            assert table.meta == expected_meta[i]
 
     def test_recursive_split_two_levels(self, splitter: CSVDocumentSplitter) -> None:
         csv_content = """A,B,,,X,Y
@@ -151,12 +169,18 @@ P,Q,,,M,N
 P,Q,,,,
 3,4,,,,
 """
-        doc = Document(content=csv_content)
+        doc = Document(content=csv_content, id="test_id")
         result = splitter.run([doc])["documents"]
         assert len(result) == 3
-        expected_tables = ["A,B\n1,2\n", "P,Q\n3,4\n", "X,Y\n7,8\nM,N\n9,10\n"]
+        expected_tables = ["A,B\n1,2\n", "X,Y\n7,8\nM,N\n9,10\n", "P,Q\n3,4\n"]
+        expected_meta = [
+            {"source_id": "test_id", "row_idx_start": 0, "col_idx_start": 0, "split_id": 0},
+            {"source_id": "test_id", "row_idx_start": 0, "col_idx_start": 4, "split_id": 1},
+            {"source_id": "test_id", "row_idx_start": 4, "col_idx_start": 0, "split_id": 2},
+        ]
         for i, table in enumerate(result):
             assert table.content == expected_tables[i]
+            assert table.meta == expected_meta[i]
 
     def test_threshold_no_effect(self, two_tables_sep_by_two_empty_rows: str) -> None:
         splitter = CSVDocumentSplitter(row_split_threshold=3)
