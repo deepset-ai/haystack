@@ -95,8 +95,8 @@ class CSVDocumentSplitter:
                 # recursive split
                 split_dfs = self._recursive_split(
                     df=df,
-                    row_split_threshold=self.row_split_threshold,
-                    column_split_threshold=self.column_split_threshold,
+                    row_split_threshold=self.row_split_threshold,  # type: ignore
+                    column_split_threshold=self.column_split_threshold,  # type: ignore
                 )
 
             # Sort split_dfs first by row index, then by column index
@@ -142,7 +142,7 @@ class CSVDocumentSplitter:
         # Identify groups of consecutive empty elements
         split_indices = []
         consecutive_count = 1
-        start_index = empty_elements[0] if empty_elements else None
+        start_index = empty_elements[0]
 
         for i in range(1, len(empty_elements)):
             if empty_elements[i] == empty_elements[i - 1] + 1:
@@ -195,7 +195,7 @@ class CSVDocumentSplitter:
         return sub_tables
 
     def _recursive_split(
-        self, df: "pd.DataFrame", row_split_threshold: Optional[int], column_split_threshold: Optional[int]
+        self, df: "pd.DataFrame", row_split_threshold: int, column_split_threshold: int
     ) -> List["pd.DataFrame"]:
         """
         Recursively splits a DataFrame.
