@@ -128,7 +128,7 @@ class TestCSVDocumentSplitter:
         for i, table in enumerate(result):
             assert table.content == expected_tables[i]
 
-    def test_recursive_split(self, splitter: CSVDocumentSplitter) -> None:
+    def test_recursive_split_one_level(self, splitter: CSVDocumentSplitter) -> None:
         csv_content = """A,B,,,X,Y
 1,2,,,7,8
 ,,,,,
@@ -140,6 +140,21 @@ P,Q,,,M,N
         result = splitter.run([doc])["documents"]
         assert len(result) == 4
         expected_tables = ["A,B\n1,2\n", "X,Y\n7,8\n", "P,Q\n3,4\n", "M,N\n9,10\n"]
+        for i, table in enumerate(result):
+            assert table.content == expected_tables[i]
+
+    def test_recursive_split_two_levels(self, splitter: CSVDocumentSplitter) -> None:
+        csv_content = """A,B,,,X,Y
+1,2,,,7,8
+,,,,M,N
+,,,,9,10
+P,Q,,,,
+3,4,,,,
+"""
+        doc = Document(content=csv_content)
+        result = splitter.run([doc])["documents"]
+        assert len(result) == 3
+        expected_tables = ["A,B\n1,2\n", "P,Q\n3,4\n", "X,Y\n7,8\nM,N\n9,10\n"]
         for i, table in enumerate(result):
             assert table.content == expected_tables[i]
 
