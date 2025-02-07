@@ -45,7 +45,7 @@ with LazyImport("Run 'pip install openapi3'") as openapi_imports:
         :param security: The security scheme to use, and the values it needs to
                          process successfully.
         :param session: A persistent request session.
-        :param verify: Should we do an ssl verification on the request or not,
+        :param verify: If we should do an ssl verification on the request or not.
                        In case str was provided, will use that as the CA.
         :return: The response data, either raw or processed depending on raw_response flag.
         """
