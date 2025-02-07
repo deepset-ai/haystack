@@ -39,7 +39,7 @@ with LazyImport("Run 'pip install openapi3'") as openapi_imports:
         :param base_url: The URL to append this operation's path to when making
                          the call.
         :param data: The request body to send.
-        :param parameters: The parameters used to create the path
+        :param parameters: The parameters used to create the path.
         :param raw_response: If true, return the raw response instead of validating
                              and exterpolating it.
         :param security: The security scheme to use, and the values it needs to
