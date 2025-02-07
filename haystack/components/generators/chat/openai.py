@@ -354,20 +354,25 @@ class OpenAIChatGenerator:
             for chunk_payload in chunks:
                 deltas = chunk_payload.meta.get("tool_calls") or []
 
-                # deltas is a list of ChoiceDeltaToolCall or ChoiceDeltaFunctionCall
+                # deltas is a list of ChoiceDeltaToolCall
                 for delta in deltas:
                     if delta.id not in payloads:
-                        payloads[delta.id] = {"id": delta.id, "arguments": "", "name": ""}
-                    if delta.function:
+                        payloads[delta.id] = {"id": delta.id, "arguments": "", "name": "", "type": None}
+                    # ChoiceDeltaToolCall has a 'function' field of type ChoiceDeltaToolCallFunction
+                    if delta.function:  # type: ChoiceDeltaToolCallFunction
                         # For tool calls with the same ID, use the latest values
-                        if delta.function.name:
+                        if delta.function.name is not None:
                             payloads[delta.id]["name"] = delta.function.name
-                        if delta.function.arguments:
+                        if delta.function.arguments is not None:
+                            # Use the latest arguments value
                             payloads[delta.id]["arguments"] = delta.function.arguments
+                    if delta.type is not None:
+                        payloads[delta.id]["type"] = delta.type
 
             for payload in payloads.values():
                 arguments_str = payload["arguments"]
                 try:
+                    # Try to parse the concatenated arguments string as JSON
                     arguments = json.loads(arguments_str)
                     tool_calls.append(ToolCall(id=payload["id"], tool_name=payload["name"], arguments=arguments))
                 except json.JSONDecodeError:
