@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 from unittest.mock import Mock, patch
+from typing import Optional, List
 
 from haystack.dataclasses.streaming_chunk import StreamingChunk
 import pytest
@@ -66,6 +67,11 @@ def tools():
     )
 
     return [tool]
+
+
+def custom_tool_parser(text: str) -> Optional[List[ToolCall]]:
+    """Test implementation of a custom tool parser."""
+    return [ToolCall(tool_name="weather", arguments={"city": "Berlin"})]
 
 
 class TestHuggingFaceLocalChatGenerator:
@@ -433,26 +439,38 @@ class TestHuggingFaceLocalChatGenerator:
         assert "22°C" in message.text
         assert message.meta["finish_reason"] == "stop"
 
-    def test_run_with_invalid_tool_pattern(self, model_info_mock, tools):
+    def test_run_with_custom_tool_parser(self, model_info_mock, tools):
+        """Test that a custom tool parsing function works correctly."""
         generator = HuggingFaceLocalChatGenerator(
-            model="meta-llama/Llama-2-13b-chat-hf",
-            tools=tools,
-            tool_pattern=r"invalid[pattern",  # Invalid regex pattern
+            model="meta-llama/Llama-2-13b-chat-hf", tools=tools, tool_parsing_function=custom_tool_parser
         )
+        generator.pipeline = Mock(return_value=[{"generated_text": "Let me check the weather for you"}])
+        generator.pipeline.tokenizer = Mock()
+        generator.pipeline.tokenizer.encode.return_value = [1, 2, 3]
+        generator.pipeline.tokenizer.pad_token_id = 1
 
-        # Mock pipeline and tokenizer
-        mock_pipeline = Mock(return_value=[{"generated_text": '{"name": "weather", "arguments": {"city": "Paris"}}'}])
-        mock_tokenizer = Mock(spec=PreTrainedTokenizer)
-        mock_tokenizer.encode.return_value = ["some", "tokens"]
-        mock_tokenizer.pad_token_id = 100
-        mock_tokenizer.apply_chat_template.return_value = "test prompt"
-        mock_pipeline.tokenizer = mock_tokenizer
-        generator.pipeline = mock_pipeline
-
-        messages = [ChatMessage.from_user("What's the weather in Paris?")]
+        messages = [ChatMessage.from_user("What's the weather like in Berlin?")]
         results = generator.run(messages=messages)
 
         assert len(results["replies"]) == 1
-        message = results["replies"][0]
-        assert not message.tool_calls  # No tool calls due to invalid pattern
-        assert message.meta["finish_reason"] == "stop"
+        assert len(results["replies"][0].tool_calls) == 1
+        assert results["replies"][0].tool_calls[0].tool_name == "weather"
+        assert results["replies"][0].tool_calls[0].arguments == {"city": "Berlin"}
+
+    def test_default_tool_parser(self, model_info_mock, tools):
+        """Test that the default tool parser works correctly with valid tool call format."""
+        generator = HuggingFaceLocalChatGenerator(model="meta-llama/Llama-2-13b-chat-hf", tools=tools)
+        generator.pipeline = Mock(
+            return_value=[{"generated_text": '{"name": "weather", "arguments": {"city": "Berlin"}}'}]
+        )
+        generator.pipeline.tokenizer = Mock()
+        generator.pipeline.tokenizer.encode.return_value = [1, 2, 3]
+        generator.pipeline.tokenizer.pad_token_id = 1
+
+        messages = [ChatMessage.from_user("What's the weather like in Berlin?")]
+        results = generator.run(messages=messages)
+
+        assert len(results["replies"]) == 1
+        assert len(results["replies"][0].tool_calls) == 1
+        assert results["replies"][0].tool_calls[0].tool_name == "weather"
+        assert results["replies"][0].tool_calls[0].arguments == {"city": "Berlin"}

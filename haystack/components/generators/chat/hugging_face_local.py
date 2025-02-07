@@ -43,6 +43,35 @@ DEFAULT_TOOL_PATTERN = (
 )
 
 
+def default_tool_parser(text: str) -> Optional[List[ToolCall]]:
+    """
+    Default implementation for parsing tool calls from model output text.
+
+    Uses DEFAULT_TOOL_PATTERN to extract tool calls.
+
+    :param text: The text to parse for tool calls.
+    :returns: A list containing a single ToolCall if a valid tool call is found, None otherwise.
+    """
+    try:
+        match = re.search(DEFAULT_TOOL_PATTERN, text, re.DOTALL)
+    except re.error:
+        logger.warning("Invalid regex pattern for tool parsing: {pattern}", pattern=DEFAULT_TOOL_PATTERN)
+        return None
+
+    if not match:
+        return None
+
+    name = match.group(1) or match.group(3)
+    args_str = match.group(2) or match.group(4)
+
+    try:
+        arguments = json.loads(args_str)
+        return [ToolCall(tool_name=name, arguments=arguments)]
+    except json.JSONDecodeError:
+        logger.warning("Failed to parse tool call arguments: {args_str}", args_str=args_str)
+        return None
+
+
 @component
 class HuggingFaceLocalChatGenerator:
     """
@@ -93,7 +122,7 @@ class HuggingFaceLocalChatGenerator:
         stop_words: Optional[List[str]] = None,
         streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
         tools: Optional[List[Tool]] = None,
-        tool_pattern: Optional[Union[str, Callable[[str], Optional[List[ToolCall]]]]] = None,
+        tool_parsing_function: Optional[Callable[[str], Optional[List[ToolCall]]]] = None,
     ):
         """
         Initializes the HuggingFaceLocalChatGenerator component.
@@ -133,11 +162,9 @@ class HuggingFaceLocalChatGenerator:
             In these cases, make sure your prompt has no stop words.
         :param streaming_callback: An optional callable for handling streaming responses.
         :param tools: A list of tools for which the model can prepare calls.
-        :param tool_pattern:
-            A pattern or callable to parse tool calls from model output.
-            If a string, it will be used as a regex pattern to extract ToolCall object.
-            If a callable, it should take a string and return a ToolCall object or None.
-            If None, a default pattern will be used.
+        :param tool_parsing_function:
+            A callable that takes a string and returns a list of ToolCall objects or None.
+            If None, the default_tool_parser will be used which extracts tool calls using a predefined pattern.
         """
         torch_and_transformers_import.check()
 
@@ -188,7 +215,7 @@ class HuggingFaceLocalChatGenerator:
         generation_kwargs["stop_sequences"] = generation_kwargs.get("stop_sequences", [])
         generation_kwargs["stop_sequences"].extend(stop_words or [])
 
-        self.tool_pattern = tool_pattern or DEFAULT_TOOL_PATTERN
+        self.tool_parsing_function = tool_parsing_function or default_tool_parser
         self.huggingface_pipeline_kwargs = huggingface_pipeline_kwargs
         self.generation_kwargs = generation_kwargs
         self.chat_template = chat_template
@@ -228,6 +255,7 @@ class HuggingFaceLocalChatGenerator:
             token=self.token.to_dict() if self.token else None,
             chat_template=self.chat_template,
             tools=serialized_tools,
+            tool_parsing_function=serialize_callable(self.tool_parsing_function),
         )
 
         huggingface_pipeline_kwargs = serialization_dict["init_parameters"]["huggingface_pipeline_kwargs"]
@@ -253,6 +281,10 @@ class HuggingFaceLocalChatGenerator:
         serialized_callback_handler = init_params.get("streaming_callback")
         if serialized_callback_handler:
             data["init_parameters"]["streaming_callback"] = deserialize_callable(serialized_callback_handler)
+
+        tool_parsing_function = init_params.get("tool_parsing_function")
+        if tool_parsing_function:
+            init_params["tool_parsing_function"] = deserialize_callable(tool_parsing_function)
 
         huggingface_pipeline_kwargs = init_params.get("huggingface_pipeline_kwargs", {})
         deserialize_hf_model_kwargs(huggingface_pipeline_kwargs)
@@ -371,7 +403,7 @@ class HuggingFaceLocalChatGenerator:
         prompt_token_count = len(tokenizer.encode(prompt, add_special_tokens=False))
         total_tokens = prompt_token_count + completion_tokens
 
-        tool_calls = self._parse_tool_call(text) if parse_tool_calls else None
+        tool_calls = self.tool_parsing_function(text) if parse_tool_calls else None
 
         # Determine finish reason based on context
         if completion_tokens >= generation_kwargs.get("max_new_tokens", sys.maxsize):
@@ -392,7 +424,8 @@ class HuggingFaceLocalChatGenerator:
             },
         }
 
-        return ChatMessage.from_assistant(tool_calls=tool_calls, text=text, meta=meta)
+        # If tool calls are detected, don't include the text content since it contains the raw tool call format
+        return ChatMessage.from_assistant(tool_calls=tool_calls, text=None if tool_calls else text, meta=meta)
 
     def _validate_stop_words(self, stop_words: Optional[List[str]]) -> Optional[List[str]]:
         """
@@ -410,36 +443,3 @@ class HuggingFaceLocalChatGenerator:
             return None
 
         return list(set(stop_words or []))
-
-    def _parse_tool_call(self, text: str) -> Optional[List[ToolCall]]:
-        """
-        Parse a tool call from model output text.
-
-        :param text: The text to parse for tool calls.
-        :returns: A ToolCall object if a valid tool call is found, None otherwise.
-        """
-        # if the tool pattern is a callable, call it with the text and return the result
-        if callable(self.tool_pattern):
-            return self.tool_pattern(text)
-
-        # if the tool pattern is a regex pattern, search for it in the text
-        try:
-            match = re.search(self.tool_pattern, text, re.DOTALL)
-        except re.error:
-            logger.warning("Invalid regex pattern for tool parsing: {pattern}", pattern=self.tool_pattern)
-            return None
-
-        if not match:
-            return None
-
-        # seem like most models are not producing tool ids, so we omit them
-        # and just use the tool name and arguments
-        name = match.group(1) or match.group(3)
-        args_str = match.group(2) or match.group(4)
-
-        try:
-            arguments = json.loads(args_str)
-            return [ToolCall(tool_name=name, arguments=arguments)]
-        except json.JSONDecodeError:
-            logger.warning("Failed to parse tool call arguments: {args_str}", args_str=args_str)
-            return None
