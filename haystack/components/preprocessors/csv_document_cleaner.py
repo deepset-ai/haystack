@@ -22,7 +22,8 @@ class CSVDocumentCleaner:
 
     This component processes CSV content stored in Documents, allowing
     for the optional ignoring of a specified number of rows and columns before performing
-    the cleaning operation.
+    the cleaning operation. Additionally, it provides options to keep document IDs and
+    control whether empty rows and columns should be removed.
     """
 
     def __init__(
@@ -38,6 +39,9 @@ class CSVDocumentCleaner:
 
         :param ignore_rows: Number of rows to ignore from the top of the CSV table before processing.
         :param ignore_columns: Number of columns to ignore from the left of the CSV table before processing.
+        :param remove_empty_rows: Whether to remove rows that are entirely empty.
+        :param remove_empty_columns: Whether to remove columns that are entirely empty.
+        :param keep_id: Whether to retain the original document ID in the output document.
 
         Rows and columns ignored using these parameters are preserved in the final output, meaning
         they are not considered when removing empty rows and columns.
@@ -55,13 +59,16 @@ class CSVDocumentCleaner:
         Cleans CSV documents by removing empty rows and columns while preserving specified ignored rows and columns.
 
         :param documents: List of Documents containing CSV-formatted content.
+        :return: A dictionary with a list of cleaned Documents under the key "documents".
 
         Processing steps:
         1. Reads each document's content as a CSV table.
         2. Retains the specified number of `ignore_rows` from the top and `ignore_columns` from the left.
-        3. Drops any rows and columns that are entirely empty (all NaN values).
+        3. Drops any rows and columns that are entirely empty (if enabled by `remove_empty_rows` and
+            `remove_empty_columns`).
         4. Reattaches the ignored rows and columns to maintain their original positions.
-        5. Returns the cleaned CSV content as a new `Document` object.
+        5. Returns the cleaned CSV content as a new `Document` object, with an option to retain the original
+            document ID.
         """
         if len(documents) == 0:
             return {"documents": []}
@@ -111,6 +118,13 @@ class CSVDocumentCleaner:
         return {"documents": cleaned_documents}
 
     def _clean_df(self, df: "pd.DataFrame", ignore_rows: int, ignore_columns: int) -> "pd.DataFrame":
+        """
+        Cleans a DataFrame by removing empty rows and columns while preserving ignored sections.
+
+        :param df: The input DataFrame representing the CSV data.
+        :param ignore_rows: Number of top rows to ignore.
+        :param ignore_columns: Number of left columns to ignore.
+        """
         # Get ignored rows and columns
         ignored_rows = self._get_ignored_rows(df=df, ignore_rows=ignore_rows)
         ignored_columns = self._get_ignored_columns(df=df, ignore_columns=ignore_columns)
@@ -140,12 +154,24 @@ class CSVDocumentCleaner:
 
     @staticmethod
     def _get_ignored_rows(df: "pd.DataFrame", ignore_rows: int) -> Optional["pd.DataFrame"]:
+        """
+        Extracts the rows to be ignored from the DataFrame.
+
+        :param df: The input DataFrame.
+        :param ignore_rows: Number of rows to extract from the top.
+        """
         if ignore_rows > 0:
             return df.iloc[:ignore_rows, :]
         return None
 
     @staticmethod
     def _get_ignored_columns(df: "pd.DataFrame", ignore_columns: int) -> Optional["pd.DataFrame"]:
+        """
+        Extracts the columns to be ignored from the DataFrame.
+
+        :param df: The input DataFrame.
+        :param ignore_columns: Number of columns to extract from the left.
+        """
         if ignore_columns > 0:
             return df.iloc[:, :ignore_columns]
         return None
