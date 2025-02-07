@@ -28,6 +28,7 @@ class CSVDocumentCleaner:
 
     def __init__(
         self,
+        *,
         ignore_rows: int = 0,
         ignore_columns: int = 0,
         remove_empty_rows: bool = True,
