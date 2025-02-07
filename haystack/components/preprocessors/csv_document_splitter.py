@@ -67,6 +67,9 @@ class CSVDocumentSplitter:
         - If a document cannot be processed, it is returned unchanged.
         - The `meta` field from the original document is preserved in the split documents.
         """
+        if len(documents) == 0:
+            return {"documents": documents}
+
         split_documents = []
         for document in documents:
             try:
@@ -153,8 +156,10 @@ class CSVDocumentSplitter:
             # Avoid empty splits
             if end_idx - start_idx > 1:
                 if axis == "row":
+                    # TODO Shouldn't drop all empty rows just the ones in the range
                     sub_table = df.iloc[start_idx:end_idx].dropna(how="all", axis=0)
                 else:
+                    # TODO Shouldn't drop all empty columns just the ones in the range
                     sub_table = df.iloc[:, start_idx:end_idx].dropna(how="all", axis=1)
                 if not sub_table.empty:
                     sub_tables.append(sub_table)
