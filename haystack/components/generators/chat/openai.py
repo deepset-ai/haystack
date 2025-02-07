@@ -359,7 +359,7 @@ class OpenAIChatGenerator:
                     if delta.id not in payloads:
                         payloads[delta.id] = {"id": delta.id, "arguments": "", "name": "", "type": None}
                     # ChoiceDeltaToolCall has a 'function' field of type ChoiceDeltaToolCallFunction
-                    if delta.function:  # type: ChoiceDeltaToolCallFunction
+                    if delta.function:
                         # For tool calls with the same ID, use the latest values
                         if delta.function.name is not None:
                             payloads[delta.id]["name"] = delta.function.name
