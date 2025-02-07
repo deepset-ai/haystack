@@ -3,11 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from io import StringIO
-from typing import Dict, List, Literal
-
-import pandas as pd
+from typing import Dict, List, Literal, Optional
 
 from haystack import Document, component, logging
+from haystack.lazy_imports import LazyImport
+
+with LazyImport("Run 'pip install pandas'") as pandas_import:
+    import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +20,7 @@ class CSVDocumentSplitter:
     A component for splitting CSV documents
     """
 
-    def __init__(self, row_split_threshold: int = 2, column_split_threshold: int = 2) -> None:
+    def __init__(self, row_split_threshold: Optional[int] = 2, column_split_threshold: Optional[int] = 2) -> None:
         """
         Initializes the CSVDocumentSplitter component.
 
@@ -31,11 +33,17 @@ class CSVDocumentSplitter:
             A higher threshold prevents excessive splitting, while a lower threshold may lead
             to more fragmented sub-tables.
         """
-        if row_split_threshold < 1:
-            raise ValueError("split_threshold must be greater than 0")
+        pandas_import.check()
+        if row_split_threshold is not None and row_split_threshold < 1:
+            raise ValueError("row_split_threshold must be greater than 0")
+
+        if column_split_threshold is not None and column_split_threshold < 1:
+            raise ValueError("column_split_threshold must be greater than 0")
+
+        if row_split_threshold is None and column_split_threshold is None:
+            raise ValueError("At least one of row_split_threshold or column_split_threshold must be specified.")
+
         self.row_split_threshold = row_split_threshold
-        if column_split_threshold < 1:
-            raise ValueError("split_threshold must be greater than 0")
         self.column_split_threshold = column_split_threshold
 
     @component.output_types(documents=List[Document])
@@ -59,29 +67,41 @@ class CSVDocumentSplitter:
         - If a document cannot be processed, it is returned unchanged.
         - The `meta` field from the original document is preserved in the split documents.
         """
-        cleaned_documents = []
+        split_documents = []
         for document in documents:
             try:
                 df = pd.read_csv(StringIO(document.content), header=None, dtype=object)  # type: ignore
             except Exception as e:
                 logger.error(f"Error processing document {document.id}. Keeping it, but skipping splitting. Error: {e}")
-                cleaned_documents.append(document)
+                split_documents.append(document)
                 continue
 
-            split_dfs = self._recursive_split(
-                df=df, row_split_threshold=self.row_split_threshold, column_split_threshold=self.column_split_threshold
-            )
+            if self.row_split_threshold is not None:
+                # split by rows
+                split_dfs = self._split_dataframe(df=df, split_threshold=self.row_split_threshold, axis="row")
+            elif self.column_split_threshold is not None:
+                # split by columns
+                split_dfs = self._split_dataframe(df=df, split_threshold=self.column_split_threshold, axis="column")
+            else:
+                # recursive split
+                split_dfs = self._recursive_split(
+                    df=df,
+                    row_split_threshold=self.row_split_threshold,
+                    column_split_threshold=self.column_split_threshold,
+                )
+
             for split_df in split_dfs:
-                cleaned_documents.append(
+                split_documents.append(
                     Document(
                         content=split_df.to_csv(index=False, header=False, lineterminator="\n"),
                         meta=document.meta.copy(),
                     )
                 )
 
-        return {"documents": cleaned_documents}
+        return {"documents": split_documents}
 
-    def _find_split_indices(self, df: pd.DataFrame, split_threshold: int, axis: Literal["row", "column"]) -> List[int]:
+    @staticmethod
+    def _find_split_indices(df: "pd.DataFrame", split_threshold: int, axis: Literal["row", "column"]) -> List[int]:
         """
         Finds the indices of consecutive empty rows or columns in a DataFrame.
 
@@ -112,8 +132,8 @@ class CSVDocumentSplitter:
         return split_indices
 
     def _split_dataframe(
-        self, df: pd.DataFrame, split_threshold: int, axis: Literal["row", "column"]
-    ) -> List[pd.DataFrame]:
+        self, df: "pd.DataFrame", split_threshold: int, axis: Literal["row", "column"]
+    ) -> List["pd.DataFrame"]:
         """
         Splits a DataFrame into sub-tables based on consecutive empty rows or columns exceeding `split_threshold`.
 
@@ -143,8 +163,8 @@ class CSVDocumentSplitter:
         return sub_tables
 
     def _recursive_split(
-        self, df: pd.DataFrame, row_split_threshold: int, column_split_threshold: int
-    ) -> List[pd.DataFrame]:
+        self, df: "pd.DataFrame", row_split_threshold: Optional[int], column_split_threshold: Optional[int]
+    ) -> List["pd.DataFrame"]:
         """
         Recursively splits a DataFrame.
 
