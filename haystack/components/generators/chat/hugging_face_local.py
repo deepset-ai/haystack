@@ -420,7 +420,12 @@ class HuggingFaceLocalChatGenerator:
             return self.tool_pattern(text)
 
         # if the tool pattern is a regex pattern, search for it in the text
-        match = re.search(self.tool_pattern, text, re.DOTALL)
+        try:
+            match = re.search(self.tool_pattern, text, re.DOTALL)
+        except re.error:
+            logger.warning("Invalid regex pattern for tool parsing: {pattern}", pattern=self.tool_pattern)
+            return None
+
         if not match:
             return None
 

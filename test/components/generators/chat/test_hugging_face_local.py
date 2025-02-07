@@ -8,9 +8,10 @@ import pytest
 from transformers import PreTrainedTokenizer
 
 from haystack.components.generators.chat import HuggingFaceLocalChatGenerator
-from haystack.dataclasses import ChatMessage, ChatRole
+from haystack.dataclasses import ChatMessage, ChatRole, ToolCall
 from haystack.utils import ComponentDevice
 from haystack.utils.auth import Secret
+from haystack.tools import Tool
 
 
 # used to test serialization of streaming_callback
@@ -47,6 +48,18 @@ def mock_pipeline_tokenizer():
     mock_pipeline.tokenizer = mock_tokenizer
 
     return mock_pipeline
+
+
+@pytest.fixture
+def tools():
+    tool_parameters = {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}
+    tool = Tool(
+        name="weather",
+        description="useful to determine the weather in a given location",
+        parameters=tool_parameters,
+        function=lambda x: x,
+    )
+    return [tool]
 
 
 class TestHuggingFaceLocalChatGenerator:
@@ -307,3 +320,112 @@ class TestHuggingFaceLocalChatGenerator:
         assert "replies" in result
         assert isinstance(result["replies"][0], ChatMessage)
         assert "climate change" in result["replies"][0].text.lower()
+
+    def test_init_fail_with_duplicate_tool_names(self, model_info_mock, tools):
+        duplicate_tools = [tools[0], tools[0]]
+        with pytest.raises(ValueError, match="Duplicate tool names found"):
+            HuggingFaceLocalChatGenerator(model="irrelevant", tools=duplicate_tools)
+
+    def test_init_fail_with_tools_and_streaming(self, model_info_mock, tools):
+        with pytest.raises(ValueError, match="Using tools and streaming at the same time is not supported"):
+            HuggingFaceLocalChatGenerator(
+                model="irrelevant", tools=tools, streaming_callback=streaming_callback_handler
+            )
+
+    def test_run_with_tools(self, model_info_mock, tools):
+        generator = HuggingFaceLocalChatGenerator(model="meta-llama/Llama-2-13b-chat-hf", tools=tools)
+
+        # Mock pipeline and tokenizer
+        mock_pipeline = Mock(return_value=[{"generated_text": '{"name": "weather", "arguments": {"city": "Paris"}}'}])
+        mock_tokenizer = Mock(spec=PreTrainedTokenizer)
+        mock_tokenizer.encode.return_value = ["some", "tokens"]
+        mock_tokenizer.pad_token_id = 100
+        mock_tokenizer.apply_chat_template.return_value = "test prompt"
+        mock_pipeline.tokenizer = mock_tokenizer
+        generator.pipeline = mock_pipeline
+
+        messages = [ChatMessage.from_user("What's the weather in Paris?")]
+        results = generator.run(messages=messages)
+
+        assert len(results["replies"]) == 1
+        message = results["replies"][0]
+        assert message.tool_calls
+        tool_call = message.tool_calls[0]
+        assert isinstance(tool_call, ToolCall)
+        assert tool_call.tool_name == "weather"
+        assert tool_call.arguments == {"city": "Paris"}
+        assert message.meta["finish_reason"] == "tool_calls"
+
+    def test_run_with_tools_in_run_method(self, model_info_mock, tools):
+        generator = HuggingFaceLocalChatGenerator(model="meta-llama/Llama-2-13b-chat-hf")
+
+        # Mock pipeline and tokenizer
+        mock_pipeline = Mock(return_value=[{"generated_text": '{"name": "weather", "arguments": {"city": "Paris"}}'}])
+        mock_tokenizer = Mock(spec=PreTrainedTokenizer)
+        mock_tokenizer.encode.return_value = ["some", "tokens"]
+        mock_tokenizer.pad_token_id = 100
+        mock_tokenizer.apply_chat_template.return_value = "test prompt"
+        mock_pipeline.tokenizer = mock_tokenizer
+        generator.pipeline = mock_pipeline
+
+        messages = [ChatMessage.from_user("What's the weather in Paris?")]
+        results = generator.run(messages=messages, tools=tools)
+
+        assert len(results["replies"]) == 1
+        message = results["replies"][0]
+        assert message.tool_calls
+        tool_call = message.tool_calls[0]
+        assert isinstance(tool_call, ToolCall)
+        assert tool_call.tool_name == "weather"
+        assert tool_call.arguments == {"city": "Paris"}
+        assert message.meta["finish_reason"] == "tool_calls"
+
+    def test_run_with_tools_and_tool_response(self, model_info_mock, tools):
+        generator = HuggingFaceLocalChatGenerator(model="meta-llama/Llama-2-13b-chat-hf")
+
+        # Mock pipeline and tokenizer
+        mock_pipeline = Mock(return_value=[{"generated_text": "The weather in Paris is 22°C"}])
+        mock_tokenizer = Mock(spec=PreTrainedTokenizer)
+        mock_tokenizer.encode.return_value = ["some", "tokens"]
+        mock_tokenizer.pad_token_id = 100
+        mock_tokenizer.apply_chat_template.return_value = "test prompt"
+        mock_pipeline.tokenizer = mock_tokenizer
+        generator.pipeline = mock_pipeline
+
+        tool_call = ToolCall(tool_name="weather", arguments={"city": "Paris"})
+        messages = [
+            ChatMessage.from_user("What's the weather in Paris?"),
+            ChatMessage.from_assistant(tool_calls=[tool_call]),
+            ChatMessage.from_tool(tool_result="22°C", origin=tool_call),
+        ]
+        results = generator.run(messages=messages)
+
+        assert len(results["replies"]) == 1
+        message = results["replies"][0]
+        assert not message.tool_calls  # No tool calls in the final response
+        assert "22°C" in message.text
+        assert message.meta["finish_reason"] == "stop"
+
+    def test_run_with_invalid_tool_pattern(self, model_info_mock, tools):
+        generator = HuggingFaceLocalChatGenerator(
+            model="meta-llama/Llama-2-13b-chat-hf",
+            tools=tools,
+            tool_pattern=r"invalid[pattern",  # Invalid regex pattern
+        )
+
+        # Mock pipeline and tokenizer
+        mock_pipeline = Mock(return_value=[{"generated_text": '{"name": "weather", "arguments": {"city": "Paris"}}'}])
+        mock_tokenizer = Mock(spec=PreTrainedTokenizer)
+        mock_tokenizer.encode.return_value = ["some", "tokens"]
+        mock_tokenizer.pad_token_id = 100
+        mock_tokenizer.apply_chat_template.return_value = "test prompt"
+        mock_pipeline.tokenizer = mock_tokenizer
+        generator.pipeline = mock_pipeline
+
+        messages = [ChatMessage.from_user("What's the weather in Paris?")]
+        results = generator.run(messages=messages)
+
+        assert len(results["replies"]) == 1
+        message = results["replies"][0]
+        assert not message.tool_calls  # No tool calls due to invalid pattern
+        assert message.meta["finish_reason"] == "stop"
