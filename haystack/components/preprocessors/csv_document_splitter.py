@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from io import StringIO
-from typing import Dict, List, Literal, Optional
+from typing import Dict, List, Literal, Optional, Tuple
 
 from haystack import Document, component, logging
 from haystack.lazy_imports import LazyImport
@@ -104,7 +104,9 @@ class CSVDocumentSplitter:
         return {"documents": split_documents}
 
     @staticmethod
-    def _find_split_indices(df: "pd.DataFrame", split_threshold: int, axis: Literal["row", "column"]) -> List[int]:
+    def _find_split_indices(
+        df: "pd.DataFrame", split_threshold: int, axis: Literal["row", "column"]
+    ) -> List[Tuple[int, int]]:
         """
         Finds the indices of consecutive empty rows or columns in a DataFrame.
 
@@ -118,19 +120,27 @@ class CSVDocumentSplitter:
         else:
             empty_elements = df.columns[df.isnull().all(axis=0)].tolist()
 
+        # If no empty elements found, return empty list
+        if len(empty_elements) == 0:
+            return []
+
         # Identify groups of consecutive empty elements
         split_indices = []
         consecutive_count = 1
+        start_index = empty_elements[0] if empty_elements else None
+
         for i in range(1, len(empty_elements)):
             if empty_elements[i] == empty_elements[i - 1] + 1:
                 consecutive_count += 1
             else:
                 if consecutive_count >= split_threshold:
-                    split_indices.append(empty_elements[i - 1])
+                    split_indices.append((start_index, empty_elements[i - 1]))
                 consecutive_count = 1
+                start_index = empty_elements[i]
 
+        # Handle the last group of consecutive elements
         if consecutive_count >= split_threshold:
-            split_indices.append(empty_elements[-1])
+            split_indices.append((start_index, empty_elements[-1]))
 
         return split_indices
 
@@ -148,22 +158,24 @@ class CSVDocumentSplitter:
         # Find indices of consecutive empty rows or columns
         split_indices = self._find_split_indices(df=df, split_threshold=split_threshold, axis=axis)
 
+        # If no split_indices are found, return the original DataFrame
+        if len(split_indices) == 0:
+            return [df]
+
         # Split the DataFrame at identified indices
         sub_tables = []
-        start_idx = 0
+        table_start_idx = 0
         df_length = df.shape[0] if axis == "row" else df.shape[1]
-        for end_idx in split_indices + [df_length]:
+        for empty_start_idx, empty_end_idx in split_indices + [(df_length, df_length)]:
             # Avoid empty splits
-            if end_idx - start_idx > 1:
+            if empty_start_idx - table_start_idx > 1:
                 if axis == "row":
-                    # TODO Shouldn't drop all empty rows just the ones in the range
-                    sub_table = df.iloc[start_idx:end_idx].dropna(how="all", axis=0)
+                    sub_table = df.iloc[table_start_idx:empty_start_idx]
                 else:
-                    # TODO Shouldn't drop all empty columns just the ones in the range
-                    sub_table = df.iloc[:, start_idx:end_idx].dropna(how="all", axis=1)
+                    sub_table = df.iloc[:, table_start_idx:empty_start_idx]
                 if not sub_table.empty:
                     sub_tables.append(sub_table)
-            start_idx = end_idx + 1
+            table_start_idx = empty_end_idx + 1
 
         return sub_tables
 

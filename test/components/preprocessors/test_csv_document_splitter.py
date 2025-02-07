@@ -39,7 +39,7 @@ class TestFindSplitIndices:
     ) -> None:
         df = pd.read_csv(StringIO(two_tables_sep_by_two_empty_rows), header=None, dtype=object)  # type: ignore
         result = splitter._find_split_indices(df, split_threshold=2, axis="row")
-        assert result == [3]
+        assert result == [(2, 3)]
 
     def test_find_split_indices_row_two_tables_with_empty_row(self, splitter: CSVDocumentSplitter) -> None:
         csv_content = """A,B,C
@@ -52,7 +52,7 @@ X,Y,Z
 """
         df = pd.read_csv(StringIO(csv_content), header=None, dtype=object)  # type: ignore
         result = splitter._find_split_indices(df, split_threshold=2, axis="row")
-        assert result == [4]
+        assert result == [(3, 4)]
 
     def test_find_split_indices_row_three_tables(self, splitter: CSVDocumentSplitter) -> None:
         csv_content = """A,B,C
@@ -67,14 +67,14 @@ P,Q,R
 """
         df = pd.read_csv(StringIO(csv_content), header=None, dtype=object)  # type: ignore
         result = splitter._find_split_indices(df, split_threshold=2, axis="row")
-        assert result == [3, 7]
+        assert result == [(2, 3), (6, 7)]
 
     def test_find_split_indices_column_two_tables(
         self, splitter: CSVDocumentSplitter, two_tables_sep_by_two_empty_columns: str
     ) -> None:
         df = pd.read_csv(StringIO(two_tables_sep_by_two_empty_columns), header=None, dtype=object)  # type: ignore
         result = splitter._find_split_indices(df, split_threshold=1, axis="column")
-        assert result == [3]
+        assert result == [(2, 3)]
 
     def test_find_split_indices_column_two_tables_with_empty_column(self, splitter: CSVDocumentSplitter) -> None:
         csv_content = """A,,B,,,X,Y
@@ -83,7 +83,7 @@ P,Q,R
 """
         df = pd.read_csv(StringIO(csv_content), header=None, dtype=object)  # type: ignore
         result = splitter._find_split_indices(df, split_threshold=2, axis="column")
-        assert result == [4]
+        assert result == [(3, 4)]
 
     def test_find_split_indices_column_three_tables(self, splitter: CSVDocumentSplitter) -> None:
         csv_content = """A,B,,,X,Y,,,P,Q
@@ -92,7 +92,7 @@ P,Q,R
 """
         df = pd.read_csv(StringIO(csv_content), header=None, dtype=object)  # type: ignore
         result = splitter._find_split_indices(df, split_threshold=2, axis="column")
-        assert result == [3, 7]
+        assert result == [(2, 3), (6, 7)]
 
 
 class TestCSVDocumentSplitter:
