@@ -18,16 +18,16 @@ haystack.logging.configure_logging()
 haystack.tracing.auto_enable_tracing()
 
 __all__ = [
+    "Answer",
+    "AsyncPipeline",
+    "ComponentError",
+    "DeserializationError",
+    "Document",
+    "ExtractedAnswer",
+    "GeneratedAnswer",
+    "Pipeline",
+    "PredefinedPipeline",
     "component",
     "default_from_dict",
     "default_to_dict",
-    "DeserializationError",
-    "ComponentError",
-    "AsyncPipeline",
-    "Pipeline",
-    "PredefinedPipeline",
-    "Document",
-    "Answer",
-    "GeneratedAnswer",
-    "ExtractedAnswer",
 ]
