@@ -19,6 +19,11 @@ def streaming_callback_handler(x):
     return x
 
 
+def get_weather(city: str) -> str:
+    """Get the weather for a given city."""
+    return f"Weather data for {city}"
+
+
 @pytest.fixture
 def chat_messages():
     return [
@@ -57,8 +62,9 @@ def tools():
         name="weather",
         description="useful to determine the weather in a given location",
         parameters=tool_parameters,
-        function=lambda x: x,
+        function=get_weather,
     )
+
     return [tool]
 
 
@@ -151,14 +157,15 @@ class TestHuggingFaceLocalChatGenerator:
         with pytest.raises(ValueError, match="is not supported."):
             HuggingFaceLocalChatGenerator(task="text-classification")
 
-    def test_to_dict(self, model_info_mock):
+    def test_to_dict(self, model_info_mock, tools):
         generator = HuggingFaceLocalChatGenerator(
             model="NousResearch/Llama-2-7b-chat-hf",
             token=Secret.from_env_var("ENV_VAR", strict=False),
             generation_kwargs={"n": 5},
             stop_words=["stop", "words"],
-            streaming_callback=streaming_callback_handler,
+            streaming_callback=None,
             chat_template="irrelevant",
+            tools=tools,
         )
 
         # Call the to_dict method
@@ -170,16 +177,28 @@ class TestHuggingFaceLocalChatGenerator:
         assert init_params["huggingface_pipeline_kwargs"]["model"] == "NousResearch/Llama-2-7b-chat-hf"
         assert "token" not in init_params["huggingface_pipeline_kwargs"]
         assert init_params["generation_kwargs"] == {"max_new_tokens": 512, "n": 5, "stop_sequences": ["stop", "words"]}
-        assert init_params["streaming_callback"] == "chat.test_hugging_face_local.streaming_callback_handler"
+        assert init_params["streaming_callback"] is None
         assert init_params["chat_template"] == "irrelevant"
+        assert init_params["tools"] == [
+            {
+                "type": "haystack.tools.tool.Tool",
+                "data": {
+                    "name": "weather",
+                    "description": "useful to determine the weather in a given location",
+                    "parameters": {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]},
+                    "function": "chat.test_hugging_face_local.get_weather",
+                },
+            }
+        ]
 
-    def test_from_dict(self, model_info_mock):
+    def test_from_dict(self, model_info_mock, tools):
         generator = HuggingFaceLocalChatGenerator(
             model="NousResearch/Llama-2-7b-chat-hf",
             generation_kwargs={"n": 5},
             stop_words=["stop", "words"],
-            streaming_callback=streaming_callback_handler,
+            streaming_callback=None,
             chat_template="irrelevant",
+            tools=tools,
         )
         # Call the to_dict method
         result = generator.to_dict()
@@ -188,8 +207,16 @@ class TestHuggingFaceLocalChatGenerator:
 
         assert generator_2.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
         assert generator_2.generation_kwargs == {"max_new_tokens": 512, "n": 5, "stop_sequences": ["stop", "words"]}
-        assert generator_2.streaming_callback is streaming_callback_handler
+        assert generator_2.streaming_callback is None
         assert generator_2.chat_template == "irrelevant"
+        assert len(generator_2.tools) == 1
+        assert generator_2.tools[0].name == "weather"
+        assert generator_2.tools[0].description == "useful to determine the weather in a given location"
+        assert generator_2.tools[0].parameters == {
+            "type": "object",
+            "properties": {"city": {"type": "string"}},
+            "required": ["city"],
+        }
 
     @patch("haystack.components.generators.chat.hugging_face_local.pipeline")
     def test_warm_up(self, pipeline_mock, monkeypatch):

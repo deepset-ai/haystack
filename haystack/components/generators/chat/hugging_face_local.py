@@ -10,7 +10,7 @@ from typing import Any, Callable, Dict, List, Literal, Optional, Union
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall
 from haystack.lazy_imports import LazyImport
-from haystack.tools import Tool, _check_duplicate_tool_names
+from haystack.tools import Tool, _check_duplicate_tool_names, deserialize_tools_inplace
 from haystack.utils import (
     ComponentDevice,
     Secret,
@@ -219,6 +219,7 @@ class HuggingFaceLocalChatGenerator:
             Dictionary with serialized data.
         """
         callback_name = serialize_callable(self.streaming_callback) if self.streaming_callback else None
+        serialized_tools = [tool.to_dict() for tool in self.tools] if self.tools else None
         serialization_dict = default_to_dict(
             self,
             huggingface_pipeline_kwargs=self.huggingface_pipeline_kwargs,
@@ -226,6 +227,7 @@ class HuggingFaceLocalChatGenerator:
             streaming_callback=callback_name,
             token=self.token.to_dict() if self.token else None,
             chat_template=self.chat_template,
+            tools=serialized_tools,
         )
 
         huggingface_pipeline_kwargs = serialization_dict["init_parameters"]["huggingface_pipeline_kwargs"]
@@ -246,6 +248,7 @@ class HuggingFaceLocalChatGenerator:
         """
         torch_and_transformers_import.check()  # leave this, cls method
         deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
+        deserialize_tools_inplace(data["init_parameters"], key="tools")
         init_params = data.get("init_parameters", {})
         serialized_callback_handler = init_params.get("streaming_callback")
         if serialized_callback_handler:
