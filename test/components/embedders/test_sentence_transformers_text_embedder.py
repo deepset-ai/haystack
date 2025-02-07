@@ -338,9 +338,7 @@ class TestSentenceTransformersTextEmbedder:
         assert len(onnx_embedding_def) == 384
         assert onnx_embedding_def[0] == pytest.approx(0.0, abs=0.1)
 
-    @pytest.mark.skip(
-        reason="OpenVINO backend does not support our current transformers + sentence transformers dependencies versions"
-    )
+    @pytest.mark.integration
     def test_model_openvino_quantization(self, monkeypatch):
         monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
         text = "a nice text to embed"

@@ -678,11 +678,8 @@ class TestSentenceTransformersDiversityRanker:
         assert result_content == expected_content
 
     @pytest.mark.integration
-    @pytest.mark.parametrize(
-        "similarity,backend",
-        [("dot_product", "torch"), ("dot_product", "onnx"), ("cosine", "torch"), ("cosine", "onnx")],
-    )  # we don't use "openvino" due to dependency issues
-    def test_run_with_maximum_margin_relevance_strategy(self, similarity, backend, monkeypatch):
+    @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
+    def test_run_with_maximum_margin_relevance_strategy(self, similarity, monkeypatch):
         monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
         query = "renewable energy sources"
         docs = [
@@ -697,10 +694,7 @@ class TestSentenceTransformersDiversityRanker:
         ]
 
         ranker = SentenceTransformersDiversityRanker(
-            model="sentence-transformers/all-MiniLM-L6-v2",
-            similarity=similarity,
-            strategy="maximum_margin_relevance",
-            backend=backend,
+            model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity, strategy="maximum_margin_relevance"
         )
         ranker.warm_up()
 
@@ -732,55 +726,88 @@ class TestSentenceTransformersDiversityRanker:
         ]
         assert [doc.content for doc in results["documents"]] == expected
 
+    @pytest.mark.integration
+    def test_run_with_onnx_backend(self, monkeypatch):
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+        query = "city"
+        docs = [
+            Document(content="France"),
+            Document(content="Germany"),
+            Document(content="Eiffel Tower"),
+            Document(content="Berlin"),
+            Document(content="Bananas"),
+            Document(content="Silicon Valley"),
+            Document(content="Brandenburg Gate"),
+        ]
+
+        ranker = SentenceTransformersDiversityRanker(
+            model="sentence-transformers/all-MiniLM-L6-v2",
+            backend="onnx",
+            model_kwargs={"file_name": "onnx/model.onnx"},
+        )
+        ranker.warm_up()
+
+        result = ranker.run(query=query, documents=docs)
+        ranked_docs = result["documents"]
+        ranked_order = ", ".join([doc.content for doc in ranked_docs])
+        expected_order = "Berlin, Bananas, Eiffel Tower, Silicon Valley, France, Brandenburg Gate, Germany"
+
+        assert ranked_order == expected_order
+
+    @pytest.mark.integration
+    def test_run_with_openvino_backend(self, monkeypatch):
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+        query = "city"
+        docs = [
+            Document(content="France"),
+            Document(content="Germany"),
+            Document(content="Eiffel Tower"),
+            Document(content="Berlin"),
+            Document(content="Bananas"),
+            Document(content="Silicon Valley"),
+            Document(content="Brandenburg Gate"),
+        ]
+
+        ranker = SentenceTransformersDiversityRanker(
+            model="sentence-transformers/all-MiniLM-L6-v2",
+            backend="openvino",
+            model_kwargs={"file_name": "openvino/openvino_model.xml"},
+        )
+        ranker.warm_up()
+
+        result = ranker.run(query=query, documents=docs)
+        ranked_docs = result["documents"]
+        ranked_order = ", ".join([doc.content for doc in ranked_docs])
+        expected_order = "Berlin, Bananas, Eiffel Tower, Silicon Valley, France, Brandenburg Gate, Germany"
+
+        assert ranked_order == expected_order
+
     @pytest.mark.skip(reason="Test env doesn't compile Torch with CUDA support")
     @pytest.mark.integration
     @pytest.mark.parametrize("model_kwargs", [{"torch_dtype": "float16"}, {"torch_dtype": "bfloat16"}])
-    def test_run_with_maximum_margin_relevance_strategy(self, model_kwargs, monkeypatch):
+    def test_run_with_different_dtypes(self, model_kwargs, monkeypatch):
         monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-        query = "renewable energy sources"
+        query = "city"
         docs = [
-            Document(content="18th-century French literature"),
-            Document(content="Solar power generation"),
-            Document(content="Ancient Egyptian hieroglyphics"),
-            Document(content="Wind turbine technology"),
-            Document(content="Baking sourdough bread"),
-            Document(content="Hydroelectric dam systems"),
-            Document(content="Geothermal energy extraction"),
-            Document(content="Biomass fuel production"),
+            Document(content="France"),
+            Document(content="Germany"),
+            Document(content="Eiffel Tower"),
+            Document(content="Berlin"),
+            Document(content="Bananas"),
+            Document(content="Silicon Valley"),
+            Document(content="Brandenburg Gate"),
         ]
 
         ranker = SentenceTransformersDiversityRanker(
             model="sentence-transformers/all-MiniLM-L6-v2",
             device=ComponentDevice.from_str("cuda:0"),
-            strategy="maximum_margin_relevance",
             model_kwargs=model_kwargs,
         )
         ranker.warm_up()
 
-        # lambda_threshold=1, the most relevant document should be returned first
-        results = ranker.run(query=query, documents=docs, lambda_threshold=1, top_k=len(docs))
-        expected = [
-            "Solar power generation",
-            "Wind turbine technology",
-            "Geothermal energy extraction",
-            "Hydroelectric dam systems",
-            "Biomass fuel production",
-            "Ancient Egyptian hieroglyphics",
-            "Baking sourdough bread",
-            "18th-century French literature",
-        ]
-        assert [doc.content for doc in results["documents"]] == expected
+        result = ranker.run(query=query, documents=docs)
+        ranked_docs = result["documents"]
+        ranked_order = ", ".join([doc.content for doc in ranked_docs])
+        expected_order = "Berlin, Bananas, Eiffel Tower, Silicon Valley, France, Brandenburg Gate, Germany"
 
-        # lambda_threshold=0, after the most relevant one, diverse documents should be returned
-        results = ranker.run(query=query, documents=docs, lambda_threshold=0, top_k=len(docs))
-        expected = [
-            "Solar power generation",
-            "Ancient Egyptian hieroglyphics",
-            "Baking sourdough bread",
-            "18th-century French literature",
-            "Biomass fuel production",
-            "Hydroelectric dam systems",
-            "Geothermal energy extraction",
-            "Wind turbine technology",
-        ]
-        assert [doc.content for doc in results["documents"]] == expected
+        assert ranked_order == expected_order
