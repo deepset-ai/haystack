@@ -1,3 +1,4 @@
+---
 features:
   - |
     Introduced the OpenAPIConnector component, enabling direct invocation of REST endpoints as specified in an OpenAPI specification.
