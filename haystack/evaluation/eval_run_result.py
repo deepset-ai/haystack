@@ -59,7 +59,7 @@ class CustomDataFrame:
         :returns:
             A dictionary representation of the data.
         """
-        return self.data
+        return {k: {i: v[i] for i in range(len(v))} for k, v in self.data.items()}
 
     def to_pandas_dataframe(self) -> Optional["pd.DataFrame"]:
         """
@@ -294,8 +294,8 @@ class EvaluationRunResult:
 
         # Get data from both runs as dictionaries
 
-        pipe_a_dict = self.to_pandas().to_dict()  # Returns Dict[str, List[Any]]
-        pipe_b_dict = other.to_pandas().to_dict()  # Returns Dict[str, List[Any]]
+        pipe_a_dict = self.to_pandas().data  # Returns Dict[str, List[Any]]
+        pipe_b_dict = other.to_pandas().data  # Returns Dict[str, List[Any]]
         # Determine which columns to ignore
         if keep_columns is None:
             ignore = list(self.inputs.keys())
