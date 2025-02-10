@@ -244,7 +244,7 @@ E,F,,,G,H
         result = splitter.run([])["documents"]
         assert len(result) == 0
 
-    def test_default_to_dict(self) -> None:
+    def test_to_dict_with_defaults(self) -> None:
         splitter = CSVDocumentSplitter()
         config_serialized = component_to_dict(splitter, name="CSVDocumentSplitter")
         config = {
@@ -252,3 +252,48 @@ E,F,,,G,H
             "init_parameters": {"row_split_threshold": 2, "column_split_threshold": 2, "read_csv_kwargs": {}},
         }
         assert config_serialized == config
+
+    def test_to_dict_non_defaults(self) -> None:
+        splitter = CSVDocumentSplitter(
+            row_split_threshold=1, column_split_threshold=None, read_csv_kwargs={"sep": ";", "dtype": object}
+        )
+        config_serialized = component_to_dict(splitter, name="CSVDocumentSplitter")
+        config = {
+            "type": "haystack.components.preprocessors.csv_document_splitter.CSVDocumentSplitter",
+            "init_parameters": {
+                "row_split_threshold": 1,
+                "column_split_threshold": None,
+                "read_csv_kwargs": {"sep": ";", "dtype": object},
+            },
+        }
+        assert config_serialized == config
+
+    def test_from_dict_defaults(self) -> None:
+        splitter = component_from_dict(
+            CSVDocumentSplitter,
+            data={
+                "type": "haystack.components.preprocessors.csv_document_splitter.CSVDocumentSplitter",
+                "init_parameters": {},
+            },
+            name="CSVDocumentSplitter",
+        )
+        assert splitter.row_split_threshold == 2
+        assert splitter.column_split_threshold == 2
+        assert splitter.read_csv_kwargs == {}
+
+    def test_from_dict_non_defaults(self) -> None:
+        splitter = component_from_dict(
+            CSVDocumentSplitter,
+            data={
+                "type": "haystack.components.preprocessors.csv_document_splitter.CSVDocumentSplitter",
+                "init_parameters": {
+                    "row_split_threshold": 1,
+                    "column_split_threshold": None,
+                    "read_csv_kwargs": {"sep": ";", "dtype": object},
+                },
+            },
+            name="CSVDocumentSplitter",
+        )
+        assert splitter.row_split_threshold == 1
+        assert splitter.column_split_threshold is None
+        assert splitter.read_csv_kwargs == {"sep": ";", "dtype": object}

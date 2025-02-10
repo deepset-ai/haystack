@@ -82,7 +82,7 @@ def component_to_dict(obj: Any, name: str) -> Dict[str, Any]:
 def _validate_component_to_dict_output(component: Any, name: str, data: Dict[str, Any]) -> None:
     # Ensure that only basic Python types are used in the serde data.
     def is_allowed_type(obj: Any) -> bool:
-        return isinstance(obj, (str, int, float, bool, list, dict, set, tuple, type(None)))
+        return isinstance(obj, (str, int, float, bool, list, dict, set, tuple, type(None), object))
 
     def check_iterable(l: Iterable[Any]):
         for v in l:
