@@ -1,7 +1,7 @@
 loaders:
   - type: haystack_pydoc_tools.loaders.CustomPythonLoader
     search_path: [../../../haystack/components/extractors]
-    modules: ["named_entity_extractor"]
+    modules: ["named_entity_extractor", "llm_metadata_extractor"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
