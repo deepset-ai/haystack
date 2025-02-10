@@ -444,7 +444,7 @@ class TestHuggingFaceLocalChatGenerator:
         generator = HuggingFaceLocalChatGenerator(
             model="meta-llama/Llama-2-13b-chat-hf", tools=tools, tool_parsing_function=custom_tool_parser
         )
-        generator.pipeline = Mock(return_value=[{"generated_text": "Let me check the weather for you"}])
+        generator.pipeline = Mock(return_value=[{"mocked_response": "Mocked response, we don't use it"}])
         generator.pipeline.tokenizer = Mock()
         generator.pipeline.tokenizer.encode.return_value = [1, 2, 3]
         generator.pipeline.tokenizer.pad_token_id = 1
