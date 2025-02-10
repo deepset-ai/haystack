@@ -86,15 +86,11 @@ class CSVDocumentSplitter:
         if len(documents) == 0:
             return {"documents": documents}
 
+        resolved_read_csv_kwargs = {"header": None, "skip_blank_lines": False, "dtype": object, **self.read_csv_kwargs}
+
         split_documents = []
         for document in documents:
             try:
-                resolved_read_csv_kwargs = {
-                    "header": None,
-                    "skip_blank_lines": False,
-                    "dtype": object,
-                    **self.read_csv_kwargs,
-                }
                 df = pd.read_csv(StringIO(document.content), **resolved_read_csv_kwargs)  # type: ignore
             except Exception as e:
                 logger.error(f"Error processing document {document.id}. Keeping it, but skipping splitting. Error: {e}")
