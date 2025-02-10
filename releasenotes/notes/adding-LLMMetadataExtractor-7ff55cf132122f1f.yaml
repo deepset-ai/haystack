@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Adding a new component `LLMMetadaExtractor` which can be used in an indexing pipeline to extract metadata from documents based on a user given prompt, and return the documents with the `metadata` field with the output of the LLM.
