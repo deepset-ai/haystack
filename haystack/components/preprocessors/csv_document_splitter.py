@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from io import StringIO
-from typing import Dict, List, Literal, Optional, Tuple
+from typing import Any, Dict, List, Literal, Optional, Tuple
 
 from haystack import Document, component, logging
 from haystack.lazy_imports import LazyImport
@@ -23,14 +23,23 @@ class CSVDocumentSplitter:
     and uses them as delimiters to segment the document into smaller tables.
     """
 
-    def __init__(self, row_split_threshold: Optional[int] = 2, column_split_threshold: Optional[int] = 2) -> None:
+    def __init__(
+        self,
+        row_split_threshold: Optional[int] = 2,
+        column_split_threshold: Optional[int] = 2,
+        read_csv_kwargs: Optional[Dict[str, Any]] = None,
+    ) -> None:
         """
         Initializes the CSVDocumentSplitter component.
 
-        :param row_split_threshold:
-            The minimum number of consecutive empty rows required to trigger a split.
-        :param column_split_threshold:
-            The minimum number of consecutive empty columns required to trigger a split.
+        :param row_split_threshold: The minimum number of consecutive empty rows required to trigger a split.
+        :param column_split_threshold: The minimum number of consecutive empty columns required to trigger a split.
+        :param read_csv_kwargs: Additional keyword arguments to pass to `pandas.read_csv`.
+            By default, the component with options:
+            - `header=None`
+            - `skip_blank_lines=False` to preserve blank lines
+            - `dtype=object` to prevent type inference (e.g., converting numbers to floats).
+            See https://pandas.pydata.org/docs/reference/api/pandas.read_csv.html for more information.
         """
         pandas_import.check()
         if row_split_threshold is not None and row_split_threshold < 1:
@@ -44,6 +53,7 @@ class CSVDocumentSplitter:
 
         self.row_split_threshold = row_split_threshold
         self.column_split_threshold = column_split_threshold
+        self.read_csv_kwargs = read_csv_kwargs or {}
 
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document]) -> Dict[str, List[Document]]:
@@ -79,9 +89,13 @@ class CSVDocumentSplitter:
         split_documents = []
         for document in documents:
             try:
-                df = pd.read_csv(  # type: ignore
-                    StringIO(document.content), header=None, skip_blank_lines=False, dtype=object
-                )
+                resolved_read_csv_kwargs = {
+                    "header": None,
+                    "skip_blank_lines": False,
+                    "dtype": object,
+                    **self.read_csv_kwargs,
+                }
+                df = pd.read_csv(StringIO(document.content), **resolved_read_csv_kwargs)  # type: ignore
             except Exception as e:
                 logger.error(f"Error processing document {document.id}. Keeping it, but skipping splitting. Error: {e}")
                 split_documents.append(document)

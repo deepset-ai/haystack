@@ -6,6 +6,7 @@ import pytest
 import pandas as pd
 from io import StringIO
 from haystack import Document
+from haystack.core.serialization import component_from_dict, component_to_dict
 from haystack.components.preprocessors.csv_document_splitter import CSVDocumentSplitter
 
 
@@ -198,6 +199,34 @@ P,Q,,,,
             assert table.content == expected_tables[i]
             assert table.meta == expected_meta[i]
 
+    def test_csv_with_blank_lines(self, splitter: CSVDocumentSplitter) -> None:
+        csv_data = """ID,LeftVal,,,RightVal,Extra
+1,Hello,,,World,Joined
+2,StillLeft,,,StillRight,Bridge
+
+A,B,,,C,D
+E,F,,,G,H
+"""
+        splitter = CSVDocumentSplitter(row_split_threshold=1, column_split_threshold=1)
+        result = splitter.run([Document(content=csv_data, id="test_id")])
+        docs = result["documents"]
+        assert len(docs) == 4
+        expected_tables = [
+            "ID,LeftVal\n1,Hello\n2,StillLeft\n",
+            "RightVal,Extra\nWorld,Joined\nStillRight,Bridge\n",
+            "A,B\nE,F\n",
+            "C,D\nG,H\n",
+        ]
+        expected_meta = [
+            {"source_id": "test_id", "row_idx_start": 0, "col_idx_start": 0, "split_id": 0},
+            {"source_id": "test_id", "row_idx_start": 0, "col_idx_start": 4, "split_id": 1},
+            {"source_id": "test_id", "row_idx_start": 4, "col_idx_start": 0, "split_id": 2},
+            {"source_id": "test_id", "row_idx_start": 4, "col_idx_start": 4, "split_id": 3},
+        ]
+        for i, table in enumerate(docs):
+            assert table.content == expected_tables[i]
+            assert table.meta == expected_meta[i]
+
     def test_threshold_no_effect(self, two_tables_sep_by_two_empty_rows: str) -> None:
         splitter = CSVDocumentSplitter(row_split_threshold=3)
         doc = Document(content=two_tables_sep_by_two_empty_rows)
@@ -214,3 +243,12 @@ P,Q,,,,
     def test_empty_documents(self, splitter: CSVDocumentSplitter) -> None:
         result = splitter.run([])["documents"]
         assert len(result) == 0
+
+    def test_default_to_dict(self) -> None:
+        splitter = CSVDocumentSplitter()
+        config_serialized = component_to_dict(splitter, name="CSVDocumentSplitter")
+        config = {
+            "type": "haystack.components.preprocessors.csv_document_splitter.CSVDocumentSplitter",
+            "init_parameters": {"row_split_threshold": 2, "column_split_threshold": 2, "read_csv_kwargs": {}},
+        }
+        assert config_serialized == config
