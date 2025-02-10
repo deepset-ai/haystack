@@ -210,6 +210,9 @@ class LLMMetadataExtractor:
         """
         Initialize the chat generator based on the specified API provider and parameters.
         """
+
+        generator_api_params = generator_api_params or {}
+
         if generator_api == LLMProvider.OPENAI:
             return OpenAIChatGenerator(**generator_api_params)
         elif generator_api == LLMProvider.OPENAI_AZURE:
