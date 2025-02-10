@@ -9,7 +9,7 @@ from haystack.components.writers import DocumentWriter
 from haystack.dataclasses import ChatMessage
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 
-from haystack_experimental.components.extractors import LLMMetadataExtractor, LLMProvider
+from haystack.components.extractors import LLMMetadataExtractor, LLMProvider
 
 
 class TestLLMMetadataExtractor:
@@ -65,7 +65,7 @@ class TestLLMMetadataExtractor:
         extractor_dict = extractor.to_dict()
 
         assert extractor_dict == {
-            "type": "haystack_experimental.components.extractors.llm_metadata_extractor.LLMMetadataExtractor",
+            "type": "haystack.components.extractors.llm_metadata_extractor.LLMMetadataExtractor",
             "init_parameters": {
                 "prompt": "some prompt that was used with the LLM {{document.content}}",
                 "expected_keys": ["key1", "key2"],
@@ -98,7 +98,7 @@ class TestLLMMetadataExtractor:
         )
         extractor_dict = extractor.to_dict()
         assert extractor_dict == {
-            "type": "haystack_experimental.components.extractors.llm_metadata_extractor.LLMMetadataExtractor",
+            "type": "haystack.components.extractors.llm_metadata_extractor.LLMMetadataExtractor",
             "init_parameters": {
                 "prompt": "some prompt that was used with the LLM {{document.content}}",
                 "generator_api": "aws_bedrock",
@@ -129,7 +129,7 @@ class TestLLMMetadataExtractor:
     def test_from_dict_openai(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         extractor_dict = {
-            "type": "haystack_experimental.components.extractors.llm_metadata_extractor.LLMMetadataExtractor",
+            "type": "haystack.components.extractors.llm_metadata_extractor.LLMMetadataExtractor",
             "init_parameters": {
                 "prompt": "some prompt that was used with the LLM {{document.content}}",
                 "expected_keys": ["key1", "key2"],
@@ -153,7 +153,7 @@ class TestLLMMetadataExtractor:
 
     def test_from_dict_aws_bedrock(self, boto3_session_mock):
         extractor_dict = {
-            "type": "haystack_experimental.components.extractors.llm_metadata_extractor.LLMMetadataExtractor",
+            "type": "haystack.components.extractors.llm_metadata_extractor.LLMMetadataExtractor",
             "init_parameters": {
                 "prompt": "some prompt that was used with the LLM {{document.content}}",
                 "generator_api": "aws_bedrock",
