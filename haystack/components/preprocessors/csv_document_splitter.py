@@ -79,7 +79,9 @@ class CSVDocumentSplitter:
         split_documents = []
         for document in documents:
             try:
-                df = pd.read_csv(StringIO(document.content), header=None, dtype=object)  # type: ignore
+                df = pd.read_csv(  # type: ignore
+                    StringIO(document.content), header=None, skip_blank_lines=False, dtype=object
+                )
             except Exception as e:
                 logger.error(f"Error processing document {document.id}. Keeping it, but skipping splitting. Error: {e}")
                 split_documents.append(document)
