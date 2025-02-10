@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from haystack.components.connectors.openapi import OpenAPIConnector
 from haystack.components.connectors.openapi_service import OpenAPIServiceConnector
 
-__all__ = ["OpenAPIServiceConnector"]
+__all__ = ["OpenAPIServiceConnector", "OpenAPIConnector"]
