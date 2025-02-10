@@ -57,7 +57,7 @@ class LLMProvider(Enum):
 @component
 class LLMMetadataExtractor:
     """
-    Extracts metadata from documents using a Large Language Model (LLM) from OpenAI.
+    Extracts metadata from documents using a Large Language Model (LLM).
 
     The metadata is extracted by providing a prompt to an LLM that generates the metadata.
 
