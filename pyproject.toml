@@ -58,6 +58,7 @@ dependencies = [
   "numpy",
   "python-dateutil",
   "jsonschema",             # JsonSchemaValidator, Tool
+  "openapi-llm>=0.4.1",            # OpenAPIConnector
   "haystack-experimental",
 ]
 

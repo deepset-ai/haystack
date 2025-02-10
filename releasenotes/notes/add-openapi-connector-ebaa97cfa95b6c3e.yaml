@@ -1,0 +1,21 @@
+---
+features:
+  - |
+    Introduced the OpenAPIConnector component, enabling direct invocation of REST endpoints as specified in an OpenAPI specification.
+    This component is designed for direct REST endpoint invocation without LLM-generated payloads, users needs
+    to pass the run parameters explicitly.
+
+    Example:
+    ```python
+    from haystack.utils import Secret
+    from haystack.components.connectors.openapi import OpenAPIConnector
+
+    connector = OpenAPIConnector(
+        openapi_spec="https://bit.ly/serperdev_openapi",
+        credentials=Secret.from_env_var("SERPERDEV_API_KEY"),
+    )
+    response = connector.run(
+        operation_id="search",
+        parameters={"q": "Who was Nikola Tesla?"}
+    )
+    ```
