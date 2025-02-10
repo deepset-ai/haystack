@@ -5,7 +5,7 @@
 import pytest
 import pandas as pd
 from io import StringIO
-from haystack import Document
+from haystack import Document, Pipeline
 from haystack.core.serialization import component_from_dict, component_to_dict
 from haystack.components.preprocessors.csv_document_splitter import CSVDocumentSplitter
 
@@ -254,16 +254,14 @@ E,F,,,G,H
         assert config_serialized == config
 
     def test_to_dict_non_defaults(self) -> None:
-        splitter = CSVDocumentSplitter(
-            row_split_threshold=1, column_split_threshold=None, read_csv_kwargs={"sep": ";", "dtype": object}
-        )
+        splitter = CSVDocumentSplitter(row_split_threshold=1, column_split_threshold=None, read_csv_kwargs={"sep": ";"})
         config_serialized = component_to_dict(splitter, name="CSVDocumentSplitter")
         config = {
             "type": "haystack.components.preprocessors.csv_document_splitter.CSVDocumentSplitter",
             "init_parameters": {
                 "row_split_threshold": 1,
                 "column_split_threshold": None,
-                "read_csv_kwargs": {"sep": ";", "dtype": object},
+                "read_csv_kwargs": {"sep": ";"},
             },
         }
         assert config_serialized == config
@@ -289,11 +287,11 @@ E,F,,,G,H
                 "init_parameters": {
                     "row_split_threshold": 1,
                     "column_split_threshold": None,
-                    "read_csv_kwargs": {"sep": ";", "dtype": object},
+                    "read_csv_kwargs": {"sep": ";"},
                 },
             },
             name="CSVDocumentSplitter",
         )
         assert splitter.row_split_threshold == 1
         assert splitter.column_split_threshold is None
-        assert splitter.read_csv_kwargs == {"sep": ";", "dtype": object}
+        assert splitter.read_csv_kwargs == {"sep": ";"}
