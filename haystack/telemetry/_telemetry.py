@@ -8,7 +8,7 @@ import os
 import uuid
 from collections import defaultdict
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 import posthog
 import yaml
@@ -18,7 +18,7 @@ from haystack.core.serialization import generate_qualified_class_name
 from haystack.telemetry._environment import collect_system_specs
 
 if TYPE_CHECKING:
-    from haystack.core.pipeline import Pipeline
+    from haystack.core.pipeline import AsyncPipeline, Pipeline
 
 
 HAYSTACK_TELEMETRY_ENABLED = "HAYSTACK_TELEMETRY_ENABLED"
@@ -135,7 +135,7 @@ def send_telemetry(func):
 
 
 @send_telemetry
-def pipeline_running(pipeline: "Pipeline") -> Optional[Tuple[str, Dict[str, Any]]]:
+def pipeline_running(pipeline: Union["Pipeline", "AsyncPipeline"]) -> Optional[Tuple[str, Dict[str, Any]]]:
     """
     Collects telemetry data for a pipeline run and sends it to Posthog.
 
@@ -170,6 +170,7 @@ def pipeline_running(pipeline: "Pipeline") -> Optional[Tuple[str, Dict[str, Any]
     # Data sent to Posthog
     return "Pipeline run (2.x)", {
         "pipeline_id": str(id(pipeline)),
+        "pipeline_type": generate_qualified_class_name(type(pipeline)),
         "runs": pipeline._telemetry_runs,
         "components": components,
     }

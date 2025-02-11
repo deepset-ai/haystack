@@ -2,7 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from .async_pipeline import AsyncPipeline
 from .pipeline import Pipeline
 from .template import PredefinedPipeline
 
-__all__ = ["Pipeline", "PredefinedPipeline"]
+__all__ = ["AsyncPipeline", "Pipeline", "PredefinedPipeline"]

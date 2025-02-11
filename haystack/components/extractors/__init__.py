@@ -2,10 +2,17 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from haystack.components.extractors.llm_metadata_extractor import LLMMetadataExtractor, LLMProvider
 from haystack.components.extractors.named_entity_extractor import (
     NamedEntityAnnotation,
     NamedEntityExtractor,
     NamedEntityExtractorBackend,
 )
 
-__all__ = ["NamedEntityExtractor", "NamedEntityExtractorBackend", "NamedEntityAnnotation"]
+__all__ = [
+    "NamedEntityExtractor",
+    "NamedEntityExtractorBackend",
+    "NamedEntityAnnotation",
+    "LLMMetadataExtractor",
+    "LLMProvider",
+]
