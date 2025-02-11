@@ -41,7 +41,7 @@ Other LLM application frameworks such as LlamaIndex already provide support for 
 
 As with evaluation in Haystack 1.x, we reaffirm the core idea of implementing different pipelines for different concerns. We consider evaluation a separate process and consequently separate the execution of RAG and the metric calculation into two different pipelines. This allows for greater flexibility - for instance, the evaluation pipeline could contain an additional component that routes the inputs to different evaluator components based on certain criteria, etc. Another example would be the ability to convert the inputs from/to different formats before passing them to the evaluator.
 
-A further advantage of this approach is that any tool we develop in the future to facilitate introspection and observability of pipelines can transparently be appled to evaluation as well.
+A further advantage of this approach is that any tool we develop in the future to facilitate introspection and observability of pipelines can transparently be applied to evaluation as well.
 
 The implementation of the three evaluator components should follow the general guidelines for custom component development. There are two approaches we could take:
 

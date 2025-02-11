@@ -233,7 +233,7 @@ sufficient to translate into clinical use. There were other recent demos but the
 See https://twitter.com/GlassHealthHQ/status/1620092094034620421 for more details.
 
 - Public Healthcare QA: a bit less risky proposal than the medical QA. We can build a demo that answers questions about
-healthy diet, cooking recipes, vitamines etc. This demo would use almost exactly the same tools as the main demo proposal
+healthy diet, cooking recipes, vitamins etc. This demo would use almost exactly the same tools as the main demo proposal
 and we can potentially switch to this demo if needed.
 
 - Financial Domain (earnings transcript): we can build a demo that answers questions about earnings transcripts. However,
