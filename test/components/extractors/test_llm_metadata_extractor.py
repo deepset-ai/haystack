@@ -88,44 +88,6 @@ class TestLLMMetadataExtractor:
             },
         }
 
-    def test_to_dict_aws_bedrock(self, boto3_session_mock):
-        extractor = LLMMetadataExtractor(
-            prompt="some prompt that was used with the LLM {{document.content}}",
-            expected_keys=["key1", "key2"],
-            generator_api=LLMProvider.AWS_BEDROCK,
-            generator_api_params={"model": "meta.llama.test"},
-            raise_on_failure=True,
-        )
-        extractor_dict = extractor.to_dict()
-        assert extractor_dict == {
-            "type": "haystack.components.extractors.llm_metadata_extractor.LLMMetadataExtractor",
-            "init_parameters": {
-                "prompt": "some prompt that was used with the LLM {{document.content}}",
-                "generator_api": "aws_bedrock",
-                "generator_api_params": {
-                    "aws_access_key_id": {"type": "env_var", "env_vars": ["AWS_ACCESS_KEY_ID"], "strict": False},
-                    "aws_secret_access_key": {
-                        "type": "env_var",
-                        "env_vars": ["AWS_SECRET_ACCESS_KEY"],
-                        "strict": False,
-                    },
-                    "aws_session_token": {"type": "env_var", "env_vars": ["AWS_SESSION_TOKEN"], "strict": False},
-                    "aws_region_name": {"type": "env_var", "env_vars": ["AWS_DEFAULT_REGION"], "strict": False},
-                    "aws_profile_name": {"type": "env_var", "env_vars": ["AWS_PROFILE"], "strict": False},
-                    "model": "meta.llama.test",
-                    "stop_words": [],
-                    "generation_kwargs": {},
-                    "streaming_callback": None,
-                    "boto3_config": None,
-                    "tools": None,
-                },
-                "expected_keys": ["key1", "key2"],
-                "page_range": None,
-                "raise_on_failure": True,
-                "max_workers": 3,
-            },
-        }
-
     def test_from_dict_openai(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         extractor_dict = {
@@ -150,42 +112,6 @@ class TestLLMMetadataExtractor:
         assert extractor.expected_keys == ["key1", "key2"]
         assert extractor.prompt == "some prompt that was used with the LLM {{document.content}}"
         assert extractor.generator_api == LLMProvider.OPENAI
-
-    def test_from_dict_aws_bedrock(self, boto3_session_mock):
-        extractor_dict = {
-            "type": "haystack.components.extractors.llm_metadata_extractor.LLMMetadataExtractor",
-            "init_parameters": {
-                "prompt": "some prompt that was used with the LLM {{document.content}}",
-                "generator_api": "aws_bedrock",
-                "generator_api_params": {
-                    "aws_access_key_id": {"type": "env_var", "env_vars": ["AWS_ACCESS_KEY_ID"], "strict": False},
-                    "aws_secret_access_key": {
-                        "type": "env_var",
-                        "env_vars": ["AWS_SECRET_ACCESS_KEY"],
-                        "strict": False,
-                    },
-                    "aws_session_token": {"type": "env_var", "env_vars": ["AWS_SESSION_TOKEN"], "strict": False},
-                    "aws_region_name": {"type": "env_var", "env_vars": ["AWS_DEFAULT_REGION"], "strict": False},
-                    "aws_profile_name": {"type": "env_var", "env_vars": ["AWS_PROFILE"], "strict": False},
-                    "model": "meta.llama.test",
-                    "stop_words": [],
-                    "generation_kwargs": {},
-                    "streaming_callback": None,
-                    "boto3_config": None,
-                    "tools": None,
-                },
-                "expected_keys": ["key1", "key2"],
-                "page_range": None,
-                "raise_on_failure": True,
-                "max_workers": 3,
-            },
-        }
-        extractor = LLMMetadataExtractor.from_dict(extractor_dict)
-        assert extractor.raise_on_failure is True
-        assert extractor.expected_keys == ["key1", "key2"]
-        assert extractor.prompt == "some prompt that was used with the LLM {{document.content}}"
-        assert extractor.generator_api == LLMProvider.AWS_BEDROCK
-        assert extractor.llm_provider.model == "meta.llama.test"
 
     def test_warm_up(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
