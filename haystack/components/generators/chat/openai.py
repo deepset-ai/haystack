@@ -337,46 +337,46 @@ class OpenAIChatGenerator:
                 finish_reason=meta["finish_reason"],
             )
 
-    def _convert_streaming_chunks_to_chat_message(self, chunk: Any, chunks: List[StreamingChunk]) -> ChatMessage:
+    def _convert_streaming_chunks_to_chat_message(
+        self, chunk: ChatCompletionChunk, chunks: List[StreamingChunk]
+    ) -> ChatMessage:
         """
         Connects the streaming chunks into a single ChatMessage.
 
         :param chunk: The last chunk returned by the OpenAI API.
         :param chunks: The list of all `StreamingChunk` objects.
         """
-
         text = "".join([chunk.content for chunk in chunks])
         tool_calls = []
 
-        # if it's a tool call , we need to build the payload dict from all the chunks
-        if bool(chunks[0].meta.get("tool_calls")):
-            tools_len = len(chunks[0].meta.get("tool_calls", []))
+        # Process tool calls if present in any chunk
+        tool_call_data: Dict[str, Dict[str, str]] = {}  # Track tool calls by ID
+        for chunk_payload in chunks:
+            tool_calls_meta = chunk_payload.meta.get("tool_calls")
+            if tool_calls_meta:
+                for delta in tool_calls_meta:
+                    if not delta.id in tool_call_data:
+                        tool_call_data[delta.id] = {"id": delta.id, "name": "", "arguments": ""}
 
-            payloads = [{"arguments": "", "name": ""} for _ in range(tools_len)]
-            for chunk_payload in chunks:
-                deltas = chunk_payload.meta.get("tool_calls") or []
-
-                # deltas is a list of ChoiceDeltaToolCall or ChoiceDeltaFunctionCall
-                for i, delta in enumerate(deltas):
-                    payloads[i]["id"] = delta.id or payloads[i].get("id", "")
                     if delta.function:
-                        payloads[i]["name"] += delta.function.name or ""
-                        payloads[i]["arguments"] += delta.function.arguments or ""
+                        if delta.function.name:
+                            tool_call_data[delta.id]["name"] = delta.function.name
+                        if delta.function.arguments:
+                            tool_call_data[delta.id]["arguments"] = delta.function.arguments
 
-            for payload in payloads:
-                arguments_str = payload["arguments"]
-                try:
-                    arguments = json.loads(arguments_str)
-                    tool_calls.append(ToolCall(id=payload["id"], tool_name=payload["name"], arguments=arguments))
-                except json.JSONDecodeError:
-                    logger.warning(
-                        "OpenAI returned a malformed JSON string for tool call arguments. This tool call "
-                        "will be skipped. To always generate a valid JSON, set `tools_strict` to `True`. "
-                        "Tool call ID: {_id}, Tool name: {_name}, Arguments: {_arguments}",
-                        _id=payload["id"],
-                        _name=payload["name"],
-                        _arguments=arguments_str,
-                    )
+        # Convert accumulated tool call data into ToolCall objects
+        for call_data in tool_call_data.values():
+            try:
+                arguments = json.loads(call_data["arguments"])
+                tool_calls.append(ToolCall(id=call_data["id"], tool_name=call_data["name"], arguments=arguments))
+            except json.JSONDecodeError:
+                logger.warning(
+                    "Skipping malformed tool call due to invalid JSON. Set `tools_strict=True` for valid JSON. "
+                    "Tool call ID: {_id}, Tool name: {_name}, Arguments: {_arguments}",
+                    _id=call_data["id"],
+                    _name=call_data["name"],
+                    _arguments=call_data["arguments"],
+                )
 
         meta = {
             "model": chunk.model,
