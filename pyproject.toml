@@ -49,7 +49,7 @@ dependencies = [
   "openai>=1.56.1",
   "pydantic",
   "Jinja2",
-  "posthog",                # telemetry
+  "posthog<3.12.0",                # telemetry
   "pyyaml",
   "more-itertools",         # TextDocumentSplitter
   "networkx",               # Pipeline graphs
