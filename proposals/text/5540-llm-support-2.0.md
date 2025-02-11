@@ -186,7 +186,7 @@ Such template names **cannot be changed at runtime**.
 
 The design above derives from one Canals limitation: component’s sockets need to be all known the latest at `__init__` time, in order for the connections to be made and validated. Therefore, we need to know all the prompt variables before building the pipelines, because the prompt variables are inputs of the `run()` method.
 
-However, earlier iterations of Canals did support so-called “true variadic” components: components that do not need to know what they will be connected to, and build the input sockets at need. Such components of course lack input validation, but enable usecases like the above.
+However, earlier iterations of Canals did support so-called “true variadic” components: components that do not need to know what they will be connected to, and build the input sockets at need. Such components of course lack input validation, but enable use-cases like the above.
 
 If we decide that Canals should support again such components, we would be able to rewrite `PromptBuilder` to take a prompt as its input parameter and just accept any other incoming input, on the assumption that users knows that they’re doing.
 
