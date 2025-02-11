@@ -31,6 +31,68 @@ class AsyncPipeline(PipelineBase):
         """
         Executes the pipeline step by step asynchronously, yielding partial outputs when any component finishes.
 
+        Usage:
+        ```python
+        from haystack import Document
+        from haystack.utils import Secret
+        from haystack.document_stores.in_memory import InMemoryDocumentStore
+        from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+        from haystack.components.generators import OpenAIGenerator
+        from haystack.components.builders.prompt_builder import PromptBuilder
+        from haystack import AsyncPipeline
+        import asyncio
+        # Write documents to InMemoryDocumentStore
+        document_store = InMemoryDocumentStore()
+        document_store.write_documents([
+            Document(content="My name is Jean and I live in Paris."),
+            Document(content="My name is Mark and I live in Berlin."),
+            Document(content="My name is Giorgio and I live in Rome.")
+        ])
+
+        prompt_template = \"\"\"
+        Given these documents, answer the question.
+        Documents:
+        {% for doc in documents %}
+            {{ doc.content }}
+        {% endfor %}
+        Question: {{question}}
+        Answer:
+        \"\"\"
+
+        # Create and connect pipeline components
+        retriever = InMemoryBM25Retriever(document_store=document_store)
+        prompt_builder = PromptBuilder(template=prompt_template)
+        llm = OpenAIGenerator(api_key=Secret.from_token("your-api-key"))
+
+        rag_pipeline = AsyncPipeline()
+        rag_pipeline.add_component("retriever", retriever)
+        rag_pipeline.add_component("prompt_builder", prompt_builder)
+        rag_pipeline.add_component("llm", llm)
+        rag_pipeline.connect("retriever", "prompt_builder.documents")
+        rag_pipeline.connect("prompt_builder", "llm")
+
+        # Prepare input data
+        question = "Who lives in Paris?"
+        data = {
+            "retriever": {"query": question},
+            "prompt_builder": {"question": question},
+        }
+
+        # Process results as they become available
+        async def process_results():
+            async for partial_output in rag_pipeline.run_async_generator(
+                data=data,
+                include_outputs_from={"retriever", "llm"}
+            ):
+                # Each partial_output contains the results from a completed component
+                if "retriever" in partial_output:
+                    print("Retrieved documents:", len(partial_output["retriever"]["documents"]))
+                if "llm" in partial_output:
+                    print("Generated answer:", partial_output["llm"]["replies"][0])
+
+        asyncio.run(process_results())
+        ```
+
         :param data: Initial input data to the pipeline.
         :param concurrency_limit: The maximum number of components that are allowed to run concurrently.
         :param include_outputs_from:
