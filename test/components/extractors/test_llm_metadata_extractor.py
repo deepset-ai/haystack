@@ -1,7 +1,6 @@
 import os
 from unittest.mock import MagicMock
 
-import boto3
 import pytest
 from haystack import Document, Pipeline
 from haystack.components.builders import PromptBuilder
