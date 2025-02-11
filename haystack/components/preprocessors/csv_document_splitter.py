@@ -195,7 +195,7 @@ class CSVDocumentSplitter:
         df_length = df.shape[0] if axis == "row" else df.shape[1]
         for empty_start_idx, empty_end_idx in split_indices + [(df_length, df_length)]:
             # Avoid empty splits
-            if empty_start_idx - table_start_idx > 1:
+            if empty_start_idx - table_start_idx >= 1:
                 if axis == "row":
                     sub_table = df.iloc[table_start_idx:empty_start_idx]
                 else:
