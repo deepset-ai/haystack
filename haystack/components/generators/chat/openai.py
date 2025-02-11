@@ -337,7 +337,9 @@ class OpenAIChatGenerator:
                 finish_reason=meta["finish_reason"],
             )
 
-    def _convert_streaming_chunks_to_chat_message(self, chunk: Any, chunks: List[StreamingChunk]) -> ChatMessage:
+    def _convert_streaming_chunks_to_chat_message(
+        self, chunk: ChatCompletionChunk, chunks: List[StreamingChunk]
+    ) -> ChatMessage:
         """
         Connects the streaming chunks into a single ChatMessage.
 
@@ -348,7 +350,7 @@ class OpenAIChatGenerator:
         tool_calls = []
 
         # Process tool calls if present in any chunk
-        tool_call_data = {}  # Track tool calls by ID
+        tool_call_data: Dict[str, Dict[str, str]] = {}  # Track tool calls by ID
         for chunk_payload in chunks:
             tool_calls_meta = chunk_payload.meta.get("tool_calls")
             if tool_calls_meta:
