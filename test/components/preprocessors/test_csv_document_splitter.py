@@ -227,6 +227,12 @@ E,F,,,G,H
             assert table.content == expected_tables[i]
             assert table.meta == expected_meta[i]
 
+    def test_sub_table_with_one_row(self):
+        splitter = CSVDocumentSplitter(row_split_threshold=1)
+        doc = Document(content="""A,B,C\n1,2,3\n,,\n4,5,6""")
+        split_result = splitter.run([doc])
+        assert len(split_result["documents"]) == 2
+
     def test_threshold_no_effect(self, two_tables_sep_by_two_empty_rows: str) -> None:
         splitter = CSVDocumentSplitter(row_split_threshold=3)
         doc = Document(content=two_tables_sep_by_two_empty_rows)

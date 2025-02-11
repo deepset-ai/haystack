@@ -8,7 +8,7 @@
 
 Haystack's Document Stores are a very central component in Haystack and, as the name suggest, they were initially designed around the concept of `Document`.
 
-As the framework grew, so did the number of Document Stores and their API, until the point where keeping them aligned aligned on the same feature set started to become a serious challenge.
+As the framework grew, so did the number of Document Stores and their API, until the point where keeping them aligned on the same feature set started to become a serious challenge.
 
 In this proposal we outline a reviewed design of the same concept.
 
@@ -101,7 +101,7 @@ class MyDocumentStore:
 
 The contract is quite narrow to encourage the use of specialized nodes. `DocumentStore`s' primary focus should be storing documents: the fact that most vector stores also support retrieval should be outside of this abstraction and made available through methods that do not belong to the contract. This allows `Retriever`s to carry out their tasks while avoiding clutter on `DocumentStore`s that do not support some features.
 
-Note also how the concept of `index` is not present anymore, as it it mostly ES-specific.
+Note also how the concept of `index` is not present anymore, as it is mostly ES-specific.
 
 For example, a `MemoryDocumentStore` could offer the following API:
 

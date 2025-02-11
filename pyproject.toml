@@ -49,7 +49,7 @@ dependencies = [
   "openai>=1.56.1",
   "pydantic",
   "Jinja2",
-  "posthog",                # telemetry
+  "posthog<3.12.0",                # telemetry
   "pyyaml",
   "more-itertools",         # TextDocumentSplitter
   "networkx",               # Pipeline graphs
@@ -98,11 +98,6 @@ extra-dependencies = [
   "spacy>=3.8,<3.9",
   "spacy-curated-transformers>=0.2,<=0.3",
   "en-core-web-trf @ https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.8.0/en_core_web_trf-3.8.0-py3-none-any.whl",
-
-  # LLMetadataExtractor
-  "amazon-bedrock-haystack>=1.0.2",
-  "google-vertex-haystack>=2.0.0",
-
 
   # Converters
   "pypdf",                            # PyPDFToDocument
