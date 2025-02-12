@@ -97,7 +97,7 @@ class ListJoiner:
         :returns: Deserialized component.
         """
         init_parameters = data.get("init_parameters")
-        if init_parameters.get("list_type_") is not None:
+        if init_parameters is not None and init_parameters.get("list_type_") is not None:
             data["init_parameters"]["list_type_"] = deserialize_type(data["init_parameters"]["list_type_"])
         return default_from_dict(cls, data)
 
