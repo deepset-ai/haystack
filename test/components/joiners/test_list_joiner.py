@@ -3,11 +3,16 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from typing import List
+import pytest
 
-from haystack import Document
+from haystack import Document, Pipeline
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.answer import GeneratedAnswer
+from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.joiners.list_joiner import ListJoiner
+from haystack.components.embedders import SentenceTransformersTextEmbedder
+from haystack.core.errors import PipelineConnectError
+from haystack.utils.auth import Secret
 
 
 class TestListJoiner:
@@ -16,7 +21,15 @@ class TestListJoiner:
         assert isinstance(joiner, ListJoiner)
         assert joiner.list_type_ == List[ChatMessage]
 
-    def test_to_dict(self):
+    def test_to_dict_defaults(self):
+        joiner = ListJoiner()
+        data = joiner.to_dict()
+        assert data == {
+            "type": "haystack.components.joiners.list_joiner.ListJoiner",
+            "init_parameters": {"list_type_": None},
+        }
+
+    def test_to_dict_non_default(self):
         joiner = ListJoiner(List[ChatMessage])
         data = joiner.to_dict()
         assert data == {
@@ -24,7 +37,13 @@ class TestListJoiner:
             "init_parameters": {"list_type_": "typing.List[haystack.dataclasses.chat_message.ChatMessage]"},
         }
 
-    def test_from_dict(self):
+    def test_from_dict_default(self):
+        data = {"type": "haystack.components.joiners.list_joiner.ListJoiner", "init_parameters": {"list_type_": None}}
+        list_joiner = ListJoiner.from_dict(data)
+        assert isinstance(list_joiner, ListJoiner)
+        assert list_joiner.list_type_ is None
+
+    def test_from_dict_non_default(self):
         data = {
             "type": "haystack.components.joiners.list_joiner.ListJoiner",
             "init_parameters": {"list_type_": "typing.List[haystack.dataclasses.chat_message.ChatMessage]"},
@@ -69,3 +88,39 @@ class TestListJoiner:
         messages = [ChatMessage.from_user("Hello")]
         result = joiner.run([messages, [], messages])
         assert result == {"values": messages + messages}
+
+    def test_pipeline_connection_validation(self):
+        joiner = ListJoiner()
+        llm = OpenAIChatGenerator(model="gpt-4o-mini", api_key=Secret.from_token("test-api-key"))
+        pipe = Pipeline()
+        pipe.add_component("joiner", joiner)
+        pipe.add_component("llm", llm)
+        pipe.connect("joiner.values", "llm.messages")
+        assert pipe is not None
+
+    def test_pipeline_connection_validation_list_chatmessage(self):
+        joiner = ListJoiner(List[ChatMessage])
+        llm = OpenAIChatGenerator(model="gpt-4o-mini", api_key=Secret.from_token("test-api-key"))
+        pipe = Pipeline()
+        pipe.add_component("joiner", joiner)
+        pipe.add_component("llm", llm)
+        pipe.connect("joiner", "llm.messages")
+        assert pipe is not None
+
+    def test_pipeline_bad_connection(self):
+        with pytest.raises(PipelineConnectError):
+            joiner = ListJoiner()
+            query_embedder = SentenceTransformersTextEmbedder()
+            pipe = Pipeline()
+            pipe.add_component("joiner", joiner)
+            pipe.add_component("query_embedder", query_embedder)
+            pipe.connect("joiner.values", "query_embedder.text")
+
+    def test_pipeline_bad_connection_different_list_types(self):
+        with pytest.raises(PipelineConnectError):
+            joiner = ListJoiner(List[str])
+            llm = OpenAIChatGenerator(model="gpt-4o-mini", api_key=Secret.from_token("test-api-key"))
+            pipe = Pipeline()
+            pipe.add_component("joiner", joiner)
+            pipe.add_component("llm", llm)
+            pipe.connect("joiner.values", "llm.messages")

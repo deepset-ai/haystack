@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from itertools import chain
-from typing import Any, Dict, Type
+from typing import Any, Dict, List, Optional, Type
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.core.component.types import Variadic
@@ -65,15 +65,18 @@ class ListJoiner:
     ```
     """
 
-    def __init__(self, list_type_: Type):
+    def __init__(self, list_type_: Optional[Type] = None):
         """
         Creates a ListJoiner component.
 
         :param list_type_: The type of list that this joiner will handle (e.g., List[ChatMessage]).
-                     All input lists must be of this type.
+            All input lists must be of this type.
         """
         self.list_type_ = list_type_
-        component.set_output_types(self, values=list_type_)
+        if list_type_ is not None:
+            component.set_output_types(self, values=list_type_)
+        else:
+            component.set_output_types(self, values=List)
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -81,7 +84,9 @@ class ListJoiner:
 
         :returns: Dictionary with serialized data.
         """
-        return default_to_dict(self, list_type_=serialize_type(self.list_type_))
+        return default_to_dict(
+            self, list_type_=serialize_type(self.list_type_) if self.list_type_ is not None else None
+        )
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ListJoiner":
@@ -91,7 +96,9 @@ class ListJoiner:
         :param data: Dictionary to deserialize from.
         :returns: Deserialized component.
         """
-        data["init_parameters"]["list_type_"] = deserialize_type(data["init_parameters"]["list_type_"])
+        init_parameters = data.get("init_parameters")
+        if init_parameters.get("list_type_") is not None:
+            data["init_parameters"]["list_type_"] = deserialize_type(data["init_parameters"]["list_type_"])
         return default_from_dict(cls, data)
 
     def run(self, values: Variadic[Any]) -> Dict[str, Any]:
