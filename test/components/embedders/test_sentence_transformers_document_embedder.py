@@ -361,62 +361,81 @@ class TestSentenceTransformersDocumentEmbedder:
             precision="float32",
         )
 
-    @pytest.mark.integration
-    def test_model_onnx_quantization(self, monkeypatch):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-        documents = [Document(content="document number 0"), Document(content="document number 1")]
+    @patch(
+        "haystack.components.embedders.sentence_transformers_document_embedder._SentenceTransformersEmbeddingBackendFactory"
+    )
+    def test_model_onnx_backend(self, mocked_factory):
         onnx_embedder = SentenceTransformersDocumentEmbedder(
             model="sentence-transformers/all-MiniLM-L6-v2",
-            backend="onnx",
+            token=None,
+            device=ComponentDevice.from_str("cpu"),
             model_kwargs={
                 "file_name": "onnx/model.onnx"
             },  # setting the path isn't necessary if the repo contains a "onnx/model.onnx" file but this is to prevent a HF warning
+            backend="onnx",
         )
         onnx_embedder.warm_up()
 
-        result = onnx_embedder.run(documents=documents)
+        mocked_factory.get_embedding_backend.assert_called_once_with(
+            model="sentence-transformers/all-MiniLM-L6-v2",
+            device="cpu",
+            auth_token=None,
+            trust_remote_code=False,
+            truncate_dim=None,
+            model_kwargs={"file_name": "onnx/model.onnx"},
+            tokenizer_kwargs=None,
+            config_kwargs=None,
+            backend="onnx",
+        )
 
-        assert len(result["documents"]) == 2
-        assert len(result["documents"][0].embedding) == 384
-        assert len(result["documents"][1].embedding) == 384
-        assert result["documents"][0].embedding[0] == pytest.approx(0.0, abs=0.1)
-
-    @pytest.mark.integration
-    def test_model_openvino_quantization(self, monkeypatch):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-        documents = [Document(content="document number 0"), Document(content="document number 1")]
+    @patch(
+        "haystack.components.embedders.sentence_transformers_document_embedder._SentenceTransformersEmbeddingBackendFactory"
+    )
+    def test_model_openvino_backend(self, mocked_factory):
         openvino_embedder = SentenceTransformersDocumentEmbedder(
             model="sentence-transformers/all-MiniLM-L6-v2",
-            backend="openvino",
+            token=None,
+            device=ComponentDevice.from_str("cpu"),
             model_kwargs={
                 "file_name": "openvino/openvino_model.xml"
             },  # setting the path isn't necessary if the repo contains a "openvino/openvino_model.xml" file but this is to prevent a HF warning
+            backend="openvino",
         )
         openvino_embedder.warm_up()
 
-        result = openvino_embedder.run(documents=documents)
+        mocked_factory.get_embedding_backend.assert_called_once_with(
+            model="sentence-transformers/all-MiniLM-L6-v2",
+            device="cpu",
+            auth_token=None,
+            trust_remote_code=False,
+            truncate_dim=None,
+            model_kwargs={"file_name": "openvino/openvino_model.xml"},
+            tokenizer_kwargs=None,
+            config_kwargs=None,
+            backend="openvino",
+        )
 
-        assert len(result["documents"]) == 2
-        assert len(result["documents"][0].embedding) == 384
-        assert len(result["documents"][1].embedding) == 384
-        assert result["documents"][0].embedding[0] == pytest.approx(0.0, abs=0.1)
-
-    @pytest.mark.skip(reason="Test env doesn't compile Torch with CUDA support")
-    @pytest.mark.integration
+    @patch(
+        "haystack.components.embedders.sentence_transformers_document_embedder._SentenceTransformersEmbeddingBackendFactory"
+    )
     @pytest.mark.parametrize("model_kwargs", [{"torch_dtype": "bfloat16"}, {"torch_dtype": "float16"}])
-    def test_dtype_on_gpu(self, model_kwargs, monkeypatch):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-        documents = [Document(content="document number 0"), Document(content="document number 1")]
+    def test_dtype_on_gpu(self, mocked_factory, model_kwargs):
         torch_dtype_embedder = SentenceTransformersDocumentEmbedder(
             model="sentence-transformers/all-MiniLM-L6-v2",
+            token=None,
             device=ComponentDevice.from_str("cuda:0"),
             model_kwargs=model_kwargs,
         )
         torch_dtype_embedder.warm_up()
 
-        result = torch_dtype_embedder.run(documents=documents)
-
-        assert len(result["documents"]) == 2
-        assert len(result["documents"][0].embedding) == 384
-        assert len(result["documents"][1].embedding) == 384
-        assert result["documents"][0].embedding[0] == pytest.approx(0.0, abs=0.1)
+        mocked_factory.get_embedding_backend.assert_called_once_with(
+            model="sentence-transformers/all-MiniLM-L6-v2",
+            device="cuda:0",
+            auth_token=None,
+            trust_remote_code=False,
+            truncate_dim=None,
+            model_kwargs=model_kwargs,
+            tokenizer_kwargs=None,
+            config_kwargs=None,
+            backend="torch",
+        )

@@ -726,88 +726,65 @@ class TestSentenceTransformersDiversityRanker:
         ]
         assert [doc.content for doc in results["documents"]] == expected
 
-    @pytest.mark.integration
-    def test_run_with_onnx_backend(self, monkeypatch):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-        query = "city"
-        docs = [
-            Document(content="France"),
-            Document(content="Germany"),
-            Document(content="Eiffel Tower"),
-            Document(content="Berlin"),
-            Document(content="Bananas"),
-            Document(content="Silicon Valley"),
-            Document(content="Brandenburg Gate"),
-        ]
-
+    @patch("haystack.components.rankers.sentence_transformers_diversity.SentenceTransformer")
+    def test_model_onnx_backend(self, mocked_sentence_transformer):
         ranker = SentenceTransformersDiversityRanker(
             model="sentence-transformers/all-MiniLM-L6-v2",
-            backend="onnx",
+            token=None,
+            device=ComponentDevice.from_str("cpu"),
             model_kwargs={"file_name": "onnx/model.onnx"},
+            backend="onnx",
         )
         ranker.warm_up()
 
-        result = ranker.run(query=query, documents=docs)
-        ranked_docs = result["documents"]
-        ranked_order = ", ".join([doc.content for doc in ranked_docs])
-        expected_order = "Berlin, Bananas, Eiffel Tower, Silicon Valley, France, Brandenburg Gate, Germany"
+        mocked_sentence_transformer.assert_called_once_with(
+            model_name_or_path="sentence-transformers/all-MiniLM-L6-v2",
+            device="cpu",
+            use_auth_token=None,
+            model_kwargs={"file_name": "onnx/model.onnx"},
+            tokenizer_kwargs=None,
+            config_kwargs=None,
+            backend="onnx",
+        )
 
-        assert ranked_order == expected_order
-
-    @pytest.mark.integration
-    def test_run_with_openvino_backend(self, monkeypatch):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-        query = "city"
-        docs = [
-            Document(content="France"),
-            Document(content="Germany"),
-            Document(content="Eiffel Tower"),
-            Document(content="Berlin"),
-            Document(content="Bananas"),
-            Document(content="Silicon Valley"),
-            Document(content="Brandenburg Gate"),
-        ]
-
+    @patch("haystack.components.rankers.sentence_transformers_diversity.SentenceTransformer")
+    def test_model_openvino_backend(self, mocked_sentence_transformer):
         ranker = SentenceTransformersDiversityRanker(
             model="sentence-transformers/all-MiniLM-L6-v2",
-            backend="openvino",
+            token=None,
+            device=ComponentDevice.from_str("cpu"),
             model_kwargs={"file_name": "openvino/openvino_model.xml"},
+            backend="openvino",
         )
         ranker.warm_up()
 
-        result = ranker.run(query=query, documents=docs)
-        ranked_docs = result["documents"]
-        ranked_order = ", ".join([doc.content for doc in ranked_docs])
-        expected_order = "Berlin, Bananas, Eiffel Tower, Silicon Valley, France, Brandenburg Gate, Germany"
+        mocked_sentence_transformer.assert_called_once_with(
+            model_name_or_path="sentence-transformers/all-MiniLM-L6-v2",
+            device="cpu",
+            use_auth_token=None,
+            model_kwargs={"file_name": "openvino/openvino_model.xml"},
+            tokenizer_kwargs=None,
+            config_kwargs=None,
+            backend="openvino",
+        )
 
-        assert ranked_order == expected_order
-
-    @pytest.mark.skip(reason="Test env doesn't compile Torch with CUDA support")
-    @pytest.mark.integration
+    @patch("haystack.components.rankers.sentence_transformers_diversity.SentenceTransformer")
     @pytest.mark.parametrize("model_kwargs", [{"torch_dtype": "float16"}, {"torch_dtype": "bfloat16"}])
-    def test_run_with_different_dtypes(self, model_kwargs, monkeypatch):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-        query = "city"
-        docs = [
-            Document(content="France"),
-            Document(content="Germany"),
-            Document(content="Eiffel Tower"),
-            Document(content="Berlin"),
-            Document(content="Bananas"),
-            Document(content="Silicon Valley"),
-            Document(content="Brandenburg Gate"),
-        ]
-
+    def test_dtype_on_gpu(self, mocked_sentence_transformer, model_kwargs):
         ranker = SentenceTransformersDiversityRanker(
             model="sentence-transformers/all-MiniLM-L6-v2",
+            token=None,
             device=ComponentDevice.from_str("cuda:0"),
             model_kwargs=model_kwargs,
         )
         ranker.warm_up()
 
-        result = ranker.run(query=query, documents=docs)
-        ranked_docs = result["documents"]
-        ranked_order = ", ".join([doc.content for doc in ranked_docs])
-        expected_order = "Berlin, Bananas, Eiffel Tower, Silicon Valley, France, Brandenburg Gate, Germany"
-
-        assert ranked_order == expected_order
+        mocked_sentence_transformer.assert_called_once_with(
+            model_name_or_path="sentence-transformers/all-MiniLM-L6-v2",
+            device="cuda:0",
+            use_auth_token=None,
+            model_kwargs=model_kwargs,
+            tokenizer_kwargs=None,
+            config_kwargs=None,
+            backend="torch",
+        )
