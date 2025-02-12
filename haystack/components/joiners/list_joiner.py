@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional, Type
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.core.component.types import Variadic
+from haystack.core.type_utils import _types_are_compatible
 from haystack.utils import deserialize_type, serialize_type
 
 
@@ -101,7 +102,7 @@ class ListJoiner:
             data["init_parameters"]["list_type_"] = deserialize_type(data["init_parameters"]["list_type_"])
         return default_from_dict(cls, data)
 
-    def run(self, values: Variadic[Any]) -> Dict[str, Any]:
+    def run(self, values: Variadic[List[Any]]) -> Dict[str, Any]:
         """
         Joins multiple lists into a single flat list.
 

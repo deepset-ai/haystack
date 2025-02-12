@@ -8,6 +8,7 @@ import pytest
 from haystack import Document, Pipeline
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.answer import GeneratedAnswer
+from haystack.components.builders import AnswerBuilder, ChatPromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.joiners.list_joiner import ListJoiner
 from haystack.components.embedders import SentenceTransformersTextEmbedder
@@ -83,6 +84,11 @@ class TestListJoiner:
         result = joiner.run([answers1, answers2])
         assert result == {"values": answers1 + answers2}
 
+    def test_list_two_different_types(self):
+        joiner = ListJoiner()
+        result = joiner.run([["a", "b"], [1, 2]])
+        assert result == {"values": ["a", "b", 1, 2]}
+
     def test_mixed_empty_and_non_empty_lists(self):
         joiner = ListJoiner(List[ChatMessage])
         messages = [ChatMessage.from_user("Hello")]
@@ -124,3 +130,19 @@ class TestListJoiner:
             pipe.add_component("joiner", joiner)
             pipe.add_component("llm", llm)
             pipe.connect("joiner.values", "llm.messages")
+
+    def test_result_two_different_types(self):
+        pipe = Pipeline()
+        pipe.add_component("answer_builder", AnswerBuilder())
+        pipe.add_component("chat_prompt_builder", ChatPromptBuilder())
+        pipe.add_component("joiner", ListJoiner())
+        pipe.connect("answer_builder", "joiner.values")
+        pipe.connect("chat_prompt_builder", "joiner.values")
+        result = pipe.run(
+            data={
+                "answer_builder": {"query": "What is nuclear physics?", "replies": ["This is an answer."]},
+                "chat_prompt_builder": {"template": [ChatMessage.from_user("Hello")]},
+            }
+        )
+        assert isinstance(result["joiner"]["values"][0], GeneratedAnswer)
+        assert isinstance(result["joiner"]["values"][1], ChatMessage)
