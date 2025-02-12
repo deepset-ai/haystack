@@ -204,7 +204,7 @@ class AsyncPipeline(PipelineBase):
                     parent_span=parent_span,
                 ) as span:
                     span.set_content_tag("haystack.component.input", deepcopy(component_inputs))
-                    logger.info("Running component {name}", name=component_name)
+                    logger.info("Running component {component_name}", component_name=component_name)
 
                     if getattr(instance, "__haystack_supports_async__", False):
                         outputs = await instance.run_async(**component_inputs)  # type: ignore
