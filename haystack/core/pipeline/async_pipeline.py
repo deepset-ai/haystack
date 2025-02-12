@@ -22,7 +22,6 @@ class AsyncPipeline(PipelineBase):
     Manages the execution of components in a pipeline allowing for concurrent execution
     when the pipeline's execution graph permits. This enables efficient processing of
     components by minimizing idle time and maximizing resource utilization.
-
     """
 
     async def run_async_generator(  # noqa: PLR0915,C901
@@ -34,13 +33,16 @@ class AsyncPipeline(PipelineBase):
         Usage:
         ```python
         from haystack import Document
+        from haystack.components.builders import ChatPromptBuilder
+        from haystack.dataclasses import ChatMessage
         from haystack.utils import Secret
         from haystack.document_stores.in_memory import InMemoryDocumentStore
         from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
-        from haystack.components.generators import OpenAIGenerator
+        from haystack.components.generators.chat import OpenAIChatGenerator
         from haystack.components.builders.prompt_builder import PromptBuilder
         from haystack import AsyncPipeline
         import asyncio
+
         # Write documents to InMemoryDocumentStore
         document_store = InMemoryDocumentStore()
         document_store.write_documents([
@@ -49,20 +51,23 @@ class AsyncPipeline(PipelineBase):
             Document(content="My name is Giorgio and I live in Rome.")
         ])
 
-        prompt_template = \"\"\"
-        Given these documents, answer the question.
-        Documents:
-        {% for doc in documents %}
-            {{ doc.content }}
-        {% endfor %}
-        Question: {{question}}
-        Answer:
-        \"\"\"
+        prompt_template = [
+            ChatMessage.from_user(
+                '''
+                Given these documents, answer the question.
+                Documents:
+                {% for doc in documents %}
+                    {{ doc.content }}
+                {% endfor %}
+                Question: {{question}}
+                Answer:
+                ''')
+        ]
 
         # Create and connect pipeline components
         retriever = InMemoryBM25Retriever(document_store=document_store)
-        prompt_builder = PromptBuilder(template=prompt_template)
-        llm = OpenAIGenerator(api_key=Secret.from_token("your-api-key"))
+        prompt_builder = ChatPromptBuilder(template=prompt_template)
+        llm = OpenAIChatGenerator()
 
         rag_pipeline = AsyncPipeline()
         rag_pipeline.add_component("retriever", retriever)
@@ -78,17 +83,19 @@ class AsyncPipeline(PipelineBase):
             "prompt_builder": {"question": question},
         }
 
+
         # Process results as they become available
         async def process_results():
             async for partial_output in rag_pipeline.run_async_generator(
-                data=data,
-                include_outputs_from={"retriever", "llm"}
+                    data=data,
+                    include_outputs_from={"retriever", "llm"}
             ):
                 # Each partial_output contains the results from a completed component
                 if "retriever" in partial_output:
                     print("Retrieved documents:", len(partial_output["retriever"]["documents"]))
                 if "llm" in partial_output:
                     print("Generated answer:", partial_output["llm"]["replies"][0])
+
 
         asyncio.run(process_results())
         ```
@@ -405,17 +412,15 @@ class AsyncPipeline(PipelineBase):
 
         Usage:
         ```python
-        from haystack import Document
-        from haystack.utils import Secret
-        from haystack.document_stores.in_memory import InMemoryDocumentStore
-        from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
-        from haystack.components.generators import OpenAIGenerator
-        from haystack.components.builders.answer_builder import AnswerBuilder
-        from haystack.components.builders.prompt_builder import PromptBuilder
-
-        from haystack_experimental import AsyncPipeline
-
         import asyncio
+
+        from haystack import Document
+        from haystack.components.builders import ChatPromptBuilder
+        from haystack.components.generators.chat import OpenAIChatGenerator
+        from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+        from haystack.core.pipeline import AsyncPipeline
+        from haystack.dataclasses import ChatMessage
+        from haystack.document_stores.in_memory import InMemoryDocumentStore
 
         # Write documents to InMemoryDocumentStore
         document_store = InMemoryDocumentStore()
@@ -425,19 +430,22 @@ class AsyncPipeline(PipelineBase):
             Document(content="My name is Giorgio and I live in Rome.")
         ])
 
-        prompt_template = \"\"\"
-        Given these documents, answer the question.
-        Documents:
-        {% for doc in documents %}
-            {{ doc.content }}
-        {% endfor %}
-        Question: {{question}}
-        Answer:
-        \"\"\"
+        prompt_template = [
+            ChatMessage.from_user(
+                '''
+                Given these documents, answer the question.
+                Documents:
+                {% for doc in documents %}
+                    {{ doc.content }}
+                {% endfor %}
+                Question: {{question}}
+                Answer:
+                ''')
+        ]
 
         retriever = InMemoryBM25Retriever(document_store=document_store)
-        prompt_builder = PromptBuilder(template=prompt_template)
-        llm = OpenAIGenerator(api_key=Secret.from_token(api_key))
+        prompt_builder = ChatPromptBuilder(template=prompt_template)
+        llm = OpenAIChatGenerator()
 
         rag_pipeline = AsyncPipeline()
         rag_pipeline.add_component("retriever", retriever)
@@ -457,10 +465,15 @@ class AsyncPipeline(PipelineBase):
             "prompt_builder": {"question": question},
         }
 
-        results = asyncio.run(run_inner(data))
+        results = asyncio.run(run_inner(data, include_outputs_from={"retriever", "llm"}))
 
         print(results["llm"]["replies"])
-        # Jean lives in Paris
+        # [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[TextContent(text='Jean lives in Paris.')],
+        # _name=None, _meta={'model': 'gpt-4o-mini-2024-07-18', 'index': 0, 'finish_reason': 'stop', 'usage':
+        # {'completion_tokens': 6, 'prompt_tokens': 69, 'total_tokens': 75,
+        # 'completion_tokens_details': CompletionTokensDetails(accepted_prediction_tokens=0,
+        # audio_tokens=0, reasoning_tokens=0, rejected_prediction_tokens=0), 'prompt_tokens_details':
+        # PromptTokensDetails(audio_tokens=0, cached_tokens=0)}})]
         ```
 
         :param data:
@@ -519,14 +532,12 @@ class AsyncPipeline(PipelineBase):
         Usage:
         ```python
         from haystack import Document
-        from haystack.utils import Secret
-        from haystack.document_stores.in_memory import InMemoryDocumentStore
+        from haystack.components.builders import ChatPromptBuilder
+        from haystack.components.generators.chat import OpenAIChatGenerator
         from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
-        from haystack.components.generators import OpenAIGenerator
-        from haystack.components.builders.answer_builder import AnswerBuilder
-        from haystack.components.builders.prompt_builder import PromptBuilder
-
-        from haystack_experimental import AsyncPipeline
+        from haystack.core.pipeline import AsyncPipeline
+        from haystack.dataclasses import ChatMessage
+        from haystack.document_stores.in_memory import InMemoryDocumentStore
 
         # Write documents to InMemoryDocumentStore
         document_store = InMemoryDocumentStore()
@@ -536,19 +547,23 @@ class AsyncPipeline(PipelineBase):
             Document(content="My name is Giorgio and I live in Rome.")
         ])
 
-        prompt_template = \"\"\"
-        Given these documents, answer the question.
-        Documents:
-        {% for doc in documents %}
-            {{ doc.content }}
-        {% endfor %}
-        Question: {{question}}
-        Answer:
-        \"\"\"
+        prompt_template = [
+            ChatMessage.from_user(
+                '''
+                Given these documents, answer the question.
+                Documents:
+                {% for doc in documents %}
+                    {{ doc.content }}
+                {% endfor %}
+                Question: {{question}}
+                Answer:
+                ''')
+        ]
+
 
         retriever = InMemoryBM25Retriever(document_store=document_store)
-        prompt_builder = PromptBuilder(template=prompt_template)
-        llm = OpenAIGenerator(api_key=Secret.from_token(api_key))
+        prompt_builder = ChatPromptBuilder(template=prompt_template)
+        llm = OpenAIChatGenerator()
 
         rag_pipeline = AsyncPipeline()
         rag_pipeline.add_component("retriever", retriever)
@@ -559,7 +574,6 @@ class AsyncPipeline(PipelineBase):
 
         # Ask a question
         question = "Who lives in Paris?"
-
 
         async def run_inner(data, include_outputs_from):
             return await rag_pipeline.run_async(data=data, include_outputs_from=include_outputs_from)
@@ -572,7 +586,12 @@ class AsyncPipeline(PipelineBase):
         results = rag_pipeline.run(data)
 
         print(results["llm"]["replies"])
-        # Jean lives in Paris
+        # [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[TextContent(text='Jean lives in Paris.')],
+        # _name=None, _meta={'model': 'gpt-4o-mini-2024-07-18', 'index': 0, 'finish_reason': 'stop', 'usage':
+        # {'completion_tokens': 6, 'prompt_tokens': 69, 'total_tokens': 75, 'completion_tokens_details':
+        # CompletionTokensDetails(accepted_prediction_tokens=0, audio_tokens=0, reasoning_tokens=0,
+        # rejected_prediction_tokens=0), 'prompt_tokens_details': PromptTokensDetails(audio_tokens=0,
+        # cached_tokens=0)}})]
         ```
 
         :param data:
