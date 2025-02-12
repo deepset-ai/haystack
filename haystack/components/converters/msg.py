@@ -1,4 +1,5 @@
 import io
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
@@ -31,29 +32,63 @@ class MSGToDocument:
     ```
     """
 
-    def __init__(self) -> None:
+    def __init__(self, store_full_path: bool = False) -> None:
         """
-        Creates a ONMSGToDocument component.
+        Creates a MSGToDocument component.
 
+        :param store_full_path:
+            If True, the full path of the file is stored in the metadata of the document.
+            If False, only the file name is stored.
         """
         oxmsg_import.check()
+        self.store_full_path = store_full_path
+
+    @staticmethod
+    def _is_encrypted(msg: Message) -> bool:
+        return "encrypted" in msg.message_headers.get("Content-Type", "")
 
     @staticmethod
     def _create_recipient_str(recip: recipient.Recipient) -> str:
-        return str(recip.name) + " " + str(recip.email_address)
+        recip_str = ""
+        if recip.name != "":
+            recip_str += f"{recip.name} "
+        if recip.email_address != "":
+            recip_str += f"{recip.email_address}"
+        return recip_str
 
     def _convert(self, file_content: io.BytesIO) -> str:
         """
         Converts the MSG file to markdown.
         """
         msg = Message.load(file_content)
+        if self._is_encrypted(msg):
+            raise ValueError("The MSG file is encrypted and cannot be read.")
 
-        md = "# Email Headers\n\n"
+        markdown_txt = "# Email Headers\n\n"
+
+        if msg.sender is not None:
+            markdown_txt += f"From: {msg.sender}\n"
+
         recipients_str = ",".join(MSGToDocument._create_recipient_str(r) for r in msg.recipients)
-        md += f"From : {msg.sender}\nTo : {recipients_str}\nSubject : {msg.subject}\n"
-        md += "\n# Body\n\n"
-        md += msg.body
-        return md
+        if recipients_str != "":
+            markdown_txt += f"To: {recipients_str}\n"
+
+        if msg.message_headers.get("Bcc") is not None:
+            # [c.strip() for c in bcc.split(",")]
+            markdown_txt += f"Bcc: {msg.message_headers['Bcc']}\n"
+
+        if msg.message_headers.get("Cc") is not None:
+            # [c.strip() for c in cc.split(",")]
+            markdown_txt += f"Cc: {msg.message_headers['Cc']}\n"
+
+        if msg.subject != "":
+            markdown_txt += f"Subject: {msg.subject}\n"
+
+        if msg.body is not None:
+            markdown_txt += "\n# Body\n\n"
+            markdown_txt += msg.body
+
+        return markdown_txt
 
     @component.output_types(documents=List[Document])
     def run(
@@ -96,6 +131,10 @@ class MSGToDocument:
                 continue
 
             merged_metadata = {**bytestream.meta, **metadata}
+
+            if not self.store_full_path and "file_path" in bytestream.meta:
+                file_path = bytestream.meta["file_path"]
+                merged_metadata["file_path"] = os.path.basename(file_path)
 
             documents.append(Document(content=text, meta=merged_metadata))
 
