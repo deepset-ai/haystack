@@ -50,6 +50,7 @@ class XLSXToDocument:
         sheet_name: Union[str, int, List[Union[str, int]], None] = None,
         read_excel_kwargs: Optional[Dict[str, Any]] = None,
         table_format_kwargs: Optional[Dict[str, Any]] = None,
+        *,
         store_full_path: bool = False,
     ):
         """
