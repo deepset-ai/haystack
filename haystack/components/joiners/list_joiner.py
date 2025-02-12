@@ -69,8 +69,9 @@ class ListJoiner:
         """
         Creates a ListJoiner component.
 
-        :param list_type_: The type of list that this joiner will handle (e.g., List[ChatMessage]).
-            All input lists must be of this type.
+        :param list_type_: The expected type of the lists this component will join (e.g., List[ChatMessage]).
+            If specified, all input lists must conform to this type. If None, the component defaults to handling
+            lists of any type including mixed types.
         """
         self.list_type_ = list_type_
         if list_type_ is not None:
@@ -105,7 +106,7 @@ class ListJoiner:
         """
         Joins multiple lists into a single flat list.
 
-        :param values:The list to be joined.
+        :param values: The list to be joined.
         :returns: Dictionary with 'values' key containing the joined list.
         """
         result = list(chain(*values))
