@@ -570,3 +570,94 @@ class TestOpenAIChatGenerator:
         assert tool_call.tool_name == "weather"
         assert tool_call.arguments == {"city": "Paris"}
         assert message.meta["finish_reason"] == "tool_calls"
+
+    def test_convert_streaming_chunks_to_chat_message_tool_calls_in_any_chunk(self):
+        """Test that tool calls can be found in any chunk of the streaming response."""
+        component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
+
+        # Create a list of chunks where tool calls appear in different positions
+        chunks = [
+            # First chunk has no tool calls
+            StreamingChunk("Hello! Let me help you with that. "),
+            # Second chunk has the first tool call
+            StreamingChunk("I'll check the weather. "),
+            # Third chunk has no tool calls
+            StreamingChunk("Now, let me check another city. "),
+            # Fourth chunk has another tool call
+            StreamingChunk(""),
+        ]
+
+        # Add received_at to first chunk
+        chunks[0].meta["received_at"] = "2024-02-07T14:21:47.446186Z"
+
+        # Add tool calls meta to second chunk
+        chunks[1].meta["tool_calls"] = [
+            chat_completion_chunk.ChoiceDeltaToolCall(
+                index=0,
+                id="call_1",
+                type="function",
+                function=chat_completion_chunk.ChoiceDeltaToolCallFunction(
+                    name="get_weather", arguments='{"city": "London"}'
+                ),
+            )
+        ]
+
+        # Add tool calls meta to fourth chunk
+        chunks[3].meta["tool_calls"] = [
+            chat_completion_chunk.ChoiceDeltaToolCall(
+                index=0,  # Same index as first tool call since it's the same function
+                id="call_1",  # Same ID as first tool call since it's the same function
+                type="function",
+                function=chat_completion_chunk.ChoiceDeltaToolCallFunction(
+                    name="get_weather", arguments='{"city": "Paris"}'
+                ),
+            )
+        ]
+
+        # Add required meta information to the last chunk
+        chunks[-1].meta.update({"model": "gpt-4", "index": 0, "finish_reason": "tool_calls"})
+
+        # Create the final ChatCompletionChunk that would be passed as the first parameter
+        final_chunk = ChatCompletionChunk(
+            id="chatcmpl-123",
+            model="gpt-4",
+            object="chat.completion.chunk",
+            created=1234567890,
+            choices=[
+                chat_completion_chunk.Choice(
+                    index=0,
+                    finish_reason="tool_calls",
+                    delta=chat_completion_chunk.ChoiceDelta(
+                        tool_calls=[
+                            chat_completion_chunk.ChoiceDeltaToolCall(
+                                index=0,
+                                id="call_1",
+                                type="function",
+                                function=chat_completion_chunk.ChoiceDeltaToolCallFunction(
+                                    name="get_weather", arguments='{"city": "Paris"}'
+                                ),
+                            )
+                        ]
+                    ),
+                )
+            ],
+        )
+
+        # Convert chunks to a chat message
+        result = component._convert_streaming_chunks_to_chat_message(final_chunk, chunks)
+
+        # Verify the content is concatenated correctly
+        expected_text = "Hello! Let me help you with that. I'll check the weather. Now, let me check another city. "
+        assert result.text == expected_text
+
+        # Verify both tool calls were found and processed
+        assert len(result.tool_calls) == 1  # Now we expect only one tool call since they have the same ID
+        assert result.tool_calls[0].id == "call_1"
+        assert result.tool_calls[0].tool_name == "get_weather"
+        assert result.tool_calls[0].arguments == {"city": "Paris"}  # The last value overwrites the previous one
+
+        # Verify meta information
+        assert result.meta["model"] == "gpt-4"
+        assert result.meta["finish_reason"] == "tool_calls"
+        assert result.meta["index"] == 0
+        assert result.meta["completion_start_time"] == "2024-02-07T14:21:47.446186Z"

@@ -17,7 +17,7 @@ Pipelines are the fundamental component of Haystack and one of its most powerful
 
 However, as it currently stands, the `Pipeline` object is also imposing a number of limitations on its use, most of which are likely to be unnecessary. Some of these include:
 
-- DAGs. DAGs are safe, but loops could enable many more usecases, like `Agents`.
+- DAGs. DAGs are safe, but loops could enable many more use-cases, like `Agents`.
 
 - `Pipeline` can select among branches, but cannot run such branches in parallel, except for some specific and inconsistent corner cases. For further reference and discussions on the topic, see:
     - https://github.com/deepset-ai/haystack/pull/2593
@@ -26,7 +26,7 @@ However, as it currently stands, the `Pipeline` object is also imposing a number
 
 - `Pipeline`s are forced to have one single input and one single output node, and the input node has to be called either `Query` or `Indexing`, which softly forbids any other type of pipeline.
 
-- The fixed set of allowed inputs (`query`, `file_paths`, `labels`, `documents`, `meta`, `params` and `debug`) blocks several usecases, like summarization pipelines, translation pipelines, even some sort of generative pipelines.
+- The fixed set of allowed inputs (`query`, `file_paths`, `labels`, `documents`, `meta`, `params` and `debug`) blocks several use-cases, like summarization pipelines, translation pipelines, even some sort of generative pipelines.
 
 - `Pipeline`s are often required to have a `DocumentStore` _somewhere_ (see below), even in situation where it wouldn't be needed.
   - For example, `Pipeline` has a `get_document_store()` method which iterates over all nodes looking for a `Retriever`.
@@ -728,7 +728,7 @@ Other features planned for addition are:
 
 Parameters can be passed to nodes at several stages, and they have different priorities. Here they're listed from least priority to top priority.
 
-1. **Node's default `__init__` parameters**: nodes's `__init__` can provide defaults. Those are used only if no other parameters are passed at any stage.
+1. **Node's default `__init__` parameters**: node's `__init__` can provide defaults. Those are used only if no other parameters are passed at any stage.
 2. **Node's `__init__` parameters**: at initialization, nodes might be given values for their parameters. These are stored within the node instance and, if the instance is reused in the pipeline several times, they will be the same on all of them
 3. **Pipeline's `add_node()`**: When added to the pipeline, users can specify some parameters that have to be given only to that node specifically. They will override the node instance's parameters, but they will be applied only in that specific location of the pipeline and not be applied to other instances of the same node anywhere else in the graph.
 4. **Pipeline's `run()`**: `run()` also accepts a dictionary of parameters that will override all conflicting parameters set at any level below, quite like Pipeline does today.
@@ -947,4 +947,4 @@ These changes are going to be release with Haystack 1.x in a hidden internal pac
 We will progressively add nodes to this `haystack.v2` package and build a folder structure under it (`haystack.v2.nodes`, `haystack.v2.stores`, ...) version after version, until we believe the content of the package is usable. Documentation will be built in parallel and we will progressively start pushing users towards the 2.0 API.
 Power users like dC and other Haystack experts will be able to test out these changes from the start and provide feedback while still in Haystack 1.x.
 
-Once we're confident that the v2 version covers all of Haystack v1.x usecases, Haystack 2.0 will be released and the packages are going to be switched: the content of `haystack` will be moved into `haystack.v1` and deprecated, and the content of `haystack.v2` will me moved under `haystack`. A few 2.x versions later, `haystack.v1` will then be dropped.
+Once we're confident that the v2 version covers all of Haystack v1.x use-cases, Haystack 2.0 will be released and the packages are going to be switched: the content of `haystack` will be moved into `haystack.v1` and deprecated, and the content of `haystack.v2` will me moved under `haystack`. A few 2.x versions later, `haystack.v1` will then be dropped.

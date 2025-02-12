@@ -49,7 +49,7 @@ dependencies = [
   "openai>=1.56.1",
   "pydantic",
   "Jinja2",
-  "posthog",                # telemetry
+  "posthog<3.12.0",                # telemetry
   "pyyaml",
   "more-itertools",         # TextDocumentSplitter
   "networkx",               # Pipeline graphs
@@ -58,6 +58,7 @@ dependencies = [
   "numpy",
   "python-dateutil",
   "jsonschema",             # JsonSchemaValidator, Tool
+  "openapi-llm>=0.4.1",            # OpenAPIConnector
   "haystack-experimental",
 ]
 
