@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import io
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
@@ -49,6 +50,8 @@ class XLSXToDocument:
         sheet_name: Union[str, int, List[Union[str, int]], None] = None,
         read_excel_kwargs: Optional[Dict[str, Any]] = None,
         table_format_kwargs: Optional[Dict[str, Any]] = None,
+        *,
+        store_full_path: bool = False,
     ):
         """
         Creates a XLSXToDocument component.
@@ -62,6 +65,9 @@ class XLSXToDocument:
               See https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_csv.html#pandas-dataframe-to-csv
             - If `table_format` is "markdown", these arguments are passed to `pandas.DataFrame.to_markdown`.
               See https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_markdown.html#pandas-dataframe-to-markdown
+        :param store_full_path:
+            If True, the full path of the file is stored in the metadata of the document.
+            If False, only the file name is stored.
         """
         xlsx_import.check()
         self.table_format = table_format
@@ -72,6 +78,7 @@ class XLSXToDocument:
         self.sheet_name = sheet_name
         self.read_excel_kwargs = read_excel_kwargs or {}
         self.table_format_kwargs = table_format_kwargs or {}
+        self.store_full_path = store_full_path
 
     @component.output_types(documents=List[Document])
     def run(
@@ -119,6 +126,11 @@ class XLSXToDocument:
             # Loop over tables and create a Document for each table
             for table, excel_metadata in zip(tables, tables_metadata):
                 merged_metadata = {**bytestream.meta, **metadata, **excel_metadata}
+
+                if not self.store_full_path and "file_path" in bytestream.meta:
+                    file_path = bytestream.meta["file_path"]
+                    merged_metadata["file_path"] = os.path.basename(file_path)
+
                 document = Document(content=table, meta=merged_metadata)
                 documents.append(document)
 
