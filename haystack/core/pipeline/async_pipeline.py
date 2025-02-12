@@ -17,16 +17,87 @@ logger = logging.getLogger(__name__)
 
 class AsyncPipeline(PipelineBase):
     """
-    Asynchronous version of the orchestration engine.
+        Asynchronous version of the Pipeline orchestration engine.
 
-    Orchestrates component execution and runs components concurrently if the execution graph allows it.
+        Manages components in a pipeline allowing for concurrent processing when the pipeline's execution graph permits.
+    .   This enables efficient processing of components by minimizing idle time and maximizing resource utilization.
     """
 
     async def run_async_generator(  # noqa: PLR0915,C901
         self, data: Dict[str, Any], include_outputs_from: Optional[Set[str]] = None, concurrency_limit: int = 4
     ) -> AsyncIterator[Dict[str, Any]]:
         """
-        Execute this pipeline asynchronously, yielding partial outputs when any component finishes.
+        Executes the pipeline step by step asynchronously, yielding partial outputs when any component finishes.
+
+        Usage:
+        ```python
+        from haystack import Document
+        from haystack.components.builders import ChatPromptBuilder
+        from haystack.dataclasses import ChatMessage
+        from haystack.utils import Secret
+        from haystack.document_stores.in_memory import InMemoryDocumentStore
+        from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+        from haystack.components.generators.chat import OpenAIChatGenerator
+        from haystack.components.builders.prompt_builder import PromptBuilder
+        from haystack import AsyncPipeline
+        import asyncio
+
+        # Write documents to InMemoryDocumentStore
+        document_store = InMemoryDocumentStore()
+        document_store.write_documents([
+            Document(content="My name is Jean and I live in Paris."),
+            Document(content="My name is Mark and I live in Berlin."),
+            Document(content="My name is Giorgio and I live in Rome.")
+        ])
+
+        prompt_template = [
+            ChatMessage.from_user(
+                '''
+                Given these documents, answer the question.
+                Documents:
+                {% for doc in documents %}
+                    {{ doc.content }}
+                {% endfor %}
+                Question: {{question}}
+                Answer:
+                ''')
+        ]
+
+        # Create and connect pipeline components
+        retriever = InMemoryBM25Retriever(document_store=document_store)
+        prompt_builder = ChatPromptBuilder(template=prompt_template)
+        llm = OpenAIChatGenerator()
+
+        rag_pipeline = AsyncPipeline()
+        rag_pipeline.add_component("retriever", retriever)
+        rag_pipeline.add_component("prompt_builder", prompt_builder)
+        rag_pipeline.add_component("llm", llm)
+        rag_pipeline.connect("retriever", "prompt_builder.documents")
+        rag_pipeline.connect("prompt_builder", "llm")
+
+        # Prepare input data
+        question = "Who lives in Paris?"
+        data = {
+            "retriever": {"query": question},
+            "prompt_builder": {"question": question},
+        }
+
+
+        # Process results as they become available
+        async def process_results():
+            async for partial_output in rag_pipeline.run_async_generator(
+                    data=data,
+                    include_outputs_from={"retriever", "llm"}
+            ):
+                # Each partial_output contains the results from a completed component
+                if "retriever" in partial_output:
+                    print("Retrieved documents:", len(partial_output["retriever"]["documents"]))
+                if "llm" in partial_output:
+                    print("Generated answer:", partial_output["llm"]["replies"][0])
+
+
+        asyncio.run(process_results())
+        ```
 
         :param data: Initial input data to the pipeline.
         :param concurrency_limit: The maximum number of components that are allowed to run concurrently.
@@ -35,7 +106,16 @@ class AsyncPipeline(PipelineBase):
             included in the pipeline's output. For components that are
             invoked multiple times (in a loop), only the last-produced
             output is included.
-        :return: An async iterator of partial (and final) outputs.
+        :return: An async iterator containing partial (and final) outputs.
+
+        :raises ValueError:
+            If invalid inputs are provided to the pipeline.
+        :raises PipelineMaxComponentRuns:
+            If a component exceeds the maximum number of allowed executions within the pipeline.
+        :raises PipelineRuntimeError:
+            If the Pipeline contains cycles with unsupported connections that would cause
+            it to get stuck and fail running.
+            Or if a Component fails or returns output in an unsupported type.
         """
         if include_outputs_from is None:
             include_outputs_from = set()
@@ -55,6 +135,8 @@ class AsyncPipeline(PipelineBase):
 
         # 2) Convert input data
         prepared_data = self._prepare_component_input_data(data)
+
+        # raises ValueError if input is malformed in some way
         self._validate_input(prepared_data)
         inputs_state = self._convert_to_internal_format(prepared_data)
 
@@ -82,10 +164,12 @@ class AsyncPipeline(PipelineBase):
             # -------------------------------------------------
             async def _run_component_async(component_name: str, component_inputs: Dict[str, Any]) -> Dict[str, Any]:
                 """
-                Runs one component.
+                Executes a single component asynchronously.
 
-                If the component supports async, await directly it will run async; otherwise offload to executor.
-                Updates visits count, writes outputs to `inputs_state`,
+                If the component supports async execution, it is awaited directly as it will run async;
+                otherwise the component is offloaded to executor.
+
+                The method also updates the `visits` count of the component, writes outputs to `inputs_state`,
                 and returns pruned outputs that get stored in `pipeline_outputs`.
 
                 :param component_name: The name of the component.
@@ -120,7 +204,7 @@ class AsyncPipeline(PipelineBase):
                     parent_span=parent_span,
                 ) as span:
                     span.set_content_tag("haystack.component.input", deepcopy(component_inputs))
-                    logger.info("Running component {name}", name=component_name)
+                    logger.info("Running component {component_name}", component_name=component_name)
 
                     if getattr(instance, "__haystack_supports_async__", False):
                         outputs = await instance.run_async(**component_inputs)  # type: ignore
@@ -320,21 +404,22 @@ class AsyncPipeline(PipelineBase):
         self, data: Dict[str, Any], include_outputs_from: Optional[Set[str]] = None, concurrency_limit: int = 4
     ) -> Dict[str, Any]:
         """
-        Runs the Pipeline with given input data.
+        Provides an asynchronous interface to run the pipeline with provided input data.
+
+        This method allows the pipeline to be integrated into an asynchronous workflow, enabling non-blocking
+        execution of pipeline components.
 
         Usage:
         ```python
-        from haystack import Document
-        from haystack.utils import Secret
-        from haystack.document_stores.in_memory import InMemoryDocumentStore
-        from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
-        from haystack.components.generators import OpenAIGenerator
-        from haystack.components.builders.answer_builder import AnswerBuilder
-        from haystack.components.builders.prompt_builder import PromptBuilder
-
-        from haystack_experimental import AsyncPipeline
-
         import asyncio
+
+        from haystack import Document
+        from haystack.components.builders import ChatPromptBuilder
+        from haystack.components.generators.chat import OpenAIChatGenerator
+        from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+        from haystack.core.pipeline import AsyncPipeline
+        from haystack.dataclasses import ChatMessage
+        from haystack.document_stores.in_memory import InMemoryDocumentStore
 
         # Write documents to InMemoryDocumentStore
         document_store = InMemoryDocumentStore()
@@ -344,19 +429,22 @@ class AsyncPipeline(PipelineBase):
             Document(content="My name is Giorgio and I live in Rome.")
         ])
 
-        prompt_template = \"\"\"
-        Given these documents, answer the question.
-        Documents:
-        {% for doc in documents %}
-            {{ doc.content }}
-        {% endfor %}
-        Question: {{question}}
-        Answer:
-        \"\"\"
+        prompt_template = [
+            ChatMessage.from_user(
+                '''
+                Given these documents, answer the question.
+                Documents:
+                {% for doc in documents %}
+                    {{ doc.content }}
+                {% endfor %}
+                Question: {{question}}
+                Answer:
+                ''')
+        ]
 
         retriever = InMemoryBM25Retriever(document_store=document_store)
-        prompt_builder = PromptBuilder(template=prompt_template)
-        llm = OpenAIGenerator(api_key=Secret.from_token(api_key))
+        prompt_builder = ChatPromptBuilder(template=prompt_template)
+        llm = OpenAIChatGenerator()
 
         rag_pipeline = AsyncPipeline()
         rag_pipeline.add_component("retriever", retriever)
@@ -368,7 +456,6 @@ class AsyncPipeline(PipelineBase):
         # Ask a question
         question = "Who lives in Paris?"
 
-
         async def run_inner(data, include_outputs_from):
             return await rag_pipeline.run_async(data=data, include_outputs_from=include_outputs_from)
 
@@ -376,13 +463,16 @@ class AsyncPipeline(PipelineBase):
             "retriever": {"query": question},
             "prompt_builder": {"question": question},
         }
-        async_loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(async_loop)
-        results = async_loop.run_until_complete(run_inner(data))
-        async_loop.close()
+
+        results = asyncio.run(run_inner(data, include_outputs_from={"retriever", "llm"}))
 
         print(results["llm"]["replies"])
-        # Jean lives in Paris
+        # [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[TextContent(text='Jean lives in Paris.')],
+        # _name=None, _meta={'model': 'gpt-4o-mini-2024-07-18', 'index': 0, 'finish_reason': 'stop', 'usage':
+        # {'completion_tokens': 6, 'prompt_tokens': 69, 'total_tokens': 75,
+        # 'completion_tokens_details': CompletionTokensDetails(accepted_prediction_tokens=0,
+        # audio_tokens=0, reasoning_tokens=0, rejected_prediction_tokens=0), 'prompt_tokens_details':
+        # PromptTokensDetails(audio_tokens=0, cached_tokens=0)}})]
         ```
 
         :param data:
@@ -431,22 +521,22 @@ class AsyncPipeline(PipelineBase):
         self, data: Dict[str, Any], include_outputs_from: Optional[Set[str]] = None, concurrency_limit: int = 4
     ) -> Dict[str, Any]:
         """
-        Runs the pipeline with given input data.
+        Provides a synchronous interface to run the pipeline with given input data.
 
-        This method is synchronous, but it runs components asynchronously internally.
-        Check out `run_async` or `run_async_generator` if you are looking for async-methods.
+        Internally, the pipeline components are executed asynchronously, but the method itself
+        will block until the entire pipeline execution is complete.
+
+        In case you need asynchronous methods, consider using `run_async` or `run_async_generator`.
 
         Usage:
         ```python
         from haystack import Document
-        from haystack.utils import Secret
-        from haystack.document_stores.in_memory import InMemoryDocumentStore
+        from haystack.components.builders import ChatPromptBuilder
+        from haystack.components.generators.chat import OpenAIChatGenerator
         from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
-        from haystack.components.generators import OpenAIGenerator
-        from haystack.components.builders.answer_builder import AnswerBuilder
-        from haystack.components.builders.prompt_builder import PromptBuilder
-
-        from haystack_experimental import AsyncPipeline
+        from haystack.core.pipeline import AsyncPipeline
+        from haystack.dataclasses import ChatMessage
+        from haystack.document_stores.in_memory import InMemoryDocumentStore
 
         # Write documents to InMemoryDocumentStore
         document_store = InMemoryDocumentStore()
@@ -456,19 +546,23 @@ class AsyncPipeline(PipelineBase):
             Document(content="My name is Giorgio and I live in Rome.")
         ])
 
-        prompt_template = \"\"\"
-        Given these documents, answer the question.
-        Documents:
-        {% for doc in documents %}
-            {{ doc.content }}
-        {% endfor %}
-        Question: {{question}}
-        Answer:
-        \"\"\"
+        prompt_template = [
+            ChatMessage.from_user(
+                '''
+                Given these documents, answer the question.
+                Documents:
+                {% for doc in documents %}
+                    {{ doc.content }}
+                {% endfor %}
+                Question: {{question}}
+                Answer:
+                ''')
+        ]
+
 
         retriever = InMemoryBM25Retriever(document_store=document_store)
-        prompt_builder = PromptBuilder(template=prompt_template)
-        llm = OpenAIGenerator(api_key=Secret.from_token(api_key))
+        prompt_builder = ChatPromptBuilder(template=prompt_template)
+        llm = OpenAIChatGenerator()
 
         rag_pipeline = AsyncPipeline()
         rag_pipeline.add_component("retriever", retriever)
@@ -479,7 +573,6 @@ class AsyncPipeline(PipelineBase):
 
         # Ask a question
         question = "Who lives in Paris?"
-
 
         async def run_inner(data, include_outputs_from):
             return await rag_pipeline.run_async(data=data, include_outputs_from=include_outputs_from)
@@ -492,7 +585,12 @@ class AsyncPipeline(PipelineBase):
         results = rag_pipeline.run(data)
 
         print(results["llm"]["replies"])
-        # Jean lives in Paris
+        # [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[TextContent(text='Jean lives in Paris.')],
+        # _name=None, _meta={'model': 'gpt-4o-mini-2024-07-18', 'index': 0, 'finish_reason': 'stop', 'usage':
+        # {'completion_tokens': 6, 'prompt_tokens': 69, 'total_tokens': 75, 'completion_tokens_details':
+        # CompletionTokensDetails(accepted_prediction_tokens=0, audio_tokens=0, reasoning_tokens=0,
+        # rejected_prediction_tokens=0), 'prompt_tokens_details': PromptTokensDetails(audio_tokens=0,
+        # cached_tokens=0)}})]
         ```
 
         :param data:
@@ -515,6 +613,7 @@ class AsyncPipeline(PipelineBase):
             invoked multiple times (in a loop), only the last-produced
             output is included.
         :param concurrency_limit: The maximum number of components that should be allowed to run concurrently.
+
         :returns:
             A dictionary where each entry corresponds to a component name
             and its output. If `include_outputs_from` is `None`, this dictionary
