@@ -17,11 +17,10 @@ logger = logging.getLogger(__name__)
 
 class AsyncPipeline(PipelineBase):
     """
-    Asynchronous version of the Pipeline orchestration engine.
+        Asynchronous version of the Pipeline orchestration engine.
 
-    Manages the execution of components in a pipeline allowing for concurrent execution
-    when the pipeline's execution graph permits. This enables efficient processing of
-    components by minimizing idle time and maximizing resource utilization.
+        Manages components in a pipeline allowing for concurrent processing when the pipeline's execution graph permits.
+    .   This enables efficient processing of components by minimizing idle time and maximizing resource utilization.
     """
 
     async def run_async_generator(  # noqa: PLR0915,C901
