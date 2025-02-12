@@ -7,7 +7,6 @@ from typing import Any, Dict, List, Optional, Type
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.core.component.types import Variadic
-from haystack.core.type_utils import _types_are_compatible
 from haystack.utils import deserialize_type, serialize_type
 
 
