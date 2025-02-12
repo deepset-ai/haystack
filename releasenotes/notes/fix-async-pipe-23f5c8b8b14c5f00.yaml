@@ -1,4 +1,4 @@
 ---
 fixes:
   - |
-    Fix logging error in Async Pipeline.
+    Fix logging error in the Async Pipeline.
