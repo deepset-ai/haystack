@@ -9,13 +9,6 @@ from haystack import logging
 logger = logging.getLogger(__name__)
 
 
-def _is_optional(type_: type) -> bool:
-    """
-    Utility method that returns whether a type is Optional.
-    """
-    return get_origin(type_) is Union and type(None) in get_args(type_)
-
-
 def _types_are_compatible(sender, receiver):  # pylint: disable=too-many-return-statements
     """
     Checks whether the source type is equal or a subtype of the destination type. Used to validate pipeline connections.
