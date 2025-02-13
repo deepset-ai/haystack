@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from haystack.lazy_imports import LazyImport
 from haystack.utils.auth import Secret
@@ -28,8 +28,9 @@ class _SentenceTransformersEmbeddingBackendFactory:
         model_kwargs: Optional[Dict[str, Any]] = None,
         tokenizer_kwargs: Optional[Dict[str, Any]] = None,
         config_kwargs: Optional[Dict[str, Any]] = None,
+        backend: Literal["torch", "onnx", "openvino"] = "torch",
     ):
-        embedding_backend_id = f"{model}{device}{auth_token}{truncate_dim}"
+        embedding_backend_id = f"{model}{device}{auth_token}{truncate_dim}{backend}"
 
         if embedding_backend_id in _SentenceTransformersEmbeddingBackendFactory._instances:
             return _SentenceTransformersEmbeddingBackendFactory._instances[embedding_backend_id]
@@ -42,6 +43,7 @@ class _SentenceTransformersEmbeddingBackendFactory:
             model_kwargs=model_kwargs,
             tokenizer_kwargs=tokenizer_kwargs,
             config_kwargs=config_kwargs,
+            backend=backend,
         )
         _SentenceTransformersEmbeddingBackendFactory._instances[embedding_backend_id] = embedding_backend
         return embedding_backend
@@ -62,8 +64,10 @@ class _SentenceTransformersEmbeddingBackend:
         model_kwargs: Optional[Dict[str, Any]] = None,
         tokenizer_kwargs: Optional[Dict[str, Any]] = None,
         config_kwargs: Optional[Dict[str, Any]] = None,
+        backend: Literal["torch", "onnx", "openvino"] = "torch",
     ):
         sentence_transformers_import.check()
+
         self.model = SentenceTransformer(
             model_name_or_path=model,
             device=device,
@@ -73,6 +77,7 @@ class _SentenceTransformersEmbeddingBackend:
             model_kwargs=model_kwargs,
             tokenizer_kwargs=tokenizer_kwargs,
             config_kwargs=config_kwargs,
+            backend=backend,
         )
 
     def embed(self, data: List[str], **kwargs) -> List[List[float]]:
