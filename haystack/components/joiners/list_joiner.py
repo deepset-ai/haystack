@@ -102,7 +102,7 @@ class ListJoiner:
             data["init_parameters"]["list_type_"] = deserialize_type(data["init_parameters"]["list_type_"])
         return default_from_dict(cls, data)
 
-    def run(self, values: Variadic[List[Any]]) -> Dict[str, Any]:
+    def run(self, values: Variadic[List[Any]]) -> Dict[str, List[Any]]:
         """
         Joins multiple lists into a single flat list.
 
