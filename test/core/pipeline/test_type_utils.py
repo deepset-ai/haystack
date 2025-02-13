@@ -83,11 +83,106 @@ def test_type_name(type_, repr_):
     assert _type_name(type_) == repr_
 
 
+# Basic type groups
+primitive_types = [bool, bytes, dict, float, int, list, str, Path]
+class_types = [Class1, Class3]
+container_types = [
+    List[int],
+    List[Class1],
+    Set[str],
+    Dict[str, int],
+    Dict[str, Class1],
+    Sequence[bool],
+    Mapping[str, Dict[str, int]],
+]
+nested_container_types = [
+    List[Set[Sequence[bool]]],
+    List[Set[Sequence[Class1]]],
+    Dict[str, Mapping[str, Dict[str, int]]],
+    Dict[str, Mapping[str, Dict[str, Class1]]],
+    Tuple[(Optional[Literal["a", "b", "c"]], Union[(Path, Dict[(int, Class1)])])],
+]
+literals = [Literal["a", "b", "c"], Literal[Enum1.TEST1]]
+haystack_types = [ByteStream, ChatMessage, Document, GeneratedAnswer]
+extras = [Union[int, str]]
+
+
+def generate_id(sender, receiver):
+    """Helper function to generate readable IDs"""
+    sender_name = str(sender).replace("typing.", "").replace("<class '", "").replace("'>", "")
+    receiver_name = str(receiver).replace("typing.", "").replace("<class '", "").replace("'>", "")
+    return f"{sender_name}-to-{receiver_name}"
+
+
+# Function to generate only valid test cases
+def generate_test_cases():
+    test_cases = []
+
+    # Identity: same type should be compatible
+    # Primitives: Optional, Union, Any
+    for t in (
+        primitive_types + class_types + container_types + literals + haystack_types + nested_container_types + extras
+    ):
+        test_cases.append(pytest.param(t, t, id=generate_id(t, t)))
+        test_cases.append(pytest.param(t, Optional[t], id=generate_id(t, Optional[t])))
+        test_cases.append(pytest.param(t, Union[t, complex], id=generate_id(t, Union[t, complex])))
+        test_cases.append(pytest.param(t, Any, id=generate_id(t, Any)))
+
+    # Classes: Optional, Union, Any
+    for cls in class_types:
+        test_cases.append(pytest.param(cls, Optional[cls], id=generate_id(cls, Optional[cls])))
+        test_cases.append(pytest.param(cls, Union[cls, complex], id=generate_id(cls, Union[cls, complex])))
+        test_cases.append(pytest.param(cls, Any, id=generate_id(cls, Any)))
+
+    # Subclasses:
+    # Subclass → Superclass
+    test_cases.append(pytest.param(Class3, Class1, id=generate_id(Class3, Class1)))
+
+    # Subclass → Union of Superclass and other type
+    test_cases.append(pytest.param(Class3, Union[int, Class1], id=generate_id(Class3, Union[int, Class1])))
+
+    # List of Class3 → List of Class1
+    test_cases.append(pytest.param(List[Class3], List[Class1], id=generate_id(List[Class3], List[Class1])))
+
+    # Dict of subclass → Dict of superclass
+    test_cases.append(
+        pytest.param(Dict[str, Class3], Dict[str, Class1], id=generate_id(Dict[str, Class3], Dict[str, Class1]))
+    )
+
+    # Containers: Optional, Any, and Subtype compatibility
+    for container in container_types:
+        test_cases.append(pytest.param(container, Optional[container], id=generate_id(container, Optional[container])))
+        test_cases.append(
+            pytest.param(container, Union[container, int], id=generate_id(container, Union[container, int]))
+        )
+        test_cases.append(pytest.param(container, Any, id=generate_id(container, Any)))
+
+    return test_cases
+
+
+@pytest.mark.parametrize("sender_type, receiver_type", generate_test_cases())
+def test_types_are_compatible(sender_type, receiver_type):
+    assert _types_are_compatible(sender_type, receiver_type)
+
+
+def generate_symmetric_test_cases():
+    sym_test_cases = []
+    test_cases = generate_test_cases()
+    for item in test_cases:
+        sender, receiver = item.values
+        sym_test_cases.append(pytest.param(receiver, sender, id=f"sym-{generate_id(receiver, sender)}"))
+    return sym_test_cases
+
+
+# TODO Below fails since _types_are_compatible is not symmetric
+# @pytest.mark.parametrize("receiver_type, sender_type", generate_symmetric_test_cases())
+# def test_types_are_symmetric(receiver_type, sender_type):
+#     assert _types_are_compatible(receiver_type, sender_type)
+
+
 @pytest.mark.parametrize(
     "sender_type,receiver_type",
     [
-        pytest.param((Union[(int, str)]), (Union[(int, str)]), id="identical-unions"),
-        pytest.param((Union[(int, str)]), (Union[(int, str, bool)]), id="receiving-union-is-superset-of-sender"),
         pytest.param((List[int]), (List[Any]), id="list-of-primitive-to-list-of-any"),
         pytest.param((List[Class1]), (List[Any]), id="list-of-classes-to-list-of-any"),
         pytest.param(
@@ -108,7 +203,6 @@ def test_type_name(type_, repr_):
         pytest.param((Dict[(str, int)]), (Dict[(Any, int)]), id="dict-of-primitives-to-dict-of-any-keys"),
         pytest.param((Dict[(str, int)]), (Dict[(str, Any)]), id="dict-of-primitives-to-dict-of-any-values"),
         pytest.param((Dict[(str, int)]), (Dict[(Any, Any)]), id="dict-of-primitives-to-dict-of-any-key-and-values"),
-        pytest.param((Dict[(str, Class1)]), (Dict[(str, Class1)]), id="same-dicts-of-classes-values"),
         pytest.param((Dict[(str, Class3)]), (Dict[(str, Class1)]), id="dict-of-subclasses-to-dict-of-classes"),
         pytest.param((Dict[(str, Class1)]), (Dict[(Any, Class1)]), id="dict-of-classes-to-dict-of-any-keys"),
         pytest.param((Dict[(str, Class1)]), (Dict[(str, Any)]), id="dict-of-classes-to-dict-of-any-values"),
@@ -168,110 +262,10 @@ def test_type_name(type_, repr_):
             (Dict[(str, Mapping[(Any, Dict[(Any, Any)])])]),
             id="nested-mapping-of-classes-to-nested-mapping-of-any-keys-and-values",
         ),
-        pytest.param((Literal["a", "b", "c"]), (Literal["a", "b", "c"]), id="same-primitive-literal"),
-        pytest.param((Literal[Enum1.TEST1]), (Literal[Enum1.TEST1]), id="same-enum-literal"),
-        pytest.param(
-            (Tuple[(Optional[Literal["a", "b", "c"]], Union[(Path, Dict[(int, Class1)])])]),
-            (Tuple[(Optional[Literal["a", "b", "c"]], Union[(Path, Dict[(int, Class1)])])]),
-            id="identical-deeply-nested-complex-type",
-        ),
     ],
 )
-def old_test_types_are_compatible(sender_type, receiver_type):
+def test_asymmetric_container_types_are_compatible(sender_type, receiver_type):
     assert _types_are_compatible(sender_type, receiver_type)
-
-
-# Basic type groups
-primitive_types = [bool, bytes, dict, float, int, list, str, Path]
-class_types = [Class1, Class3]
-container_types = [
-    List[int],
-    List[Class1],
-    Set[str],
-    Dict[str, int],
-    Dict[str, Class1],
-    Sequence[bool],
-    Mapping[str, Dict[str, int]],
-]
-nested_container_types = [
-    List[Set[Sequence[bool]]],
-    List[Set[Sequence[Class1]]],
-    Dict[str, Mapping[str, Dict[str, int]]],
-    Dict[str, Mapping[str, Dict[str, Class1]]],
-]
-literals = [Literal["a", "b", "c"], Literal[Enum1.TEST1]]
-haystack_types = [ByteStream, ChatMessage, Document, GeneratedAnswer]
-
-
-def generate_id(sender, receiver):
-    """Helper function to generate readable IDs"""
-    sender_name = str(sender).replace("typing.", "").replace("<class '", "").replace("'>", "")
-    receiver_name = str(receiver).replace("typing.", "").replace("<class '", "").replace("'>", "")
-    return f"{sender_name}-to-{receiver_name}"
-
-
-# Function to generate only valid test cases
-def generate_test_cases():
-    test_cases = []
-
-    # Identity: same type should be compatible
-    # Primitives: Optional, Union, Any
-    for t in primitive_types + class_types + container_types + literals + haystack_types + nested_container_types:
-        test_cases.append(pytest.param(t, t, id=generate_id(t, t)))
-        test_cases.append(pytest.param(t, Optional[t], id=generate_id(t, Optional[t])))
-        test_cases.append(pytest.param(t, Union[t, int], id=generate_id(t, Union[t, int])))
-        test_cases.append(pytest.param(t, Any, id=generate_id(t, Any)))
-
-    # Classes: Optional, Union, Any
-    for cls in class_types:
-        test_cases.append(pytest.param(cls, Optional[cls], id=generate_id(cls, Optional[cls])))
-        test_cases.append(pytest.param(cls, Union[cls, int], id=generate_id(cls, Union[cls, int])))
-        test_cases.append(pytest.param(cls, Any, id=generate_id(cls, Any)))
-
-    # Subclasses:
-    # Subclass → Superclass
-    test_cases.append(pytest.param(Class3, Class1, id=generate_id(Class3, Class1)))
-
-    # Subclass → Union of Superclass and other type
-    test_cases.append(pytest.param(Class3, Union[int, Class1], id=generate_id(Class3, Union[int, Class1])))
-
-    # List of Class3 → List of Class1
-    test_cases.append(pytest.param(List[Class3], List[Class1], id=generate_id(List[Class3], List[Class1])))
-
-    # Dict of subclass → Dict of superclass
-    test_cases.append(
-        pytest.param(Dict[str, Class3], Dict[str, Class1], id=generate_id(Dict[str, Class3], Dict[str, Class1]))
-    )
-
-    # Containers: Optional, Any, and Subtype compatibility
-    for container in container_types:
-        test_cases.append(pytest.param(container, Optional[container], id=generate_id(container, Optional[container])))
-        test_cases.append(
-            pytest.param(container, Union[container, int], id=generate_id(container, Union[container, int]))
-        )
-        test_cases.append(pytest.param(container, Any, id=generate_id(container, Any)))
-
-    return test_cases
-
-
-@pytest.mark.parametrize("sender_type, receiver_type", generate_test_cases())
-def test_types_are_compatible(sender_type, receiver_type):
-    assert _types_are_compatible(sender_type, receiver_type)
-
-
-def generate_symmetric_test_cases():
-    sym_test_cases = []
-    test_cases = generate_test_cases()
-    for item in test_cases:
-        sender, receiver = item.values
-        sym_test_cases.append(pytest.param(receiver, sender, id=f"sym-{generate_id(receiver, sender)}"))
-    return sym_test_cases
-
-
-# TODO Below fails since _types_are_compatible is not symmetric
-# @pytest.mark.parametrize("receiver_type, sender_type", generate_symmetric_test_cases())
-# def test_types_are_symmetric(receiver_type, sender_type):
-#     assert _types_are_compatible(receiver_type, sender_type)
 
 
 @pytest.mark.parametrize(
