@@ -33,6 +33,7 @@ def test_model_initialization(mock_sentence_transformer):
         auth_token=Secret.from_token("fake-api-token"),
         trust_remote_code=True,
         truncate_dim=256,
+        backend="torch",
     )
     mock_sentence_transformer.assert_called_once_with(
         model_name_or_path="model",
@@ -43,6 +44,7 @@ def test_model_initialization(mock_sentence_transformer):
         model_kwargs=None,
         tokenizer_kwargs=None,
         config_kwargs=None,
+        backend="torch",
     )
 
 
