@@ -574,9 +574,6 @@ class AsyncPipeline(PipelineBase):
         # Ask a question
         question = "Who lives in Paris?"
 
-        async def run_inner(data, include_outputs_from):
-            return await rag_pipeline.run_async(data=data, include_outputs_from=include_outputs_from)
-
         data = {
             "retriever": {"query": question},
             "prompt_builder": {"question": question},

@@ -3,11 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
+from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +112,7 @@ class SentenceTransformersDiversityRanker:
     ```
     """  # noqa: E501
 
-    def __init__(
+    def __init__(  # noqa: PLR0913 # pylint: disable=too-many-positional-arguments
         self,
         model: str = "sentence-transformers/all-MiniLM-L6-v2",
         top_k: int = 10,
@@ -126,7 +127,11 @@ class SentenceTransformersDiversityRanker:
         embedding_separator: str = "\n",
         strategy: Union[str, DiversityRankingStrategy] = "greedy_diversity_order",
         lambda_threshold: float = 0.5,
-    ):  # pylint: disable=too-many-positional-arguments
+        model_kwargs: Optional[Dict[str, Any]] = None,
+        tokenizer_kwargs: Optional[Dict[str, Any]] = None,
+        config_kwargs: Optional[Dict[str, Any]] = None,
+        backend: Literal["torch", "onnx", "openvino"] = "torch",
+    ):
         """
         Initialize a SentenceTransformersDiversityRanker.
 
@@ -152,6 +157,18 @@ class SentenceTransformersDiversityRanker:
                          "maximum_margin_relevance".
         :param lambda_threshold: The trade-off parameter between relevance and diversity. Only used when strategy is
                                  "maximum_margin_relevance".
+        :param model_kwargs:
+            Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
+            when loading the model. Refer to specific model documentation for available kwargs.
+        :param tokenizer_kwargs:
+            Additional keyword arguments for `AutoTokenizer.from_pretrained` when loading the tokenizer.
+            Refer to specific model documentation for available kwargs.
+        :param config_kwargs:
+            Additional keyword arguments for `AutoConfig.from_pretrained` when loading the model configuration.
+        :param backend:
+            The backend to use for the Sentence Transformers model. Choose from "torch", "onnx", or "openvino".
+            Refer to the [Sentence Transformers documentation](https://sbert.net/docs/sentence_transformer/usage/efficiency.html)
+            for more information on acceleration and quantization options.
         """
         torch_and_sentence_transformers_import.check()
 
@@ -172,6 +189,10 @@ class SentenceTransformersDiversityRanker:
         self.strategy = DiversityRankingStrategy.from_str(strategy) if isinstance(strategy, str) else strategy
         self.lambda_threshold = lambda_threshold or 0.5
         self._check_lambda_threshold(self.lambda_threshold, self.strategy)
+        self.model_kwargs = model_kwargs
+        self.tokenizer_kwargs = tokenizer_kwargs
+        self.config_kwargs = config_kwargs
+        self.backend = backend
 
     def warm_up(self):
         """
@@ -182,6 +203,10 @@ class SentenceTransformersDiversityRanker:
                 model_name_or_path=self.model_name_or_path,
                 device=self.device.to_torch_str(),
                 use_auth_token=self.token.resolve_value() if self.token else None,
+                model_kwargs=self.model_kwargs,
+                tokenizer_kwargs=self.tokenizer_kwargs,
+                config_kwargs=self.config_kwargs,
+                backend=self.backend,
             )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -191,7 +216,7 @@ class SentenceTransformersDiversityRanker:
         :returns:
             Dictionary with serialized data.
         """
-        return default_to_dict(
+        serialization_dict = default_to_dict(
             self,
             model=self.model_name_or_path,
             top_k=self.top_k,
@@ -206,7 +231,14 @@ class SentenceTransformersDiversityRanker:
             embedding_separator=self.embedding_separator,
             strategy=str(self.strategy),
             lambda_threshold=self.lambda_threshold,
+            model_kwargs=self.model_kwargs,
+            tokenizer_kwargs=self.tokenizer_kwargs,
+            config_kwargs=self.config_kwargs,
+            backend=self.backend,
         )
+        if serialization_dict["init_parameters"].get("model_kwargs") is not None:
+            serialize_hf_model_kwargs(serialization_dict["init_parameters"]["model_kwargs"])
+        return serialization_dict
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "SentenceTransformersDiversityRanker":
@@ -222,6 +254,8 @@ class SentenceTransformersDiversityRanker:
         if init_params.get("device") is not None:
             init_params["device"] = ComponentDevice.from_dict(init_params["device"])
         deserialize_secrets_inplace(init_params, keys=["token"])
+        if init_params.get("model_kwargs") is not None:
+            deserialize_hf_model_kwargs(init_params["model_kwargs"])
         return default_from_dict(cls, data)
 
     def _prepare_texts_to_embed(self, documents: List[Document]) -> List[str]:
