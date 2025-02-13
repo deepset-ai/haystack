@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+
 from haystack.evaluation import EvaluationRunResult
 import pytest
 
@@ -87,7 +88,7 @@ def test_score_report():
     }
 
     result = EvaluationRunResult("testing_pipeline_1", inputs=data["inputs"], results=data["metrics"])
-    report = result.score_report().to_json()
+    report = result.aggregated_report().to_json()
 
     assert report == (
         '{"metrics":{"0":"reciprocal_rank","1":"single_hit","2":"multi_hit","3":"context_relevance",'
@@ -121,7 +122,7 @@ def test_to_pandas():
     }
 
     result = EvaluationRunResult("testing_pipeline_1", inputs=data["inputs"], results=data["metrics"])
-    assert result.to_pandas().to_json() == (
+    assert result.detailed_report().to_json() == (
         '{"query_id":{"0":"53c3b3e6","1":"225f87f7","2":"53c3b3e6","3":"225f87f7"},'
         '"question":{"0":"What is the capital of France?","1":"What is the capital of Spain?",'
         '"2":"What is the capital of Luxembourg?","3":"What is the capital of Portugal?"},'
@@ -176,7 +177,7 @@ def test_comparative_individual_scores_report():
 
     result1 = EvaluationRunResult("testing_pipeline_1", inputs=data_1["inputs"], results=data_1["metrics"])
     result2 = EvaluationRunResult("testing_pipeline_2", inputs=data_2["inputs"], results=data_2["metrics"])
-    results = result1.comparative_individual_scores_report(result2)
+    results = result1.comparative_detailed_report(result2)
 
     expected = {
         "query_id": {0: "53c3b3e6", 1: "225f87f7"},
@@ -240,7 +241,7 @@ def test_comparative_individual_scores_report_keep_truth_answer_in_df():
 
     result1 = EvaluationRunResult("testing_pipeline_1", inputs=data_1["inputs"], results=data_1["metrics"])
     result2 = EvaluationRunResult("testing_pipeline_2", inputs=data_2["inputs"], results=data_2["metrics"])
-    results = result1.comparative_individual_scores_report(result2, keep_columns=["predicted_answer"])
+    results = result1.comparative_detailed_report(result2, keep_columns=["predicted_answer"])
 
     assert list(results.columns) == [
         "query_id",
