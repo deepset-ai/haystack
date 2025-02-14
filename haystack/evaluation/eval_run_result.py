@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import csv
-import warnings
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Union
 from warnings import warn
@@ -226,13 +225,13 @@ class EvaluationRunResult:
     def score_report(self) -> "DataFrame":
         """Generates a DataFrame report with aggregated scores for each metric."""
         msg = "The `score_report` method is deprecated and will be changed to `aggregated_report` in Haystack 2.11.0."
-        warnings.warn(msg, DeprecationWarning)
+        warn(msg, DeprecationWarning, stacklevel=2)
         return self.aggregated_report(output_format="df")
 
     def to_pandas(self) -> "DataFrame":
         """Generates a DataFrame report with detailed scores for each metric."""
         msg = "The `to_pandas` method is deprecated and will be changed to `detailed_report` in Haystack 2.11.0."
-        warnings.warn(msg, DeprecationWarning)
+        warn(msg, DeprecationWarning, stacklevel=2)
         return self.detailed_report(output_format="df")
 
     def comparative_individual_scores_report(self, other: "EvaluationRunResult") -> "DataFrame":
@@ -241,5 +240,5 @@ class EvaluationRunResult:
             "The `comparative_individual_scores_report` method is deprecated and will be changed to "
             "`comparative_detailed_report` in Haystack 2.11.0."
         )
-        warnings.warn(msg, DeprecationWarning)
+        warn(msg, DeprecationWarning, stacklevel=2)
         return self.comparative_detailed_report(other, output_format="df")
