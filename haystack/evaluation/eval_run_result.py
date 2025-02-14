@@ -64,7 +64,7 @@ class EvaluationRunResult:
                 )
 
     @staticmethod
-    def _handle_output(
+    def _handle_output(  # pylint: disable=R1710
         data: Dict[str, List[Any]], output_format: Literal["json", "csv", "df"] = "csv", csv_file: Optional[str] = None
     ) -> Union[str, "DataFrame", None]:
         """Handles output formatting based on `output_format`."""
