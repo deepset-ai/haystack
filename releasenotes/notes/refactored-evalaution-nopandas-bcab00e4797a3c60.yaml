@@ -1,16 +1,4 @@
 ---
-highlights: >
-    Refactored EvaluationRunResult to work without pandas.
 enhancements:
   - |
-    Created a new class CustomDataFrame that is replalcement for pandas.Dataframe
-    Made a LazyImport for pandas.DataFrame when user wants to return pandas.DataFrame instead of default CustomDataFrame (Dict)
-    Removed the dependency with the Base class 'BaseEvaluationRunResult'
-    Added an option to return output in desired formats [dict(CustomDataFrame), pandas.DataFrame, .csv]
-
-fixes:
-  - |
-    Created a New class CustomDataFrame that can:
-    - Return JSON
-    - Convert Dict to pandas.DataFrame
-    - Save Dict or pandas.DataFrame to .csv if user desires by calling CustomDataFrame.to_csv_file_with_name(file_name)
+    `EvaluationRunResult` used in evaluation use of pandas dataframes is now optional, and can return in JSON or save to a CSV file if desired.
