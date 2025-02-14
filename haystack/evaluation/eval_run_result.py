@@ -4,6 +4,7 @@
 
 import csv
 import json
+import warnings
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Union
 from warnings import warn
@@ -64,29 +65,24 @@ class EvaluationRunResult:
                 )
 
     @staticmethod
-    def _handle_output(  # pylint: disable=R1710
-        data: Dict[str, List[Any]], output_format: Literal["json", "csv", "df"] = "csv", csv_file: Optional[str] = None
-    ) -> Union[str, "DataFrame", None]:
-        """Handles output formatting based on `output_format`."""
+    def _write_to_csv(csv_file: str, data: Dict[str, List[Any]]) -> str:
+        """
+        Write data to a CSV file.
 
-        if output_format == "json":
-            return json.dumps(data)
+        :param csv_file: Path to the CSV file to write
+        :param data: Dictionary containing the data to write
+        :return: Status message indicating success or failure
+        """
+        list_lengths = [len(value) for value in data.values()]
 
-        elif output_format == "df":
-            pandas_import.check()
-            return DataFrame(data)
+        if len(set(list_lengths)) != 1:
+            raise ValueError("All lists in the JSON must have the same length")
 
-        elif output_format == "csv":
-            if not csv_file:
-                raise ValueError("A file path must be provided in 'csv_file' parameter to save the CSV output.")
-
-            list_lengths = [len(value) for value in data.values()]
-            if len(set(list_lengths)) != 1:
-                raise ValueError("All lists in the JSON must have the same length")
-
+        try:
             headers = list(data.keys())
             num_rows = list_lengths[0]
             rows = []
+
             for i in range(num_rows):
                 row = [data[header][i] for header in headers]
                 rows.append(row)
@@ -96,7 +92,37 @@ class EvaluationRunResult:
                 writer.writerow(headers)
                 writer.writerows(rows)
 
-            return None  # mypy complains if we don't return anything
+            return f"Data successfully written to {csv_file}"
+        except PermissionError:
+            return f"Error: Permission denied when writing to {csv_file}"
+        except IOError as e:
+            return f"Error writing to {csv_file}: {str(e)}"
+        except Exception as e:
+            return f"Error: {str(e)}"
+
+    @staticmethod
+    def _handle_output(
+        data: Dict[str, List[Any]], output_format: Literal["json", "csv", "df"] = "csv", csv_file: Optional[str] = None
+    ) -> Union[str, DataFrame, Dict[str, List[Any]]]:
+        """
+        Handles output formatting based on `output_format`.
+
+        :returns: DataFrame for 'df', dict for 'json', or confirmation message for 'csv'
+        """
+        if output_format == "json":
+            return data
+
+        elif output_format == "df":
+            pandas_import.check()
+            return DataFrame(data)
+
+        elif output_format == "csv":
+            if not csv_file:
+                raise ValueError("A file path must be provided in 'csv_file' parameter to save the CSV output.")
+            return EvaluationRunResult._write_to_csv(csv_file, data)
+
+        else:
+            raise ValueError(f"Invalid output format '{output_format}' provided. Choose from 'json', 'csv', or 'df'.")
 
     def aggregated_report(
         self, output_format: Literal["json", "csv", "df"] = "json", csv_file: Optional[str] = None
@@ -193,3 +219,24 @@ class EvaluationRunResult:
         # combine both detailed reports
         combined_results = {**renamed_pipe_a_dict, **filtered_pipe_b_dict}
         return self._handle_output(combined_results, output_format, csv_file)
+
+    def score_report(self) -> "DataFrame":
+        """Generates a DataFrame report with aggregated scores for each metric."""
+        msg = "The `score_report` method is deprecated and will be changed to `aggregated_report` in Haystack 2.11.0."
+        warnings.warn(msg, DeprecationWarning)
+        return self.aggregated_report(output_format="df")
+
+    def to_pandas(self) -> "DataFrame":
+        """Generates a DataFrame report with detailed scores for each metric."""
+        msg = "The `to_pandas` method is deprecated and will be changed to `detailed_report` in Haystack 2.11.0."
+        warnings.warn(msg, DeprecationWarning)
+        return self.detailed_report(output_format="df")
+
+    def comparative_individual_scores_report(self, other: "EvaluationRunResult") -> "DataFrame":
+        """Generates a DataFrame report with detailed scores for each metric from two evaluation runs for comparison."""
+        msg = (
+            "The `comparative_individual_scores_report` method is deprecated and will be changed to "
+            "`comparative_detailed_report` in Haystack 2.11.0."
+        )
+        warnings.warn(msg, DeprecationWarning)
+        return self.comparative_detailed_report(other, output_format="df")
