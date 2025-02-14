@@ -96,6 +96,8 @@ class EvaluationRunResult:
                 writer.writerow(headers)
                 writer.writerows(rows)
 
+            return None  # mypy complains if we don't return anything
+
     def aggregated_report(
         self, output_format: Literal["json", "csv", "df"] = "json", csv_file: Optional[str] = None
     ) -> Union[str, "DataFrame", None]:
