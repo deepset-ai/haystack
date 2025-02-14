@@ -125,7 +125,7 @@ class EvaluationRunResult:
 
     def aggregated_report(
         self, output_format: Literal["json", "csv", "df"] = "json", csv_file: Optional[str] = None
-    ) -> Union[str, "DataFrame", None]:
+    ) -> Union[Dict[str, List[Any]], "DataFrame", str]:
         """
         Generates a report with aggregated scores for each metric.
 
@@ -141,7 +141,7 @@ class EvaluationRunResult:
 
     def detailed_report(
         self, output_format: Literal["json", "csv", "df"] = "json", csv_file: Optional[str] = None
-    ) -> Union[str, "DataFrame", None]:
+    ) -> Union[Dict[str, List[Any]], "DataFrame", str]:
         """
         Generates a report with detailed scores for each metric.
 
@@ -196,8 +196,12 @@ class EvaluationRunResult:
             warn(f"The input columns differ between the results; using the input columns of '{self.run_name}'.")
 
         # got both detailed reports
-        pipe_a_dict = self.detailed_report(output_format="json")
-        pipe_b_dict = other.detailed_report(output_format="json")
+        detailed_a = self.detailed_report(output_format="json")
+        detailed_b = other.detailed_report(output_format="json")
+
+        # ensure both detailed reports are in dictionaries format
+        if not isinstance(detailed_a, dict) or not isinstance(detailed_b, dict):
+            raise ValueError("Detailed reports must be dictionaries.")
 
         # determine which columns to ignore
         if keep_columns is None:
@@ -206,17 +210,17 @@ class EvaluationRunResult:
             ignore = [col for col in list(self.inputs.keys()) if col not in keep_columns]
 
         # filter out ignored columns from pipe_b_dict
-        filtered_pipe_b_dict = {
-            f"{other.run_name}_{key}": value for key, value in pipe_b_dict.items() if key not in ignore
+        filtered_detailed_b = {
+            f"{other.run_name}_{key}": value for key, value in detailed_b.items() if key not in ignore
         }
 
         # rename columns in pipe_a_dict based on ignore list
-        renamed_pipe_a_dict = {
-            (key if key in ignore else f"{self.run_name}_{key}"): value for key, value in pipe_a_dict.items()
+        renamed_detailed_a = {
+            (key if key in ignore else f"{self.run_name}_{key}"): value for key, value in detailed_a.items()
         }
 
         # combine both detailed reports
-        combined_results = {**renamed_pipe_a_dict, **filtered_pipe_b_dict}
+        combined_results = {**renamed_detailed_a, **filtered_detailed_b}
         return self._handle_output(combined_results, output_format, csv_file)
 
     def score_report(self) -> "DataFrame":
