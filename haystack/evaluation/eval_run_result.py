@@ -99,7 +99,15 @@ class EvaluationRunResult:
     def aggregated_report(
         self, output_format: Literal["json", "csv", "df"] = "json", csv_file: Optional[str] = None
     ) -> Union[str, "DataFrame", None]:
-        """Generates a report with aggregated scores for each metric."""
+        """
+        Generates a report with aggregated scores for each metric.
+
+        :param output_format: The output format for the report, "json", "csv", or "df", default to "json".
+        :param csv_file: Filepath to save CSV output if `output_format` is "csv", must be provided.
+
+        :returns:
+            JSON string, or DataFrame with detailed scores.
+        """
         results = {k: v["score"] for k, v in self.results.items()}
         data = {"metrics": list(results.keys()), "score": list(results.values())}
         return self._handle_output(data, output_format, csv_file)
@@ -107,7 +115,15 @@ class EvaluationRunResult:
     def detailed_report(
         self, output_format: Literal["json", "csv", "df"] = "json", csv_file: Optional[str] = None
     ) -> Union[str, "DataFrame", None]:
-        """Generates a report with detailed scores for each metric."""
+        """
+        Generates a report with detailed scores for each metric.
+
+        :param output_format: The output format for the report, "json", "csv", or "df", default to "json".
+        :param csv_file: Filepath to save CSV output if `output_format` is "csv", must be provided.
+
+        :returns:
+            JSON string, or DataFrame with detailed scores.
+        """
 
         combined_data = {col: self.inputs[col] for col in self.inputs}
 
@@ -132,13 +148,12 @@ class EvaluationRunResult:
         Generates a report with detailed scores for each metric from two evaluation runs for comparison.
 
         :param other: Results of another evaluation run to compare with.
-        :param output_format: Can explicitly override default output format i.e. 'CustomDataFrame'
         :param keep_columns: List of common column names to keep from the inputs of the evaluation runs to compare.
-        :param csv_file: Filepath to save CSV output if `output_format` is "csv", must be provided if output_format
-                         is "csv".
+        :param output_format: The output format for the report, "json", "csv", or "df", default to "json".
+        :param csv_file: Filepath to save CSV output if `output_format` is "csv", must be provided.
 
         :returns:
-            Data Structure with the score comparison.
+            JSON string, or DataFrame with detailed scores.
         """
 
         if not isinstance(other, EvaluationRunResult):
