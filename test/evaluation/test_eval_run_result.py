@@ -92,8 +92,17 @@ def test_score_report():
     report = result.aggregated_report(output_format="json")
 
     assert report == (
-        '{"metrics": ["reciprocal_rank", "single_hit", "multi_hit", "context_relevance", "faithfulness", '
-        '"semantic_answer_similarity"], "score": [0.476932, 0.75, 0.46428375, 0.58177975, 0.40585375, 0.53757075]}'
+        {
+            "metrics": [
+                "reciprocal_rank",
+                "single_hit",
+                "multi_hit",
+                "context_relevance",
+                "faithfulness",
+                "semantic_answer_similarity",
+            ],
+            "score": [0.476932, 0.75, 0.46428375, 0.58177975, 0.40585375, 0.53757075],
+        }
     )
 
 
@@ -123,14 +132,24 @@ def test_to_df():
 
     result = EvaluationRunResult("testing_pipeline_1", inputs=data["inputs"], results=data["metrics"])
     assert result.detailed_report() == (
-        '{"query_id": ["53c3b3e6", "225f87f7", "53c3b3e6", "225f87f7"], '
-        '"question": ["What is the capital of France?",'
-        ' "What is the capital of Spain?", "What is the capital of Luxembourg?", "What is the capital of Portugal?"], '
-        '"contexts": ["wiki_France", "wiki_Spain", "wiki_Luxembourg", "wiki_Portugal"], "answer": ["Paris", "Madrid", '
-        '"Luxembourg", "Lisbon"], "predicted_answer": ["Paris", "Madrid", "Luxembourg", "Lisbon"], "reciprocal_rank": '
-        '[0.378064, 0.534964, 0.216058, 0.778642], "single_hit": [1, 1, 0, 1], "multi_hit": [0.706125, 0.454976, '
-        '0.445512, 0.250522], "context_relevance": [0.805466, 0.410251, 0.75007, 0.361332], "faithfulness": [0.135581, '
-        '0.695974, 0.749861, 0.041999], "semantic_answer_similarity": [0.971241, 0.15932, 0.019722, 1.0]}'
+        {
+            "query_id": ["53c3b3e6", "225f87f7", "53c3b3e6", "225f87f7"],
+            "question": [
+                "What is the capital of France?",
+                "What is the capital of Spain?",
+                "What is the capital of Luxembourg?",
+                "What is the capital of Portugal?",
+            ],
+            "contexts": ["wiki_France", "wiki_Spain", "wiki_Luxembourg", "wiki_Portugal"],
+            "answer": ["Paris", "Madrid", "Luxembourg", "Lisbon"],
+            "predicted_answer": ["Paris", "Madrid", "Luxembourg", "Lisbon"],
+            "reciprocal_rank": [0.378064, 0.534964, 0.216058, 0.778642],
+            "single_hit": [1, 1, 0, 1],
+            "multi_hit": [0.706125, 0.454976, 0.445512, 0.250522],
+            "context_relevance": [0.805466, 0.410251, 0.75007, 0.361332],
+            "faithfulness": [0.135581, 0.695974, 0.749861, 0.041999],
+            "semantic_answer_similarity": [0.971241, 0.15932, 0.019722, 1.0],
+        }
     )
 
 
@@ -175,7 +194,7 @@ def test_comparative_individual_scores_report():
     result2 = EvaluationRunResult("testing_pipeline_2", inputs=data_2["inputs"], results=data_2["metrics"])
     results = result1.comparative_detailed_report(result2, keep_columns=["predicted_answer"])
 
-    assert list(json.loads(results).keys()) == [
+    assert list(results.keys()) == [
         "query_id",
         "question",
         "contexts",

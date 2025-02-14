@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import csv
-import json
 import warnings
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Union
@@ -197,8 +196,8 @@ class EvaluationRunResult:
             warn(f"The input columns differ between the results; using the input columns of '{self.run_name}'.")
 
         # got both detailed reports
-        pipe_a_dict = json.loads(str(self.detailed_report(output_format="json")))
-        pipe_b_dict = json.loads(str(other.detailed_report(output_format="json")))
+        pipe_a_dict = self.detailed_report(output_format="json")
+        pipe_b_dict = other.detailed_report(output_format="json")
 
         # determine which columns to ignore
         if keep_columns is None:
