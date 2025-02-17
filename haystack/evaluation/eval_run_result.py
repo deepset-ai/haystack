@@ -4,14 +4,10 @@
 
 import csv
 from copy import deepcopy
-from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 from warnings import warn
 
 from haystack.lazy_imports import LazyImport
-
-# conditionally imported if TYPE_CHECKING is used
-if TYPE_CHECKING:
-    from pandas import DataFrame
 
 with LazyImport("Run 'pip install pandas'") as pandas_import:
     from pandas import DataFrame
@@ -132,7 +128,7 @@ class EvaluationRunResult:
         :param csv_file: Filepath to save CSV output if `output_format` is "csv", must be provided.
 
         :returns:
-            JSON string, or DataFrame with detailed scores.
+            JSON or DataFrame with detailed scores, or a confirmation message for CSV output.
         """
         results = {k: v["score"] for k, v in self.results.items()}
         data = {"metrics": list(results.keys()), "score": list(results.values())}
@@ -148,7 +144,7 @@ class EvaluationRunResult:
         :param csv_file: Filepath to save CSV output if `output_format` is "csv", must be provided.
 
         :returns:
-            JSON string, or DataFrame with detailed scores.
+            JSON or DataFrame with detailed scores, or a confirmation message for CSV output.
         """
 
         combined_data = {col: self.inputs[col] for col in self.inputs}
@@ -179,7 +175,7 @@ class EvaluationRunResult:
         :param csv_file: Filepath to save CSV output if `output_format` is "csv", must be provided.
 
         :returns:
-            JSON string, or DataFrame with detailed scores.
+            JSON or DataFrame with detailed scores, or a confirmation message for CSV output.
         """
 
         if not isinstance(other, EvaluationRunResult):
