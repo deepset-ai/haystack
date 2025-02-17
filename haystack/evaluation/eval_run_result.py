@@ -128,7 +128,8 @@ class EvaluationRunResult:
         :param csv_file: Filepath to save CSV output if `output_format` is "csv", must be provided.
 
         :returns:
-            JSON or DataFrame with detailed scores, or a confirmation message for CSV output.
+            JSON or DataFrame with aggregated scores, in case the output is set to a CSV file, a message confirming the
+            successful write or an error message.
         """
         results = {k: v["score"] for k, v in self.results.items()}
         data = {"metrics": list(results.keys()), "score": list(results.values())}
@@ -144,7 +145,8 @@ class EvaluationRunResult:
         :param csv_file: Filepath to save CSV output if `output_format` is "csv", must be provided.
 
         :returns:
-            JSON or DataFrame with detailed scores, or a confirmation message for CSV output.
+            JSON or DataFrame with the detailed scores, in case the output is set to a CSV file, a message confirming
+            the successful write or an error message.
         """
 
         combined_data = {col: self.inputs[col] for col in self.inputs}
@@ -175,7 +177,8 @@ class EvaluationRunResult:
         :param csv_file: Filepath to save CSV output if `output_format` is "csv", must be provided.
 
         :returns:
-            JSON or DataFrame with detailed scores, or a confirmation message for CSV output.
+            JSON or DataFrame with a comparison of the detailed scores, in case the output is set to a CSV file,
+             a message confirming the successful write or an error message.
         """
 
         if not isinstance(other, EvaluationRunResult):
