@@ -68,31 +68,28 @@ class MSGToDocument:
         if self._is_encrypted(msg):
             raise ValueError("The MSG file is encrypted and cannot be read.")
 
-        markdown_txt = "# Email Headers\n\n"
+        txt = ""
 
         if msg.sender is not None:
-            markdown_txt += f"From: {msg.sender}\n"
+            txt += f"From: {msg.sender}\n"
 
-        recipients_str = ",".join(MSGToDocument._create_recipient_str(r) for r in msg.recipients)
+        recipients_str = ",".join(self._create_recipient_str(r) for r in msg.recipients)
         if recipients_str != "":
-            markdown_txt += f"To: {recipients_str}\n"
+            txt += f"To: {recipients_str}\n"
 
         if msg.message_headers.get("Bcc") is not None:
-            # [c.strip() for c in bcc.split(",")]
-            markdown_txt += f"Bcc: {msg.message_headers['Bcc']}\n"
+            txt += f"Bcc: {msg.message_headers['Bcc']}\n"
 
         if msg.message_headers.get("Cc") is not None:
-            # [c.strip() for c in cc.split(",")]
-            markdown_txt += f"Cc: {msg.message_headers['Cc']}\n"
+            txt += f"Cc: {msg.message_headers['Cc']}\n"
 
         if msg.subject != "":
-            markdown_txt += f"Subject: {msg.subject}\n"
+            txt += f"Subject: {msg.subject}\n"
 
         if msg.body is not None:
-            markdown_txt += "\n# Body\n\n"
-            markdown_txt += msg.body
+            txt += "\n" + msg.body
 
-        return markdown_txt
+        return txt
 
     @component.output_types(documents=List[Document])
     def run(
