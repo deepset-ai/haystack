@@ -22,16 +22,22 @@ logger = logging.getLogger(__name__)
 @component
 class MSGToDocument:
     """
-    Converts .msg files to Documents.
+    Converts Microsoft Outlook .msg files into Haystack Documents.
 
-    ### Usage example
+    This component extracts email metadata (such as sender, recipients, CC, BCC, subject) and body content from .msg
+    files and converts them into structured Haystack Documents. Additionally, any file attachments within the .msg
+    file are extracted as ByteStream objects.
+
+    ### Example Usage
 
     ```python
     from haystack.components.converters.msg import MSGToDocument
+    from datetime import datetime
 
     converter = MSGToDocument()
     results = converter.run(sources=["sample.msg"], meta={"date_added": datetime.now().isoformat()})
     documents = results["documents"]
+    attachments = results["attachments"]
     print(documents[0].content)
     ```
     """
@@ -49,10 +55,22 @@ class MSGToDocument:
 
     @staticmethod
     def _is_encrypted(msg: Message) -> bool:
+        """
+        Determines whether the provided MSG file is encrypted.
+
+        :param msg: The MSG file as a parsed Message object.
+        :returns: True if the MSG file is encrypted, otherwise False.
+        """
         return "encrypted" in msg.message_headers.get("Content-Type", "")
 
     @staticmethod
     def _create_recipient_str(recip: recipient.Recipient) -> str:
+        """
+        Formats a recipient's name and email into a single string.
+
+        :param recip: A recipient object extracted from the MSG file.
+        :returns: A formatted string combining the recipient's name and email address.
+        """
         recip_str = ""
         if recip.name != "":
             recip_str += f"{recip.name} "
@@ -62,7 +80,11 @@ class MSGToDocument:
 
     def _convert(self, file_content: io.BytesIO) -> Tuple[str, List[ByteStream]]:
         """
-        Converts the MSG file to text.
+        Converts the MSG file content into text and extracts any attachments.
+
+        :param file_content: The MSG file content as a binary stream.
+        :returns: A tuple containing the extracted email text and a list of ByteStream objects for attachments.
+        :raises ValueError: If the MSG file is encrypted and cannot be read.
         """
         msg = Message.load(file_content)
         if self._is_encrypted(msg):
@@ -80,22 +102,12 @@ class MSGToDocument:
             txt += f"To: {recipients_str}\n"
 
         # CC
-        cc_header = None
-        if msg.message_headers.get("Cc") is not None:
-            cc_header = msg.message_headers.get("Cc")
-        elif msg.message_headers.get("CC") is not None:
-            cc_header = msg.message_headers.get("CC")
-
+        cc_header = msg.message_headers.get("Cc") or msg.message_headers.get("CC")
         if cc_header is not None:
             txt += f"Cc: {cc_header}\n"
 
         # BCC
-        bcc_header = None
-        if msg.message_headers.get("Bcc") is not None:
-            bcc_header = msg.message_headers.get("Bcc")
-        elif msg.message_headers.get("BCC") is not None:
-            bcc_header = msg.message_headers.get("BCC")
-
+        bcc_header = msg.message_headers.get("Bcc") or msg.message_headers.get("BCC")
         if bcc_header is not None:
             txt += f"Bcc: {bcc_header}\n"
 
@@ -108,13 +120,12 @@ class MSGToDocument:
             txt += "\n" + msg.body
 
         # attachments
-        attachments = []
-        for attachment in msg.attachments:
-            attachments.append(
-                ByteStream(
-                    data=attachment.file_bytes, meta={"file_path": attachment.file_name}, mime_type=attachment.mime_type
-                )
+        attachments = [
+            ByteStream(
+                data=attachment.file_bytes, meta={"file_path": attachment.file_name}, mime_type=attachment.mime_type
             )
+            for attachment in msg.attachments
+        ]
 
         return txt, attachments
 
@@ -123,7 +134,7 @@ class MSGToDocument:
         self,
         sources: List[Union[str, Path, ByteStream]],
         meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
-    ) -> Dict[str, Union[List[Document], List[ByteStream]]]:
+    ) -> Dict[str, List[Union[Document, ByteStream]]]:
         """
         Converts MSG files to Documents.
 
@@ -139,7 +150,8 @@ class MSGToDocument:
 
         :returns:
             A dictionary with the following keys:
-            - `documents`: Created Documents
+            - `documents`: Created Documents.
+            - `attachments`: Created ByteStream objects from file attachments.
         """
         documents = []
         all_attachments = []
@@ -162,8 +174,7 @@ class MSGToDocument:
             merged_metadata = {**bytestream.meta, **metadata}
 
             if not self.store_full_path and "file_path" in bytestream.meta:
-                file_path = bytestream.meta["file_path"]
-                merged_metadata["file_path"] = os.path.basename(file_path)
+                merged_metadata["file_path"] = os.path.basename(bytestream.meta["file_path"])
 
             documents.append(Document(content=text, meta=merged_metadata))
             for attachment in attachments:
