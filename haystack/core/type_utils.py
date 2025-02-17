@@ -50,7 +50,7 @@ def _old_types_are_compatible(sender, receiver):  # pylint: disable=too-many-ret
     return all(_types_are_compatible(*args) for args in zip(sender_args, receiver_args))
 
 
-def _types_are_compatible(type1: T, type2: T) -> bool:
+def _types_are_compatible(type1, type2) -> bool:
     """
     Core type compatibility check implementing symmetric matching.
 
@@ -61,6 +61,13 @@ def _types_are_compatible(type1: T, type2: T) -> bool:
     # Handle Any type and direct equality
     if type1 is Any or type2 is Any or type1 == type2:
         return True
+
+    # Added this line to handle classes and subclasses
+    try:
+        if issubclass(type2, type1) or issubclass(type1, type2):
+            return True
+    except TypeError:  # typing classes can't be used with issubclass, so we deal with them below
+        pass
 
     type1_origin = get_origin(type1)
     type2_origin = get_origin(type2)
