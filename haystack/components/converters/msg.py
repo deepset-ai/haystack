@@ -54,7 +54,7 @@ class MSGToDocument:
         self.store_full_path = store_full_path
 
     @staticmethod
-    def _is_encrypted(msg: Message) -> bool:
+    def _is_encrypted(msg: "Message") -> bool:
         """
         Determines whether the provided MSG file is encrypted.
 
@@ -64,7 +64,7 @@ class MSGToDocument:
         return "encrypted" in msg.message_headers.get("Content-Type", "")
 
     @staticmethod
-    def _create_recipient_str(recip: recipient.Recipient) -> str:
+    def _create_recipient_str(recip: "recipient.Recipient") -> str:
         """
         Formats a recipient's name and email into a single string.
 
