@@ -70,22 +70,40 @@ class MSGToDocument:
 
         txt = ""
 
+        # Sender
         if msg.sender is not None:
             txt += f"From: {msg.sender}\n"
 
+        # To
         recipients_str = ",".join(self._create_recipient_str(r) for r in msg.recipients)
         if recipients_str != "":
             txt += f"To: {recipients_str}\n"
 
-        if msg.message_headers.get("Bcc") is not None:
-            txt += f"Bcc: {msg.message_headers['Bcc']}\n"
-
+        # CC
+        cc_header = None
         if msg.message_headers.get("Cc") is not None:
-            txt += f"Cc: {msg.message_headers['Cc']}\n"
+            cc_header = msg.message_headers.get("Cc")
+        elif msg.message_headers.get("CC") is not None:
+            cc_header = msg.message_headers.get("CC")
 
+        if cc_header is not None:
+            txt += f"Cc: {cc_header}\n"
+
+        # BCC
+        bcc_header = None
+        if msg.message_headers.get("Bcc") is not None:
+            bcc_header = msg.message_headers.get("Bcc")
+        elif msg.message_headers.get("BCC") is not None:
+            bcc_header = msg.message_headers.get("BCC")
+
+        if bcc_header is not None:
+            txt += f"Bcc: {bcc_header}\n"
+
+        # Subject
         if msg.subject != "":
             txt += f"Subject: {msg.subject}\n"
 
+        # Body
         if msg.body is not None:
             txt += "\n" + msg.body
 
