@@ -125,6 +125,7 @@ class MSGToDocument:
                 data=attachment.file_bytes, meta={"file_path": attachment.file_name}, mime_type=attachment.mime_type
             )
             for attachment in msg.attachments
+            if attachment.file_bytes is not None
         ]
 
         return txt, attachments
@@ -134,7 +135,7 @@ class MSGToDocument:
         self,
         sources: List[Union[str, Path, ByteStream]],
         meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
-    ) -> Dict[str, List[Union[Document, ByteStream]]]:
+    ) -> Dict[str, Union[List[Document], List[ByteStream]]]:
         """
         Converts MSG files to Documents.
 
