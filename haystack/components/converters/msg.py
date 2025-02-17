@@ -153,6 +153,9 @@ class MSGToDocument:
             - `documents`: Created Documents.
             - `attachments`: Created ByteStream objects from file attachments.
         """
+        if len(sources) == 0:
+            return {"documents": [], "attachments": []}
+
         documents = []
         all_attachments = []
         meta_list = normalize_metadata(meta, sources_count=len(sources))

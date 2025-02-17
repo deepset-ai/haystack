@@ -30,3 +30,9 @@ class TestMSGToDocument:
         result = converter.run(sources=paths, meta={"date_added": "2021-09-01T00:00:00"})
         assert len(result["documents"]) == 0
         assert "msg_file is not an Outlook MSG file" in caplog.text
+
+    def test_run_empty_sources(self, test_files_path):
+        converter = MSGToDocument(store_full_path=False)
+        result = converter.run(sources=[])
+        assert len(result["documents"]) == 0
+        assert len(result["attachments"]) == 0
