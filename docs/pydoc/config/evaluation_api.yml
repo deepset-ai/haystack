@@ -3,7 +3,6 @@ loaders:
     search_path: [../../../haystack/evaluation]
     modules:
       [
-        "base",
         "eval_run_result",
       ]
     ignore_when_discovered: ["__init__"]
