@@ -5,7 +5,7 @@
 import io
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from haystack import Document, component, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
@@ -60,9 +60,9 @@ class MSGToDocument:
             recip_str += f"{recip.email_address}"
         return recip_str
 
-    def _convert(self, file_content: io.BytesIO) -> str:
+    def _convert(self, file_content: io.BytesIO) -> Tuple[str, List[ByteStream]]:
         """
-        Converts the MSG file to markdown.
+        Converts the MSG file to text.
         """
         msg = Message.load(file_content)
         if self._is_encrypted(msg):
@@ -107,14 +107,23 @@ class MSGToDocument:
         if msg.body is not None:
             txt += "\n" + msg.body
 
-        return txt
+        # attachments
+        attachments = []
+        for attachment in msg.attachments:
+            attachments.append(
+                ByteStream(
+                    data=attachment.file_bytes, meta={"file_path": attachment.file_name}, mime_type=attachment.mime_type
+                )
+            )
 
-    @component.output_types(documents=List[Document])
+        return txt, attachments
+
+    @component.output_types(documents=List[Document], attachments=List[ByteStream])
     def run(
         self,
         sources: List[Union[str, Path, ByteStream]],
         meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
-    ) -> Dict[str, List[Document]]:
+    ) -> Dict[str, Union[List[Document], List[ByteStream]]]:
         """
         Converts MSG files to Documents.
 
@@ -133,6 +142,7 @@ class MSGToDocument:
             - `documents`: Created Documents
         """
         documents = []
+        all_attachments = []
         meta_list = normalize_metadata(meta, sources_count=len(sources))
 
         for source, metadata in zip(sources, meta_list):
@@ -142,7 +152,7 @@ class MSGToDocument:
                 logger.warning("Could not read {source}. Skipping it. Error: {error}", source=source, error=e)
                 continue
             try:
-                text = self._convert(io.BytesIO(bytestream.data))
+                text, attachments = self._convert(io.BytesIO(bytestream.data))
             except Exception as e:
                 logger.warning(
                     "Could not read {source} and convert it to Document, skipping. {error}", source=source, error=e
@@ -156,5 +166,14 @@ class MSGToDocument:
                 merged_metadata["file_path"] = os.path.basename(file_path)
 
             documents.append(Document(content=text, meta=merged_metadata))
+            for attachment in attachments:
+                attachment_meta = {
+                    **merged_metadata,
+                    "parent_file_path": merged_metadata["file_path"],
+                    "file_path": attachment.meta["file_path"],
+                }
+                all_attachments.append(
+                    ByteStream(data=attachment.data, meta=attachment_meta, mime_type=attachment.mime_type)
+                )
 
-        return {"documents": documents}
+        return {"documents": documents, "attachments": all_attachments}

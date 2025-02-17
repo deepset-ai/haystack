@@ -12,6 +12,13 @@ class TestMSGToDocument:
             "date_added": "2021-09-01T00:00:00",
             "file_path": str(test_files_path / "msg" / "sample.msg"),
         }
+        assert len(result["attachments"]) == 1
+        assert result["attachments"][0].mime_type == "application/pdf"
+        assert result["attachments"][0].meta == {
+            "date_added": "2021-09-01T00:00:00",
+            "parent_file_path": str(test_files_path / "msg" / "sample.msg"),
+            "file_path": "sample_pdf_1.pdf",
+        }
 
     def test_run_wrong_file_type(self, test_files_path, caplog):
         converter = MSGToDocument(store_full_path=False)
