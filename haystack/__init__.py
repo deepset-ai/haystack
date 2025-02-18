@@ -9,6 +9,7 @@ from haystack.core.errors import ComponentError, DeserializationError
 from haystack.core.pipeline import AsyncPipeline, Pipeline, PredefinedPipeline
 from haystack.core.serialization import default_from_dict, default_to_dict
 from haystack.dataclasses import Answer, Document, ExtractedAnswer, GeneratedAnswer
+from haystack.version import __version__
 
 # Initialize the logging configuration
 # This is a no-op unless `structlog` is installed
