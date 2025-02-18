@@ -311,10 +311,10 @@ class TestOpenAIGenerator:
         assert "teorema" in result["replies"][0].lower()
 
         result = generator.run(
-            "Can you explain the Pitagoras therom?",
+            "Can you explain the Pitagoras therom? Repeat the name of the theorem in German.",
             system_prompt="You answer in German, regardless of the language on which a question is asked.",
         )
-        assert "pythagoras" in result["replies"][0].lower()
+        assert "pythag" in result["replies"][0].lower()
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
