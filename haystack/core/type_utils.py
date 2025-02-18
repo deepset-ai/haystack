@@ -49,7 +49,7 @@ def _strict_types_are_compatible(sender, receiver):  # pylint: disable=too-many-
         return any(_types_are_compatible(sender, union_arg) for union_arg in get_args(receiver))
 
     # Both must have origins and they must be equal
-    if not sender_origin or not receiver_origin or sender_origin != receiver_origin:
+    if not (sender_origin and receiver_origin and sender_origin == receiver_origin):
         return False
 
     # Compare generic type arguments

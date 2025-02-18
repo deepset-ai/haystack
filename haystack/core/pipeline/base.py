@@ -8,7 +8,7 @@ from copy import deepcopy
 from datetime import datetime
 from enum import IntEnum
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional, TextIO, Tuple, Type, TypeVar, Union
+from typing import Any, Dict, Iterator, List, Literal, Optional, TextIO, Tuple, Type, TypeVar, Union
 
 import networkx  # type:ignore
 
@@ -68,7 +68,12 @@ class PipelineBase:
     Builds a graph of components and orchestrates their execution according to the execution graph.
     """
 
-    def __init__(self, metadata: Optional[Dict[str, Any]] = None, max_runs_per_component: int = 100):
+    def __init__(
+        self,
+        metadata: Optional[Dict[str, Any]] = None,
+        max_runs_per_component: int = 100,
+        connection_type_validation: Literal["strict", "relaxed", "off"] = "strict",
+    ):
         """
         Creates the Pipeline.
 
@@ -85,6 +90,7 @@ class PipelineBase:
         self.metadata = metadata or {}
         self.graph = networkx.MultiDiGraph()
         self._max_runs_per_component = max_runs_per_component
+        self._connection_type_validation = connection_type_validation
 
     def __eq__(self, other) -> bool:
         """
@@ -388,7 +394,9 @@ class PipelineBase:
 
         return instance
 
-    def connect(self, sender: str, receiver: str) -> "PipelineBase":  # noqa: PLR0915 PLR0912
+    def connect(  # noqa: PLR0915 PLR0912
+        self, sender: str, receiver: str, type_validation: Literal["strict", "relaxed", "off", None] = None
+    ) -> "PipelineBase":
         """
         Connects two components together.
 
@@ -409,6 +417,8 @@ class PipelineBase:
             If the two components cannot be connected (for example if one of the components is
             not present in the pipeline, or the connections don't match by type, and so on).
         """
+        type_validation = type_validation or self._connection_type_validation
+
         # Edges may be named explicitly by passing 'node_name.edge_name' to connect().
         sender_component_name, sender_socket_name = parse_connect_string(sender)
         receiver_component_name, receiver_socket_name = parse_connect_string(receiver)
@@ -418,48 +428,52 @@ class PipelineBase:
 
         # Get the nodes data.
         try:
-            from_sockets = self.graph.nodes[sender_component_name]["output_sockets"]
+            sender_sockets = self.graph.nodes[sender_component_name]["output_sockets"]
         except KeyError as exc:
             raise ValueError(f"Component named {sender_component_name} not found in the pipeline.") from exc
         try:
-            to_sockets = self.graph.nodes[receiver_component_name]["input_sockets"]
+            receiver_sockets = self.graph.nodes[receiver_component_name]["input_sockets"]
         except KeyError as exc:
             raise ValueError(f"Component named {receiver_component_name} not found in the pipeline.") from exc
 
         # If the name of either socket is given, get the socket
         sender_socket: Optional[OutputSocket] = None
         if sender_socket_name:
-            sender_socket = from_sockets.get(sender_socket_name)
+            sender_socket = sender_sockets.get(sender_socket_name)
             if not sender_socket:
                 raise PipelineConnectError(
                     f"'{sender} does not exist. "
                     f"Output connections of {sender_component_name} are: "
-                    + ", ".join([f"{name} (type {_type_name(socket.type)})" for name, socket in from_sockets.items()])
+                    + ", ".join([f"{name} (type {_type_name(socket.type)})" for name, socket in sender_sockets.items()])
                 )
 
         receiver_socket: Optional[InputSocket] = None
         if receiver_socket_name:
-            receiver_socket = to_sockets.get(receiver_socket_name)
+            receiver_socket = receiver_sockets.get(receiver_socket_name)
             if not receiver_socket:
                 raise PipelineConnectError(
                     f"'{receiver} does not exist. "
                     f"Input connections of {receiver_component_name} are: "
-                    + ", ".join([f"{name} (type {_type_name(socket.type)})" for name, socket in to_sockets.items()])
+                    + ", ".join(
+                        [f"{name} (type {_type_name(socket.type)})" for name, socket in receiver_sockets.items()]
+                    )
                 )
 
         # Look for a matching connection among the possible ones.
         # Note that if there is more than one possible connection but two sockets match by name, they're paired.
-        sender_socket_candidates: List[OutputSocket] = [sender_socket] if sender_socket else list(from_sockets.values())
+        sender_socket_candidates: List[OutputSocket] = (
+            [sender_socket] if sender_socket else list(sender_sockets.values())
+        )
         receiver_socket_candidates: List[InputSocket] = (
-            [receiver_socket] if receiver_socket else list(to_sockets.values())
+            [receiver_socket] if receiver_socket else list(receiver_sockets.values())
         )
 
         # Find all possible connections between these two components
-        possible_connections = [
-            (sender_sock, receiver_sock)
-            for sender_sock, receiver_sock in itertools.product(sender_socket_candidates, receiver_socket_candidates)
-            if _types_are_compatible(sender_sock.type, receiver_sock.type)
-        ]
+        possible_connections = []
+        for sender_sock, receiver_sock in itertools.product(sender_socket_candidates, receiver_socket_candidates):
+            # TODO Here is where we would add relaxed type checking option
+            if _types_are_compatible(sender_sock.type, receiver_sock.type, type_validation):
+                possible_connections.append((sender_sock, receiver_sock))
 
         # We need this status for error messages, since we might need it in multiple places we calculate it here
         status = _connections_status(
@@ -860,7 +874,7 @@ class PipelineBase:
 
     def _find_receivers_from(self, component_name: str) -> List[Tuple[str, OutputSocket, InputSocket]]:
         """
-        Utility function to find all Components that receive input form `component_name`.
+        Utility function to find all Components that receive input from `component_name`.
 
         :param component_name:
             Name of the sender Component
@@ -1120,7 +1134,7 @@ class PipelineBase:
 
 def _connections_status(
     sender_node: str, receiver_node: str, sender_sockets: List[OutputSocket], receiver_sockets: List[InputSocket]
-):
+) -> str:
     """
     Lists the status of the sockets, for error messages.
     """

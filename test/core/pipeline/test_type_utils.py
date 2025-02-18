@@ -76,8 +76,6 @@ def generate_symmetric_cases():
     ]
 
 
-# TODO Add tests for
-#  - Document subclasses
 def generate_strict_asymmetric_cases():
     """Generate asymmetric test cases with different sender and receiver types."""
     cases = []
@@ -259,72 +257,27 @@ asymmetric_cases = generate_strict_asymmetric_cases()
     ],
 )
 def test_type_name(type_, repr_):
-    """Test the string representation of different types."""
     assert _type_name(type_) == repr_
 
 
 @pytest.mark.parametrize("sender_type, receiver_type", symmetric_cases)
 def test_same_types_are_compatible(sender_type, receiver_type):
-    """Test compatibility of identical types."""
     assert _types_are_compatible(sender_type, receiver_type, "strict")
 
 
 @pytest.mark.parametrize("sender_type, receiver_type", asymmetric_cases)
 def test_asymmetric_types_are_compatible_strict(sender_type, receiver_type):
-    """Test that sender types are compatible with receiver types under strict rules."""
     assert _types_are_compatible(sender_type, receiver_type, "strict")
 
 
 @pytest.mark.parametrize("sender_type, receiver_type", asymmetric_cases)
 def test_asymmetric_types_are_not_compatible_strict(sender_type, receiver_type):
-    """Test that receiver types are NOT compatible with sender types under strict rules."""
     assert not _types_are_compatible(receiver_type, sender_type, "strict")
 
 
 @pytest.mark.parametrize("sender_type, receiver_type", asymmetric_cases)
 def test_asymmetric_types_are_compatible_relaxed(sender_type, receiver_type):
-    """Test that receiver types are compatible with sender types under relaxed rules."""
     assert _types_are_compatible(receiver_type, sender_type, "relaxed")
-
-
-@pytest.mark.parametrize(
-    "sender_type,receiver_type",
-    [
-        pytest.param((Union[(int, bool)]), (Union[(int, str)]), id="partially-overlapping-unions-with-primitives"),
-        pytest.param((Union[(int, Class1)]), (Union[(int, Class2)]), id="partially-overlapping-unions-with-classes"),
-    ],
-)
-def test_partially_overlapping_unions_strict(sender_type, receiver_type):
-    assert not _types_are_compatible(sender_type, receiver_type, "strict")
-
-
-# TODO Do we want this to work ??
-# @pytest.mark.parametrize(
-#     "sender_type,receiver_type",
-#     [
-#         pytest.param((Union[(int, bool)]), (Union[(int, str)]), id="partially-overlapping-unions-with-primitives"),
-#         pytest.param((Union[(int, Class1)]), (Union[(int, Class2)]), id="partially-overlapping-unions-with-classes"),
-#     ],
-# )
-# def test_partially_overlapping_unions_relaxed(sender_type, receiver_type):
-#     assert _types_are_compatible(sender_type, receiver_type, "relaxed")
-
-
-@pytest.mark.parametrize(
-    "sender_type,receiver_type",
-    [
-        pytest.param((List[int]), List, id="list-of-primitive-to-bare-list"),
-        pytest.param((List[int]), list, id="list-of-primitive-to-list-object"),
-    ],
-)
-def test_list_of_primitive_to_list(sender_type, receiver_type):
-    assert not _types_are_compatible(sender_type, receiver_type, "strict")
-
-
-def test_deeply_nested_type_is_compatible_but_cannot_be_checked():
-    sender_type = Tuple[Optional[Literal["a", "b", "c"]], Union[(Path, Dict[(int, Class1)])]]
-    receiver_type = Tuple[Literal["a", "b", "c"], Union[(Path, Dict[(int, Class1)])]]
-    assert not _types_are_compatible(sender_type, receiver_type, "strict")
 
 
 incompatible_type_cases = [
@@ -392,3 +345,32 @@ def test_types_are_always_not_compatible_strict(sender_type, receiver_type):
 @pytest.mark.parametrize("sender_type, receiver_type", incompatible_type_cases)
 def test_types_are_always_not_compatible_relaxed(sender_type, receiver_type):
     assert not _types_are_compatible(sender_type, receiver_type, "relaxed")
+
+
+def test_deeply_nested_type_is_compatible_but_cannot_be_checked():
+    sender_type = Tuple[Optional[Literal["a", "b", "c"]], Union[(Path, Dict[(int, Class1)])]]
+    receiver_type = Tuple[Literal["a", "b", "c"], Union[(Path, Dict[(int, Class1)])]]
+    assert not _types_are_compatible(sender_type, receiver_type, "strict")
+
+
+@pytest.mark.parametrize(
+    "sender_type,receiver_type",
+    [
+        pytest.param((Union[(int, bool)]), (Union[(int, str)]), id="partially-overlapping-unions-with-primitives"),
+        pytest.param((Union[(int, Class1)]), (Union[(int, Class2)]), id="partially-overlapping-unions-with-classes"),
+    ],
+)
+def test_partially_overlapping_unions(sender_type, receiver_type):
+    assert not _types_are_compatible(sender_type, receiver_type, "strict")
+    assert not _types_are_compatible(sender_type, receiver_type, "relaxed")
+
+
+@pytest.mark.parametrize(
+    "sender_type,receiver_type",
+    [
+        pytest.param((List[int]), List, id="list-of-primitive-to-bare-list"),
+        pytest.param((List[int]), list, id="list-of-primitive-to-list-object"),
+    ],
+)
+def test_list_of_primitive_to_list(sender_type, receiver_type):
+    assert not _types_are_compatible(sender_type, receiver_type, "strict")
