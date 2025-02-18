@@ -152,9 +152,7 @@ class ComponentTool(Tool):
                 ]
             ).lstrip("_")
 
-        # Generate a description for the tool if not provided and truncate to 512 characters
-        # as most LLMs have a limit for the description length
-        description = (description or component.__doc__ or name)[:512]
+        description = description or component.__doc__ or name
 
         # Create the Tool instance with the component invoker as the function to be called and the schema
         super().__init__(name, description, tool_schema, component_invoker)
