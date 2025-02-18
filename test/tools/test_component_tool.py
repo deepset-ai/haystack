@@ -142,6 +142,12 @@ class TestToolComponent:
         assert "reply" in result
         assert result["reply"] == "Hello, world!"
 
+    def test_from_component_long_description(self):
+        component = SimpleComponent()
+        tool = ComponentTool(component=component, description="".join(["A"] * 1024))
+
+        assert len(tool.description) == 1024
+
     def test_from_component_with_dataclass(self):
         component = UserGreeter()
 
