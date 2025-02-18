@@ -76,7 +76,7 @@ def generate_symmetric_cases():
     ]
 
 
-def generate_strict_asymmetric_cases():
+def generate_asymmetric_cases():
     """Generate asymmetric test cases with different sender and receiver types."""
     cases = []
 
@@ -202,7 +202,7 @@ def generate_strict_asymmetric_cases():
 
 # Precompute test cases for reuse
 symmetric_cases = generate_symmetric_cases()
-asymmetric_cases = generate_strict_asymmetric_cases()
+asymmetric_cases = generate_asymmetric_cases()
 
 
 @pytest.mark.parametrize(
@@ -266,12 +266,12 @@ def test_same_types_are_compatible(sender_type, receiver_type):
 
 
 @pytest.mark.parametrize("sender_type, receiver_type", asymmetric_cases)
-def test_asymmetric_types_are_compatible_strict(sender_type, receiver_type):
+def test_asymmetric_types_are_compatible(sender_type, receiver_type):
     assert _types_are_compatible(sender_type, receiver_type)
 
 
 @pytest.mark.parametrize("sender_type, receiver_type", asymmetric_cases)
-def test_asymmetric_types_are_not_compatible_strict(sender_type, receiver_type):
+def test_asymmetric_types_are_not_compatible(sender_type, receiver_type):
     assert not _types_are_compatible(receiver_type, sender_type)
 
 
@@ -333,7 +333,7 @@ incompatible_type_cases = [
 
 
 @pytest.mark.parametrize("sender_type, receiver_type", incompatible_type_cases)
-def test_types_are_always_not_compatible_strict(sender_type, receiver_type):
+def test_types_are_always_not_compatible(sender_type, receiver_type):
     assert not _types_are_compatible(sender_type, receiver_type)
 
 
