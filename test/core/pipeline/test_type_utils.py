@@ -360,9 +360,19 @@ def test_deeply_nested_type_is_compatible_but_cannot_be_checked():
         pytest.param((Union[(int, Class1)]), (Union[(int, Class2)]), id="partially-overlapping-unions-with-classes"),
     ],
 )
-def test_partially_overlapping_unions(sender_type, receiver_type):
+def test_partially_overlapping_unions_are_not_compatible_strict(sender_type, receiver_type):
     assert not _types_are_compatible(sender_type, receiver_type, "strict")
-    assert not _types_are_compatible(sender_type, receiver_type, "relaxed")
+
+
+@pytest.mark.parametrize(
+    "sender_type,receiver_type",
+    [
+        pytest.param((Union[(int, bool)]), (Union[(int, str)]), id="partially-overlapping-unions-with-primitives"),
+        pytest.param((Union[(int, Class1)]), (Union[(int, Class2)]), id="partially-overlapping-unions-with-classes"),
+    ],
+)
+def test_partially_overlapping_unions_are_compatible_relaxed(sender_type, receiver_type):
+    assert _types_are_compatible(sender_type, receiver_type, "relaxed")
 
 
 @pytest.mark.parametrize(
