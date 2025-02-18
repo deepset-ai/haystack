@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    ComponentTool does not truncate 'description' anymore.
