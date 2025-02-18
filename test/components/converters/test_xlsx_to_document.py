@@ -15,7 +15,7 @@ class TestXLSXToDocument:
         assert converter.table_format_kwargs == {}
 
     def test_run_basic_tables(self, test_files_path) -> None:
-        converter = XLSXToDocument()
+        converter = XLSXToDocument(store_full_path=True)
         paths = [test_files_path / "xlsx" / "basic_tables_two_sheets.xlsx"]
         results = converter.run(sources=paths, meta={"date_added": "2022-01-01T00:00:00"})
         documents = results["documents"]
@@ -34,7 +34,7 @@ class TestXLSXToDocument:
         }
 
     def test_run_table_empty_rows_and_columns(self, test_files_path) -> None:
-        converter = XLSXToDocument()
+        converter = XLSXToDocument(store_full_path=False)
         paths = [test_files_path / "xlsx" / "table_empty_rows_and_columns.xlsx"]
         results = converter.run(sources=paths, meta={"date_added": "2022-01-01T00:00:00"})
         documents = results["documents"]
@@ -42,12 +42,12 @@ class TestXLSXToDocument:
         assert documents[0].content == ",A,B,C\n1,,,\n2,,,\n3,,,\n4,,col_a,col_b\n5,,1.5,test\n"
         assert documents[0].meta == {
             "date_added": "2022-01-01T00:00:00",
-            "file_path": str(test_files_path / "xlsx" / "table_empty_rows_and_columns.xlsx"),
+            "file_path": "table_empty_rows_and_columns.xlsx",
             "xlsx": {"sheet_name": "Sheet1"},
         }
 
     def test_run_multiple_tables_in_one_sheet(self, test_files_path) -> None:
-        converter = XLSXToDocument()
+        converter = XLSXToDocument(store_full_path=True)
         paths = [test_files_path / "xlsx" / "multiple_tables.xlsx"]
         results = converter.run(sources=paths, meta={"date_added": "2022-01-01T00:00:00"})
         documents = results["documents"]
@@ -63,7 +63,7 @@ class TestXLSXToDocument:
         }
 
     def test_run_markdown(self, test_files_path) -> None:
-        converter = XLSXToDocument(table_format="markdown")
+        converter = XLSXToDocument(table_format="markdown", store_full_path=True)
         paths = [test_files_path / "xlsx" / "basic_tables_two_sheets.xlsx"]
         results = converter.run(sources=paths, meta={"date_added": "2022-01-01T00:00:00"})
         documents = results["documents"]
@@ -99,7 +99,7 @@ class TestXLSXToDocument:
     def test_run_sheet_name(
         self, sheet_name: Union[int, str], expected_sheet_name: str, expected_content: str, test_files_path
     ) -> None:
-        converter = XLSXToDocument(sheet_name=sheet_name)
+        converter = XLSXToDocument(sheet_name=sheet_name, store_full_path=True)
         paths = [test_files_path / "xlsx" / "basic_tables_two_sheets.xlsx"]
         results = converter.run(sources=paths)
         documents = results["documents"]
@@ -111,7 +111,7 @@ class TestXLSXToDocument:
         }
 
     def test_run_with_read_excel_kwargs(self, test_files_path) -> None:
-        converter = XLSXToDocument(sheet_name="Basic Table", read_excel_kwargs={"skiprows": 1})
+        converter = XLSXToDocument(sheet_name="Basic Table", read_excel_kwargs={"skiprows": 1}, store_full_path=True)
         paths = [test_files_path / "xlsx" / "basic_tables_two_sheets.xlsx"]
         results = converter.run(sources=paths, meta={"date_added": "2022-01-01T00:00:00"})
         documents = results["documents"]

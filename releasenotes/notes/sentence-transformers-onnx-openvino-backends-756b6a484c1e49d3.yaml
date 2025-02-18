@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Sentence Transformers components now support ONNX and OpenVINO backends through the "backend" parameter.
+    Supported backends are torch (default), onnx, and openvino. Refer to the [Sentence Transformers documentation](https://sbert.net/docs/sentence_transformer/usage/efficiency.html) for more information.
