@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, TypeVar, Union, get_args, get_origin
+from typing import Any, Literal, TypeVar, Union, get_args, get_origin
 
 from haystack import logging
 
@@ -11,7 +11,16 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T")
 
 
-def _old_types_are_compatible(sender, receiver):  # pylint: disable=too-many-return-statements
+def _types_are_compatible(sender, receiver, type_validation: Literal["strict", "relaxed", "off"] = "strict") -> bool:
+    if type_validation == "strict":
+        return _strict_types_are_compatible(sender, receiver)
+    elif type_validation == "relaxed":
+        return _strict_types_are_compatible(sender, receiver) or _strict_types_are_compatible(receiver, sender)
+    else:
+        return True
+
+
+def _strict_types_are_compatible(sender, receiver):  # pylint: disable=too-many-return-statements
     """
     Checks whether the source type is equal or a subtype of the destination type. Used to validate pipeline connections.
 
@@ -39,9 +48,11 @@ def _old_types_are_compatible(sender, receiver):  # pylint: disable=too-many-ret
     if sender_origin is not Union and receiver_origin is Union:
         return any(_types_are_compatible(sender, union_arg) for union_arg in get_args(receiver))
 
+    # Both must have origins and they must be equal
     if not sender_origin or not receiver_origin or sender_origin != receiver_origin:
         return False
 
+    # Compare generic type arguments
     sender_args = get_args(sender)
     receiver_args = get_args(receiver)
     if len(sender_args) > len(receiver_args):
@@ -50,7 +61,7 @@ def _old_types_are_compatible(sender, receiver):  # pylint: disable=too-many-ret
     return all(_types_are_compatible(*args) for args in zip(sender_args, receiver_args))
 
 
-def _types_are_compatible(type1, type2) -> bool:
+def _relaxed_types_are_compatible(type1, type2) -> bool:
     """
     Core type compatibility check implementing symmetric matching.
 
@@ -74,13 +85,13 @@ def _types_are_compatible(type1, type2) -> bool:
 
     # Handle Union types
     if type1_origin is Union or type2_origin is Union:
-        return _check_union_compatibility(type1, type2, type1_origin, type2_origin)
+        return _relaxed_check_union_compatibility(type1, type2, type1_origin, type2_origin)
 
     # Handle non-Union types
-    return _check_non_union_compatibility(type1, type2, type1_origin, type2_origin)
+    return _relaxed_check_non_union_compatibility(type1, type2, type1_origin, type2_origin)
 
 
-def _check_union_compatibility(type1: T, type2: T, type1_origin: Any, type2_origin: Any) -> bool:
+def _relaxed_check_union_compatibility(type1: T, type2: T, type1_origin: Any, type2_origin: Any) -> bool:
     """Handle all Union type compatibility cases."""
     if type1_origin is Union and type2_origin is not Union:
         return any(_types_are_compatible(union_arg, type2) for union_arg in get_args(type1))
@@ -90,7 +101,7 @@ def _check_union_compatibility(type1: T, type2: T, type1_origin: Any, type2_orig
     return any(any(_types_are_compatible(arg1, arg2) for arg2 in get_args(type2)) for arg1 in get_args(type1))
 
 
-def _check_non_union_compatibility(type1: T, type2: T, type1_origin: Any, type2_origin: Any) -> bool:
+def _relaxed_check_non_union_compatibility(type1: T, type2: T, type1_origin: Any, type2_origin: Any) -> bool:
     """Handle non-Union type compatibility cases."""
     # If no origin, compare types directly
     if not type1_origin and not type2_origin:
