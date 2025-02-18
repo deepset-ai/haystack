@@ -127,9 +127,6 @@ def generate_strict_asymmetric_cases():
     # Extra container cases
     cases.extend(
         [
-            # TODO These aren't fully supported
-            # pytest.param((List[int]), List, id="list-of-primitive-to-bare-list"),
-            # pytest.param((List[int]), list, id="list-of-primitive-to-list-object"),
             pytest.param((List[int]), (List[Any]), id="list-of-primitive-to-list-of-any"),
             pytest.param((List[Class1]), (List[Any]), id="list-of-classes-to-list-of-any"),
             pytest.param(
@@ -290,24 +287,43 @@ def test_asymmetric_types_are_compatible_relaxed(sender_type, receiver_type):
     assert _types_are_compatible(receiver_type, sender_type, "relaxed")
 
 
-# TODO Rename and break into two tests
-#      1. partially overlapping Unions
-#      2. deeply nested type
 @pytest.mark.parametrize(
     "sender_type,receiver_type",
     [
-        # TODO Unsure if below will work in relaxed
         pytest.param((Union[(int, bool)]), (Union[(int, str)]), id="partially-overlapping-unions-with-primitives"),
         pytest.param((Union[(int, Class1)]), (Union[(int, Class2)]), id="partially-overlapping-unions-with-classes"),
-        # TODO Probably need Mathis' unwrap to get this to work
-        pytest.param(
-            (Tuple[(Optional[Literal["a", "b", "c"]], Union[(Path, Dict[(int, Class1)])])]),
-            (Tuple[(Literal["a", "b", "c"], Union[(Path, Dict[(int, Class1)])])]),
-            id="deeply-nested-complex-type-is-compatible-but-cannot-be-checked",
-        ),
     ],
 )
-def test_types_are_not_compatible_strict(sender_type, receiver_type):
+def test_partially_overlapping_unions_strict(sender_type, receiver_type):
+    assert not _types_are_compatible(sender_type, receiver_type, "strict")
+
+
+# TODO Do we want this to work ??
+# @pytest.mark.parametrize(
+#     "sender_type,receiver_type",
+#     [
+#         pytest.param((Union[(int, bool)]), (Union[(int, str)]), id="partially-overlapping-unions-with-primitives"),
+#         pytest.param((Union[(int, Class1)]), (Union[(int, Class2)]), id="partially-overlapping-unions-with-classes"),
+#     ],
+# )
+# def test_partially_overlapping_unions_relaxed(sender_type, receiver_type):
+#     assert _types_are_compatible(sender_type, receiver_type, "relaxed")
+
+
+@pytest.mark.parametrize(
+    "sender_type,receiver_type",
+    [
+        pytest.param((List[int]), List, id="list-of-primitive-to-bare-list"),
+        pytest.param((List[int]), list, id="list-of-primitive-to-list-object"),
+    ],
+)
+def test_list_of_primitive_to_list(sender_type, receiver_type):
+    assert not _types_are_compatible(sender_type, receiver_type, "strict")
+
+
+def test_deeply_nested_type_is_compatible_but_cannot_be_checked():
+    sender_type = Tuple[Optional[Literal["a", "b", "c"]], Union[(Path, Dict[(int, Class1)])]]
+    receiver_type = Tuple[Literal["a", "b", "c"], Union[(Path, Dict[(int, Class1)])]]
     assert not _types_are_compatible(sender_type, receiver_type, "strict")
 
 
