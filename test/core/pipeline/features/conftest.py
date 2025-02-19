@@ -145,6 +145,7 @@ def check_pipeline_result(pipeline_result: List[Tuple[_PipelineResult, PipelineR
     for res, data in pipeline_result:
         compare_outputs_with_dataframes(res.outputs, data.expected_outputs)
 
+
 @then("components are called with the expected inputs")
 def check_component_calls(pipeline_result: List[Tuple[_PipelineResult, PipelineRunData]]):
     for res, data in pipeline_result:
@@ -154,7 +155,6 @@ def check_component_calls(pipeline_result: List[Tuple[_PipelineResult, PipelineR
 @then(parsers.parse("it must have raised {exception_class_name}"))
 def check_pipeline_raised(pipeline_result: Exception, exception_class_name: str):
     assert pipeline_result.__class__.__name__ == exception_class_name
-
 
 
 def compare_outputs_with_dataframes(actual: Dict, expected: Dict) -> bool:

@@ -5081,13 +5081,11 @@ some,header,row
         ],
     )
 
+
 @given("a pipeline that has components returning dataframes", target_fixture="pipeline_data")
 def pipeline_has_components_returning_dataframes(pipeline_class):
     def get_df():
-        return pd.DataFrame({
-                'a': [1, 2],
-                'b': [1, 2]
-            })
+        return pd.DataFrame({"a": [1, 2], "b": [1, 2]})
 
     @component
     class DataFramer:
@@ -5102,17 +5100,13 @@ def pipeline_has_components_returning_dataframes(pipeline_class):
 
     pp.connect("df_1", "df_2")
 
-
     return (
         pp,
         [
             PipelineRunData(
                 inputs={"df_1": {"dataframe": get_df()}},
                 expected_outputs={"df_2": {"dataframe": get_df()}},
-                expected_component_calls={
-                    ("df_1", 1): {"dataframe": get_df()},
-                    ("df_2", 1): {"dataframe": get_df()},
-                },
+                expected_component_calls={("df_1", 1): {"dataframe": get_df()}, ("df_2", 1): {"dataframe": get_df()}},
             )
         ],
     )
