@@ -392,7 +392,7 @@ class OpenAIChatGenerator:
             "usage": {},  # we don't have usage data for streaming responses
         }
 
-        return ChatMessage.from_assistant(text=text, tool_calls=tool_calls, meta=meta)
+        return ChatMessage.from_assistant(text=text or None, tool_calls=tool_calls, meta=meta)
 
     def _convert_chat_completion_to_chat_message(self, completion: ChatCompletion, choice: Choice) -> ChatMessage:
         """
