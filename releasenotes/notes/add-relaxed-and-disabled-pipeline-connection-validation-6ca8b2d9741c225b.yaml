@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    We've introduced a new type_validation parameter to control type compatibility checks in pipeline connections. You can now choose between:
+    - "strict": Enforces exact type matches or subtypes. (default behavior)
+    - "relaxed": Allows bidirectional compatibility, supporting subclasses and partial Union/Literal matches.
+    - "disabled": Skips type validation entirely.
