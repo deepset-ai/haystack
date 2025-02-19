@@ -2,9 +2,21 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from haystack.components.retrievers.filter_retriever import FilterRetriever
-from haystack.components.retrievers.in_memory.bm25_retriever import InMemoryBM25Retriever
-from haystack.components.retrievers.in_memory.embedding_retriever import InMemoryEmbeddingRetriever
-from haystack.components.retrievers.sentence_window_retriever import SentenceWindowRetriever
+import sys
+from typing import TYPE_CHECKING
 
-__all__ = ["FilterRetriever", "InMemoryEmbeddingRetriever", "InMemoryBM25Retriever", "SentenceWindowRetriever"]
+from lazy_imports import LazyImporter
+
+_import_structure = {
+    "filter_retriever": ["FilterRetriever"],
+    "in_memory": ["InMemoryBM25Retriever", "InMemoryEmbeddingRetriever"],
+    "sentence_window_retriever": ["SentenceWindowRetriever"],
+}
+
+if TYPE_CHECKING:
+    from .filter_retriever import FilterRetriever
+    from .in_memory import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
+    from .sentence_window_retriever import SentenceWindowRetriever
+
+else:
+    sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)
