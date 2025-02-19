@@ -8,17 +8,17 @@ from typing import TYPE_CHECKING
 from lazy_imports import LazyImporter
 
 _import_structure = {
-    ".utils.device": ["ComponentDevice", "Device", "DeviceMap", "DeviceType"],
-    ".utils.auth": ["Secret", "deserialize_secrets_inplace"],
-    ".utils.callable_serialization": ["deserialize_callable", "serialize_callable"],
-    ".utils.docstore_deserialization": ["deserialize_document_store_in_init_params_inplace"],
-    ".utils.expit": ["expit"],
-    ".utils.filters": ["document_matches_filter", "raise_on_invalid_filter_syntax"],
-    ".utils.type_serialization": ["deserialize_type", "serialize_type"],
-    ".utils.jinja2_extensions": ["Jinja2TimeExtension"],
-    ".utils.jupyter": ["is_in_jupyter"],
-    ".utils.requests_utils": ["request_with_retry"],
-    ".utils.utils": ["expand_page_range"],
+    "device": ["ComponentDevice", "Device", "DeviceMap", "DeviceType"],
+    "auth": ["Secret", "deserialize_secrets_inplace"],
+    "callable_serialization": ["deserialize_callable", "serialize_callable"],
+    "docstore_deserialization": ["deserialize_document_store_in_init_params_inplace"],
+    # "expit": ["expit"],
+    "filters": ["document_matches_filter", "raise_on_invalid_filter_syntax"],
+    "type_serialization": ["deserialize_type", "serialize_type"],
+    "jinja2_extensions": ["Jinja2TimeExtension"],
+    "jupyter": ["is_in_jupyter"],
+    "requests_utils": ["request_with_retry"],
+    "utils": ["expand_page_range"],
 }
 
 if TYPE_CHECKING:
@@ -26,7 +26,8 @@ if TYPE_CHECKING:
     from .callable_serialization import deserialize_callable, serialize_callable
     from .device import ComponentDevice, Device, DeviceMap, DeviceType
     from .docstore_deserialization import deserialize_document_store_in_init_params_inplace
-    from .expit import expit
+
+    # from haystack.utils.expit import expit
     from .filters import document_matches_filter, raise_on_invalid_filter_syntax
     from .jinja2_extensions import Jinja2TimeExtension
     from .jupyter import is_in_jupyter
