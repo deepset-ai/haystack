@@ -395,7 +395,7 @@ class PipelineBase:
         return instance
 
     def connect(  # noqa: PLR0915 PLR0912
-        self, sender: str, receiver: str, type_validation: Literal["strict", "relaxed", "off", None] = None
+        self, sender: str, receiver: str, type_validation: Literal["strict", "relaxed", "disabled", None] = None
     ) -> "PipelineBase":
         """
         Connects two components together.
@@ -410,6 +410,11 @@ class PipelineBase:
         :param receiver:
             The component that receives the value. This can be either just a component name or can be
             in the format `component_name.connection_name` if the component has multiple inputs.
+        :param type_validation: The connectionvalidation mode, which can be:
+            - "strict": Enforces strict type compatibility. This is the default.
+            - "relaxed": Allows bidirectional compatibility checks, permitting sender and receiver to be subclasses
+              of each other and allowing partial compatibility for Union and Literal types.
+            - "disabled": Skips type validation. All connections are allowed.
         :returns:
             The Pipeline instance.
 
@@ -471,7 +476,6 @@ class PipelineBase:
         # Find all possible connections between these two components
         possible_connections = []
         for sender_sock, receiver_sock in itertools.product(sender_socket_candidates, receiver_socket_candidates):
-            # TODO Here is where we would add relaxed type checking option
             if _types_are_compatible(sender_sock.type, receiver_sock.type, type_validation):
                 possible_connections.append((sender_sock, receiver_sock))
 
