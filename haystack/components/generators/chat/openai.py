@@ -7,7 +7,7 @@ import os
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional, Union
 
-from openai import OpenAI, Stream
+from openai import AsyncOpenAI, AsyncStream, OpenAI, Stream
 from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletionMessage
 from openai.types.chat.chat_completion import Choice
 from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
@@ -145,13 +145,16 @@ class OpenAIChatGenerator:
         if max_retries is None:
             max_retries = int(os.environ.get("OPENAI_MAX_RETRIES", 5))
 
-        self.client = OpenAI(
-            api_key=api_key.resolve_value(),
-            organization=organization,
-            base_url=api_base_url,
-            timeout=timeout,
-            max_retries=max_retries,
-        )
+        client_args: Dict[str, Any] = {
+            "api_key": api_key.resolve_value(),
+            "organization": organization,
+            "base_url": api_base_url,
+            "timeout": timeout,
+            "max_retries": max_retries,
+        }
+
+        self.client = OpenAI(**client_args)
+        self.async_client = AsyncOpenAI(**client_args)
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -268,6 +271,77 @@ class OpenAIChatGenerator:
 
         return {"replies": completions}
 
+    @component.output_types(replies=List[ChatMessage])
+    async def run_async(
+        self,
+        messages: List[ChatMessage],
+        streaming_callback: Optional[StreamingCallbackT] = None,
+        generation_kwargs: Optional[Dict[str, Any]] = None,
+        *,
+        tools: Optional[List[Tool]] = None,
+        tools_strict: Optional[bool] = None,
+    ):
+        """
+        Invokes chat completion asynchronously based on the provided messages and generation parameters.
+
+        :param messages:
+            A list of ChatMessage instances representing the input messages.
+        :param streaming_callback:
+            A callback function that is called when a new token is received from the stream.
+        :param generation_kwargs:
+            Additional keyword arguments for text generation. These parameters will
+            override the parameters passed during component initialization.
+            For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat/create).
+        :param tools:
+            A list of tools for which the model can prepare calls. If set, it will override the `tools` parameter set
+            during component initialization.
+        :param tools_strict:
+            Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
+            the schema provided in the `parameters` field of the tool definition, but this may increase latency.
+            If set, it will override the `tools_strict` parameter set during component initialization.
+
+        :returns:
+            A dictionary with the following key:
+            - `replies`: A list containing the generated responses as ChatMessage instances.
+        """
+        if len(messages) == 0:
+            return {"replies": []}
+
+        streaming_callback = streaming_callback or self.streaming_callback
+
+        api_args = self._prepare_api_call(
+            messages=messages,
+            streaming_callback=streaming_callback,
+            generation_kwargs=generation_kwargs,
+            tools=tools,
+            tools_strict=tools_strict,
+        )
+
+        chat_completion: Union[
+            AsyncStream[ChatCompletionChunk], ChatCompletion
+        ] = await self.async_client.chat.completions.create(**api_args)
+
+        is_streaming = isinstance(chat_completion, AsyncStream)
+        assert is_streaming or streaming_callback is None
+
+        if is_streaming:
+            completions = await self._handle_stream_response_async(
+                chat_completion,  # type: ignore
+                streaming_callback,  # type: ignore
+            )
+        else:
+            assert isinstance(chat_completion, ChatCompletion), "Unexpected response type for non-streaming request."
+            completions = [
+                self._convert_chat_completion_to_chat_message(chat_completion, choice)
+                for choice in chat_completion.choices
+            ]
+
+        # before returning, do post-processing of the completions
+        for message in completions:
+            self._check_finish_reason(message.meta)
+
+        return {"replies": completions}
+
     def _prepare_api_call(  # noqa: PLR0913
         self,
         *,
@@ -314,6 +388,21 @@ class OpenAIChatGenerator:
         chunk = None
 
         for chunk in chat_completion:  # pylint: disable=not-an-iterable
+            assert len(chunk.choices) == 1, "Streaming responses should have only one choice."
+            chunk_delta: StreamingChunk = self._convert_chat_completion_chunk_to_streaming_chunk(chunk)
+            chunks.append(chunk_delta)
+
+            callback(chunk_delta)
+
+        return [self._convert_streaming_chunks_to_chat_message(chunk, chunks)]
+
+    async def _handle_stream_response_async(
+        self, chat_completion: AsyncStream, callback: StreamingCallbackT
+    ) -> List[ChatMessage]:
+        chunks: List[StreamingChunk] = []
+        chunk = None
+
+        async for chunk in chat_completion:  # pylint: disable=not-an-iterable
             assert len(chunk.choices) == 1, "Streaming responses should have only one choice."
             chunk_delta: StreamingChunk = self._convert_chat_completion_chunk_to_streaming_chunk(chunk)
             chunks.append(chunk_delta)

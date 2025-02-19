@@ -275,6 +275,7 @@ markers = [
   "document_store",
 ]
 log_cli = true
+asyncio_mode = "auto"
 
 [tool.mypy]
 warn_return_any = false

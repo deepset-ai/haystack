@@ -3,10 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 from datetime import datetime
 from typing import Iterator
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, AsyncMock
 
 import pytest
-from openai import Stream
+from openai import AsyncStream, Stream
 from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletionMessage
 from openai.types.chat.chat_completion_chunk import Choice, ChoiceDelta
 from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletionMessage, ChatCompletionMessageToolCall
@@ -41,6 +41,21 @@ class OpenAIMockStream(Stream[ChatCompletionChunk]):
         yield self.mock_chunk
 
 
+class OpenAIAsyncMockStream(AsyncStream[ChatCompletionChunk]):
+    def __init__(self, mock_chunk: ChatCompletionChunk):
+        self.mock_chunk = mock_chunk
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        # Only yield once, then stop iteration
+        if not hasattr(self, "_done"):
+            self._done = True
+            return self.mock_chunk
+        raise StopAsyncIteration
+
+
 @pytest.fixture
 def openai_mock_stream():
     """
@@ -55,6 +70,34 @@ def openai_mock_chat_completion():
     Mock the OpenAI API completion response and reuse it for tests
     """
     with patch("openai.resources.chat.completions.Completions.create") as mock_chat_completion_create:
+        completion = ChatCompletion(
+            id="foo",
+            model="gpt-4",
+            object="chat.completion",
+            choices=[
+                {
+                    "finish_reason": "stop",
+                    "logprobs": None,
+                    "index": 0,
+                    "message": {"content": "Hello world!", "role": "assistant"},
+                }
+            ],
+            created=int(datetime.now().timestamp()),
+            usage={"prompt_tokens": 57, "completion_tokens": 40, "total_tokens": 97},
+        )
+
+        mock_chat_completion_create.return_value = completion
+        yield mock_chat_completion_create
+
+
+@pytest.fixture
+async def openai_mock_async_chat_completion():
+    """
+    Mock the OpenAI API completion response and reuse it for async tests
+    """
+    with patch(
+        "openai.resources.chat.completions.AsyncCompletions.create", new_callable=AsyncMock
+    ) as mock_chat_completion_create:
         completion = ChatCompletion(
             id="foo",
             model="gpt-4",
@@ -100,4 +143,31 @@ def openai_mock_chat_completion_chunk():
         mock_chat_completion_create.return_value = OpenAIMockStream(
             completion, cast_to=None, response=None, client=None
         )
+        yield mock_chat_completion_create
+
+
+@pytest.fixture
+async def openai_mock_async_chat_completion_chunk():
+    """
+    Mock the OpenAI API completion chunk response and reuse it for async tests
+    """
+    with patch(
+        "openai.resources.chat.completions.AsyncCompletions.create", new_callable=AsyncMock
+    ) as mock_chat_completion_create:
+        completion = ChatCompletionChunk(
+            id="foo",
+            model="gpt-4",
+            object="chat.completion.chunk",
+            choices=[
+                chat_completion_chunk.Choice(
+                    finish_reason="stop",
+                    logprobs=None,
+                    index=0,
+                    delta=chat_completion_chunk.ChoiceDelta(content="Hello", role="assistant"),
+                )
+            ],
+            created=int(datetime.now().timestamp()),
+            usage={"prompt_tokens": 57, "completion_tokens": 40, "total_tokens": 97},
+        )
+        mock_chat_completion_create.return_value = OpenAIAsyncMockStream(completion)
         yield mock_chat_completion_create
