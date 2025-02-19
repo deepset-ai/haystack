@@ -11,7 +11,21 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T")
 
 
-def _types_are_compatible(sender, receiver, type_validation: Literal["strict", "relaxed", "off"] = "strict") -> bool:
+def _types_are_compatible(
+    sender, receiver, type_validation: Literal["strict", "relaxed", "disabled"] = "strict"
+) -> bool:
+    """
+    Determines if two types are compatible based on the specified validation mode.
+
+    :param sender: The sender type.
+    :param receiver: The receiver type.
+    :param type_validation: The validation mode, which can be:
+        - "strict": Enforces strict type compatibility.
+        - "relaxed": Allows bidirectional compatibility checks, permitting sender and receiver to be subclasses
+          of each other and allowing partial compatibility for Union and Literal types.
+        - "disabled": Skips type validation. Always returns True.
+    :return: True if the types are compatible, False otherwise.
+    """
     if type_validation == "strict":
         return _strict_types_are_compatible(sender, receiver)
     elif type_validation == "relaxed":
@@ -22,13 +36,16 @@ def _types_are_compatible(sender, receiver, type_validation: Literal["strict", "
 
 def _strict_types_are_compatible(sender, receiver):  # pylint: disable=too-many-return-statements
     """
-    Checks whether the source type is equal or a subtype of the destination type. Used to validate pipeline connections.
+    Checks whether the sender type is equal to or a subtype of the receiver type under strict validation.
 
     Note: this method has no pretense to perform proper type matching. It especially does not deal with aliasing of
     typing classes such as `List` or `Dict` to their runtime counterparts `list` and `dict`. It also does not deal well
     with "bare" types, so `List` is treated differently from `List[Any]`, even though they should be the same.
-
     Consider simplifying the typing of your components if you observe unexpected errors during component connection.
+
+    :param sender: The sender type.
+    :param receiver: The receiver type.
+    :return: True if the sender type is strictly compatible with the receiver type, False otherwise.
     """
     if sender == receiver or receiver is Any:
         return True
@@ -63,11 +80,14 @@ def _strict_types_are_compatible(sender, receiver):  # pylint: disable=too-many-
 
 def _relaxed_types_are_compatible(sender, receiver) -> bool:  # noqa: PLR0911 # pylint: disable=too-many-return-statements
     """
-    Core type compatibility check implementing symmetric matching.
+    Checks whether two types are compatible under relaxed validation.
 
-    :param sender: First unwrapped type to compare
-    :param receiver: Second unwrapped type to compare
-    :return: True if types are compatible, False otherwise
+    Relaxed validation allows bidirectional compatibility checks, permitting sender and receiver to be subclasses
+    of each other and allowing partial compatibility for Union and Literal types.
+
+    :param sender: The first type to compare.
+    :param receiver: The second type to compare.
+    :return: True if the types are compatible, False otherwise.
     """
     # Handle Any type and direct equality
     if sender is Any or receiver is Any or sender == receiver:
@@ -113,7 +133,15 @@ def _relaxed_types_are_compatible(sender, receiver) -> bool:  # noqa: PLR0911 # 
 
 
 def _relaxed_check_union_compatibility(sender: T, receiver: T, sender_origin: Any, receiver_origin: Any) -> bool:
-    """Handle all Union type compatibility cases."""
+    """
+    Handles compatibility checks for Union types under relaxed validation.
+
+    :param sender: The sender type.
+    :param receiver: The receiver type.
+    :param sender_origin: The origin of the sender type.
+    :param receiver_origin: The origin of the receiver type.
+    :return: True if there is partial compatibility between the sender and receiver types, False otherwise.
+    """
     if sender_origin is Union and receiver_origin is not Union:
         return any(_relaxed_types_are_compatible(union_arg, receiver) for union_arg in get_args(sender))
     if receiver_origin is Union and sender_origin is not Union:
