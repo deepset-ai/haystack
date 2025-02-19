@@ -7,12 +7,15 @@ from typing import TYPE_CHECKING
 
 from lazy_imports import LazyImporter
 
+import haystack.core
+
+# these imports cannot be made lazy
 import haystack.logging
 import haystack.tracing
+from haystack.core.component import component
 from haystack.version import __version__
 
 _import_structure = {
-    "core.component": ["component"],
     "core.errors": ["ComponentError", "DeserializationError"],
     "core.pipeline": ["AsyncPipeline", "Pipeline", "PredefinedPipeline"],
     "core.serialization": ["default_from_dict", "default_to_dict"],
@@ -20,7 +23,6 @@ _import_structure = {
 }
 
 if TYPE_CHECKING:
-    from .core.component import component
     from .core.errors import ComponentError, DeserializationError
     from .core.pipeline import AsyncPipeline, Pipeline, PredefinedPipeline
     from .core.serialization import default_from_dict, default_to_dict
@@ -31,8 +33,14 @@ else:
         name=__name__,
         module_file=__file__,
         import_structure=_import_structure,
-        # we need to pass the some objects as extra objects since we do not want to import them lazily
-        extra_objects={"__version__": __version__, "logging": haystack.logging, "tracing": haystack.tracing},
+        # we need to pass some objects as extra objects since we do not want to import them lazily
+        extra_objects={
+            "__version__": __version__,
+            "logging": haystack.logging,
+            "tracing": haystack.tracing,
+            "component": component,
+            "core": haystack.core,
+        },
     )
 
 # Initialize the logging configuration
