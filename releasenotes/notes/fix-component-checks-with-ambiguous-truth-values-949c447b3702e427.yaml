@@ -2,4 +2,4 @@
 fixes:
   - |
     Pipelines with components that return plain pandas dataframes failed.
-    With this fix, components can return dataframes without issues.
+    The comparison of socket values is now 'is not' instead of '!=' to avoid errors with dataframes.
