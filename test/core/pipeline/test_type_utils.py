@@ -194,6 +194,11 @@ def generate_strict_asymmetric_cases():
                 (Dict[(str, Mapping[(Any, Dict[(Any, Any)])])]),
                 id="nested-mapping-of-classes-to-nested-mapping-of-any-keys-and-values",
             ),
+            pytest.param(
+                (Tuple[Literal["a", "b", "c"], Union[(Path, Dict[(int, Class1)])]]),
+                (Tuple[Optional[Literal["a", "b", "c"]], Union[(Path, Dict[(int, Class1)])]]),
+                id="deeply-nested-complex-type",
+            ),
         ]
     )
 
@@ -287,10 +292,13 @@ def test_asymmetric_types_are_compatible_relaxed(sender_type, receiver_type):
 
 
 incompatible_type_cases = [
+    pytest.param(Tuple[int, str], Tuple[Any], id="tuple-of-primitive-to-tuple-of-any-different-lengths"),
     pytest.param(int, str, id="different-primitives"),
     pytest.param(Class1, Class2, id="different-classes"),
     pytest.param((List[int]), (List[str]), id="different-lists-of-primitives"),
     pytest.param((List[Class1]), (List[Class2]), id="different-lists-of-classes"),
+    pytest.param((Literal["a", "b", "c"]), (Literal["x", "y"]), id="different-literal-of-same-primitive"),
+    pytest.param((Literal[Enum1.TEST1]), (Literal[Enum1.TEST2]), id="different-literal-of-same-enum"),
     pytest.param(
         (List[Set[Sequence[str]]]), (List[Set[Sequence[bool]]]), id="nested-sequences-of-different-primitives"
     ),
@@ -338,8 +346,6 @@ incompatible_type_cases = [
         (Dict[(str, Mapping[(str, Dict[(str, Class2)])])]),
         id="same-nested-mappings-of-class-to-subclass-values",
     ),
-    pytest.param((Literal["a", "b", "c"]), (Literal["x", "y"]), id="different-literal-of-same-primitive"),
-    pytest.param((Literal[Enum1.TEST1]), (Literal[Enum1.TEST2]), id="different-literal-of-same-enum"),
 ]
 
 
@@ -351,12 +357,6 @@ def test_types_are_always_not_compatible_strict(sender_type, receiver_type):
 @pytest.mark.parametrize("sender_type, receiver_type", incompatible_type_cases)
 def test_types_are_always_not_compatible_relaxed(sender_type, receiver_type):
     assert not _types_are_compatible(sender_type, receiver_type, "relaxed")
-
-
-def test_deeply_nested_type_is_compatible_but_cannot_be_checked():
-    sender_type = Tuple[Optional[Literal["a", "b", "c"]], Union[(Path, Dict[(int, Class1)])]]
-    receiver_type = Tuple[Literal["a", "b", "c"], Union[(Path, Dict[(int, Class1)])]]
-    assert not _types_are_compatible(sender_type, receiver_type, "strict")
 
 
 @pytest.mark.parametrize(
@@ -389,4 +389,5 @@ def test_partially_overlapping_unions_are_compatible_relaxed(sender_type, receiv
     ],
 )
 def test_list_of_primitive_to_list(sender_type, receiver_type):
+    """This currently doesn't work because we don't handle bare types without arguments."""
     assert not _types_are_compatible(sender_type, receiver_type, "strict")

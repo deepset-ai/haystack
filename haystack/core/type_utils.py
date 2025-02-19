@@ -61,7 +61,7 @@ def _strict_types_are_compatible(sender, receiver):  # pylint: disable=too-many-
     return all(_strict_types_are_compatible(*args) for args in zip(sender_args, receiver_args))
 
 
-def _relaxed_types_are_compatible(sender, receiver) -> bool:
+def _relaxed_types_are_compatible(sender, receiver) -> bool:  # noqa: PLR0911 # pylint: disable=too-many-return-statements
     """
     Core type compatibility check implementing symmetric matching.
 
@@ -101,6 +101,13 @@ def _relaxed_types_are_compatible(sender, receiver) -> bool:
     # Compare generic type arguments
     sender_args = get_args(sender)
     receiver_args = get_args(receiver)
+
+    # Handle when both sender and receiver are Literal types
+    if sender_origin is Literal and receiver_origin is Literal:
+        return any(sender_arg == receiver_arg for sender_arg in sender_args for receiver_arg in receiver_args)
+
+    if len(sender_args) != len(receiver_args):
+        return False
 
     return all(_relaxed_types_are_compatible(s_arg, r_arg) for s_arg, r_arg in zip(sender_args, receiver_args))
 
