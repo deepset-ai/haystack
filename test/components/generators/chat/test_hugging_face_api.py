@@ -583,7 +583,9 @@ class TestHuggingFaceAPIChatGenerator:
         not os.environ.get("HF_API_TOKEN", None),
         reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
     )
-    @pytest.mark.flaky(reruns=3, reruns_delay=10)
+    @pytest.mark.xfail(
+        reason="The Hugging Face API can be unstable and this test may fail intermittently", strict=False
+    )
     def test_live_run_with_tools(self, tools):
         """
         We test the round trip: generate tool call, pass tool message, generate response.
