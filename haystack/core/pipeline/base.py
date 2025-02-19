@@ -72,7 +72,7 @@ class PipelineBase:
         self,
         metadata: Optional[Dict[str, Any]] = None,
         max_runs_per_component: int = 100,
-        connection_type_validation: Literal["strict", "relaxed", "off"] = "strict",
+        connection_type_validation: Literal["strict", "relaxed", "disabled"] = "strict",
     ):
         """
         Creates the Pipeline.
@@ -84,6 +84,11 @@ class PipelineBase:
             How many times the `Pipeline` can run the same Component.
             If this limit is reached a `PipelineMaxComponentRuns` exception is raised.
             If not set defaults to 100 runs per Component.
+        :param connection_type_validation: The connection validation mode, which can be:
+            - "strict": Enforces strict type compatibility. This is the default.
+            - "relaxed": Allows bidirectional compatibility checks, permitting sender and receiver to be subclasses
+              of each other and allowing partial compatibility for Union and Literal types.
+            - "disabled": Skips type validation. All connections are allowed.
         """
         self._telemetry_runs = 0
         self._last_telemetry_sent: Optional[datetime] = None
@@ -410,7 +415,7 @@ class PipelineBase:
         :param receiver:
             The component that receives the value. This can be either just a component name or can be
             in the format `component_name.connection_name` if the component has multiple inputs.
-        :param type_validation: The connectionvalidation mode, which can be:
+        :param type_validation: The connection validation mode, which can be:
             - "strict": Enforces strict type compatibility. This is the default.
             - "relaxed": Allows bidirectional compatibility checks, permitting sender and receiver to be subclasses
               of each other and allowing partial compatibility for Union and Literal types.
