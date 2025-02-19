@@ -351,15 +351,16 @@ class OpenAIChatGenerator:
         tool_calls = []
 
         # Process tool calls if present in any chunk
-        tool_call_data: Dict[str, Dict[str, str]] = {}  # Track tool calls by ID
+        tool_call_data: Dict[str, Dict[str, str]] = {}  # Track tool calls by index
         for chunk_payload in chunks:
             tool_calls_meta = chunk_payload.meta.get("tool_calls")
             if tool_calls_meta is not None:
                 for delta in tool_calls_meta:
-                    # if delta.id is not None and delta.id not in tool_call_data:
+                    # We use the index of the tool call to track it across chunks since the ID is not always provided
                     if delta.index not in tool_call_data:
                         tool_call_data[delta.index] = {"id": "", "name": "", "arguments": ""}
 
+                    # Save the ID if present
                     if delta.id is not None:
                         tool_call_data[delta.index]["id"] = delta.id
 
