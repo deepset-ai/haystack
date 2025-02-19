@@ -872,7 +872,7 @@ class TestOpenAIChatGenerator:
         assert len(results["replies"]) == 1
         message = results["replies"][0]
 
-        assert not message.texts
+        assert message.texts == [""]
         assert not message.text
         assert message.tool_calls
         tool_call = message.tool_call
