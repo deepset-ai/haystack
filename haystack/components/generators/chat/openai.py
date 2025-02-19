@@ -371,10 +371,8 @@ class OpenAIChatGenerator:
 
         # Convert accumulated tool call data into ToolCall objects
         for call_data in tool_call_data.values():
-            # We create the string here so it can be logged if it's malformed
-            arguments_str = call_data["arguments"]
             try:
-                arguments = json.loads(arguments_str)
+                arguments = json.loads(call_data["arguments"])
                 tool_calls.append(ToolCall(id=call_data["id"], tool_name=call_data["name"], arguments=arguments))
             except json.JSONDecodeError:
                 logger.warning(
@@ -383,7 +381,7 @@ class OpenAIChatGenerator:
                     "Tool call ID: {_id}, Tool name: {_name}, Arguments: {_arguments}",
                     _id=call_data["id"],
                     _name=call_data["name"],
-                    _arguments=arguments_str,
+                    _arguments=call_data["arguments"],
                 )
 
         meta = {
