@@ -4,6 +4,7 @@ from pathlib import Path
 import re
 import pytest
 import asyncio
+import pandas as pd
 
 from pytest_bdd import when, then, parsers
 
@@ -142,15 +143,39 @@ def draw_pipeline(pipeline_data: Tuple[Pipeline, List[PipelineRunData]], request
 @then("it should return the expected result")
 def check_pipeline_result(pipeline_result: List[Tuple[_PipelineResult, PipelineRunData]]):
     for res, data in pipeline_result:
-        assert res.outputs == data.expected_outputs
-
+        compare_outputs_with_dataframes(res.outputs, data.expected_outputs)
 
 @then("components are called with the expected inputs")
 def check_component_calls(pipeline_result: List[Tuple[_PipelineResult, PipelineRunData]]):
     for res, data in pipeline_result:
-        assert res.component_calls == data.expected_component_calls
+        assert compare_outputs_with_dataframes(res.component_calls, data.expected_component_calls)
 
 
 @then(parsers.parse("it must have raised {exception_class_name}"))
 def check_pipeline_raised(pipeline_result: Exception, exception_class_name: str):
     assert pipeline_result.__class__.__name__ == exception_class_name
+
+
+
+def compare_outputs_with_dataframes(actual: Dict, expected: Dict) -> bool:
+    """
+    Compare two component_calls or pipeline outputs dictionaries where values may contain DataFrames.
+    """
+    assert actual.keys() == expected.keys()
+
+    for key in actual:
+        actual_data = actual[key]
+        expected_data = expected[key]
+
+        assert actual_data.keys() == expected_data.keys()
+
+        for data_key in actual_data:
+            actual_value = actual_data[data_key]
+            expected_value = expected_data[data_key]
+
+            if isinstance(actual_value, pd.DataFrame) and isinstance(expected_value, pd.DataFrame):
+                assert actual_value.equals(expected_value)
+            else:
+                assert actual_value == expected_value
+
+    return True

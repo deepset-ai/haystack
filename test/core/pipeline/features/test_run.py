@@ -4,6 +4,7 @@ import re
 
 from pytest_bdd import scenarios, given
 import pytest
+import pandas as pd
 
 from haystack import Document, component
 from haystack.document_stores.types import DuplicatePolicy
@@ -5075,6 +5076,42 @@ some,header,row
                     },
                     ("splitter", 1): {"documents": expected_pre_split_docs},
                     ("a_joiner", 1): {"documents": [expected_csv_docs, expected_splits_docs], "top_k": None},
+                },
+            )
+        ],
+    )
+
+@given("a pipeline that has components returning dataframes", target_fixture="pipeline_data")
+def pipeline_has_components_returning_dataframes(pipeline_class):
+    def get_df():
+        return pd.DataFrame({
+                'a': [1, 2],
+                'b': [1, 2]
+            })
+
+    @component
+    class DataFramer:
+        @component.output_types(dataframe=pd.DataFrame)
+        def run(self, dataframe: pd.DataFrame) -> Dict[str, Any]:
+            return {"dataframe": get_df()}
+
+    pp = pipeline_class(max_runs_per_component=1)
+
+    pp.add_component("df_1", DataFramer())
+    pp.add_component("df_2", DataFramer())
+
+    pp.connect("df_1", "df_2")
+
+
+    return (
+        pp,
+        [
+            PipelineRunData(
+                inputs={"df_1": {"dataframe": get_df()}},
+                expected_outputs={"df_2": {"dataframe": get_df()}},
+                expected_component_calls={
+                    ("df_1", 1): {"dataframe": get_df()},
+                    ("df_2", 1): {"dataframe": get_df()},
                 },
             )
         ],
