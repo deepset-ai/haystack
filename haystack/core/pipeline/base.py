@@ -423,7 +423,7 @@ class PipelineBase:
             The component that receives the value. This can be either just a component name or can be
             in the format `component_name.connection_name` if the component has multiple inputs.
         :param connection_type_validation: Whether the pipeline will validate the types of the connections.
-            Defaults to True.
+            Defaults to the value set in the pipeline.
         :returns:
             The Pipeline instance.
 
@@ -431,7 +431,7 @@ class PipelineBase:
             If the two components cannot be connected (for example if one of the components is
             not present in the pipeline, or the connections don't match by type, and so on).
         """
-        connection_type_validation = connection_type_validation or self._connection_type_validation
+        resolved_connection_type_validation = connection_type_validation or self._connection_type_validation
 
         # Edges may be named explicitly by passing 'node_name.edge_name' to connect().
         sender_component_name, sender_socket_name = parse_connect_string(sender)
@@ -485,7 +485,7 @@ class PipelineBase:
         # Find all possible connections between these two components
         possible_connections = []
         for sender_sock, receiver_sock in itertools.product(sender_socket_candidates, receiver_socket_candidates):
-            if _types_are_compatible(sender_sock.type, receiver_sock.type, connection_type_validation):
+            if _types_are_compatible(sender_sock.type, receiver_sock.type, resolved_connection_type_validation):
                 possible_connections.append((sender_sock, receiver_sock))
 
         # We need this status for error messages, since we might need it in multiple places we calculate it here
