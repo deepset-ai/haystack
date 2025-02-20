@@ -101,7 +101,8 @@ class TestListJoiner:
         pipe = Pipeline()
         pipe.add_component("joiner", joiner)
         pipe.add_component("llm", llm)
-        pipe.connect("joiner.values", "llm.messages")
+        with pytest.raises(PipelineConnectError):
+            pipe.connect("joiner.values", "llm.messages")
         assert pipe is not None
 
     def test_pipeline_connection_validation_list_chatmessage(self):

@@ -35,7 +35,7 @@ def serialize_type(target: Any) -> str:
         return target
 
     # Determine if the target is a type or an instance of a typing object
-    is_type_or_typing = isinstance(target, type) or bool(get_origin(target))
+    is_type_or_typing = isinstance(target, type) or bool(get_origin(target)) or target == Any
     type_obj = target if is_type_or_typing else type(target)
     type_obj_repr = repr(type_obj)
 
