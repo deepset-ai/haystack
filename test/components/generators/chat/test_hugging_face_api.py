@@ -526,7 +526,7 @@ class TestHuggingFaceAPIChatGenerator:
         }
 
     @pytest.mark.integration
-    @pytest.mark.skip(reason="Temporarily skipped due to HF API daily limits.")
+    @pytest.mark.skip(reason="Temporarily skipped due to limits on HF API requests.")
     @pytest.mark.flaky(reruns=3, reruns_delay=10)
     def test_live_run_serverless(self):
         generator = HuggingFaceAPIChatGenerator(
@@ -547,7 +547,7 @@ class TestHuggingFaceAPIChatGenerator:
         assert "completion_tokens" in response["replies"][0].meta["usage"]
 
     @pytest.mark.integration
-    @pytest.mark.skip(reason="Temporarily skipped due to HF API daily limits.")
+    @pytest.mark.skip(reason="Temporarily skipped due to limits on HF API requests.")
     @pytest.mark.flaky(reruns=3, reruns_delay=10)
     def test_live_run_serverless_streaming(self):
         generator = HuggingFaceAPIChatGenerator(
@@ -573,7 +573,7 @@ class TestHuggingFaceAPIChatGenerator:
         assert "completion_tokens" in response_meta["usage"]
 
     @pytest.mark.integration
-    @pytest.mark.skip(reason="Temporarily skipped due to HF API daily limits.")
+    @pytest.mark.skip(reason="Temporarily skipped due to limits on HF API requests.")
     def test_live_run_with_tools(self, tools):
         """
         We test the round trip: generate tool call, pass tool message, generate response.

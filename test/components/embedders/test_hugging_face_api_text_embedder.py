@@ -187,7 +187,7 @@ class TestHuggingFaceAPITextEmbedder:
 
     @pytest.mark.flaky(reruns=5, reruns_delay=5)
     @pytest.mark.integration
-    @pytest.mark.skip(reason="Temporarily skipped due to HF API daily limits.")
+    @pytest.mark.skip(reason="Temporarily skipped due to limits on HF API requests.")
     def test_live_run_serverless(self):
         embedder = HuggingFaceAPITextEmbedder(
             api_type=HFEmbeddingAPIType.SERVERLESS_INFERENCE_API,
