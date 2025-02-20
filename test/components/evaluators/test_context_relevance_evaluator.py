@@ -141,8 +141,6 @@ class TestContextRelevanceEvaluator:
         ]
         results = component.run(questions=questions, contexts=contexts)
 
-        print(results)
-
         assert results == {
             "results": [{"score": 1, "relevant_statements": ["a", "b"]}, {"score": 0, "relevant_statements": []}],
             "score": 0.5,
