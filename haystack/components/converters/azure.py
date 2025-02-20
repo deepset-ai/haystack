@@ -3,14 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import copy
-import hashlib
 import os
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Union
 
 import networkx as nx
-import pandas as pd
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
@@ -23,6 +21,9 @@ logger = logging.getLogger(__name__)
 with LazyImport(message="Run 'pip install \"azure-ai-formrecognizer>=3.2.0b2\"'") as azure_import:
     from azure.ai.formrecognizer import AnalyzeResult, DocumentAnalysisClient, DocumentLine, DocumentParagraph
     from azure.core.credentials import AzureKeyCredential
+
+with LazyImport(message="Run 'pip install pandas'") as pandas_import:
+    import pandas as pd
 
 
 @component
@@ -90,6 +91,7 @@ class AzureOCRDocumentConverter:
             If False, only the file name is stored.
         """
         azure_import.check()
+        pandas_import.check()
 
         self.document_analysis_client = DocumentAnalysisClient(
             endpoint=endpoint, credential=AzureKeyCredential(api_key.resolve_value() or "")
@@ -303,13 +305,10 @@ class AzureOCRDocumentConverter:
             if table.bounding_regions:
                 table_meta["page"] = table.bounding_regions[0].page_number
 
-            table_df = pd.DataFrame(columns=table_list[0], data=table_list[1:])
-
-            # Use custom ID for tables, as columns might not be unique and thus failing in the default ID generation
-            pd_hashes = self._hash_dataframe(table_df)
-            data = f"{pd_hashes}{table_meta}"
-            doc_id = hashlib.sha256(data.encode()).hexdigest()
-            converted_tables.append(Document(id=doc_id, dataframe=table_df, meta=table_meta))
+            # Convert table to CSV
+            table_df = pd.DataFrame(data=table_list)
+            table_content = table_df.to_csv(header=False, index=False)
+            converted_tables.append(Document(content=table_content, meta=table_meta))
 
         return converted_tables
 
@@ -479,29 +478,3 @@ class AzureOCRDocumentConverter:
                 in_table = True
                 break
         return in_table
-
-    def _hash_dataframe(self, df: pd.DataFrame, desired_samples=5, hash_length=4) -> str:
-        """
-        Returns a hash of the DataFrame content.
-
-        The hash is based on the content of the DataFrame.
-        :param df: The DataFrame to hash.
-        :param desired_samples: The desired number of samples to hash.
-        :param hash_length: The length of the hash for each sample.
-
-        :returns: A hash of the DataFrame content.
-        """
-        # take adaptive sample of rows to hash because we can have very large dataframes
-        hasher = hashlib.md5()
-        total_rows = len(df)
-        # sample rate based on DataFrame size and desired number of samples
-        sample_rate = max(1, total_rows // desired_samples)
-
-        hashes = pd.util.hash_pandas_object(df, index=True)
-        sampled_hashes = hashes[::sample_rate]
-
-        for hash_value in sampled_hashes:
-            partial_hash = str(hash_value)[:hash_length].encode("utf-8")
-            hasher.update(partial_hash)
-
-        return hasher.hexdigest()
