@@ -8,7 +8,7 @@ from copy import deepcopy
 from datetime import datetime
 from enum import IntEnum
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Literal, Optional, TextIO, Tuple, Type, TypeVar, Union
+from typing import Any, Dict, Iterator, List, Optional, TextIO, Tuple, Type, TypeVar, Union
 
 import networkx  # type:ignore
 

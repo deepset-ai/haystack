@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Literal, TypeVar, Union, get_args, get_origin
+from typing import Any, TypeVar, Union, get_args, get_origin
 
 from haystack import logging
 
