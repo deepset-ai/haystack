@@ -5,7 +5,7 @@
 import json
 import os
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Union
 
 from openai import AsyncOpenAI, AsyncStream, OpenAI, Stream
 from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletionMessage
@@ -13,14 +13,19 @@ from openai.types.chat.chat_completion import Choice
 from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall
+from haystack.dataclasses import (
+    AsyncStreamingCallbackT,
+    ChatMessage,
+    StreamingCallbackT,
+    StreamingChunk,
+    SyncStreamingCallbackT,
+    ToolCall,
+    select_streaming_callback,
+)
 from haystack.tools.tool import Tool, _check_duplicate_tool_names, deserialize_tools_inplace
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 
 logger = logging.getLogger(__name__)
-
-
-StreamingCallbackT = Callable[[StreamingChunk], None]
 
 
 @component
@@ -291,6 +296,7 @@ class OpenAIChatGenerator:
             A list of ChatMessage instances representing the input messages.
         :param streaming_callback:
             A callback function that is called when a new token is received from the stream.
+            Must be a coroutine.
         :param generation_kwargs:
             Additional keyword arguments for text generation. These parameters will
             override the parameters passed during component initialization.
@@ -304,13 +310,13 @@ class OpenAIChatGenerator:
             If set, it will override the `tools_strict` parameter set during component initialization.
 
         :returns:
-            A dictionary with the following key:
-            - `replies`: A list containing the generated responses as ChatMessage instances.
+            A list containing the generated responses as ChatMessage instances.
         """
+        # validate and select the streaming callback
+        streaming_callback = select_streaming_callback(self.streaming_callback, streaming_callback, requires_async=True)  # type: ignore
+
         if len(messages) == 0:
             return {"replies": []}
-
-        streaming_callback = streaming_callback or self.streaming_callback
 
         api_args = self._prepare_api_call(
             messages=messages,
@@ -328,7 +334,7 @@ class OpenAIChatGenerator:
         assert is_streaming or streaming_callback is None
 
         if is_streaming:
-            completions = await self._handle_stream_response_async(
+            completions = await self._handle_async_stream_response(
                 chat_completion,  # type: ignore
                 streaming_callback,  # type: ignore
             )
@@ -386,7 +392,7 @@ class OpenAIChatGenerator:
             **generation_kwargs,
         }
 
-    def _handle_stream_response(self, chat_completion: Stream, callback: StreamingCallbackT) -> List[ChatMessage]:
+    def _handle_stream_response(self, chat_completion: Stream, callback: SyncStreamingCallbackT) -> List[ChatMessage]:
         chunks: List[StreamingChunk] = []
         chunk = None
 
@@ -399,8 +405,8 @@ class OpenAIChatGenerator:
 
         return [self._convert_streaming_chunks_to_chat_message(chunk, chunks)]
 
-    async def _handle_stream_response_async(
-        self, chat_completion: AsyncStream, callback: StreamingCallbackT
+    async def _handle_async_stream_response(
+        self, chat_completion: AsyncStream, callback: AsyncStreamingCallbackT
     ) -> List[ChatMessage]:
         chunks: List[StreamingChunk] = []
         chunk = None
@@ -410,7 +416,7 @@ class OpenAIChatGenerator:
             chunk_delta: StreamingChunk = self._convert_chat_completion_chunk_to_streaming_chunk(chunk)
             chunks.append(chunk_delta)
 
-            callback(chunk_delta)
+            await callback(chunk_delta)
 
         return [self._convert_streaming_chunks_to_chat_message(chunk, chunks)]
 

@@ -136,7 +136,7 @@ class TestOpenAIChatGeneratorAsync:
     async def test_run_with_params_streaming_async(self, chat_messages, openai_mock_async_chat_completion_chunk):
         streaming_callback_called = False
 
-        def streaming_callback(chunk: StreamingChunk) -> None:
+        async def streaming_callback(chunk: StreamingChunk) -> None:
             nonlocal streaming_callback_called
             streaming_callback_called = True
 
@@ -162,7 +162,7 @@ class TestOpenAIChatGeneratorAsync:
     ):
         streaming_callback_called = False
 
-        def streaming_callback(chunk: StreamingChunk) -> None:
+        async def streaming_callback(chunk: StreamingChunk) -> None:
             nonlocal streaming_callback_called
             streaming_callback_called = True
 
@@ -237,7 +237,7 @@ class TestOpenAIChatGeneratorAsync:
     async def test_run_with_tools_streaming_async(self, mock_chat_completion_chunk_with_tools, tools):
         streaming_callback_called = False
 
-        def streaming_callback(chunk: StreamingChunk) -> None:
+        async def streaming_callback(chunk: StreamingChunk) -> None:
             nonlocal streaming_callback_called
             streaming_callback_called = True
 
@@ -300,16 +300,15 @@ class TestOpenAIChatGeneratorAsync:
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_live_run_streaming_async(self):
-        class Callback:
-            def __init__(self):
-                self.responses = ""
-                self.counter = 0
+        counter = 0
+        responses = ""
 
-            def __call__(self, chunk: StreamingChunk) -> None:
-                self.counter += 1
-                self.responses += chunk.content if chunk.content else ""
+        async def callback(chunk: StreamingChunk):
+            nonlocal counter
+            nonlocal responses
+            counter += 1
+            responses += chunk.content if chunk.content else ""
 
-        callback = Callback()
         component = OpenAIChatGenerator(streaming_callback=callback)
         results = await component.run_async([ChatMessage.from_user("What's the capital of France?")])
 
@@ -320,8 +319,8 @@ class TestOpenAIChatGeneratorAsync:
         assert "gpt-4o" in message.meta["model"]
         assert message.meta["finish_reason"] == "stop"
 
-        assert callback.counter > 1
-        assert "Paris" in callback.responses
+        assert counter > 1
+        assert "Paris" in responses
 
         # check that the completion_start_time is set and valid ISO format
         assert "completion_start_time" in message.meta
