@@ -307,7 +307,7 @@ class AzureOCRDocumentConverter:
 
             # Convert table to CSV
             table_df = pd.DataFrame(data=table_list)
-            table_content = table_df.to_csv(header=False, index=False)
+            table_content = table_df.to_csv(header=False, index=False, lineterminator="\n")
             converted_tables.append(Document(content=table_content, meta=table_meta))
 
         return converted_tables
