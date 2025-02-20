@@ -16,8 +16,10 @@ def test_lazy_import():
 
     from haystack.components.generators.chat import OpenAIChatGenerator  # Import the intended class
 
-    assert "haystack.components.generators.chat.openai" in list(sys.modules.keys())
-    assert "haystack.components.generators.chat.azure" not in list(sys.modules.keys())
+    should_not_be_there = ["haystack.components.generators.chat.azure"]
+    should_be_there = ["haystack.components.generators.chat.openai"]
+    assert should_be_there[0] in sys.modules.keys()
+    assert should_not_be_there[0] not in sys.modules.keys()
 
     # Restore the module if it was previously imported (preserves test isolation)
     if original_imported:
