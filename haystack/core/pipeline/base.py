@@ -144,7 +144,13 @@ class PipelineBase:
         for sender, receiver, edge_data in self.graph.edges.data():
             sender_socket = edge_data["from_socket"].name
             receiver_socket = edge_data["to_socket"].name
-            connections.append({"sender": f"{sender}.{sender_socket}", "receiver": f"{receiver}.{receiver_socket}"})
+            connections.append(
+                {
+                    "sender": f"{sender}.{sender_socket}",
+                    "receiver": f"{receiver}.{receiver_socket}",
+                    "connection_type_validation": edge_data["connection_type_validation"],
+                }
+            )
         return {
             "metadata": self.metadata,
             "max_runs_per_component": self._max_runs_per_component,
@@ -220,7 +226,11 @@ class PipelineBase:
                 raise PipelineError(f"Missing sender in connection: {connection}")
             if "receiver" not in connection:
                 raise PipelineError(f"Missing receiver in connection: {connection}")
-            pipe.connect(sender=connection["sender"], receiver=connection["receiver"])
+            pipe.connect(
+                sender=connection["sender"],
+                receiver=connection["receiver"],
+                connection_type_validation=connection.get("connection_type_validation"),
+            )
 
         return pipe
 
@@ -573,6 +583,7 @@ class PipelineBase:
             conn_type=_type_name(sender_socket.type),
             from_socket=sender_socket,
             to_socket=receiver_socket,
+            connection_type_validation=connection_type_validation,
             mandatory=receiver_socket.is_mandatory,
         )
         return self
