@@ -310,7 +310,8 @@ class OpenAIChatGenerator:
             If set, it will override the `tools_strict` parameter set during component initialization.
 
         :returns:
-            A list containing the generated responses as ChatMessage instances.
+            A dictionary with the following key:
+            - `replies`: A list containing the generated responses as ChatMessage instances.
         """
         # validate and select the streaming callback
         streaming_callback = select_streaming_callback(self.streaming_callback, streaming_callback, requires_async=True)  # type: ignore
