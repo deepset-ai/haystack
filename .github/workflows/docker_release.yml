@@ -18,9 +18,6 @@ jobs:
     if: github.repository_owner == 'deepset-ai'
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -40,7 +37,7 @@ jobs:
           images: $DOCKER_REPO_NAME
 
       - name: Build base images
-        uses: docker/bake-action@v5
+        uses: docker/bake-action@v6
         env:
           IMAGE_TAG_SUFFIX: ${{ steps.meta.outputs.version }}
           HAYSTACK_VERSION: ${{ steps.meta.outputs.version }}
