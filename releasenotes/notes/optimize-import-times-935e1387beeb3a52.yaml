@@ -1,0 +1,10 @@
+---
+highlights: >
+    Thanks to lazy imports, Haystack's import performance has significantly improved.
+    Importing individual components now uses 50% less CPU time on average.
+    The overall import performance has also improved: for example,
+    `import haystack` now uses between 2-5% of its previous CPU time.
+
+enhancements:
+  - |
+    Optimize import times through extensive use of lazy imports across packages.
