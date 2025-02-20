@@ -171,6 +171,7 @@ class TestAzureOpenAIChatGenerator:
         assert p.to_dict() == {
             "metadata": {},
             "max_runs_per_component": 100,
+            "connection_type_validation": True,
             "components": {
                 "generator": {
                     "type": "haystack.components.generators.chat.azure.AzureOpenAIChatGenerator",

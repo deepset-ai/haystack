@@ -151,6 +151,7 @@ class TestOpenAPIConnector:
         assert pipeline_dict == {
             "metadata": {},
             "max_runs_per_component": 100,
+            "connection_type_validation": True,
             "components": {
                 "api": {
                     "type": "haystack.components.connectors.openapi.OpenAPIConnector",
