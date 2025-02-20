@@ -329,9 +329,7 @@ class _Component:
     See module's docstring.
 
     Args:
-        class_: the class that Canals should use as a component.
-        serializable: whether to check, at init time, if the component can be saved with
-        `save_pipelines()`.
+        cls: the class that should be used as a component.
 
     Returns:
         A class that can be recognized as a component.
