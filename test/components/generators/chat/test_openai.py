@@ -764,7 +764,8 @@ class TestOpenAIChatGenerator:
         # Convert chunks to a chat message
         result = component._convert_streaming_chunks_to_chat_message(chunk, chunks)
 
-        assert result.text == ""
+        assert not result.texts
+        assert not result.text
 
         # Verify both tool calls were found and processed
         assert len(result.tool_calls) == 2
