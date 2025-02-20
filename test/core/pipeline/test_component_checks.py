@@ -4,7 +4,23 @@
 
 import pytest
 
-from haystack.core.pipeline.component_checks import *
+from haystack.core.pipeline.component_checks import (
+    all_predecessors_executed,
+    all_socket_predecessors_executed,
+    any_predecessors_provided_input,
+    any_socket_input_received,
+    any_socket_value_from_predecessor_received,
+    are_all_lazy_variadic_sockets_resolved,
+    are_all_sockets_ready,
+    can_component_run,
+    can_not_receive_inputs_from_pipeline,
+    has_any_trigger,
+    has_lazy_variadic_socket_received_all_inputs,
+    has_socket_received_all_inputs,
+    has_user_input,
+    is_any_greedy_socket_ready,
+    is_socket_lazy_variadic,
+)
 from haystack.core.pipeline.component_checks import _NO_OUTPUT_PRODUCED
 from haystack.core.component.types import InputSocket, OutputSocket, Variadic, GreedyVariadic
 

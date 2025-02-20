@@ -77,7 +77,7 @@ class ListJoiner:
         if list_type_ is not None:
             component.set_output_types(self, values=list_type_)
         else:
-            component.set_output_types(self, values=List)
+            component.set_output_types(self, values=List[Any])
 
     def to_dict(self) -> Dict[str, Any]:
         """

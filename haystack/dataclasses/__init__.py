@@ -13,7 +13,13 @@ _import_structure = {
     "chat_message": ["ChatMessage", "ChatRole", "TextContent", "ToolCall", "ToolCallResult"],
     "document": ["Document"],
     "sparse_embedding": ["SparseEmbedding"],
-    "streaming_chunk": ["StreamingChunk"],
+    "streaming_chunk": [
+        "StreamingChunk",
+        "AsyncStreamingCallbackT",
+        "StreamingCallbackT",
+        "SyncStreamingCallbackT",
+        "select_streaming_callback",
+    ],
 }
 
 if TYPE_CHECKING:
@@ -22,6 +28,12 @@ if TYPE_CHECKING:
     from .chat_message import ChatMessage, ChatRole, TextContent, ToolCall, ToolCallResult
     from .document import Document
     from .sparse_embedding import SparseEmbedding
-    from .streaming_chunk import StreamingChunk
+    from .streaming_chunk import (
+        AsyncStreamingCallbackT,
+        StreamingCallbackT,
+        StreamingChunk,
+        SyncStreamingCallbackT,
+        select_streaming_callback,
+    )
 else:
     sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)
