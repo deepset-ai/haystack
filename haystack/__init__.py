@@ -9,7 +9,7 @@ from lazy_imports import LazyImporter
 
 import haystack.core
 
-# these imports cannot be made lazy
+# these imports need to be loaded eagerly
 import haystack.logging
 import haystack.tracing
 from haystack.core.component import component
@@ -33,7 +33,7 @@ else:
         name=__name__,
         module_file=__file__,
         import_structure=_import_structure,
-        # we need to pass some objects as extra objects since we do not want to import them lazily
+        # in extra_objects, we pass the objects the we imported eagerly
         extra_objects={
             "__version__": __version__,
             "logging": haystack.logging,
