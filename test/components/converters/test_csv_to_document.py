@@ -2,9 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import logging
-from unittest.mock import patch
-import pandas as pd
-from pathlib import Path
 import os
 
 import pytest
