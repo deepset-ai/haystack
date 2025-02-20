@@ -280,17 +280,6 @@ def test_asymmetric_types_are_not_compatible_strict(sender_type, receiver_type):
     assert not _types_are_compatible(receiver_type, sender_type, "strict")
 
 
-@pytest.mark.parametrize("sender_type, receiver_type", symmetric_cases)
-def test_same_types_are_compatible_relaxed(sender_type, receiver_type):
-    assert _types_are_compatible(sender_type, receiver_type, "relaxed")
-
-
-@pytest.mark.parametrize("sender_type, receiver_type", asymmetric_cases)
-def test_asymmetric_types_are_compatible_relaxed(sender_type, receiver_type):
-    assert _types_are_compatible(sender_type, receiver_type, "relaxed")
-    assert _types_are_compatible(receiver_type, sender_type, "relaxed")
-
-
 incompatible_type_cases = [
     pytest.param(Tuple[int, str], Tuple[Any], id="tuple-of-primitive-to-tuple-of-any-different-lengths"),
     pytest.param(int, str, id="different-primitives"),
@@ -351,12 +340,7 @@ incompatible_type_cases = [
 
 @pytest.mark.parametrize("sender_type, receiver_type", incompatible_type_cases)
 def test_types_are_always_not_compatible_strict(sender_type, receiver_type):
-    assert not _types_are_compatible(sender_type, receiver_type, "strict")
-
-
-@pytest.mark.parametrize("sender_type, receiver_type", incompatible_type_cases)
-def test_types_are_always_not_compatible_relaxed(sender_type, receiver_type):
-    assert not _types_are_compatible(sender_type, receiver_type, "relaxed")
+    assert not _types_are_compatible(sender_type, receiver_type)
 
 
 @pytest.mark.parametrize(
@@ -367,18 +351,7 @@ def test_types_are_always_not_compatible_relaxed(sender_type, receiver_type):
     ],
 )
 def test_partially_overlapping_unions_are_not_compatible_strict(sender_type, receiver_type):
-    assert not _types_are_compatible(sender_type, receiver_type, "strict")
-
-
-@pytest.mark.parametrize(
-    "sender_type,receiver_type",
-    [
-        pytest.param((Union[(int, bool)]), (Union[(int, str)]), id="partially-overlapping-unions-with-primitives"),
-        pytest.param((Union[(int, Class1)]), (Union[(int, Class2)]), id="partially-overlapping-unions-with-classes"),
-    ],
-)
-def test_partially_overlapping_unions_are_compatible_relaxed(sender_type, receiver_type):
-    assert _types_are_compatible(sender_type, receiver_type, "relaxed")
+    assert not _types_are_compatible(sender_type, receiver_type)
 
 
 @pytest.mark.parametrize(
@@ -390,4 +363,4 @@ def test_partially_overlapping_unions_are_compatible_relaxed(sender_type, receiv
 )
 def test_list_of_primitive_to_list(sender_type, receiver_type):
     """This currently doesn't work because we don't handle bare types without arguments."""
-    assert not _types_are_compatible(sender_type, receiver_type, "strict")
+    assert not _types_are_compatible(sender_type, receiver_type)
