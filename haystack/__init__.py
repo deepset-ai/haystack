@@ -32,7 +32,7 @@ else:
         name=__name__,
         module_file=__file__,
         import_structure=_import_structure,
-        # in extra_objects, we pass the objects the we imported eagerly
+        # in extra_objects, we pass the objects that we imported eagerly
         extra_objects={
             "__version__": __version__,
             "logging": haystack.logging,
