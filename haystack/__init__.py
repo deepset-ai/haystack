@@ -7,9 +7,8 @@ from typing import TYPE_CHECKING
 
 from lazy_imports import LazyImporter
 
-import haystack.core
-
 # these imports need to be loaded eagerly
+import haystack.core
 import haystack.logging
 import haystack.tracing
 from haystack.core.component import component
