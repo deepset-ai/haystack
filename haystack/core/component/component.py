@@ -13,7 +13,7 @@ All components must follow the contract below. This docstring is the source of t
 
 `@component` decorator
 
-All component classes must be decorated with the `@component` decorator. This allows Canals to discover them.
+All component classes must be decorated with the `@component` decorator. This allows Haystack to discover them.
 
 <hr>
 
