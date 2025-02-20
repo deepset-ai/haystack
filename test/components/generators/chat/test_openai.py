@@ -299,18 +299,6 @@ class TestOpenAIChatGenerator:
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
 
-    @pytest.mark.asyncio
-    async def test_run_async(self, chat_messages, openai_mock_async_chat_completion):
-        component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
-        response = await component.run_async(chat_messages)
-
-        # check that the component returns the correct ChatMessage response
-        assert isinstance(response, dict)
-        assert "replies" in response
-        assert isinstance(response["replies"], list)
-        assert len(response["replies"]) == 1
-        assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
-
     def test_run_with_params(self, chat_messages, openai_mock_chat_completion):
         component = OpenAIChatGenerator(
             api_key=Secret.from_token("test-api-key"), generation_kwargs={"max_tokens": 10, "temperature": 0.5}
@@ -319,28 +307,6 @@ class TestOpenAIChatGenerator:
 
         # check that the component calls the OpenAI API with the correct parameters
         _, kwargs = openai_mock_chat_completion.call_args
-        assert kwargs["max_tokens"] == 10
-        assert kwargs["temperature"] == 0.5
-
-        # check that the tools are not passed to the OpenAI API (the generator is initialized without tools)
-        assert "tools" not in kwargs
-
-        # check that the component returns the correct response
-        assert isinstance(response, dict)
-        assert "replies" in response
-        assert isinstance(response["replies"], list)
-        assert len(response["replies"]) == 1
-        assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
-
-    @pytest.mark.asyncio
-    async def test_run_with_params_async(self, chat_messages, openai_mock_async_chat_completion):
-        component = OpenAIChatGenerator(
-            api_key=Secret.from_token("test-api-key"), generation_kwargs={"max_tokens": 10, "temperature": 0.5}
-        )
-        response = await component.run_async(chat_messages)
-
-        # check that the component calls the OpenAI API with the correct parameters
-        _, kwargs = openai_mock_async_chat_completion.call_args
         assert kwargs["max_tokens"] == 10
         assert kwargs["temperature"] == 0.5
 
@@ -377,30 +343,6 @@ class TestOpenAIChatGenerator:
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
         assert "Hello" in response["replies"][0].text  # see openai_mock_chat_completion_chunk
 
-    @pytest.mark.asyncio
-    async def test_run_with_params_streaming_async(self, chat_messages, openai_mock_async_chat_completion_chunk):
-        streaming_callback_called = False
-
-        def streaming_callback(chunk: StreamingChunk) -> None:
-            nonlocal streaming_callback_called
-            streaming_callback_called = True
-
-        component = OpenAIChatGenerator(
-            api_key=Secret.from_token("test-api-key"), streaming_callback=streaming_callback
-        )
-        response = await component.run_async(chat_messages)
-
-        # check we called the streaming callback
-        assert streaming_callback_called
-
-        # check that the component still returns the correct response
-        assert isinstance(response, dict)
-        assert "replies" in response
-        assert isinstance(response["replies"], list)
-        assert len(response["replies"]) == 1
-        assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
-        assert "Hello" in response["replies"][0].text  # see openai_mock_chat_completion_chunk
-
     def test_run_with_streaming_callback_in_run_method(self, chat_messages, openai_mock_chat_completion_chunk):
         streaming_callback_called = False
 
@@ -410,30 +352,6 @@ class TestOpenAIChatGenerator:
 
         component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
         response = component.run(chat_messages, streaming_callback=streaming_callback)
-
-        # check we called the streaming callback
-        assert streaming_callback_called
-
-        # check that the component still returns the correct response
-        assert isinstance(response, dict)
-        assert "replies" in response
-        assert isinstance(response["replies"], list)
-        assert len(response["replies"]) == 1
-        assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
-        assert "Hello" in response["replies"][0].text  # see openai_mock_chat_completion_chunk
-
-    @pytest.mark.asyncio
-    async def test_run_with_streaming_callback_in_run_method_async(
-        self, chat_messages, openai_mock_async_chat_completion_chunk
-    ):
-        streaming_callback_called = False
-
-        def streaming_callback(chunk: StreamingChunk) -> None:
-            nonlocal streaming_callback_called
-            streaming_callback_called = True
-
-        component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
-        response = await component.run_async(chat_messages, streaming_callback=streaming_callback)
 
         # check we called the streaming callback
         assert streaming_callback_called

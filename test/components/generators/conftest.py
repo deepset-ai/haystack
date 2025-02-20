@@ -65,6 +65,14 @@ def openai_mock_stream():
 
 
 @pytest.fixture
+def openai_mock_stream_async():
+    """
+    Fixture that returns a function to create AsyncMockStream instances with custom chunks
+    """
+    return OpenAIAsyncMockStream
+
+
+@pytest.fixture
 def openai_mock_chat_completion():
     """
     Mock the OpenAI API completion response and reuse it for tests
