@@ -271,7 +271,13 @@ class TestToolInvoker:
                     },
                 },
             },
-            "connections": [{"sender": "invoker.tool_messages", "receiver": "chatgenerator.messages"}],
+            "connections": [
+                {
+                    "sender": "invoker.tool_messages",
+                    "receiver": "chatgenerator.messages",
+                    "connection_type_validation": None,
+                }
+            ],
         }
 
         pipeline_yaml = pipeline.dumps()
