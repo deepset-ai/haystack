@@ -156,6 +156,7 @@ class PipelineBase:
             "max_runs_per_component": self._max_runs_per_component,
             "components": components,
             "connections": connections,
+            "connection_type_validation": self._connection_type_validation,
         }
 
     @classmethod
@@ -178,7 +179,12 @@ class PipelineBase:
         data_copy = deepcopy(data)  # to prevent modification of original data
         metadata = data_copy.get("metadata", {})
         max_runs_per_component = data_copy.get("max_runs_per_component", 100)
-        pipe = cls(metadata=metadata, max_runs_per_component=max_runs_per_component)
+        connection_type_validation = data_copy.get("connection_type_validation", True)
+        pipe = cls(
+            metadata=metadata,
+            max_runs_per_component=max_runs_per_component,
+            connection_type_validation=connection_type_validation,
+        )
         components_to_reuse = kwargs.get("components", {})
         for name, component_data in data_copy.get("components", {}).items():
             if name in components_to_reuse:

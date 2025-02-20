@@ -308,6 +308,7 @@ class TestPipelineBase:
         expected = {
             "metadata": {"test": "test"},
             "max_runs_per_component": 42,
+            "connection_type_validation": True,
             "components": {
                 "add_two": {
                     "type": "haystack.testing.sample_components.add_value.AddFixedValue",
