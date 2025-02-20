@@ -16,6 +16,11 @@ logger = logging.getLogger(__name__)
 _IS_DOCKER_CACHE = None
 
 
+def _str_in_any_line_of_file(s: str, path: str) -> bool:
+    with open(path) as f:
+        return any(s in line for line in f)
+
+
 def _in_podman() -> bool:
     """
     Check if the code is running in a Podman container.
@@ -41,7 +46,7 @@ def _has_docker_cgroup_v1() -> bool:
     This only works with cgroups v1.
     """
     path = "/proc/self/cgroup"  # 'self' should be always symlinked to the actual PID
-    return os.path.isfile(path) and any("docker" in line for line in open(path))
+    return os.path.isfile(path) and _str_in_any_line_of_file("docker", path)
 
 
 def _has_docker_cgroup_v2() -> bool:
@@ -51,7 +56,7 @@ def _has_docker_cgroup_v2() -> bool:
     inspired from: https://github.com/jenkinsci/docker-workflow-plugin/blob/master/src/main/java/org/jenkinsci/plugins/docker/workflow/client/DockerClient.java
     """
     path = "/proc/self/mountinfo"  # 'self' should be always symlinked to the actual PID
-    return os.path.isfile(path) and any("/docker/containers/" in line for line in open(path))
+    return os.path.isfile(path) and _str_in_any_line_of_file("/docker/containers/", path)
 
 
 def _is_containerized() -> Optional[bool]:
