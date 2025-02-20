@@ -7,6 +7,7 @@ highlights: >
 
 enhancements:
   - |
-    Optimize import times through extensive use of lazy imports across packages. 
-    Importing one component of a certain package, no longer leads to importing all components of the same package. 
+    Optimize import times through extensive use of lazy imports across packages.
+    Importing one component of a certain package, no longer leads to importing all components of
+    the same package.
     For example, importing OpenAIChatGenerator no longer imports AzureOpenAIChatGenerator.
