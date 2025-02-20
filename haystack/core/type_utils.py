@@ -17,7 +17,7 @@ def _types_are_compatible(sender, receiver, type_validation: bool = True) -> boo
 
     :param sender: The sender type.
     :param receiver: The receiver type.
-    :param type_validation:
+    :param type_validation: Whether to perform strict type validation.
     :return: True if the types are compatible, False otherwise.
     """
     if type_validation:
