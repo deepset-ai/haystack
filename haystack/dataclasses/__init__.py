@@ -7,7 +7,13 @@ from haystack.dataclasses.byte_stream import ByteStream
 from haystack.dataclasses.chat_message import ChatMessage, ChatRole, TextContent, ToolCall, ToolCallResult
 from haystack.dataclasses.document import Document
 from haystack.dataclasses.sparse_embedding import SparseEmbedding
-from haystack.dataclasses.streaming_chunk import StreamingChunk
+from haystack.dataclasses.streaming_chunk import (
+    AsyncStreamingCallbackT,
+    StreamingCallbackT,
+    StreamingChunk,
+    SyncStreamingCallbackT,
+    select_streaming_callback,
+)
 
 __all__ = [
     "Document",
@@ -22,4 +28,8 @@ __all__ = [
     "TextContent",
     "StreamingChunk",
     "SparseEmbedding",
+    "select_streaming_callback",
+    "StreamingCallbackT",
+    "SyncStreamingCallbackT",
+    "AsyncStreamingCallbackT",
 ]
