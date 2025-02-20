@@ -282,7 +282,10 @@ class OpenAIChatGenerator:
         tools_strict: Optional[bool] = None,
     ):
         """
-        Invokes chat completion asynchronously based on the provided messages and generation parameters.
+        Asynchronously invokes chat completion based on the provided messages and generation parameters.
+
+        This is the asynchronous version of the `run` method. It has the same parameters and return values
+        but can be used with `await` in async code.
 
         :param messages:
             A list of ChatMessage instances representing the input messages.
