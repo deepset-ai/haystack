@@ -9,7 +9,7 @@ import logging
 import os
 from datetime import datetime
 
-from openai import OpenAIError
+from openai import AsyncOpenAI, OpenAIError
 from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletionMessage, ChatCompletionMessageToolCall
 from openai.types.chat.chat_completion import Choice
 from openai.types.chat.chat_completion_message_tool_call import Function
@@ -150,6 +150,23 @@ class TestOpenAIChatGenerator:
         assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
         assert component.client.timeout == 100.0
         assert component.client.max_retries == 10
+
+    def test_init_should_also_create_async_client_with_same_args(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = OpenAIChatGenerator(
+            api_key=Secret.from_token("test-api-key"),
+            api_base_url="test-base-url",
+            organization="test-organization",
+            timeout=30,
+            max_retries=5,
+        )
+
+        assert isinstance(component.async_client, AsyncOpenAI)
+        assert component.async_client.api_key == "test-api-key"
+        assert component.async_client.organization == "test-organization"
+        assert component.async_client.base_url == "test-base-url/"
+        assert component.async_client.timeout == 30
+        assert component.async_client.max_retries == 5
 
     def test_to_dict_default(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")

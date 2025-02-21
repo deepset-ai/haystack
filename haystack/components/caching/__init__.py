@@ -2,6 +2,15 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from haystack.components.caching.cache_checker import CacheChecker
+import sys
+from typing import TYPE_CHECKING
 
-__all__ = ["CacheChecker"]
+from lazy_imports import LazyImporter
+
+_import_structure = {"cache_checker": ["CacheChecker"]}
+
+if TYPE_CHECKING:
+    from .cache_checker import CacheChecker
+
+else:
+    sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)

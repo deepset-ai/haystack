@@ -2,7 +2,15 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from haystack.marshal.protocol import Marshaller
-from haystack.marshal.yaml import YamlMarshaller
+import sys
+from typing import TYPE_CHECKING
 
-__all__ = ["Marshaller", "YamlMarshaller"]
+from lazy_imports import LazyImporter
+
+_import_structure = {"protocol": ["Marshaller"], "yaml": ["YamlMarshaller"]}
+
+if TYPE_CHECKING:
+    from .protocol import Marshaller
+    from .yaml import YamlMarshaller
+else:
+    sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)
