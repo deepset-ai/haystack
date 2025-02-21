@@ -11,8 +11,8 @@ from haystack.tracing import utils as tracing_utils
 
 with LazyImport("Run 'pip install ddtrace'") as ddtrace_import:
     import ddtrace
-    from ddtrace._trace.span import Span as ddSpan
-    from ddtrace._trace.tracer import Tracer as ddTracer
+    from ddtrace.trace import Span as ddSpan
+    from ddtrace.trace import Tracer as ddTracer
 
 
 class DatadogSpan(Span):

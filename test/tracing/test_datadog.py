@@ -5,8 +5,8 @@ import functools
 import json
 from typing import List, Dict
 
-from ddtrace._trace.tracer import Tracer as ddTracer
-from ddtrace._trace.span import Span as ddSpan
+from ddtrace.trace import Span as ddSpan
+from ddtrace.trace import Tracer as ddTracer
 import pytest
 from _pytest.capture import CaptureFixture
 from _pytest.monkeypatch import MonkeyPatch
