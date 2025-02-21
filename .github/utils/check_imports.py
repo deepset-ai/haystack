@@ -2,64 +2,74 @@ import os
 import sys
 import importlib
 import traceback
+from pathlib import Path
+from typing import List, Optional
 from haystack import logging  # pylint: disable=unused-import  # this is needed to avoid circular imports
 
-def validate_package_imports(directory: str):
+def validate_module_imports(root_dir: str, exclude_subdirs: Optional[List[str]] = None) -> tuple[list, list]:
     """
-    Recursively search for directories with __init__.py and import them.
+    Recursively search for all Python modules and attempt to import them.
+    This includes both packages (directories with __init__.py) and individual Python files.
     """
     imported = []
     failed = []
+    exclude_subdirs = (exclude_subdirs or []) + ["__pycache__"]
 
-    sys.path.insert(0, directory)
+    # Add the root directory to the Python path
+    sys.path.insert(0, root_dir)
+    base_path = Path(root_dir)
 
-    for root, _, files in os.walk(directory):
-        # skip directories without __init__.py
-        if not '__init__.py' in files:
+    for root, _, files in os.walk(root_dir):
+        if any(subdir in root for subdir in exclude_subdirs):
             continue
 
-        init_path = os.path.join(root, '__init__.py')
+        # Convert path to module format
+        module_path = ".".join(Path(root).relative_to(base_path.parent).parts)
+        python_files = [f for f in files if f.endswith('.py')]
 
-        # skip haystack/__init__.py to avoid circular imports
-        if init_path.endswith(f'{directory}/__init__.py'):
-            continue
+        # Try importing package and individual files
+        for file in python_files:
+            try:
+                if file == "__init__.py":
+                    module_to_import = module_path
+                else:
+                    module_name = os.path.splitext(file)[0]
+                    module_to_import = f"{module_path}.{module_name}" if module_path else module_name
 
-        # convert filesystem path to Python module name
-        relative_path = os.path.relpath(root, directory)
-        module_name = relative_path.replace(os.path.sep, '.')
-        if module_name == '.':
-            module_name = os.path.basename(directory)
-
-        try:
-            importlib.import_module(module_name)
-            imported.append(module_name)
-        except:
-            failed.append({
-                'module': module_name,
-                'traceback': traceback.format_exc()
+                importlib.import_module(module_to_import)
+                imported.append(module_to_import)
+            except:
+                failed.append({
+                    'module': module_to_import,
+                    'traceback': traceback.format_exc()
                 })
 
     return imported, failed
 
-
 def main():
     """
-    This script checks that all Haystack packages can be imported successfully.
-    This can detect several issues.
-    One example is forgetting to use a forward reference for a type hint coming
-    from a lazy import.
+    This script checks that all Haystack modules can be imported successfully.
+    This includes both packages and individual Python files.
+    This can detect several issues, such as:
+    - Syntax errors in Python files
+    - Missing dependencies
+    - Circular imports
+    - Incorrect type hints without forward references
     """
-    print("Checking imports from Haystack packages...")
-    imported, failed = validate_package_imports(directory="haystack")
+    # Add any subdirectories you want to skip during import checks ("__pycache__" is skipped by default)
+    exclude_subdirs = ["testing"]
+
+    print("Checking imports from all Haystack modules...")
+    imported, failed = validate_module_imports(root_dir="haystack", exclude_subdirs=exclude_subdirs)
 
     if not imported:
-        print("\nNO PACKAGES WERE IMPORTED")
+        print("\nNO MODULES WERE IMPORTED")
         sys.exit(1)
 
-    print(f"\nSUCCESSFULLY IMPORTED {len(imported)} PACKAGES")
+    print(f"\nSUCCESSFULLY IMPORTED {len(imported)} MODULES")
 
     if failed:
-        print(f"\nFAILED TO IMPORT {len(failed)} PACKAGES:")
+        print(f"\nFAILED TO IMPORT {len(failed)} MODULES:")
         for fail in failed:
             print(f"  - {fail['module']}")
 
