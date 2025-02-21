@@ -334,7 +334,7 @@ class PipelineBase:
         :raises ValueError:
             If a component with the same name already exists.
         :raises PipelineValidationError:
-            If the given instance is not a Canals component.
+            If the given instance is not a component.
         """
         # Component names are unique
         if name in self.graph.nodes:

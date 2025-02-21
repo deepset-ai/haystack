@@ -358,10 +358,7 @@ class TestHuggingFaceAPIDocumentEmbedder:
 
     @pytest.mark.flaky(reruns=5, reruns_delay=5)
     @pytest.mark.integration
-    @pytest.mark.skipif(
-        not os.environ.get("HF_API_TOKEN", None),
-        reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
-    )
+    @pytest.mark.skip(reason="Temporarily skipped due to limits on HF API requests.")
     def test_live_run_serverless(self):
         docs = [
             Document(content="I love cheese", meta={"topic": "Cuisine"}),
