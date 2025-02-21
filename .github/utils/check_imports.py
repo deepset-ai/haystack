@@ -56,8 +56,8 @@ def main():
     - Circular imports
     - Incorrect type hints without forward references
     """
-    # Add any subdirectories you want to skip during import checks
-    exclude_subdirs = ["__pycache__", "testing"]
+    # Add any subdirectories you want to skip during import checks ("__pycache__" is skipped by default)
+    exclude_subdirs = ["testing"]
 
     print("Checking imports from all Haystack modules...")
     imported, failed = validate_module_imports(root_dir="haystack", exclude_subdirs=exclude_subdirs)
