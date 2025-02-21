@@ -2,6 +2,15 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from .eval_run_result import EvaluationRunResult
+import sys
+from typing import TYPE_CHECKING
 
-__all__ = ["EvaluationRunResult"]
+from lazy_imports import LazyImporter
+
+_import_structure = {"eval_run_result": ["EvaluationRunResult"]}
+
+if TYPE_CHECKING:
+    from .eval_run_result import EvaluationRunResult
+
+else:
+    sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)
