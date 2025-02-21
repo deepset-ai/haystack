@@ -202,7 +202,7 @@ class DOCXToDocument:
 
         return {"documents": documents}
 
-    def _extract_elements(self, document: DocxDocument) -> List[str]:
+    def _extract_elements(self, document: "DocxDocument") -> List[str]:
         """
         Extracts elements from a DOCX file.
 
