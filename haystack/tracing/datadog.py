@@ -11,10 +11,12 @@ from haystack.tracing import utils as tracing_utils
 
 with LazyImport("Run 'pip install ddtrace'") as ddtrace_import:
     import ddtrace
+    from ddtrace._trace.span import Span as ddSpan
+    from ddtrace._trace.tracer import Tracer as ddTracer
 
 
 class DatadogSpan(Span):
-    def __init__(self, span: "ddtrace.Span") -> None:
+    def __init__(self, span: "ddSpan") -> None:
         self._span = span
 
     def set_tag(self, key: str, value: Any) -> None:
@@ -54,7 +56,7 @@ class DatadogSpan(Span):
 
 
 class DatadogTracer(Tracer):
-    def __init__(self, tracer: "ddtrace.Tracer") -> None:
+    def __init__(self, tracer: "ddTracer") -> None:
         ddtrace_import.check()
         self._tracer = tracer
 
