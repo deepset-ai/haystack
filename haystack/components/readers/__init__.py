@@ -2,6 +2,15 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from haystack.components.readers.extractive import ExtractiveReader
+import sys
+from typing import TYPE_CHECKING
 
-__all__ = ["ExtractiveReader"]
+from lazy_imports import LazyImporter
+
+_import_structure = {"extractive": ["ExtractiveReader"]}
+
+if TYPE_CHECKING:
+    from .extractive import ExtractiveReader
+
+else:
+    sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)

@@ -2,7 +2,16 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from haystack.components.connectors.openapi import OpenAPIConnector
-from haystack.components.connectors.openapi_service import OpenAPIServiceConnector
+import sys
+from typing import TYPE_CHECKING
 
-__all__ = ["OpenAPIServiceConnector", "OpenAPIConnector"]
+from lazy_imports import LazyImporter
+
+_import_structure = {"openapi": ["OpenAPIConnector"], "openapi_service": ["OpenAPIServiceConnector"]}
+
+if TYPE_CHECKING:
+    from .openapi import OpenAPIConnector
+    from .openapi_service import OpenAPIServiceConnector
+
+else:
+    sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)
