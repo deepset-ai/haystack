@@ -383,8 +383,6 @@ class TestFileTypeRouter:
         pipe.connect("file_type_router.text/plain", "text_file_converter.sources")
         pipe.connect("file_type_router.application/pdf", "pypdf_converter.sources")
 
-        print(pipe.to_dict())
-
         file_paths = [test_files_path / "txt" / "doc_1.txt", test_files_path / "pdf" / "sample_pdf_1.pdf"]
 
         meta = [{"meta_field_1": "meta_value_1"}, {"meta_field_2": "meta_value_2"}]

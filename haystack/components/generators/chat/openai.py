@@ -5,22 +5,27 @@
 import json
 import os
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
-from openai import OpenAI, Stream
+from openai import AsyncOpenAI, AsyncStream, OpenAI, Stream
 from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletionMessage
 from openai.types.chat.chat_completion import Choice
 from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall
+from haystack.dataclasses import (
+    AsyncStreamingCallbackT,
+    ChatMessage,
+    StreamingCallbackT,
+    StreamingChunk,
+    SyncStreamingCallbackT,
+    ToolCall,
+    select_streaming_callback,
+)
 from haystack.tools.tool import Tool, _check_duplicate_tool_names, deserialize_tools_inplace
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 
 logger = logging.getLogger(__name__)
-
-
-StreamingCallbackT = Callable[[StreamingChunk], None]
 
 
 @component
@@ -145,13 +150,16 @@ class OpenAIChatGenerator:
         if max_retries is None:
             max_retries = int(os.environ.get("OPENAI_MAX_RETRIES", 5))
 
-        self.client = OpenAI(
-            api_key=api_key.resolve_value(),
-            organization=organization,
-            base_url=api_base_url,
-            timeout=timeout,
-            max_retries=max_retries,
-        )
+        client_args: Dict[str, Any] = {
+            "api_key": api_key.resolve_value(),
+            "organization": organization,
+            "base_url": api_base_url,
+            "timeout": timeout,
+            "max_retries": max_retries,
+        }
+
+        self.client = OpenAI(**client_args)
+        self.async_client = AsyncOpenAI(**client_args)
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -268,6 +276,82 @@ class OpenAIChatGenerator:
 
         return {"replies": completions}
 
+    @component.output_types(replies=List[ChatMessage])
+    async def run_async(
+        self,
+        messages: List[ChatMessage],
+        streaming_callback: Optional[StreamingCallbackT] = None,
+        generation_kwargs: Optional[Dict[str, Any]] = None,
+        *,
+        tools: Optional[List[Tool]] = None,
+        tools_strict: Optional[bool] = None,
+    ):
+        """
+        Asynchronously invokes chat completion based on the provided messages and generation parameters.
+
+        This is the asynchronous version of the `run` method. It has the same parameters and return values
+        but can be used with `await` in async code.
+
+        :param messages:
+            A list of ChatMessage instances representing the input messages.
+        :param streaming_callback:
+            A callback function that is called when a new token is received from the stream.
+            Must be a coroutine.
+        :param generation_kwargs:
+            Additional keyword arguments for text generation. These parameters will
+            override the parameters passed during component initialization.
+            For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat/create).
+        :param tools:
+            A list of tools for which the model can prepare calls. If set, it will override the `tools` parameter set
+            during component initialization.
+        :param tools_strict:
+            Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
+            the schema provided in the `parameters` field of the tool definition, but this may increase latency.
+            If set, it will override the `tools_strict` parameter set during component initialization.
+
+        :returns:
+            A dictionary with the following key:
+            - `replies`: A list containing the generated responses as ChatMessage instances.
+        """
+        # validate and select the streaming callback
+        streaming_callback = select_streaming_callback(self.streaming_callback, streaming_callback, requires_async=True)  # type: ignore
+
+        if len(messages) == 0:
+            return {"replies": []}
+
+        api_args = self._prepare_api_call(
+            messages=messages,
+            streaming_callback=streaming_callback,
+            generation_kwargs=generation_kwargs,
+            tools=tools,
+            tools_strict=tools_strict,
+        )
+
+        chat_completion: Union[
+            AsyncStream[ChatCompletionChunk], ChatCompletion
+        ] = await self.async_client.chat.completions.create(**api_args)
+
+        is_streaming = isinstance(chat_completion, AsyncStream)
+        assert is_streaming or streaming_callback is None
+
+        if is_streaming:
+            completions = await self._handle_async_stream_response(
+                chat_completion,  # type: ignore
+                streaming_callback,  # type: ignore
+            )
+        else:
+            assert isinstance(chat_completion, ChatCompletion), "Unexpected response type for non-streaming request."
+            completions = [
+                self._convert_chat_completion_to_chat_message(chat_completion, choice)
+                for choice in chat_completion.choices
+            ]
+
+        # before returning, do post-processing of the completions
+        for message in completions:
+            self._check_finish_reason(message.meta)
+
+        return {"replies": completions}
+
     def _prepare_api_call(  # noqa: PLR0913
         self,
         *,
@@ -309,7 +393,7 @@ class OpenAIChatGenerator:
             **generation_kwargs,
         }
 
-    def _handle_stream_response(self, chat_completion: Stream, callback: StreamingCallbackT) -> List[ChatMessage]:
+    def _handle_stream_response(self, chat_completion: Stream, callback: SyncStreamingCallbackT) -> List[ChatMessage]:
         chunks: List[StreamingChunk] = []
         chunk = None
 
@@ -319,6 +403,21 @@ class OpenAIChatGenerator:
             chunks.append(chunk_delta)
 
             callback(chunk_delta)
+
+        return [self._convert_streaming_chunks_to_chat_message(chunk, chunks)]
+
+    async def _handle_async_stream_response(
+        self, chat_completion: AsyncStream, callback: AsyncStreamingCallbackT
+    ) -> List[ChatMessage]:
+        chunks: List[StreamingChunk] = []
+        chunk = None
+
+        async for chunk in chat_completion:  # pylint: disable=not-an-iterable
+            assert len(chunk.choices) == 1, "Streaming responses should have only one choice."
+            chunk_delta: StreamingChunk = self._convert_chat_completion_chunk_to_streaming_chunk(chunk)
+            chunks.append(chunk_delta)
+
+            await callback(chunk_delta)
 
         return [self._convert_streaming_chunks_to_chat_message(chunk, chunks)]
 
@@ -350,19 +449,24 @@ class OpenAIChatGenerator:
         tool_calls = []
 
         # Process tool calls if present in any chunk
-        tool_call_data: Dict[str, Dict[str, str]] = {}  # Track tool calls by ID
+        tool_call_data: Dict[str, Dict[str, str]] = {}  # Track tool calls by index
         for chunk_payload in chunks:
             tool_calls_meta = chunk_payload.meta.get("tool_calls")
-            if tool_calls_meta:
+            if tool_calls_meta is not None:
                 for delta in tool_calls_meta:
-                    if not delta.id in tool_call_data:
-                        tool_call_data[delta.id] = {"id": delta.id, "name": "", "arguments": ""}
+                    # We use the index of the tool call to track it across chunks since the ID is not always provided
+                    if delta.index not in tool_call_data:
+                        tool_call_data[delta.index] = {"id": "", "name": "", "arguments": ""}
 
-                    if delta.function:
-                        if delta.function.name:
-                            tool_call_data[delta.id]["name"] = delta.function.name
-                        if delta.function.arguments:
-                            tool_call_data[delta.id]["arguments"] = delta.function.arguments
+                    # Save the ID if present
+                    if delta.id is not None:
+                        tool_call_data[delta.index]["id"] = delta.id
+
+                    if delta.function is not None:
+                        if delta.function.name is not None:
+                            tool_call_data[delta.index]["name"] += delta.function.name
+                        if delta.function.arguments is not None:
+                            tool_call_data[delta.index]["arguments"] += delta.function.arguments
 
         # Convert accumulated tool call data into ToolCall objects
         for call_data in tool_call_data.values():
@@ -371,7 +475,8 @@ class OpenAIChatGenerator:
                 tool_calls.append(ToolCall(id=call_data["id"], tool_name=call_data["name"], arguments=arguments))
             except json.JSONDecodeError:
                 logger.warning(
-                    "Skipping malformed tool call due to invalid JSON. Set `tools_strict=True` for valid JSON. "
+                    "OpenAI returned a malformed JSON string for tool call arguments. This tool call "
+                    "will be skipped. To always generate a valid JSON, set `tools_strict` to `True`. "
                     "Tool call ID: {_id}, Tool name: {_name}, Arguments: {_arguments}",
                     _id=call_data["id"],
                     _name=call_data["name"],
@@ -386,7 +491,7 @@ class OpenAIChatGenerator:
             "usage": {},  # we don't have usage data for streaming responses
         }
 
-        return ChatMessage.from_assistant(text=text, tool_calls=tool_calls, meta=meta)
+        return ChatMessage.from_assistant(text=text or None, tool_calls=tool_calls, meta=meta)
 
     def _convert_chat_completion_to_chat_message(self, completion: ChatCompletion, choice: Choice) -> ChatMessage:
         """
