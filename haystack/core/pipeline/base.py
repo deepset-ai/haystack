@@ -1042,9 +1042,29 @@ class PipelineBase:
 
         return component_inputs
 
-    @staticmethod
+    def _notify_downstream_components(
+            self,
+            component_name,
+            receivers,
+            visits,
+            inputs
+    ):
+        component = self._get_component_with_graph_metadata_and_visits(component_name, visits[component_name])
+        priority = self._calculate_priority(component, inputs)
+        if priority is ComponentPriority.BLOCKED and all_predecessors_executed(component, inputs):
+            self._write_component_outputs(
+                component_name=component_name,
+                component_outputs={},
+                inputs=inputs,
+                include_outputs_from=[],
+                receivers=receivers,
+                component_visits=visits,
+            )
+
+
+
     def _write_component_outputs(
-        component_name, component_outputs, inputs, receivers, include_outputs_from
+        self, component_name, component_outputs, inputs, receivers, include_outputs_from, component_visits
     ) -> Dict[str, Any]:
         """
         Distributes the outputs of a component to the input sockets that it is connected to.
@@ -1055,11 +1075,12 @@ class PipelineBase:
         :param receivers: List of receiver_name, sender_socket, receiver_socket for connected components.
         :param include_outputs_from: List of component names that should always return an output from the pipeline.
         """
-        for receiver_name, sender_socket, receiver_socket in receivers:
+        for receiver_name, sender_socket, receiver_socket in receivers[component_name]:
             # We either get the value that was produced by the actor or we use the _NO_OUTPUT_PRODUCED class to indicate
             # that the sender did not produce an output for this socket.
             # This allows us to track if a pre-decessor already ran but did not produce an output.
             value = component_outputs.get(sender_socket.name, _NO_OUTPUT_PRODUCED)
+
             if receiver_name not in inputs:
                 inputs[receiver_name] = {}
 
@@ -1076,6 +1097,13 @@ class PipelineBase:
 
                 inputs[receiver_name][receiver_socket.name].append({"sender": component_name, "value": value})
 
+            if value is _NO_OUTPUT_PRODUCED:
+                self._notify_downstream_components(
+                    component_name=receiver_name,
+                    inputs=inputs,
+                    visits=component_visits,
+                    receivers=receivers
+                )
         # If we want to include all outputs from this actor in the final outputs, we don't need to prune any consumed
         # outputs
         if component_name in include_outputs_from:

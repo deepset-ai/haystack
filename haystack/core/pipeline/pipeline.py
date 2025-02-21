@@ -253,8 +253,9 @@ class Pipeline(PipelineBase):
                     component_name=component_name,
                     component_outputs=component_outputs,
                     inputs=inputs,
-                    receivers=cached_receivers[component_name],
+                    receivers=cached_receivers,
                     include_outputs_from=include_outputs_from,
+                    component_visits=component_visits
                 )
 
                 if component_pipeline_outputs:

@@ -11,7 +11,8 @@ from haystack.document_stores.types import DuplicatePolicy
 from haystack.dataclasses import ChatMessage, GeneratedAnswer, TextContent, ByteStream
 from haystack.components.routers import ConditionalRouter, FileTypeRouter
 from haystack.components.builders import PromptBuilder, AnswerBuilder, ChatPromptBuilder
-from haystack.components.converters import OutputAdapter, JSONConverter, TextFileToDocument, CSVToDocument
+from haystack.components.converters import OutputAdapter, JSONConverter, TextFileToDocument, CSVToDocument, \
+    HTMLToDocument
 from haystack.components.preprocessors import DocumentCleaner, DocumentSplitter
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -5081,6 +5082,68 @@ some,header,row
         ],
     )
 
+@given("a pipeline that is a file conversion pipeline with three joiners", target_fixture="pipeline_data")
+def pipeline_that_converts_files(pipeline_class):
+    html_data = """
+<html><body>Some content</body></html>
+    """
+
+    txt_data = "Text file content for testing this."
+
+
+    sources = [
+        ByteStream.from_string(text=txt_data, mime_type="text/plain", meta={"file_type": "txt"}),
+        ByteStream.from_string(text=html_data, mime_type="text/html", meta={"file_type": "html"}),
+    ]
+
+    router = FileTypeRouter(mime_types=["text/csv", "text/plain", "application/json", "text/html"])
+    splitter = DocumentSplitter(split_by="word", split_length=3, split_overlap=0)
+    page_splitter = DocumentSplitter(split_by="page", split_length=1, split_overlap=0)
+    txt_converter = TextFileToDocument()
+    csv_converter = CSVToDocument()
+    json_converter = JSONConverter(content_key="content")
+    html_converter = HTMLToDocument()
+
+    DocumentJoiner_1 = DocumentJoiner()
+    joiner = DocumentJoiner()
+    DocumentJoiner_2 = DocumentJoiner()
+
+    pp = pipeline_class(max_runs_per_component=2)
+
+    pp.add_component("router", router)
+    pp.add_component("splitter", splitter)
+    pp.add_component("txt_converter", txt_converter)
+    pp.add_component("csv_converter", csv_converter)
+    pp.add_component("json_converter", json_converter)
+    pp.add_component("html_converter", html_converter)
+    pp.add_component("a_joiner", joiner)
+    pp.add_component("b_DocumentJoiner_1", DocumentJoiner_1)
+    pp.add_component("c_DocumentJoiner_2", DocumentJoiner_2)
+    pp.add_component("page_splitter", page_splitter)
+
+    pp.connect("router.text/plain", "txt_converter.sources")
+    pp.connect("router.application/json", "json_converter.sources")
+    pp.connect("router.text/csv", "csv_converter.sources")
+    pp.connect("router.text/html", "html_converter.sources")
+    pp.connect("txt_converter.documents", "a_joiner.documents")
+    pp.connect("json_converter.documents", "a_joiner.documents")
+    pp.connect("csv_converter.documents", "b_DocumentJoiner_1.documents")
+    pp.connect("html_converter.documents", "b_DocumentJoiner_1.documents")
+    pp.connect("a_joiner.documents", "splitter.documents")
+    pp.connect("b_DocumentJoiner_1.documents", "page_splitter.documents")
+    pp.connect("splitter.documents", "c_DocumentJoiner_2.documents")
+    pp.connect("page_splitter.documents", "c_DocumentJoiner_2.documents")
+
+    return (
+        pp,
+        [
+            PipelineRunData(
+                inputs={"router": {"sources": sources}},
+                expected_outputs={},
+                expected_component_calls={},
+            )
+        ],
+    )
 
 @given("a pipeline that has components returning dataframes", target_fixture="pipeline_data")
 def pipeline_has_components_returning_dataframes(pipeline_class):
