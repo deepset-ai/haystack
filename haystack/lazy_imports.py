@@ -12,9 +12,13 @@ DEFAULT_IMPORT_ERROR_MSG = "Try 'pip install {}'"
 
 class LazyImport(_DeferredImportExceptionContextManager):
     """
-    Wrapper on top of lazy_import's _DeferredImportExceptionContextManager.
+    A context manager that provides controlled handling of import errors.
 
     It adds the possibility to customize the error messages.
+
+    NOTE: Despite its name, this class does not delay the actual import operation.
+    For installed modules: executes the import immediately.
+    For uninstalled modules: captures the error and defers it until check() is called.
     """
 
     def __init__(self, message: str = DEFAULT_IMPORT_ERROR_MSG) -> None:
