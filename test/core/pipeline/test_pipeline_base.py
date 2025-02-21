@@ -1390,7 +1390,6 @@ class TestPipelineBase:
         expected_pruned,
         regular_output_socket,
         regular_input_socket,
-
     ):
         """Test output pruning behavior under different scenarios"""
         receivers = {"sender1": [("receiver1", regular_output_socket, regular_input_socket)]}
