@@ -4,6 +4,8 @@
 
 from typing import List, Union
 
+from numpy import exp
+
 
 def expand_page_range(page_range: List[Union[str, int]]) -> List[int]:
     """
@@ -41,3 +43,12 @@ def expand_page_range(page_range: List[Union[str, int]]) -> List[int]:
         raise ValueError("No valid page numbers or ranges found in the input list")
 
     return expanded_page_range
+
+
+def expit(x) -> float:
+    """
+    Compute logistic sigmoid function. Maps input values to a range between 0 and 1
+
+    :param x: input value. Can be a scalar or a numpy array.
+    """
+    return 1 / (1 + exp(-x))

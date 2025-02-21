@@ -2,36 +2,45 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from haystack.components.converters.azure import AzureOCRDocumentConverter
-from haystack.components.converters.csv import CSVToDocument
-from haystack.components.converters.docx import DOCXToDocument
-from haystack.components.converters.html import HTMLToDocument
-from haystack.components.converters.json import JSONConverter
-from haystack.components.converters.markdown import MarkdownToDocument
-from haystack.components.converters.msg import MSGToDocument
-from haystack.components.converters.openapi_functions import OpenAPIServiceToFunctions
-from haystack.components.converters.output_adapter import OutputAdapter
-from haystack.components.converters.pdfminer import PDFMinerToDocument
-from haystack.components.converters.pptx import PPTXToDocument
-from haystack.components.converters.pypdf import PyPDFToDocument
-from haystack.components.converters.tika import TikaDocumentConverter
-from haystack.components.converters.txt import TextFileToDocument
-from haystack.components.converters.xlsx import XLSXToDocument
+import sys
+from typing import TYPE_CHECKING
 
-__all__ = [
-    "TextFileToDocument",
-    "TikaDocumentConverter",
-    "AzureOCRDocumentConverter",
-    "PyPDFToDocument",
-    "PDFMinerToDocument",
-    "HTMLToDocument",
-    "MarkdownToDocument",
-    "MSGToDocument",
-    "OpenAPIServiceToFunctions",
-    "OutputAdapter",
-    "DOCXToDocument",
-    "PPTXToDocument",
-    "CSVToDocument",
-    "JSONConverter",
-    "XLSXToDocument",
-]
+from lazy_imports import LazyImporter
+
+_import_structure = {
+    "azure": ["AzureOCRDocumentConverter"],
+    "csv": ["CSVToDocument"],
+    "docx": ["DOCXToDocument"],
+    "html": ["HTMLToDocument"],
+    "json": ["JSONConverter"],
+    "markdown": ["MarkdownToDocument"],
+    "msg": ["MSGToDocument"],
+    "openapi_functions": ["OpenAPIServiceToFunctions"],
+    "output_adapter": ["OutputAdapter"],
+    "pdfminer": ["PDFMinerToDocument"],
+    "pptx": ["PPTXToDocument"],
+    "pypdf": ["PyPDFToDocument"],
+    "tika": ["TikaDocumentConverter"],
+    "txt": ["TextFileToDocument"],
+    "xlsx": ["XLSXToDocument"],
+}
+
+if TYPE_CHECKING:
+    from .azure import AzureOCRDocumentConverter
+    from .csv import CSVToDocument
+    from .docx import DOCXToDocument
+    from .html import HTMLToDocument
+    from .json import JSONConverter
+    from .markdown import MarkdownToDocument
+    from .msg import MSGToDocument
+    from .openapi_functions import OpenAPIServiceToFunctions
+    from .output_adapter import OutputAdapter
+    from .pdfminer import PDFMinerToDocument
+    from .pptx import PPTXToDocument
+    from .pypdf import PyPDFToDocument
+    from .tika import TikaDocumentConverter
+    from .txt import TextFileToDocument
+    from .xlsx import XLSXToDocument
+
+else:
+    sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)
