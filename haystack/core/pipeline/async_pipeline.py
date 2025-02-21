@@ -228,8 +228,9 @@ class AsyncPipeline(PipelineBase):
                     component_name=component_name,
                     component_outputs=outputs,
                     inputs=inputs_state,
-                    receivers=cached_receivers[component_name],
+                    receivers=cached_receivers,
                     include_outputs_from=include_outputs_from,
+                    component_visits=component_visits,
                 )
                 if pruned:
                     pipeline_outputs[component_name] = pruned

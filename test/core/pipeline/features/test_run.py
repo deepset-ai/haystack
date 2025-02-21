@@ -3,6 +3,7 @@ from typing import List, Optional, Dict, Any
 import re
 
 from pytest_bdd import scenarios, given
+from unittest.mock import ANY
 import pytest
 import pandas as pd
 
@@ -11,8 +12,13 @@ from haystack.document_stores.types import DuplicatePolicy
 from haystack.dataclasses import ChatMessage, GeneratedAnswer, TextContent, ByteStream
 from haystack.components.routers import ConditionalRouter, FileTypeRouter
 from haystack.components.builders import PromptBuilder, AnswerBuilder, ChatPromptBuilder
-from haystack.components.converters import OutputAdapter, JSONConverter, TextFileToDocument, CSVToDocument, \
-    HTMLToDocument
+from haystack.components.converters import (
+    OutputAdapter,
+    JSONConverter,
+    TextFileToDocument,
+    CSVToDocument,
+    HTMLToDocument,
+)
 from haystack.components.preprocessors import DocumentCleaner, DocumentSplitter
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -5082,14 +5088,14 @@ some,header,row
         ],
     )
 
+
 @given("a pipeline that is a file conversion pipeline with three joiners", target_fixture="pipeline_data")
-def pipeline_that_converts_files(pipeline_class):
+def pipeline_that_converts_files_with_three_joiners(pipeline_class):
     html_data = """
 <html><body>Some content</body></html>
     """
 
-    txt_data = "Text file content for testing this."
-
+    txt_data = "Text file content"
 
     sources = [
         ByteStream.from_string(text=txt_data, mime_type="text/plain", meta={"file_type": "txt"}),
@@ -5116,34 +5122,72 @@ def pipeline_that_converts_files(pipeline_class):
     pp.add_component("csv_converter", csv_converter)
     pp.add_component("json_converter", json_converter)
     pp.add_component("html_converter", html_converter)
-    pp.add_component("a_joiner", joiner)
-    pp.add_component("b_DocumentJoiner_1", DocumentJoiner_1)
-    pp.add_component("c_DocumentJoiner_2", DocumentJoiner_2)
+    pp.add_component("joiner", joiner)
+    pp.add_component("DocumentJoiner_1", DocumentJoiner_1)
+    pp.add_component("DocumentJoiner_2", DocumentJoiner_2)
     pp.add_component("page_splitter", page_splitter)
 
     pp.connect("router.text/plain", "txt_converter.sources")
     pp.connect("router.application/json", "json_converter.sources")
     pp.connect("router.text/csv", "csv_converter.sources")
     pp.connect("router.text/html", "html_converter.sources")
-    pp.connect("txt_converter.documents", "a_joiner.documents")
-    pp.connect("json_converter.documents", "a_joiner.documents")
-    pp.connect("csv_converter.documents", "b_DocumentJoiner_1.documents")
-    pp.connect("html_converter.documents", "b_DocumentJoiner_1.documents")
-    pp.connect("a_joiner.documents", "splitter.documents")
-    pp.connect("b_DocumentJoiner_1.documents", "page_splitter.documents")
-    pp.connect("splitter.documents", "c_DocumentJoiner_2.documents")
-    pp.connect("page_splitter.documents", "c_DocumentJoiner_2.documents")
+    pp.connect("txt_converter.documents", "joiner.documents")
+    pp.connect("json_converter.documents", "joiner.documents")
+    pp.connect("csv_converter.documents", "DocumentJoiner_1.documents")
+    pp.connect("html_converter.documents", "DocumentJoiner_1.documents")
+    pp.connect("joiner.documents", "splitter.documents")
+    pp.connect("DocumentJoiner_1.documents", "page_splitter.documents")
+    pp.connect("splitter.documents", "DocumentJoiner_2.documents")
+    pp.connect("page_splitter.documents", "DocumentJoiner_2.documents")
+
+    expected_html_doc = Document(content="Some content", meta={"file_type": "html"})
+    expected_txt_doc = Document(content=txt_data, meta={"file_type": "txt"})
+    expected_txt_split_doc = Document(
+        content=txt_data,
+        meta={
+            "file_type": "txt",
+            "source_id": expected_txt_doc.id,
+            "page_number": 1,
+            "split_id": 0,
+            "split_idx_start": 0,
+        },
+    )
+    expected_html_split_doc = Document(
+        content=expected_html_doc.content,
+        meta={
+            "file_type": "html",
+            "source_id": expected_html_doc.id,
+            "page_number": 1,
+            "split_id": 0,
+            "split_idx_start": 0,
+        },
+    )
 
     return (
         pp,
         [
             PipelineRunData(
                 inputs={"router": {"sources": sources}},
-                expected_outputs={},
-                expected_component_calls={},
+                # HTML converter takes longer than TXT Converter and this is why the order of documents is not stable
+                # for AsyncPipeline. We test for ANY here to make the test pass.
+                # In real usage, if the user cares about the order of documents arriving at a lazy variadic component,
+                # the user should pick a different component (OutputAdapter) to combine the lists.
+                expected_outputs={"DocumentJoiner_2": {"documents": ANY}},
+                expected_component_calls={
+                    ("router", 1): {"sources": sources, "meta": None},
+                    ("html_converter", 1): {"sources": [sources[1]], "meta": None, "extraction_kwargs": None},
+                    ("txt_converter", 1): {"sources": [sources[0]], "meta": None},
+                    ("joiner", 1): {"documents": [[expected_txt_doc]], "top_k": None},
+                    ("DocumentJoiner_1", 1): {"documents": [[expected_html_doc]], "top_k": None},
+                    # Same as above
+                    ("DocumentJoiner_2", 1): {"documents": ANY, "top_k": None},
+                    ("splitter", 1): {"documents": [expected_txt_doc]},
+                    ("page_splitter", 1): {"documents": [expected_html_doc]},
+                },
             )
         ],
     )
+
 
 @given("a pipeline that has components returning dataframes", target_fixture="pipeline_data")
 def pipeline_has_components_returning_dataframes(pipeline_class):

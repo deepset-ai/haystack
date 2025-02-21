@@ -249,13 +249,14 @@ class Pipeline(PipelineBase):
 
                 # Updates global input state with component outputs and returns outputs that should go to
                 # pipeline outputs.
+
                 component_pipeline_outputs = self._write_component_outputs(
                     component_name=component_name,
                     component_outputs=component_outputs,
                     inputs=inputs,
                     receivers=cached_receivers,
                     include_outputs_from=include_outputs_from,
-                    component_visits=component_visits
+                    component_visits=component_visits,
                 )
 
                 if component_pipeline_outputs:
