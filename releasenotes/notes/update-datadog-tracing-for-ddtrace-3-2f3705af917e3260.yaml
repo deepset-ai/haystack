@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Updates import paths for type hints to get ddtrace 3.0.0 working with our datadog tracer

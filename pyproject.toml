@@ -122,7 +122,7 @@ extra-dependencies = [
 
   # Tracing
   "opentelemetry-sdk",
-  "ddtrace<3.0.0",  # Haystack is not compatible with ddtrace>=3.0.0. https://github.com/deepset-ai/haystack/issues/8896
+  "ddtrace",
 
   # Structured logging
   "structlog",
