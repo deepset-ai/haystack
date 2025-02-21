@@ -5091,6 +5091,14 @@ some,header,row
 
 @given("a pipeline that is a file conversion pipeline with three joiners", target_fixture="pipeline_data")
 def pipeline_that_converts_files_with_three_joiners(pipeline_class):
+    # What does this test?
+    # When a component does not produce outputs, and the successors only receive inputs from this component,
+    # then the successors will not run.
+    # The successor of the successor would never know that its predecessor did not run if we don't send a signal.
+    # This is why we use PipelineBase._notify_downstream_components to recursively notify successors that
+    # can not run anymore.
+    # This prevents an edge case where multiple lazy variadic components wait for input and the execution order
+    # would otherwise be decided by lexicographical sort.
     html_data = """
 <html><body>Some content</body></html>
     """
