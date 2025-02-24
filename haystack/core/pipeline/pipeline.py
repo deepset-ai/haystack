@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import warnings
 from copy import deepcopy
 from typing import Any, Dict, Mapping, Optional, Set, cast
 
