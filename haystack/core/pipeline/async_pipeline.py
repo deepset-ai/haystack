@@ -6,6 +6,8 @@ import asyncio
 from copy import deepcopy
 from typing import Any, AsyncIterator, Dict, List, Optional, Set
 
+from sympy import topological_sort
+
 from haystack import logging, tracing
 from haystack.core.component import Component
 from haystack.core.errors import PipelineMaxComponentRuns, PipelineRuntimeError
@@ -144,6 +146,7 @@ class AsyncPipeline(PipelineBase):
         ordered_names = sorted(self.graph.nodes.keys())
         cached_receivers = {n: self._find_receivers_from(n) for n in ordered_names}
         component_visits = {component_name: 0 for component_name in ordered_names}
+        cached_topological_sort = None
 
         # We fill the queue once and raise if all components are BLOCKED
         self.validate_pipeline(self._fill_queue(ordered_names, inputs_state, component_visits))
@@ -212,30 +215,30 @@ class AsyncPipeline(PipelineBase):
                         loop = asyncio.get_running_loop()
                         outputs = await loop.run_in_executor(None, lambda: instance.run(**component_inputs))
 
-                component_visits[component_name] += 1
+                    component_visits[component_name] += 1
 
-                if not isinstance(outputs, dict):
-                    raise PipelineRuntimeError(
-                        f"Component '{component_name}' returned an invalid output type. "
-                        f"Expected a dict, but got {type(outputs).__name__} instead. "
+                    if not isinstance(outputs, dict):
+                        raise PipelineRuntimeError(
+                            f"Component '{component_name}' returned an invalid output type. "
+                            f"Expected a dict, but got {type(outputs).__name__} instead. "
+                        )
+
+                    span.set_tag("haystack.component.visits", component_visits[component_name])
+                    span.set_content_tag("haystack.component.outputs", deepcopy(outputs))
+
+                    # Distribute outputs to downstream inputs; also prune outputs based on `include_outputs_from`
+                    pruned = self._write_component_outputs(
+                        component_name=component_name,
+                        component_outputs=outputs,
+                        inputs=inputs_state,
+                        receivers=cached_receivers,
+                        include_outputs_from=include_outputs_from,
+                        component_visits=component_visits,
                     )
+                    if pruned:
+                        pipeline_outputs[component_name] = pruned
 
-                span.set_tag("haystack.component.visits", component_visits[component_name])
-                span.set_content_tag("haystack.component.outputs", deepcopy(outputs))
-
-                # Distribute outputs to downstream inputs; also prune outputs based on `include_outputs_from`
-                pruned = self._write_component_outputs(
-                    component_name=component_name,
-                    component_outputs=outputs,
-                    inputs=inputs_state,
-                    receivers=cached_receivers,
-                    include_outputs_from=include_outputs_from,
-                    component_visits=component_visits,
-                )
-                if pruned:
-                    pipeline_outputs[component_name] = pruned
-
-                return pruned
+                    return pruned
 
             async def _run_highest_in_isolation(component_name: str) -> AsyncIterator[Dict[str, Any]]:
                 """
@@ -386,6 +389,15 @@ class AsyncPipeline(PipelineBase):
 
                 # We only schedule components with priority DEFER or DEFER_LAST when no other tasks are running
                 elif priority in (ComponentPriority.DEFER, ComponentPriority.DEFER_LAST) and not running_tasks:
+                    if len(priority_queue) > 0:
+                        component_name, topological_sort = self._tiebreak_waiting_components(
+                            component_name=component_name,
+                            priority=priority,
+                            priority_queue=priority_queue,
+                            topological_sort=cached_topological_sort,
+                        )
+                        cached_topological_sort = topological_sort
+
                     await _schedule_task(component_name)
 
                 # To make progress, we wait for one task to complete before re-starting the loop

@@ -1042,6 +1042,49 @@ class PipelineBase:
 
         return component_inputs
 
+    def _tiebreak_waiting_components(
+        self,
+        component_name: str,
+        priority: ComponentPriority,
+        priority_queue: FIFOPriorityQueue,
+        topological_sort: Union[Dict[str, int], None],
+    ):
+        """
+        Decides which component to run when multiple components are waiting for inputs with the same priority.
+        """
+        components_with_same_priority = [component_name]
+
+        while len(priority_queue) > 0:
+            next_priority, next_component_name = priority_queue.peek()
+            if next_priority == priority:
+                priority_queue.pop()  # actually remove the component
+                components_with_same_priority.append(next_component_name)
+            else:
+                break
+
+        if len(components_with_same_priority) > 1:
+            if topological_sort is None:
+                if networkx.is_directed_acyclic_graph(self.graph):
+                    topological_sort = networkx.lexicographical_topological_sort(self.graph)
+                    topological_sort = {node: idx for idx, node in enumerate(topological_sort)}
+                else:
+                    condensed = networkx.condensation(self.graph)
+                    condensed_sorted = {node: idx for idx, node in enumerate(networkx.topological_sort(condensed))}
+                    topological_sort = {
+                        component_name: condensed_sorted[node]
+                        for component_name, node in condensed.graph["mapping"].items()
+                    }
+
+            components_with_same_priority = sorted(
+                components_with_same_priority, key=lambda comp_name: (topological_sort[comp_name], comp_name.lower())
+            )
+
+            component_name = components_with_same_priority[0]
+
+            return component_name, topological_sort
+
+        return component_name, topological_sort
+
     def _notify_downstream_components(
         self,
         component_name: str,
@@ -1146,10 +1189,10 @@ class PipelineBase:
             # We need recursively check if downstream components can't run anymore
             # because no output was produced on the current socket.
             # This is needed to avoid situations where lazy variadic components wait too long for inputs.
-            if value is _NO_OUTPUT_PRODUCED and networkx.is_directed_acyclic_graph(self.graph):
-                self._notify_downstream_components(
-                    component_name=receiver_name, inputs=inputs, visits=component_visits, receivers=receivers
-                )
+            # if value is _NO_OUTPUT_PRODUCED and networkx.is_directed_acyclic_graph(self.graph):
+            #    self._notify_downstream_components(
+            #        component_name=receiver_name, inputs=inputs, visits=component_visits, receivers=receivers
+            #    )
         # If we want to include all outputs from this actor in the final outputs, we don't need to prune any consumed
         # outputs
         if component_name in include_outputs_from:

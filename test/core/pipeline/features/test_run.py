@@ -1,4 +1,5 @@
 import json
+from copy import deepcopy
 from typing import List, Optional, Dict, Any
 import re
 
@@ -5191,6 +5192,172 @@ def pipeline_that_converts_files_with_three_joiners(pipeline_class):
                     ("DocumentJoiner_2", 1): {"documents": ANY, "top_k": None},
                     ("splitter", 1): {"documents": [expected_txt_doc]},
                     ("page_splitter", 1): {"documents": [expected_html_doc]},
+                },
+            )
+        ],
+    )
+
+
+@given("a pipeline that is a file conversion pipeline with three joiners and a loop", target_fixture="pipeline_data")
+def pipeline_that_converts_files_with_three_joiners_and_a_loop(pipeline_class):
+    # What does this test?
+    # When a component does not produce outputs, and the successors only receive inputs from this component,
+    # then the successors will not run.
+    # The successor of the successor would never know that its predecessor did not run if we don't send a signal.
+    # This is why we use PipelineBase._notify_downstream_components to recursively notify successors that
+    # can not run anymore.
+    # This prevents an edge case where multiple lazy variadic components wait for input and the execution order
+    # would otherwise be decided by lexicographical sort.
+    @component
+    class FakeDataExtractor:
+        def __init__(self, metas):
+            self.metas = metas
+            self.current_idx = 0
+
+        @component.output_types(documents=List[Document])
+        def run(self, documents: List[Document]):
+            sorted_docs = sorted(documents, key=lambda doc: doc.meta["file_type"])
+            if self.current_idx >= len(sorted_docs):
+                self.current_idx = 0
+
+            for doc in sorted_docs:
+                doc.meta = {**doc.meta, **self.metas[self.current_idx]}
+            self.current_idx += 1
+
+            return {"documents": sorted_docs}
+
+    html_data = """
+<html><body>Some content</body></html>
+    """
+
+    txt_data = "Text file content"
+
+    sources = [
+        ByteStream.from_string(text=txt_data, mime_type="text/plain", meta={"file_type": "txt"}),
+        ByteStream.from_string(text=html_data, mime_type="text/html", meta={"file_type": "html"}),
+    ]
+
+    router = FileTypeRouter(mime_types=["text/csv", "text/plain", "application/json", "text/html"])
+    splitter = DocumentSplitter(split_by="word", split_length=3, split_overlap=0)
+    page_splitter = DocumentSplitter(split_by="page", split_length=1, split_overlap=0)
+    txt_converter = TextFileToDocument()
+    csv_converter = CSVToDocument()
+    json_converter = JSONConverter(content_key="content")
+    html_converter = HTMLToDocument()
+
+    DocumentJoiner_1 = DocumentJoiner()
+    joiner = DocumentJoiner()
+    DocumentJoiner_2 = DocumentJoiner()
+
+    extraction_routes = [
+        {
+            "condition": "{{documents[0].meta['iteration'] == 1}}",
+            "output_name": "continue",
+            "output": "{{documents}}",
+            "output_type": List[Document],
+        },
+        {
+            "condition": "{{documents[0].meta['iteration'] == 2}}",
+            "output_name": "stop",
+            "output": "{{documents}}",
+            "output_type": List[Document],
+        },
+    ]
+
+    extraction_router = ConditionalRouter(routes=extraction_routes, unsafe=True)
+
+    pp = pipeline_class(max_runs_per_component=4)
+
+    pp.add_component("router", router)
+    pp.add_component("splitter", splitter)
+    pp.add_component("txt_converter", txt_converter)
+    pp.add_component("csv_converter", csv_converter)
+    pp.add_component("json_converter", json_converter)
+    pp.add_component("html_converter", html_converter)
+    pp.add_component("joiner", joiner)
+    pp.add_component("DocumentJoiner_1", DocumentJoiner_1)
+    pp.add_component("DocumentJoiner_2", DocumentJoiner_2)
+    pp.add_component("page_splitter", page_splitter)
+    pp.add_component("metadata_generator", FakeDataExtractor(metas=[{"iteration": 1}, {"iteration": 2}]))
+    pp.add_component("extraction_router", extraction_router)
+    pp.add_component("branch_joiner", BranchJoiner(type_=List[Document]))
+
+    pp.connect("router.text/plain", "txt_converter.sources")
+    pp.connect("router.application/json", "json_converter.sources")
+    pp.connect("router.text/csv", "csv_converter.sources")
+    pp.connect("router.text/html", "html_converter.sources")
+    pp.connect("txt_converter.documents", "joiner.documents")
+    pp.connect("json_converter.documents", "joiner.documents")
+    pp.connect("csv_converter.documents", "DocumentJoiner_1.documents")
+    pp.connect("html_converter.documents", "DocumentJoiner_1.documents")
+    pp.connect("joiner.documents", "splitter.documents")
+    pp.connect("DocumentJoiner_1.documents", "page_splitter.documents")
+    pp.connect("splitter.documents", "DocumentJoiner_2.documents")
+    pp.connect("page_splitter.documents", "DocumentJoiner_2.documents")
+    pp.connect("DocumentJoiner_2.documents", "branch_joiner.value")
+    pp.connect("branch_joiner.value", "metadata_generator.documents")
+    pp.connect("metadata_generator.documents", "extraction_router.documents")
+    pp.connect("extraction_router.continue", "branch_joiner.value")
+
+    expected_html_doc = Document(content="Some content", meta={"file_type": "html"})
+    expected_txt_doc = Document(content=txt_data, meta={"file_type": "txt"})
+    expected_docs = [
+        Document(
+            content=expected_html_doc.content,
+            meta={
+                "file_type": "html",
+                "source_id": expected_html_doc.id,
+                "page_number": 1,
+                "split_id": 0,
+                "split_idx_start": 0,
+            },
+        ),
+        Document(
+            content=txt_data,
+            meta={
+                "file_type": "txt",
+                "source_id": expected_txt_doc.id,
+                "page_number": 1,
+                "split_id": 0,
+                "split_idx_start": 0,
+            },
+        ),
+    ]
+
+    expected_docs_iteration_1 = []
+    expected_docs_iteration_2 = []
+    for doc in expected_docs:
+        doc_1 = deepcopy(doc)
+        doc_1.meta["iteration"] = 1
+        doc_2 = deepcopy(doc)
+        doc_2.meta["iteration"] = 2
+        expected_docs_iteration_1.append(doc_1)
+        expected_docs_iteration_2.append(doc_2)
+
+    return (
+        pp,
+        [
+            PipelineRunData(
+                inputs={"router": {"sources": sources}},
+                expected_outputs={"extraction_router": {"stop": expected_docs_iteration_2}},
+                expected_component_calls={
+                    ("router", 1): {"sources": sources, "meta": None},
+                    ("html_converter", 1): {"sources": [sources[1]], "meta": None, "extraction_kwargs": None},
+                    ("txt_converter", 1): {"sources": [sources[0]], "meta": None},
+                    ("joiner", 1): {"documents": [[expected_txt_doc]], "top_k": None},
+                    ("DocumentJoiner_1", 1): {"documents": [[expected_html_doc]], "top_k": None},
+                    # ANY because we can't know the order of documents for AsyncPipeline
+                    ("DocumentJoiner_2", 1): {"documents": ANY, "top_k": None},
+                    ("splitter", 1): {"documents": [expected_txt_doc]},
+                    ("page_splitter", 1): {"documents": [expected_html_doc]},
+                    # Same as above
+                    ("branch_joiner", 1): {"value": ANY},
+                    # Same as above
+                    ("metadata_generator", 1): {"documents": ANY},
+                    ("extraction_router", 1): {"documents": expected_docs_iteration_1},
+                    ("branch_joiner", 2): {"value": [expected_docs_iteration_1]},
+                    ("metadata_generator", 2): {"documents": expected_docs_iteration_1},
+                    ("extraction_router", 2): {"documents": expected_docs_iteration_2},
                 },
             )
         ],

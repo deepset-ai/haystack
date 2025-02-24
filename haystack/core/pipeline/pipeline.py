@@ -6,6 +6,9 @@ import warnings
 from copy import deepcopy
 from typing import Any, Dict, Mapping, Optional, Set, cast
 
+import networkx as nx
+from networkx.algorithms.dag import topological_sort
+
 from haystack import logging, tracing
 from haystack.core.component import Component
 from haystack.core.errors import PipelineRuntimeError
@@ -209,6 +212,8 @@ class Pipeline(PipelineBase):
         # We store them here for easy access.
         cached_receivers = {name: self._find_receivers_from(name) for name in ordered_component_names}
 
+        cached_topological_sort = None
+
         pipeline_outputs: Dict[str, Any] = {}
         with tracing.tracer.trace(
             "haystack.pipeline.run",
@@ -231,19 +236,17 @@ class Pipeline(PipelineBase):
                     break
 
                 priority, component_name, component = candidate
-                if len(priority_queue) > 0:
-                    next_priority, next_name = priority_queue.peek()
-
-                    if (
-                        priority in [ComponentPriority.DEFER, ComponentPriority.DEFER_LAST]
-                        and next_priority == priority
-                    ):
-                        msg = (
-                            f"Components '{component_name}' and '{next_name}' are waiting for "
-                            f"optional inputs at the same time. The pipeline will execute '{component_name}' "
-                            f"first based on lexicographical ordering."
-                        )
-                        warnings.warn(msg)
+                if len(priority_queue) > 0 and priority in [ComponentPriority.DEFER, ComponentPriority.DEFER_LAST]:
+                    component_name, topological_sort = self._tiebreak_waiting_components(
+                        component_name=component_name,
+                        priority=priority,
+                        priority_queue=priority_queue,
+                        topological_sort=cached_topological_sort,
+                    )
+                    cached_topological_sort = topological_sort
+                    component = self._get_component_with_graph_metadata_and_visits(
+                        component_name, component_visits[component_name]
+                    )
 
                 component_outputs = self._run_component(component, inputs, component_visits, parent_span=span)
 
