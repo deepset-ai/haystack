@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Enhance the CSVToDocument component to support row-level conversion.
+    - Adds a 'split_by_row' parameter to convert each row of a CSV file into a separate Haystack Document.
+    - Retains the header row (field names) as the first line of the 'content' in each row-level Document.

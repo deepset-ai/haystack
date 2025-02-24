@@ -101,3 +101,19 @@ class TestCSVToDocument:
 
         # check that the metadata from the bytestream is merged with that from the meta parameter
         assert document.meta == {"name": "test_name", "language": "it"}
+
+    def test_run_split_by_row_true(self, test_files_path):
+        """
+        Test if the component correctly splits the CSV into documents by row.
+        """
+        file_path = test_files_path / "csv" / "sample_1.csv"
+        converter = CSVToDocument(split_by_row=True)
+        output = converter.run(sources=[file_path])
+        docs = output["documents"]
+
+        assert len(docs) == 3
+        expected_header = "Name,Age"
+
+        assert docs[0].content == f"{expected_header}\nJohn Doe,27"
+        assert docs[1].content == f"{expected_header}\nJane Smith,37"
+        assert docs[2].content == f"{expected_header}\nMike Johnson,47"
