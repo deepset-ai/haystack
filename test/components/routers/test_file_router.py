@@ -288,6 +288,15 @@ class TestFileTypeRouter:
         with pytest.raises(ValueError, match="Unsupported data source type:"):
             router.run(sources=[{"unsupported": "type"}])
 
+    def test_msg_mime_type(self, test_files_path):
+        """
+        Test that the component correctly classifies MSG files.
+        """
+        file_paths = [test_files_path / "msg" / "sample.msg"]
+        router = FileTypeRouter(mime_types=["application/vnd.ms-outlook"])
+        output = router.run(sources=file_paths)
+        assert len(output["application/vnd.ms-outlook"]) == 1
+
     def test_invalid_regex_pattern(self):
         """
         Test that the component raises a ValueError for invalid regex patterns.
