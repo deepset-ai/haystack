@@ -213,30 +213,30 @@ class AsyncPipeline(PipelineBase):
                         loop = asyncio.get_running_loop()
                         outputs = await loop.run_in_executor(None, lambda: instance.run(**component_inputs))
 
-                    component_visits[component_name] += 1
+                component_visits[component_name] += 1
 
-                    if not isinstance(outputs, dict):
-                        raise PipelineRuntimeError(
-                            f"Component '{component_name}' returned an invalid output type. "
-                            f"Expected a dict, but got {type(outputs).__name__} instead. "
-                        )
-
-                    span.set_tag("haystack.component.visits", component_visits[component_name])
-                    span.set_content_tag("haystack.component.outputs", deepcopy(outputs))
-
-                    # Distribute outputs to downstream inputs; also prune outputs based on `include_outputs_from`
-                    pruned = self._write_component_outputs(
-                        component_name=component_name,
-                        component_outputs=outputs,
-                        inputs=inputs_state,
-                        receivers=cached_receivers,
-                        include_outputs_from=include_outputs_from,
-                        component_visits=component_visits,
+                if not isinstance(outputs, dict):
+                    raise PipelineRuntimeError(
+                        f"Component '{component_name}' returned an invalid output type. "
+                        f"Expected a dict, but got {type(outputs).__name__} instead. "
                     )
-                    if pruned:
-                        pipeline_outputs[component_name] = pruned
 
-                    return pruned
+                span.set_tag("haystack.component.visits", component_visits[component_name])
+                span.set_content_tag("haystack.component.outputs", deepcopy(outputs))
+
+                # Distribute outputs to downstream inputs; also prune outputs based on `include_outputs_from`
+                pruned = self._write_component_outputs(
+                    component_name=component_name,
+                    component_outputs=outputs,
+                    inputs=inputs_state,
+                    receivers=cached_receivers,
+                    include_outputs_from=include_outputs_from,
+                    component_visits=component_visits,
+                )
+                if pruned:
+                    pipeline_outputs[component_name] = pruned
+
+                return pruned
 
             async def _run_highest_in_isolation(component_name: str) -> AsyncIterator[Dict[str, Any]]:
                 """
