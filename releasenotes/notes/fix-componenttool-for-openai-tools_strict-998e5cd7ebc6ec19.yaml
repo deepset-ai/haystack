@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fix the `ComponentTool` for OpenAI tools strict mode. This sets `additionalProperties` to `false` for the function schema.
