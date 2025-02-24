@@ -209,7 +209,7 @@ class ComponentTool(Tool):
             if socket.is_mandatory:
                 required.append(input_name)
 
-        parameters_schema = {"type": "object", "properties": properties}
+        parameters_schema = {"type": "object", "properties": properties, "additionalProperties": False}
 
         if required:
             parameters_schema["required"] = required
