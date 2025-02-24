@@ -315,6 +315,7 @@ class TestHuggingFaceAPIGenerator:
         assert len(response["meta"]) > 0
         assert [isinstance(meta, dict) for meta in response["meta"]]
 
+    @pytest.mark.flaky(reruns=5, reruns_delay=5)
     @pytest.mark.integration
     @pytest.mark.skipif(
         not os.environ.get("HF_API_TOKEN", None),
@@ -323,7 +324,8 @@ class TestHuggingFaceAPIGenerator:
     def test_live_run_streaming_check_completion_start_time(self):
         generator = HuggingFaceAPIGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
+            api_params={"model": "HuggingFaceTB/SmolLM2-1.7B-Instruct"},
+            generation_kwargs={"max_new_tokens": 20},
             streaming_callback=streaming_callback_handler,
         )
 
