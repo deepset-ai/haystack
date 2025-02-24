@@ -1051,6 +1051,11 @@ class PipelineBase:
     ):
         """
         Decides which component to run when multiple components are waiting for inputs with the same priority.
+
+        :param component_name: The name of the component.
+        :param priority: Priority of the component.
+        :param priority_queue: Priority queue of component names.
+        :param topological_sort: Cached topological sort of all components in the pipeline.
         """
         components_with_same_priority = [component_name]
 
@@ -1083,74 +1088,13 @@ class PipelineBase:
 
         return component_name, topological_sort
 
-    def _notify_downstream_components(
-        self,
-        component_name: str,
-        receivers: Dict[str, List],
-        visits: Dict[str, int],
-        inputs: Dict[str, Any],
-        visited_components: Optional[set] = None,
-    ):
-        """
-        Recursively visits downstream components and checks if they can't execute anymore.
-
-        If the components can't execute, it adds the _NO_OUTPUT_PRODUCED sentinel to the global
-        inputs state for their respective sockets.
-
-        :param component_name: The name of the component.
-        :param receivers: All cached receivers.
-        :param visits: Current state of all component visits.
-        :param inputs: Current input state.
-        :param visited_components: Names of components that were already visited using this method.
-            This is needed to stop endless recursion.
-        """
-        if visited_components is None:
-            visited_components = set()
-
-        if component_name in visited_components:
-            return
-
-        visited_components.add(component_name)
-
-        component = self._get_component_with_graph_metadata_and_visits(component_name, visits[component_name])
-        priority = self._calculate_priority(component, inputs[component_name])
-
-        if priority is ComponentPriority.BLOCKED and all_predecessors_executed(component, inputs[component_name]):
-            # All predecessors of this component already executed and the component is still blocked.
-            # This means we can notify downstream components that this component will not produce outputs.
-            for receiver_name, sender_socket, receiver_socket in receivers[component_name]:
-                value = _NO_OUTPUT_PRODUCED
-                if receiver_name not in inputs:
-                    inputs[receiver_name] = {}
-
-                if not is_socket_lazy_variadic(receiver_socket):
-                    inputs[receiver_name][receiver_socket.name] = [{"sender": component_name, "value": value}]
-
-                # If the receiver socket is lazy variadic, and it already has an input, we need to append the new input.
-                # Lazy variadic sockets can collect multiple inputs.
-                else:
-                    if not inputs[receiver_name].get(receiver_socket.name):
-                        inputs[receiver_name][receiver_socket.name] = []
-
-                    inputs[receiver_name][receiver_socket.name].append({"sender": component_name, "value": value})
-
-                # We call this method recursively until we have notified all downstream components.
-                self._notify_downstream_components(
-                    component_name=receiver_name,
-                    receivers=receivers,
-                    visited_components=visited_components,
-                    visits=visits,
-                    inputs=inputs,
-                )
-
+    @staticmethod
     def _write_component_outputs(
-        self,
         component_name: str,
         component_outputs: Dict[str, Any],
         inputs: Dict[str, Any],
-        receivers: Dict[str, List],
+        receivers: List[Tuple],
         include_outputs_from: Set[str],
-        component_visits: Dict[str, int],
     ) -> Dict[str, Any]:
         """
         Distributes the outputs of a component to the input sockets that it is connected to.
@@ -1158,11 +1102,10 @@ class PipelineBase:
         :param component_name: The name of the component.
         :param component_outputs: The outputs of the component.
         :param inputs: The current global input state.
-        :param receivers: List of all cached receivers (mapping component_name to list of receivers).
+        :param receivers: List of components that receive inputs from the component.
         :param include_outputs_from: List of component names that should always return an output from the pipeline.
-        :param component_visits: Current state of component visits.
         """
-        for receiver_name, sender_socket, receiver_socket in receivers[component_name]:
+        for receiver_name, sender_socket, receiver_socket in receivers:
             # We either get the value that was produced by the actor or we use the _NO_OUTPUT_PRODUCED class to indicate
             # that the sender did not produce an output for this socket.
             # This allows us to track if a pre-decessor already ran but did not produce an output.
@@ -1184,13 +1127,6 @@ class PipelineBase:
 
                 inputs[receiver_name][receiver_socket.name].append({"sender": component_name, "value": value})
 
-            # We need recursively check if downstream components can't run anymore
-            # because no output was produced on the current socket.
-            # This is needed to avoid situations where lazy variadic components wait too long for inputs.
-            # if value is _NO_OUTPUT_PRODUCED and networkx.is_directed_acyclic_graph(self.graph):
-            #    self._notify_downstream_components(
-            #        component_name=receiver_name, inputs=inputs, visits=component_visits, receivers=receivers
-            #    )
         # If we want to include all outputs from this actor in the final outputs, we don't need to prune any consumed
         # outputs
         if component_name in include_outputs_from:
@@ -1198,7 +1134,7 @@ class PipelineBase:
 
         # We prune outputs that were consumed by any receiving sockets.
         # All remaining outputs will be added to the final outputs of the pipeline.
-        consumed_outputs = {sender_socket.name for _, sender_socket, __ in receivers[component_name]}
+        consumed_outputs = {sender_socket.name for _, sender_socket, __ in receivers}
         pruned_outputs = {key: value for key, value in component_outputs.items() if key not in consumed_outputs}
 
         return pruned_outputs

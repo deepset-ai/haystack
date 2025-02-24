@@ -1351,7 +1351,7 @@ class TestPipelineBase:
         """Test writing to different socket types with various existing input states"""
         receiver_socket = lazy_variadic_input_socket if socket_type == "lazy_variadic" else regular_input_socket
         socket_name = receiver_socket.name
-        receivers = {"sender1": [("receiver1", regular_output_socket, receiver_socket)]}
+        receivers = [("receiver1", regular_output_socket, receiver_socket)]
 
         inputs = {}
         if existing_inputs:
@@ -1359,14 +1359,12 @@ class TestPipelineBase:
 
         component_outputs = {"output1": 42}
 
-        pp = PipelineBase()
-        pp._write_component_outputs(
+        PipelineBase._write_component_outputs(
             component_name="sender1",
             component_outputs=component_outputs,
             inputs=inputs,
             receivers=receivers,
             include_outputs_from=[],
-            component_visits={"sender1": 1, "receiver1": 0},
         )
 
         assert len(inputs["receiver1"][socket_name]) == expected_count
@@ -1381,27 +1379,20 @@ class TestPipelineBase:
         ],
         ids=["prune-consumed", "keep-all", "no-outputs"],
     )
-    @patch("haystack.core.pipeline.base.PipelineBase._notify_downstream_components")
     def test__write_component_outputs_output_pruning(
-        self,
-        mock_notify_downstream_components,
-        component_outputs,
-        include_outputs,
-        expected_pruned,
-        regular_output_socket,
-        regular_input_socket,
+        self, component_outputs, include_outputs, expected_pruned, regular_output_socket, regular_input_socket
     ):
         """Test output pruning behavior under different scenarios"""
-        receivers = {"sender1": [("receiver1", regular_output_socket, regular_input_socket)]}
-        pp = PipelineBase()
-        pruned_outputs = pp._write_component_outputs(
+        receivers = [("receiver1", regular_output_socket, regular_input_socket)]
+
+        pruned_outputs = PipelineBase._write_component_outputs(
             component_name="sender1",
             component_outputs=component_outputs,
             inputs={},
             receivers=receivers,
             include_outputs_from=include_outputs,
-            component_visits={"sender1": 1, "receiver1": 0},
         )
+
         assert pruned_outputs == expected_pruned
 
     @pytest.mark.parametrize(
@@ -1409,22 +1400,19 @@ class TestPipelineBase:
         [42, None, _NO_OUTPUT_PRODUCED, "string_value", 3.14],
         ids=["int", "none", "no-output", "string", "float"],
     )
-    @patch("haystack.core.pipeline.base.PipelineBase._notify_downstream_components")
     def test__write_component_outputs_different_output_values(
-        self, mock_notify_downstream_components, output_value, regular_output_socket, regular_input_socket
+        self, output_value, regular_output_socket, regular_input_socket
     ):
         """Test handling of different output values"""
-        receivers = {"sender1": [("receiver1", regular_output_socket, regular_input_socket)]}
+        receivers = [("receiver1", regular_output_socket, regular_input_socket)]
         component_outputs = {"output1": output_value}
         inputs = {}
-        pp = PipelineBase()
-        pp._write_component_outputs(
+        PipelineBase._write_component_outputs(
             component_name="sender1",
             component_outputs=component_outputs,
             inputs=inputs,
             receivers=receivers,
             include_outputs_from=[],
-            component_visits={"sender1": 1, "receiver1": 0},
         )
 
         assert inputs["receiver1"]["input1"] == [{"sender": "sender1", "value": output_value}]
@@ -1434,20 +1422,16 @@ class TestPipelineBase:
         self, receivers_count, regular_output_socket, regular_input_socket
     ):
         """Test writing to multiple receivers"""
-        receivers = {
-            "sender1": [(f"receiver{i}", regular_output_socket, regular_input_socket) for i in range(receivers_count)]
-        }
+        receivers = [(f"receiver{i}", regular_output_socket, regular_input_socket) for i in range(receivers_count)]
         component_outputs = {"output1": 42}
 
         inputs = {}
-        pp = PipelineBase()
-        pp._write_component_outputs(
+        PipelineBase._write_component_outputs(
             component_name="sender1",
             component_outputs=component_outputs,
             inputs=inputs,
             receivers=receivers,
             include_outputs_from=[],
-            component_visits={"sender1": 1, "receiver1": 0},
         )
 
         for i in range(receivers_count):
