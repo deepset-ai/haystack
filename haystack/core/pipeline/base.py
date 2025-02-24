@@ -8,7 +8,7 @@ from copy import deepcopy
 from datetime import datetime
 from enum import IntEnum
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional, TextIO, Tuple, Type, TypeVar, Union
+from typing import Any, Dict, Iterator, List, Optional, Set, TextIO, Tuple, Type, TypeVar, Union
 
 import networkx  # type:ignore
 
@@ -1042,9 +1042,59 @@ class PipelineBase:
 
         return component_inputs
 
+    def _tiebreak_waiting_components(
+        self,
+        component_name: str,
+        priority: ComponentPriority,
+        priority_queue: FIFOPriorityQueue,
+        topological_sort: Union[Dict[str, int], None],
+    ):
+        """
+        Decides which component to run when multiple components are waiting for inputs with the same priority.
+
+        :param component_name: The name of the component.
+        :param priority: Priority of the component.
+        :param priority_queue: Priority queue of component names.
+        :param topological_sort: Cached topological sort of all components in the pipeline.
+        """
+        components_with_same_priority = [component_name]
+
+        while len(priority_queue) > 0:
+            next_priority, next_component_name = priority_queue.peek()
+            if next_priority == priority:
+                priority_queue.pop()  # actually remove the component
+                components_with_same_priority.append(next_component_name)
+            else:
+                break
+
+        if len(components_with_same_priority) > 1:
+            if topological_sort is None:
+                if networkx.is_directed_acyclic_graph(self.graph):
+                    topological_sort = networkx.lexicographical_topological_sort(self.graph)
+                    topological_sort = {node: idx for idx, node in enumerate(topological_sort)}
+                else:
+                    condensed = networkx.condensation(self.graph)
+                    condensed_sorted = {node: idx for idx, node in enumerate(networkx.topological_sort(condensed))}
+                    topological_sort = {
+                        component_name: condensed_sorted[node]
+                        for component_name, node in condensed.graph["mapping"].items()
+                    }
+
+            components_with_same_priority = sorted(
+                components_with_same_priority, key=lambda comp_name: (topological_sort[comp_name], comp_name.lower())
+            )
+
+            component_name = components_with_same_priority[0]
+
+        return component_name, topological_sort
+
     @staticmethod
     def _write_component_outputs(
-        component_name, component_outputs, inputs, receivers, include_outputs_from
+        component_name: str,
+        component_outputs: Dict[str, Any],
+        inputs: Dict[str, Any],
+        receivers: List[Tuple],
+        include_outputs_from: Set[str],
     ) -> Dict[str, Any]:
         """
         Distributes the outputs of a component to the input sockets that it is connected to.
@@ -1052,7 +1102,7 @@ class PipelineBase:
         :param component_name: The name of the component.
         :param component_outputs: The outputs of the component.
         :param inputs: The current global input state.
-        :param receivers: List of receiver_name, sender_socket, receiver_socket for connected components.
+        :param receivers: List of components that receive inputs from the component.
         :param include_outputs_from: List of component names that should always return an output from the pipeline.
         """
         for receiver_name, sender_socket, receiver_socket in receivers:
@@ -1060,6 +1110,7 @@ class PipelineBase:
             # that the sender did not produce an output for this socket.
             # This allows us to track if a pre-decessor already ran but did not produce an output.
             value = component_outputs.get(sender_socket.name, _NO_OUTPUT_PRODUCED)
+
             if receiver_name not in inputs:
                 inputs[receiver_name] = {}
 
