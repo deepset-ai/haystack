@@ -113,6 +113,7 @@ extra-dependencies = [
   "jq",                               # JSONConverter
   "openpyxl",                         # XLSXToDocument
   "tabulate",                         # XLSXToDocument
+  "python-oxmsg",                     # MSGToDocument
 
   "nltk>=3.9.1", # NLTKDocumentSplitter
 
@@ -122,7 +123,7 @@ extra-dependencies = [
 
   # Tracing
   "opentelemetry-sdk",
-  "ddtrace<3.0.0",  # Haystack is not compatible with ddtrace>=3.0.0. https://github.com/deepset-ai/haystack/issues/8896
+  "ddtrace",
 
   # Structured logging
   "structlog",
