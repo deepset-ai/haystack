@@ -6,9 +6,6 @@ import warnings
 from copy import deepcopy
 from typing import Any, Dict, Mapping, Optional, Set, cast
 
-import networkx as nx
-from networkx.algorithms.dag import topological_sort
-
 from haystack import logging, tracing
 from haystack.core.component import Component
 from haystack.core.errors import PipelineRuntimeError

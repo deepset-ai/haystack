@@ -6,8 +6,6 @@ import asyncio
 from copy import deepcopy
 from typing import Any, AsyncIterator, Dict, List, Optional, Set
 
-from sympy import topological_sort
-
 from haystack import logging, tracing
 from haystack.core.component import Component
 from haystack.core.errors import PipelineMaxComponentRuns, PipelineRuntimeError
