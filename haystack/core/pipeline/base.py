@@ -1081,8 +1081,6 @@ class PipelineBase:
 
             component_name = components_with_same_priority[0]
 
-            return component_name, topological_sort
-
         return component_name, topological_sort
 
     def _notify_downstream_components(
