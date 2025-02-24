@@ -7,6 +7,8 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
+import pandas as pd
+
 from haystack import Document, component, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
 from haystack.dataclasses import ByteStream
@@ -35,7 +37,7 @@ class CSVToDocument:
     ```
     """
 
-    def __init__(self, encoding: str = "utf-8", store_full_path: bool = False):
+    def __init__(self, encoding: str = "utf-8", store_full_path: bool = False, split_by_row: bool = False):
         """
         Creates a CSVToDocument component.
 
@@ -46,9 +48,35 @@ class CSVToDocument:
         :param store_full_path:
             If True, the full path of the file is stored in the metadata of the document.
             If False, only the file name is stored.
+        :param split_by_row:
+            If True, each row of the CSV file is converted into a separate document.
+            If False, the entire CSV file is converted into a single document.
         """
         self.encoding = encoding
         self.store_full_path = store_full_path
+        self.split_by_row = split_by_row
+
+    def _convert_file_mode(self, data: str, metadata: Dict[str, Any]) -> List[Document]:
+        """Convert entire CSV file into a single document"""
+        return [Document(content=data, meta=metadata)]
+
+    def _convert_row_mode(self, data: str, metadata: Dict[str, Any]) -> List[Document]:
+        """Convert each CSV row into a separate document"""
+        try:
+            df = pd.read_csv(io.StringIO(data))
+            documents = []
+            header = ",".join(df.columns)
+            for _, row in df.iterrows():
+                row_dict = row.to_dict()
+                row_values = ",".join(str(v) for v in row_dict.values())
+                content = f"{header}\n{row_values}"
+
+                doc = Document(content=content, meta=metadata)
+                documents.append(doc)
+            return documents
+        except Exception as e:
+            logger.warning("Error converting CSV rows to documents: {error}", error=e)
+            return []
 
     @component.output_types(documents=List[Document])
     def run(
@@ -98,7 +126,9 @@ class CSVToDocument:
                 if file_path:  # Ensure the value is not None for pylint
                     merged_metadata["file_path"] = os.path.basename(file_path)
 
-            document = Document(content=data, meta=merged_metadata)
-            documents.append(document)
+            if self.split_by_row:
+                documents.extend(self._convert_row_mode(data, merged_metadata))
+            else:
+                documents.extend(self._convert_file_mode(data, merged_metadata))
 
         return {"documents": documents}
