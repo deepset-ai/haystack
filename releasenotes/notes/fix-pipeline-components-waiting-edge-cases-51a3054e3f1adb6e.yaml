@@ -2,4 +2,4 @@
 fixes:
   - |
     Added a fix to the pipeline's component scheduling alogrithm to reduce edge cases where the execution order of
-    components that are simultaneously waiting for inputs has an impact on a pipeline's output. 
+    components that are simultaneously waiting for inputs has an impact on a pipeline's output.
