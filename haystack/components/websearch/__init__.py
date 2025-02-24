@@ -2,7 +2,16 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from haystack.components.websearch.searchapi import SearchApiWebSearch
-from haystack.components.websearch.serper_dev import SerperDevWebSearch
+import sys
+from typing import TYPE_CHECKING
 
-__all__ = ["SerperDevWebSearch", "SearchApiWebSearch"]
+from lazy_imports import LazyImporter
+
+_import_structure = {"searchapi": ["SearchApiWebSearch"], "serper_dev": ["SerperDevWebSearch"]}
+
+if TYPE_CHECKING:
+    from .searchapi import SearchApiWebSearch
+    from .serper_dev import SerperDevWebSearch
+
+else:
+    sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)

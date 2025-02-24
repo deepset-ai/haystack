@@ -49,7 +49,7 @@ dependencies = [
   "openai>=1.56.1",
   "pydantic",
   "Jinja2",
-  "posthog<3.12.0",                # telemetry
+  "posthog!=3.12.0",        # telemetry # 3.12.0 was problematic https://github.com/PostHog/posthog-python/issues/187
   "pyyaml",
   "more-itertools",         # TextDocumentSplitter
   "networkx",               # Pipeline graphs
@@ -113,6 +113,7 @@ extra-dependencies = [
   "jq",                               # JSONConverter
   "openpyxl",                         # XLSXToDocument
   "tabulate",                         # XLSXToDocument
+  "python-oxmsg",                     # MSGToDocument
 
   "nltk>=3.9.1", # NLTKDocumentSplitter
 
@@ -276,6 +277,7 @@ markers = [
   "document_store",
 ]
 log_cli = true
+asyncio_mode = "auto"
 
 [tool.mypy]
 warn_return_any = false

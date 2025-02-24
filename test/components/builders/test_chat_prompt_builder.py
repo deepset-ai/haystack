@@ -5,7 +5,7 @@ import pytest
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
 from haystack import component
 from haystack.core.pipeline.pipeline import Pipeline
-from haystack.dataclasses.chat_message import ChatMessage, ChatRole
+from haystack.dataclasses.chat_message import ChatMessage
 from haystack.dataclasses.document import Document
 
 

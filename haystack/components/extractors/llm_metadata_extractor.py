@@ -17,15 +17,18 @@ from haystack.components.generators.chat import AzureOpenAIChatGenerator, OpenAI
 from haystack.components.preprocessors import DocumentSplitter
 from haystack.dataclasses import ChatMessage
 from haystack.lazy_imports import LazyImport
-from haystack.utils import deserialize_callable, deserialize_secrets_inplace
-from haystack.utils.utils import expand_page_range
+from haystack.utils import deserialize_callable, deserialize_secrets_inplace, expand_page_range
 
 with LazyImport(message="Run 'pip install \"amazon-bedrock-haystack>=1.0.2\"'") as amazon_bedrock_generator:
-    from haystack_integrations.components.generators.amazon_bedrock import AmazonBedrockChatGenerator
+    from haystack_integrations.components.generators.amazon_bedrock import (  #  pylint: disable=import-error
+        AmazonBedrockChatGenerator,
+    )
 
 with LazyImport(message="Run 'pip install \"google-vertex-haystack>=2.0.0\"'") as vertex_ai_gemini_generator:
-    from haystack_integrations.components.generators.google_vertex.chat.gemini import VertexAIGeminiChatGenerator
-    from vertexai.generative_models import GenerationConfig
+    from haystack_integrations.components.generators.google_vertex.chat.gemini import (  # pylint: disable=import-error
+        VertexAIGeminiChatGenerator,
+    )
+    from vertexai.generative_models import GenerationConfig  # pylint: disable=import-error
 
 
 logger = logging.getLogger(__name__)

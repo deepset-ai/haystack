@@ -224,7 +224,7 @@ def _auto_configured_opentelemetry_tracer() -> Optional[Tracer]:
 def _auto_configured_datadog_tracer() -> Optional[Tracer]:
     # we implement this here and not in the `datadog` module to avoid import warnings when Datadog is not installed
     try:
-        from ddtrace import tracer
+        from ddtrace.trace import tracer
 
         from haystack.tracing.datadog import DatadogTracer
 
