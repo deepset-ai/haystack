@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    In the FileTypeRouter add explicit support for classifying .msg files with mimetype "application/vnd.ms-outlook" since the mimetypes module returns None for .msg files by default.
