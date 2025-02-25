@@ -252,7 +252,6 @@ class TestToolComponent:
                         "properties": {
                             "id": {"type": "string", "description": "Field 'id' of 'Document'."},
                             "content": {"type": "string", "description": "Field 'content' of 'Document'."},
-                            "dataframe": {"type": "string", "description": "Field 'dataframe' of 'Document'."},
                             "blob": {
                                 "type": "object",
                                 "description": "Field 'blob' of 'Document'.",
@@ -436,7 +435,7 @@ class TestToolComponentInPipelineWithOpenAI:
         pipeline.connect("llm.replies", "tool_invoker.messages")
 
         message = ChatMessage.from_user(
-            text="Concatenate these documents: First one says 'Hello world' and second one says 'Goodbye world' and third one says 'Hello again', but use top_k=2. Set only content field of the document only. Do not set id, meta, score, embedding, sparse_embedding, dataframe, blob fields."
+            text="Concatenate these documents: First one says 'Hello world' and second one says 'Goodbye world' and third one says 'Hello again', but use top_k=2. Set only content field of the document only. Do not set id, meta, score, embedding, sparse_embedding, blob fields."
         )
 
         result = pipeline.run({"llm": {"messages": [message]}})
@@ -470,7 +469,7 @@ class TestToolComponentInPipelineWithOpenAI:
         pipeline.connect("llm.replies", "tool_invoker.messages")
 
         message = ChatMessage.from_user(
-            text="I have three documents with content: 'First doc', 'Middle doc', and 'Last doc'. Rank them top_k=2. Set only content field of the document only. Do not set id, meta, score, embedding, sparse_embedding, dataframe, blob fields."
+            text="I have three documents with content: 'First doc', 'Middle doc', and 'Last doc'. Rank them top_k=2. Set only content field of the document only. Do not set id, meta, score, embedding, sparse_embedding, blob fields."
         )
 
         result = pipeline.run({"llm": {"messages": [message]}})

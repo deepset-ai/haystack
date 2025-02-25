@@ -367,7 +367,6 @@ class TestDOCXToDocument:
         doc = Document(content="content", meta={"test": 1, "docx": docx_metadata}, id="1")
         assert doc.to_dict(flatten=False) == {
             "blob": None,
-            "dataframe": None,
             "content": "content",
             "id": "1",
             "score": None,

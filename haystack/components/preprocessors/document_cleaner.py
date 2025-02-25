@@ -134,7 +134,6 @@ class DocumentCleaner:
             clean_doc = Document(
                 id=doc.id if self.keep_id else "",
                 content=text,
-                dataframe=doc.dataframe,
                 blob=doc.blob,
                 meta=deepcopy(doc.meta),
                 score=doc.score,

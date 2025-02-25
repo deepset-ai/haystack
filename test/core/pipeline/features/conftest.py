@@ -4,7 +4,7 @@ from pathlib import Path
 import re
 import pytest
 import asyncio
-import pandas as pd
+from pandas import DataFrame
 
 from pytest_bdd import when, then, parsers
 
@@ -173,7 +173,7 @@ def compare_outputs_with_dataframes(actual: Dict, expected: Dict) -> bool:
             actual_value = actual_data[data_key]
             expected_value = expected_data[data_key]
 
-            if isinstance(actual_value, pd.DataFrame) and isinstance(expected_value, pd.DataFrame):
+            if isinstance(actual_value, DataFrame) and isinstance(expected_value, DataFrame):
                 assert actual_value.equals(expected_value)
             else:
                 assert actual_value == expected_value

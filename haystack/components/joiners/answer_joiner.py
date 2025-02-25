@@ -9,9 +9,9 @@ from typing import Any, Callable, Dict, List, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.core.component.types import Variadic
-from haystack.dataclasses.answer import ExtractedAnswer, ExtractedTableAnswer, GeneratedAnswer
+from haystack.dataclasses.answer import ExtractedAnswer, GeneratedAnswer
 
-AnswerType = Union[GeneratedAnswer, ExtractedTableAnswer, ExtractedAnswer]
+AnswerType = Union[GeneratedAnswer, ExtractedAnswer]
 
 logger = logging.getLogger(__name__)
 

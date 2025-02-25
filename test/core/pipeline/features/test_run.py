@@ -4,7 +4,7 @@ import re
 
 from pytest_bdd import scenarios, given
 import pytest
-import pandas as pd
+from pandas import DataFrame
 
 from haystack import Document, component
 from haystack.document_stores.types import DuplicatePolicy
@@ -5085,12 +5085,12 @@ some,header,row
 @given("a pipeline that has components returning dataframes", target_fixture="pipeline_data")
 def pipeline_has_components_returning_dataframes(pipeline_class):
     def get_df():
-        return pd.DataFrame({"a": [1, 2], "b": [1, 2]})
+        return DataFrame({"a": [1, 2], "b": [1, 2]})
 
     @component
     class DataFramer:
-        @component.output_types(dataframe=pd.DataFrame)
-        def run(self, dataframe: pd.DataFrame) -> Dict[str, Any]:
+        @component.output_types(dataframe=DataFrame)
+        def run(self, dataframe: DataFrame) -> Dict[str, Any]:
             return {"dataframe": get_df()}
 
     pp = pipeline_class(max_runs_per_component=1)

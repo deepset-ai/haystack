@@ -4,17 +4,16 @@
 import logging
 from unittest.mock import patch
 
-import pandas as pd
 import pytest
 import tempfile
 
 from haystack import Document
 from haystack.document_stores.errors import DocumentStoreError, DuplicateDocumentError
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.testing.document_store import DocumentStoreBaseTests, FilterDocumentsTestWithDataframe
+from haystack.testing.document_store import DocumentStoreBaseTests
 
 
-class TestMemoryDocumentStore(DocumentStoreBaseTests, FilterDocumentsTestWithDataframe):  # pylint: disable=R0904
+class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
     """
     Test InMemoryDocumentStore's specific features
     """
@@ -239,36 +238,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests, FilterDocumentsTestWithDat
         assert len(results2) == 3
         assert all(0.0 <= res.score <= 1.0 for res in results2)
 
-    def test_bm25_retrieval_with_table_content(self, document_store: InMemoryDocumentStore):
-        # Tests if the bm25_retrieval method correctly returns a dataframe when the content_type is table.
-        table_content = pd.DataFrame({"language": ["Python", "Java"], "use": ["Data Science", "Web Development"]})
-        docs = [Document(dataframe=table_content), Document(content="Gardening"), Document(content="Bird watching")]
-        document_store.write_documents(docs)
-        results = document_store.bm25_retrieval(query="Java", top_k=1)
-        assert len(results) == 1
-
-        df = results[0].dataframe
-        assert isinstance(df, pd.DataFrame)
-        assert df.equals(table_content)
-
-    def test_bm25_retrieval_with_text_and_table_content(self, document_store: InMemoryDocumentStore, caplog):
-        table_content = pd.DataFrame({"language": ["Python", "Java"], "use": ["Data Science", "Web Development"]})
-        document = Document(content="Gardening", dataframe=table_content)
-        docs = [
-            Document(content="Python"),
-            Document(content="Bird Watching"),
-            Document(content="Gardening"),
-            Document(content="Java"),
-            document,
-        ]
-        document_store.write_documents(docs)
-        results = document_store.bm25_retrieval(query="Gardening", top_k=2)
-        assert document.id in [d.id for d in results]
-        assert "both text and dataframe content" in caplog.text
-        results = document_store.bm25_retrieval(query="Python", top_k=2)
-        assert document.id not in [d.id for d in results]
-
-    def test_bm25_retrieval_default_filter_for_text_and_dataframes(self, document_store: InMemoryDocumentStore):
+    def test_bm25_retrieval_default_filter(self, document_store: InMemoryDocumentStore):
         docs = [Document(), Document(content="Gardening"), Document(content="Bird watching")]
         document_store.write_documents(docs)
         results = document_store.bm25_retrieval(query="doesn't matter, top_k is 10", top_k=10)

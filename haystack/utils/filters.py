@@ -7,7 +7,6 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import dateutil.parser
-import pandas as pd
 
 from haystack.dataclasses import Document
 from haystack.errors import FilterError
@@ -50,12 +49,6 @@ LOGICAL_OPERATORS = {"NOT": _not, "OR": _or, "AND": _and}
 
 
 def _equal(document_value: Any, filter_value: Any) -> bool:
-    if isinstance(document_value, pd.DataFrame):
-        document_value = document_value.to_json()
-
-    if isinstance(filter_value, pd.DataFrame):
-        filter_value = filter_value.to_json()
-
     return document_value == filter_value
 
 
@@ -75,7 +68,7 @@ def _greater_than(document_value: Any, filter_value: Any) -> bool:
             document_value, filter_value = _ensure_both_dates_naive_or_aware(document_value, filter_value)
         except FilterError as exc:
             raise exc
-    if type(filter_value) in [list, pd.DataFrame]:
+    if isinstance(filter_value, list):
         msg = f"Filter value can't be of type {type(filter_value)} using operators '>', '>=', '<', '<='"
         raise FilterError(msg)
     return document_value > filter_value

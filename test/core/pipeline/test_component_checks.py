@@ -25,7 +25,7 @@ from haystack.core.pipeline.component_checks import _NO_OUTPUT_PRODUCED
 from haystack.core.component.types import InputSocket, OutputSocket, Variadic, GreedyVariadic
 
 
-import pandas as pd
+from pandas import DataFrame
 
 
 @pytest.fixture
@@ -153,9 +153,7 @@ class TestCanComponentRun:
     # Previously, we compared the value of the socket using '!=' which leads to an error with dataframes.
     # Instead, we use 'is not' to compare with the sentinel value.
     def test_sockets_with_ambiguous_truth_value(self, basic_component, greedy_variadic_socket, regular_socket):
-        inputs = {
-            "mandatory_input": [{"sender": "previous_component", "value": pd.DataFrame.from_dict([{"value": 42}])}]
-        }
+        inputs = {"mandatory_input": [{"sender": "previous_component", "value": DataFrame.from_dict([{"value": 42}])}]}
 
         assert are_all_sockets_ready(basic_component, inputs, only_check_mandatory=True) is True
         assert any_socket_value_from_predecessor_received(inputs["mandatory_input"]) is True
