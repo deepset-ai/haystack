@@ -526,7 +526,10 @@ class TestHuggingFaceAPIChatGenerator:
         }
 
     @pytest.mark.integration
-    @pytest.mark.skip(reason="Temporarily skipped due to limits on HF API requests.")
+    @pytest.mark.skipif(
+        not os.environ.get("HF_API_TOKEN", None),
+        reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
+    )
     @pytest.mark.flaky(reruns=3, reruns_delay=10)
     def test_live_run_serverless(self):
         generator = HuggingFaceAPIChatGenerator(
@@ -547,7 +550,10 @@ class TestHuggingFaceAPIChatGenerator:
         assert "completion_tokens" in response["replies"][0].meta["usage"]
 
     @pytest.mark.integration
-    @pytest.mark.skip(reason="Temporarily skipped due to limits on HF API requests.")
+    @pytest.mark.skipif(
+        not os.environ.get("HF_API_TOKEN", None),
+        reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
+    )
     @pytest.mark.flaky(reruns=3, reruns_delay=10)
     def test_live_run_serverless_streaming(self):
         generator = HuggingFaceAPIChatGenerator(
@@ -573,7 +579,13 @@ class TestHuggingFaceAPIChatGenerator:
         assert "completion_tokens" in response_meta["usage"]
 
     @pytest.mark.integration
-    @pytest.mark.skip(reason="Temporarily skipped due to limits on HF API requests.")
+    @pytest.mark.skipif(
+        not os.environ.get("HF_API_TOKEN", None),
+        reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
+    )
+    @pytest.mark.xfail(
+        reason="The Hugging Face API can be unstable and this test may fail intermittently", strict=False
+    )
     def test_live_run_with_tools(self, tools):
         """
         We test the round trip: generate tool call, pass tool message, generate response.
