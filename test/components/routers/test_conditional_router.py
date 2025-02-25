@@ -542,3 +542,29 @@ class TestRouter:
         # Verify router still works normally
         result = router.run(question="What?", mode="chat")
         assert result == {"chat": "What?"}
+
+    def test_router_to_dict_does_not_mutate_routes(self):
+        routes = [
+            {"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str, "output_name": "query"}
+        ]
+
+        router = ConditionalRouter(routes)
+
+        # Store the original output_type before serializing
+        original_output_type = router.routes[0]["output_type"]
+        assert original_output_type is str
+
+        router_dict = router.to_dict()
+
+        # Verify that the original routes are not mutated
+        assert router.routes[0]["output_type"] is str
+        assert router.routes[0]["output_type"] is original_output_type
+
+        # Verify that the serialized output_type is a string
+        assert isinstance(router_dict["init_parameters"]["routes"][0]["output_type"], str), (
+            "Serialized output_type should be a string"
+        )
+
+        # Verify that the router still works correctly after to_dict()
+        result = router.run(streams=[1], query="test")
+        assert result == {"query": "test"}, "Router should still work correctly after to_dict()"
