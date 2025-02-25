@@ -324,12 +324,12 @@ class TestHuggingFaceAPIGenerator:
     def test_live_run_streaming_check_completion_start_time(self):
         generator = HuggingFaceAPIGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "HuggingFaceTB/SmolLM2-1.7B-Instruct"},
-            generation_kwargs={"max_new_tokens": 20},
+            api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
+            generation_kwargs={"max_new_tokens": 30},
             streaming_callback=streaming_callback_handler,
         )
 
-        results = generator.run("What is the capital of France?")
+        results = generator.run("You are a helpful agent that answers questions. What is the capital of France?")
 
         assert len(results["replies"]) == 1
         assert "Paris" in results["replies"][0]
