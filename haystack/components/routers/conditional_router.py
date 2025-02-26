@@ -241,13 +241,14 @@ class ConditionalRouter:
         :returns:
             Dictionary with serialized data.
         """
+        serialized_routes = []
         for route in self.routes:
             # output_type needs to be serialized to a string
-            route["output_type"] = serialize_type(route["output_type"])
+            serialized_routes.append({**route, "output_type": serialize_type(route["output_type"])})
         se_filters = {name: serialize_callable(filter_func) for name, filter_func in self.custom_filters.items()}
         return default_to_dict(
             self,
-            routes=self.routes,
+            routes=serialized_routes,
             custom_filters=se_filters,
             unsafe=self._unsafe,
             validate_output_type=self._validate_output_type,
