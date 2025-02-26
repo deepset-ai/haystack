@@ -568,3 +568,9 @@ class TestRouter:
         # Verify that the router still works correctly after to_dict()
         result = router.run(streams=[1], query="test")
         assert result == {"query": "test"}, "Router should still work correctly after to_dict()"
+
+        # Double check on another ConditionalRouter instance
+        new_router = ConditionalRouter.from_dict(router_dict)
+        assert new_router.routes == router.routes
+        assert new_router.routes[0]["output_type"] is str
+        assert new_router.routes[0]["output_type"] is original_output_type
