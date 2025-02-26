@@ -232,6 +232,7 @@ class TestToolInvoker:
         assert pipeline_dict == {
             "metadata": {},
             "max_runs_per_component": 100,
+            "connection_type_validation": True,
             "components": {
                 "invoker": {
                     "type": "haystack.components.tools.tool_invoker.ToolInvoker",
@@ -271,7 +272,13 @@ class TestToolInvoker:
                     },
                 },
             },
-            "connections": [{"sender": "invoker.tool_messages", "receiver": "chatgenerator.messages"}],
+            "connections": [
+                {
+                    "sender": "invoker.tool_messages",
+                    "receiver": "chatgenerator.messages",
+                    "connection_type_validation": None,
+                }
+            ],
         }
 
         pipeline_yaml = pipeline.dumps()

@@ -2,29 +2,42 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Union, get_args, get_origin
+from typing import Any, TypeVar, Union, get_args, get_origin
 
 from haystack import logging
 
 logger = logging.getLogger(__name__)
 
-
-def _is_optional(type_: type) -> bool:
-    """
-    Utility method that returns whether a type is Optional.
-    """
-    return get_origin(type_) is Union and type(None) in get_args(type_)
+T = TypeVar("T")
 
 
-def _types_are_compatible(sender, receiver):  # pylint: disable=too-many-return-statements
+def _types_are_compatible(sender, receiver, type_validation: bool = True) -> bool:
     """
-    Checks whether the source type is equal or a subtype of the destination type. Used to validate pipeline connections.
+    Determines if two types are compatible based on the specified validation mode.
+
+    :param sender: The sender type.
+    :param receiver: The receiver type.
+    :param type_validation: Whether to perform strict type validation.
+    :return: True if the types are compatible, False otherwise.
+    """
+    if type_validation:
+        return _strict_types_are_compatible(sender, receiver)
+    else:
+        return True
+
+
+def _strict_types_are_compatible(sender, receiver):  # pylint: disable=too-many-return-statements
+    """
+    Checks whether the sender type is equal to or a subtype of the receiver type under strict validation.
 
     Note: this method has no pretense to perform proper type matching. It especially does not deal with aliasing of
     typing classes such as `List` or `Dict` to their runtime counterparts `list` and `dict`. It also does not deal well
     with "bare" types, so `List` is treated differently from `List[Any]`, even though they should be the same.
-
     Consider simplifying the typing of your components if you observe unexpected errors during component connection.
+
+    :param sender: The sender type.
+    :param receiver: The receiver type.
+    :return: True if the sender type is strictly compatible with the receiver type, False otherwise.
     """
     if sender == receiver or receiver is Any:
         return True
@@ -42,17 +55,19 @@ def _types_are_compatible(sender, receiver):  # pylint: disable=too-many-return-
     receiver_origin = get_origin(receiver)
 
     if sender_origin is not Union and receiver_origin is Union:
-        return any(_types_are_compatible(sender, union_arg) for union_arg in get_args(receiver))
+        return any(_strict_types_are_compatible(sender, union_arg) for union_arg in get_args(receiver))
 
-    if not sender_origin or not receiver_origin or sender_origin != receiver_origin:
+    # Both must have origins and they must be equal
+    if not (sender_origin and receiver_origin and sender_origin == receiver_origin):
         return False
 
+    # Compare generic type arguments
     sender_args = get_args(sender)
     receiver_args = get_args(receiver)
     if len(sender_args) > len(receiver_args):
         return False
 
-    return all(_types_are_compatible(*args) for args in zip(sender_args, receiver_args))
+    return all(_strict_types_are_compatible(*args) for args in zip(sender_args, receiver_args))
 
 
 def _type_name(type_):

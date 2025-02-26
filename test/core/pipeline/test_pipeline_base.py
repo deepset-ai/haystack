@@ -308,6 +308,7 @@ class TestPipelineBase:
         expected = {
             "metadata": {"test": "test"},
             "max_runs_per_component": 42,
+            "connection_type_validation": True,
             "components": {
                 "add_two": {
                     "type": "haystack.testing.sample_components.add_value.AddFixedValue",
@@ -320,8 +321,8 @@ class TestPipelineBase:
                 "double": {"type": "haystack.testing.sample_components.double.Double", "init_parameters": {}},
             },
             "connections": [
-                {"sender": "add_two.result", "receiver": "double.value"},
-                {"sender": "double.value", "receiver": "add_default.value"},
+                {"sender": "add_two.result", "receiver": "double.value", "connection_type_validation": None},
+                {"sender": "double.value", "receiver": "add_default.value", "connection_type_validation": None},
             ],
         }
         assert res == expected
@@ -391,6 +392,7 @@ class TestPipelineBase:
                 "from_socket": OutputSocket(name="result", type=int, receivers=["double"]),
                 "to_socket": InputSocket(name="value", type=int, senders=["add_two"]),
                 "mandatory": True,
+                "connection_type_validation": None,
             },
         )
         assert connections[1] == (
@@ -401,6 +403,7 @@ class TestPipelineBase:
                 "from_socket": OutputSocket(name="value", type=int, receivers=["add_default"]),
                 "to_socket": InputSocket(name="value", type=int, senders=["double"]),
                 "mandatory": True,
+                "connection_type_validation": None,
             },
         )
 
@@ -559,6 +562,7 @@ class TestPipelineBase:
                 "from_socket": OutputSocket(name="result", type=int, receivers=["double"]),
                 "to_socket": InputSocket(name="value", type=int, senders=["add_two"]),
                 "mandatory": True,
+                "connection_type_validation": None,
             },
         )
         assert connections[1] == (
@@ -569,6 +573,7 @@ class TestPipelineBase:
                 "from_socket": OutputSocket(name="value", type=int, receivers=["add_default"]),
                 "to_socket": InputSocket(name="value", type=int, senders=["double"]),
                 "mandatory": True,
+                "connection_type_validation": None,
             },
         )
 
