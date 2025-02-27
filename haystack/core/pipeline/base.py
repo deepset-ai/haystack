@@ -1115,6 +1115,8 @@ class PipelineBase:
                 inputs[receiver_name] = {}
 
             if is_socket_lazy_variadic(receiver_socket):
+                # If the receiver socket is lazy variadic, we append the new input.
+                # Lazy variadic sockets can collect multiple inputs.
                 _write_to_lazy_variadic_socket(
                     inputs=inputs,
                     receiver_name=receiver_name,
@@ -1123,6 +1125,8 @@ class PipelineBase:
                     value=value,
                 )
             else:
+                # If the receiver socket is not lazy variadic, it is greedy variadic or non-variadic.
+                # We overwrite with the new input if it's not _NO_OUTPUT_PRODUCED or if the current value is None.
                 _write_to_standard_socket(
                     inputs=inputs,
                     receiver_name=receiver_name,
