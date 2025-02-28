@@ -8,8 +8,10 @@ from typing import Any, Dict, List, Optional, Tuple
 from openai.lib.azure import AzureOpenAI
 from tqdm import tqdm
 
-from haystack import Document, component, default_from_dict, default_to_dict
+from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.utils import Secret, deserialize_secrets_inplace
+
+logger = logging.getLogger(__name__)
 
 
 @component
@@ -208,24 +210,31 @@ class AzureOpenAIDocumentEmbedder:
         meta: Dict[str, Any] = {"model": "", "usage": {"prompt_tokens": 0, "total_tokens": 0}}
         for i in tqdm(range(0, len(texts_to_embed), batch_size), desc="Embedding Texts"):
             batch = texts_to_embed[i : i + batch_size]
-            if self.dimensions is not None:
-                response = self._client.embeddings.create(
-                    model=self.azure_deployment, dimensions=self.dimensions, input=batch
-                )
-            else:
-                response = self._client.embeddings.create(model=self.azure_deployment, input=batch)
+            try:
+                if self.dimensions is not None:
+                    response = self._client.embeddings.create(
+                        model=self.azure_deployment, dimensions=self.dimensions, input=batch
+                    )
+                else:
+                    response = self._client.embeddings.create(model=self.azure_deployment, input=batch)
 
-            # Append embeddings to the list
-            all_embeddings.extend(el.embedding for el in response.data)
+                # Append embeddings to the list
+                all_embeddings.extend(el.embedding for el in response.data)
 
-            # Update the meta information only once if it's empty
-            if not meta["model"]:
-                meta["model"] = response.model
-                meta["usage"] = dict(response.usage)
-            else:
-                # Update the usage tokens
-                meta["usage"]["prompt_tokens"] += response.usage.prompt_tokens
-                meta["usage"]["total_tokens"] += response.usage.total_tokens
+                # Update the meta information only once if it's empty
+                if not meta["model"]:
+                    meta["model"] = response.model
+                    meta["usage"] = dict(response.usage)
+                else:
+                    # Update the usage tokens
+                    meta["usage"]["prompt_tokens"] += response.usage.prompt_tokens
+                    meta["usage"]["total_tokens"] += response.usage.total_tokens
+
+            except Exception as e:
+                # Log the error but continue processing
+                batch_range = f"{i} - {i + batch_size}"
+                logger.exception(f"Failed embedding of documents in range: {batch_range} caused by {e}")
+                continue
 
         return all_embeddings, meta
 
