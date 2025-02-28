@@ -66,15 +66,11 @@ class CSVToDocument:
             df = pd.read_csv(io.StringIO(data))
             documents = []
             header = ",".join(df.columns)
-            # Using itertuples() instead of iterrows() for better performance
+
             for idx, row in enumerate(df.itertuples(index=False)):
-                # Convert tuple to list and skip the first element (index)
                 row_values = ",".join(str(v) for v in row)
                 content = f"{header}\n{row_values}"
-
-                # Add row index to metadata for traceability
                 row_metadata = {**metadata, "row_index": idx}
-
                 doc = Document(content=content, meta=row_metadata)
                 documents.append(doc)
             return documents
