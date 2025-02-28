@@ -115,5 +115,10 @@ class TestCSVToDocument:
         expected_header = "Name,Age"
 
         assert docs[0].content == f"{expected_header}\nJohn Doe,27"
+        assert docs[0].meta["row_index"] == 0
+
         assert docs[1].content == f"{expected_header}\nJane Smith,37"
+        assert docs[1].meta["row_index"] == 1
+
         assert docs[2].content == f"{expected_header}\nMike Johnson,47"
+        assert docs[2].meta["row_index"] == 2

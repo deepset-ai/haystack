@@ -66,12 +66,16 @@ class CSVToDocument:
             df = pd.read_csv(io.StringIO(data))
             documents = []
             header = ",".join(df.columns)
-            for _, row in df.iterrows():
-                row_dict = row.to_dict()
-                row_values = ",".join(str(v) for v in row_dict.values())
+            # Using itertuples() instead of iterrows() for better performance
+            for idx, row in enumerate(df.itertuples(index=False)):
+                # Convert tuple to list and skip the first element (index)
+                row_values = ",".join(str(v) for v in row)
                 content = f"{header}\n{row_values}"
 
-                doc = Document(content=content, meta=metadata)
+                # Add row index to metadata for traceability
+                row_metadata = {**metadata, "row_index": idx}
+
+                doc = Document(content=content, meta=row_metadata)
                 documents.append(doc)
             return documents
         except Exception as e:
