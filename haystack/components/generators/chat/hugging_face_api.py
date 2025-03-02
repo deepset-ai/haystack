@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from datetime import datetime
-from typing import Any, Callable, Dict, Iterable, List, Optional, Union
+from typing import Any, AsyncIterable, Callable, Dict, Iterable, List, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall
@@ -423,7 +423,7 @@ class HuggingFaceAPIChatGenerator:
         generation_kwargs: Dict[str, Any],
         streaming_callback: Callable[[StreamingChunk], None],
     ):
-        api_output: Iterable[ChatCompletionStreamOutput] = await self._async_client.chat_completion(
+        api_output: AsyncIterable[ChatCompletionStreamOutput] = await self._async_client.chat_completion(
             messages, stream=True, **generation_kwargs
         )
 
