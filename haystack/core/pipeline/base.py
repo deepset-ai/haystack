@@ -8,7 +8,7 @@ from copy import deepcopy
 from datetime import datetime
 from enum import IntEnum
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional, TextIO, Tuple, Type, TypeVar, Union
+from typing import Any, Dict, Iterator, List, Optional, Set, TextIO, Tuple, Type, TypeVar, Union
 
 import networkx  # type:ignore
 
@@ -68,7 +68,12 @@ class PipelineBase:
     Builds a graph of components and orchestrates their execution according to the execution graph.
     """
 
-    def __init__(self, metadata: Optional[Dict[str, Any]] = None, max_runs_per_component: int = 100):
+    def __init__(
+        self,
+        metadata: Optional[Dict[str, Any]] = None,
+        max_runs_per_component: int = 100,
+        connection_type_validation: bool = True,
+    ):
         """
         Creates the Pipeline.
 
@@ -79,12 +84,15 @@ class PipelineBase:
             How many times the `Pipeline` can run the same Component.
             If this limit is reached a `PipelineMaxComponentRuns` exception is raised.
             If not set defaults to 100 runs per Component.
+        :param connection_type_validation: Whether the pipeline will validate the types of the connections.
+            Defaults to True.
         """
         self._telemetry_runs = 0
         self._last_telemetry_sent: Optional[datetime] = None
         self.metadata = metadata or {}
         self.graph = networkx.MultiDiGraph()
         self._max_runs_per_component = max_runs_per_component
+        self._connection_type_validation = connection_type_validation
 
     def __eq__(self, other) -> bool:
         """
@@ -142,6 +150,7 @@ class PipelineBase:
             "max_runs_per_component": self._max_runs_per_component,
             "components": components,
             "connections": connections,
+            "connection_type_validation": self._connection_type_validation,
         }
 
     @classmethod
@@ -164,7 +173,12 @@ class PipelineBase:
         data_copy = deepcopy(data)  # to prevent modification of original data
         metadata = data_copy.get("metadata", {})
         max_runs_per_component = data_copy.get("max_runs_per_component", 100)
-        pipe = cls(metadata=metadata, max_runs_per_component=max_runs_per_component)
+        connection_type_validation = data_copy.get("connection_type_validation", True)
+        pipe = cls(
+            metadata=metadata,
+            max_runs_per_component=max_runs_per_component,
+            connection_type_validation=connection_type_validation,
+        )
         components_to_reuse = kwargs.get("components", {})
         for name, component_data in data_copy.get("components", {}).items():
             if name in components_to_reuse:
@@ -402,6 +416,8 @@ class PipelineBase:
         :param receiver:
             The component that receives the value. This can be either just a component name or can be
             in the format `component_name.connection_name` if the component has multiple inputs.
+        :param connection_type_validation: Whether the pipeline will validate the types of the connections.
+            Defaults to the value set in the pipeline.
         :returns:
             The Pipeline instance.
 
@@ -418,48 +434,51 @@ class PipelineBase:
 
         # Get the nodes data.
         try:
-            from_sockets = self.graph.nodes[sender_component_name]["output_sockets"]
+            sender_sockets = self.graph.nodes[sender_component_name]["output_sockets"]
         except KeyError as exc:
             raise ValueError(f"Component named {sender_component_name} not found in the pipeline.") from exc
         try:
-            to_sockets = self.graph.nodes[receiver_component_name]["input_sockets"]
+            receiver_sockets = self.graph.nodes[receiver_component_name]["input_sockets"]
         except KeyError as exc:
             raise ValueError(f"Component named {receiver_component_name} not found in the pipeline.") from exc
 
         # If the name of either socket is given, get the socket
         sender_socket: Optional[OutputSocket] = None
         if sender_socket_name:
-            sender_socket = from_sockets.get(sender_socket_name)
+            sender_socket = sender_sockets.get(sender_socket_name)
             if not sender_socket:
                 raise PipelineConnectError(
                     f"'{sender} does not exist. "
                     f"Output connections of {sender_component_name} are: "
-                    + ", ".join([f"{name} (type {_type_name(socket.type)})" for name, socket in from_sockets.items()])
+                    + ", ".join([f"{name} (type {_type_name(socket.type)})" for name, socket in sender_sockets.items()])
                 )
 
         receiver_socket: Optional[InputSocket] = None
         if receiver_socket_name:
-            receiver_socket = to_sockets.get(receiver_socket_name)
+            receiver_socket = receiver_sockets.get(receiver_socket_name)
             if not receiver_socket:
                 raise PipelineConnectError(
                     f"'{receiver} does not exist. "
                     f"Input connections of {receiver_component_name} are: "
-                    + ", ".join([f"{name} (type {_type_name(socket.type)})" for name, socket in to_sockets.items()])
+                    + ", ".join(
+                        [f"{name} (type {_type_name(socket.type)})" for name, socket in receiver_sockets.items()]
+                    )
                 )
 
         # Look for a matching connection among the possible ones.
         # Note that if there is more than one possible connection but two sockets match by name, they're paired.
-        sender_socket_candidates: List[OutputSocket] = [sender_socket] if sender_socket else list(from_sockets.values())
+        sender_socket_candidates: List[OutputSocket] = (
+            [sender_socket] if sender_socket else list(sender_sockets.values())
+        )
         receiver_socket_candidates: List[InputSocket] = (
-            [receiver_socket] if receiver_socket else list(to_sockets.values())
+            [receiver_socket] if receiver_socket else list(receiver_sockets.values())
         )
 
         # Find all possible connections between these two components
-        possible_connections = [
-            (sender_sock, receiver_sock)
-            for sender_sock, receiver_sock in itertools.product(sender_socket_candidates, receiver_socket_candidates)
-            if _types_are_compatible(sender_sock.type, receiver_sock.type)
-        ]
+        possible_connections = []
+        for sender_sock, receiver_sock in itertools.product(sender_socket_candidates, receiver_socket_candidates):
+            if _types_are_compatible(sender_sock.type, receiver_sock.type, self._connection_type_validation):
+                possible_connections.append((sender_sock, receiver_sock))
 
         # We need this status for error messages, since we might need it in multiple places we calculate it here
         status = _connections_status(
@@ -860,7 +879,7 @@ class PipelineBase:
 
     def _find_receivers_from(self, component_name: str) -> List[Tuple[str, OutputSocket, InputSocket]]:
         """
-        Utility function to find all Components that receive input form `component_name`.
+        Utility function to find all Components that receive input from `component_name`.
 
         :param component_name:
             Name of the sender Component
@@ -1042,9 +1061,59 @@ class PipelineBase:
 
         return component_inputs
 
+    def _tiebreak_waiting_components(
+        self,
+        component_name: str,
+        priority: ComponentPriority,
+        priority_queue: FIFOPriorityQueue,
+        topological_sort: Union[Dict[str, int], None],
+    ):
+        """
+        Decides which component to run when multiple components are waiting for inputs with the same priority.
+
+        :param component_name: The name of the component.
+        :param priority: Priority of the component.
+        :param priority_queue: Priority queue of component names.
+        :param topological_sort: Cached topological sort of all components in the pipeline.
+        """
+        components_with_same_priority = [component_name]
+
+        while len(priority_queue) > 0:
+            next_priority, next_component_name = priority_queue.peek()
+            if next_priority == priority:
+                priority_queue.pop()  # actually remove the component
+                components_with_same_priority.append(next_component_name)
+            else:
+                break
+
+        if len(components_with_same_priority) > 1:
+            if topological_sort is None:
+                if networkx.is_directed_acyclic_graph(self.graph):
+                    topological_sort = networkx.lexicographical_topological_sort(self.graph)
+                    topological_sort = {node: idx for idx, node in enumerate(topological_sort)}
+                else:
+                    condensed = networkx.condensation(self.graph)
+                    condensed_sorted = {node: idx for idx, node in enumerate(networkx.topological_sort(condensed))}
+                    topological_sort = {
+                        component_name: condensed_sorted[node]
+                        for component_name, node in condensed.graph["mapping"].items()
+                    }
+
+            components_with_same_priority = sorted(
+                components_with_same_priority, key=lambda comp_name: (topological_sort[comp_name], comp_name.lower())
+            )
+
+            component_name = components_with_same_priority[0]
+
+        return component_name, topological_sort
+
     @staticmethod
     def _write_component_outputs(
-        component_name, component_outputs, inputs, receivers, include_outputs_from
+        component_name: str,
+        component_outputs: Dict[str, Any],
+        inputs: Dict[str, Any],
+        receivers: List[Tuple],
+        include_outputs_from: Set[str],
     ) -> Dict[str, Any]:
         """
         Distributes the outputs of a component to the input sockets that it is connected to.
@@ -1052,7 +1121,7 @@ class PipelineBase:
         :param component_name: The name of the component.
         :param component_outputs: The outputs of the component.
         :param inputs: The current global input state.
-        :param receivers: List of receiver_name, sender_socket, receiver_socket for connected components.
+        :param receivers: List of components that receive inputs from the component.
         :param include_outputs_from: List of component names that should always return an output from the pipeline.
         """
         for receiver_name, sender_socket, receiver_socket in receivers:
@@ -1060,21 +1129,30 @@ class PipelineBase:
             # that the sender did not produce an output for this socket.
             # This allows us to track if a pre-decessor already ran but did not produce an output.
             value = component_outputs.get(sender_socket.name, _NO_OUTPUT_PRODUCED)
+
             if receiver_name not in inputs:
                 inputs[receiver_name] = {}
 
-            # If we have a non-variadic or a greedy variadic receiver socket, we can just overwrite any inputs
-            # that might already exist (to be reconsidered but mirrors current behavior).
-            if not is_socket_lazy_variadic(receiver_socket):
-                inputs[receiver_name][receiver_socket.name] = [{"sender": component_name, "value": value}]
-
-            # If the receiver socket is lazy variadic, and it already has an input, we need to append the new input.
-            # Lazy variadic sockets can collect multiple inputs.
+            if is_socket_lazy_variadic(receiver_socket):
+                # If the receiver socket is lazy variadic, we append the new input.
+                # Lazy variadic sockets can collect multiple inputs.
+                _write_to_lazy_variadic_socket(
+                    inputs=inputs,
+                    receiver_name=receiver_name,
+                    receiver_socket_name=receiver_socket.name,
+                    component_name=component_name,
+                    value=value,
+                )
             else:
-                if not inputs[receiver_name].get(receiver_socket.name):
-                    inputs[receiver_name][receiver_socket.name] = []
-
-                inputs[receiver_name][receiver_socket.name].append({"sender": component_name, "value": value})
+                # If the receiver socket is not lazy variadic, it is greedy variadic or non-variadic.
+                # We overwrite with the new input if it's not _NO_OUTPUT_PRODUCED or if the current value is None.
+                _write_to_standard_socket(
+                    inputs=inputs,
+                    receiver_name=receiver_name,
+                    receiver_socket_name=receiver_socket.name,
+                    component_name=component_name,
+                    value=value,
+                )
 
         # If we want to include all outputs from this actor in the final outputs, we don't need to prune any consumed
         # outputs
@@ -1120,7 +1198,7 @@ class PipelineBase:
 
 def _connections_status(
     sender_node: str, receiver_node: str, sender_sockets: List[OutputSocket], receiver_sockets: List[InputSocket]
-):
+) -> str:
     """
     Lists the status of the sockets, for error messages.
     """
@@ -1141,3 +1219,35 @@ def _connections_status(
     receiver_sockets_list = "\n".join(receiver_sockets_entries)
 
     return f"'{sender_node}':\n{sender_sockets_list}\n'{receiver_node}':\n{receiver_sockets_list}"
+
+
+# Utility functions for writing to sockets
+
+
+def _write_to_lazy_variadic_socket(
+    inputs: Dict[str, Any], receiver_name: str, receiver_socket_name: str, component_name: str, value: Any
+) -> None:
+    """
+    Write to a lazy variadic socket.
+
+    Mutates inputs in place.
+    """
+    if not inputs[receiver_name].get(receiver_socket_name):
+        inputs[receiver_name][receiver_socket_name] = []
+
+    inputs[receiver_name][receiver_socket_name].append({"sender": component_name, "value": value})
+
+
+def _write_to_standard_socket(
+    inputs: Dict[str, Any], receiver_name: str, receiver_socket_name: str, component_name: str, value: Any
+) -> None:
+    """
+    Write to a greedy variadic or non-variadic socket.
+
+    Mutates inputs in place.
+    """
+    current_value = inputs[receiver_name].get(receiver_socket_name)
+
+    # Only overwrite if there's no existing value, or we have a new value to provide
+    if current_value is None or value is not _NO_OUTPUT_PRODUCED:
+        inputs[receiver_name][receiver_socket_name] = [{"sender": component_name, "value": value}]

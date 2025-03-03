@@ -113,6 +113,7 @@ extra-dependencies = [
   "jq",                               # JSONConverter
   "openpyxl",                         # XLSXToDocument
   "tabulate",                         # XLSXToDocument
+  "python-oxmsg",                     # MSGToDocument
 
   "nltk>=3.9.1", # NLTKDocumentSplitter
 
@@ -277,6 +278,7 @@ markers = [
 ]
 log_cli = true
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "class"
 
 [tool.mypy]
 warn_return_any = false

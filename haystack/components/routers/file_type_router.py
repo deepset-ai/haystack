@@ -15,9 +15,14 @@ from haystack.dataclasses import ByteStream
 logger = logging.getLogger(__name__)
 
 
-# we add markdown because it is not added by the mimetypes module
-# see https://github.com/python/cpython/pull/17995
-CUSTOM_MIMETYPES = {".md": "text/markdown", ".markdown": "text/markdown"}
+CUSTOM_MIMETYPES = {
+    # we add markdown because it is not added by the mimetypes module
+    # see https://github.com/python/cpython/pull/17995
+    ".md": "text/markdown",
+    ".markdown": "text/markdown",
+    # we add msg because it is not added by the mimetypes module
+    ".msg": "application/vnd.ms-outlook",
+}
 
 
 @component

@@ -151,23 +151,6 @@ class TestOpenAIChatGenerator:
         assert component.client.timeout == 100.0
         assert component.client.max_retries == 10
 
-    def test_init_should_also_create_async_client_with_same_args(self, monkeypatch):
-        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        component = OpenAIChatGenerator(
-            api_key=Secret.from_token("test-api-key"),
-            api_base_url="test-base-url",
-            organization="test-organization",
-            timeout=30,
-            max_retries=5,
-        )
-
-        assert isinstance(component.async_client, AsyncOpenAI)
-        assert component.async_client.api_key == "test-api-key"
-        assert component.async_client.organization == "test-organization"
-        assert component.async_client.base_url == "test-base-url/"
-        assert component.async_client.timeout == 30
-        assert component.async_client.max_retries == 5
-
     def test_to_dict_default(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = OpenAIChatGenerator()
@@ -424,9 +407,10 @@ class TestOpenAIChatGenerator:
             response = component.run([ChatMessage.from_user("What's the weather like in Paris?")])
 
         # ensure that the tools are passed to the OpenAI API
-        assert mock_chat_completion_create.call_args[1]["tools"] == [
-            {"type": "function", "function": {**tools[0].tool_spec, "strict": True}}
-        ]
+        function_spec = {**tools[0].tool_spec}
+        function_spec["strict"] = True
+        function_spec["parameters"]["additionalProperties"] = False
+        assert mock_chat_completion_create.call_args[1]["tools"] == [{"type": "function", "function": function_spec}]
 
         assert len(response["replies"]) == 1
         message = response["replies"][0]
