@@ -373,16 +373,13 @@ class OpenAIChatGenerator:
 
         openai_tools = {}
         if tools:
-            tool_definitions = [
-                {
-                    "type": "function",
-                    "function": {
-                        **t.tool_spec,
-                        **({"strict": tools_strict, "additionalProperties": False} if tools_strict else {}),
-                    },
-                }
-                for t in tools
-            ]
+            tool_definitions = []
+            for t in tools:
+                function_spec = {**t.tool_spec}
+                if tools_strict:
+                    function_spec["strict"] = True
+                    function_spec["parameters"]["additionalProperties"] = False
+                tool_definitions.append({"type": "function", "function": function_spec})
             openai_tools = {"tools": tool_definitions}
 
         is_streaming = streaming_callback is not None
