@@ -144,12 +144,7 @@ class PipelineBase:
         for sender, receiver, edge_data in self.graph.edges.data():
             sender_socket = edge_data["from_socket"].name
             receiver_socket = edge_data["to_socket"].name
-            connections.append(
-                {
-                    "sender": f"{sender}.{sender_socket}",
-                    "receiver": f"{receiver}.{receiver_socket}"
-                }
-            )
+            connections.append({"sender": f"{sender}.{sender_socket}", "receiver": f"{receiver}.{receiver_socket}"})
         return {
             "metadata": self.metadata,
             "max_runs_per_component": self._max_runs_per_component,
@@ -231,7 +226,7 @@ class PipelineBase:
                 raise PipelineError(f"Missing sender in connection: {connection}")
             if "receiver" not in connection:
                 raise PipelineError(f"Missing receiver in connection: {connection}")
-            pipe.connect(sender=connection["sender"],receiver=connection["receiver"])
+            pipe.connect(sender=connection["sender"], receiver=connection["receiver"])
 
         return pipe
 
@@ -430,7 +425,6 @@ class PipelineBase:
             If the two components cannot be connected (for example if one of the components is
             not present in the pipeline, or the connections don't match by type, and so on).
         """
-
         # Edges may be named explicitly by passing 'node_name.edge_name' to connect().
         sender_component_name, sender_socket_name = parse_connect_string(sender)
         receiver_component_name, receiver_socket_name = parse_connect_string(receiver)
