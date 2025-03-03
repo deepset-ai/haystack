@@ -245,7 +245,7 @@ class TestAzureOpenAIChatGenerator:
 
 
 class TestAzureOpenAIChatGeneratorAsync:
-    def test_init_should_also_create_async_client_with_same_args(self, monkeypatch):
+    def test_init_should_also_create_async_client_with_same_args(self, tools):
         component = AzureOpenAIChatGenerator(
             api_key=Secret.from_token("test-api-key"),
             azure_endpoint="some-non-existing-endpoint",
