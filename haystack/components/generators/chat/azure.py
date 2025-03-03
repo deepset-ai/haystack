@@ -6,7 +6,7 @@ import os
 from typing import Any, Callable, Dict, List, Optional
 
 # pylint: disable=import-error
-from openai.lib.azure import AzureOpenAI
+from openai.lib.azure import AsyncAzureOpenAI, AzureOpenAI
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.generators.chat import OpenAIChatGenerator
@@ -154,17 +154,20 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         self.tools = tools
         self.tools_strict = tools_strict
 
-        self.client = AzureOpenAI(
-            api_version=api_version,
-            azure_endpoint=azure_endpoint,
-            azure_deployment=azure_deployment,
-            api_key=api_key.resolve_value() if api_key is not None else None,
-            azure_ad_token=azure_ad_token.resolve_value() if azure_ad_token is not None else None,
-            organization=organization,
-            timeout=self.timeout,
-            max_retries=self.max_retries,
-            default_headers=self.default_headers,
-        )
+        client_args: Dict[str, Any] = {
+            "api_version": api_version,
+            "azure_endpoint": azure_endpoint,
+            "azure_deployment": azure_deployment,
+            "api_key": api_key.resolve_value() if api_key is not None else None,
+            "azure_ad_token": azure_ad_token.resolve_value() if azure_ad_token is not None else None,
+            "organization": organization,
+            "timeout": self.timeout,
+            "max_retries": self.max_retries,
+            "default_headers": self.default_headers,
+        }
+
+        self.client = AzureOpenAI(**client_args)
+        self.async_client = AsyncAzureOpenAI(**client_args)
 
     def to_dict(self) -> Dict[str, Any]:
         """

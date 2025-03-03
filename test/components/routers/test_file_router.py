@@ -354,6 +354,7 @@ class TestFileTypeRouter:
         assert pipeline_dict == {
             "metadata": {},
             "max_runs_per_component": 100,
+            "connection_type_validation": True,
             "components": {
                 "file_type_router": {
                     "type": "haystack.components.routers.file_type_router.FileTypeRouter",
