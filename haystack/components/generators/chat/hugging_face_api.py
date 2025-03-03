@@ -3,10 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from datetime import datetime
-from typing import Any, Callable, Dict, Iterable, List, Optional, Union
+from typing import Any, AsyncIterable, Callable, Dict, Iterable, List, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall
+from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall, select_streaming_callback
 from haystack.lazy_imports import LazyImport
 from haystack.tools.tool import Tool, _check_duplicate_tool_names, deserialize_tools_inplace
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
@@ -15,6 +15,7 @@ from haystack.utils.url_validation import is_valid_http_url
 
 with LazyImport(message="Run 'pip install \"huggingface_hub[inference]>=0.27.0\"'") as huggingface_hub_import:
     from huggingface_hub import (
+        AsyncInferenceClient,
         ChatCompletionInputFunctionDefinition,
         ChatCompletionInputTool,
         ChatCompletionOutput,
@@ -181,6 +182,7 @@ class HuggingFaceAPIChatGenerator:
         self.generation_kwargs = generation_kwargs
         self.streaming_callback = streaming_callback
         self._client = InferenceClient(model_or_url, token=token.resolve_value() if token else None)
+        self._async_client = AsyncInferenceClient(model_or_url, token=token.resolve_value() if token else None)
         self.tools = tools
 
     def to_dict(self) -> Dict[str, Any]:
@@ -250,7 +252,11 @@ class HuggingFaceAPIChatGenerator:
             raise ValueError("Using tools and streaming at the same time is not supported. Please choose one.")
         _check_duplicate_tool_names(tools)
 
-        streaming_callback = streaming_callback or self.streaming_callback
+        # validate and select the streaming callback
+        streaming_callback = select_streaming_callback(
+            self.streaming_callback, streaming_callback, requires_async=False
+        )  # type: ignore
+
         if streaming_callback:
             return self._run_streaming(formatted_messages, generation_kwargs, streaming_callback)
 
@@ -266,6 +272,63 @@ class HuggingFaceAPIChatGenerator:
                 for tool in tools
             ]
         return self._run_non_streaming(formatted_messages, generation_kwargs, hf_tools)
+
+    @component.output_types(replies=List[ChatMessage])
+    async def run_async(
+        self,
+        messages: List[ChatMessage],
+        generation_kwargs: Optional[Dict[str, Any]] = None,
+        tools: Optional[List[Tool]] = None,
+        streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
+    ):
+        """
+        Asynchronously invokes the text generation inference based on the provided messages and generation parameters.
+
+        This is the asynchronous version of the `run` method. It has the same parameters
+        and return values but can be used with `await` in an async code.
+
+        :param messages:
+            A list of ChatMessage objects representing the input messages.
+        :param generation_kwargs:
+            Additional keyword arguments for text generation.
+        :param tools:
+            A list of tools for which the model can prepare calls. If set, it will override the `tools` parameter set
+            during component initialization.
+        :param streaming_callback:
+            An optional callable for handling streaming responses. If set, it will override the `streaming_callback`
+            parameter set during component initialization.
+        :returns: A dictionary with the following keys:
+            - `replies`: A list containing the generated responses as ChatMessage objects.
+        """
+
+        # update generation kwargs by merging with the default ones
+        generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
+
+        formatted_messages = [convert_message_to_hf_format(message) for message in messages]
+
+        tools = tools or self.tools
+        if tools and self.streaming_callback:
+            raise ValueError("Using tools and streaming at the same time is not supported. Please choose one.")
+        _check_duplicate_tool_names(tools)
+
+        # validate and select the streaming callback
+        streaming_callback = select_streaming_callback(self.streaming_callback, streaming_callback, requires_async=True)  # type: ignore
+
+        if streaming_callback:
+            return await self._run_streaming_async(formatted_messages, generation_kwargs, streaming_callback)
+
+        hf_tools = None
+        if tools:
+            hf_tools = [
+                ChatCompletionInputTool(
+                    function=ChatCompletionInputFunctionDefinition(
+                        name=tool.name, description=tool.description, arguments=tool.parameters
+                    ),
+                    type="function",
+                )
+                for tool in tools
+            ]
+        return await self._run_non_streaming_async(formatted_messages, generation_kwargs, hf_tools)
 
     def _run_streaming(
         self,
@@ -345,6 +408,92 @@ class HuggingFaceAPIChatGenerator:
 
         meta: Dict[str, Any] = {
             "model": self._client.model,
+            "finish_reason": choice.finish_reason,
+            "index": choice.index,
+        }
+
+        usage = {"prompt_tokens": 0, "completion_tokens": 0}
+        if api_chat_output.usage:
+            usage = {
+                "prompt_tokens": api_chat_output.usage.prompt_tokens,
+                "completion_tokens": api_chat_output.usage.completion_tokens,
+            }
+        meta["usage"] = usage
+
+        message = ChatMessage.from_assistant(text=text, tool_calls=tool_calls, meta=meta)
+        return {"replies": [message]}
+
+    async def _run_streaming_async(
+        self,
+        messages: List[Dict[str, str]],
+        generation_kwargs: Dict[str, Any],
+        streaming_callback: Callable[[StreamingChunk], None],
+    ):
+        api_output: AsyncIterable[ChatCompletionStreamOutput] = await self._async_client.chat_completion(
+            messages, stream=True, **generation_kwargs
+        )
+
+        generated_text = ""
+        first_chunk_time = None
+
+        async for chunk in api_output:
+            choice = chunk.choices[0]
+
+            text = choice.delta.content or ""
+            generated_text += text
+
+            finish_reason = choice.finish_reason
+
+            meta: Dict[str, Any] = {}
+            if finish_reason:
+                meta["finish_reason"] = finish_reason
+
+            if first_chunk_time is None:
+                first_chunk_time = datetime.now().isoformat()
+
+            stream_chunk = StreamingChunk(text, meta)
+            await streaming_callback(stream_chunk)  # type: ignore
+
+        meta.update(
+            {
+                "model": self._async_client.model,
+                "finish_reason": finish_reason,
+                "index": 0,
+                "usage": {"prompt_tokens": 0, "completion_tokens": 0},
+                "completion_start_time": first_chunk_time,
+            }
+        )
+
+        message = ChatMessage.from_assistant(text=generated_text, meta=meta)
+        return {"replies": [message]}
+
+    async def _run_non_streaming_async(
+        self,
+        messages: List[Dict[str, str]],
+        generation_kwargs: Dict[str, Any],
+        tools: Optional[List["ChatCompletionInputTool"]] = None,
+    ) -> Dict[str, List[ChatMessage]]:
+        api_chat_output: ChatCompletionOutput = await self._async_client.chat_completion(
+            messages=messages, tools=tools, **generation_kwargs
+        )
+
+        if len(api_chat_output.choices) == 0:
+            return {"replies": []}
+
+        choice = api_chat_output.choices[0]
+
+        text = choice.message.content
+        tool_calls = []
+
+        if hfapi_tool_calls := choice.message.tool_calls:
+            for hfapi_tc in hfapi_tool_calls:
+                tool_call = ToolCall(
+                    tool_name=hfapi_tc.function.name, arguments=hfapi_tc.function.arguments, id=hfapi_tc.id
+                )
+                tool_calls.append(tool_call)
+
+        meta: Dict[str, Any] = {
+            "model": self._async_client.model,
             "finish_reason": choice.finish_reason,
             "index": choice.index,
         }
