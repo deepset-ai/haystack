@@ -1,6 +1,5 @@
 ---
 enhancements:
   - |
-    Handle Azure OpenAI embedder exceptions gracefully
-    - Add error handling in _embed_batch inside `AzureOpenAIDocumentEmbedder` to continue processing remaining documents
-    - Add unit tests for graceful error handling
+    Improved AzureDocumentEmbedder to handle embedding generation failures gracefully.
+    Errors are logged, and processing continues with the remaining batches.
