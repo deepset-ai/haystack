@@ -147,8 +147,7 @@ class PipelineBase:
             connections.append(
                 {
                     "sender": f"{sender}.{sender_socket}",
-                    "receiver": f"{receiver}.{receiver_socket}",
-                    "connection_type_validation": edge_data["connection_type_validation"],
+                    "receiver": f"{receiver}.{receiver_socket}"
                 }
             )
         return {
@@ -232,11 +231,7 @@ class PipelineBase:
                 raise PipelineError(f"Missing sender in connection: {connection}")
             if "receiver" not in connection:
                 raise PipelineError(f"Missing receiver in connection: {connection}")
-            pipe.connect(
-                sender=connection["sender"],
-                receiver=connection["receiver"],
-                connection_type_validation=connection.get("connection_type_validation"),
-            )
+            pipe.connect(sender=connection["sender"],receiver=connection["receiver"])
 
         return pipe
 
@@ -412,9 +407,7 @@ class PipelineBase:
 
         return instance
 
-    def connect(  # noqa: PLR0915 PLR0912
-        self, sender: str, receiver: str, connection_type_validation: Optional[bool] = None
-    ) -> "PipelineBase":
+    def connect(self, sender: str, receiver: str) -> "PipelineBase":  # noqa: PLR0915 PLR0912
         """
         Connects two components together.
 
@@ -437,7 +430,6 @@ class PipelineBase:
             If the two components cannot be connected (for example if one of the components is
             not present in the pipeline, or the connections don't match by type, and so on).
         """
-        resolved_connection_type_validation = connection_type_validation or self._connection_type_validation
 
         # Edges may be named explicitly by passing 'node_name.edge_name' to connect().
         sender_component_name, sender_socket_name = parse_connect_string(sender)
@@ -491,7 +483,7 @@ class PipelineBase:
         # Find all possible connections between these two components
         possible_connections = []
         for sender_sock, receiver_sock in itertools.product(sender_socket_candidates, receiver_socket_candidates):
-            if _types_are_compatible(sender_sock.type, receiver_sock.type, resolved_connection_type_validation):
+            if _types_are_compatible(sender_sock.type, receiver_sock.type, self._connection_type_validation):
                 possible_connections.append((sender_sock, receiver_sock))
 
         # We need this status for error messages, since we might need it in multiple places we calculate it here
@@ -589,7 +581,6 @@ class PipelineBase:
             conn_type=_type_name(sender_socket.type),
             from_socket=sender_socket,
             to_socket=receiver_socket,
-            connection_type_validation=connection_type_validation,
             mandatory=receiver_socket.is_mandatory,
         )
         return self

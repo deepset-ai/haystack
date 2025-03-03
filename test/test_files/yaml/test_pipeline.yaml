@@ -9,8 +9,7 @@ components:
     type: test.core.pipeline.test_pipeline_base.FakeComponent
 connection_type_validation: true
 connections:
-- connection_type_validation: null
-  receiver: Comp2.input_
+- receiver: Comp2.input_
   sender: Comp1.value
 max_runs_per_component: 99
 metadata: {}

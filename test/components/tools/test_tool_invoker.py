@@ -275,8 +275,7 @@ class TestToolInvoker:
             "connections": [
                 {
                     "sender": "invoker.tool_messages",
-                    "receiver": "chatgenerator.messages",
-                    "connection_type_validation": None,
+                    "receiver": "chatgenerator.messages"
                 }
             ],
         }
