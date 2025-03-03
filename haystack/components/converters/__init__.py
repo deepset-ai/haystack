@@ -14,6 +14,7 @@ _import_structure = {
     "html": ["HTMLToDocument"],
     "json": ["JSONConverter"],
     "markdown": ["MarkdownToDocument"],
+    "msg": ["MSGToDocument"],
     "openapi_functions": ["OpenAPIServiceToFunctions"],
     "output_adapter": ["OutputAdapter"],
     "pdfminer": ["PDFMinerToDocument"],
@@ -31,6 +32,7 @@ if TYPE_CHECKING:
     from .html import HTMLToDocument
     from .json import JSONConverter
     from .markdown import MarkdownToDocument
+    from .msg import MSGToDocument
     from .openapi_functions import OpenAPIServiceToFunctions
     from .output_adapter import OutputAdapter
     from .pdfminer import PDFMinerToDocument

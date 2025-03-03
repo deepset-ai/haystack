@@ -52,7 +52,11 @@ Feature: Pipeline running
         | with a component that has dynamic default inputs |
         | with a component that has variadic dynamic default inputs |
         | that is a file conversion pipeline with two joiners |
+        | that is a file conversion pipeline with three joiners |
+        | that is a file conversion pipeline with three joiners and a loop |
         | that has components returning dataframes |
+        | where a single component connects multiple sockets to the same receiver socket |
+        | where a component in a cycle provides inputs for a component outside the cycle in one iteration and no input in another iteration |
 
     Scenario Outline: Running a bad Pipeline
         Given a pipeline <kind>
