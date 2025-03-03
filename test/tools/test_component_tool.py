@@ -347,6 +347,37 @@ class TestToolComponentInPipelineWithOpenAI:
 
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
+    def test_component_tool_in_pipeline_openai_tools_strict(self):
+        # Create component and convert it to tool
+        component = SimpleComponent()
+        tool = ComponentTool(
+            component=component, name="hello_tool", description="A tool that generates a greeting message for the user"
+        )
+
+        # Create pipeline with OpenAIChatGenerator and ToolInvoker
+        pipeline = Pipeline()
+        pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=[tool], tools_strict=True))
+        pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
+
+        # Connect components
+        pipeline.connect("llm.replies", "tool_invoker.messages")
+
+        message = ChatMessage.from_user(text="Vladimir")
+
+        # Run pipeline
+        result = pipeline.run({"llm": {"messages": [message]}})
+
+        # Check results
+        tool_messages = result["tool_invoker"]["tool_messages"]
+        assert len(tool_messages) == 1
+
+        tool_message = tool_messages[0]
+        assert tool_message.is_from(ChatRole.TOOL)
+        assert "Vladimir" in tool_message.tool_call_result.result
+        assert not tool_message.tool_call_result.error
+
+    @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
+    @pytest.mark.integration
     def test_user_greeter_in_pipeline(self):
         component = UserGreeter()
         tool = ComponentTool(
