@@ -1420,6 +1420,21 @@ class TestPipelineBase:
 
         assert inputs["receiver1"]["input1"] == [{"sender": "sender1", "value": output_value}]
 
+    def test__write_component_outputs_dont_overwrite_with_no_output(self, regular_output_socket, regular_input_socket):
+        """Test that existing inputs are not overwritten with _NO_OUTPUT_PRODUCED"""
+        receivers = [("receiver1", regular_output_socket, regular_input_socket)]
+        component_outputs = {"output1": _NO_OUTPUT_PRODUCED}
+        inputs = {"receiver1": {"input1": [{"sender": "sender1", "value": "keep"}]}}
+        PipelineBase._write_component_outputs(
+            component_name="sender1",
+            component_outputs=component_outputs,
+            inputs=inputs,
+            receivers=receivers,
+            include_outputs_from=[],
+        )
+
+        assert inputs["receiver1"]["input1"] == [{"sender": "sender1", "value": "keep"}]
+
     @pytest.mark.parametrize("receivers_count", [1, 2, 3], ids=["single-receiver", "two-receivers", "three-receivers"])
     def test__write_component_outputs_multiple_receivers(
         self, receivers_count, regular_output_socket, regular_input_socket

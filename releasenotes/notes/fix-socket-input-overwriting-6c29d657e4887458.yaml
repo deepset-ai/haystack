@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixes an edge case in the pipeline-run logic where an existing input could be overwritten if the same component
+    connects to the socket from multiple output sockets.

@@ -5,7 +5,8 @@ import functools
 import json
 from typing import List, Dict
 
-import ddtrace
+from ddtrace.trace import Span as ddSpan
+from ddtrace.trace import Tracer as ddTracer
 import pytest
 from _pytest.capture import CaptureFixture
 from _pytest.monkeypatch import MonkeyPatch
@@ -14,11 +15,11 @@ from haystack.tracing.datadog import DatadogTracer
 
 
 @pytest.fixture()
-def datadog_tracer(monkeypatch: MonkeyPatch) -> ddtrace.Tracer:
+def datadog_tracer(monkeypatch: MonkeyPatch) -> ddTracer:
     # For the purpose of the tests we want to use the log writer
-    monkeypatch.setattr(ddtrace.Tracer, ddtrace.Tracer._use_log_writer.__name__, lambda *_: True)
+    monkeypatch.setattr(ddTracer, ddTracer._use_log_writer.__name__, lambda *_: True)
 
-    tracer = ddtrace.Tracer()
+    tracer = ddTracer()
 
     return tracer
 
@@ -33,7 +34,7 @@ def get_traces_from_console(capfd: CaptureFixture) -> List[Dict]:
 
 
 class TestDatadogTracer:
-    def test_opentelemetry_tracer(self, datadog_tracer: ddtrace.Tracer, capfd: CaptureFixture) -> None:
+    def test_opentelemetry_tracer(self, datadog_tracer: ddTracer, capfd: CaptureFixture) -> None:
         tracer = DatadogTracer(datadog_tracer)
 
         with tracer.trace("test") as span:
@@ -46,7 +47,7 @@ class TestDatadogTracer:
 
         assert trace["name"] == "test"
 
-    def test_tagging(self, datadog_tracer: ddtrace.Tracer, capfd: CaptureFixture) -> None:
+    def test_tagging(self, datadog_tracer: ddTracer, capfd: CaptureFixture) -> None:
         tracer = DatadogTracer(datadog_tracer)
 
         with tracer.trace("test", tags={"key1": "value1"}) as span:
@@ -57,7 +58,7 @@ class TestDatadogTracer:
         assert spans[0]["meta"]["key1"] == "value1"
         assert spans[0]["meta"]["key2"] == "value2"
 
-    def test_current_span(self, datadog_tracer: ddtrace.Tracer, capfd: CaptureFixture) -> None:
+    def test_current_span(self, datadog_tracer: ddTracer, capfd: CaptureFixture) -> None:
         tracer = DatadogTracer(datadog_tracer)
 
         with tracer.trace("test"):
@@ -68,7 +69,7 @@ class TestDatadogTracer:
 
             raw_span = current_span.raw_span()
             assert raw_span is not None
-            assert isinstance(raw_span, ddtrace.Span)
+            assert isinstance(raw_span, ddSpan)
 
             raw_span.set_tag("key2", "value2")
 
@@ -77,7 +78,7 @@ class TestDatadogTracer:
         assert spans[0]["meta"]["key1"] == "value1"
         assert spans[0]["meta"]["key2"] == "value2"
 
-    def test_tracing_complex_values(self, datadog_tracer: ddtrace.Tracer, capfd: CaptureFixture) -> None:
+    def test_tracing_complex_values(self, datadog_tracer: ddTracer, capfd: CaptureFixture) -> None:
         tracer = DatadogTracer(datadog_tracer)
 
         with tracer.trace("test") as span:
@@ -87,7 +88,7 @@ class TestDatadogTracer:
         assert len(spans) == 1
         assert spans[0]["meta"]["key"] == '{"a": 1, "b": [2, 3, 4]}'
 
-    def test_get_log_correlation_info(self, datadog_tracer: ddtrace.Tracer) -> None:
+    def test_get_log_correlation_info(self, datadog_tracer: ddTracer) -> None:
         tracer = DatadogTracer(datadog_tracer)
         with tracer.trace("test") as span:
             span.set_tag("key", "value")

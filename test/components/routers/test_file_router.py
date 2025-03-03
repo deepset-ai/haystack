@@ -87,14 +87,16 @@ class TestFileTypeRouter:
             test_files_path / "txt" / "doc_2.txt",
             test_files_path / "audio" / "the context for this answer is here.wav",
             test_files_path / "images" / "apple.jpg",
+            test_files_path / "msg" / "sample.msg",
         ]
 
-        router = FileTypeRouter(mime_types=[r"text/plain", r"audio/x-wav", r"image/jpeg"])
+        router = FileTypeRouter(mime_types=[r"text/plain", r"audio/x-wav", r"image/jpeg", "application/vnd.ms-outlook"])
         output = router.run(sources=file_paths)
         assert output
         assert len(output[r"text/plain"]) == 2
         assert len(output[r"audio/x-wav"]) == 1
         assert len(output[r"image/jpeg"]) == 1
+        assert len(output["application/vnd.ms-outlook"]) == 1
         assert not output.get("unclassified")
 
     def test_run_with_single_meta(self, test_files_path):
