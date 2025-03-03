@@ -216,9 +216,10 @@ class TestOpenAIChatGeneratorAsync:
             response = await component.run_async([ChatMessage.from_user("What's the weather like in Paris?")])
 
         # ensure that the tools are passed to the OpenAI API
-        assert mock_chat_completion_create.call_args[1]["tools"] == [
-            {"type": "function", "function": {**tools[0].tool_spec, "strict": True}}
-        ]
+        function_spec = {**tools[0].tool_spec}
+        function_spec["strict"] = True
+        function_spec["parameters"]["additionalProperties"] = False
+        assert mock_chat_completion_create.call_args[1]["tools"] == [{"type": "function", "function": function_spec}]
 
         assert len(response["replies"]) == 1
         message = response["replies"][0]
