@@ -1,4 +1,4 @@
 ---
 fixes:
   - |
-    Fix the `ComponentTool` for OpenAI tools strict mode. This sets `additionalProperties` to `false` for the function schema.
+    Make sure that `OpenAIChatGenerator` sets `additionalProperties: False` in the tool schema when `tool_strict` is set to `True`.
