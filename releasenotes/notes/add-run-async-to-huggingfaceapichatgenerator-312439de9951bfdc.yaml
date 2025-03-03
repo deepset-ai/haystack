@@ -1,6 +1,6 @@
 ---
 features:
   - |
-    Add `run_async` method to HuggingFaceAPIChatGenerator. This method internally AsyncInferenceClient from huggingface
+    Add `run_async` method to HuggingFaceAPIChatGenerator. This method relies internally on the `AsyncInferenceClient` from huggingface
     to generate chat completions and supports the same parameters as the `run` method. It returns a coroutine
     that can be awaited.
