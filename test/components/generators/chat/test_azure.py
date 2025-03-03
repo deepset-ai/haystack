@@ -241,6 +241,24 @@ class TestAzureOpenAIChatGenerator:
         assert tool_call.arguments == {"city": "Paris"}
         assert message.meta["finish_reason"] == "tool_calls"
 
+
+class TestAzureOpenAIChatGeneratorAsync:
+    def test_init_should_also_create_async_client_with_same_args(self, monkeypatch):
+        component = AzureOpenAIChatGenerator(
+            api_key=Secret.from_token("test-api-key"),
+            azure_endpoint="some-non-existing-endpoint",
+            streaming_callback=print_streaming_chunk,
+            generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
+            tools=tools,
+            tools_strict=True,
+        )
+        assert component.async_client.api_key == "test-api-key"
+        assert component.azure_deployment == "gpt-4o-mini"
+        assert component.streaming_callback is print_streaming_chunk
+        assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
+        assert component.tools == tools
+        assert component.tools_strict
+
     @pytest.mark.integration
     @pytest.mark.skipif(
         not os.environ.get("AZURE_OPENAI_API_KEY", None) or not os.environ.get("AZURE_OPENAI_ENDPOINT", None),
