@@ -252,7 +252,11 @@ class HuggingFaceAPIChatGenerator:
             raise ValueError("Using tools and streaming at the same time is not supported. Please choose one.")
         _check_duplicate_tool_names(tools)
 
-        streaming_callback = streaming_callback or self.streaming_callback
+        # validate and select the streaming callback
+        streaming_callback = select_streaming_callback(
+            self.streaming_callback, streaming_callback, requires_async=False
+        )  # type: ignore
+
         if streaming_callback:
             return self._run_streaming(formatted_messages, generation_kwargs, streaming_callback)
 
