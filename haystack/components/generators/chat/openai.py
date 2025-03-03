@@ -374,7 +374,13 @@ class OpenAIChatGenerator:
         openai_tools = {}
         if tools:
             tool_definitions = [
-                {"type": "function", "function": {**t.tool_spec, **({"strict": tools_strict} if tools_strict else {})}}
+                {
+                    "type": "function",
+                    "function": {
+                        **t.tool_spec,
+                        **({"strict": tools_strict, "additionalProperties": False} if tools_strict else {}),
+                    },
+                }
                 for t in tools
             ]
             openai_tools = {"tools": tool_definitions}

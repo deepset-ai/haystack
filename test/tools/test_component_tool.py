@@ -134,7 +134,6 @@ class TestToolComponent:
             "type": "object",
             "properties": {"text": {"type": "string", "description": "user's name"}},
             "required": ["text"],
-            "additionalProperties": False,
         }
 
         # Test tool invocation
@@ -166,7 +165,6 @@ class TestToolComponent:
                 }
             },
             "required": ["user"],
-            "additionalProperties": False,
         }
 
         assert tool.name == "user_greeter"
@@ -195,7 +193,6 @@ class TestToolComponent:
                 }
             },
             "required": ["texts"],
-            "additionalProperties": False,
         }
 
         # Test tool invocation
@@ -229,7 +226,6 @@ class TestToolComponent:
                 }
             },
             "required": ["person"],
-            "additionalProperties": False,
         }
 
         # Test tool invocation
@@ -298,7 +294,6 @@ class TestToolComponent:
                 "top_k": {"description": "The number of top documents to concatenate", "type": "integer"},
             },
             "required": ["documents"],
-            "additionalProperties": False,
         }
 
         # Test tool invocation
