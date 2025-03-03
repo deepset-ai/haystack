@@ -37,13 +37,13 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
     ### Usage example
 
     ```python
-    from haystack.components.generators.chat import AzureOpenAIGenerator
+    from haystack.components.generators.chat import AzureOpenAIChatGenerator
     from haystack.dataclasses import ChatMessage
     from haystack.utils import Secret
 
     messages = [ChatMessage.from_user("What's Natural Language Processing?")]
 
-    client = AzureOpenAIGenerator(
+    client = AzureOpenAIChatGenerator(
         azure_endpoint="<Your Azure endpoint e.g. `https://your-company.azure.openai.com/>",
         api_key=Secret.from_token("<your-api-key>"),
         azure_deployment="<this a model name, e.g. gpt-4o-mini>")
