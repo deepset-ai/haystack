@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    We've introduced a new type_validation parameter to control type compatibility checks in pipeline connections.
+    It can be set to True (default) or False which means no type checks will be done and everything is allowed.
