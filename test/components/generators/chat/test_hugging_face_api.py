@@ -694,7 +694,7 @@ class TestHuggingFaceAPIChatGenerator:
     async def test_run_async_with_streaming(self, mock_check_valid_model, mock_chat_completion_async, chat_messages):
         streaming_call_count = 0
 
-        def streaming_callback_fn(chunk: StreamingChunk):
+        async def streaming_callback_fn(chunk: StreamingChunk):
             nonlocal streaming_call_count
             streaming_call_count += 1
             assert isinstance(chunk, StreamingChunk)

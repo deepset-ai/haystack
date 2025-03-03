@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any, AsyncIterable, Callable, Dict, Iterable, List, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall
+from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall, select_streaming_callback
 from haystack.lazy_imports import LazyImport
 from haystack.tools.tool import Tool, _check_duplicate_tool_names, deserialize_tools_inplace
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
@@ -307,7 +307,9 @@ class HuggingFaceAPIChatGenerator:
             raise ValueError("Using tools and streaming at the same time is not supported. Please choose one.")
         _check_duplicate_tool_names(tools)
 
-        streaming_callback = streaming_callback or self.streaming_callback
+        # validate and select the streaming callback
+        streaming_callback = select_streaming_callback(self.streaming_callback, streaming_callback, requires_async=True)  # type: ignore
+
         if streaming_callback:
             return await self._run_streaming_async(formatted_messages, generation_kwargs, streaming_callback)
 
@@ -446,7 +448,7 @@ class HuggingFaceAPIChatGenerator:
                 first_chunk_time = datetime.now().isoformat()
 
             stream_chunk = StreamingChunk(text, meta)
-            streaming_callback(stream_chunk)
+            await streaming_callback(stream_chunk)
 
         meta.update(
             {
