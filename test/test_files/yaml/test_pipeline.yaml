@@ -7,6 +7,7 @@ components:
     init_parameters:
       an_init_param: null
     type: test.core.pipeline.test_pipeline_base.FakeComponent
+connection_type_validation: true
 connections:
 - receiver: Comp2.input_
   sender: Comp1.value
