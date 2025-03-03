@@ -144,6 +144,7 @@ class AsyncPipeline(PipelineBase):
         ordered_names = sorted(self.graph.nodes.keys())
         cached_receivers = {n: self._find_receivers_from(n) for n in ordered_names}
         component_visits = {component_name: 0 for component_name in ordered_names}
+        cached_topological_sort = None
 
         # We fill the queue once and raise if all components are BLOCKED
         self.validate_pipeline(self._fill_queue(ordered_names, inputs_state, component_visits))
@@ -385,6 +386,15 @@ class AsyncPipeline(PipelineBase):
 
                 # We only schedule components with priority DEFER or DEFER_LAST when no other tasks are running
                 elif priority in (ComponentPriority.DEFER, ComponentPriority.DEFER_LAST) and not running_tasks:
+                    if len(priority_queue) > 0:
+                        component_name, topological_sort = self._tiebreak_waiting_components(
+                            component_name=component_name,
+                            priority=priority,
+                            priority_queue=priority_queue,
+                            topological_sort=cached_topological_sort,
+                        )
+                        cached_topological_sort = topological_sort
+
                     await _schedule_task(component_name)
 
                 # To make progress, we wait for one task to complete before re-starting the loop
