@@ -448,7 +448,7 @@ class HuggingFaceAPIChatGenerator:
                 first_chunk_time = datetime.now().isoformat()
 
             stream_chunk = StreamingChunk(text, meta)
-            await streaming_callback(stream_chunk)
+            await streaming_callback(stream_chunk)  # type: ignore
 
         meta.update(
             {
