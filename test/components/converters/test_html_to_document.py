@@ -190,7 +190,7 @@ class TestHTMLToDocument:
         assert len(result["documents"]) == 1
         assert "Superlinear" in result["documents"][0].content
 
-    @patch("haystack.components.converters.html.extract")
+    @patch("haystack.components.converters.html.extract", return_value="test")
     def test_run_with_extraction_kwargs(self, mock_extract, test_files_path):
         sources = [test_files_path / "html" / "what_is_haystack.html"]
 

@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import pytest
 
-import pandas as pd
+from pandas import DataFrame
 
 from haystack import Document
 from haystack.core.component import component
@@ -1646,10 +1646,8 @@ class TestPipelineBase:
 
     def test__consume_component_inputs_with_df(self, regular_input_socket):
         component = {"input_sockets": {"input1": regular_input_socket}}
-        inputs = {
-            "test_component": {"input1": [{"sender": "sender1", "value": pd.DataFrame({"a": [1, 2], "b": [1, 2]})}]}
-        }
+        inputs = {"test_component": {"input1": [{"sender": "sender1", "value": DataFrame({"a": [1, 2], "b": [1, 2]})}]}}
 
         consumed = PipelineBase._consume_component_inputs("test_component", component, inputs)
 
-        assert consumed["input1"].equals(pd.DataFrame({"a": [1, 2], "b": [1, 2]}))
+        assert consumed["input1"].equals(DataFrame({"a": [1, 2], "b": [1, 2]}))

@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-import pandas as pd
+from pandas import DataFrame
 import pytest
 
 from haystack import Document
@@ -13,19 +13,8 @@ from haystack.dataclasses.sparse_embedding import SparseEmbedding
     "doc,doc_str",
     [
         (Document(content="test text"), "content: 'test text'"),
-        (
-            Document(dataframe=pd.DataFrame([["John", 25], ["Martha", 34]], columns=["name", "age"])),
-            "dataframe: (2, 2)",
-        ),
         (Document(blob=ByteStream(b"hello, test string")), "blob: 18 bytes"),
-        (
-            Document(
-                content="test text",
-                dataframe=pd.DataFrame([["John", 25], ["Martha", 34]], columns=["name", "age"]),
-                blob=ByteStream(b"hello, test string"),
-            ),
-            "content: 'test text', dataframe: (2, 2), blob: 18 bytes",
-        ),
+        (Document(content="test text", blob=ByteStream(b"hello, test string")), "content: 'test text', blob: 18 bytes"),
     ],
 )
 def test_document_str(doc, doc_str):
@@ -36,7 +25,6 @@ def test_init():
     doc = Document()
     assert doc.id == "d4675c57fcfe114db0b95f1da46eea3c5d6f5729c17d01fb5251ae19830a3455"
     assert doc.content == None
-    assert doc.dataframe == None
     assert doc.blob == None
     assert doc.meta == {}
     assert doc.score == None
@@ -54,17 +42,14 @@ def test_init_with_parameters():
     sparse_embedding = SparseEmbedding(indices=[0, 2, 4], values=[0.1, 0.2, 0.3])
     doc = Document(
         content="test text",
-        dataframe=pd.DataFrame([0]),
         blob=ByteStream(data=blob_data, mime_type="text/markdown"),
         meta={"text": "test text"},
         score=0.812,
         embedding=[0.1, 0.2, 0.3],
         sparse_embedding=sparse_embedding,
     )
-    assert doc.id == "967b7bd4a21861ad9e863f638cefcbdd6bf6306bebdd30aa3fedf0c26bc636ed"
+    assert doc.id == "1aa43af57c1dbc317241bf55d3067049f334d3b458d95dc72f71a7111f6c1a56"
     assert doc.content == "test text"
-    assert doc.dataframe is not None
-    assert doc.dataframe.equals(pd.DataFrame([0]))
     assert doc.blob.data == blob_data
     assert doc.blob.mime_type == "text/markdown"
     assert doc.meta == {"text": "test text"}
@@ -83,7 +68,6 @@ def test_init_with_legacy_fields():
     )
     assert doc.id == "18fc2c114825872321cf5009827ca162f54d3be50ab9e9ffa027824b6ec223af"
     assert doc.content == "test text"
-    assert doc.dataframe == None
     assert doc.blob == None
     assert doc.meta == {}
     assert doc.score == 0.812
@@ -102,7 +86,6 @@ def test_init_with_legacy_field():
     )
     assert doc.id == "a2c0321b34430cc675294611e55529fceb56140ca3202f1c59a43a8cecac1f43"
     assert doc.content == "test text"
-    assert doc.dataframe == None
     assert doc.meta == {"date": "10-10-2023", "type": "article"}
     assert doc.score == 0.812
     assert doc.embedding == [0.1, 0.2, 0.3]
@@ -131,7 +114,6 @@ def test_to_dict():
     assert doc.to_dict() == {
         "id": doc._create_id(),
         "content": None,
-        "dataframe": None,
         "blob": None,
         "score": None,
         "embedding": None,
@@ -144,7 +126,6 @@ def test_to_dict_without_flattening():
     assert doc.to_dict(flatten=False) == {
         "id": doc._create_id(),
         "content": None,
-        "dataframe": None,
         "blob": None,
         "meta": {},
         "score": None,
@@ -156,7 +137,6 @@ def test_to_dict_without_flattening():
 def test_to_dict_with_custom_parameters():
     doc = Document(
         content="test text",
-        dataframe=pd.DataFrame([10, 20, 30]),
         blob=ByteStream(b"some bytes", mime_type="application/pdf"),
         meta={"some": "values", "test": 10},
         score=0.99,
@@ -167,7 +147,6 @@ def test_to_dict_with_custom_parameters():
     assert doc.to_dict() == {
         "id": doc.id,
         "content": "test text",
-        "dataframe": pd.DataFrame([10, 20, 30]).to_json(),
         "blob": {"data": list(b"some bytes"), "mime_type": "application/pdf"},
         "some": "values",
         "test": 10,
@@ -180,7 +159,6 @@ def test_to_dict_with_custom_parameters():
 def test_to_dict_with_custom_parameters_without_flattening():
     doc = Document(
         content="test text",
-        dataframe=pd.DataFrame([10, 20, 30]),
         blob=ByteStream(b"some bytes", mime_type="application/pdf"),
         meta={"some": "values", "test": 10},
         score=0.99,
@@ -191,7 +169,6 @@ def test_to_dict_with_custom_parameters_without_flattening():
     assert doc.to_dict(flatten=False) == {
         "id": doc.id,
         "content": "test text",
-        "dataframe": pd.DataFrame([10, 20, 30]).to_json(),
         "blob": {"data": list(b"some bytes"), "mime_type": "application/pdf"},
         "meta": {"some": "values", "test": 10},
         "score": 0.99,
@@ -209,7 +186,6 @@ def from_from_dict_with_parameters():
     assert Document.from_dict(
         {
             "content": "test text",
-            "dataframe": pd.DataFrame([0]).to_json(),
             "blob": {"data": list(blob_data), "mime_type": "text/markdown"},
             "meta": {"text": "test text"},
             "score": 0.812,
@@ -218,7 +194,6 @@ def from_from_dict_with_parameters():
         }
     ) == Document(
         content="test text",
-        dataframe=pd.DataFrame([0]),
         blob=ByteStream(blob_data, mime_type="text/markdown"),
         meta={"text": "test text"},
         score=0.812,
@@ -271,7 +246,6 @@ def test_from_dict_with_flat_meta():
     assert Document.from_dict(
         {
             "content": "test text",
-            "dataframe": pd.DataFrame([0]).to_json(),
             "blob": {"data": list(blob_data), "mime_type": "text/markdown"},
             "score": 0.812,
             "embedding": [0.1, 0.2, 0.3],
@@ -281,7 +255,6 @@ def test_from_dict_with_flat_meta():
         }
     ) == Document(
         content="test text",
-        dataframe=pd.DataFrame([0]),
         blob=ByteStream(blob_data, mime_type="text/markdown"),
         score=0.812,
         embedding=[0.1, 0.2, 0.3],
@@ -295,7 +268,6 @@ def test_from_dict_with_flat_and_non_flat_meta():
         Document.from_dict(
             {
                 "content": "test text",
-                "dataframe": pd.DataFrame([0]).to_json(),
                 "blob": {"data": list(b"some bytes"), "mime_type": "text/markdown"},
                 "score": 0.812,
                 "meta": {"test": 10},
@@ -308,10 +280,12 @@ def test_from_dict_with_flat_and_non_flat_meta():
 
 def test_content_type():
     assert Document(content="text").content_type == "text"
-    assert Document(dataframe=pd.DataFrame([0])).content_type == "table"
 
     with pytest.raises(ValueError):
         _ = Document().content_type
 
-    with pytest.raises(ValueError):
-        _ = Document(content="text", dataframe=pd.DataFrame([0])).content_type
+
+def test_dataframe_is_not_supported():
+    with pytest.raises(ValueError, match="The `dataframe` field is no longer supported."):
+        dataframe = DataFrame({"col1": [1], "col2": [2]})
+        Document(dataframe=dataframe, content="test text")

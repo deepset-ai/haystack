@@ -211,7 +211,6 @@ class TestDocumentCleaner:
         cleaner = DocumentCleaner(keep_id=True)
         document = Document(
             content="This is a text with some words. \nThere is a second sentence. \nAnd there is a third sentence.\n",
-            dataframe=DataFrame({"col1": [1], "col2": [2]}),
             blob=ByteStream.from_string("some_data"),
             meta={"data": 1},
             score=0.1,
@@ -226,7 +225,6 @@ class TestDocumentCleaner:
         assert res["documents"][0].content == (
             "This is a text with some words. There is a second sentence. And there is a third sentence."
         )
-        assert res["documents"][0].dataframe.equals(document.dataframe)
         assert res["documents"][0].blob == document.blob
         assert res["documents"][0].meta == document.meta
         assert res["documents"][0].score == document.score
