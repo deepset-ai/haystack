@@ -241,6 +241,8 @@ class TestAzureOpenAIChatGenerator:
         assert tool_call.arguments == {"city": "Paris"}
         assert message.meta["finish_reason"] == "tool_calls"
 
+    # additional tests intentionally omitted as they are covered by test_openai.py
+
 
 class TestAzureOpenAIChatGeneratorAsync:
     def test_init_should_also_create_async_client_with_same_args(self, monkeypatch):
