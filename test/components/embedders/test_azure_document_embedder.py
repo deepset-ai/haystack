@@ -95,7 +95,7 @@ class TestAzureOpenAIDocumentEmbedder:
             embedding_separator=" | ",
         )
 
-        fake_texts_to_embed = ["Cuisine | I love cheese", "ML | A transformer is a deep learning architecture"]
+        fake_texts_to_embed = {"1": "text1", "2": "text2"}
 
         with patch.object(
             embedder._client.embeddings,
@@ -105,7 +105,7 @@ class TestAzureOpenAIDocumentEmbedder:
             embedder._embed_batch(texts_to_embed=fake_texts_to_embed, batch_size=32)
 
         assert len(caplog.records) == 1
-        assert "Failed embedding of documents in range: 0 - 32 caused by Mocked error" in caplog.text
+        assert "Failed embedding of documents 1, 2 caused by Mocked error" in caplog.text
 
     @pytest.mark.integration
     @pytest.mark.skipif(
