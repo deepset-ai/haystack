@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from datetime import datetime
 import os
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock, AsyncMock, patch
 
 import pytest
 from haystack import Pipeline
@@ -81,6 +81,31 @@ def mock_chat_completion():
         yield mock_chat_completion
 
 
+@pytest.fixture
+def mock_chat_completion_async():
+    with patch("huggingface_hub.AsyncInferenceClient.chat_completion", autospec=True) as mock_chat_completion:
+        completion = ChatCompletionOutput(
+            choices=[
+                ChatCompletionOutputComplete(
+                    finish_reason="eos_token",
+                    index=0,
+                    message=ChatCompletionOutputMessage(content="The capital of France is Paris.", role="assistant"),
+                )
+            ],
+            id="some_id",
+            model="some_model",
+            system_fingerprint="some_fingerprint",
+            usage=ChatCompletionOutputUsage(completion_tokens=8, prompt_tokens=17, total_tokens=25),
+            created=1710498360,
+        )
+
+        # Use AsyncMock to properly mock the async method
+        mock_chat_completion.return_value = completion
+        mock_chat_completion.__call__ = AsyncMock(return_value=completion)
+
+        yield mock_chat_completion
+
+
 # used to test serialization of streaming_callback
 def streaming_callback_handler(x):
     return x
@@ -112,6 +137,10 @@ class TestHuggingFaceAPIChatGenerator:
         assert generator.streaming_callback == streaming_callback
         assert generator.tools is None
 
+        # check that client and async_client are initialized
+        assert generator._client.model == model
+        assert generator._async_client.model == model
+
     def test_init_serverless_with_tools(self, mock_check_valid_model, tools):
         model = "HuggingFaceH4/zephyr-7b-alpha"
         generation_kwargs = {"temperature": 0.6}
@@ -133,6 +162,9 @@ class TestHuggingFaceAPIChatGenerator:
         assert generator.generation_kwargs == {**generation_kwargs, **{"stop": ["stop"]}, **{"max_tokens": 512}}
         assert generator.streaming_callback == streaming_callback
         assert generator.tools == tools
+
+        assert generator._client.model == model
+        assert generator._async_client.model == model
 
     def test_init_serverless_invalid_model(self, mock_check_valid_model):
         mock_check_valid_model.side_effect = RepositoryNotFoundError("Invalid model id")
@@ -167,6 +199,9 @@ class TestHuggingFaceAPIChatGenerator:
         assert generator.generation_kwargs == {**generation_kwargs, **{"stop": ["stop"]}, **{"max_tokens": 512}}
         assert generator.streaming_callback == streaming_callback
         assert generator.tools is None
+
+        assert generator._client.model == url
+        assert generator._async_client.model == url
 
     def test_init_tgi_invalid_url(self):
         with pytest.raises(ValueError):
@@ -623,3 +658,176 @@ class TestHuggingFaceAPIChatGenerator:
         assert not final_message.tool_calls
         assert len(final_message.text) > 0
         assert "paris" in final_message.text.lower()
+
+    @pytest.mark.asyncio
+    async def test_run_async(self, mock_check_valid_model, mock_chat_completion_async, chat_messages):
+        generator = HuggingFaceAPIChatGenerator(
+            api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
+            api_params={"model": "meta-llama/Llama-2-13b-chat-hf"},
+            generation_kwargs={"temperature": 0.6},
+            stop_words=["stop", "words"],
+            streaming_callback=None,
+        )
+
+        response = await generator.run_async(messages=chat_messages)
+
+        # check kwargs passed to chat_completion
+        _, kwargs = mock_chat_completion_async.call_args
+        hf_messages = [
+            {"role": "system", "content": "You are a helpful assistant speaking A2 level of English"},
+            {"role": "user", "content": "Tell me about Berlin"},
+        ]
+        assert kwargs == {
+            "temperature": 0.6,
+            "stop": ["stop", "words"],
+            "max_tokens": 512,
+            "tools": None,
+            "messages": hf_messages,
+        }
+
+        assert isinstance(response, dict)
+        assert "replies" in response
+        assert isinstance(response["replies"], list)
+        assert len(response["replies"]) == 1
+        assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_streaming(self, mock_check_valid_model, mock_chat_completion_async, chat_messages):
+        streaming_call_count = 0
+
+        async def streaming_callback_fn(chunk: StreamingChunk):
+            nonlocal streaming_call_count
+            streaming_call_count += 1
+            assert isinstance(chunk, StreamingChunk)
+
+        # Create a fake streamed response
+        async def mock_aiter(self):
+            yield ChatCompletionStreamOutput(
+                choices=[
+                    ChatCompletionStreamOutputChoice(
+                        delta=ChatCompletionStreamOutputDelta(content="The", role="assistant"),
+                        index=0,
+                        finish_reason=None,
+                    )
+                ],
+                id="some_id",
+                model="some_model",
+                system_fingerprint="some_fingerprint",
+                created=1710498504,
+            )
+
+            yield ChatCompletionStreamOutput(
+                choices=[
+                    ChatCompletionStreamOutputChoice(
+                        delta=ChatCompletionStreamOutputDelta(content=None, role=None), index=0, finish_reason="length"
+                    )
+                ],
+                id="some_id",
+                model="some_model",
+                system_fingerprint="some_fingerprint",
+                created=1710498504,
+            )
+
+        mock_response = Mock(**{"__aiter__": mock_aiter})
+        mock_chat_completion_async.return_value = mock_response
+
+        generator = HuggingFaceAPIChatGenerator(
+            api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
+            api_params={"model": "meta-llama/Llama-2-13b-chat-hf"},
+            streaming_callback=streaming_callback_fn,
+        )
+
+        response = await generator.run_async(messages=chat_messages)
+
+        # check kwargs passed to chat_completion
+        _, kwargs = mock_chat_completion_async.call_args
+        assert kwargs == {"stop": [], "stream": True, "max_tokens": 512}
+
+        # Assert that the streaming callback was called twice
+        assert streaming_call_count == 2
+
+        # Assert that the response contains the generated replies
+        assert "replies" in response
+        assert isinstance(response["replies"], list)
+        assert len(response["replies"]) > 0
+        assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_tools(self, tools, mock_check_valid_model):
+        generator = HuggingFaceAPIChatGenerator(
+            api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
+            api_params={"model": "meta-llama/Llama-3.1-70B-Instruct"},
+            tools=tools,
+        )
+
+        with patch("huggingface_hub.AsyncInferenceClient.chat_completion", autospec=True) as mock_chat_completion_async:
+            completion = ChatCompletionOutput(
+                choices=[
+                    ChatCompletionOutputComplete(
+                        finish_reason="stop",
+                        index=0,
+                        message=ChatCompletionOutputMessage(
+                            role="assistant",
+                            content=None,
+                            tool_calls=[
+                                ChatCompletionOutputToolCall(
+                                    function=ChatCompletionOutputFunctionDefinition(
+                                        arguments={"city": "Paris"}, name="weather", description=None
+                                    ),
+                                    id="0",
+                                    type="function",
+                                )
+                            ],
+                        ),
+                        logprobs=None,
+                    )
+                ],
+                created=1729074760,
+                id="",
+                model="meta-llama/Llama-3.1-70B-Instruct",
+                system_fingerprint="2.3.2-dev0-sha-28bb7ae",
+                usage=ChatCompletionOutputUsage(completion_tokens=30, prompt_tokens=426, total_tokens=456),
+            )
+            mock_chat_completion_async.return_value = completion
+
+            messages = [ChatMessage.from_user("What is the weather in Paris?")]
+            response = await generator.run_async(messages=messages)
+
+        assert isinstance(response, dict)
+        assert "replies" in response
+        assert isinstance(response["replies"], list)
+        assert len(response["replies"]) == 1
+        assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
+        assert response["replies"][0].tool_calls[0].tool_name == "weather"
+        assert response["replies"][0].tool_calls[0].arguments == {"city": "Paris"}
+        assert response["replies"][0].tool_calls[0].id == "0"
+        assert response["replies"][0].meta == {
+            "finish_reason": "stop",
+            "index": 0,
+            "model": "meta-llama/Llama-3.1-70B-Instruct",
+            "usage": {"completion_tokens": 30, "prompt_tokens": 426},
+        }
+
+    @pytest.mark.integration
+    @pytest.mark.skipif(
+        not os.environ.get("HF_API_TOKEN", None),
+        reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
+    )
+    @pytest.mark.flaky(reruns=3, reruns_delay=10)
+    async def test_live_run_async_serverless(self):
+        generator = HuggingFaceAPIChatGenerator(
+            api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
+            api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
+            generation_kwargs={"max_tokens": 20},
+        )
+
+        messages = [ChatMessage.from_user("What is the capital of France?")]
+        response = await generator.run_async(messages=messages)
+
+        assert "replies" in response
+        assert isinstance(response["replies"], list)
+        assert len(response["replies"]) > 0
+        assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
+        assert "usage" in response["replies"][0].meta
+        assert "prompt_tokens" in response["replies"][0].meta["usage"]
+        assert "completion_tokens" in response["replies"][0].meta["usage"]
