@@ -1,0 +1,7 @@
+---
+---
+features:
+  - |
+    Add `run_async` method to `AzureOpenAIChatGenerator`. This method uses `AsyncAzureOpenAI`
+    to generate chat completions and supports the same parameters as the `run` method. It returns a coroutine
+    that can be awaited.
