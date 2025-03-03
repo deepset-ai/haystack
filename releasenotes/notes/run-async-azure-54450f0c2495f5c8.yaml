@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Add run async support for the AzureOpenAIChatGenerator
