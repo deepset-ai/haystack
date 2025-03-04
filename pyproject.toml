@@ -83,7 +83,7 @@ format-check = "ruff format --check {args}"
 
 [tool.hatch.envs.test]
 extra-dependencies = [
-  "pandas",                                    # Used in several components and pipeline tests
+  "pandas",                                    # Used in XLSXToDocument, CSVDocumentSplitter,  CSVDocumentCleaner, EvaluationRunResult and pipeline tests
   "numpy>=2", # Haystack is compatible both with numpy 1.x and 2.x, but we test with 2.x
   "numba>=0.54.0", # This pin helps uv resolve the dependency tree. See https://github.com/astral-sh/uv/issues/7881
 
