@@ -146,7 +146,7 @@ def openai_mock_chat_completion_chunk():
                 )
             ],
             created=int(datetime.now().timestamp()),
-            usage={"prompt_tokens": 57, "completion_tokens": 40, "total_tokens": 97},
+            usage=None,
         )
         mock_chat_completion_create.return_value = OpenAIMockStream(
             completion, cast_to=None, response=None, client=None
@@ -175,7 +175,7 @@ async def openai_mock_async_chat_completion_chunk():
                 )
             ],
             created=int(datetime.now().timestamp()),
-            usage={"prompt_tokens": 57, "completion_tokens": 40, "total_tokens": 97},
+            usage=None,
         )
         mock_chat_completion_create.return_value = OpenAIAsyncMockStream(completion)
         yield mock_chat_completion_create

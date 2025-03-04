@@ -9,7 +9,7 @@ import logging
 import os
 from datetime import datetime
 
-from openai import AsyncOpenAI, OpenAIError
+from openai import OpenAIError
 from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletionMessage, ChatCompletionMessageToolCall
 from openai.types.chat.chat_completion import Choice
 from openai.types.chat.chat_completion_message_tool_call import Function
@@ -63,7 +63,6 @@ def mock_chat_completion_chunk_with_tools(openai_mock_stream):
                 )
             ],
             created=int(datetime.now().timestamp()),
-            usage={"prompt_tokens": 57, "completion_tokens": 40, "total_tokens": 97},
         )
         mock_chat_completion_create.return_value = openai_mock_stream(
             completion, cast_to=None, response=None, client=None
@@ -317,6 +316,7 @@ class TestOpenAIChatGenerator:
 
         # check we called the streaming callback
         assert streaming_callback_called
+        print(response)
 
         # check that the component still returns the correct response
         assert isinstance(response, dict)

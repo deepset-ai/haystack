@@ -401,12 +401,16 @@ class OpenAIChatGenerator:
         chunk = None
 
         for chunk in chat_completion:  # pylint: disable=not-an-iterable
-            assert len(chunk.choices) == 1, "Streaming responses should have only one choice."
-            chunk_delta: StreamingChunk = self._convert_chat_completion_chunk_to_streaming_chunk(chunk)
+            # choices is an empty array for usage_chunk when include_usage is set to True
+            if chunk.usage is not None:
+                chunk_delta: StreamingChunk = self._convert_usage_chunk_to_streaming_chunk(chunk)
+
+            else:
+                assert len(chunk.choices) == 1, "Streaming responses should have only one choice."
+                chunk_delta: StreamingChunk = self._convert_chat_completion_chunk_to_streaming_chunk(chunk)
             chunks.append(chunk_delta)
 
             callback(chunk_delta)
-
         return [self._convert_streaming_chunks_to_chat_message(chunk, chunks)]
 
     async def _handle_async_stream_response(
@@ -493,7 +497,11 @@ class OpenAIChatGenerator:
                 )
 
         # finish_reason is in the last chunk if usage is not included, or in the second last chunk if usage is included
-        finish_reason = (chunks[-2] if chunk.usage else chunks[-1]).meta.get("finish_reason")
+        finish_reason = (chunks[-2] if chunk.usage and len(chunks) >= 2 else chunks[-1]).meta.get("finish_reason")
+        # if chunk[].meta.get("usage") is not None and len(chunks) >= 2:
+        # finish_reason = chunks[-2].meta.get("finish_reason")
+        # else:
+        # finish_reason = chunk.choices[0].finish_reason
 
         meta = {
             "model": chunk.model,
