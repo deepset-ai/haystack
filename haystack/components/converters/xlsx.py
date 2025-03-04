@@ -14,14 +14,12 @@ from haystack.lazy_imports import LazyImport
 
 logger = logging.getLogger(__name__)
 
-with LazyImport("Run 'pip install openpyxl'") as xlsx_import:
+with LazyImport("Run 'pip install pandas openpyxl'") as pandas_xlsx_import:
     import openpyxl  # pylint: disable=unused-import # the library is used but not directly referenced
+    import pandas as pd
 
 with LazyImport("Run 'pip install tabulate'") as tabulate_import:
     from tabulate import tabulate  # pylint: disable=unused-import # the library is used but not directly referenced
-
-with LazyImport("Run 'pip install pandas'") as pandas_import:
-    import pandas as pd
 
 
 @component
@@ -70,7 +68,7 @@ class XLSXToDocument:
             If True, the full path of the file is stored in the metadata of the document.
             If False, only the file name is stored.
         """
-        xlsx_import.check()
+        pandas_xlsx_import.check()
         self.table_format = table_format
         if table_format not in ["csv", "markdown"]:
             raise ValueError(f"Unsupported export format: {table_format}. Choose either 'csv' or 'markdown'.")
