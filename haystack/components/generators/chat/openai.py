@@ -399,15 +399,16 @@ class OpenAIChatGenerator:
     def _handle_stream_response(self, chat_completion: Stream, callback: SyncStreamingCallbackT) -> List[ChatMessage]:
         chunks: List[StreamingChunk] = []
         chunk = None
+        chunk_delta: StreamingChunk
 
         for chunk in chat_completion:  # pylint: disable=not-an-iterable
             # choices is an empty array for usage_chunk when include_usage is set to True
             if chunk.usage is not None:
-                chunk_delta: StreamingChunk = self._convert_usage_chunk_to_streaming_chunk(chunk)
+                chunk_delta = self._convert_usage_chunk_to_streaming_chunk(chunk)
 
             else:
                 assert len(chunk.choices) == 1, "Streaming responses should have only one choice."
-                chunk_delta: StreamingChunk = self._convert_chat_completion_chunk_to_streaming_chunk(chunk)
+                chunk_delta = self._convert_chat_completion_chunk_to_streaming_chunk(chunk)
             chunks.append(chunk_delta)
 
             callback(chunk_delta)
@@ -418,6 +419,7 @@ class OpenAIChatGenerator:
     ) -> List[ChatMessage]:
         chunks: List[StreamingChunk] = []
         chunk = None
+        chunk_delta: StreamingChunk
 
         async for chunk in chat_completion:  # pylint: disable=not-an-iterable
             # choices is an empty array for usage_chunk when include_usage is set to True
@@ -426,7 +428,7 @@ class OpenAIChatGenerator:
 
             else:
                 assert len(chunk.choices) == 1, "Streaming responses should have only one choice."
-                chunk_delta: StreamingChunk = self._convert_chat_completion_chunk_to_streaming_chunk(chunk)
+                chunk_delta = self._convert_chat_completion_chunk_to_streaming_chunk(chunk)
             chunks.append(chunk_delta)
 
             await callback(chunk_delta)
