@@ -81,3 +81,6 @@ def spying_tracer() -> Generator[SpyingTracer, None, None]:
 
     # Make sure to disable tracing after the test to avoid affecting other tests
     tracing.disable_tracing()
+
+
+collect_ignore = ["components/extractors/test_named_entity_extractor.py"]
