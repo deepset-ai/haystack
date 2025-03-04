@@ -223,13 +223,13 @@ class EvaluationRunResult:
 
     def score_report(self) -> "DataFrame":
         """Generates a DataFrame report with aggregated scores for each metric."""
-        msg = "The `score_report` method is deprecated and will be changed to `aggregated_report` in Haystack 2.11.0."
+        msg = "The `score_report` method is deprecated and will be changed to `aggregated_report` in Haystack 2.12.0."
         warn(msg, DeprecationWarning, stacklevel=2)
         return self.aggregated_report(output_format="df")
 
     def to_pandas(self) -> "DataFrame":
         """Generates a DataFrame report with detailed scores for each metric."""
-        msg = "The `to_pandas` method is deprecated and will be changed to `detailed_report` in Haystack 2.11.0."
+        msg = "The `to_pandas` method is deprecated and will be changed to `detailed_report` in Haystack 2.12.0."
         warn(msg, DeprecationWarning, stacklevel=2)
         return self.detailed_report(output_format="df")
 
@@ -237,7 +237,7 @@ class EvaluationRunResult:
         """Generates a DataFrame report with detailed scores for each metric from two evaluation runs for comparison."""
         msg = (
             "The `comparative_individual_scores_report` method is deprecated and will be changed to "
-            "`comparative_detailed_report` in Haystack 2.11.0."
+            "`comparative_detailed_report` in Haystack 2.12.0."
         )
         warn(msg, DeprecationWarning, stacklevel=2)
         return self.comparative_detailed_report(other, output_format="df")
