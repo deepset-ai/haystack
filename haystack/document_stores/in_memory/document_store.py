@@ -433,23 +433,9 @@ class InMemoryDocumentStore:
             if document.id in self.storage.keys():
                 self.delete_documents([document.id])
 
-            # This processing logic is extracted from the original bm25_retrieval method.
-            # Since we are creating index incrementally before the first retrieval,
-            # we need to determine what content to use for indexing here, not at query time.
+            tokens = []
             if document.content is not None:
-                if document.dataframe is not None:
-                    logger.warning(
-                        "Document '{document_id}' has both text and dataframe content. "
-                        "Using text content for retrieval and skipping dataframe content.",
-                        document_id=document.id,
-                    )
                 tokens = self._tokenize_bm25(document.content)
-            elif document.dataframe is not None:
-                str_content = document.dataframe.astype(str)
-                csv_content = str_content.to_csv(index=False)
-                tokens = self._tokenize_bm25(csv_content)
-            else:
-                tokens = []
 
             self.storage[document.id] = document
 
@@ -495,13 +481,7 @@ class InMemoryDocumentStore:
         if not query:
             raise ValueError("Query should be a non-empty string")
 
-        content_type_filter = {
-            "operator": "OR",
-            "conditions": [
-                {"field": "content", "operator": "!=", "value": None},
-                {"field": "dataframe", "operator": "!=", "value": None},
-            ],
-        }
+        content_type_filter = {"field": "content", "operator": "!=", "value": None}
         if filters:
             if "operator" not in filters:
                 raise ValueError(

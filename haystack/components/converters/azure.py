@@ -23,7 +23,7 @@ with LazyImport(message="Run 'pip install \"azure-ai-formrecognizer>=3.2.0b2\"'"
     from azure.core.credentials import AzureKeyCredential
 
 with LazyImport(message="Run 'pip install pandas'") as pandas_import:
-    import pandas as pd
+    from pandas import DataFrame
 
 
 @component
@@ -306,7 +306,7 @@ class AzureOCRDocumentConverter:
                 table_meta["page"] = table.bounding_regions[0].page_number
 
             # Convert table to CSV
-            table_df = pd.DataFrame(data=table_list)
+            table_df = DataFrame(data=table_list)
             table_content = table_df.to_csv(header=False, index=False, lineterminator="\n")
             converted_tables.append(Document(content=table_content, meta=table_meta))
 
