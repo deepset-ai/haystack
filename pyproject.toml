@@ -122,7 +122,6 @@ extra-dependencies = [
   "openapi3",
   "openapi-llm>=0.4.1",   # OpenAPIConnector
 
-
   # Tracing
   "opentelemetry-sdk",
   "ddtrace",
