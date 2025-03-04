@@ -97,7 +97,7 @@ class EvaluationRunResult:
     @staticmethod
     def _handle_output(
         data: Dict[str, List[Any]], output_format: Literal["json", "csv", "df"] = "csv", csv_file: Optional[str] = None
-    ) -> Union[str, DataFrame, Dict[str, List[Any]]]:
+    ) -> Union[str, "DataFrame", Dict[str, List[Any]]]:
         """
         Handles output formatting based on `output_format`.
 
