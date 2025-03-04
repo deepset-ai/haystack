@@ -4,7 +4,7 @@
 import pytest
 
 from haystack import Document
-from haystack.dataclasses.answer import ExtractedAnswer, GeneratedAnswer, ExtractedTableAnswer
+from haystack.dataclasses.answer import ExtractedAnswer, GeneratedAnswer
 from haystack.components.joiners.answer_joiner import AnswerJoiner, JoinMode
 
 
@@ -90,10 +90,9 @@ class TestAnswerJoiner:
         joiner = AnswerJoiner()
         answers1 = [GeneratedAnswer(query="a", data="a", meta={}, documents=[Document(content="a")])]
         answers2 = [ExtractedAnswer(query="d", score=0.9, meta={}, document=Document(content="d"))]
-        answers3 = [ExtractedTableAnswer(query="e", score=0.7, meta={}, document=Document(content="e"))]
-        answers4 = [GeneratedAnswer(query="f", data="f", meta={}, documents=[Document(content="f")])]
-        all_answers = answers1 + answers2 + answers3 + answers4  # type: ignore
-        result = joiner.run([answers1, answers2, answers3, answers4])
+        answers3 = [GeneratedAnswer(query="f", data="f", meta={}, documents=[Document(content="f")])]
+        all_answers = answers1 + answers2 + answers3  # type: ignore
+        result = joiner.run([answers1, answers2, answers3])
         assert result == {"answers": all_answers}
 
     def test_unsupported_join_mode(self):

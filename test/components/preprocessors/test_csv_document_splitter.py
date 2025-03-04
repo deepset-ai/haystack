@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import pytest
-import pandas as pd
+from pandas import read_csv
 from io import StringIO
 from haystack import Document, Pipeline
 from haystack.core.serialization import component_from_dict, component_to_dict
@@ -50,14 +50,14 @@ class TestFindSplitIndices:
     def test_find_split_indices_row_two_tables(
         self, splitter: CSVDocumentSplitter, two_tables_sep_by_two_empty_rows: str
     ) -> None:
-        df = pd.read_csv(StringIO(two_tables_sep_by_two_empty_rows), header=None, dtype=object)  # type: ignore
+        df = read_csv(StringIO(two_tables_sep_by_two_empty_rows), header=None, dtype=object)  # type: ignore
         result = splitter._find_split_indices(df, split_threshold=2, axis="row")
         assert result == [(2, 3)]
 
     def test_find_split_indices_row_two_tables_with_empty_row(
         self, splitter: CSVDocumentSplitter, three_tables_sep_by_empty_rows: str
     ) -> None:
-        df = pd.read_csv(StringIO(three_tables_sep_by_empty_rows), header=None, dtype=object)  # type: ignore
+        df = read_csv(StringIO(three_tables_sep_by_empty_rows), header=None, dtype=object)  # type: ignore
         result = splitter._find_split_indices(df, split_threshold=2, axis="row")
         assert result == [(3, 4)]
 
@@ -72,14 +72,14 @@ X,Y,Z
 ,,
 P,Q,R
 """
-        df = pd.read_csv(StringIO(csv_content), header=None, dtype=object)  # type: ignore
+        df = read_csv(StringIO(csv_content), header=None, dtype=object)  # type: ignore
         result = splitter._find_split_indices(df, split_threshold=2, axis="row")
         assert result == [(2, 3), (6, 7)]
 
     def test_find_split_indices_column_two_tables(
         self, splitter: CSVDocumentSplitter, two_tables_sep_by_two_empty_columns: str
     ) -> None:
-        df = pd.read_csv(StringIO(two_tables_sep_by_two_empty_columns), header=None, dtype=object)  # type: ignore
+        df = read_csv(StringIO(two_tables_sep_by_two_empty_columns), header=None, dtype=object)  # type: ignore
         result = splitter._find_split_indices(df, split_threshold=1, axis="column")
         assert result == [(2, 3)]
 
@@ -88,7 +88,7 @@ P,Q,R
 1,,2,,,7,8
 3,,4,,,9,10
 """
-        df = pd.read_csv(StringIO(csv_content), header=None, dtype=object)  # type: ignore
+        df = read_csv(StringIO(csv_content), header=None, dtype=object)  # type: ignore
         result = splitter._find_split_indices(df, split_threshold=2, axis="column")
         assert result == [(3, 4)]
 
@@ -97,7 +97,7 @@ P,Q,R
 1,2,,,7,8,,,11,12
 3,4,,,9,10,,,13,14
 """
-        df = pd.read_csv(StringIO(csv_content), header=None, dtype=object)  # type: ignore
+        df = read_csv(StringIO(csv_content), header=None, dtype=object)  # type: ignore
         result = splitter._find_split_indices(df, split_threshold=2, axis="column")
         assert result == [(2, 3), (6, 7)]
 
