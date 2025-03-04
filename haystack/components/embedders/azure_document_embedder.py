@@ -5,6 +5,7 @@
 import os
 from typing import Any, Dict, List, Optional, Tuple
 
+from more_itertools import batched
 from openai import APIError
 from openai.lib.azure import AzureOpenAI
 from tqdm import tqdm
@@ -210,8 +211,9 @@ class AzureOpenAIDocumentEmbedder:
         all_embeddings: List[List[float]] = []
         meta: Dict[str, Any] = {"model": "", "usage": {"prompt_tokens": 0, "total_tokens": 0}}
 
-        for i in tqdm(range(0, len(texts_to_embed), batch_size), desc="Embedding Texts"):
-            batch = list(texts_to_embed.items())[i : i + batch_size]
+        for batch in tqdm(
+            batched(texts_to_embed.items(), batch_size), disable=not self.progress_bar, desc="Calculating embeddings"
+        ):
             args: Dict[str, Any] = {"model": self.azure_deployment, "input": [b[1] for b in batch]}
 
             if self.dimensions is not None:
@@ -219,24 +221,23 @@ class AzureOpenAIDocumentEmbedder:
 
             try:
                 response = self._client.embeddings.create(**args)
-
-                # Append embeddings to the list
-                all_embeddings.extend(el.embedding for el in response.data)
-
-                # Update the meta information only once if it's empty
-                if not meta["model"]:
-                    meta["model"] = response.model
-                    meta["usage"] = dict(response.usage)
-                else:
-                    # Update the usage tokens
-                    meta["usage"]["prompt_tokens"] += response.usage.prompt_tokens
-                    meta["usage"]["total_tokens"] += response.usage.total_tokens
-
             except APIError as e:
                 # Log the error but continue processing
                 ids = ", ".join(b[0] for b in batch)
                 logger.exception(f"Failed embedding of documents {ids} caused by {e}")
                 continue
+
+            embeddings = [el.embedding for el in response.data]
+            all_embeddings.extend(embeddings)
+
+            # Update the meta information only once if it's empty
+            if not meta["model"]:
+                meta["model"] = response.model
+                meta["usage"] = dict(response.usage)
+            else:
+                # Update the usage tokens
+                meta["usage"]["prompt_tokens"] += response.usage.prompt_tokens
+                meta["usage"]["total_tokens"] += response.usage.total_tokens
 
         return all_embeddings, meta
 
