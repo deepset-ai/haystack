@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from pandas import DataFrame
 import pytest
 
 from haystack import Document
@@ -283,9 +282,3 @@ def test_content_type():
 
     with pytest.raises(ValueError):
         _ = Document().content_type
-
-
-def test_dataframe_is_not_supported():
-    with pytest.raises(ValueError, match="The `dataframe` field is no longer supported."):
-        dataframe = DataFrame({"col1": [1], "col2": [2]})
-        Document(dataframe=dataframe, content="test text")

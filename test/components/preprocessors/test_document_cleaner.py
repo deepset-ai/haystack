@@ -5,7 +5,6 @@ import logging
 
 import pytest
 
-from pandas import DataFrame
 from haystack import Document
 from haystack.dataclasses import ByteStream, SparseEmbedding
 from haystack.components.preprocessors import DocumentCleaner

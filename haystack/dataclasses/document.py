@@ -44,10 +44,6 @@ class _BackwardCompatible(type):
         if "id_hash_keys" in kwargs:
             del kwargs["id_hash_keys"]
 
-        ### >=2.11: Dataframe is not supported anymore ###
-        if "dataframe" in kwargs:
-            raise ValueError("The `dataframe` field is no longer supported.")
-
         return super().__call__(*args, **kwargs)
 
 
