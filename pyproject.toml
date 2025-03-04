@@ -57,7 +57,6 @@ dependencies = [
   "numpy",
   "python-dateutil",
   "jsonschema",             # JsonSchemaValidator, Tool
-  "openapi-llm>=0.4.1",            # OpenAPIConnector
   "haystack-experimental",
 ]
 
@@ -119,8 +118,10 @@ extra-dependencies = [
   "nltk>=3.9.1", # NLTKDocumentSplitter
 
   # OpenAPI
-  "jsonref",  # OpenAPIServiceConnector, OpenAPIServiceToFunctions
+  "jsonref",              # OpenAPIServiceConnector, OpenAPIServiceToFunctions
   "openapi3",
+  "openapi-llm>=0.4.1",   # OpenAPIConnector
+
 
   # Tracing
   "opentelemetry-sdk",
