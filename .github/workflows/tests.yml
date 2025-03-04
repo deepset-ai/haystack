@@ -72,6 +72,7 @@ jobs:
         with:
           api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
           api-url: https://api.datadoghq.eu
+          timeout: 30000
           events: |
             - title: "${{ github.workflow }} workflow"
               text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
@@ -119,6 +120,7 @@ jobs:
         with:
           api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
           api-url: https://api.datadoghq.eu
+          timeout: 30000
           events: |
             - title: "${{ github.workflow }} workflow"
               text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
@@ -192,6 +194,7 @@ jobs:
         with:
           api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
           api-url: https://api.datadoghq.eu
+          timeout: 30000
           events: |
             - title: "${{ github.workflow }} workflow"
               text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
@@ -270,6 +273,7 @@ jobs:
         with:
           api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
           api-url: https://api.datadoghq.eu
+          timeout: 30000
           events: |
             - title: "${{ github.workflow }} workflow"
               text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
@@ -338,6 +342,7 @@ jobs:
         with:
           api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
           api-url: https://api.datadoghq.eu
+          timeout: 30000
           events: |
             - title: "${{ github.workflow }} workflow"
               text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
@@ -403,6 +408,7 @@ jobs:
         with:
           api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
           api-url: https://api.datadoghq.eu
+          timeout: 30000
           events: |
             - title: "${{ github.workflow }} workflow"
               text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
@@ -461,6 +467,7 @@ jobs:
         with:
           api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
           api-url: https://api.datadoghq.eu
+          timeout: 30000
           events: |
             - title: "${{ github.workflow }} workflow"
               text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
