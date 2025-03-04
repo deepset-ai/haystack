@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import pytest
-import pandas as pd
 
 from haystack import Document
 from haystack.errors import FilterError
@@ -27,18 +26,6 @@ document_matches_filter_data = [
         Document(meta={"name": ["test"]}),
         False,
         id="== operator with different types values",
-    ),
-    pytest.param(
-        {"field": "dataframe", "operator": "==", "value": pd.DataFrame([1])},
-        Document(dataframe=pd.DataFrame([1])),
-        True,
-        id="== operator with equal pandas.DataFrame values",
-    ),
-    pytest.param(
-        {"field": "dataframe", "operator": "==", "value": pd.DataFrame([1])},
-        Document(dataframe=pd.DataFrame([10])),
-        False,
-        id="== operator with different pandas.DataFrame values",
     ),
     pytest.param(
         {"field": "meta.name", "operator": "==", "value": "test"},
@@ -76,18 +63,6 @@ document_matches_filter_data = [
         Document(meta={"name": ["test"]}),
         True,
         id="!= operator with different types values",
-    ),
-    pytest.param(
-        {"field": "dataframe", "operator": "!=", "value": pd.DataFrame([1])},
-        Document(dataframe=pd.DataFrame([1])),
-        False,
-        id="!= operator with equal pandas.DataFrame values",
-    ),
-    pytest.param(
-        {"field": "dataframe", "operator": "!=", "value": pd.DataFrame([1])},
-        Document(dataframe=pd.DataFrame([10])),
-        True,
-        id="!= operator with different pandas.DataFrame values",
     ),
     pytest.param(
         {"field": "meta.name", "operator": "!=", "value": "test"}, Document(), True, id="!= operator with missing value"
@@ -509,31 +484,15 @@ document_matches_filter_raises_error_data = [
     # > operator params
     pytest.param({"field": "meta.page", "operator": ">", "value": "10"}, id="> operator with string filter value"),
     pytest.param({"field": "meta.page", "operator": ">", "value": [10]}, id="> operator with list filter value"),
-    pytest.param(
-        {"field": "meta.page", "operator": ">", "value": pd.DataFrame([10])},
-        id="> operator with pandas.DataFrame filter value",
-    ),
     # >= operator params
     pytest.param({"field": "meta.page", "operator": ">=", "value": "10"}, id=">= operator with string filter value"),
     pytest.param({"field": "meta.page", "operator": ">=", "value": [10]}, id=">= operator with list filter value"),
-    pytest.param(
-        {"field": "meta.page", "operator": ">=", "value": pd.DataFrame([10])},
-        id=">= operator with pandas.DataFrame filter value",
-    ),
     # < operator params
     pytest.param({"field": "meta.page", "operator": "<", "value": "10"}, id="< operator with string filter value"),
     pytest.param({"field": "meta.page", "operator": "<", "value": [10]}, id="< operator with list filter value"),
-    pytest.param(
-        {"field": "meta.page", "operator": "<", "value": pd.DataFrame([10])},
-        id="< operator with pandas.DataFrame filter value",
-    ),
     # <= operator params
     pytest.param({"field": "meta.page", "operator": "<=", "value": "10"}, id="<= operator with string filter value"),
     pytest.param({"field": "meta.page", "operator": "<=", "value": [10]}, id="<= operator with list filter value"),
-    pytest.param(
-        {"field": "meta.page", "operator": "<=", "value": pd.DataFrame([10])},
-        id="<= operator with pandas.DataFrame filter value",
-    ),
     # in operator params
     pytest.param({"field": "meta.page", "operator": "in", "value": 1}, id="in operator with non list filter value"),
     # at some point we might want to support any iterable and this test should fail
