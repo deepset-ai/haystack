@@ -7,9 +7,8 @@ from unittest.mock import MagicMock, patch, AsyncMock
 
 import pytest
 from openai import AsyncStream, Stream
-from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletionMessage
-from openai.types.chat.chat_completion_chunk import Choice, ChoiceDelta
-from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletionMessage, ChatCompletionMessageToolCall
+from openai.types.chat import ChatCompletion, ChatCompletionChunk
+from openai.types.chat import ChatCompletion, ChatCompletionChunk
 from openai.types.chat import chat_completion_chunk
 
 

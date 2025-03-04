@@ -316,7 +316,6 @@ class TestOpenAIChatGenerator:
 
         # check we called the streaming callback
         assert streaming_callback_called
-        print(response)
 
         # check that the component still returns the correct response
         assert isinstance(response, dict)
