@@ -1,10 +1,11 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-
+import asyncio
 import json
 import re
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Callable, Dict, List, Literal, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
@@ -123,6 +124,7 @@ class HuggingFaceLocalChatGenerator:
         streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
         tools: Optional[List[Tool]] = None,
         tool_parsing_function: Optional[Callable[[str], Optional[List[ToolCall]]]] = None,
+        async_executor: Optional[ThreadPoolExecutor] = None,
     ):
         """
         Initializes the HuggingFaceLocalChatGenerator component.
@@ -165,6 +167,9 @@ class HuggingFaceLocalChatGenerator:
         :param tool_parsing_function:
             A callable that takes a string and returns a list of ToolCall objects or None.
             If None, the default_tool_parser will be used which extracts tool calls using a predefined pattern.
+        :param async_executor:
+            Optional ThreadPoolExecutor to use for async calls. If not provided, a single-threaded executor will be
+            initialized and used
         """
         torch_and_transformers_import.check()
 
@@ -222,6 +227,12 @@ class HuggingFaceLocalChatGenerator:
         self.streaming_callback = streaming_callback
         self.pipeline = None
         self.tools = tools
+
+        self.executor = (
+            ThreadPoolExecutor(thread_name_prefix=f"async-HFLocalChatGenerator-executor-{id(self)}", max_workers=1)
+            if async_executor is None
+            else async_executor
+        )
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -427,7 +438,8 @@ class HuggingFaceLocalChatGenerator:
         # If tool calls are detected, don't include the text content since it contains the raw tool call format
         return ChatMessage.from_assistant(tool_calls=tool_calls, text=None if tool_calls else text, meta=meta)
 
-    def _validate_stop_words(self, stop_words: Optional[List[str]]) -> Optional[List[str]]:
+    @staticmethod
+    def _validate_stop_words(stop_words: Optional[List[str]]) -> Optional[List[str]]:
         """
         Validates the provided stop words.
 
@@ -522,11 +534,9 @@ class HuggingFaceLocalChatGenerator:
         generation_kwargs["streamer"] = HFTokenStreamingHandler(tokenizer, streaming_callback, stop_words)
 
         # Generate responses asynchronously
-        # We wrap the synchronous pipeline call in an async context since HF pipeline doesn't support async natively
-        import asyncio
-
-        loop = asyncio.get_event_loop()
-        output = await loop.run_in_executor(None, lambda: self.pipeline(prepared_prompt, **generation_kwargs))
+        output = await asyncio.get_event_loop().run_in_executor(
+            self.executor, lambda: self.pipeline(prepared_prompt, **generation_kwargs)
+        )
 
         replies = [o.get("generated_text", "") for o in output]
 
@@ -568,11 +578,9 @@ class HuggingFaceLocalChatGenerator:
         )
 
         # Generate responses asynchronously
-        # We wrap the synchronous pipeline call in an async context since HF pipeline doesn't support async natively
-        import asyncio
-
-        loop = asyncio.get_event_loop()
-        output = await loop.run_in_executor(None, lambda: self.pipeline(prepared_prompt, **generation_kwargs))
+        output = await asyncio.get_event_loop().run_in_executor(
+            self.executor, lambda: self.pipeline(prepared_prompt, **generation_kwargs)
+        )
 
         replies = [o.get("generated_text", "") for o in output]
 
