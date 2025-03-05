@@ -823,12 +823,15 @@ class TestHuggingFaceAPIChatGenerator:
         )
 
         messages = [ChatMessage.from_user("What is the capital of France?")]
-        response = await generator.run_async(messages=messages)
+        try:
+            response = await generator.run_async(messages=messages)
 
-        assert "replies" in response
-        assert isinstance(response["replies"], list)
-        assert len(response["replies"]) > 0
-        assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
-        assert "usage" in response["replies"][0].meta
-        assert "prompt_tokens" in response["replies"][0].meta["usage"]
-        assert "completion_tokens" in response["replies"][0].meta["usage"]
+            assert "replies" in response
+            assert isinstance(response["replies"], list)
+            assert len(response["replies"]) > 0
+            assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
+            assert "usage" in response["replies"][0].meta
+            assert "prompt_tokens" in response["replies"][0].meta["usage"]
+            assert "completion_tokens" in response["replies"][0].meta["usage"]
+        finally:
+            await generator._async_client.close()
