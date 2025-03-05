@@ -2,12 +2,7 @@ import pytest
 
 from haystack.tools.from_function import create_tool_from_function, _remove_title_from_schema, tool
 from haystack.tools.errors import SchemaGenerationError
-from typing import Literal, Optional
-
-try:
-    from typing import Annotated
-except ImportError:
-    from typing_extensions import Annotated
+from typing import Annotated, Literal, Optional
 
 
 def function_with_docstring(city: str) -> str:
