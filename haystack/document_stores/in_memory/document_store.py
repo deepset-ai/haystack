@@ -84,7 +84,7 @@ class InMemoryDocumentStore:
             Using the same index allows you to store documents across multiple InMemoryDocumentStore instances.
         :param async_executor:
             Optional ThreadPoolExecutor to use for async calls. If not provided, a single-threaded
-            executor will initialized and used.
+            executor will be initialized and used.
         """
         self.bm25_tokenization_regex = bm25_tokenization_regex
         self.tokenizer = re.compile(bm25_tokenization_regex).findall
