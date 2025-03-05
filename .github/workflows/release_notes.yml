@@ -13,6 +13,7 @@ on:
       - "**.py"
       - "pyproject.toml"
       - "!.github/**/*.py"
+      - "releasenotes/notes/*.yaml"
 
 jobs:
   reno:
