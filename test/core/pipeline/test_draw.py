@@ -42,10 +42,9 @@ def test_to_mermaid_image_does_not_edit_graph(mock_requests):
 @patch("haystack.core.pipeline.draw.requests")
 def test_to_mermaid_image_applies_timeout(mock_requests):
     pipe = Pipeline()
-    pipe.add_component("comp1", AddFixedValue(add=3))
+    pipe.add_component("comp1", Double())
     pipe.add_component("comp2", Double())
-    pipe.connect("comp1.result", "comp2.value")
-    pipe.connect("comp2.value", "comp1.value")
+    pipe.connect("comp1", "comp2")
 
     mock_requests.get.return_value = MagicMock(status_code=200)
     _to_mermaid_image(pipe.graph, timeout=1)
