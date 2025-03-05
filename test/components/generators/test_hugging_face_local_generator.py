@@ -6,7 +6,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 import torch
-from transformers import PreTrainedTokenizerFast
+from transformers import AutoTokenizer, PreTrainedTokenizerFast
 
 from haystack.components.generators.hugging_face_local import HuggingFaceLocalGenerator, StopWordsCriteria
 from haystack.utils import ComponentDevice
@@ -472,7 +472,13 @@ class TestHuggingFaceLocalGenerator:
         llm = HuggingFaceLocalGenerator(model="Qwen/Qwen2.5-0.5B-Instruct", generation_kwargs={"max_new_tokens": 50})
         llm.warm_up()
 
-        result = llm.run(prompt="Please create a summary about the following topic: Climate change")
+        # You must use the `apply_chat_template` method to add the generation prompt to properly include the instruction
+        # tokens in the prompt. Otherwise, the model will not generate the expected output.
+        tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-0.5B-Instruct")
+        messages = [{"role": "user", "content": "Please repeat the phrase 'climate change' and nothing else"}]
+        prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+
+        result = llm.run(prompt=prompt)
 
         assert "replies" in result
         assert isinstance(result["replies"][0], str)
