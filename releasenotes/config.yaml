@@ -37,7 +37,7 @@ template: |
       Add normal bug fixes here, or remove this section.
 
 sections:
-  # The prelude section is implicitly included.
+  # The highlights section is implicitly included.
   - [upgrade, Upgrade Notes]
   - [features, New Features]
   - [enhancements, Enhancement Notes]
@@ -45,3 +45,6 @@ sections:
   - [deprecations, Deprecation Notes]
   - [security, Security Notes]
   - [fixes, Bug Fixes]
+  # DO NOT REMOVE. The following sections are no longer used, but were used in the past. Keeping them here avoids reno linting errors.
+  - [prelude, prelude]
+  - [preview, preview]
