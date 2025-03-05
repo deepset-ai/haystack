@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    In the `ChatMessage.to_openai_dict_format` utility method,
+    include the `name` field in the returned dictionary, if present.
+    Previously, the `name` field was erroneously skipped.

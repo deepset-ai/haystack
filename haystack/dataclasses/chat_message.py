@@ -371,6 +371,10 @@ class ChatMessage:
 
         openai_msg: Dict[str, Any] = {"role": self._role.value}
 
+        # Add name field if present
+        if self._name is not None:
+            openai_msg["name"] = self._name
+
         if tool_call_results:
             result = tool_call_results[0]
             if result.origin.id is None:
