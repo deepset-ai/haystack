@@ -192,3 +192,54 @@ class InMemoryEmbeddingRetriever:
         )
 
         return {"documents": docs}
+
+    @component.output_types(documents=List[Document])
+    async def run_async(  # pylint: disable=too-many-positional-arguments
+        self,
+        query_embedding: List[float],
+        filters: Optional[Dict[str, Any]] = None,
+        top_k: Optional[int] = None,
+        scale_score: Optional[bool] = None,
+        return_embedding: Optional[bool] = None,
+    ):
+        """
+        Run the InMemoryEmbeddingRetriever on the given input data.
+
+        :param query_embedding:
+            Embedding of the query.
+        :param filters:
+            A dictionary with filters to narrow down the search space when retrieving documents.
+        :param top_k:
+            The maximum number of documents to return.
+        :param scale_score:
+            When `True`, scales the score of retrieved documents to a range of 0 to 1, where 1 means extremely relevant.
+            When `False`, uses raw similarity scores.
+        :param return_embedding:
+            When `True`, returns the embedding of the retrieved documents.
+            When `False`, returns just the documents, without their embeddings.
+        :returns:
+            The retrieved documents.
+
+        :raises ValueError:
+            If the specified DocumentStore is not found or is not an InMemoryDocumentStore instance.
+        """
+        if self.filter_policy == FilterPolicy.MERGE and filters:
+            filters = {**(self.filters or {}), **filters}
+        else:
+            filters = filters or self.filters
+        if top_k is None:
+            top_k = self.top_k
+        if scale_score is None:
+            scale_score = self.scale_score
+        if return_embedding is None:
+            return_embedding = self.return_embedding
+
+        docs = await self.document_store.embedding_retrieval_async(
+            query_embedding=query_embedding,
+            filters=filters,
+            top_k=top_k,
+            scale_score=scale_score,
+            return_embedding=return_embedding,
+        )
+
+        return {"documents": docs}

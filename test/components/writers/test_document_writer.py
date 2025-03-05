@@ -92,3 +92,43 @@ class TestDocumentWriter:
 
         result = writer.run(documents=documents)
         assert result["documents_written"] == 0
+
+    @pytest.mark.asyncio
+    async def test_run_async_invalid_docstore(self):
+        document_store = document_store_class("MockedDocumentStore")
+
+        writer = DocumentWriter(document_store)
+        documents = [
+            Document(content="This is the text of a document."),
+            Document(content="This is the text of another document."),
+        ]
+
+        with pytest.raises(TypeError, match="does not provide async support"):
+            await writer.run_async(documents=documents)
+
+    @pytest.mark.asyncio
+    async def test_run_async(self):
+        document_store = InMemoryDocumentStore()
+        writer = DocumentWriter(document_store)
+        documents = [
+            Document(content="This is the text of a document."),
+            Document(content="This is the text of another document."),
+        ]
+
+        result = await writer.run_async(documents=documents)
+        assert result["documents_written"] == 2
+
+    @pytest.mark.asyncio
+    async def test_run_async_skip_policy(self):
+        document_store = InMemoryDocumentStore()
+        writer = DocumentWriter(document_store, policy=DuplicatePolicy.SKIP)
+        documents = [
+            Document(content="This is the text of a document."),
+            Document(content="This is the text of another document."),
+        ]
+
+        result = await writer.run_async(documents=documents)
+        assert result["documents_written"] == 2
+
+        result = await writer.run_async(documents=documents)
+        assert result["documents_written"] == 0

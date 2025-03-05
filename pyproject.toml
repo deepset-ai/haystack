@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "LLM framework to build customizable, production-ready LLM applications. Connect components (models, vector DBs, file converters) to pipelines or agents that can interact with your data."
 readme = "README.md"
 license = "Apache-2.0"
-requires-python = ">=3.8,<3.13"
+requires-python = ">=3.8"
 authors = [{ name = "deepset.ai", email = "malte.pietsch@deepset.ai" }]
 keywords = [
   "BERT",
@@ -39,6 +39,7 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
@@ -57,7 +58,6 @@ dependencies = [
   "numpy",
   "python-dateutil",
   "jsonschema",             # JsonSchemaValidator, Tool
-  "openapi-llm>=0.4.1",            # OpenAPIConnector
   "haystack-experimental",
 ]
 
@@ -89,7 +89,7 @@ extra-dependencies = [
   "pandas",                                    # AzureOCRDocumentConverter, CSVDocumentCleaner, CSVDocumentSplitter,
                                                # EvaluationRunResult, XLSXToDocument, and pipeline tests
 
-  "transformers[torch,sentencepiece]==4.47.1", # ExtractiveReader, TransformersSimilarityRanker, LocalWhisperTranscriber, HFGenerators...
+  "transformers[torch,sentencepiece]==4.48.3", # ExtractiveReader, TransformersSimilarityRanker, LocalWhisperTranscriber, HFGenerators...
   "huggingface_hub>=0.27.0",                   # Hugging Face API Generators and Embedders
   "sentence-transformers>=3.0.0",              # SentenceTransformersTextEmbedder and SentenceTransformersDocumentEmbedder
   "langdetect",                                # TextLanguageRouter and DocumentLanguageClassifier
@@ -119,8 +119,9 @@ extra-dependencies = [
   "nltk>=3.9.1", # NLTKDocumentSplitter
 
   # OpenAPI
-  "jsonref",  # OpenAPIServiceConnector, OpenAPIServiceToFunctions
+  "jsonref",              # OpenAPIServiceConnector, OpenAPIServiceToFunctions
   "openapi3",
+  "openapi-llm>=0.4.1",   # OpenAPIConnector
 
   # Tracing
   "opentelemetry-sdk",
