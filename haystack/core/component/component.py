@@ -70,7 +70,6 @@ method decorated with `@component.input`. This dataclass contains:
 """
 
 import inspect
-import sys
 from collections.abc import Callable
 from contextlib import contextmanager
 from contextvars import ContextVar
