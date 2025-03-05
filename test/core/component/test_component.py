@@ -496,8 +496,9 @@ def test_pre_init_hooking_variadic_positional_args():
     assert c.kwarg1 is None
     assert c.kwarg2 == "string"
 
-    with pytest.raises(ComponentError), _hook_component_init(
-        partial(pre_init_hook, expected_params={"args": (1, 2), "kwarg1": None})
+    with (
+        pytest.raises(ComponentError),
+        _hook_component_init(partial(pre_init_hook, expected_params={"args": (1, 2), "kwarg1": None})),
     ):
         _ = MockComponent(1, 2, kwarg1=None)
 
