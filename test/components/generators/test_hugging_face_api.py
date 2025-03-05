@@ -320,7 +320,29 @@ class TestHuggingFaceAPIGenerator:
         assert len(response["meta"]) > 0
         assert [isinstance(meta, dict) for meta in response["meta"]]
 
+    @pytest.mark.flaky(reruns=5, reruns_delay=5)
+    @pytest.mark.integration
+    @pytest.mark.skipif(
+        not os.environ.get("HF_API_TOKEN", None),
+        reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
+    )
+    def test_live_run_streaming_check_completion_start_time(self):
+        generator = HuggingFaceAPIGenerator(
+            api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
+            api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
+            generation_kwargs={"max_new_tokens": 30},
+            streaming_callback=streaming_callback_handler,
+        )
+
+        results = generator.run("You are a helpful agent that answers questions. What is the capital of France?")
+
+        # Assert that the response contains the generated replies
+        assert "replies" in results
+        assert isinstance(results["replies"], list)
+        assert len(results["replies"]) == 1
+        assert [isinstance(reply, str) for reply in results["replies"]]
+
         # Verify completion start time in final metadata
-        assert "completion_start_time" in response["meta"][0]
-        completion_start = datetime.fromisoformat(response["meta"][0]["completion_start_time"])
+        assert "completion_start_time" in results["meta"][0]
+        completion_start = datetime.fromisoformat(results["meta"][0]["completion_start_time"])
         assert completion_start is not None
