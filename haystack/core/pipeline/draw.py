@@ -129,7 +129,10 @@ def _validate_mermaid_params(params: Dict[str, Any]) -> None:
 
 
 def _to_mermaid_image(
-    graph: networkx.MultiDiGraph, server_url: str = "https://mermaid.ink", params: Optional[dict] = None
+    graph: networkx.MultiDiGraph,
+    server_url: str = "https://mermaid.ink",
+    params: Optional[dict] = None,
+    timeout: int = 30,
 ) -> bytes:
     """
     Renders a pipeline using a Mermaid server.
@@ -140,6 +143,8 @@ def _to_mermaid_image(
         Base URL of the Mermaid server (default: 'https://mermaid.ink').
     :param params:
         Dictionary of customization parameters. See `validate_mermaid_params` for valid keys.
+    :param timeout:
+        Timeout in seconds for the request to the Mermaid server.
     :returns:
         The image, SVG, or PDF data returned by the Mermaid server as bytes.
     :raises ValueError:
@@ -187,7 +192,7 @@ def _to_mermaid_image(
 
     logger.debug("Rendering graph at {url}", url=url)
     try:
-        resp = requests.get(url, timeout=10)
+        resp = requests.get(url, timeout=timeout)
         if resp.status_code >= 400:
             logger.warning(
                 "Failed to draw the pipeline: {server_url} returned status {status_code}",
