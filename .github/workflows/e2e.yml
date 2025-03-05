@@ -1,8 +1,6 @@
 # If you change this name also do it in ci_metrics.yml
 name: end-to-end
 
-# TRIGGER - remove me
-
 on:
   workflow_dispatch: # Activate this workflow manually
   schedule:
