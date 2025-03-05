@@ -298,14 +298,14 @@ class TestHuggingFaceAPIGenerator:
     def test_run_serverless(self):
         generator = HuggingFaceAPIGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "mistralai/Mistral-7B-Instruct-v0.3"},
+            api_params={"model": "microsoft/Phi-3.5-mini-instruct"},
             generation_kwargs={"max_new_tokens": 20},
         )
 
         # You must include the instruction tokens in the prompt. HF does not add them automatically.
         # Without them the model will behave erratically.
         response = generator.run(
-            "<s>[INST] What is the capital of France? Be concise only provide the capital, nothing else.[/INST]"
+            "<|user|>\nWhat is the capital of France? Be concise only provide the capital, nothing else.<|end|>\n<|assistant|>\n"
         )
 
         # Assert that the response contains the generated replies
@@ -329,12 +329,14 @@ class TestHuggingFaceAPIGenerator:
     def test_live_run_streaming_check_completion_start_time(self):
         generator = HuggingFaceAPIGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
+            api_params={"model": "microsoft/Phi-3.5-mini-instruct"},
             generation_kwargs={"max_new_tokens": 30},
             streaming_callback=streaming_callback_handler,
         )
 
-        results = generator.run("You are a helpful agent that answers questions. What is the capital of France?")
+        results = generator.run(
+            "<|user|>\nWhat is the capital of France? Be concise only provide the capital, nothing else.<|end|>\n<|assistant|>\n"
+        )
 
         # Assert that the response contains the generated replies
         assert "replies" in results
