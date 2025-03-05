@@ -509,7 +509,7 @@ class HuggingFaceLocalChatGenerator:
 
         return await self._run_non_streaming_async(messages, tokenizer, generation_kwargs, stop_words, tools)
 
-    async def _run_streaming_async(
+    async def _run_streaming_async(  # pylint: disable=too-many-positional-arguments
         self,
         messages: List[ChatMessage],
         tokenizer: Union["PreTrainedTokenizer", "PreTrainedTokenizerFast"],
@@ -536,7 +536,8 @@ class HuggingFaceLocalChatGenerator:
 
         # Generate responses asynchronously
         output = await asyncio.get_event_loop().run_in_executor(
-            self.executor, lambda: self.pipeline(prepared_prompt, **generation_kwargs)
+            self.executor,
+            lambda: self.pipeline(prepared_prompt, **generation_kwargs),  # type: ignore # if self.executor was not passed it was initialized with max_workers=1 in init
         )
 
         replies = [o.get("generated_text", "") for o in output]
@@ -552,7 +553,7 @@ class HuggingFaceLocalChatGenerator:
 
         return {"replies": chat_messages}
 
-    async def _run_non_streaming_async(
+    async def _run_non_streaming_async(  # pylint: disable=too-many-positional-arguments
         self,
         messages: List[ChatMessage],
         tokenizer: Union["PreTrainedTokenizer", "PreTrainedTokenizerFast"],
@@ -580,7 +581,8 @@ class HuggingFaceLocalChatGenerator:
 
         # Generate responses asynchronously
         output = await asyncio.get_event_loop().run_in_executor(
-            self.executor, lambda: self.pipeline(prepared_prompt, **generation_kwargs)
+            self.executor,
+            lambda: self.pipeline(prepared_prompt, **generation_kwargs),  # type: ignore # if self.executor was not passed it was initialized with max_workers=1 in init
         )
 
         replies = [o.get("generated_text", "") for o in output]
