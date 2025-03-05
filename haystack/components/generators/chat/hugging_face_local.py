@@ -8,7 +8,7 @@ import sys
 from typing import Any, Callable, Dict, List, Literal, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall
+from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall, select_streaming_callback
 from haystack.lazy_imports import LazyImport
 from haystack.tools import Tool, _check_duplicate_tool_names, deserialize_tools_inplace
 from haystack.utils import (
@@ -443,3 +443,148 @@ class HuggingFaceLocalChatGenerator:
             return None
 
         return list(set(stop_words or []))
+
+    @component.output_types(replies=List[ChatMessage])
+    async def run_async(
+        self,
+        messages: List[ChatMessage],
+        generation_kwargs: Optional[Dict[str, Any]] = None,
+        streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
+        tools: Optional[List[Tool]] = None,
+    ):
+        """
+        Asynchronously invokes text generation inference based on the provided messages and generation parameters.
+
+        This is the asynchronous version of the `run` method. It has the same parameters
+        and return values but can be used with `await` in an async code.
+
+        :param messages: A list of ChatMessage objects representing the input messages.
+        :param generation_kwargs: Additional keyword arguments for text generation.
+        :param streaming_callback: An optional callable for handling streaming responses.
+        :param tools: A list of tools for which the model can prepare calls.
+        :returns: A dictionary with the following keys:
+            - `replies`: A list containing the generated responses as ChatMessage instances.
+        """
+        if self.pipeline is None:
+            raise RuntimeError("The generation model has not been loaded. Please call warm_up() before running.")
+
+        tools = tools or self.tools
+        if tools and streaming_callback is not None:
+            raise ValueError("Using tools and streaming at the same time is not supported. Please choose one.")
+        _check_duplicate_tool_names(tools)
+
+        tokenizer = self.pipeline.tokenizer
+
+        # Check and update generation parameters
+        generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
+
+        stop_words = generation_kwargs.pop("stop_words", []) + generation_kwargs.pop("stop_sequences", [])
+        stop_words = self._validate_stop_words(stop_words)
+
+        # Set up stop words criteria if stop words exist
+        stop_words_criteria = StopWordsCriteria(tokenizer, stop_words, self.pipeline.device) if stop_words else None
+        if stop_words_criteria:
+            generation_kwargs["stopping_criteria"] = StoppingCriteriaList([stop_words_criteria])
+
+        # validate and select the streaming callback
+        streaming_callback = select_streaming_callback(self.streaming_callback, streaming_callback, requires_async=True)
+
+        if streaming_callback:
+            return await self._run_streaming_async(
+                messages, tokenizer, generation_kwargs, stop_words, streaming_callback
+            )
+
+        return await self._run_non_streaming_async(messages, tokenizer, generation_kwargs, stop_words, tools)
+
+    async def _run_streaming_async(
+        self,
+        messages: List[ChatMessage],
+        tokenizer: Union["PreTrainedTokenizer", "PreTrainedTokenizerFast"],
+        generation_kwargs: Dict[str, Any],
+        stop_words: Optional[List[str]],
+        streaming_callback: Callable[[StreamingChunk], None],
+    ):
+        """
+        Handles async streaming generation of responses.
+        """
+        # convert messages to HF format
+        hf_messages = [convert_message_to_hf_format(message) for message in messages]
+        prepared_prompt = tokenizer.apply_chat_template(
+            hf_messages, tokenize=False, chat_template=self.chat_template, add_generation_prompt=True
+        )
+
+        # Avoid some unnecessary warnings in the generation pipeline call
+        generation_kwargs["pad_token_id"] = (
+            generation_kwargs.get("pad_token_id", tokenizer.pad_token_id) or tokenizer.eos_token_id
+        )
+
+        # Set up streaming handler
+        generation_kwargs["streamer"] = HFTokenStreamingHandler(tokenizer, streaming_callback, stop_words)
+
+        # Generate responses asynchronously
+        # We wrap the synchronous pipeline call in an async context since HF pipeline doesn't support async natively
+        import asyncio
+
+        loop = asyncio.get_event_loop()
+        output = await loop.run_in_executor(None, lambda: self.pipeline(prepared_prompt, **generation_kwargs))
+
+        replies = [o.get("generated_text", "") for o in output]
+
+        # Remove stop words from replies if present
+        for stop_word in stop_words or []:
+            replies = [reply.replace(stop_word, "").rstrip() for reply in replies]
+
+        chat_messages = [
+            self.create_message(reply, r_index, tokenizer, prepared_prompt, generation_kwargs, parse_tool_calls=False)
+            for r_index, reply in enumerate(replies)
+        ]
+
+        return {"replies": chat_messages}
+
+    async def _run_non_streaming_async(
+        self,
+        messages: List[ChatMessage],
+        tokenizer: Union["PreTrainedTokenizer", "PreTrainedTokenizerFast"],
+        generation_kwargs: Dict[str, Any],
+        stop_words: Optional[List[str]],
+        tools: Optional[List[Tool]] = None,
+    ):
+        """
+        Handles async non-streaming generation of responses.
+        """
+        # convert messages to HF format
+        hf_messages = [convert_message_to_hf_format(message) for message in messages]
+        prepared_prompt = tokenizer.apply_chat_template(
+            hf_messages,
+            tokenize=False,
+            chat_template=self.chat_template,
+            add_generation_prompt=True,
+            tools=[tc.tool_spec for tc in tools] if tools else None,
+        )
+
+        # Avoid some unnecessary warnings in the generation pipeline call
+        generation_kwargs["pad_token_id"] = (
+            generation_kwargs.get("pad_token_id", tokenizer.pad_token_id) or tokenizer.eos_token_id
+        )
+
+        # Generate responses asynchronously
+        # We wrap the synchronous pipeline call in an async context since HF pipeline doesn't support async natively
+        import asyncio
+
+        loop = asyncio.get_event_loop()
+        output = await loop.run_in_executor(None, lambda: self.pipeline(prepared_prompt, **generation_kwargs))
+
+        replies = [o.get("generated_text", "") for o in output]
+
+        # Remove stop words from replies if present
+        for stop_word in stop_words or []:
+            replies = [reply.replace(stop_word, "").rstrip() for reply in replies]
+
+        chat_messages = [
+            self.create_message(
+                reply, r_index, tokenizer, prepared_prompt, generation_kwargs, parse_tool_calls=bool(tools)
+            )
+            for r_index, reply in enumerate(replies)
+        ]
+
+        return {"replies": chat_messages}
