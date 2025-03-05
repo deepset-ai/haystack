@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    The `HuggingFaceLocalChatGenerator` now also supports the async run method.
