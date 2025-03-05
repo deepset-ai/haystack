@@ -52,6 +52,7 @@ dependencies = [
   "pyyaml",
   "more-itertools",         # TextDocumentSplitter
   "networkx",               # Pipeline graphs
+  "typing_extensions>=4.7", # typing support for Python 3.9
   "requests",
   "numpy",
   "python-dateutil",
