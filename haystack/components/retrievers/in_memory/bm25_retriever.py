@@ -161,3 +161,43 @@ class InMemoryBM25Retriever:
 
         docs = self.document_store.bm25_retrieval(query=query, filters=filters, top_k=top_k, scale_score=scale_score)
         return {"documents": docs}
+
+    @component.output_types(documents=List[Document])
+    async def run_async(
+        self,
+        query: str,
+        filters: Optional[Dict[str, Any]] = None,
+        top_k: Optional[int] = None,
+        scale_score: Optional[bool] = None,
+    ):
+        """
+        Run the InMemoryBM25Retriever on the given input data.
+
+        :param query:
+            The query string for the Retriever.
+        :param filters:
+            A dictionary with filters to narrow down the search space when retrieving documents.
+        :param top_k:
+            The maximum number of documents to return.
+        :param scale_score:
+            When `True`, scales the score of retrieved documents to a range of 0 to 1, where 1 means extremely relevant.
+            When `False`, uses raw similarity scores.
+        :returns:
+            The retrieved documents.
+
+        :raises ValueError:
+            If the specified DocumentStore is not found or is not a InMemoryDocumentStore instance.
+        """
+        if self.filter_policy == FilterPolicy.MERGE and filters:
+            filters = {**(self.filters or {}), **filters}
+        else:
+            filters = filters or self.filters
+        if top_k is None:
+            top_k = self.top_k
+        if scale_score is None:
+            scale_score = self.scale_score
+
+        docs = await self.document_store.bm25_retrieval_async(
+            query=query, filters=filters, top_k=top_k, scale_score=scale_score
+        )
+        return {"documents": docs}

@@ -570,11 +570,15 @@ class TestHuggingFaceAPIChatGenerator:
     def test_live_run_serverless(self):
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
+            api_params={"model": "microsoft/Phi-3.5-mini-instruct"},
             generation_kwargs={"max_tokens": 20},
         )
 
-        messages = [ChatMessage.from_user("What is the capital of France?")]
+        # No need for instruction tokens here since we use the chat_completion endpoint which handles the chat
+        # templating for us.
+        messages = [
+            ChatMessage.from_user("What is the capital of France? Be concise only provide the capital, nothing else.")
+        ]
         response = generator.run(messages=messages)
 
         assert "replies" in response
@@ -594,12 +598,16 @@ class TestHuggingFaceAPIChatGenerator:
     def test_live_run_serverless_streaming(self):
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
+            api_params={"model": "microsoft/Phi-3.5-mini-instruct"},
             generation_kwargs={"max_tokens": 20},
             streaming_callback=streaming_callback_handler,
         )
 
-        messages = [ChatMessage.from_user("What is the capital of France?")]
+        # No need for instruction tokens here since we use the chat_completion endpoint which handles the chat
+        # templating for us.
+        messages = [
+            ChatMessage.from_user("What is the capital of France? Be concise only provide the capital, nothing else.")
+        ]
         response = generator.run(messages=messages)
 
         assert "replies" in response
@@ -817,11 +825,15 @@ class TestHuggingFaceAPIChatGenerator:
     async def test_live_run_async_serverless(self):
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
+            api_params={"model": "microsoft/Phi-3.5-mini-instruct"},
             generation_kwargs={"max_tokens": 20},
         )
 
-        messages = [ChatMessage.from_user("What is the capital of France?")]
+        # No need for instruction tokens here since we use the chat_completion endpoint which handles the chat
+        # templating for us.
+        messages = [
+            ChatMessage.from_user("What is the capital of France? Be concise only provide the capital, nothing else.")
+        ]
         response = await generator.run_async(messages=messages)
 
         assert "replies" in response
