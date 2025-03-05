@@ -1,0 +1,9 @@
+---
+enhancements:
+  - |
+    Haystack now officially supports Python 3.13.
+    Some components and integrations may not yet be compatible.
+    Specifically, the `NamedEntityExtractor` does not work with Python 3.13 when using the `spacy` backend.
+    Additionally, you may encounter issues installing `openai-whisper`, which is required by the
+    `LocalWhisperTranscriber` component, if you use `uv` or `poetry` for installation.
+    In this case, we recommend using `pip` for installation.

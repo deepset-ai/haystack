@@ -257,6 +257,12 @@ def test_to_openai_dict_format():
     )
     assert message.to_openai_dict_format() == {"role": "tool", "content": tool_result, "tool_call_id": "123"}
 
+    message = ChatMessage.from_user(text="I have a question", name="John")
+    assert message.to_openai_dict_format() == {"role": "user", "content": "I have a question", "name": "John"}
+
+    message = ChatMessage.from_assistant(text="I have an answer", name="Assistant1")
+    assert message.to_openai_dict_format() == {"role": "assistant", "content": "I have an answer", "name": "Assistant1"}
+
 
 def test_to_openai_dict_format_invalid():
     message = ChatMessage(_role=ChatRole.ASSISTANT, _content=[])
