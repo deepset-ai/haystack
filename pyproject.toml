@@ -288,7 +288,6 @@ ignore_missing_imports = true
 
 [tool.ruff]
 line-length = 120
-target-version = "py39"
 exclude = [".github", "proposals"]
 
 [tool.ruff.format]
