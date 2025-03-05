@@ -814,6 +814,7 @@ class TestHuggingFaceAPIChatGenerator:
         reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
     )
     @pytest.mark.flaky(reruns=3, reruns_delay=10)
+    @pytest.mark.asyncio
     async def test_live_run_async_serverless(self):
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
