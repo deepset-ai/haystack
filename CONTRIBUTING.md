@@ -147,6 +147,8 @@ next contribution!
 
 ### Setting up your development environment
 
+*Currently, to contribute to Haystack, you must use a version of Python >=3.9 and <3.13.*
+
 Haystack makes heavy use of [Hatch](https://hatch.pypa.io/latest/), a Python project manager that we use to set up the
 virtual environments, build the project, and publish packages. As you can imagine, the first step towards becoming a
 Haystack contributor is installing Hatch. There are a variety of installation methods depending on your operating system
