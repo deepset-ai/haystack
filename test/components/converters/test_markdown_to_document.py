@@ -54,8 +54,9 @@ class TestMarkdownToDocument:
 
         converter = MarkdownToDocument()
 
-        with patch("haystack.components.converters.markdown.normalize_metadata") as normalize_metadata, patch(
-            "haystack.components.converters.markdown.MarkdownIt"
+        with (
+            patch("haystack.components.converters.markdown.normalize_metadata") as normalize_metadata,
+            patch("haystack.components.converters.markdown.MarkdownIt"),
         ):
             converter.run(sources=[bytestream, test_files_path / "markdown" / "sample.md"], meta={"language": "it"})
 

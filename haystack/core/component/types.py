@@ -3,9 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import dataclass, field
-from typing import Any, Iterable, List, Type, TypeVar, get_args
-
-from typing_extensions import Annotated, TypeAlias  # Python 3.8 compatibility
+from typing import Annotated, Any, Iterable, List, Type, TypeAlias, TypeVar, get_args
 
 HAYSTACK_VARIADIC_ANNOTATION = "__haystack__variadic_t"
 HAYSTACK_GREEDY_VARIADIC_ANNOTATION = "__haystack__greedy_variadic_t"
