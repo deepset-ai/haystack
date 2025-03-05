@@ -1,6 +1,6 @@
 ---
 fixes:
   - |
-    Include name field in OpenAI dictionary format when present.
-    Add test cases to verify name field inclusion for user and assistant messages.
-    Aligns with OpenAI's chat API format.
+    In the `ChatMessage.to_openai_dict_format` utility method,
+    include the `name` field in the returned dictionary, if present.
+    Previously, the `name` field was erroneously skipped.
