@@ -830,7 +830,9 @@ class TestHuggingFaceAPIChatGenerator:
             generation_kwargs={"max_tokens": 20},
         )
 
-        messages = [ChatMessage.from_user("What is the capital of France?")]
+        messages = [
+            ChatMessage.from_user("What is the capital of France? Be concise only provide the capital, nothing else.")
+        ]
         try:
             response = await generator.run_async(messages=messages)
 
