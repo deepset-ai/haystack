@@ -80,7 +80,7 @@ def _parse_generic_args(args_str):
     return args
 
 
-def deserialize_type(type_str: str) -> Any:
+def deserialize_type(type_str: str) -> Any:  # pylint: disable=too-many-return-statements
     """
     Deserializes a type given its full import path as a string, including nested generic types.
 
