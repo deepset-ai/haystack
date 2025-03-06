@@ -1,4 +1,5 @@
 ---
-enhancements:
+features:
   - |
-    The `HuggingFaceLocalChatGenerator` now also supports the async run method.
+    Add `run_async` method to HuggingFaceLocalChatGenerator. This method internally uses ThreadPoolExecutor to return coroutines
+    that can be awaited.
