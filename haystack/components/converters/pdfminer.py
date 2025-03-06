@@ -4,6 +4,7 @@
 
 import io
 import os
+import re
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional, Union
 
@@ -17,6 +18,8 @@ with LazyImport("Run 'pip install pdfminer.six'") as pdfminer_import:
     from pdfminer.layout import LAParams, LTTextContainer
 
 logger = logging.getLogger(__name__)
+
+CID_PATTERN = r"\(cid:\d+\)"  # regex pattern to detect CID characters
 
 
 @component
@@ -97,6 +100,7 @@ class PDFMinerToDocument:
             all_texts=all_texts,
         )
         self.store_full_path = store_full_path
+        self.cid_pattern = re.compile(CID_PATTERN)
 
     @staticmethod
     def _converter(lt_page_objs: Iterator) -> str:
@@ -125,6 +129,32 @@ class PDFMinerToDocument:
         delimited_pages = "\f".join(pages)
 
         return delimited_pages
+
+    def detect_undecoded_cid_characters(self, text: str) -> Dict[str, Any]:
+        """
+        Look for character sequences of CID, i.e.: characters that haven't been properly decoded from their CID format.
+
+        This is useful to detect if the text extractor is not able to extract the text correctly, e.g. if the PDF uses
+        non-standard fonts.
+
+        A PDF font may include a ToUnicode map (mapping from character code to Unicode) to support operations like
+        searching strings or copy & paste in a PDF viewer. This map immediately provides the mapping the text extractor
+        needs. If that map is not available the text extractor cannot decode the CID characters and will return them
+        as is.
+
+        see: https://pdfminersix.readthedocs.io/en/latest/faq.html#why-are-there-cid-x-values-in-the-textual-output
+
+        :param: text: The text to check for undecoded CID characters
+        :returns:
+            A dictionary containing detection results
+        """
+
+        matches = re.findall(self.cid_pattern, text)
+        total_chars = len(text)
+        cid_chars = sum(len(match) for match in matches)
+        percentage = (cid_chars / total_chars * 100) if total_chars > 0 else 0
+
+        return {"total_chars": total_chars, "cid_chars": cid_chars, "percentage": round(percentage, 2)}
 
     @component.output_types(documents=List[Document])
     def run(
@@ -178,6 +208,19 @@ class PDFMinerToDocument:
 
             if not self.store_full_path and (file_path := bytestream.meta.get("file_path")):
                 merged_metadata["file_path"] = os.path.basename(file_path)
+
+            analysis = self.detect_undecoded_cid_characters(text)
+
+            if analysis["percentage"] > 0:
+                logger.warning(
+                    "Detected {cid_chars} undecoded CID characters in {total_chars} characters"
+                    " ({percentage}%) in {source}.",
+                    cid_chars=analysis["cid_chars"],
+                    total_chars=analysis["total_chars"],
+                    percentage=analysis["percentage"],
+                    source=source,
+                )
+
             document = Document(content=text, meta=merged_metadata)
             documents.append(document)
 
