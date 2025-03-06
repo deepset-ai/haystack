@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import logging
+from unittest.mock import patch
 
 import pytest
 
@@ -219,3 +220,22 @@ class TestPDFMinerToDocument:
         assert result["total_chars"] == 0
         assert result["cid_chars"] == 0
         assert result["percentage"] == 0
+
+    def test_pdfminer_logs_warning_for_cid_characters(self, caplog, monkeypatch):
+        """
+        Test if the component correctly logs a warning when undecoded CID characters are detected.
+        """
+        test_data = ByteStream(data=b"fake", meta={"file_path": "test.pdf"})
+
+        def mock_converter(*args, **kwargs):
+            return "This is text with (cid:123) and (cid:456) characters"
+
+        def mock_extract_pages(*args, **kwargs):
+            return ["mocked page"]
+
+        with patch("haystack.components.converters.pdfminer.extract_pages", side_effect=mock_extract_pages):
+            with patch.object(PDFMinerToDocument, "_converter", side_effect=mock_converter):
+                with caplog.at_level(logging.WARNING):
+                    converter = PDFMinerToDocument()
+                    converter.run(sources=[test_data])
+                    assert "Detected 18 undecoded CID characters in 52 characters (34.62%)" in caplog.text

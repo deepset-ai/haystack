@@ -213,8 +213,12 @@ class PDFMinerToDocument:
 
             if analysis["percentage"] > 0:
                 logger.warning(
-                    f"Detected {analysis['cid_chars']} undecoded CID characters in {analysis['total_chars']} characters"
-                    f" ({analysis['percentage']}%) in {source}."
+                    "Detected {cid_chars} undecoded CID characters in {total_chars} characters"
+                    " ({percentage}%) in {source}.",
+                    cid_chars=analysis["cid_chars"],
+                    total_chars=analysis["total_chars"],
+                    percentage=analysis["percentage"],
+                    source=source,
                 )
 
             document = Document(content=text, meta=merged_metadata)
