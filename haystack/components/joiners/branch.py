@@ -20,7 +20,7 @@ class BranchJoiner:
     to its output. This is useful for scenarios where multiple branches need to converge before proceeding.
 
     ### Common Use Cases:
-    - **Loop Handling:** It helps close loops in pipelines. For example, if a pipeline component validates or modifies
+    - **Loop Handling:** `BranchJoiner` helps close loops in pipelines. For example, if a pipeline component validates or modifies
       incoming data and produces an error-handling branch, `BranchJoiner` can merge both branches and send
       (or re-send in the case of a loop) the data to the component evaluating errors. See "Usage example" below.
 
