@@ -2,13 +2,15 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 import json
 import re
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Callable, Dict, List, Literal, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall
+from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall, select_streaming_callback
 from haystack.lazy_imports import LazyImport
 from haystack.tools import Tool, _check_duplicate_tool_names, deserialize_tools_inplace
 from haystack.utils import (
@@ -123,6 +125,7 @@ class HuggingFaceLocalChatGenerator:
         streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
         tools: Optional[List[Tool]] = None,
         tool_parsing_function: Optional[Callable[[str], Optional[List[ToolCall]]]] = None,
+        async_executor: Optional[ThreadPoolExecutor] = None,
     ):
         """
         Initializes the HuggingFaceLocalChatGenerator component.
@@ -165,6 +168,9 @@ class HuggingFaceLocalChatGenerator:
         :param tool_parsing_function:
             A callable that takes a string and returns a list of ToolCall objects or None.
             If None, the default_tool_parser will be used which extracts tool calls using a predefined pattern.
+        :param async_executor:
+            Optional ThreadPoolExecutor to use for async calls. If not provided, a single-threaded executor will be
+            initialized and used
         """
         torch_and_transformers_import.check()
 
@@ -222,6 +228,27 @@ class HuggingFaceLocalChatGenerator:
         self.streaming_callback = streaming_callback
         self.pipeline = None
         self.tools = tools
+
+        self._owns_executor = async_executor is None
+        self.executor = (
+            ThreadPoolExecutor(thread_name_prefix=f"async-HFLocalChatGenerator-executor-{id(self)}", max_workers=1)
+            if async_executor is None
+            else async_executor
+        )
+
+    def __del__(self):
+        """
+        Cleanup when the instance is being destroyed.
+        """
+        if hasattr(self, "_owns_executor") and self._owns_executor and hasattr(self, "executor"):
+            self.executor.shutdown(wait=True)
+
+    def shutdown(self):
+        """
+        Explicitly shutdown the executor if we own it.
+        """
+        if self._owns_executor:
+            self.executor.shutdown(wait=True)
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -332,7 +359,9 @@ class HuggingFaceLocalChatGenerator:
         if stop_words_criteria:
             generation_kwargs["stopping_criteria"] = StoppingCriteriaList([stop_words_criteria])
 
-        streaming_callback = streaming_callback or self.streaming_callback
+        streaming_callback = select_streaming_callback(
+            self.streaming_callback, streaming_callback, requires_async=False
+        )
         if streaming_callback:
             num_responses = generation_kwargs.get("num_return_sequences", 1)
             if num_responses > 1:
@@ -427,7 +456,8 @@ class HuggingFaceLocalChatGenerator:
         # If tool calls are detected, don't include the text content since it contains the raw tool call format
         return ChatMessage.from_assistant(tool_calls=tool_calls, text=None if tool_calls else text, meta=meta)
 
-    def _validate_stop_words(self, stop_words: Optional[List[str]]) -> Optional[List[str]]:
+    @staticmethod
+    def _validate_stop_words(stop_words: Optional[List[str]]) -> Optional[List[str]]:
         """
         Validates the provided stop words.
 
@@ -443,3 +473,146 @@ class HuggingFaceLocalChatGenerator:
             return None
 
         return list(set(stop_words or []))
+
+    @component.output_types(replies=List[ChatMessage])
+    async def run_async(
+        self,
+        messages: List[ChatMessage],
+        generation_kwargs: Optional[Dict[str, Any]] = None,
+        streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
+        tools: Optional[List[Tool]] = None,
+    ):
+        """
+        Asynchronously invokes text generation inference based on the provided messages and generation parameters.
+
+        This is the asynchronous version of the `run` method. It has the same parameters
+        and return values but can be used with `await` in an async code.
+
+        :param messages: A list of ChatMessage objects representing the input messages.
+        :param generation_kwargs: Additional keyword arguments for text generation.
+        :param streaming_callback: An optional callable for handling streaming responses.
+        :param tools: A list of tools for which the model can prepare calls.
+        :returns: A dictionary with the following keys:
+            - `replies`: A list containing the generated responses as ChatMessage instances.
+        """
+        if self.pipeline is None:
+            raise RuntimeError("The generation model has not been loaded. Please call warm_up() before running.")
+
+        tools = tools or self.tools
+        if tools and streaming_callback is not None:
+            raise ValueError("Using tools and streaming at the same time is not supported. Please choose one.")
+        _check_duplicate_tool_names(tools)
+
+        tokenizer = self.pipeline.tokenizer
+
+        # Check and update generation parameters
+        generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
+
+        stop_words = generation_kwargs.pop("stop_words", []) + generation_kwargs.pop("stop_sequences", [])
+        stop_words = self._validate_stop_words(stop_words)
+
+        # Set up stop words criteria if stop words exist
+        stop_words_criteria = StopWordsCriteria(tokenizer, stop_words, self.pipeline.device) if stop_words else None
+        if stop_words_criteria:
+            generation_kwargs["stopping_criteria"] = StoppingCriteriaList([stop_words_criteria])
+
+        # validate and select the streaming callback
+        streaming_callback = select_streaming_callback(self.streaming_callback, streaming_callback, requires_async=True)
+
+        if streaming_callback:
+            return await self._run_streaming_async(
+                messages, tokenizer, generation_kwargs, stop_words, streaming_callback
+            )
+
+        return await self._run_non_streaming_async(messages, tokenizer, generation_kwargs, stop_words, tools)
+
+    async def _run_streaming_async(  # pylint: disable=too-many-positional-arguments
+        self,
+        messages: List[ChatMessage],
+        tokenizer: Union["PreTrainedTokenizer", "PreTrainedTokenizerFast"],
+        generation_kwargs: Dict[str, Any],
+        stop_words: Optional[List[str]],
+        streaming_callback: Callable[[StreamingChunk], None],
+    ):
+        """
+        Handles async streaming generation of responses.
+        """
+        # convert messages to HF format
+        hf_messages = [convert_message_to_hf_format(message) for message in messages]
+        prepared_prompt = tokenizer.apply_chat_template(
+            hf_messages, tokenize=False, chat_template=self.chat_template, add_generation_prompt=True
+        )
+
+        # Avoid some unnecessary warnings in the generation pipeline call
+        generation_kwargs["pad_token_id"] = (
+            generation_kwargs.get("pad_token_id", tokenizer.pad_token_id) or tokenizer.eos_token_id
+        )
+
+        # Set up streaming handler
+        generation_kwargs["streamer"] = HFTokenStreamingHandler(tokenizer, streaming_callback, stop_words)
+
+        # Generate responses asynchronously
+        output = await asyncio.get_running_loop().run_in_executor(
+            self.executor,
+            lambda: self.pipeline(prepared_prompt, **generation_kwargs),  # type: ignore # if self.executor was not passed it was initialized with max_workers=1 in init
+        )
+
+        replies = [o.get("generated_text", "") for o in output]
+
+        # Remove stop words from replies if present
+        for stop_word in stop_words or []:
+            replies = [reply.replace(stop_word, "").rstrip() for reply in replies]
+
+        chat_messages = [
+            self.create_message(reply, r_index, tokenizer, prepared_prompt, generation_kwargs, parse_tool_calls=False)
+            for r_index, reply in enumerate(replies)
+        ]
+
+        return {"replies": chat_messages}
+
+    async def _run_non_streaming_async(  # pylint: disable=too-many-positional-arguments
+        self,
+        messages: List[ChatMessage],
+        tokenizer: Union["PreTrainedTokenizer", "PreTrainedTokenizerFast"],
+        generation_kwargs: Dict[str, Any],
+        stop_words: Optional[List[str]],
+        tools: Optional[List[Tool]] = None,
+    ):
+        """
+        Handles async non-streaming generation of responses.
+        """
+        # convert messages to HF format
+        hf_messages = [convert_message_to_hf_format(message) for message in messages]
+        prepared_prompt = tokenizer.apply_chat_template(
+            hf_messages,
+            tokenize=False,
+            chat_template=self.chat_template,
+            add_generation_prompt=True,
+            tools=[tc.tool_spec for tc in tools] if tools else None,
+        )
+
+        # Avoid some unnecessary warnings in the generation pipeline call
+        generation_kwargs["pad_token_id"] = (
+            generation_kwargs.get("pad_token_id", tokenizer.pad_token_id) or tokenizer.eos_token_id
+        )
+
+        # Generate responses asynchronously
+        output = await asyncio.get_running_loop().run_in_executor(
+            self.executor,
+            lambda: self.pipeline(prepared_prompt, **generation_kwargs),  # type: ignore # if self.executor was not passed it was initialized with max_workers=1 in init
+        )
+
+        replies = [o.get("generated_text", "") for o in output]
+
+        # Remove stop words from replies if present
+        for stop_word in stop_words or []:
+            replies = [reply.replace(stop_word, "").rstrip() for reply in replies]
+
+        chat_messages = [
+            self.create_message(
+                reply, r_index, tokenizer, prepared_prompt, generation_kwargs, parse_tool_calls=bool(tools)
+            )
+            for r_index, reply in enumerate(replies)
+        ]
+
+        return {"replies": chat_messages}
