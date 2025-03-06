@@ -25,8 +25,8 @@ class BranchJoiner:
       (or resend in the case of a loop) the data to the component that evaluates errors. See "Usage example" below.
 
     - **Decision-Based Merging:** `BranchJoiner` reconciles branches coming from Router components (such as `ConditionalRouter`,
-      `TextLanguageRouter`). Suppose a `TextLanguageRouter` directs user queries to different retrievers based on the
-      detected language. Each retriever processes its assigned query and passes the results to `BranchJoiner`, which
+      `TextLanguageRouter`). Suppose a `TextLanguageRouter` directs user queries to different Retrievers based on the
+      detected language. Each Retriever processes its assigned query and passes the results to `BranchJoiner`, which
       consolidates them into a single output before passing them to the next component, such as a `PromptBuilder`.
 
     ### Example Usage:
