@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Literal, Mapping, Optional, Sequence, Set, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, List, Literal, Mapping, Optional, Sequence, Set, Tuple, Union
 
 import pytest
 
@@ -357,10 +357,43 @@ def test_partially_overlapping_unions_are_not_compatible_strict(sender_type, rec
 @pytest.mark.parametrize(
     "sender_type,receiver_type",
     [
-        pytest.param((List[int]), List, id="list-of-primitive-to-bare-list"),
-        pytest.param((List[int]), list, id="list-of-primitive-to-list-object"),
+        pytest.param(List[int], List, id="list-of-primitive-to-bare-list"),
+        pytest.param(Dict[str, int], Dict, id="dict-of-primitive-to-bare-dict"),
+        pytest.param(Set[float], Set, id="set-of-primitive-to-bare-set"),
+        pytest.param(Tuple[int, str], Tuple, id="tuple-of-primitive-to-bare-tuple"),
+        pytest.param(Callable[[int, str], bool], Callable, id="callable-to-bare-callable"),
     ],
 )
-def test_list_of_primitive_to_list(sender_type, receiver_type):
-    """This currently doesn't work because we don't handle bare types without arguments."""
+def test_container_of_primitive_to_bare_container_strict(sender_type, receiver_type):
+    assert _types_are_compatible(sender_type, receiver_type)
+    # Bare container types should not be compatible with their typed counterparts
+    assert not _types_are_compatible(receiver_type, sender_type)
+
+
+@pytest.mark.parametrize(
+    "sender_type,receiver_type",
+    [
+        pytest.param(List[Any], List, id="list-of-any-to-bare-list"),
+        pytest.param(Dict[Any, Any], Dict, id="dict-of-any-to-bare-dict"),
+        pytest.param(Set[Any], Set, id="set-of-any-to-bare-set"),
+        pytest.param(Tuple[Any], Tuple, id="tuple-of-any-to-bare-tuple"),
+    ],
+)
+def test_container_of_any_to_bare_container_strict(sender_type, receiver_type):
+    # Both are compatible
+    assert _types_are_compatible(sender_type, receiver_type)
+    assert _types_are_compatible(receiver_type, sender_type)
+
+
+@pytest.mark.parametrize(
+    "sender_type,receiver_type",
+    [
+        pytest.param(Literal["test"], Literal, id="literal-to-bare-literal"),
+        pytest.param(Union[str, int], Union, id="union-to-bare-union"),
+        pytest.param(Optional[str], Optional, id="union-to-bare-union"),
+    ],
+)
+def test_always_incompatible_bare_types(sender_type, receiver_type):
+    # Neither are compatible
     assert not _types_are_compatible(sender_type, receiver_type)
+    assert not _types_are_compatible(receiver_type, sender_type)
