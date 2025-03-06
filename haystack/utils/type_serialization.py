@@ -39,15 +39,9 @@ def serialize_type(target: Any) -> str:
 
     # Get module name
     module = inspect.getmodule(target)
-    if module and hasattr(module, "__name__"):
-        if module.__name__ == "builtins":
-            # omit the module name for builtins, it just clutters the output
-            # e.g. instead of 'builtins.str', we'll just return 'str'
-            module_name = ""
-        else:
-            module_name = f"{module.__name__}"
-    else:
-        module_name = ""
+    module_name = ""
+    if module and hasattr(module, "__name__") and module.__name__ != "builtins":
+        module_name = f"{module.__name__}"
 
     args = get_args(target)
     if args:
