@@ -267,17 +267,17 @@ def test_type_name(type_, repr_):
 
 @pytest.mark.parametrize("sender_type, receiver_type", symmetric_cases)
 def test_same_types_are_compatible_strict(sender_type, receiver_type):
-    assert _types_are_compatible(sender_type, receiver_type, "strict")
+    assert _types_are_compatible(sender_type, receiver_type, True)
 
 
 @pytest.mark.parametrize("sender_type, receiver_type", asymmetric_cases)
 def test_asymmetric_types_are_compatible_strict(sender_type, receiver_type):
-    assert _types_are_compatible(sender_type, receiver_type, "strict")
+    assert _types_are_compatible(sender_type, receiver_type, True)
 
 
 @pytest.mark.parametrize("sender_type, receiver_type", asymmetric_cases)
 def test_asymmetric_types_are_not_compatible_strict(sender_type, receiver_type):
-    assert not _types_are_compatible(receiver_type, sender_type, "strict")
+    assert not _types_are_compatible(receiver_type, sender_type, True)
 
 
 incompatible_type_cases = [
