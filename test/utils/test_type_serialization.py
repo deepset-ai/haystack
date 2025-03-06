@@ -84,6 +84,11 @@ def test_output_type_serialization():
     assert serialize_type(type(None)) == "NoneType"
 
 
+def test_output_type_serialization_string():
+    assert serialize_type("str") == "str"
+    assert serialize_type("builtins.str") == "builtins.str"
+
+
 def test_output_type_deserialization():
     assert deserialize_type("str") == str
     assert deserialize_type("int") == int
