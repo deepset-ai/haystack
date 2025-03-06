@@ -343,6 +343,7 @@ class MCPTool(Tool):
 
         # Store connection parameters for serialization
         self._server_info = server_info
+        client = None
 
         # Initialize the connection
         try:
@@ -376,7 +377,8 @@ class MCPTool(Tool):
             )
 
         except Exception as e:
-            self._run_sync(client.close())
+            if client is not None:
+                self._run_sync(client.close())
             raise MCPError(f"Failed to initialize MCPTool: {e}") from e
 
     def _invoke_tool(self, **kwargs: Any) -> Any:
