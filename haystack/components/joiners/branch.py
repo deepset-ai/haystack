@@ -20,14 +20,15 @@ class BranchJoiner:
     to its output. This is useful for scenarios where multiple branches need to converge before proceeding.
 
     ### Common Use Cases:
-    - **Loop Handling:** `BranchJoiner` helps close loops in pipelines. For example, if a pipeline component validates or modifies
-      incoming data and produces an error-handling branch, `BranchJoiner` can merge both branches and send
+    - **Loop Handling:** `BranchJoiner` helps close loops in pipelines. For example, if a pipeline component validates
+      or modifies incoming data and produces an error-handling branch, `BranchJoiner` can merge both branches and send
       (or resend in the case of a loop) the data to the component that evaluates errors. See "Usage example" below.
 
-    - **Decision-Based Merging:** `BranchJoiner` reconciles branches coming from Router components (such as `ConditionalRouter`,
-      `TextLanguageRouter`). Suppose a `TextLanguageRouter` directs user queries to different Retrievers based on the
-      detected language. Each Retriever processes its assigned query and passes the results to `BranchJoiner`, which
-      consolidates them into a single output before passing them to the next component, such as a `PromptBuilder`.
+    - **Decision-Based Merging:** `BranchJoiner` reconciles branches coming from Router components (such as
+      `ConditionalRouter`, `TextLanguageRouter`). Suppose a `TextLanguageRouter` directs user queries to different
+      Retrievers based on the detected language. Each Retriever processes its assigned query and passes the results
+      to `BranchJoiner`, which consolidates them into a single output before passing them to the next component, such
+      as a `PromptBuilder`.
 
     ### Example Usage:
     ```python
