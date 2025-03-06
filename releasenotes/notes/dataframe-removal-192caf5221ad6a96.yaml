@@ -1,0 +1,8 @@
+---
+upgrade:
+  - |
+    The `ExtractedTableAnswer` dataclass and the `dataframe` field in the `Document` dataclass, deprecated
+    in Haystack 2.10.0, have now been removed.
+    `pandas` is no longer a required dependency for Haystack, making the installation lighter.
+    If a component you use requires `pandas`, an informative error will be raised, prompting you to install it.
+    For details and motivation, see the GitHub discussion: https://github.com/deepset-ai/haystack/discussions/8688.

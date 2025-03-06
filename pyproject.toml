@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "LLM framework to build customizable, production-ready LLM applications. Connect components (models, vector DBs, file converters) to pipelines or agents that can interact with your data."
 readme = "README.md"
 license = "Apache-2.0"
-requires-python = ">=3.8,<3.13"
+requires-python = ">=3.9"
 authors = [{ name = "deepset.ai", email = "malte.pietsch@deepset.ai" }]
 keywords = [
   "BERT",
@@ -34,15 +34,14 @@ classifiers = [
   "Operating System :: OS Independent",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
-  "pandas",
   "tqdm",
   "tenacity!=8.4.0",
   "lazy-imports",
@@ -53,12 +52,11 @@ dependencies = [
   "pyyaml",
   "more-itertools",         # TextDocumentSplitter
   "networkx",               # Pipeline graphs
-  "typing_extensions>=4.7", # typing support for Python 3.8
+  "typing_extensions>=4.7", # typing support for Python 3.9
   "requests",
   "numpy",
   "python-dateutil",
   "jsonschema",             # JsonSchemaValidator, Tool
-  "openapi-llm>=0.4.1",            # OpenAPIConnector
   "haystack-experimental",
   "mcp"
 ]
@@ -88,13 +86,15 @@ extra-dependencies = [
   "numpy>=2", # Haystack is compatible both with numpy 1.x and 2.x, but we test with 2.x
   "numba>=0.54.0", # This pin helps uv resolve the dependency tree. See https://github.com/astral-sh/uv/issues/7881
 
-  "transformers[torch,sentencepiece]==4.47.1", # ExtractiveReader, TransformersSimilarityRanker, LocalWhisperTranscriber, HFGenerators...
+  "pandas",                                    # AzureOCRDocumentConverter, CSVDocumentCleaner, CSVDocumentSplitter,
+                                               # EvaluationRunResult, XLSXToDocument, and pipeline tests
+
+  "transformers[torch,sentencepiece]==4.48.3", # ExtractiveReader, TransformersSimilarityRanker, LocalWhisperTranscriber, HFGenerators...
   "huggingface_hub>=0.27.0",                   # Hugging Face API Generators and Embedders
   "sentence-transformers>=3.0.0",              # SentenceTransformersTextEmbedder and SentenceTransformersDocumentEmbedder
   "langdetect",                                # TextLanguageRouter and DocumentLanguageClassifier
   "openai-whisper>=20231106",                  # LocalWhisperTranscriber
   "arrow>=1.3.0",                              # Jinja2TimeExtension
-  "pandas",                                    # Needed for pipeline tests with components that return dataframes
 
   # NamedEntityExtractor
   "spacy>=3.8,<3.9",
@@ -119,8 +119,9 @@ extra-dependencies = [
   "nltk>=3.9.1", # NLTKDocumentSplitter
 
   # OpenAPI
-  "jsonref",  # OpenAPIServiceConnector, OpenAPIServiceToFunctions
+  "jsonref",              # OpenAPIServiceConnector, OpenAPIServiceToFunctions
   "openapi3",
+  "openapi-llm>=0.4.1",   # OpenAPIConnector
 
   # Tracing
   "opentelemetry-sdk",
@@ -292,7 +293,6 @@ ignore_missing_imports = true
 
 [tool.ruff]
 line-length = 120
-target-version = "py38"
 exclude = [".github", "proposals"]
 
 [tool.ruff.format]

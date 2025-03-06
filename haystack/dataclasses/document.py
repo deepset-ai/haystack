@@ -3,13 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import hashlib
-import io
-import warnings
 from dataclasses import asdict, dataclass, field, fields
 from typing import Any, Dict, List, Optional
 
 from numpy import ndarray
-from pandas import DataFrame, read_json
 
 from haystack import logging
 from haystack.dataclasses.byte_stream import ByteStream
@@ -28,12 +25,12 @@ class _BackwardCompatible(type):
         Called before Document.__init__, will remap legacy fields to new ones.
 
         Also handles building a Document from a flattened dictionary.
+        Dataframe is not supported anymore.
         """
-        # Move `content` to new fields depending on the type
+        ### Conversion from 1.x Document ###
         content = kwargs.get("content")
-        if isinstance(content, DataFrame):
-            kwargs["dataframe"] = content
-            del kwargs["content"]
+        if content and not isinstance(content, str):
+            raise ValueError("The `content` field must be a string or None.")
 
         # Not used anymore
         if "content_type" in kwargs:
@@ -55,12 +52,11 @@ class Document(metaclass=_BackwardCompatible):
     """
     Base data class containing some data to be queried.
 
-    Can contain text snippets, tables, and file paths to images or audios. Documents can be sorted by score and saved
+    Can contain text snippets and file paths to images or audios. Documents can be sorted by score and saved
     to/from dictionary and JSON.
 
     :param id: Unique identifier for the document. When not set, it's generated based on the Document fields' values.
     :param content: Text of the document, if the document contains text.
-    :param dataframe: Pandas dataframe with the document's content, if the document contains tabular data.
     :param blob: Binary data associated with the document, if the document has any binary data associated with it.
     :param meta: Additional custom metadata for the document. Must be JSON-serializable.
     :param score: Score of the document. Used for ranking, usually assigned by retrievers.
@@ -70,7 +66,6 @@ class Document(metaclass=_BackwardCompatible):
 
     id: str = field(default="")
     content: Optional[str] = field(default=None)
-    dataframe: Optional[DataFrame] = field(default=None)
     blob: Optional[ByteStream] = field(default=None)
     meta: Dict[str, Any] = field(default_factory=dict)
     score: Optional[float] = field(default=None)
@@ -83,8 +78,6 @@ class Document(metaclass=_BackwardCompatible):
             fields.append(
                 f"content: '{self.content}'" if len(self.content) < 100 else f"content: '{self.content[:100]}...'"
             )
-        if self.dataframe is not None:
-            fields.append(f"dataframe: {self.dataframe.shape}")
         if self.blob is not None:
             fields.append(f"blob: {len(self.blob.data)} bytes")
         if len(self.meta) > 0:
@@ -115,16 +108,12 @@ class Document(metaclass=_BackwardCompatible):
         # Generate an id only if not explicitly set
         self.id = self.id or self._create_id()
 
-        if self.dataframe is not None:
-            msg = "The `dataframe` field is deprecated and will be removed in Haystack 2.11.0."
-            warnings.warn(msg, DeprecationWarning)
-
     def _create_id(self):
         """
         Creates a hash of the given content that acts as the document's ID.
         """
         text = self.content or None
-        dataframe = self.dataframe.to_json() if self.dataframe is not None else None
+        dataframe = None  # this allows the ID creation to remain unchanged even if the dataframe field has been removed
         blob = self.blob.data if self.blob is not None else None
         mime_type = self.blob.mime_type if self.blob is not None else None
         meta = self.meta or {}
@@ -137,14 +126,12 @@ class Document(metaclass=_BackwardCompatible):
         """
         Converts Document into a dictionary.
 
-        `dataframe` and `blob` fields are converted to JSON-serializable types.
+        `blob` field is converted to a JSON-serializable type.
 
         :param flatten:
             Whether to flatten `meta` field or not. Defaults to `True` to be backward-compatible with Haystack 1.x.
         """
         data = asdict(self)
-        if (dataframe := data.get("dataframe")) is not None:
-            data["dataframe"] = dataframe.to_json()
         if (blob := data.get("blob")) is not None:
             data["blob"] = {"data": list(blob["data"]), "mime_type": blob["mime_type"]}
 
@@ -159,10 +146,8 @@ class Document(metaclass=_BackwardCompatible):
         """
         Creates a new Document object from a dictionary.
 
-        The `dataframe` and `blob` fields are converted to their original types.
+        The `blob` field is converted to its original type.
         """
-        if (dataframe := data.get("dataframe")) is not None:
-            data["dataframe"] = read_json(io.StringIO(dataframe))
         if blob := data.get("blob"):
             data["blob"] = ByteStream(data=bytes(blob["data"]), mime_type=blob["mime_type"])
         if sparse_embedding := data.get("sparse_embedding"):
@@ -198,15 +183,7 @@ class Document(metaclass=_BackwardCompatible):
         Returns the type of the content for the document.
 
         This is necessary to keep backward compatibility with 1.x.
-
-        :raises ValueError:
-            If both `text` and `dataframe` fields are set or both are missing.
         """
-        if self.content is not None and self.dataframe is not None:
-            raise ValueError("Both text and dataframe are set.")
-
         if self.content is not None:
             return "text"
-        elif self.dataframe is not None:
-            return "table"
-        raise ValueError("Neither text nor dataframe is set.")
+        raise ValueError("Content is not set.")

@@ -1,20 +1,21 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+
 import logging
 from unittest.mock import patch
 
-import pandas as pd
 import pytest
 import tempfile
+import asyncio
 
 from haystack import Document
 from haystack.document_stores.errors import DocumentStoreError, DuplicateDocumentError
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.testing.document_store import DocumentStoreBaseTests, FilterDocumentsTestWithDataframe
+from haystack.testing.document_store import DocumentStoreBaseTests
 
 
-class TestMemoryDocumentStore(DocumentStoreBaseTests, FilterDocumentsTestWithDataframe):  # pylint: disable=R0904
+class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
     """
     Test InMemoryDocumentStore's specific features
     """
@@ -239,36 +240,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests, FilterDocumentsTestWithDat
         assert len(results2) == 3
         assert all(0.0 <= res.score <= 1.0 for res in results2)
 
-    def test_bm25_retrieval_with_table_content(self, document_store: InMemoryDocumentStore):
-        # Tests if the bm25_retrieval method correctly returns a dataframe when the content_type is table.
-        table_content = pd.DataFrame({"language": ["Python", "Java"], "use": ["Data Science", "Web Development"]})
-        docs = [Document(dataframe=table_content), Document(content="Gardening"), Document(content="Bird watching")]
-        document_store.write_documents(docs)
-        results = document_store.bm25_retrieval(query="Java", top_k=1)
-        assert len(results) == 1
-
-        df = results[0].dataframe
-        assert isinstance(df, pd.DataFrame)
-        assert df.equals(table_content)
-
-    def test_bm25_retrieval_with_text_and_table_content(self, document_store: InMemoryDocumentStore, caplog):
-        table_content = pd.DataFrame({"language": ["Python", "Java"], "use": ["Data Science", "Web Development"]})
-        document = Document(content="Gardening", dataframe=table_content)
-        docs = [
-            Document(content="Python"),
-            Document(content="Bird Watching"),
-            Document(content="Gardening"),
-            Document(content="Java"),
-            document,
-        ]
-        document_store.write_documents(docs)
-        results = document_store.bm25_retrieval(query="Gardening", top_k=2)
-        assert document.id in [d.id for d in results]
-        assert "both text and dataframe content" in caplog.text
-        results = document_store.bm25_retrieval(query="Python", top_k=2)
-        assert document.id not in [d.id for d in results]
-
-    def test_bm25_retrieval_default_filter_for_text_and_dataframes(self, document_store: InMemoryDocumentStore):
+    def test_bm25_retrieval_default_filter(self, document_store: InMemoryDocumentStore):
         docs = [Document(), Document(content="Gardening"), Document(content="Bird watching")]
         document_store.write_documents(docs)
         results = document_store.bm25_retrieval(query="doesn't matter, top_k is 10", top_k=10)
@@ -432,3 +404,171 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests, FilterDocumentsTestWithDat
 
         document_store_2.delete_documents([doc_1.id])
         assert document_store_1.count_documents() == document_store_2.count_documents() == 0
+
+    # Test async/await methods and concurrency
+
+    @pytest.mark.asyncio
+    async def test_write_documents(self, document_store: InMemoryDocumentStore):
+        docs = [Document(id="1")]
+        assert await document_store.write_documents_async(docs) == 1
+        with pytest.raises(DuplicateDocumentError):
+            await document_store.write_documents_async(docs)
+
+    @pytest.mark.asyncio
+    async def test_count_documents(self, document_store: InMemoryDocumentStore):
+        await document_store.write_documents_async(
+            [Document(content="test doc 1"), Document(content="test doc 2"), Document(content="test doc 3")]
+        )
+        assert await document_store.count_documents_async() == 3
+
+    @pytest.mark.asyncio
+    async def test_filter_documents(self, document_store: InMemoryDocumentStore):
+        filterable_docs = [Document(content=f"1", meta={"number": -10}), Document(content=f"2", meta={"number": 100})]
+        await document_store.write_documents_async(filterable_docs)
+        result = await document_store.filter_documents_async(
+            filters={"field": "meta.number", "operator": "==", "value": 100}
+        )
+        DocumentStoreBaseTests().assert_documents_are_equal(
+            result, [d for d in filterable_docs if d.meta.get("number") == 100]
+        )
+
+    @pytest.mark.asyncio
+    async def test_delete_documents(self, document_store: InMemoryDocumentStore):
+        doc = Document(content="test doc")
+        await document_store.write_documents_async([doc])
+        assert document_store.count_documents() == 1
+
+        await document_store.delete_documents_async([doc.id])
+        assert await document_store.count_documents_async() == 0
+
+    @pytest.mark.asyncio
+    async def test_bm25_retrieval(self, document_store: InMemoryDocumentStore):
+        # Tests if the bm25_retrieval method returns the correct document based on the input query.
+        docs = [Document(content="Hello world"), Document(content="Haystack supports multiple languages")]
+        await document_store.write_documents_async(docs)
+        results = await document_store.bm25_retrieval_async(query="What languages?", top_k=1)
+        assert len(results) == 1
+        assert results[0].content == "Haystack supports multiple languages"
+
+    @pytest.mark.asyncio
+    async def test_embedding_retrieval(self):
+        docstore = InMemoryDocumentStore(embedding_similarity_function="cosine")
+        # Tests if the embedding retrieval method returns the correct document based on the input query embedding.
+        docs = [
+            Document(content="Hello world", embedding=[0.1, 0.2, 0.3, 0.4]),
+            Document(content="Haystack supports multiple languages", embedding=[1.0, 1.0, 1.0, 1.0]),
+        ]
+        await docstore.write_documents_async(docs)
+        results = await docstore.embedding_retrieval_async(
+            query_embedding=[0.1, 0.1, 0.1, 0.1], top_k=1, filters={}, scale_score=False
+        )
+        assert len(results) == 1
+        assert results[0].content == "Haystack supports multiple languages"
+
+    @pytest.mark.asyncio
+    async def test_concurrent_bm25_retrievals(self, document_store: InMemoryDocumentStore):
+        # Test multiple concurrent BM25 retrievals
+        docs = [
+            Document(content="Python is a popular programming language"),
+            Document(content="Java is a popular programming language"),
+            Document(content="JavaScript is a popular programming language"),
+            Document(content="Ruby is a popular programming language"),
+        ]
+        await document_store.write_documents_async(docs)
+
+        # Create multiple concurrent retrievals
+        queries = ["Python", "Java", "JavaScript", "Ruby"]
+        tasks = [document_store.bm25_retrieval_async(query=query, top_k=1) for query in queries]
+        results = await asyncio.gather(*tasks)
+
+        # Verify each result matches the expected content
+        for query, result in zip(queries, results):
+            assert len(result) == 1
+            assert result[0].content == f"{query} is a popular programming language"
+
+    @pytest.mark.asyncio
+    async def test_concurrent_embedding_retrievals(self):
+        # Test multiple concurrent embedding retrievals
+        docstore = InMemoryDocumentStore(embedding_similarity_function="cosine")
+        docs = [
+            Document(content="Python programming", embedding=[1.0, 0.0, 0.0, 0.0]),
+            Document(content="Java programming", embedding=[0.0, 1.0, 0.0, 0.0]),
+            Document(content="JavaScript programming", embedding=[0.0, 0.0, 1.0, 0.0]),
+            Document(content="Ruby programming", embedding=[0.0, 0.0, 0.0, 1.0]),
+        ]
+        await docstore.write_documents_async(docs)
+
+        # Create multiple concurrent retrievals with different query embeddings
+        query_embeddings = [
+            [1.0, 0.0, 0.0, 0.0],  # Should match Python
+            [0.0, 1.0, 0.0, 0.0],  # Should match Java
+            [0.0, 0.0, 1.0, 0.0],  # Should match JavaScript
+            [0.0, 0.0, 0.0, 1.0],  # Should match Ruby
+        ]
+        tasks = [docstore.embedding_retrieval_async(query_embedding=emb, top_k=1) for emb in query_embeddings]
+        results = await asyncio.gather(*tasks)
+
+        # Verify each result matches the expected content
+        expected_contents = ["Python programming", "Java programming", "JavaScript programming", "Ruby programming"]
+        for result, expected in zip(results, expected_contents):
+            assert len(result) == 1
+            assert result[0].content == expected
+
+    @pytest.mark.asyncio
+    async def test_mixed_concurrent_operations(self, document_store: InMemoryDocumentStore):
+        # Test a mix of concurrent operations including writes and retrievals
+        docs = [
+            Document(content="First document"),
+            Document(content="Second document"),
+            Document(content="Third document"),
+        ]
+        await document_store.write_documents_async(docs)
+
+        # Create a mix of concurrent operations
+        tasks = [
+            document_store.bm25_retrieval_async(query="First", top_k=1),
+            document_store.write_documents_async([Document(content="Fourth document")]),
+            document_store.bm25_retrieval_async(query="Fourth", top_k=1),
+            document_store.filter_documents_async(),
+        ]
+        results = await asyncio.gather(*tasks)
+
+        # Verify results
+        assert len(results[0]) == 1  # First retrieval
+        assert results[1] == 1  # Write operation
+        assert len(results[2]) == 1  # Fourth retrieval
+        assert len(results[3]) == 4  # Filter operation
+
+    @pytest.mark.asyncio
+    async def test_concurrent_operations_with_errors(self, document_store: InMemoryDocumentStore):
+        # Test concurrent operations where some might fail
+        docs = [Document(content="Test document")]
+        await document_store.write_documents_async(docs)
+
+        # Create tasks including some that should fail
+        tasks = [
+            document_store.bm25_retrieval_async(query="Test", top_k=1),  # Should succeed
+            document_store.bm25_retrieval_async(query="", top_k=1),  # Should fail
+            document_store.embedding_retrieval_async(query_embedding=[], top_k=1),  # Should fail
+        ]
+
+        # Gather results and expect some to raise exceptions
+        with pytest.raises(ValueError):
+            await asyncio.gather(*tasks)
+
+    @pytest.mark.asyncio
+    async def test_concurrent_operations_with_large_dataset(self, document_store: InMemoryDocumentStore):
+        # Test concurrent operations with a larger dataset
+        # Create 100 documents with different content
+        docs = [Document(content=f"Document {i} content") for i in range(100)]
+        await document_store.write_documents_async(docs)
+
+        # Create multiple concurrent retrievals
+        queries = [f"Document {i}" for i in range(0, 100, 10)]  # Query every 10th document
+        tasks = [document_store.bm25_retrieval_async(query=query, top_k=1) for query in queries]
+        results = await asyncio.gather(*tasks)
+
+        # Verify results
+        for i, result in enumerate(results):
+            assert len(result) == 1
+            assert result[0].content == f"Document {i * 10} content"

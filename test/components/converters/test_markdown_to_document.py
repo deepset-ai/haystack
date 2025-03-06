@@ -10,7 +10,6 @@ from haystack.components.converters.markdown import MarkdownToDocument
 from haystack.dataclasses import ByteStream
 
 
-@pytest.mark.integration
 class TestMarkdownToDocument:
     def test_init_params_default(self):
         converter = MarkdownToDocument()
@@ -55,8 +54,9 @@ class TestMarkdownToDocument:
 
         converter = MarkdownToDocument()
 
-        with patch("haystack.components.converters.markdown.normalize_metadata") as normalize_metadata, patch(
-            "haystack.components.converters.markdown.MarkdownIt"
+        with (
+            patch("haystack.components.converters.markdown.normalize_metadata") as normalize_metadata,
+            patch("haystack.components.converters.markdown.MarkdownIt"),
         ):
             converter.run(sources=[bytestream, test_files_path / "markdown" / "sample.md"], meta={"language": "it"})
 
@@ -68,7 +68,8 @@ class TestMarkdownToDocument:
 
         converter = MarkdownToDocument()
 
-        with patch("haystack.components.converters.markdown.MarkdownIt"):
+        with patch("haystack.components.converters.markdown.MarkdownIt.render") as mock_render:
+            mock_render.return_value = "test"
             output = converter.run(
                 sources=[bytestream, test_files_path / "markdown" / "sample.md"], meta={"language": "it"}
             )

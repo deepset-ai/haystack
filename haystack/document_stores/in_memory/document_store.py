@@ -2,11 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 import json
 import math
 import re
 import uuid
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Literal, Optional, Tuple
@@ -65,6 +67,7 @@ class InMemoryDocumentStore:
         bm25_parameters: Optional[Dict] = None,
         embedding_similarity_function: Literal["dot_product", "cosine"] = "dot_product",
         index: Optional[str] = None,
+        async_executor: Optional[ThreadPoolExecutor] = None,
     ):
         """
         Initializes the DocumentStore.
@@ -79,6 +82,9 @@ class InMemoryDocumentStore:
             about your embedding model.
         :param index: A specific index to store the documents. If not specified, a random UUID is used.
             Using the same index allows you to store documents across multiple InMemoryDocumentStore instances.
+        :param async_executor:
+            Optional ThreadPoolExecutor to use for async calls. If not provided, a single-threaded
+            executor will be initialized and used.
         """
         self.bm25_tokenization_regex = bm25_tokenization_regex
         self.tokenizer = re.compile(bm25_tokenization_regex).findall
@@ -104,6 +110,12 @@ class InMemoryDocumentStore:
 
         if self.index not in _FREQ_VOCAB_FOR_IDF_STORAGES:
             _FREQ_VOCAB_FOR_IDF_STORAGES[self.index] = Counter()
+
+        self.executor = (
+            ThreadPoolExecutor(thread_name_prefix=f"async-inmemory-docstore-executor-{id(self)}", max_workers=1)
+            if async_executor is None
+            else async_executor
+        )
 
     @property
     def storage(self) -> Dict[str, Document]:
@@ -433,23 +445,9 @@ class InMemoryDocumentStore:
             if document.id in self.storage.keys():
                 self.delete_documents([document.id])
 
-            # This processing logic is extracted from the original bm25_retrieval method.
-            # Since we are creating index incrementally before the first retrieval,
-            # we need to determine what content to use for indexing here, not at query time.
+            tokens = []
             if document.content is not None:
-                if document.dataframe is not None:
-                    logger.warning(
-                        "Document '{document_id}' has both text and dataframe content. "
-                        "Using text content for retrieval and skipping dataframe content.",
-                        document_id=document.id,
-                    )
                 tokens = self._tokenize_bm25(document.content)
-            elif document.dataframe is not None:
-                str_content = document.dataframe.astype(str)
-                csv_content = str_content.to_csv(index=False)
-                tokens = self._tokenize_bm25(csv_content)
-            else:
-                tokens = []
 
             self.storage[document.id] = document
 
@@ -495,13 +493,7 @@ class InMemoryDocumentStore:
         if not query:
             raise ValueError("Query should be a non-empty string")
 
-        content_type_filter = {
-            "operator": "OR",
-            "conditions": [
-                {"field": "content", "operator": "!=", "value": None},
-                {"field": "dataframe", "operator": "!=", "value": None},
-            ],
-        }
+        content_type_filter = {"field": "content", "operator": "!=", "value": None}
         if filters:
             if "operator" not in filters:
                 raise ValueError(
@@ -640,3 +632,91 @@ class InMemoryDocumentStore:
                 scores = [(score + 1) / 2 for score in scores]
 
         return scores
+
+    async def count_documents_async(self) -> int:
+        """
+        Returns the number of how many documents are present in the DocumentStore.
+        """
+        return len(self.storage.keys())
+
+    async def filter_documents_async(self, filters: Optional[Dict[str, Any]] = None) -> List[Document]:
+        """
+        Returns the documents that match the filters provided.
+
+        For a detailed specification of the filters, refer to the DocumentStore.filter_documents() protocol
+        documentation.
+
+        :param filters: The filters to apply to the document list.
+        :returns: A list of Documents that match the given filters.
+        """
+        return await asyncio.get_event_loop().run_in_executor(
+            self.executor, lambda: self.filter_documents(filters=filters)
+        )
+
+    async def write_documents_async(
+        self, documents: List[Document], policy: DuplicatePolicy = DuplicatePolicy.NONE
+    ) -> int:
+        """
+        Refer to the DocumentStore.write_documents() protocol documentation.
+
+        If `policy` is set to `DuplicatePolicy.NONE` defaults to `DuplicatePolicy.FAIL`.
+        """
+        return await asyncio.get_event_loop().run_in_executor(
+            self.executor, lambda: self.write_documents(documents=documents, policy=policy)
+        )
+
+    async def delete_documents_async(self, document_ids: List[str]) -> None:
+        """
+        Deletes all documents with matching document_ids from the DocumentStore.
+
+        :param document_ids: The object_ids to delete.
+        """
+        await asyncio.get_event_loop().run_in_executor(
+            self.executor, lambda: self.delete_documents(document_ids=document_ids)
+        )
+
+    async def bm25_retrieval_async(
+        self, query: str, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, scale_score: bool = False
+    ) -> List[Document]:
+        """
+        Retrieves documents that are most relevant to the query using BM25 algorithm.
+
+        :param query: The query string.
+        :param filters: A dictionary with filters to narrow down the search space.
+        :param top_k: The number of top documents to retrieve. Default is 10.
+        :param scale_score: Whether to scale the scores of the retrieved documents. Default is False.
+        :returns: A list of the top_k documents most relevant to the query.
+        """
+        return await asyncio.get_event_loop().run_in_executor(
+            self.executor,
+            lambda: self.bm25_retrieval(query=query, filters=filters, top_k=top_k, scale_score=scale_score),
+        )
+
+    async def embedding_retrieval_async(  # pylint: disable=too-many-positional-arguments
+        self,
+        query_embedding: List[float],
+        filters: Optional[Dict[str, Any]] = None,
+        top_k: int = 10,
+        scale_score: bool = False,
+        return_embedding: bool = False,
+    ) -> List[Document]:
+        """
+        Retrieves documents that are most similar to the query embedding using a vector similarity metric.
+
+        :param query_embedding: Embedding of the query.
+        :param filters: A dictionary with filters to narrow down the search space.
+        :param top_k: The number of top documents to retrieve. Default is 10.
+        :param scale_score: Whether to scale the scores of the retrieved Documents. Default is False.
+        :param return_embedding: Whether to return the embedding of the retrieved Documents. Default is False.
+        :returns: A list of the top_k documents most relevant to the query.
+        """
+        return await asyncio.get_event_loop().run_in_executor(
+            self.executor,
+            lambda: self.embedding_retrieval(
+                query_embedding=query_embedding,
+                filters=filters,
+                top_k=top_k,
+                scale_score=scale_score,
+                return_embedding=return_embedding,
+            ),
+        )
