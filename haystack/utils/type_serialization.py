@@ -8,7 +8,7 @@ import sys
 import typing
 from threading import Lock
 from types import ModuleType
-from typing import Any, get_args, get_origin
+from typing import Any, get_args
 
 from haystack import DeserializationError
 
@@ -30,41 +30,26 @@ def serialize_type(target: Any) -> str:
     :raises ValueError:
         If the type cannot be serialized.
     """
-    # If the target is a string and contains a dot, treat it as an already serialized type
-    if isinstance(target, str) and "." in target:
-        return target
+    name = getattr(target, "__name__", str(target))
 
-    # Determine if the target is a type or an instance of a typing object
-    is_type_or_typing = isinstance(target, type) or bool(get_origin(target)) or target == Any
-    type_obj = target if is_type_or_typing else type(target)
-    type_obj_repr = repr(type_obj)
-
-    if type_obj_repr.startswith("typing."):
-        # e.g., typing.List[int] -> List[int], we'll add the module below
-        type_name = type_obj_repr.split(".", 1)[1]
-    elif origin := get_origin(type_obj):  # get the origin (base type of the parameterized generic type)
-        # get the arguments of the generic type
-        args = get_args(type_obj)
-        args_repr = ", ".join(serialize_type(arg) for arg in args)
-        type_name = f"{origin.__name__}[{args_repr}]"
-    elif hasattr(type_obj, "__name__"):
-        type_name = type_obj.__name__
-    else:
-        # If type cannot be serialized, raise an error
-        raise ValueError(f"Could not serialize type: {type_obj_repr}")
-
-    module = inspect.getmodule(type_obj)
+    # Get module name
+    module = inspect.getmodule(target)
     if module and hasattr(module, "__name__"):
         if module.__name__ == "builtins":
             # omit the module name for builtins, it just clutters the output
             # e.g. instead of 'builtins.str', we'll just return 'str'
-            full_path = type_name
+            module_name = ""
         else:
-            full_path = f"{module.__name__}.{type_name}"
+            module_name = f"{module.__name__}"
     else:
-        full_path = type_name
+        module_name = ""
 
-    return full_path
+    args = get_args(target)
+    if args:
+        args = ", ".join([serialize_type(a) for a in args if a is not type(None)])
+        return f"{module_name}.{name}[{args}]" if module_name else f"{name}[{args}]"
+
+    return f"{module_name}.{name}" if module_name else f"{name}"
 
 
 def deserialize_type(type_str: str) -> Any:

@@ -9,7 +9,7 @@ from collections import deque
 import pytest
 
 from haystack.dataclasses import ChatMessage
-from haystack.components.routers.conditional_router import serialize_type, deserialize_type
+from haystack.utils.type_serialization import serialize_type, deserialize_type
 
 
 TYPING_AND_TYPE_TESTS = [
@@ -65,7 +65,7 @@ def test_output_type_serialization():
     assert serialize_type(dict) == "dict"
     assert serialize_type(float) == "float"
     assert serialize_type(bool) == "bool"
-    assert serialize_type(None) == "NoneType"
+    assert serialize_type(type(None)) == "NoneType"
 
 
 def test_output_type_deserialization():
@@ -74,7 +74,7 @@ def test_output_type_deserialization():
     assert deserialize_type("dict") == dict
     assert deserialize_type("float") == float
     assert deserialize_type("bool") == bool
-    assert deserialize_type("NoneType") is None
+    assert isinstance(deserialize_type("NoneType"), None)  # type: ignore
 
 
 def test_output_type_serialization_typing():
