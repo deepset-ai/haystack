@@ -8,7 +8,7 @@ from collections import deque
 
 import pytest
 
-from haystack.dataclasses import ChatMessage
+from haystack.dataclasses import Answer, ByteStream, ChatMessage, Document
 from haystack.utils.type_serialization import serialize_type, deserialize_type
 
 
@@ -27,6 +27,8 @@ TYPING_AND_TYPE_TESTS = [
     pytest.param("typing.List[bool]", List[bool]),
     # Literal
     pytest.param("typing.Literal[1, 2, 3]", Literal[1, 2, 3]),
+    pytest.param("typing.Literal[a, b, c]", Literal["a", "b", "c"]),
+    pytest.param("typing.Literal[a, b, None]", Literal["a", "b", None]),
     # Optional
     pytest.param("typing.Optional[str]", Optional[str]),
     pytest.param("typing.Optional[int]", Optional[int]),
@@ -110,31 +112,66 @@ def test_output_type_deserialization_typing():
 
 
 def test_output_type_serialization_nested():
+    assert serialize_type(List[Union[str, int]]) == "typing.List[typing.Union[str, int]]"
+    assert serialize_type(List[Optional[str]]) == "typing.List[typing.Optional[str]]"
     assert serialize_type(List[Dict[str, int]]) == "typing.List[typing.Dict[str, int]]"
     assert serialize_type(typing.List[Dict[str, int]]) == "typing.List[typing.Dict[str, int]]"
 
 
 def test_output_type_deserialization_nested():
-    assert deserialize_type("typing.List[typing.Dict[str, int]]") == typing.List[Dict[str, int]]
+    assert deserialize_type("typing.List[typing.Union[str, int]]") == List[Union[str, int]]
+    assert deserialize_type("typing.List[typing.Optional[str]]") == List[Optional[str]]
     assert deserialize_type("typing.List[typing.Dict[str, typing.List[int]]]") == List[Dict[str, List[int]]]
+    assert deserialize_type("typing.List[typing.Dict[str, int]]") == typing.List[Dict[str, int]]
 
 
 def test_output_type_serialization_haystack_dataclasses():
+    # Answer
+    assert serialize_type(Answer) == "haystack.dataclasses.answer.Answer"
+    assert serialize_type(List[Answer]) == "typing.List[haystack.dataclasses.answer.Answer]"
+    assert serialize_type(typing.Dict[int, Answer]) == "typing.Dict[int, haystack.dataclasses.answer.Answer]"
+    # Bytestream
+    assert serialize_type(ByteStream) == "haystack.dataclasses.byte_stream.ByteStream"
+    assert serialize_type(List[ByteStream]) == "typing.List[haystack.dataclasses.byte_stream.ByteStream]"
+    assert (
+        serialize_type(typing.Dict[int, ByteStream]) == "typing.Dict[int, haystack.dataclasses.byte_stream.ByteStream]"
+    )
+    # Chat Message
     assert serialize_type(ChatMessage) == "haystack.dataclasses.chat_message.ChatMessage"
     assert serialize_type(List[ChatMessage]) == "typing.List[haystack.dataclasses.chat_message.ChatMessage]"
     assert (
         serialize_type(typing.Dict[int, ChatMessage])
         == "typing.Dict[int, haystack.dataclasses.chat_message.ChatMessage]"
     )
+    # Document
+    assert serialize_type(Document) == "haystack.dataclasses.document.Document"
+    assert serialize_type(List[Document]) == "typing.List[haystack.dataclasses.document.Document]"
+    assert serialize_type(typing.Dict[int, Document]) == "typing.Dict[int, haystack.dataclasses.document.Document]"
 
 
 def test_output_type_deserialization_haystack_dataclasses():
+    # Answer
+    assert deserialize_type("haystack.dataclasses.answer.Answer") == Answer
+    assert deserialize_type("typing.List[haystack.dataclasses.answer.Answer]") == List[Answer]
+    assert deserialize_type("typing.Dict[int, haystack.dataclasses.answer.Answer]") == typing.Dict[int, Answer]
+    # ByteStream
+    assert deserialize_type("haystack.dataclasses.byte_stream.ByteStream") == ByteStream
+    assert deserialize_type("typing.List[haystack.dataclasses.byte_stream.ByteStream]") == List[ByteStream]
+    assert (
+        deserialize_type("typing.Dict[int, haystack.dataclasses.byte_stream.ByteStream]")
+        == typing.Dict[int, ByteStream]
+    )
+    # Chat Message
     assert deserialize_type("typing.List[haystack.dataclasses.chat_message.ChatMessage]") == typing.List[ChatMessage]
     assert (
         deserialize_type("typing.Dict[int, haystack.dataclasses.chat_message.ChatMessage]")
         == typing.Dict[int, ChatMessage]
     )
     assert deserialize_type("haystack.dataclasses.chat_message.ChatMessage") == ChatMessage
+    # Document
+    assert deserialize_type("haystack.dataclasses.document.Document") == Document
+    assert deserialize_type("typing.List[haystack.dataclasses.document.Document]") == typing.List[Document]
+    assert deserialize_type("typing.Dict[int, haystack.dataclasses.document.Document]") == typing.Dict[int, Document]
 
 
 @pytest.mark.skipif(sys.version_info < (3, 9), reason="PEP 585 types are only available in Python 3.9+")
