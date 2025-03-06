@@ -29,6 +29,10 @@ TYPING_AND_TYPE_TESTS = [
     pytest.param("typing.Literal[1, 2, 3]", Literal[1, 2, 3]),
     # Optional
     pytest.param("typing.Optional[str]", Optional[str]),
+    pytest.param("typing.Optional[int]", Optional[int]),
+    pytest.param("typing.Optional[dict]", Optional[dict]),
+    pytest.param("typing.Optional[float]", Optional[float]),
+    pytest.param("typing.Optional[bool]", Optional[bool]),
     # Set
     pytest.param("typing.Set[int]", Set[int]),
     pytest.param("typing.Set[str]", Set[str]),
@@ -43,6 +47,10 @@ TYPING_AND_TYPE_TESTS = [
     pytest.param("typing.Tuple[bool]", Tuple[bool]),
     # Union
     pytest.param("typing.Union[str, int]", Union[str, int]),
+    pytest.param("typing.Union[int, float]", Union[int, float]),
+    pytest.param("typing.Union[dict, str]", Union[dict, str]),
+    pytest.param("typing.Union[float, bool]", Union[float, bool]),
+    pytest.param("typing.Optional[str]", typing.Union[None, str]),  # Union with None becomes Optional
     # Other
     pytest.param("typing.FrozenSet[int]", FrozenSet[int]),
     pytest.param("typing.Deque[str]", Deque[str]),
@@ -65,6 +73,7 @@ def test_output_type_serialization():
     assert serialize_type(dict) == "dict"
     assert serialize_type(float) == "float"
     assert serialize_type(bool) == "bool"
+    assert serialize_type(None) == "None"
     assert serialize_type(type(None)) == "NoneType"
 
 
@@ -74,7 +83,8 @@ def test_output_type_deserialization():
     assert deserialize_type("dict") == dict
     assert deserialize_type("float") == float
     assert deserialize_type("bool") == bool
-    assert isinstance(deserialize_type("NoneType"), None)  # type: ignore
+    assert deserialize_type("None") is None
+    assert isinstance(deserialize_type("NoneType"), type(None))
 
 
 def test_output_type_serialization_typing():
