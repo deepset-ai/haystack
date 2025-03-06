@@ -552,7 +552,7 @@ class HuggingFaceLocalChatGenerator:
         generation_kwargs["streamer"] = HFTokenStreamingHandler(tokenizer, streaming_callback, stop_words)
 
         # Generate responses asynchronously
-        output = await asyncio.get_event_loop().run_in_executor(
+        output = await asyncio.get_running_loop().run_in_executor(
             self.executor,
             lambda: self.pipeline(prepared_prompt, **generation_kwargs),  # type: ignore # if self.executor was not passed it was initialized with max_workers=1 in init
         )
@@ -597,7 +597,7 @@ class HuggingFaceLocalChatGenerator:
         )
 
         # Generate responses asynchronously
-        output = await asyncio.get_event_loop().run_in_executor(
+        output = await asyncio.get_running_loop().run_in_executor(
             self.executor,
             lambda: self.pipeline(prepared_prompt, **generation_kwargs),  # type: ignore # if self.executor was not passed it was initialized with max_workers=1 in init
         )

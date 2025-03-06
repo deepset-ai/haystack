@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
+import gc
 from typing import Optional, List
 from unittest.mock import Mock, patch
 
@@ -540,3 +541,12 @@ class TestHuggingFaceLocalChatGenerator:
                 streaming_callback=lambda x: None,
                 tools=[Tool(name="test", description="test", parameters={}, function=lambda: None)],
             )
+
+    def test_executor_shutdown(self, model_info_mock, mock_pipeline_tokenizer):
+        with patch("haystack.components.generators.chat.hugging_face_local.pipeline") as mock_pipeline:
+            generator = HuggingFaceLocalChatGenerator(model="mocked-model")
+            executor = generator.executor
+            with patch.object(executor, "shutdown", wraps=executor.shutdown) as mock_shutdown:
+                del generator
+                gc.collect()
+                mock_shutdown.assert_called_once_with(wait=True)
