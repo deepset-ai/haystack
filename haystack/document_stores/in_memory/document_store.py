@@ -111,11 +111,27 @@ class InMemoryDocumentStore:
         if self.index not in _FREQ_VOCAB_FOR_IDF_STORAGES:
             _FREQ_VOCAB_FOR_IDF_STORAGES[self.index] = Counter()
 
+        # keep track of whether we own the executor if we created it we must also clean it up
+        self._owns_executor = async_executor is None
         self.executor = (
             ThreadPoolExecutor(thread_name_prefix=f"async-inmemory-docstore-executor-{id(self)}", max_workers=1)
             if async_executor is None
             else async_executor
         )
+
+    def __del__(self):
+        """
+        Cleanup when the instance is being destroyed.
+        """
+        if hasattr(self, "_owns_executor") and self._owns_executor and hasattr(self, "executor"):
+            self.executor.shutdown(wait=True)
+
+    def shutdown(self):
+        """
+        Explicitly shutdown the executor if we own it.
+        """
+        if self._owns_executor:
+            self.executor.shutdown(wait=True)
 
     @property
     def storage(self) -> Dict[str, Document]:
