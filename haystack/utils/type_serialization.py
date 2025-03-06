@@ -21,15 +21,12 @@ def serialize_type(target: Any) -> str:
     Serializes a type or an instance to its string representation, including the module name.
 
     This function handles types, instances of types, and special typing objects.
-    It assumes that non-typing objects will have a '__name__' attribute and raises
-    an error if a type cannot be serialized.
+    It assumes that non-typing objects will have a '__name__' attribute.
 
     :param target:
         The object to serialize, can be an instance or a type.
     :return:
         The string representation of the type.
-    :raises ValueError:
-        If the type cannot be serialized.
     """
     name = getattr(target, "__name__", str(target))
 
@@ -54,8 +51,8 @@ def serialize_type(target: Any) -> str:
 
     args = get_args(target)
     if args:
-        args = ", ".join([serialize_type(a) for a in args if a is not type(None)])
-        return f"{module_name}.{name}[{args}]" if module_name else f"{name}[{args}]"
+        args_str = ", ".join([serialize_type(a) for a in args if a is not type(None)])
+        return f"{module_name}.{name}[{args_str}]" if module_name else f"{name}[{args_str}]"
 
     return f"{module_name}.{name}" if module_name else f"{name}"
 
@@ -114,7 +111,7 @@ def deserialize_type(type_str: str) -> Any:
 
         main_type = deserialize_type(main_type_str)
         generic_args = [deserialize_type(arg) for arg in _parse_generic_args(generics_str)]
-        generic_args = tuple(generic_args) if len(generic_args) > 1 else generic_args[0]
+        generic_args = tuple(generic_args) if len(generic_args) > 1 else generic_args[0]  # type: ignore
 
         # Reconstruct
         try:
