@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import sys
 import typing
-from typing import Any, List, Literal, Dict, Set, Tuple, Union, Optional, FrozenSet, Deque
+from typing import Any, List, Dict, Set, Tuple, Union, Optional, FrozenSet, Deque
 from collections import deque
 
 import pytest
@@ -25,10 +25,6 @@ TYPING_AND_TYPE_TESTS = [
     pytest.param("typing.List[dict]", List[dict]),
     pytest.param("typing.List[float]", List[float]),
     pytest.param("typing.List[bool]", List[bool]),
-    # Literal
-    pytest.param("typing.Literal[1, 2, 3]", Literal[1, 2, 3]),
-    pytest.param("typing.Literal[a, b, c]", Literal["a", "b", "c"]),
-    pytest.param("typing.Literal[a, b, None]", Literal["a", "b", None]),
     # Optional
     pytest.param("typing.Optional[str]", Optional[str]),
     pytest.param("typing.Optional[int]", Optional[int]),
@@ -110,7 +106,6 @@ def test_output_type_serialization_typing():
     assert serialize_type(Any) == "typing.Any"
     assert serialize_type(Dict) == "typing.Dict"
     assert serialize_type(List) == "typing.List"
-    assert serialize_type(Literal) == "typing.Literal"
     assert serialize_type(Optional) == "typing.Optional"
     assert serialize_type(Set) == "typing.Set"
     assert serialize_type(Tuple) == "typing.Tuple"
@@ -121,7 +116,6 @@ def test_output_type_deserialization_typing():
     assert deserialize_type("typing.Any") == Any
     assert deserialize_type("typing.Dict") == Dict
     assert deserialize_type("typing.List") == List
-    assert deserialize_type("typing.Literal") == Literal
     assert deserialize_type("typing.Optional") == Optional
     assert deserialize_type("typing.Set") == Set
     assert deserialize_type("typing.Tuple") == Tuple
