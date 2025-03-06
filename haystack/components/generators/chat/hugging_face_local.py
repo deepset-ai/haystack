@@ -229,11 +229,26 @@ class HuggingFaceLocalChatGenerator:
         self.pipeline = None
         self.tools = tools
 
+        self._owns_executor = async_executor is None
         self.executor = (
             ThreadPoolExecutor(thread_name_prefix=f"async-HFLocalChatGenerator-executor-{id(self)}", max_workers=1)
             if async_executor is None
             else async_executor
         )
+
+    def __del__(self):
+        """
+        Cleanup when the instance is being destroyed.
+        """
+        if hasattr(self, "_owns_executor") and self._owns_executor and hasattr(self, "executor"):
+            self.executor.shutdown(wait=True)
+
+    def shutdown(self):
+        """
+        Explicitly shutdown the executor if we own it.
+        """
+        if self._owns_executor:
+            self.executor.shutdown(wait=True)
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
