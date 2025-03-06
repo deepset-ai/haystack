@@ -40,6 +40,7 @@ def serialize_type(target: Any) -> str:
     # Get module name
     module = inspect.getmodule(target)
     module_name = ""
+    # We omit the module name for builtins to not clutter the output
     if module and hasattr(module, "__name__") and module.__name__ != "builtins":
         module_name = f"{module.__name__}"
 
