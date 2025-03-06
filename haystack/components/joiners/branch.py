@@ -11,31 +11,26 @@ from haystack.utils import deserialize_type, serialize_type
 logger = logging.getLogger(__name__)
 
 
-@component()
+@component
 class BranchJoiner:
     """
-    A component to join different branches of a pipeline into one single output.
+    A component that merges multiple input branches of a pipeline into a single output stream.
 
-    `BranchJoiner` receives multiple data connections of the same type from other components and passes the first
-    value coming to its single output, possibly distributing it to various other components.
+    `BranchJoiner` receives multiple inputs of the same data type and forwards the first received value
+    to its output. This is useful for scenarios where multiple branches need to converge before proceeding.
 
-    `BranchJoiner` is fundamental to close loops in a pipeline, where the two branches it joins are the ones
-    coming from the previous component and one coming back from a loop. For example, `BranchJoiner` could be used
-    to send data to a component evaluating errors. `BranchJoiner` would receive two connections, one to get the
-    original data and another one to get modified data in case there was an error. In both cases, `BranchJoiner`
-    would send (or re-send in case of a loop) data to the component evaluating errors. See "Usage example" below.
+    ### Common Use Cases:
+    - **Loop Handling:** `BranchJoiner` helps close loops in pipelines. For example, if a pipeline component validates
+      or modifies incoming data and produces an error-handling branch, `BranchJoiner` can merge both branches and send
+      (or resend in the case of a loop) the data to the component that evaluates errors. See "Usage example" below.
 
-    Another use case with a need for `BranchJoiner` is to reconcile multiple branches coming out of a decision
-    or Classifier component. For example, in a RAG pipeline, there might be a "query language classifier" component
-    sending the query to different retrievers, selecting one specifically according to the detected language. After the
-    retrieval step the pipeline would ideally continue with a `PromptBuilder`, and since we don't know in advance the
-    language of the query, all the retrievers should be ideally connected to the single `PromptBuilder`. Since the
-    `PromptBuilder` won't accept more than one connection in input, we would connect all the retrievers to a
-    `BranchJoiner` component and reconcile them in a single output that can be connected to the `PromptBuilder`
-    downstream.
+    - **Decision-Based Merging:** `BranchJoiner` reconciles branches coming from Router components (such as
+      `ConditionalRouter`, `TextLanguageRouter`). Suppose a `TextLanguageRouter` directs user queries to different
+      Retrievers based on the detected language. Each Retriever processes its assigned query and passes the results
+      to `BranchJoiner`, which consolidates them into a single output before passing them to the next component, such
+      as a `PromptBuilder`.
 
-    Usage example:
-
+    ### Example Usage:
     ```python
     import json
     from typing import List
@@ -47,6 +42,7 @@ class BranchJoiner:
     from haystack.components.validators import JsonSchemaValidator
     from haystack.dataclasses import ChatMessage
 
+    # Define a schema for validation
     person_schema = {
         "type": "object",
         "properties": {
@@ -62,17 +58,21 @@ class BranchJoiner:
 
     # Add components to the pipeline
     pipe.add_component('joiner', BranchJoiner(List[ChatMessage]))
-    pipe.add_component('fc_llm', OpenAIChatGenerator(model="gpt-4o-mini"))
+    pipe.add_component('generator', OpenAIChatGenerator(model="gpt-4o-mini"))
     pipe.add_component('validator', JsonSchemaValidator(json_schema=person_schema))
-    pipe.add_component('adapter', OutputAdapter("{{chat_message}}", List[ChatMessage])),
+    pipe.add_component('adapter', OutputAdapter("{{chat_message}}", List[ChatMessage]))
+
     # And connect them
     pipe.connect("adapter", "joiner")
-    pipe.connect("joiner", "fc_llm")
-    pipe.connect("fc_llm.replies", "validator.messages")
+    pipe.connect("joiner", "generator")
+    pipe.connect("generator.replies", "validator.messages")
     pipe.connect("validator.validation_error", "joiner")
 
-    result = pipe.run(data={"fc_llm": {"generation_kwargs": {"response_format": {"type": "json_object"}}},
-                            "adapter": {"chat_message": [ChatMessage.from_user("Create json from Peter Parker")]}})
+    result = pipe.run(
+        data={
+        "generator": {"generation_kwargs": {"response_format": {"type": "json_object"}}},
+        "adapter": {"chat_message": [ChatMessage.from_user("Create json from Peter Parker")]}}
+    )
 
     print(json.loads(result["validator"]["validated"][0].content))
 
@@ -87,25 +87,23 @@ class BranchJoiner:
 
     In the code example, `BranchJoiner` receives a looped back `List[ChatMessage]` from the `JsonSchemaValidator` and
     sends it down to the `OpenAIChatGenerator` for re-generation. We can have multiple loopback connections in the
-    pipeline. In this instance, the downstream component is only one (the `OpenAIChatGenerator`), but the pipeline might
+    pipeline. In this instance, the downstream component is only one (the `OpenAIChatGenerator`), but the pipeline could
     have more than one downstream component.
     """
 
     def __init__(self, type_: Type):
         """
-        Create a `BranchJoiner` component.
+        Creates a `BranchJoiner` component.
 
-        :param type_: The type of data that the `BranchJoiner` will receive from the upstream connected components and
-                        distribute to the downstream connected components.
+        :param type_: The expected data type of inputs and outputs.
         """
         self.type_ = type_
-        # type_'s type can't be determined statically
         component.set_input_types(self, value=GreedyVariadic[type_])  # type: ignore
         component.set_output_types(self, value=type_)
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         """
-        Serializes the component to a dictionary.
+        Serializes the component into a dictionary.
 
         :returns:
             Dictionary with serialized data.
@@ -115,26 +113,22 @@ class BranchJoiner:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "BranchJoiner":
         """
-        Deserializes the component from a dictionary.
+        Deserializes a `BranchJoiner` instance from a dictionary.
 
-        :param data:
-            Dictionary to deserialize from.
+        :param data: The dictionary containing serialized component data.
         :returns:
-              Deserialized component.
+            A deserialized `BranchJoiner` instance.
         """
         data["init_parameters"]["type_"] = deserialize_type(data["init_parameters"]["type_"])
         return default_from_dict(cls, data)
 
-    def run(self, **kwargs):
+    def run(self, **kwargs) -> Dict[str, Any]:
         """
-        The run method of the `BranchJoiner` component.
+        Executes the `BranchJoiner`, selecting the first available input value and passing it downstream.
 
-        Multiplexes the input data from the upstream connected components and distributes it to the downstream connected
-        components.
-
-        :param **kwargs: The input data. Must be of the type declared in `__init__`.
-        :return: A dictionary with the following keys:
-            - `value`: The input data.
+        :param **kwargs: The input data. Must be of the type declared by `type_` during initialization.
+        :returns:
+            A dictionary with a single key `value`, containing the first input received.
         """
         if (inputs_count := len(kwargs["value"])) != 1:
             raise ValueError(f"BranchJoiner expects only one input, but {inputs_count} were received.")
