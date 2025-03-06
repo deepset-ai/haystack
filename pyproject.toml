@@ -60,6 +60,7 @@ dependencies = [
   "jsonschema",             # JsonSchemaValidator, Tool
   "openapi-llm>=0.4.1",            # OpenAPIConnector
   "haystack-experimental",
+  "mcp"
 ]
 
 [tool.hatch.envs.default]
