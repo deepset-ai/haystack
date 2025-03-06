@@ -69,6 +69,15 @@ def test_output_type_deserialization_typing_and_type(input_str, expected_output)
     assert deserialize_type(input_str) == expected_output
 
 
+def test_output_type_deserialization_typing_no_module():
+    assert deserialize_type("List[int]") == List[int]
+    assert deserialize_type("Dict[str, int]") == Dict[str, int]
+    assert deserialize_type("Set[int]") == Set[int]
+    assert deserialize_type("Tuple[int]") == Tuple[int]
+    assert deserialize_type("FrozenSet[int]") == FrozenSet[int]
+    assert deserialize_type("Deque[str]") == Deque[str]
+
+
 def test_output_type_serialization():
     assert serialize_type(str) == "str"
     assert serialize_type(int) == "int"
@@ -86,7 +95,15 @@ def test_output_type_deserialization():
     assert deserialize_type("float") == float
     assert deserialize_type("bool") == bool
     assert deserialize_type("None") is None
-    assert isinstance(deserialize_type("NoneType"), type(None))
+    assert deserialize_type("NoneType") == type(None)  # type: ignore
+
+
+def test_output_builtin_type_deserialization():
+    assert deserialize_type("builtins.str") == str
+    assert deserialize_type("builtins.int") == int
+    assert deserialize_type("builtins.dict") == dict
+    assert deserialize_type("builtins.float") == float
+    assert deserialize_type("builtins.bool") == bool
 
 
 def test_output_type_serialization_typing():
