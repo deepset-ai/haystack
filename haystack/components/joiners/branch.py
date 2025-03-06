@@ -22,7 +22,7 @@ class BranchJoiner:
     ### Common Use Cases:
     - **Loop Handling:** `BranchJoiner` helps close loops in pipelines. For example, if a pipeline component validates or modifies
       incoming data and produces an error-handling branch, `BranchJoiner` can merge both branches and send
-      (or re-send in the case of a loop) the data to the component evaluating errors. See "Usage example" below.
+      (or resend in the case of a loop) the data to the component that evaluates errors. See "Usage example" below.
 
     - **Decision-Based Merging:** `BranchJoiner` reconciles branches coming from Router components (such as `ConditionalRouter`,
       `TextLanguageRouter`). Suppose a `TextLanguageRouter` directs user queries to different retrievers based on the
