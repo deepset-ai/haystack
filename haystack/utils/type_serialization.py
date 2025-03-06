@@ -32,6 +32,13 @@ def serialize_type(target: Any) -> str:
     """
     name = getattr(target, "__name__", str(target))
 
+    # Remove the 'typing.' prefix when using python <3.9
+    if name.startswith("typing."):
+        name = name[7:]
+    # Remove the arguments from the name when using python <3.9
+    if "[" in name:
+        name = name.split("[")[0]
+
     # Get module name
     module = inspect.getmodule(target)
     if module and hasattr(module, "__name__"):
