@@ -106,14 +106,13 @@ def deserialize_type(type_str: str) -> Any:  # pylint: disable=too-many-return-s
 
         main_type = deserialize_type(main_type_str)
         generic_args = [deserialize_type(arg) for arg in _parse_generic_args(generics_str)]
-        generic_args = tuple(generic_args) if len(generic_args) > 1 else generic_args[0]  # type: ignore
 
         # Reconstruct
         try:
             if sys.version_info >= (3, 9) or repr(main_type).startswith("typing."):
-                return main_type[generic_args]
+                return main_type[tuple(generic_args) if len(generic_args) > 1 else generic_args[0]]
             else:
-                return type_mapping[main_type][generic_args]  # type: ignore
+                return type_mapping[main_type][tuple(generic_args) if len(generic_args) > 1 else generic_args[0]]
         except (TypeError, AttributeError) as e:
             raise DeserializationError(f"Could not apply arguments {generic_args} to type {main_type}") from e
 
