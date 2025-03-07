@@ -58,6 +58,7 @@ dependencies = [
   "python-dateutil",
   "jsonschema",             # JsonSchemaValidator, Tool
   "haystack-experimental",
+  "mcp"
 ]
 
 [tool.hatch.envs.default]
@@ -132,6 +133,9 @@ extra-dependencies = [
   # ComponentTool
   "docstring-parser",
 
+  # MCP integration
+  "mcp",
+
   # Test
   "pytest",
   "pytest-bdd",
@@ -148,6 +152,7 @@ extra-dependencies = [
   "pip",                     # mypy needs pip to install missing stub packages
   "pylint",
   "ipython",
+  "mcp_server_time" # used in mcp tool tests
 ]
 
 [tool.hatch.envs.test.scripts]

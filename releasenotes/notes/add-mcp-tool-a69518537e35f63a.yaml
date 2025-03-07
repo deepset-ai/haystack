@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Added MCPTool for interacting with MCP servers over HTTP and stdio to the Haystack tooling ecosystem.
