@@ -1,5 +1,7 @@
 from typing import Any, Dict, List, Optional
 from jinja2 import TemplateSyntaxError
+
+import arrow
 import pytest
 
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
@@ -334,6 +336,87 @@ class TestChatPromptBuilder:
             }
         }
         assert result == expected_dynamic
+
+    def test_with_custom_dateformat(self) -> None:
+        template = [ChatMessage.from_user("Formatted date: {% now 'UTC', '%Y-%m-%d' %}")]
+        builder = ChatPromptBuilder(template=template)
+
+        result = builder.run()["prompt"]
+
+        now_formatted = f"Formatted date: {arrow.now('UTC').strftime('%Y-%m-%d')}"
+        assert len(result) == 1
+        assert result[0].role == "user"
+        assert result[0].text == now_formatted
+
+    def test_with_different_timezone(self) -> None:
+        template = [ChatMessage.from_user("Current time in New York is: {% now 'America/New_York' %}")]
+        builder = ChatPromptBuilder(template=template)
+
+        result = builder.run()["prompt"]
+
+        now_ny = f"Current time in New York is: {arrow.now('America/New_York').strftime('%Y-%m-%d %H:%M:%S')}"
+        assert len(result) == 1
+        assert result[0].role == "user"
+        assert result[0].text == now_ny
+
+    def test_date_with_addition_offset(self) -> None:
+        template = [ChatMessage.from_user("Time after 2 hours is: {% now 'UTC' + 'hours=2' %}")]
+        builder = ChatPromptBuilder(template=template)
+
+        result = builder.run()["prompt"]
+
+        now_plus_2 = f"Time after 2 hours is: {(arrow.now('UTC').shift(hours=+2)).strftime('%Y-%m-%d %H:%M:%S')}"
+        assert len(result) == 1
+        assert result[0].role == "user"
+        assert result[0].text == now_plus_2
+
+    def test_date_with_subtraction_offset(self) -> None:
+        template = [ChatMessage.from_user("Time after 12 days is: {% now 'UTC' - 'days=12' %}")]
+        builder = ChatPromptBuilder(template=template)
+
+        result = builder.run()["prompt"]
+
+        now_minus_12 = f"Time after 12 days is: {(arrow.now('UTC').shift(days=-12)).strftime('%Y-%m-%d %H:%M:%S')}"
+        assert len(result) == 1
+        assert result[0].role == "user"
+        assert result[0].text == now_minus_12
+
+    def test_invalid_timezone(self) -> None:
+        template = [ChatMessage.from_user("Current time is: {% now 'Invalid/Timezone' %}")]
+        builder = ChatPromptBuilder(template=template)
+
+        # Expect ValueError for invalid timezone
+        with pytest.raises(ValueError, match="Invalid timezone"):
+            builder.run()
+
+    def test_invalid_offset(self) -> None:
+        template = [ChatMessage.from_user("Time after invalid offset is: {% now 'UTC' + 'invalid_offset' %}")]
+        builder = ChatPromptBuilder(template=template)
+
+        # Expect ValueError for invalid offset
+        with pytest.raises(ValueError, match="Invalid offset or operator"):
+            builder.run()
+
+    def test_multiple_messages_with_date_template(self) -> None:
+        template = [
+            ChatMessage.from_user("Current date is: {% now 'UTC' %}"),
+            ChatMessage.from_assistant("Thank you for providing the date"),
+            ChatMessage.from_user("Yesterday was: {% now 'UTC' - 'days=1' %}"),
+        ]
+        builder = ChatPromptBuilder(template=template)
+
+        result = builder.run()["prompt"]
+
+        now = f"Current date is: {arrow.now('UTC').strftime('%Y-%m-%d %H:%M:%S')}"
+        yesterday = f"Yesterday was: {(arrow.now('UTC').shift(days=-1)).strftime('%Y-%m-%d %H:%M:%S')}"
+
+        assert len(result) == 3
+        assert result[0].role == "user"
+        assert result[0].text == now
+        assert result[1].role == "assistant"
+        assert result[1].text == "Thank you for providing the date"
+        assert result[2].role == "user"
+        assert result[2].text == yesterday
 
 
 class TestChatPromptBuilderDynamic:
