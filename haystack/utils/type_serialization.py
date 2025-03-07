@@ -124,7 +124,7 @@ def deserialize_type(type_str: str) -> Any:  # pylint: disable=too-many-return-s
         type_name = parts[-1]
 
         module = sys.modules.get(module_name)
-        if module is not None:
+        if module is None:
             try:
                 module = thread_safe_import(module_name)
             except ImportError as e:
