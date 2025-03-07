@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import gc
 import logging
 from unittest.mock import patch
 
@@ -572,3 +573,11 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         for i, result in enumerate(results):
             assert len(result) == 1
             assert result[0].content == f"Document {i * 10} content"
+
+    def test_executor_shutdown(self):
+        doc_store = InMemoryDocumentStore()
+        executor = doc_store.executor
+        with patch.object(executor, "shutdown", wraps=executor.shutdown) as mock_shutdown:
+            del doc_store
+            gc.collect()
+            mock_shutdown.assert_called_once_with(wait=True)
