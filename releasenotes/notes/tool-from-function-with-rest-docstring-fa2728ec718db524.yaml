@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Supports ReST-style docstrings for functions when generating a tool from a function.
+    The ReST-style docstring will be automatically parsed to infer the tool's description and
+    argument descriptions.
