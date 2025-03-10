@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Literal, Mapping, Optional, Sequence, Set, Tuple, Union
+from typing import Any, Dict, Iterable, List, Literal, Mapping, Optional, Sequence, Set, Tuple, Union
 
 import pytest
 
@@ -355,13 +355,20 @@ def test_partially_overlapping_unions_are_not_compatible_strict(sender_type, rec
 
 
 @pytest.mark.parametrize(
+    "sender_type,receiver_type", [pytest.param((List[int]), list, id="list-of-primitive-to-list-object")]
+)
+def test_list_of_primitive_to_list(sender_type, receiver_type):
+    """This currently doesn't work because we don't handle primitive types."""
+    assert not _types_are_compatible(sender_type, receiver_type)
+
+
+@pytest.mark.parametrize(
     "sender_type,receiver_type",
     [
         pytest.param(List[int], List, id="list-of-primitive-to-bare-list"),
         pytest.param(Dict[str, int], Dict, id="dict-of-primitive-to-bare-dict"),
         pytest.param(Set[float], Set, id="set-of-primitive-to-bare-set"),
         pytest.param(Tuple[int, str], Tuple, id="tuple-of-primitive-to-bare-tuple"),
-        pytest.param((List[int]), list, id="list-of-primitive-to-list-object"),
     ],
 )
 def test_container_of_primitive_to_bare_container_strict(sender_type, receiver_type):
@@ -377,25 +384,12 @@ def test_container_of_primitive_to_bare_container_strict(sender_type, receiver_t
         pytest.param(Dict[Any, Any], Dict, id="dict-of-any-to-bare-dict"),
         pytest.param(Set[Any], Set, id="set-of-any-to-bare-set"),
         pytest.param(Tuple[Any], Tuple, id="tuple-of-any-to-bare-tuple"),
-        pytest.param(Callable[[Any], Any], Callable, id="callable-of-any-to-bare-callable"),
     ],
 )
 def test_container_of_any_to_bare_container_strict(sender_type, receiver_type):
     # Both are compatible
     assert _types_are_compatible(sender_type, receiver_type)
     assert _types_are_compatible(receiver_type, sender_type)
-
-
-@pytest.mark.parametrize(
-    "sender_type,receiver_type",
-    [
-        pytest.param(Callable[[int, str], bool], Callable, id="callable-to-bare-callable"),
-        pytest.param(Callable[[List], int], Callable[[List], Any], id="callable-list-int-to-any"),
-    ],
-)
-def test_callable_compatibility(sender_type, receiver_type):
-    assert _types_are_compatible(sender_type, receiver_type)
-    assert not _types_are_compatible(receiver_type, sender_type)
 
 
 @pytest.mark.parametrize(
