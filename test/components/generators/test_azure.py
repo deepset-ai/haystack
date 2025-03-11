@@ -11,7 +11,7 @@ from openai import OpenAIError
 
 from haystack.components.generators import AzureOpenAIGenerator
 from haystack.components.generators.utils import print_streaming_chunk
-from haystack.utils.azure import azure_token_provider
+from haystack.utils.azure import default_azure_ad_token_provider
 
 
 class TestAzureOpenAIGenerator:
@@ -36,7 +36,7 @@ class TestAzureOpenAIGenerator:
             azure_deployment="gpt-4o-mini",
             streaming_callback=print_streaming_chunk,
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
-            azure_ad_token_provider=azure_token_provider,
+            azure_ad_token_provider=default_azure_ad_token_provider,
         )
         assert component.client.api_key == "fake-api-key"
         assert component.azure_deployment == "gpt-4o-mini"
@@ -78,7 +78,7 @@ class TestAzureOpenAIGenerator:
             timeout=3.5,
             max_retries=10,
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
-            azure_ad_token_provider=azure_token_provider,
+            azure_ad_token_provider=default_azure_ad_token_provider,
         )
 
         data = component.to_dict()

@@ -9,7 +9,7 @@ from lazy_imports import LazyImporter
 
 _import_structure = {
     "auth": ["Secret", "deserialize_secrets_inplace"],
-    "azure": ["azure_token_provider"],
+    "azure": ["default_azure_ad_token_provider"],
     "callable_serialization": ["deserialize_callable", "serialize_callable"],
     "device": ["ComponentDevice", "Device", "DeviceMap", "DeviceType"],
     "docstore_deserialization": ["deserialize_document_store_in_init_params_inplace"],
@@ -23,7 +23,7 @@ _import_structure = {
 
 if TYPE_CHECKING:
     from .auth import Secret, deserialize_secrets_inplace
-    from .azure import azure_token_provider
+    from .azure import default_azure_ad_token_provider
     from .callable_serialization import deserialize_callable, serialize_callable
     from .device import ComponentDevice, Device, DeviceMap, DeviceType
     from .docstore_deserialization import deserialize_document_store_in_init_params_inplace

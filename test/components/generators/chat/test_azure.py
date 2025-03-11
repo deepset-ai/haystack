@@ -12,7 +12,7 @@ from haystack.components.generators.utils import print_streaming_chunk
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.tools.tool import Tool
 from haystack.utils.auth import Secret
-from haystack.utils.azure import azure_token_provider
+from haystack.utils.azure import default_azure_ad_token_provider
 
 
 @pytest.fixture
@@ -51,7 +51,7 @@ class TestAzureOpenAIChatGenerator:
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
             tools=tools,
             tools_strict=True,
-            azure_ad_token_provider=azure_token_provider,
+            azure_ad_token_provider=default_azure_ad_token_provider,
         )
         assert component.client.api_key == "test-api-key"
         assert component.azure_deployment == "gpt-4o-mini"
@@ -95,7 +95,7 @@ class TestAzureOpenAIChatGenerator:
             timeout=2.5,
             max_retries=10,
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
-            azure_ad_token_provider=azure_token_provider,
+            azure_ad_token_provider=default_azure_ad_token_provider,
         )
         data = component.to_dict()
         assert data == {
