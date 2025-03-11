@@ -293,6 +293,13 @@ class LLMMetadataExtractor:
                     init_parameters["generator_api_params"]["generation_config"]
                 )
 
+            # For AzureOpenAI
+            serialized_azure_ad_token_provider = init_parameters["generator_api_params"].get("azure_ad_token_provider")
+            if serialized_azure_ad_token_provider:
+                data["init_parameters"]["azure_ad_token_provider"] = deserialize_callable(
+                    serialized_azure_ad_token_provider
+                )
+
             # For all
             serialized_callback_handler = init_parameters["generator_api_params"].get("streaming_callback")
             if serialized_callback_handler:
