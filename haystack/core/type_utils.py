@@ -64,6 +64,12 @@ def _strict_types_are_compatible(sender, receiver):  # pylint: disable=too-many-
     # Compare generic type arguments
     sender_args = get_args(sender)
     receiver_args = get_args(receiver)
+
+    # Handle bare types
+    if not sender_args and sender_origin:
+        sender_args = (Any,)
+    if not receiver_args and receiver_origin:
+        receiver_args = (Any,) * (len(sender_args) if sender_args else 1)
     if len(sender_args) > len(receiver_args):
         return False
 
