@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import collections.abc
 from typing import Any, TypeVar, Union, get_args, get_origin
 
 from haystack import logging
