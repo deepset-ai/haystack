@@ -11,6 +11,7 @@ from openai import OpenAIError
 
 from haystack.components.generators import AzureOpenAIGenerator
 from haystack.components.generators.utils import print_streaming_chunk
+from haystack.utils.azure import azure_token_provider
 
 
 class TestAzureOpenAIGenerator:
@@ -35,12 +36,14 @@ class TestAzureOpenAIGenerator:
             azure_deployment="gpt-4o-mini",
             streaming_callback=print_streaming_chunk,
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
+            azure_ad_token_provider=azure_token_provider,
         )
         assert component.client.api_key == "fake-api-key"
         assert component.azure_deployment == "gpt-4o-mini"
         assert component.streaming_callback is print_streaming_chunk
         assert component.timeout == 30.0
         assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
+        assert component.azure_ad_token_provider is not None
 
     def test_to_dict_default(self, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
@@ -61,6 +64,7 @@ class TestAzureOpenAIGenerator:
                 "max_retries": 5,
                 "generation_kwargs": {},
                 "default_headers": {},
+                "azure_ad_token_provider": None,
             },
         }
 
@@ -70,9 +74,11 @@ class TestAzureOpenAIGenerator:
             api_key=Secret.from_env_var("ENV_VAR", strict=False),
             azure_ad_token=Secret.from_env_var("ENV_VAR1", strict=False),
             azure_endpoint="some-non-existing-endpoint",
+            streaming_callback=print_streaming_chunk,
             timeout=3.5,
             max_retries=10,
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
+            azure_ad_token_provider=azure_token_provider,
         )
 
         data = component.to_dict()
@@ -83,7 +89,7 @@ class TestAzureOpenAIGenerator:
                 "azure_ad_token": {"env_vars": ["ENV_VAR1"], "strict": False, "type": "env_var"},
                 "azure_deployment": "gpt-4o-mini",
                 "api_version": "2023-05-15",
-                "streaming_callback": None,
+                "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
                 "azure_endpoint": "some-non-existing-endpoint",
                 "organization": None,
                 "system_prompt": None,
@@ -91,8 +97,43 @@ class TestAzureOpenAIGenerator:
                 "max_retries": 10,
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
                 "default_headers": {},
+                "azure_ad_token_provider": "haystack.utils.azure.azure_token_provider",
             },
         }
+
+    def test_from_dict_defaults(self, monkeypatch):
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
+        data = {
+            "type": "haystack.components.generators.azure.AzureOpenAIGenerator",
+            "init_parameters": {
+                "api_key": {"env_vars": ["AZURE_OPENAI_API_KEY"], "strict": False, "type": "env_var"},
+                "azure_ad_token": {"env_vars": ["AZURE_OPENAI_AD_TOKEN"], "strict": False, "type": "env_var"},
+                "azure_deployment": "gpt-4o-mini",
+                "api_version": "2023-05-15",
+                "streaming_callback": None,
+                "azure_endpoint": "some-non-existing-endpoint",
+                "organization": None,
+                "system_prompt": None,
+                "timeout": 30.0,
+                "max_retries": 5,
+                "generation_kwargs": {},
+                "default_headers": {},
+                "azure_ad_token_provider": None,
+            },
+        }
+        component = AzureOpenAIGenerator.from_dict(data)
+        assert component.api_key == Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=False)
+        assert component.azure_ad_token == Secret.from_env_var("AZURE_OPENAI_AD_TOKEN", strict=False)
+        assert component.azure_deployment == "gpt-4o-mini"
+        assert component.api_version == "2023-05-15"
+        assert component.streaming_callback is None
+        assert component.azure_endpoint == "some-non-existing-endpoint"
+        assert component.organization is None
+        assert component.system_prompt is None
+        assert component.timeout == 30.0
+        assert component.generation_kwargs == {}
+        assert component.default_headers == {}
+        assert component.azure_ad_token_provider is None
 
     def test_pipeline_serialization_deserialization(self, tmp_path, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
