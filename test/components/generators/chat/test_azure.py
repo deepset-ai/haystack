@@ -114,7 +114,7 @@ class TestAzureOpenAIChatGenerator:
                 "tools": None,
                 "tools_strict": False,
                 "default_headers": {},
-                "azure_ad_token_provider": "haystack.utils.azure.azure_token_provider",
+                "azure_ad_token_provider": "haystack.utils.azure.default_azure_ad_token_provider",
             },
         }
 

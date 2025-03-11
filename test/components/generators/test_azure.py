@@ -97,7 +97,7 @@ class TestAzureOpenAIGenerator:
                 "max_retries": 10,
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
                 "default_headers": {},
-                "azure_ad_token_provider": "haystack.utils.azure.azure_token_provider",
+                "azure_ad_token_provider": "haystack.utils.azure.default_azure_ad_token_provider",
             },
         }
 
