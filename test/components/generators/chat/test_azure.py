@@ -12,6 +12,7 @@ from haystack.components.generators.utils import print_streaming_chunk
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.tools.tool import Tool
 from haystack.utils.auth import Secret
+from haystack.utils.azure import azure_token_provider
 
 
 @pytest.fixture
@@ -50,6 +51,7 @@ class TestAzureOpenAIChatGenerator:
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
             tools=tools,
             tools_strict=True,
+            azure_ad_token_provider=azure_token_provider,
         )
         assert component.client.api_key == "test-api-key"
         assert component.azure_deployment == "gpt-4o-mini"
@@ -57,6 +59,7 @@ class TestAzureOpenAIChatGenerator:
         assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
         assert component.tools == tools
         assert component.tools_strict
+        assert component.azure_ad_token_provider is not None
 
     def test_to_dict_default(self, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
@@ -78,6 +81,7 @@ class TestAzureOpenAIChatGenerator:
                 "default_headers": {},
                 "tools": None,
                 "tools_strict": False,
+                "azure_ad_token_provider": None,
             },
         }
 
@@ -87,9 +91,11 @@ class TestAzureOpenAIChatGenerator:
             api_key=Secret.from_env_var("ENV_VAR", strict=False),
             azure_ad_token=Secret.from_env_var("ENV_VAR1", strict=False),
             azure_endpoint="some-non-existing-endpoint",
+            streaming_callback=print_streaming_chunk,
             timeout=2.5,
             max_retries=10,
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
+            azure_ad_token_provider=azure_token_provider,
         )
         data = component.to_dict()
         assert data == {
@@ -101,13 +107,14 @@ class TestAzureOpenAIChatGenerator:
                 "azure_endpoint": "some-non-existing-endpoint",
                 "azure_deployment": "gpt-4o-mini",
                 "organization": None,
-                "streaming_callback": None,
+                "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
                 "timeout": 2.5,
                 "max_retries": 10,
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
                 "tools": None,
                 "tools_strict": False,
                 "default_headers": {},
+                "azure_ad_token_provider": "haystack.utils.azure.azure_token_provider",
             },
         }
 
@@ -189,6 +196,7 @@ class TestAzureOpenAIChatGenerator:
                         "default_headers": {},
                         "tools": None,
                         "tools_strict": False,
+                        "azure_ad_token_provider": None,
                     },
                 }
             },
