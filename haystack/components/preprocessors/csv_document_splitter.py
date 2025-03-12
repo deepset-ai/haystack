@@ -258,7 +258,7 @@ class CSVDocumentSplitter:
 
         return result
 
-    def _split_by_row_mode(self, df: "pd.DataFrame") -> List[Document]:
+    def _split_by_row_mode(self, df: "pd.DataFrame") -> List["pd.DataFrame"]:
         """Split each CSV row into a separate subtable"""
         try:
             split_dfs = []
