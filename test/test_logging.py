@@ -310,6 +310,7 @@ class TestStructuredLoggingJSONRendering:
             "module": "test.test_logging",
             "exception": [
                 {
+                    "exc_notes": [],
                     "exc_type": "ValueError",
                     "exc_value": "This is an error",
                     "syntax_error": None,
