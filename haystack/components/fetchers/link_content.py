@@ -6,7 +6,7 @@ import asyncio
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from fnmatch import fnmatch
-from typing import Callable, Dict, List, Optional, Tuple, Union
+from typing import Callable, Dict, List, Optional, Tuple
 
 import httpx
 from tenacity import RetryCallState, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
@@ -18,7 +18,7 @@ from haystack.version import __version__
 
 # HTTP/2 support via lazy import
 with LazyImport("Run 'pip install httpx[http2]' to use HTTP/2 support") as h2_import:
-    import h2  # noqa
+    pass  # nothing to import
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +92,7 @@ class LinkContentFetcher:
     ```
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         raise_on_failure: bool = True,
         user_agents: Optional[List[str]] = None,
