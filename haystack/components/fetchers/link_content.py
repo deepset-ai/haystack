@@ -18,7 +18,7 @@ from haystack.version import __version__
 
 # HTTP/2 support via lazy import
 with LazyImport("Run 'pip install httpx[http2]' to use HTTP/2 support") as h2_import:
-    pass  # nothing to import
+    pass  # nothing to import as we simply set the http2 attribute, library handles the rest
 
 logger = logging.getLogger(__name__)
 
@@ -145,8 +145,8 @@ class LinkContentFetcher:
         # Initialize synchronous client
         self._client = httpx.Client(**client_kwargs)
 
-        # Initialize asynchronous client (but don't open yet - will be opened when needed)
-        self._async_client_kwargs = client_kwargs
+        # Initialize asynchronous client
+        self._async_client = httpx.AsyncClient(**client_kwargs)
 
         # register default content handlers that extract data from the response
         self.handlers: Dict[str, Callable[[httpx.Response], ByteStream]] = defaultdict(lambda: _text_content_handler)
@@ -175,6 +175,26 @@ class LinkContentFetcher:
             return response
 
         self._get_response: Callable = get_response
+
+    def __del__(self):
+        """
+        Clean up resources when the component is deleted.
+
+        Closes both the synchronous and asynchronous HTTP clients to prevent
+        resource leaks.
+        """
+        try:
+            # Close the synchronous client if it exists
+            if hasattr(self, "_client"):
+                self._client.close()
+
+            # Close the asynchronous client if it exists
+            if hasattr(self, "_async_client"):
+                # We can't await here in __del__, so we need to use close() instead of aclose()
+                self._async_client.close()
+        except Exception:
+            # Suppress any exceptions during cleanup
+            pass
 
     @component.output_types(streams=List[ByteStream])
     def run(self, urls: List[str]):
@@ -230,25 +250,30 @@ class LinkContentFetcher:
         if not urls:
             return {"streams": streams}
 
-        # Create async client if needed (only when first used)
-        async with httpx.AsyncClient(**self._async_client_kwargs) as async_client:
-            # For a single URL, fetch directly
-            if len(urls) == 1:
-                stream_metadata, stream = await self._fetch_async(urls[0], async_client)
-                if stream_metadata and stream:
-                    stream.meta.update(stream_metadata)
-                    stream.mime_type = stream.meta.get("content_type", None)
-                    streams.append(stream)
-            else:
-                # Create tasks for parallel fetching
-                tasks = [self._fetch_async_with_exception_suppression(url, async_client) for url in urls]
-                results = await asyncio.gather(*tasks)
+        # Create tasks for all URLs using _fetch_async directly
+        tasks = [self._fetch_async(url, self._async_client) for url in urls]
 
-                for stream_metadata, stream in results:
-                    if stream_metadata is not None and stream is not None:
-                        stream.meta.update(stream_metadata)
-                        stream.mime_type = stream.meta.get("content_type", None)
-                        streams.append(stream)
+        # Only capture exceptions when we have multiple URLs or raise_on_failure=False
+        # This ensures errors propagate appropriately for single URLs with raise_on_failure=True
+        return_exceptions = not (len(urls) == 1 and self.raise_on_failure)
+        results = await asyncio.gather(*tasks, return_exceptions=return_exceptions)
+
+        # Process results
+        for i, result in enumerate(results):
+            # Handle exception results (only happens when return_exceptions=True)
+            if isinstance(result, Exception):
+                logger.warning("Error fetching {url}: {error}", url=urls[i], error=str(result))
+                # Add an empty result for failed URLs when raise_on_failure=False
+                if not self.raise_on_failure:
+                    streams.append(ByteStream(data=b"", meta={"content_type": "Unknown", "url": urls[i]}))
+                continue
+
+            # Process successful results
+            stream_metadata, stream = result
+            if stream_metadata is not None and stream is not None:
+                stream.meta.update(stream_metadata)
+                stream.mime_type = stream.meta.get("content_type", None)
+                streams.append(stream)
 
         return {"streams": streams}
 
@@ -334,26 +359,6 @@ class LinkContentFetcher:
                 return {"content_type": "Unknown", "url": url}, None
         else:
             return self._fetch(url)
-
-    async def _fetch_async_with_exception_suppression(
-        self, url: str, client: httpx.AsyncClient
-    ) -> Tuple[Optional[Dict[str, str]], Optional[ByteStream]]:
-        """
-        Asynchronously fetches content from a URL with exception handling.
-
-        :param url: The URL to fetch content from.
-        :param client: The async httpx client to use for making requests.
-        :returns: A tuple containing the ByteStream metadata dict and the corresponding ByteStream.
-        """
-        if self.raise_on_failure:
-            try:
-                return await self._fetch_async(url, client)
-            except Exception as e:
-                logger.warning("Error fetching {url}: {error}", url=url, error=str(e))
-                # Return None for failed requests to match sync behavior
-                return {"content_type": "Unknown", "url": url}, None
-        else:
-            return await self._fetch_async(url, client)
 
     async def _get_response_async(self, url: str, client: httpx.AsyncClient) -> httpx.Response:
         """
