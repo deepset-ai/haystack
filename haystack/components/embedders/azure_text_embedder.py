@@ -5,10 +5,10 @@
 import os
 from typing import Any, Dict, List, Optional
 
-from openai.lib.azure import AzureOpenAI
+from openai.lib.azure import AzureADTokenProvider, AzureOpenAI
 
 from haystack import Document, component, default_from_dict, default_to_dict
-from haystack.utils import Secret, deserialize_secrets_inplace
+from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 
 
 @component
@@ -48,6 +48,7 @@ class AzureOpenAITextEmbedder:
         suffix: str = "",
         *,
         default_headers: Optional[Dict[str, str]] = None,
+        azure_ad_token_provider: Optional[AzureADTokenProvider] = None,
     ):
         """
         Creates an AzureOpenAITextEmbedder component.
@@ -85,6 +86,8 @@ class AzureOpenAITextEmbedder:
         :param suffix:
             A string to add at the end of each text.
         :param default_headers: Default headers to send to the AzureOpenAI client.
+        :param azure_ad_token_provider: A function that returns an Azure Active Directory token, will be invoked on
+            every request.
         """
         # Why is this here?
         # AzureOpenAI init is forcing us to use an init method that takes either base_url or azure_endpoint as not
@@ -109,11 +112,13 @@ class AzureOpenAITextEmbedder:
         self.prefix = prefix
         self.suffix = suffix
         self.default_headers = default_headers or {}
+        self.azure_ad_token_provider = azure_ad_token_provider
 
         self._client = AzureOpenAI(
             api_version=api_version,
             azure_endpoint=azure_endpoint,
             azure_deployment=azure_deployment,
+            azure_ad_token_provider=azure_ad_token_provider,
             api_key=api_key.resolve_value() if api_key is not None else None,
             azure_ad_token=azure_ad_token.resolve_value() if azure_ad_token is not None else None,
             organization=organization,
@@ -135,6 +140,9 @@ class AzureOpenAITextEmbedder:
         :returns:
             Dictionary with serialized data.
         """
+        azure_ad_token_provider_name = None
+        if self.azure_ad_token_provider:
+            azure_ad_token_provider_name = serialize_callable(self.azure_ad_token_provider)
         return default_to_dict(
             self,
             azure_endpoint=self.azure_endpoint,
@@ -149,6 +157,7 @@ class AzureOpenAITextEmbedder:
             timeout=self.timeout,
             max_retries=self.max_retries,
             default_headers=self.default_headers,
+            azure_ad_token_provider=azure_ad_token_provider_name,
         )
 
     @classmethod
@@ -162,6 +171,11 @@ class AzureOpenAITextEmbedder:
             Deserialized component.
         """
         deserialize_secrets_inplace(data["init_parameters"], keys=["api_key", "azure_ad_token"])
+        serialized_azure_ad_token_provider = data["init_parameters"].get("azure_ad_token_provider")
+        if serialized_azure_ad_token_provider:
+            data["init_parameters"]["azure_ad_token_provider"] = deserialize_callable(
+                serialized_azure_ad_token_provider
+            )
         return default_from_dict(cls, data)
 
     @component.output_types(embedding=List[float], meta=Dict[str, Any])
