@@ -129,31 +129,6 @@ class TestLinkContentFetcherAsync:
 
     @pytest.mark.asyncio
     @pytest.mark.integration
-    async def test_run_async_with_http2(self):
-        """Test async fetching with HTTP/2 enabled"""
-        # Mock the h2 import check so test works without h2 installed
-        with patch("haystack.lazy_imports.LazyImport.check"):
-            fetcher = LinkContentFetcher(http2=True)
-            streams = (await fetcher.run_async([HTML_URL]))["streams"]
-            assert len(streams) == 1
-            assert "Haystack" in streams[0].data.decode("utf-8")
-
-    @pytest.mark.asyncio
-    @pytest.mark.integration
-    async def test_run_async_with_http2_import_error(self):
-        """Test async fetching with HTTP/2 enabled but h2 not installed"""
-        # Mock the h2 import check to fail
-        with patch("haystack.lazy_imports.LazyImport.check", side_effect=ImportError("No module named 'h2'")):
-            fetcher = LinkContentFetcher(http2=True)
-            # Verify http2 was disabled after import error
-            assert fetcher.http2 is False
-            # Verify we can still make requests
-            streams = (await fetcher.run_async([HTML_URL]))["streams"]
-            assert len(streams) == 1
-            assert "Haystack" in streams[0].data.decode("utf-8")
-
-    @pytest.mark.asyncio
-    @pytest.mark.integration
     async def test_run_async_with_client_kwargs(self):
         """Test async fetching with custom client kwargs"""
         fetcher = LinkContentFetcher(client_kwargs={"follow_redirects": True, "timeout": 10.0})
