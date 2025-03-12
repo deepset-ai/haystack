@@ -310,9 +310,9 @@ def test_from_dict_with_dataframe():
     assert doc.id == "my_id"
     assert doc.content == "my_content"
     assert doc.meta == {"key": "value"}
-    assert doc.score == None
-    assert doc.embedding == None
-    assert doc.sparse_embedding == None
+    assert doc.score is None
+    assert doc.embedding is None
+    assert doc.sparse_embedding is None
 
     assert not hasattr(doc, "dataframe")
 

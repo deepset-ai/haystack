@@ -26,7 +26,7 @@ class _BackwardCompatible(type):
         """
         Called before Document.__init__, handles legacy fields.
 
-        Embedding was stored as NumPy arrays in 1.x, so we convert it to list of floats.
+        Embedding was stored as NumPy arrays in 1.x, so we convert it to a list of floats.
         Other legacy fields are removed.
         """
         ### Conversion from 1.x Document ###
