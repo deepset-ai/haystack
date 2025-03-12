@@ -5,11 +5,14 @@
 import inspect
 from collections.abc import Callable
 from dataclasses import dataclass
-from importlib import import_module
 from typing import Any, Dict, Iterable, Optional, Type
 
-from haystack.core.component.component import _hook_component_init, logger
+from haystack import logging
+from haystack.core.component.component import _hook_component_init
 from haystack.core.errors import DeserializationError, SerializationError
+from haystack.utils.type_serialization import thread_safe_import
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -251,9 +254,13 @@ def import_class_by_name(fully_qualified_name: str) -> Type[object]:
     """
     try:
         module_path, class_name = fully_qualified_name.rsplit(".", 1)
-        logger.debug(f"Attempting to import class '{class_name}' from module '{module_path}'")
-        module = import_module(module_path)
+        logger.debug(
+            "Attempting to import class '{class_name}' from module '{module_path}'",
+            cls_name=class_name,
+            md_path=module_path,
+        )
+        module = thread_safe_import(module_path)
         return getattr(module, class_name)
     except (ImportError, AttributeError) as error:
-        logger.error(f"Failed to import class '{fully_qualified_name}'")
+        logger.error("Failed to import class '{full_name}'", full_name=fully_qualified_name)
         raise ImportError(f"Could not import class '{fully_qualified_name}'") from error
