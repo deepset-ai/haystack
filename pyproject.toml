@@ -127,7 +127,7 @@ extra-dependencies = [
   "ddtrace",
 
   # Structured logging
-  "structlog",
+  "structlog<=25.1.0",
 
   # ComponentTool
   "docstring-parser",
