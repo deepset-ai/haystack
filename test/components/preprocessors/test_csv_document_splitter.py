@@ -16,6 +16,15 @@ def splitter() -> CSVDocumentSplitter:
 
 
 @pytest.fixture
+def csv_with_four_rows() -> str:
+    return """A,B,C
+1,2,3
+X,Y,Z
+7,8,9
+"""
+
+
+@pytest.fixture
 def two_tables_sep_by_two_empty_rows() -> str:
     return """A,B,C
 1,2,3
@@ -255,7 +264,12 @@ E,F,,,G,H
         config_serialized = component_to_dict(splitter, name="CSVDocumentSplitter")
         config = {
             "type": "haystack.components.preprocessors.csv_document_splitter.CSVDocumentSplitter",
-            "init_parameters": {"row_split_threshold": 2, "column_split_threshold": 2, "read_csv_kwargs": {}},
+            "init_parameters": {
+                "row_split_threshold": 2,
+                "column_split_threshold": 2,
+                "read_csv_kwargs": {},
+                "split_by_row": False,
+            },
         }
         assert config_serialized == config
 
@@ -268,6 +282,7 @@ E,F,,,G,H
                 "row_split_threshold": 1,
                 "column_split_threshold": None,
                 "read_csv_kwargs": {"sep": ";"},
+                "split_by_row": False,
             },
         }
         assert config_serialized == config
@@ -301,3 +316,12 @@ E,F,,,G,H
         assert splitter.row_split_threshold == 1
         assert splitter.column_split_threshold is None
         assert splitter.read_csv_kwargs == {"sep": ";"}
+
+    def test_split_by_row(self, csv_with_four_rows: str) -> None:
+        splitter = CSVDocumentSplitter(split_by_row=True)
+        doc = Document(content=csv_with_four_rows)
+        result = splitter.run([doc])["documents"]
+        assert len(result) == 4
+        assert result[0].content == "A,B,C\n"
+        assert result[1].content == "1,2,3\n"
+        assert result[2].content == "X,Y,Z\n"
