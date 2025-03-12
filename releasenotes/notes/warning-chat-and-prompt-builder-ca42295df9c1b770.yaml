@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Added a warning to ChatPromptBuilder and PromptBuilder when prompt variables are present and `required_variables` is unset to help users avoid unexpected execution in multi-branch pipelines. The warning recommends users to set `required_variables`.
