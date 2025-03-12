@@ -41,6 +41,16 @@ class Pipeline(PipelineBase):
         """
         instance: Component = component["instance"]
         component_name = self.get_component_name(instance)
+
+        # Check if we should pause at this component
+        if component_name in self._breakpoints or self._step_mode:
+            self._paused_at = component_name
+            print("Paused at", component_name)
+            self._resume_event.clear()  # signal main thread that we're paused
+            self._resume_event.wait()  #  waiting for resume signal from outside
+            # This will blocks until resume() or step() is called
+            print("Resuming at", component_name)
+
         component_inputs = self._consume_component_inputs(
             component_name=component_name, component=component, inputs=inputs
         )

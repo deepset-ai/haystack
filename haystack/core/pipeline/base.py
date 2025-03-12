@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import itertools
+import threading
 from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime
@@ -61,7 +62,7 @@ class ComponentPriority(IntEnum):
     BLOCKED = 5
 
 
-class PipelineBase:
+class PipelineBase:  # pylint: disable=too-many-public-methods
     """
     Components orchestration engine.
 
@@ -93,6 +94,11 @@ class PipelineBase:
         self.graph = networkx.MultiDiGraph()
         self._max_runs_per_component = max_runs_per_component
         self._connection_type_validation = connection_type_validation
+        self._breakpoints: Set[str] = set()  # Set of component names where the pipeline should pause
+        self._paused_at: Optional[str] = None  # Track where execution is currently paused
+        self._step_mode: bool = False  # Flag for step-by-step execution
+        self._resume_event = threading.Event()
+        self._resume_event.set()  # Initially not paused
 
     def __eq__(self, other) -> bool:
         """
@@ -1202,6 +1208,81 @@ class PipelineBase:
                 "2. There is a circular dependency preventing the pipeline from running\n"
                 "Check the connections between these components and ensure all required inputs are provided."
             )
+
+    def add_breakpoint(self, component_name: str) -> None:
+        """
+        Add a breakpoint to pause execution before the specified component runs.
+
+        :param component_name: Name of the component where execution should pause.
+        :raises ValueError: If the component doesn't exist in the pipeline.
+        """
+        if component_name not in self.graph.nodes:
+            raise ValueError(f"Component '{component_name}' not found in pipeline.")
+        self._breakpoints.add(component_name)
+
+    def remove_breakpoint(self, component_name: str) -> None:
+        """
+        Remove a breakpoint from the specified component.
+
+        :param component_name: Name of the component to remove the breakpoint from.
+        :raises ValueError: If the component doesn't have a breakpoint.
+        """
+        if component_name not in self._breakpoints:
+            raise ValueError(f"No breakpoint set on component '{component_name}'.")
+        self._breakpoints.remove(component_name)
+
+    def list_breakpoints(self) -> List[str]:
+        """
+        Get a list of all components with breakpoints.
+
+        :return: List of component names with breakpoints.
+        """
+        return sorted(self._breakpoints)
+
+    def clear_breakpoints(self) -> None:
+        """
+        Remove all breakpoints from the pipeline.
+        """
+        self._breakpoints.clear()
+
+    def is_paused(self) -> bool:
+        """
+        Check if the pipeline execution is currently paused.
+
+        :return: True if execution is paused, False otherwise.
+        """
+        return self._paused_at is not None
+
+    def get_pause_state(self) -> Optional[str]:
+        """
+        Get the name of the component where execution is currently paused.
+
+        :return: Component name or None if not paused.
+        """
+        return self._paused_at
+
+    def resume(self) -> None:
+        """Resume pipeline execution if it's paused."""
+        if self._paused_at is not None:
+            self._paused_at = None
+            self._resume_event.set()  # Signal to continue execution
+
+    def get_current_state(self) -> Dict[str, Any]:
+        """
+        Get the current state of the pipeline execution.
+
+        :return: Dictionary containing the current state information.
+        :raises RuntimeError: If the pipeline is not paused.
+        """
+        if not self._paused_at:
+            raise RuntimeError("Pipeline is not paused. Cannot get state.")
+
+        return {
+            "paused_at": self._paused_at,
+            "breakpoints": list(self._breakpoints),
+            "step_mode": self._step_mode,
+            "component_visits": self._component_visits.copy() if hasattr(self, "_component_visits") else {},
+        }
 
 
 def _connections_status(
