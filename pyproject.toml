@@ -132,6 +132,9 @@ extra-dependencies = [
   # ComponentTool
   "docstring-parser",
 
+  # self-evident, needed in link content fetcher tests
+  "httpx[http2]",
+
   # Test
   "pytest",
   "pytest-bdd",
