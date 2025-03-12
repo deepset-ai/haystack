@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import pytest
+import logging
 from pandas import read_csv
 from io import StringIO
 from haystack import Document, Pipeline
@@ -325,3 +326,11 @@ E,F,,,G,H
         assert result[0].content == "A,B,C\n"
         assert result[1].content == "1,2,3\n"
         assert result[2].content == "X,Y,Z\n"
+
+    def test_split_by_row_with_empty_rows(self, caplog) -> None:
+        splitter = CSVDocumentSplitter(split_by_row=True, row_split_threshold=2)
+        doc = Document(content="""""")
+        with caplog.at_level(logging.WARNING):
+            result = splitter.run([doc])["documents"]
+            assert len(result) == 1
+            assert result[0].content == ""
