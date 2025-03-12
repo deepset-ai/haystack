@@ -62,7 +62,7 @@ def test_init_with_legacy_fields():
         content="test text",
         content_type="text",
         id_hash_keys=["content"],
-        dataframe = "placeholder",
+        dataframe="placeholder",
         score=0.812,
         embedding=[0.1, 0.2, 0.3],  # type: ignore
     )
@@ -74,7 +74,7 @@ def test_init_with_legacy_fields():
     assert doc.embedding == [0.1, 0.2, 0.3]
     assert doc.sparse_embedding == None
 
-    assert doc.content_type == "text" # this is a property now
+    assert doc.content_type == "text"  # this is a property now
 
     assert not hasattr(doc, "id_hash_keys")
     assert not hasattr(doc, "dataframe")
@@ -96,7 +96,7 @@ def test_init_with_legacy_field():
     assert doc.embedding == [0.1, 0.2, 0.3]
     assert doc.sparse_embedding == None
 
-    assert doc.content_type == "text" # this is a property now
+    assert doc.content_type == "text"  # this is a property now
     assert not hasattr(doc, "id_hash_keys")
 
 
@@ -285,27 +285,37 @@ def test_from_dict_with_flat_and_non_flat_meta():
             }
         )
 
+
 def test_from_dict_with_dataframe():
     """
-    Test that Document.from_dict() can properly deserialize a Document dictionary obtained with 
+    Test that Document.from_dict() can properly deserialize a Document dictionary obtained with
     document.to_dict(flatten=False) in haystack-ai<=2.10.0.
     We make sure that Document.from_dict() does not raise an error and that dataframe is skipped (legacy field).
     """
 
-    # Document dictionary obtained with document.to_dict(flatten=False) in haystack-ai<=2.10.0
-    doc_dict = {'id': 'my_id', 'content': 'my_content', 'dataframe': None, 'blob': None, 'meta': {'key': 'value'}, 
- 'score': None, 'embedding': None, 'sparse_embedding': None}
-    
+    # Document dictionary obtained with document.to_dict(flatten=False) in haystack-ai<=2.10.0
+    doc_dict = {
+        "id": "my_id",
+        "content": "my_content",
+        "dataframe": None,
+        "blob": None,
+        "meta": {"key": "value"},
+        "score": None,
+        "embedding": None,
+        "sparse_embedding": None,
+    }
+
     doc = Document.from_dict(doc_dict)
 
-    assert doc.id == 'my_id'
-    assert doc.content == 'my_content'
-    assert doc.meta == {'key': 'value'}
+    assert doc.id == "my_id"
+    assert doc.content == "my_content"
+    assert doc.meta == {"key": "value"}
     assert doc.score == None
     assert doc.embedding == None
     assert doc.sparse_embedding == None
 
     assert not hasattr(doc, "dataframe")
+
 
 def test_content_type():
     assert Document(content="text").content_type == "text"
