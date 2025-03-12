@@ -132,6 +132,9 @@ extra-dependencies = [
   # ComponentTool
   "docstring-parser",
 
+  # needed in link content fetcher tests
+  "httpx[http2]",
+
   # Azure Utils
   "azure-identity",
 
