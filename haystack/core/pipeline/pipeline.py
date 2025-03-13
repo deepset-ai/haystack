@@ -2,7 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import json
+import os
 from copy import deepcopy
+from datetime import datetime
 from typing import Any, Dict, Mapping, Optional, Set, cast
 
 from haystack import logging, tracing
@@ -42,15 +45,6 @@ class Pipeline(PipelineBase):
         instance: Component = component["instance"]
         component_name = self.get_component_name(instance)
 
-        # Check if we should pause at this component
-        if component_name in self._breakpoints or self._step_mode:
-            self._paused_at = component_name
-            print("Paused at", component_name)
-            self._resume_event.clear()  # signal main thread that we're paused
-            self._resume_event.wait()  #  waiting for resume signal from outside
-            # This will blocks until resume() or step() is called
-            print("Resuming at", component_name)
-
         component_inputs = self._consume_component_inputs(
             component_name=component_name, component=component, inputs=inputs
         )
@@ -58,6 +52,23 @@ class Pipeline(PipelineBase):
         # We need to add missing defaults using default values from input sockets because the run signature
         # might not provide these defaults for components with inputs defined dynamically upon component initialization
         component_inputs = self._add_missing_input_defaults(component_inputs, component["input_sockets"])
+
+        if component_name in self._breakpoints:
+            breakpoint_data = {
+                "component_name": component_name,
+                "component_inputs": component_inputs,
+                "component_visits": component_visits[component_name],
+            }
+
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"breakpoint_{component_name}_{timestamp}.json"
+            os.makedirs("breakpoints", exist_ok=True)
+            filepath = os.path.join("breakpoints", filename)
+
+            with open(filepath, "w") as f:
+                json.dump(breakpoint_data, f, indent=2, default=str)
+
+            logger.info(f"Breakpoint hit at component '{component_name}'. Data dumped to {filepath}")
 
         with tracing.tracer.trace(
             "haystack.component.run",

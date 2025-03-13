@@ -85,16 +85,6 @@ def hybrid_retrieval(doc_store):
     return rag_pipeline
 
 
-def run_pipeline_no_breakpoints(doc_store, data):
-    """
-    Test
-    """
-    pipeline = hybrid_retrieval(doc_store)
-    print("Running pipeline without breakpoints")
-    result = pipeline.run(data)
-    print(result["answer_builder"]["answers"])
-
-
 def main():
     """
     Test

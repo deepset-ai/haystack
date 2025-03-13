@@ -94,11 +94,7 @@ class PipelineBase:  # pylint: disable=too-many-public-methods
         self.graph = networkx.MultiDiGraph()
         self._max_runs_per_component = max_runs_per_component
         self._connection_type_validation = connection_type_validation
-        self._breakpoints: Set[str] = set()  # set of component names where the pipeline should pause
-        self._paused_at: Optional[str] = None  # track where execution is currently paused
-        self._step_mode: bool = False  # flag for step-by-step execution
-        self._resume_event = threading.Event()
-        self._resume_event.set()  # initially not paused
+        self._breakpoints: Set[str] = set()  # set of component names where the pipeline dump data
 
     def __eq__(self, other) -> bool:
         """
@@ -1245,29 +1241,6 @@ class PipelineBase:  # pylint: disable=too-many-public-methods
         """
         self._breakpoints.clear()
 
-    def is_paused(self) -> bool:
-        """
-        Check if the pipeline execution is currently paused.
-
-        :return: True if execution is paused, False otherwise.
-        """
-        return self._paused_at is not None
-
-    def get_pause_state(self) -> Optional[str]:
-        """
-        Get the name of the component where execution is currently paused.
-
-        :return: Component name or None if not paused.
-        """
-        return self._paused_at
-
-    def resume(self) -> None:
-        """Resume pipeline execution if it's paused."""
-        if self._paused_at is not None:
-            self._paused_at = None
-            self._step_mode = False
-            self._resume_event.set()  # signal Thread to continue execution
-
     def get_current_state(self) -> Dict[str, Any]:
         """
         Get the current state of the pipeline execution.
@@ -1275,41 +1248,10 @@ class PipelineBase:  # pylint: disable=too-many-public-methods
         :return: Dictionary containing the current state information.
         :raises RuntimeError: If the pipeline is not paused.
         """
-        if not self._paused_at:
-            raise RuntimeError("Pipeline is not paused. Cannot get state.")
-
         return {
-            "paused_at": self._paused_at,
             "breakpoints": list(self._breakpoints),
-            "step_mode": self._step_mode,
             "component_visits": self._component_visits.copy() if hasattr(self, "_component_visits") else {},
         }
-
-    def step(self) -> Optional[str]:
-        """
-        Execute one step in the pipeline, advancing to the next component.
-
-        If the pipeline is not in step mode, this will enable step mode.
-        If the pipeline is paused at a component, this will resume execution
-        until the next component is reached.
-
-        :return: Name of the component that will be executed next, or None if pipeline execution is complete.
-        :raises RuntimeError: If the pipeline is not currently running.
-        """
-        if self._paused_at is None and not self._step_mode:
-            # Enable step mode if not already enabled
-            self._step_mode = True
-            return None
-
-        # If we're paused at a component, resume execution
-        if self._paused_at is not None:
-            current = self._paused_at
-            self._paused_at = None
-            self._step_mode = True  # Ensure step mode is enabled
-            self._resume_event.set()  # Signal to continue execution
-            return current
-
-        return None
 
 
 def _connections_status(
