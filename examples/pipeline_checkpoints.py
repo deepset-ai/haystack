@@ -85,13 +85,20 @@ def hybrid_retrieval(doc_store):
     return rag_pipeline
 
 
+def run_pipeline_no_breakpoints(doc_store, data):
+    """
+    Test
+    """
+    pipeline = hybrid_retrieval(doc_store)
+    print("Running pipeline without breakpoints")
+    result = pipeline.run(data)
+    print(result["answer_builder"]["answers"])
+
+
 def main():
     """
     Test
     """
-
-    doc_store = indexing()
-    pipeline = hybrid_retrieval(doc_store)
 
     question = "Where does Mark live?"
     data = {
@@ -102,9 +109,8 @@ def main():
         "answer_builder": {"query": question},
     }
 
-    print("Running pipeline without breakpoints")
-    result = pipeline.run(data)
-    print(result["answer_builder"]["answers"])
+    doc_store = indexing()
+    pipeline = hybrid_retrieval(doc_store)
 
     # Let's add a breakpoint in the pipeline
     print("Adding a breakpoint to 'doc_joiner'")
@@ -122,14 +128,12 @@ def main():
 
     # launching/running the pipeline in a separate thread
     pipeline_thread = threading.Thread(target=run_pipeline_thread)
-    pipeline_thread.daemon = True
     pipeline_thread.start()
 
     # wait for the pipeline to pause at the breakpoint
+    # controlling thread waits for the pipeline to pause at the breakpoint
     max_wait_time = 30
     start_time = time.time()
-
-    # controlling thread now waits for the pipeline to pause at the breakpoint
     while not pipeline.is_paused():
         time.sleep(0.1)  # Small delay to prevent CPU spinning
 
