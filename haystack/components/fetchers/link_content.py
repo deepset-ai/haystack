@@ -6,7 +6,7 @@ import asyncio
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from fnmatch import fnmatch
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple, cast
 
 import httpx
 from tenacity import RetryCallState, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
@@ -269,11 +269,15 @@ class LinkContentFetcher:
                 continue
 
             # Process successful results
-            stream_metadata, stream = result
-            if stream_metadata is not None and stream is not None:
-                stream.meta.update(stream_metadata)
-                stream.mime_type = stream.meta.get("content_type", None)
-                streams.append(stream)
+            # At this point, result is not an exception, so we need to cast it to the correct type for mypy
+            if not isinstance(result, Exception):  # Runtime check
+                # Use cast to tell mypy that result is the tuple type returned by _fetch_async
+                result_tuple = cast(Tuple[Optional[Dict[str, str]], Optional[ByteStream]], result)
+                stream_metadata, stream = result_tuple
+                if stream_metadata is not None and stream is not None:
+                    stream.meta.update(stream_metadata)
+                    stream.mime_type = stream.meta.get("content_type", None)
+                    streams.append(stream)
 
         return {"streams": streams}
 
