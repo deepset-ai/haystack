@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 from unittest.mock import patch
 
 import arrow
+import logging
 import pytest
 from jinja2 import TemplateSyntaxError
 
@@ -330,3 +331,8 @@ class TestPromptBuilder:
         # Expect ValueError for invalid offset
         with pytest.raises(ValueError, match="Invalid offset or operator"):
             builder.run()
+
+    def test_warning_no_required_variables(self, caplog):
+        with caplog.at_level(logging.WARNING):
+            _ = PromptBuilder(template="This is a {{ variable }}")
+            assert "but `required_variables` is not set." in caplog.text

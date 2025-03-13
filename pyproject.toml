@@ -132,6 +132,9 @@ extra-dependencies = [
   # ComponentTool
   "docstring-parser",
 
+  # Azure Utils
+  "azure-identity",
+
   # Test
   "pytest",
   "pytest-bdd",

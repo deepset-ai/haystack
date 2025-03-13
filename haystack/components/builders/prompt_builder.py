@@ -7,8 +7,10 @@ from typing import Any, Dict, List, Literal, Optional, Set, Union
 from jinja2 import meta
 from jinja2.sandbox import SandboxedEnvironment
 
-from haystack import component, default_to_dict
+from haystack import component, default_to_dict, logging
 from haystack.utils import Jinja2TimeExtension
+
+logger = logging.getLogger(__name__)
 
 
 @component
@@ -179,6 +181,15 @@ class PromptBuilder:
             variables = list(template_variables)
         variables = variables or []
         self.variables = variables
+
+        if len(self.variables) > 0 and required_variables is None:
+            logger.warning(
+                "PromptBuilder has {length} prompt variables, but `required_variables` is not set. "
+                "By default, all prompt variables are treated as optional, which may lead to unintended behavior in "
+                "multi-branch pipelines. To avoid unexpected execution, ensure that variables intended to be required "
+                "are explicitly set in `required_variables`.",
+                length=len(self.variables),
+            )
 
         # setup inputs
         for var in self.variables:

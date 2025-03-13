@@ -1,5 +1,4 @@
 import os
-from unittest.mock import MagicMock
 
 import pytest
 from haystack import Document, Pipeline
@@ -12,12 +11,6 @@ from haystack.components.extractors import LLMMetadataExtractor, LLMProvider
 
 
 class TestLLMMetadataExtractor:
-    @pytest.fixture
-    def boto3_session_mock(self, monkeypatch: pytest.MonkeyPatch) -> MagicMock:
-        mock = MagicMock()
-        monkeypatch.setattr(boto3, "Session", mock)
-        return mock
-
     def test_init_default(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         extractor = LLMMetadataExtractor(

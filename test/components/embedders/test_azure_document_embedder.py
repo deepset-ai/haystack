@@ -10,6 +10,7 @@ import pytest
 
 from haystack import Document
 from haystack.components.embedders import AzureOpenAIDocumentEmbedder
+from haystack.utils.azure import default_azure_ad_token_provider
 from unittest.mock import Mock, patch
 
 
@@ -27,6 +28,7 @@ class TestAzureOpenAIDocumentEmbedder:
         assert embedder.meta_fields_to_embed == []
         assert embedder.embedding_separator == "\n"
         assert embedder.default_headers == {}
+        assert embedder.azure_ad_token_provider is None
 
     def test_to_dict(self, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
@@ -51,6 +53,45 @@ class TestAzureOpenAIDocumentEmbedder:
                 "max_retries": 5,
                 "timeout": 30.0,
                 "default_headers": {},
+                "azure_ad_token_provider": None,
+            },
+        }
+
+    def test_to_dict_with_parameters(self, monkeypatch):
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
+        component = AzureOpenAIDocumentEmbedder(
+            azure_endpoint="https://example-resource.azure.openai.com/",
+            azure_deployment="text-embedding-ada-002",
+            dimensions=768,
+            organization="HaystackCI",
+            timeout=60.0,
+            max_retries=10,
+            prefix="prefix ",
+            suffix=" suffix",
+            default_headers={"x-custom-header": "custom-value"},
+            azure_ad_token_provider=default_azure_ad_token_provider,
+        )
+        data = component.to_dict()
+        assert data == {
+            "type": "haystack.components.embedders.azure_document_embedder.AzureOpenAIDocumentEmbedder",
+            "init_parameters": {
+                "api_key": {"env_vars": ["AZURE_OPENAI_API_KEY"], "strict": False, "type": "env_var"},
+                "azure_ad_token": {"env_vars": ["AZURE_OPENAI_AD_TOKEN"], "strict": False, "type": "env_var"},
+                "api_version": "2023-05-15",
+                "azure_deployment": "text-embedding-ada-002",
+                "dimensions": 768,
+                "azure_endpoint": "https://example-resource.azure.openai.com/",
+                "organization": "HaystackCI",
+                "prefix": "prefix ",
+                "suffix": " suffix",
+                "batch_size": 32,
+                "progress_bar": True,
+                "meta_fields_to_embed": [],
+                "embedding_separator": "\n",
+                "max_retries": 10,
+                "timeout": 60.0,
+                "default_headers": {"x-custom-header": "custom-value"},
+                "azure_ad_token_provider": "haystack.utils.azure.default_azure_ad_token_provider",
             },
         }
 
@@ -75,6 +116,7 @@ class TestAzureOpenAIDocumentEmbedder:
                 "max_retries": 5,
                 "timeout": 30.0,
                 "default_headers": {},
+                "azure_ad_token_provider": None,
             },
         }
         component = AzureOpenAIDocumentEmbedder.from_dict(data)
@@ -86,6 +128,42 @@ class TestAzureOpenAIDocumentEmbedder:
         assert component.prefix == ""
         assert component.suffix == ""
         assert component.default_headers == {}
+        assert component.azure_ad_token_provider is None
+
+    def test_from_dict_with_parameters(self, monkeypatch):
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
+        data = {
+            "type": "haystack.components.embedders.azure_document_embedder.AzureOpenAIDocumentEmbedder",
+            "init_parameters": {
+                "api_key": {"env_vars": ["AZURE_OPENAI_API_KEY"], "strict": False, "type": "env_var"},
+                "azure_ad_token": {"env_vars": ["AZURE_OPENAI_AD_TOKEN"], "strict": False, "type": "env_var"},
+                "api_version": "2023-05-15",
+                "azure_deployment": "text-embedding-ada-002",
+                "dimensions": 768,
+                "azure_endpoint": "https://example-resource.azure.openai.com/",
+                "organization": "HaystackCI",
+                "prefix": "prefix ",
+                "suffix": " suffix",
+                "batch_size": 32,
+                "progress_bar": True,
+                "meta_fields_to_embed": [],
+                "embedding_separator": "\n",
+                "max_retries": 10,
+                "timeout": 60.0,
+                "default_headers": {"x-custom-header": "custom-value"},
+                "azure_ad_token_provider": "haystack.utils.azure.default_azure_ad_token_provider",
+            },
+        }
+        component = AzureOpenAIDocumentEmbedder.from_dict(data)
+        assert component.azure_deployment == "text-embedding-ada-002"
+        assert component.azure_endpoint == "https://example-resource.azure.openai.com/"
+        assert component.api_version == "2023-05-15"
+        assert component.max_retries == 10
+        assert component.timeout == 60.0
+        assert component.prefix == "prefix "
+        assert component.suffix == " suffix"
+        assert component.default_headers == {"x-custom-header": "custom-value"}
+        assert component.azure_ad_token_provider is not None
 
     def test_embed_batch_handles_exceptions_gracefully(self, caplog):
         embedder = AzureOpenAIDocumentEmbedder(
