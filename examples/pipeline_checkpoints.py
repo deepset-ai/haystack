@@ -111,7 +111,7 @@ def main():
     pipeline.add_breakpoint("doc_joiner")
     print("Breakpoints:", pipeline.list_breakpoints())
 
-    # Define a function to run the pipeline in a separate thread
+    # function to run the pipeline in a separate thread
     def run_pipeline_thread():
         global results
         try:
@@ -120,25 +120,24 @@ def main():
         except Exception as e:
             print(f"Pipeline execution failed: {e}")
 
-    # Start the pipeline in a separate thread
+    # launching/running the pipeline in a separate thread
     pipeline_thread = threading.Thread(target=run_pipeline_thread)
     pipeline_thread.daemon = True
     pipeline_thread.start()
 
-    # Wait for the pipeline to pause at the breakpoint
-    print("Waiting for pipeline to hit breakpoint...")
-    max_wait_time = 30  # Maximum time to wait in seconds
+    # wait for the pipeline to pause at the breakpoint
+    max_wait_time = 30
     start_time = time.time()
 
+    # controlling thread now waits for the pipeline to pause at the breakpoint
     while not pipeline.is_paused():
         time.sleep(0.1)  # Small delay to prevent CPU spinning
 
-        # Check if we've waited too long
+        # stop if we waited too long or the pipeline thread ended unexpectedly
         if time.time() - start_time > max_wait_time:
             print("Timeout waiting for breakpoint")
             break
 
-        # Check if the pipeline thread ended unexpectedly
         if not pipeline_thread.is_alive():
             print("Pipeline thread ended unexpectedly")
             break
@@ -146,17 +145,14 @@ def main():
     if pipeline.is_paused():
         print(f"Pipeline paused at: {pipeline.get_pause_state()}")
 
-        # Get basic state information
         state = pipeline.get_current_state()
         print(f"Current state: {state}")
 
-        # Let the user decide when to continue
         _ = input("Press Enter to continue execution...")
 
-        # Resume execution
         pipeline.resume()
 
-        # Wait for the pipeline to complete
+        # need to join/wait for the pipeline to complete
         pipeline_thread.join()
 
         # Now we can access the final results
