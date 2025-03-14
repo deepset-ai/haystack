@@ -255,9 +255,7 @@ def import_class_by_name(fully_qualified_name: str) -> Type[object]:
     try:
         module_path, class_name = fully_qualified_name.rsplit(".", 1)
         logger.debug(
-            "Attempting to import class '{class_name}' from module '{module_path}'",
-            cls_name=class_name,
-            md_path=module_path,
+            "Attempting to import class '{cls_name}' from module '{md_path}'", cls_name=class_name, md_path=module_path
         )
         module = thread_safe_import(module_path)
         return getattr(module, class_name)
