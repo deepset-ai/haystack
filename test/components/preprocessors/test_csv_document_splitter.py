@@ -269,7 +269,7 @@ E,F,,,G,H
                 "row_split_threshold": 2,
                 "column_split_threshold": 2,
                 "read_csv_kwargs": {},
-                "split_by_row": False,
+                "split_mode": "threshold",
             },
         }
         assert config_serialized == config
@@ -283,7 +283,7 @@ E,F,,,G,H
                 "row_split_threshold": 1,
                 "column_split_threshold": None,
                 "read_csv_kwargs": {"sep": ";"},
-                "split_by_row": False,
+                "split_mode": "threshold",
             },
         }
         assert config_serialized == config
@@ -310,6 +310,7 @@ E,F,,,G,H
                     "row_split_threshold": 1,
                     "column_split_threshold": None,
                     "read_csv_kwargs": {"sep": ";"},
+                    "split_mode": "threshold",
                 },
             },
             name="CSVDocumentSplitter",
@@ -319,7 +320,7 @@ E,F,,,G,H
         assert splitter.read_csv_kwargs == {"sep": ";"}
 
     def test_split_by_row(self, csv_with_four_rows: str) -> None:
-        splitter = CSVDocumentSplitter(split_by_row=True)
+        splitter = CSVDocumentSplitter(split_mode="row-wise")
         doc = Document(content=csv_with_four_rows)
         result = splitter.run([doc])["documents"]
         assert len(result) == 4
@@ -328,9 +329,9 @@ E,F,,,G,H
         assert result[2].content == "X,Y,Z\n"
 
     def test_split_by_row_with_empty_rows(self, caplog) -> None:
-        splitter = CSVDocumentSplitter(split_by_row=True, row_split_threshold=2)
-        doc = Document(content="""""")
-        with caplog.at_level(logging.WARNING):
+        splitter = CSVDocumentSplitter(split_mode="row-wise", row_split_threshold=2)
+        doc = Document(content="")
+        with caplog.at_level(logging.ERROR):
             result = splitter.run([doc])["documents"]
             assert len(result) == 1
             assert result[0].content == ""

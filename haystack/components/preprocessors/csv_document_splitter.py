@@ -26,12 +26,14 @@ class CSVDocumentSplitter:
 
     """
 
+    SplitMode = Literal["threshold", "row-wise"]
+
     def __init__(
         self,
+        split_mode: SplitMode = "threshold",
         row_split_threshold: Optional[int] = 2,
         column_split_threshold: Optional[int] = 2,
         read_csv_kwargs: Optional[Dict[str, Any]] = None,
-        split_by_row: bool = False,
     ) -> None:
         """
         Initializes the CSVDocumentSplitter component.
@@ -44,9 +46,10 @@ class CSVDocumentSplitter:
             - `skip_blank_lines=False` to preserve blank lines
             - `dtype=object` to prevent type inference (e.g., converting numbers to floats).
             See https://pandas.pydata.org/docs/reference/api/pandas.read_csv.html for more information.
-        :param split_by_row:
-            If `True`, each row is treated as an individual sub-table.
-            Overrides `row_split_threshold` and `column_split_threshold`, if enabled.
+        :param split_mode:
+            If `threshold`, the component will split the document based on the number of
+            consecutive empty rows or columns that exceed the `row_split_threshold` or `column_split_threshold`.
+            If `row-wise`, the component will split each row into a separate sub-table.
         """
         pandas_import.check()
         if row_split_threshold is not None and row_split_threshold < 1:
@@ -58,13 +61,10 @@ class CSVDocumentSplitter:
         if row_split_threshold is None and column_split_threshold is None:
             raise ValueError("At least one of row_split_threshold or column_split_threshold must be specified.")
 
-        if split_by_row:
-            logger.warning("split_by_row is set to True. The other split arguments will be ignored.")
-
         self.row_split_threshold = row_split_threshold
         self.column_split_threshold = column_split_threshold
         self.read_csv_kwargs = read_csv_kwargs or {}
-        self.split_by_row = split_by_row
+        self.split_mode = split_mode
 
     @component.output_types(documents=List[Document])
     def run(self, documents: List[Document]) -> Dict[str, List[Document]]:
@@ -108,9 +108,9 @@ class CSVDocumentSplitter:
                 split_documents.append(document)
                 continue
 
-            if self.split_by_row:
+            if self.split_mode == "row-wise":
                 # each row is a separate sub-table
-                split_dfs = self._split_by_row_mode(df=df)
+                split_dfs = self._split_by_row(df=df)
 
             elif self.row_split_threshold is not None and self.column_split_threshold is None:
                 # split by rows
@@ -258,7 +258,7 @@ class CSVDocumentSplitter:
 
         return result
 
-    def _split_by_row_mode(self, df: "pd.DataFrame") -> List["pd.DataFrame"]:
+    def _split_by_row(self, df: "pd.DataFrame") -> List["pd.DataFrame"]:
         """Split each CSV row into a separate subtable"""
         try:
             split_dfs = []
