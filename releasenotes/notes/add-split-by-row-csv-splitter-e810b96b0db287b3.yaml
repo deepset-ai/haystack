@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Add a parameter to the `CSVDocumentSplitter` component to convert each row of a CSV file into a separate Haystack Document.

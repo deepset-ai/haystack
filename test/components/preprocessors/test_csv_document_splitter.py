@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import pytest
+import logging
 from pandas import read_csv
 from io import StringIO
 from haystack import Document, Pipeline
@@ -13,6 +14,15 @@ from haystack.components.preprocessors.csv_document_splitter import CSVDocumentS
 @pytest.fixture
 def splitter() -> CSVDocumentSplitter:
     return CSVDocumentSplitter()
+
+
+@pytest.fixture
+def csv_with_four_rows() -> str:
+    return """A,B,C
+1,2,3
+X,Y,Z
+7,8,9
+"""
 
 
 @pytest.fixture
@@ -255,7 +265,12 @@ E,F,,,G,H
         config_serialized = component_to_dict(splitter, name="CSVDocumentSplitter")
         config = {
             "type": "haystack.components.preprocessors.csv_document_splitter.CSVDocumentSplitter",
-            "init_parameters": {"row_split_threshold": 2, "column_split_threshold": 2, "read_csv_kwargs": {}},
+            "init_parameters": {
+                "row_split_threshold": 2,
+                "column_split_threshold": 2,
+                "read_csv_kwargs": {},
+                "split_mode": "threshold",
+            },
         }
         assert config_serialized == config
 
@@ -268,6 +283,7 @@ E,F,,,G,H
                 "row_split_threshold": 1,
                 "column_split_threshold": None,
                 "read_csv_kwargs": {"sep": ";"},
+                "split_mode": "threshold",
             },
         }
         assert config_serialized == config
@@ -294,6 +310,7 @@ E,F,,,G,H
                     "row_split_threshold": 1,
                     "column_split_threshold": None,
                     "read_csv_kwargs": {"sep": ";"},
+                    "split_mode": "threshold",
                 },
             },
             name="CSVDocumentSplitter",
@@ -301,3 +318,20 @@ E,F,,,G,H
         assert splitter.row_split_threshold == 1
         assert splitter.column_split_threshold is None
         assert splitter.read_csv_kwargs == {"sep": ";"}
+
+    def test_split_by_row(self, csv_with_four_rows: str) -> None:
+        splitter = CSVDocumentSplitter(split_mode="row-wise")
+        doc = Document(content=csv_with_four_rows)
+        result = splitter.run([doc])["documents"]
+        assert len(result) == 4
+        assert result[0].content == "A,B,C\n"
+        assert result[1].content == "1,2,3\n"
+        assert result[2].content == "X,Y,Z\n"
+
+    def test_split_by_row_with_empty_rows(self, caplog) -> None:
+        splitter = CSVDocumentSplitter(split_mode="row-wise", row_split_threshold=2)
+        doc = Document(content="")
+        with caplog.at_level(logging.ERROR):
+            result = splitter.run([doc])["documents"]
+            assert len(result) == 1
+            assert result[0].content == ""
