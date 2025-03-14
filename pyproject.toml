@@ -64,7 +64,7 @@ dependencies = [
 installer = "uv"
 dependencies = [
   "pre-commit",
-  "ruff",
+  "ruff<0.10.0",
   "toml",
   "reno",
   # dulwich is a reno dependency, they pin it at >=0.15.0 so pip takes ton of time to resolve the dependency tree.
