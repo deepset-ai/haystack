@@ -136,8 +136,8 @@ class AzureOpenAIGenerator(OpenAIGenerator):
         self.azure_deployment = azure_deployment
         self.organization = organization
         self.model: str = azure_deployment or "gpt-4o-mini"
-        self.timeout = timeout or float(os.environ.get("OPENAI_TIMEOUT", 30.0))
-        self.max_retries = max_retries or int(os.environ.get("OPENAI_MAX_RETRIES", 5))
+        self.timeout = timeout or float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
+        self.max_retries = max_retries or int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
         self.default_headers = default_headers or {}
 
         self.client = AzureOpenAI(

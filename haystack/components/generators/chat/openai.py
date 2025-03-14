@@ -146,9 +146,9 @@ class OpenAIChatGenerator:
         _check_duplicate_tool_names(tools)
 
         if timeout is None:
-            timeout = float(os.environ.get("OPENAI_TIMEOUT", 30.0))
+            timeout = float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
         if max_retries is None:
-            max_retries = int(os.environ.get("OPENAI_MAX_RETRIES", 5))
+            max_retries = int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
 
         client_args: Dict[str, Any] = {
             "api_key": api_key.resolve_value(),
