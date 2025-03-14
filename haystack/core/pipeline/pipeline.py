@@ -202,7 +202,7 @@ class Pipeline(PipelineBase):
         ordered_component_names = sorted(self.graph.nodes.keys())
 
         # We track component visits to decide if a component can run.
-        component_visits = {component_name: 0 for component_name in ordered_component_names}
+        component_visits = dict.fromkeys(ordered_component_names, 0)
 
         # We need to access a component's receivers multiple times during a pipeline run.
         # We store them here for easy access.

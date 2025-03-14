@@ -90,9 +90,9 @@ class OpenAITextEmbedder:
         self.api_key = api_key
 
         if timeout is None:
-            timeout = float(os.environ.get("OPENAI_TIMEOUT", 30.0))
+            timeout = float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
         if max_retries is None:
-            max_retries = int(os.environ.get("OPENAI_MAX_RETRIES", 5))
+            max_retries = int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
 
         self.client = OpenAI(
             api_key=api_key.resolve_value(),

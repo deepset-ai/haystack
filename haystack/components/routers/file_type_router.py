@@ -96,7 +96,7 @@ class FileTypeRouter:
         component.set_output_types(
             self,
             unclassified=List[Union[str, Path, ByteStream]],
-            **{mime_type: List[Union[str, Path, ByteStream]] for mime_type in mime_types},
+            **dict.fromkeys(mime_types, List[Union[str, Path, ByteStream]]),
         )
         self.mime_types = mime_types
         self._additional_mimetypes = additional_mimetypes
