@@ -461,6 +461,14 @@ class _Component:
         """
 
         def output_types_decorator(run_method: Callable[P, R]) -> Callable[P, R]:
+            """
+            Decorator that sets the output types of the decorated method.
+
+            This happens at class creation time, and since we don't have the decorated
+            class available here, we temporarily store the output types as an attribute of
+            the decorated method. The ComponentMeta metaclass will use this data to create
+            sockets at instance creation time.
+            """
             method_name = run_method.__name__
             if method_name not in ("run", "run_async"):
                 raise ComponentError("'output_types' decorator can only be used on 'run' and 'run_async' methods")
