@@ -95,7 +95,7 @@ class OutputAdapter:
         input_types.update(route_input_names)
 
         # the env is not needed, discarded automatically
-        component.set_input_types(self, **{var: Any for var in input_types})
+        component.set_input_types(self, **dict.fromkeys(input_types, Any))
         component.set_output_types(self, **{"output": output_type})
         self.output_type = output_type
 

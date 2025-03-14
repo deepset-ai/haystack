@@ -143,7 +143,7 @@ class AsyncPipeline(PipelineBase):
         # For quick lookup of downstream receivers
         ordered_names = sorted(self.graph.nodes.keys())
         cached_receivers = {n: self._find_receivers_from(n) for n in ordered_names}
-        component_visits = {component_name: 0 for component_name in ordered_names}
+        component_visits = dict.fromkeys(ordered_names, 0)
         cached_topological_sort = None
 
         # We fill the queue once and raise if all components are BLOCKED
