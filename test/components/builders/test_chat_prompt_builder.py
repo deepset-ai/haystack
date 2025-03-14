@@ -1,5 +1,6 @@
 from typing import Any, Dict, List, Optional
 from jinja2 import TemplateSyntaxError
+import logging
 import pytest
 
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
@@ -335,6 +336,16 @@ class TestChatPromptBuilder:
         }
         assert result == expected_dynamic
 
+    def test_warning_no_required_variables(self, caplog):
+        with caplog.at_level(logging.WARNING):
+            _ = ChatPromptBuilder(
+                template=[
+                    ChatMessage.from_system("Write your response in this language:{{language}}"),
+                    ChatMessage.from_user("Tell me about {{location}}"),
+                ]
+            )
+            assert "ChatPromptBuilder has 2 prompt variables, but `required_variables` is not set. " in caplog.text
+
 
 class TestChatPromptBuilderDynamic:
     def test_multiple_templated_chat_messages(self):
@@ -521,13 +532,13 @@ class TestChatPromptBuilderDynamic:
         }
 
     def test_to_dict(self):
-        component = ChatPromptBuilder(
+        comp = ChatPromptBuilder(
             template=[ChatMessage.from_user("text and {var}"), ChatMessage.from_assistant("content {required_var}")],
             variables=["var", "required_var"],
             required_variables=["required_var"],
         )
 
-        assert component.to_dict() == {
+        assert comp.to_dict() == {
             "type": "haystack.components.builders.chat_prompt_builder.ChatPromptBuilder",
             "init_parameters": {
                 "template": [
@@ -545,7 +556,7 @@ class TestChatPromptBuilderDynamic:
         }
 
     def test_from_dict(self):
-        component = ChatPromptBuilder.from_dict(
+        comp = ChatPromptBuilder.from_dict(
             data={
                 "type": "haystack.components.builders.chat_prompt_builder.ChatPromptBuilder",
                 "init_parameters": {
@@ -564,21 +575,21 @@ class TestChatPromptBuilderDynamic:
             }
         )
 
-        assert component.template == [
+        assert comp.template == [
             ChatMessage.from_user("text and {var}"),
             ChatMessage.from_assistant("content {required_var}"),
         ]
-        assert component._variables == ["var", "required_var"]
-        assert component._required_variables == ["required_var"]
+        assert comp._variables == ["var", "required_var"]
+        assert comp._required_variables == ["required_var"]
 
     def test_from_dict_template_none(self):
-        component = ChatPromptBuilder.from_dict(
+        comp = ChatPromptBuilder.from_dict(
             data={
                 "type": "haystack.components.builders.chat_prompt_builder.ChatPromptBuilder",
                 "init_parameters": {"template": None},
             }
         )
 
-        assert component.template is None
-        assert component._variables is None
-        assert component._required_variables is None
+        assert comp.template is None
+        assert comp._variables is None
+        assert comp._required_variables is None
