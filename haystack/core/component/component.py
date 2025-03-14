@@ -76,7 +76,9 @@ from contextvars import ContextVar
 from copy import deepcopy
 from dataclasses import dataclass
 from types import new_class
-from typing import Any, Dict, Optional, ParamSpec, Protocol, Type, TypeVar, runtime_checkable
+from typing import Any, Dict, Optional, Protocol, Type, TypeVar, runtime_checkable
+
+from typing_extensions import ParamSpec
 
 from haystack import logging
 from haystack.core.errors import ComponentError
