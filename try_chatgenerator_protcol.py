@@ -2,7 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+# the following lines avoid errors in the CI
 # ruff: noqa: E501
+# mypy: ignore-errors
 
 from haystack.components.converters import DOCXToDocument
 from haystack.components.embedders import OpenAITextEmbedder

@@ -205,6 +205,8 @@ class LLMMetadataExtractor:
         init_parameters = data.get("init_parameters", {})
 
         chat_generator_class = import_class_by_name(data["init_parameters"]["chat_generator"]["type"])
+        assert hasattr(chat_generator_class, "from_dict")  # we know but mypy doesn't
+
         chat_generator_instance = chat_generator_class.from_dict(init_parameters["chat_generator"])
 
         init_parameters["chat_generator"] = chat_generator_instance
