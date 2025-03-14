@@ -76,7 +76,7 @@ from contextvars import ContextVar
 from copy import deepcopy
 from dataclasses import dataclass
 from types import new_class
-from typing import Any, Dict, Optional, Protocol, Type, runtime_checkable
+from typing import Any, Dict, Optional, ParamSpec, Protocol, Type, TypeVar, runtime_checkable
 
 from haystack import logging
 from haystack.core.errors import ComponentError
@@ -85,6 +85,9 @@ from .sockets import Sockets
 from .types import InputSocket, OutputSocket, _empty
 
 logger = logging.getLogger(__name__)
+
+P = ParamSpec("P")
+R = TypeVar("R", bound=Dict[str, Any])  # For the actual return type of the decorated function
 
 
 @dataclass
@@ -442,7 +445,7 @@ class _Component:
             instance, {name: OutputSocket(name=name, type=type_) for name, type_ in types.items()}, OutputSocket
         )
 
-    def output_types(self, **types):
+    def output_types(self, **types: Any) -> Callable[[Callable[P, R]], Callable[P, R]]:
         """
         Decorator factory that specifies the output types of a component.
 
@@ -457,15 +460,7 @@ class _Component:
         ```
         """
 
-        def output_types_decorator(run_method):
-            """
-            Decorator that sets the output types of the decorated method.
-
-            This happens at class creation time, and since we don't have the decorated
-            class available here, we temporarily store the output types as an attribute of
-            the decorated method. The ComponentMeta metaclass will use this data to create
-            sockets at instance creation time.
-            """
+        def output_types_decorator(run_method: Callable[P, R]) -> Callable[P, R]:
             method_name = run_method.__name__
             if method_name not in ("run", "run_async"):
                 raise ComponentError("'output_types' decorator can only be used on 'run' and 'run_async' methods")
