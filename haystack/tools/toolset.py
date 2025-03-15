@@ -12,19 +12,47 @@ class Toolset:
     """
     A collection of related Tools that can be bootstrapped collectively and managed as a cohesive unit.
 
-    The Toolset class serves two main purposes:
-    1. It provides a way to group related tools together, making it easier to manage and pass them around as a
-        single unit.
+    1. It provides a way to group related tools together, making it easier to manage and pass them around as a single
+       unit.
     2. It provides a base class for implementing dynamic tool loading - by subclassing Toolset, you can create
-        custom implementations that load tools from resource endpoints (e.g., an API endpoint or a configuration file).
-        This allows you to define tools externally and load/discover them at runtime, rather than defining each tool
-        explicitly in code.
+       custom implementations that load tools from resource endpoints (e.g., an API endpoint or a configuration file).
+       This allows you to define tools externally and load them at runtime, rather than defining each tool explicitly in
+       code.
+
 
     Note: To implement dynamic tool loading, you must create a subclass of Toolset that implements the loading logic.
     The base Toolset class provides the infrastructure (like registration, deduplication, and serialization), but the
     actual loading from an endpoint must be implemented in your subclass.
 
-    Toolset implements the Iterable protocol, making it compatible with Haystack components that accept a list of Tools,
+    Important: When implementing a custom Toolset subclass, you should perform the dynamic loading of tools in the
+    `__init__` method. This ensures tools are loaded and registered when the Toolset is instantiated. The base class
+    will automatically handle tool registration and deduplication. For example:
+
+    ```python
+    class CustomToolset(Toolset):
+        def __init__(self, api_endpoint: str):
+            # Always call parent's __init__ first to initialize the tools list
+            super().__init__([])
+            self.api_endpoint = api_endpoint
+            # Load and register tools during initialization
+            self._load_tools_from_endpoint()
+
+        def _load_tools_from_endpoint(self):
+            # Fetch tool definitions from the endpoint
+            tool_definitions = self._fetch_from_endpoint()
+            # Create and register each tool
+            for definition in tool_definitions:
+                tool = Tool(
+                    name=definition["name"],
+                    description=definition["description"],
+                    parameters=definition["parameters"],
+                    function=self._create_tool_function(definition)
+                )
+                # register_tool handles adding to internal list and deduplication
+                self.register_tool(tool)
+    ```
+
+    Toolset implements the Iterable protocol, making it compatible with any component that accepts a list of Tools,
     such as ToolInvoker or any of the Haystack chat generators.
 
     Example:
@@ -87,6 +115,7 @@ class Toolset:
     # Example of a custom toolset that loads tools dynamically:
     class CalculatorToolset(Toolset):
         def __init__(self):
+            # Always initialize parent first
             super().__init__([])
             # In a real implementation, you would load tool definitions from your endpoint here
             self._create_tools()
@@ -110,6 +139,7 @@ class Toolset:
                 },
                 function=add_numbers
             )
+            # register_tool handles adding to the internal list and deduplication
             self.register_tool(add_tool)
     ```
 
