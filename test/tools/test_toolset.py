@@ -3,15 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import pytest
-from typing import Dict, List, Any
-from unittest.mock import MagicMock, patch
 
 from haystack import Pipeline
 from haystack.dataclasses import ChatMessage
 from haystack.components.tools import ToolInvoker
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.converters import OutputAdapter
-from haystack.dataclasses.chat_message import ChatRole, ToolCall
+from haystack.dataclasses.chat_message import ToolCall
 from haystack.tools import Tool, Toolset
 
 
