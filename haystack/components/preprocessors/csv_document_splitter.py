@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from io import StringIO
-from typing import Any, Dict, List, Literal, Optional, Tuple
+from typing import Any, Dict, List, Literal, Optional, Tuple, get_args
 
 from haystack import Document, component, logging
 from haystack.lazy_imports import LazyImport
@@ -12,6 +12,8 @@ with LazyImport("Run 'pip install pandas'") as pandas_import:
     import pandas as pd
 
 logger = logging.getLogger(__name__)
+
+SplitMode = Literal["threshold", "row-wise"]
 
 
 @component
@@ -25,8 +27,6 @@ class CSVDocumentSplitter:
     - split each row into a separate sub-table, represented as a Document.
 
     """
-
-    SplitMode = Literal["threshold", "row-wise"]
 
     def __init__(
         self,
@@ -52,6 +52,10 @@ class CSVDocumentSplitter:
             If `row-wise`, the component will split each row into a separate sub-table.
         """
         pandas_import.check()
+        if split_mode not in get_args(SplitMode):
+            raise ValueError(
+                f"Split mode '{split_mode}' not recognized. Choose one among: {', '.join(get_args(SplitMode))}."
+            )
         if row_split_threshold is not None and row_split_threshold < 1:
             raise ValueError("row_split_threshold must be greater than 0")
 
@@ -97,6 +101,7 @@ class CSVDocumentSplitter:
         if len(documents) == 0:
             return {"documents": documents}
 
+        self.read_csv_kwargs.pop("header", None)
         resolved_read_csv_kwargs = {"header": None, "skip_blank_lines": False, "dtype": object, **self.read_csv_kwargs}
 
         split_documents = []

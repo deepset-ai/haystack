@@ -329,9 +329,13 @@ E,F,,,G,H
         assert result[2].content == "X,Y,Z\n"
 
     def test_split_by_row_with_empty_rows(self, caplog) -> None:
-        splitter = CSVDocumentSplitter(split_mode="row-wise", row_split_threshold=2)
+        splitter = CSVDocumentSplitter(split_mode="row-wise")
         doc = Document(content="")
         with caplog.at_level(logging.ERROR):
             result = splitter.run([doc])["documents"]
             assert len(result) == 1
             assert result[0].content == ""
+
+    def test_incorrect_split_mode(self) -> None:
+        with pytest.raises(ValueError, match="not recognized"):
+            CSVDocumentSplitter(split_mode="incorrect_mode")
