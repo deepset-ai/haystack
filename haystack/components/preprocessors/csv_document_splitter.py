@@ -101,7 +101,6 @@ class CSVDocumentSplitter:
         if len(documents) == 0:
             return {"documents": documents}
 
-        self.read_csv_kwargs.pop("header", None)
         resolved_read_csv_kwargs = {"header": None, "skip_blank_lines": False, "dtype": object, **self.read_csv_kwargs}
 
         split_documents = []

@@ -1,4 +1,6 @@
 ---
 features:
   - |
-    Add a parameter to the `CSVDocumentSplitter` component to convert each row of a CSV file into a separate Haystack Document.
+    Added a new parameter `split_mode` to the `CSVDocumentSplitter` component to control the splitting mode.
+    The new parameter can be set to `row-wise` to split the CSV file by rows.
+    The default value is `threshold`, which is the previous behavior.
