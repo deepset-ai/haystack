@@ -499,9 +499,10 @@ class OpenAIChatGenerator:
                 )
 
         # finish_reason can appear in different places so we look for the last one
-        finish_reason = [
+        finish_reasons = [
             chunk.meta.get("finish_reason") for chunk in chunks if chunk.meta.get("finish_reason") is not None
-        ][-1]
+        ]
+        finish_reason = finish_reasons[-1] if finish_reasons else None
 
         meta = {
             "model": chunk.model,
@@ -588,6 +589,11 @@ class OpenAIChatGenerator:
         """
         chunk_message = StreamingChunk(content="")
         chunk_message.meta.update(
-            {"model": chunk.model, "usage": chunk.usage, "received_at": datetime.now().isoformat()}
+            {
+                "model": chunk.model,
+                "usage": chunk.usage,
+                "received_at": datetime.now().isoformat(),
+                "finish_reason": chunk.choices[0].finish_reason,
+            }
         )
         return chunk_message
