@@ -116,7 +116,7 @@ class TransformersTextRouter:
             self.labels = list(config.label2id.keys())
         else:
             self.labels = labels
-        component.set_output_types(self, **{label: str for label in self.labels})
+        component.set_output_types(self, **dict.fromkeys(self.labels, str))
 
         self.pipeline = None
 

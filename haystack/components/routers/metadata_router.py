@@ -81,7 +81,7 @@ class MetadataRouter:
                 raise ValueError(
                     "Invalid filter syntax. See https://docs.haystack.deepset.ai/docs/metadata-filtering for details."
                 )
-        component.set_output_types(self, unmatched=List[Document], **{edge: List[Document] for edge in rules})
+        component.set_output_types(self, unmatched=List[Document], **dict.fromkeys(rules, List[Document]))
 
     def run(self, documents: List[Document]):
         """

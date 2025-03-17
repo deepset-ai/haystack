@@ -214,7 +214,7 @@ def component_class(  # pylint: disable=too-many-positional-arguments
     def run(self, **kwargs):  # pylint: disable=unused-argument
         if output is not None:
             return output
-        return {name: None for name in output_types.keys()}
+        return dict.fromkeys(output_types.keys())
 
     def to_dict(self):
         return default_to_dict(self)
