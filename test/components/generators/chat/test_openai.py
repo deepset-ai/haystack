@@ -803,13 +803,10 @@ class TestOpenAIChatGenerator:
                 prompt_tokens_details=PromptTokensDetails(audio_tokens=0, cached_tokens=0),
             ),
         )
-        result = component._convert_usage_chunk_to_streaming_chunk(chunk)
+        result = component._convert_chat_completion_chunk_to_streaming_chunk(chunk)
         assert result.content == ""
         assert result.meta["model"] == "gpt-4o-mini-2024-07-18"
-        assert isinstance(result.meta["usage"], CompletionUsage)
-        assert result.meta["usage"].completion_tokens == 8
-        assert result.meta["usage"].prompt_tokens == 13
-        assert result.meta["usage"].total_tokens == 21
+        assert result.meta["received_at"] is not None
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
@@ -825,6 +822,7 @@ class TestOpenAIChatGenerator:
         assert "Paris" in message.text
         assert "gpt-4o" in message.meta["model"]
         assert message.meta["finish_reason"] == "stop"
+        assert message.meta["usage"]["prompt_tokens"] > 0
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
@@ -926,6 +924,6 @@ class TestOpenAIChatGenerator:
         assert "Paris" in message.text
         assert "gpt-4o" in message.meta["model"]
         assert message.meta["finish_reason"] == "stop"
-        assert isinstance(message.meta["usage"], CompletionUsage)
-        assert message.meta["usage"].prompt_tokens > 0
+        assert isinstance(message.meta["usage"], dict)
+        assert message.meta["usage"]["prompt_tokens"] > 0
         assert "completion_start_time" in message.meta

@@ -402,14 +402,9 @@ class OpenAIChatGenerator:
         chunk_delta: StreamingChunk
 
         for chunk in chat_completion:  # pylint: disable=not-an-iterable
-            # choices is an empty array for usage_chunk when include_usage is set to True
-            if chunk.usage is not None:
-                chunk_delta = self._convert_usage_chunk_to_streaming_chunk(chunk)
-            else:
-                assert len(chunk.choices) == 1, "Streaming responses should have only one choice."
-                chunk_delta = self._convert_chat_completion_chunk_to_streaming_chunk(chunk)
+            assert len(chunk.choices) <= 1, "Streaming responses should have at most one choice."
+            chunk_delta = self._convert_chat_completion_chunk_to_streaming_chunk(chunk)
             chunks.append(chunk_delta)
-
             callback(chunk_delta)
         return [self._convert_streaming_chunks_to_chat_message(chunk, chunks)]
 
@@ -421,15 +416,9 @@ class OpenAIChatGenerator:
         chunk_delta: StreamingChunk
 
         async for chunk in chat_completion:  # pylint: disable=not-an-iterable
-            # choices is an empty array for usage_chunk when include_usage is set to True
-            if chunk.usage is not None:
-                chunk_delta = self._convert_usage_chunk_to_streaming_chunk(chunk)
-
-            else:
-                assert len(chunk.choices) == 1, "Streaming responses should have only one choice."
-                chunk_delta = self._convert_chat_completion_chunk_to_streaming_chunk(chunk)
+            assert len(chunk.choices) <= 1, "Streaming responses should have at most one choice."
+            chunk_delta = self._convert_chat_completion_chunk_to_streaming_chunk(chunk)
             chunks.append(chunk_delta)
-
             await callback(chunk_delta)
         return [self._convert_streaming_chunks_to_chat_message(chunk, chunks)]
 
@@ -449,12 +438,12 @@ class OpenAIChatGenerator:
             )
 
     def _convert_streaming_chunks_to_chat_message(
-        self, chunk: ChatCompletionChunk, chunks: List[StreamingChunk]
+        self, last_chunk: ChatCompletionChunk, chunks: List[StreamingChunk]
     ) -> ChatMessage:
         """
         Connects the streaming chunks into a single ChatMessage.
 
-        :param chunk: The last chunk returned by the OpenAI API.
+        :param last_chunk: The last chunk returned by the OpenAI API.
         :param chunks: The list of all `StreamingChunk` objects.
 
         :returns: The ChatMessage.
@@ -504,11 +493,11 @@ class OpenAIChatGenerator:
         finish_reason = finish_reasons[-1] if finish_reasons else None
 
         meta = {
-            "model": chunk.model,
+            "model": last_chunk.model,
             "index": 0,
             "finish_reason": finish_reason,
             "completion_start_time": chunks[0].meta.get("received_at"),  # first chunk received
-            "usage": chunk.usage or {},
+            "usage": dict(last_chunk.usage or {}),  # last chunk has the final usage data if available
         }
 
         return ChatMessage.from_assistant(text=text or None, tool_calls=tool_calls, meta=meta)
@@ -560,6 +549,10 @@ class OpenAIChatGenerator:
         :returns:
             The StreamingChunk.
         """
+        # if there are no choices, return an empty chunk
+        if len(chunk.choices) == 0:
+            return StreamingChunk(content="", meta={"model": chunk.model, "received_at": datetime.now().isoformat()})
+
         # we stream the content of the chunk if it's not a tool or function call
         choice: ChunkChoice = chunk.choices[0]
         content = choice.delta.content or ""
@@ -575,22 +568,4 @@ class OpenAIChatGenerator:
                 "received_at": datetime.now().isoformat(),
             }
         )
-        return chunk_message
-
-    def _convert_usage_chunk_to_streaming_chunk(self, chunk: ChatCompletionChunk) -> StreamingChunk:
-        """
-        Converts the usage chunk received from the OpenAI API when `include_usage` is set to `True` to a StreamingChunk.
-
-        :param chunk: The usage chunk returned by the OpenAI API.
-
-        :returns:
-            The StreamingChunk.
-        """
-        chunk_message = StreamingChunk(content="")
-        chunk_message.meta.update(
-            {"model": chunk.model, "usage": chunk.usage, "received_at": datetime.now().isoformat()}
-        )
-        # choices can be empty so only add if finish_reason if not empty
-        if len(chunk.choices) > 0 and hasattr(chunk.choices[0], "finish_reason"):
-            chunk_message.meta["finish_reason"] = chunk.choices[0].finish_reason
         return chunk_message
