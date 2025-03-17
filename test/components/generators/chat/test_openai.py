@@ -869,7 +869,9 @@ class TestOpenAIChatGenerator:
                 self.responses += chunk.content if chunk.content else ""
 
         callback = Callback()
-        component = OpenAIChatGenerator(streaming_callback=callback)
+        component = OpenAIChatGenerator(
+            streaming_callback=callback, generation_kwargs={"stream_options": {"include_usage": True}}
+        )
         results = component.run([ChatMessage.from_user("What's the capital of France?")])
 
         assert len(results["replies"]) == 1
@@ -885,6 +887,11 @@ class TestOpenAIChatGenerator:
         # check that the completion_start_time is set and valid ISO format
         assert "completion_start_time" in message.meta
         assert datetime.fromisoformat(message.meta["completion_start_time"]) < datetime.now()
+
+        assert isinstance(message.meta["usage"], dict)
+        assert message.meta["usage"]["prompt_tokens"] > 0
+        assert message.meta["usage"]["completion_tokens"] > 0
+        assert message.meta["usage"]["total_tokens"] > 0
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
@@ -927,22 +934,3 @@ class TestOpenAIChatGenerator:
         assert tool_call.tool_name == "weather"
         assert tool_call.arguments == {"city": "Paris"}
         assert message.meta["finish_reason"] == "tool_calls"
-
-    @pytest.mark.skipif(
-        not os.environ.get("OPENAI_API_KEY", None),
-        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-    )
-    @pytest.mark.integration
-    def test_live_run_with_streaming_and_include_usage(self):
-        component = OpenAIChatGenerator(
-            streaming_callback=print_streaming_chunk, generation_kwargs={"stream_options": {"include_usage": True}}
-        )
-        results = component.run([ChatMessage.from_user("What's the capital of France?")])
-        assert len(results["replies"]) == 1
-        message: ChatMessage = results["replies"][0]
-        assert "Paris" in message.text
-        assert "gpt-4o" in message.meta["model"]
-        assert message.meta["finish_reason"] == "stop"
-        assert isinstance(message.meta["usage"], dict)
-        assert message.meta["usage"]["prompt_tokens"] > 0
-        assert "completion_start_time" in message.meta
