@@ -116,19 +116,28 @@ class CSVDocumentSplitter:
                 # each row is a separate sub-table
                 split_dfs = self._split_by_row(df=df)
 
-            elif self.row_split_threshold is not None and self.column_split_threshold is None:
-                # split by rows
-                split_dfs = self._split_dataframe(df=df, split_threshold=self.row_split_threshold, axis="row")
-            elif self.column_split_threshold is not None and self.row_split_threshold is None:
-                # split by columns
-                split_dfs = self._split_dataframe(df=df, split_threshold=self.column_split_threshold, axis="column")
-            else:
-                # recursive split
-                split_dfs = self._recursive_split(
-                    df=df,
-                    row_split_threshold=self.row_split_threshold,  # type: ignore
-                    column_split_threshold=self.column_split_threshold,  # type: ignore
+            elif self.split_mode == "threshold":
+                if self.row_split_threshold is not None and self.column_split_threshold is None:
+                    # split by rows
+                    split_dfs = self._split_dataframe(df=df, split_threshold=self.row_split_threshold, axis="row")
+                elif self.column_split_threshold is not None and self.row_split_threshold is None:
+                    # split by columns
+                    split_dfs = self._split_dataframe(df=df, split_threshold=self.column_split_threshold, axis="column")
+                else:
+                    # recursive split
+                    split_dfs = self._recursive_split(
+                        df=df,
+                        row_split_threshold=self.row_split_threshold,  # type: ignore
+                        column_split_threshold=self.column_split_threshold,  # type: ignore
+                    )
+
+            # check if no sub-tables were found
+            if len(split_dfs) == 0:
+                logger.warning(
+                    "No sub-tables found while splitting CSV Document with id {doc_id}. Skipping document.",
+                    doc_id=document.id,
                 )
+                continue
 
             # Sort split_dfs first by row index, then by column index
             split_dfs.sort(key=lambda dataframe: (dataframe.index[0], dataframe.columns[0]))
@@ -264,13 +273,9 @@ class CSVDocumentSplitter:
 
     def _split_by_row(self, df: "pd.DataFrame") -> List["pd.DataFrame"]:
         """Split each CSV row into a separate subtable"""
-        try:
-            split_dfs = []
-            for idx, row in enumerate(df.itertuples(index=False)):
-                split_df = pd.DataFrame(row).T
-                split_df.index = [idx]  # Set the index of the new DataFrame to idx
-                split_dfs.append(split_df)
-            return split_dfs
-        except Exception as e:
-            logger.warning("Error while splitting CSV rows to documents: {error}", error=e)
-            return []
+        split_dfs = []
+        for idx, row in enumerate(df.itertuples(index=False)):
+            split_df = pd.DataFrame(row).T
+            split_df.index = [idx]  # Set the index of the new DataFrame to idx
+            split_dfs.append(split_df)
+        return split_dfs
