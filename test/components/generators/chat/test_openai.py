@@ -12,6 +12,7 @@ from datetime import datetime
 from openai import OpenAIError
 from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletionMessage, ChatCompletionMessageToolCall
 from openai.types.chat.chat_completion import Choice
+from openai.types.completion_usage import CompletionTokensDetails, CompletionUsage, PromptTokensDetails
 from openai.types.chat.chat_completion_message_tool_call import Function
 from openai.types.chat import chat_completion_chunk
 
@@ -782,6 +783,34 @@ class TestOpenAIChatGenerator:
         assert result.meta["index"] == 0
         assert result.meta["completion_start_time"] == "2025-02-19T16:02:55.910076"
 
+    def test_convert_usage_chunk_to_streaming_chunk(self):
+        component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
+        chunk = ChatCompletionChunk(
+            id="chatcmpl-BC1y4wqIhe17R8sv3lgLcWlB4tXCw",
+            choices=[],
+            created=1742207200,
+            model="gpt-4o-mini-2024-07-18",
+            object="chat.completion.chunk",
+            service_tier="default",
+            system_fingerprint="fp_06737a9306",
+            usage=CompletionUsage(
+                completion_tokens=8,
+                prompt_tokens=13,
+                total_tokens=21,
+                completion_tokens_details=CompletionTokensDetails(
+                    accepted_prediction_tokens=0, audio_tokens=0, reasoning_tokens=0, rejected_prediction_tokens=0
+                ),
+                prompt_tokens_details=PromptTokensDetails(audio_tokens=0, cached_tokens=0),
+            ),
+        )
+        result = component._convert_usage_chunk_to_streaming_chunk(chunk)
+        assert result.content == ""
+        assert result.meta["model"] == "gpt-4o-mini-2024-07-18"
+        assert isinstance(result.meta["usage"], CompletionUsage)
+        assert result.meta["usage"].completion_tokens == 8
+        assert result.meta["usage"].prompt_tokens == 13
+        assert result.meta["usage"].total_tokens == 21
+
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
@@ -881,3 +910,22 @@ class TestOpenAIChatGenerator:
         assert tool_call.tool_name == "weather"
         assert tool_call.arguments == {"city": "Paris"}
         assert message.meta["finish_reason"] == "tool_calls"
+
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_live_run_with_streaming_and_include_usage(self):
+        component = OpenAIChatGenerator(
+            streaming_callback=print_streaming_chunk, generation_kwargs={"stream_options": {"include_usage": True}}
+        )
+        results = component.run([ChatMessage.from_user("What's the capital of France?")])
+        assert len(results["replies"]) == 1
+        message: ChatMessage = results["replies"][0]
+        assert "Paris" in message.text
+        assert "gpt-4o" in message.meta["model"]
+        assert message.meta["finish_reason"] == "stop"
+        assert isinstance(message.meta["usage"], CompletionUsage)
+        assert message.meta["usage"].prompt_tokens > 0
+        assert "completion_start_time" in message.meta

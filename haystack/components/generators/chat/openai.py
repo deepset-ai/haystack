@@ -405,7 +405,6 @@ class OpenAIChatGenerator:
             # choices is an empty array for usage_chunk when include_usage is set to True
             if chunk.usage is not None:
                 chunk_delta = self._convert_usage_chunk_to_streaming_chunk(chunk)
-
             else:
                 assert len(chunk.choices) == 1, "Streaming responses should have only one choice."
                 chunk_delta = self._convert_chat_completion_chunk_to_streaming_chunk(chunk)
@@ -589,11 +588,9 @@ class OpenAIChatGenerator:
         """
         chunk_message = StreamingChunk(content="")
         chunk_message.meta.update(
-            {
-                "model": chunk.model,
-                "usage": chunk.usage,
-                "received_at": datetime.now().isoformat(),
-                "finish_reason": chunk.choices[0].finish_reason,
-            }
+            {"model": chunk.model, "usage": chunk.usage, "received_at": datetime.now().isoformat()}
         )
+        # choices can be empty so only add if finish_reason if not empty
+        if len(chunk.choices) > 0 and hasattr(chunk.choices[0], "finish_reason"):
+            chunk_message.meta["finish_reason"] = chunk.choices[0].finish_reason
         return chunk_message
