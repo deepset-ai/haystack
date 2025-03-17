@@ -104,6 +104,7 @@ class CSVDocumentSplitter:
         resolved_read_csv_kwargs = {"header": None, "skip_blank_lines": False, "dtype": object, **self.read_csv_kwargs}
 
         split_documents = []
+        split_dfs = []
         for document in documents:
             try:
                 df = pd.read_csv(StringIO(document.content), **resolved_read_csv_kwargs)  # type: ignore
