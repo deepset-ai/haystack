@@ -4,6 +4,7 @@
 
 import base64
 import json
+import time
 import zlib
 from typing import Any, Dict, Optional
 
@@ -12,7 +13,10 @@ import requests
 
 from haystack import logging
 from haystack.core.errors import PipelineDrawingError
-from haystack.core.pipeline.descriptions import find_pipeline_inputs, find_pipeline_outputs
+from haystack.core.pipeline.descriptions import (
+    find_pipeline_inputs,
+    find_pipeline_outputs,
+)
 from haystack.core.type_utils import _type_name
 
 logger = logging.getLogger(__name__)
@@ -39,13 +43,23 @@ def _prepare_for_drawing(graph: networkx.MultiDiGraph) -> networkx.MultiDiGraph:
                 # If this socket has no sender it could be a socket that receives input
                 # directly when running the Pipeline. We can't know that for sure, in doubt
                 # we draw it as receiving input directly.
-                graph.add_edge("input", node, label=in_socket.name, conn_type=_type_name(in_socket.type))
+                graph.add_edge(
+                    "input",
+                    node,
+                    label=in_socket.name,
+                    conn_type=_type_name(in_socket.type),
+                )
 
     # Add outputs fake node
     graph.add_node("output")
     for node, out_sockets in find_pipeline_outputs(graph).items():
         for out_socket in out_sockets:
-            graph.add_edge(node, "output", label=out_socket.name, conn_type=_type_name(out_socket.type))
+            graph.add_edge(
+                node,
+                "output",
+                label=out_socket.name,
+                conn_type=_type_name(out_socket.type),
+            )
 
     return graph
 
@@ -95,13 +109,19 @@ def _validate_mermaid_params(params: Dict[str, Any]) -> None:
     params.setdefault("theme", "neutral")
 
     if params["format"] not in valid_formats:
-        raise ValueError(f"Invalid image format: {params['format']}. Valid options are: {valid_formats}.")
+        raise ValueError(
+            f"Invalid image format: {params['format']}. Valid options are: {valid_formats}."
+        )
 
     if params["format"] == "img" and params["type"] not in valid_img_types:
-        raise ValueError(f"Invalid image type: {params['type']}. Valid options are: {valid_img_types}.")
+        raise ValueError(
+            f"Invalid image type: {params['type']}. Valid options are: {valid_img_types}."
+        )
 
     if params["theme"] not in valid_themes:
-        raise ValueError(f"Invalid theme: {params['theme']}. Valid options are: {valid_themes}.")
+        raise ValueError(
+            f"Invalid theme: {params['theme']}. Valid options are: {valid_themes}."
+        )
 
     if "width" in params and not isinstance(params["width"], int):
         raise ValueError("Width must be an integer.")
@@ -125,7 +145,9 @@ def _validate_mermaid_params(params: Dict[str, Any]) -> None:
         if "landscape" in params and not isinstance(params["landscape"], bool):
             raise ValueError("Landscape must be a boolean.")
         if "fit" in params and ("paper" in params or "landscape" in params):
-            logger.warning("`fit` overrides `paper` and `landscape` for PDFs. Ignoring `paper` and `landscape`.")
+            logger.warning(
+                "`fit` overrides `paper` and `landscape` for PDFs. Ignoring `paper` and `landscape`."
+            )
 
 
 def _to_mermaid_image(
@@ -133,6 +155,8 @@ def _to_mermaid_image(
     server_url: str = "https://mermaid.ink",
     params: Optional[dict] = None,
     timeout: int = 30,
+    max_retries: int = 5,
+    initial_delay: float = 1,
 ) -> bytes:
     """
     Renders a pipeline using a Mermaid server.
@@ -145,6 +169,10 @@ def _to_mermaid_image(
         Dictionary of customization parameters. See `validate_mermaid_params` for valid keys.
     :param timeout:
         Timeout in seconds for the request to the Mermaid server.
+    :param max_retries:
+        The maximum number of attempts to retry a failed request.
+    :param initial_delay:
+        The initial time, in seconds, to wait before the first retry attempt.
     :returns:
         The image, SVG, or PDF data returned by the Mermaid server as bytes.
     :raises ValueError:
@@ -167,13 +195,19 @@ def _to_mermaid_image(
 
     # Compress the JSON string with zlib (RFC 1950)
     compressor = zlib.compressobj(level=9, wbits=15)
-    compressed_data = compressor.compress(json_string.encode("utf-8")) + compressor.flush()
-    compressed_url_safe_base64 = base64.urlsafe_b64encode(compressed_data).decode("utf-8").strip()
+    compressed_data = (
+        compressor.compress(json_string.encode("utf-8")) + compressor.flush()
+    )
+    compressed_url_safe_base64 = (
+        base64.urlsafe_b64encode(compressed_data).decode("utf-8").strip()
+    )
 
     # Determine the correct endpoint
     endpoint_format = params.get("format", "img")  # Default to /img endpoint
     if endpoint_format not in {"img", "svg", "pdf"}:
-        raise ValueError(f"Invalid format: {endpoint_format}. Valid options are 'img', 'svg', or 'pdf'.")
+        raise ValueError(
+            f"Invalid format: {endpoint_format}. Valid options are 'img', 'svg', or 'pdf'."
+        )
 
     # Construct the URL without query parameters
     url = f"{server_url}/{endpoint_format}/pako:{compressed_url_safe_base64}"
@@ -181,7 +215,10 @@ def _to_mermaid_image(
     # Add query parameters adhering to mermaid.ink documentation
     query_params = []
     for key, value in params.items():
-        if key not in {"theme", "format"}:  # Exclude theme (handled in init_params) and format (endpoint-specific)
+        if key not in {
+            "theme",
+            "format",
+        }:  # Exclude theme (handled in init_params) and format (endpoint-specific)
             if value is True:
                 query_params.append(f"{key}")
             else:
@@ -191,25 +228,36 @@ def _to_mermaid_image(
         url += "?" + "&".join(query_params)
 
     logger.debug("Rendering graph at {url}", url=url)
-    try:
-        resp = requests.get(url, timeout=timeout)
-        if resp.status_code >= 400:
-            logger.warning(
-                "Failed to draw the pipeline: {server_url} returned status {status_code}",
-                server_url=server_url,
-                status_code=resp.status_code,
-            )
-            logger.info("Exact URL requested: {url}", url=url)
-            logger.warning("No pipeline diagram will be saved.")
-            resp.raise_for_status()
+    for attempt in range(max_retries):
+        try:
+            resp = requests.get(url, timeout=timeout)
+            if resp.status_code >= 400:
+                logger.warning(
+                    "Failed to draw the pipeline: {server_url} returned status {status_code}",
+                    server_url=server_url,
+                    status_code=resp.status_code,
+                )
+                logger.info("Exact URL requested: {url}", url=url)
+                logger.warning("No pipeline diagram will be saved.")
+                resp.raise_for_status()
 
-    except Exception as exc:  # pylint: disable=broad-except
-        logger.warning(
-            "Failed to draw the pipeline: could not connect to {server_url} ({error})", server_url=server_url, error=exc
-        )
-        logger.info("Exact URL requested: {url}", url=url)
-        logger.warning("No pipeline diagram will be saved.")
-        raise PipelineDrawingError(f"There was an issue with {server_url}, see the stacktrace for details.") from exc
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.warning(
+                "Failed to draw the pipeline: could not connect to {server_url} ({error}) - Attempt: {attempt}",
+                server_url=server_url,
+                error=exc,
+                attempt=attempt + 1,
+            )
+            if attempt < max_retries - 1:
+                delay = initial_delay * (2**attempt)  # Exponential backoff
+                logger.info("Retrying in {delay:.2f} seconds", delay=delay)
+                time.sleep(delay)
+            else:
+                logger.info("Exact URL requested: {url}", url=url)
+                logger.warning("No pipeline diagram will be saved.")
+                raise PipelineDrawingError(
+                    f"There was an issue with {server_url}, see the stacktrace for details."
+                ) from exc
 
     return resp.content
 
@@ -228,13 +276,18 @@ def _to_mermaid_text(graph: networkx.MultiDiGraph, init_params: str) -> str:
             [
                 f"<li>{name} ({_type_name(socket.type)})</li>"
                 for name, socket in data.get("input_sockets", {}).items()
-                if (not socket.is_mandatory and not socket.senders) or socket.is_variadic
+                if (not socket.is_mandatory and not socket.senders)
+                or socket.is_variadic
             ]
         )
         for comp, data in graph.nodes(data=True)
     }
     optional_inputs = {
-        comp: f"<br><br>Optional inputs:<ul style='text-align:left;'>{sockets}</ul>" if sockets else ""
+        comp: (
+            f"<br><br>Optional inputs:<ul style='text-align:left;'>{sockets}</ul>"
+            if sockets
+            else ""
+        )
         for comp, sockets in sockets.items()
     }
 
@@ -247,10 +300,16 @@ def _to_mermaid_text(graph: networkx.MultiDiGraph, init_params: str) -> str:
     connections_list = []
     for from_comp, to_comp, conn_data in graph.edges(data=True):
         if from_comp != "input" and to_comp != "output":
-            arrowtail = ARROWTAIL_MANDATORY if conn_data["mandatory"] else ARROWTAIL_OPTIONAL
-            arrowhead = ARROWHEAD_MANDATORY if conn_data["mandatory"] else ARROWHEAD_OPTIONAL
+            arrowtail = (
+                ARROWTAIL_MANDATORY if conn_data["mandatory"] else ARROWTAIL_OPTIONAL
+            )
+            arrowhead = (
+                ARROWHEAD_MANDATORY if conn_data["mandatory"] else ARROWHEAD_OPTIONAL
+            )
             label = f'"{conn_data["label"]}<br><small><i>{conn_data["conn_type"]}</i></small>"'
-            conn_string = f"{states[from_comp]} {arrowtail} {label} {arrowhead} {states[to_comp]}"
+            conn_string = (
+                f"{states[from_comp]} {arrowtail} {label} {arrowhead} {states[to_comp]}"
+            )
             connections_list.append(conn_string)
 
     input_connections = [
@@ -263,7 +322,9 @@ def _to_mermaid_text(graph: networkx.MultiDiGraph, init_params: str) -> str:
     ]
     connections = "\n".join(connections_list + input_connections + output_connections)
 
-    graph_styled = MERMAID_STYLED_TEMPLATE.format(params=init_params, connections=connections)
+    graph_styled = MERMAID_STYLED_TEMPLATE.format(
+        params=init_params, connections=connections
+    )
     logger.debug("Mermaid diagram:\n{diagram}", diagram=graph_styled)
 
     return graph_styled
