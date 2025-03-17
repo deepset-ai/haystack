@@ -10,6 +10,7 @@ import os
 
 from openai.types.chat import ChatCompletion, ChatCompletionMessage, ChatCompletionMessageToolCall, ChatCompletionChunk
 from openai.types.chat.chat_completion import Choice
+from openai.types.completion_usage import CompletionTokensDetails, CompletionUsage, PromptTokensDetails
 from openai.types.chat.chat_completion_message_tool_call import Function
 from openai.types.chat import chat_completion_chunk
 
@@ -207,7 +208,15 @@ class TestOpenAIChatGeneratorAsync:
                     )
                 ],
                 created=int(datetime.now().timestamp()),
-                usage={"prompt_tokens": 57, "completion_tokens": 40, "total_tokens": 97},
+                usage=CompletionUsage(
+                    completion_tokens=40,
+                    prompt_tokens=57,
+                    total_tokens=97,
+                    completion_tokens_details=CompletionTokensDetails(
+                        accepted_prediction_tokens=0, audio_tokens=0, reasoning_tokens=0, rejected_prediction_tokens=0
+                    ),
+                    prompt_tokens_details=PromptTokensDetails(audio_tokens=0, cached_tokens=0),
+                ),
             )
 
             mock_chat_completion_create.return_value = completion
@@ -233,6 +242,7 @@ class TestOpenAIChatGeneratorAsync:
         assert tool_call.tool_name == "weather"
         assert tool_call.arguments == {"city": "Paris"}
         assert message.meta["finish_reason"] == "tool_calls"
+        assert message.meta["usage"]["completion_tokens"] == 40
 
     @pytest.mark.asyncio
     async def test_run_with_tools_streaming_async(self, mock_chat_completion_chunk_with_tools, tools):
@@ -310,7 +320,9 @@ class TestOpenAIChatGeneratorAsync:
             counter += 1
             responses += chunk.content if chunk.content else ""
 
-        component = OpenAIChatGenerator(streaming_callback=callback)
+        component = OpenAIChatGenerator(
+            streaming_callback=callback, generation_kwargs={"stream_options": {"include_usage": True}}
+        )
         results = await component.run_async([ChatMessage.from_user("What's the capital of France?")])
 
         assert len(results["replies"]) == 1
@@ -326,6 +338,11 @@ class TestOpenAIChatGeneratorAsync:
         # check that the completion_start_time is set and valid ISO format
         assert "completion_start_time" in message.meta
         assert datetime.fromisoformat(message.meta["completion_start_time"]) < datetime.now()
+
+        assert isinstance(message.meta["usage"], dict)
+        assert message.meta["usage"]["prompt_tokens"] > 0
+        assert message.meta["usage"]["completion_tokens"] > 0
+        assert message.meta["usage"]["total_tokens"] > 0
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
