@@ -74,6 +74,41 @@ def test_to_mermaid_image_failing_request(tmp_path):
             _to_mermaid_image(pipe.graph)
 
 
+@patch("haystack.core.pipeline.draw.requests")
+def test_to_mermaid_image_retries_on_failure(mock_requests):
+    pipe = Pipeline()
+    pipe.add_component("comp1", Double())
+    pipe.add_component("comp2", Double())
+    pipe.connect("comp1", "comp2")
+    mock_response = MagicMock()
+    mock_response.status_code = 500
+    mock_requests.get.return_value = mock_response
+
+    with pytest.raises(PipelineDrawingError):
+        _to_mermaid_image(pipe.graph, max_retries=2, initial_delay=0.1)
+
+    assert mock_requests.get.call_count == 2
+
+
+@patch("haystack.core.pipeline.draw.requests")
+def test_to_mermaid_image_exponential_backoff(mock_requests):
+    pipe = Pipeline()
+    pipe.add_component("comp1", Double())
+    pipe.add_component("comp2", Double())
+    pipe.connect("comp1", "comp2")
+    mock_response = MagicMock()
+    mock_response.status_code = 500
+    mock_requests.get.return_value = mock_response
+
+    with pytest.raises(PipelineDrawingError):
+        _to_mermaid_image(pipe.graph, max_retries=3, initial_delay=0.1)
+
+    assert mock_requests.get.call_count == 3
+    assert mock_requests.get.call_args_list[0][1]["timeout"] == 30
+    assert mock_requests.get.call_args_list[1][1]["timeout"] == 30
+    assert mock_requests.get.call_args_list[2][1]["timeout"] == 30
+
+
 def test_to_mermaid_text():
     pipe = Pipeline()
     pipe.add_component("comp1", AddFixedValue(add=3))
