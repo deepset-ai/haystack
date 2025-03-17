@@ -398,7 +398,15 @@ class TestOpenAIChatGenerator:
                     )
                 ],
                 created=int(datetime.now().timestamp()),
-                usage={"prompt_tokens": 57, "completion_tokens": 40, "total_tokens": 97},
+                usage=CompletionUsage(
+                    completion_tokens=40,
+                    prompt_tokens=57,
+                    total_tokens=97,
+                    completion_tokens_details=CompletionTokensDetails(
+                        accepted_prediction_tokens=0, audio_tokens=0, reasoning_tokens=0, rejected_prediction_tokens=0
+                    ),
+                    prompt_tokens_details=PromptTokensDetails(audio_tokens=0, cached_tokens=0),
+                ),
             )
 
             mock_chat_completion_create.return_value = completion
@@ -424,6 +432,7 @@ class TestOpenAIChatGenerator:
         assert tool_call.tool_name == "weather"
         assert tool_call.arguments == {"city": "Paris"}
         assert message.meta["finish_reason"] == "tool_calls"
+        assert message.meta["usage"]["completion_tokens"] == 40
 
     def test_run_with_tools_streaming(self, mock_chat_completion_chunk_with_tools, tools):
         streaming_callback_called = False
@@ -482,7 +491,15 @@ class TestOpenAIChatGenerator:
                     )
                 ],
                 created=1234567890,
-                usage={"prompt_tokens": 50, "completion_tokens": 30, "total_tokens": 80},
+                usage=CompletionUsage(
+                    completion_tokens=47,
+                    prompt_tokens=540,
+                    total_tokens=587,
+                    completion_tokens_details=CompletionTokensDetails(
+                        accepted_prediction_tokens=0, audio_tokens=0, reasoning_tokens=0, rejected_prediction_tokens=0
+                    ),
+                    prompt_tokens_details=PromptTokensDetails(audio_tokens=0, cached_tokens=0),
+                ),
             )
 
             component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"), tools=tools)
@@ -492,6 +509,8 @@ class TestOpenAIChatGenerator:
         message = response["replies"][0]
         assert len(message.tool_calls) == 0
         assert "OpenAI returned a malformed JSON string for tool call arguments" in caplog.text
+        assert message.meta["finish_reason"] == "tool_calls"
+        assert message.meta["usage"]["completion_tokens"] == 47
 
     def test_convert_streaming_chunks_to_chat_message_tool_calls_in_any_chunk(self):
         component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
