@@ -128,7 +128,7 @@ class TransformersZeroShotTextRouter:
         self.token = token
         self.labels = labels
         self.multi_label = multi_label
-        component.set_output_types(self, **{label: str for label in labels})
+        component.set_output_types(self, **dict.fromkeys(labels, str))
 
         huggingface_pipeline_kwargs = resolve_hf_pipeline_kwargs(
             huggingface_pipeline_kwargs=huggingface_pipeline_kwargs or {},
