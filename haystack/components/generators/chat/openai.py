@@ -498,8 +498,10 @@ class OpenAIChatGenerator:
                     _arguments=call_data["arguments"],
                 )
 
-        # finish_reason is in the last chunk if usage is not included, and in the second last chunk if usage is included
-        finish_reason = (chunks[-2] if chunk.usage and len(chunks) >= 2 else chunks[-1]).meta.get("finish_reason")
+        # finish_reason can appear in different places so we look for the last one
+        finish_reason = [
+            chunk.meta.get("finish_reason") for chunk in chunks if chunk.meta.get("finish_reason") is not None
+        ][-1]
 
         meta = {
             "model": chunk.model,
