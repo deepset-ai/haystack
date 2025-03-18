@@ -81,7 +81,7 @@ class LinkContentFetcher:
 
     ```python
     import asyncio
-    from haystack.components.fetchers.link_content import LinkContentFetcher
+    from haystack.components.fetchers import LinkContentFetcher
 
     async def fetch_async():
         fetcher = LinkContentFetcher()
