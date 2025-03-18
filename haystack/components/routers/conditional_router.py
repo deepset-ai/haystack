@@ -225,7 +225,7 @@ class ConditionalRouter:
             logger.warning(msg)
 
         # add mandatory input types
-        component.set_input_types(self, **{var: Any for var in mandatory_input_types})
+        component.set_input_types(self, **dict.fromkeys(mandatory_input_types, Any))
 
         # now add optional input types
         for optional_var_name in self.optional_variables:
