@@ -68,7 +68,6 @@ def rag_pipeline(document_store: InMemoryDocumentStore, top_k: int):  # type: ig
     rag.connect("retriever", "prompt_builder.documents")
     rag.connect("prompt_builder", "generator")
     rag.connect("generator.replies", "answer_builder.replies")
-    # rag.connect("generator.meta", "answer_builder.meta")
     rag.connect("retriever", "answer_builder.documents")
 
     return rag
