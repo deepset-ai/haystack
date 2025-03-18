@@ -8,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 from fnmatch import fnmatch
 from typing import Callable, Dict, List, Optional, Tuple, cast
 
-from httpx import AsyncClient, Client, HTTPStatusError, Response, RequestError
+import httpx
 from tenacity import RetryCallState, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from haystack import component, logging

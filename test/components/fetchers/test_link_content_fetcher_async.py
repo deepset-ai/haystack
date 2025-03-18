@@ -6,7 +6,7 @@ from unittest.mock import patch, Mock
 import pytest
 import httpx
 
-from haystack.components.fetchers.link_content import LinkContentFetcher, DEFAULT_USER_AGENT
+from haystack.components.fetchers.link_content import LinkContentFetcher
 
 HTML_URL = "https://docs.haystack.deepset.ai/docs"
 TEXT_URL = "https://raw.githubusercontent.com/deepset-ai/haystack/main/README.md"
