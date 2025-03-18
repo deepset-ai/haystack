@@ -30,10 +30,10 @@ class CSVDocumentSplitter:
 
     def __init__(
         self,
-        split_mode: SplitMode = "threshold",
         row_split_threshold: Optional[int] = 2,
         column_split_threshold: Optional[int] = 2,
         read_csv_kwargs: Optional[Dict[str, Any]] = None,
+        split_mode: SplitMode = "threshold",
     ) -> None:
         """
         Initializes the CSVDocumentSplitter component.

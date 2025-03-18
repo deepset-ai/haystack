@@ -300,6 +300,7 @@ E,F,,,G,H
         assert splitter.row_split_threshold == 2
         assert splitter.column_split_threshold == 2
         assert splitter.read_csv_kwargs == {}
+        assert splitter.split_mode == "threshold"
 
     def test_from_dict_non_defaults(self) -> None:
         splitter = component_from_dict(
@@ -310,7 +311,7 @@ E,F,,,G,H
                     "row_split_threshold": 1,
                     "column_split_threshold": None,
                     "read_csv_kwargs": {"sep": ";"},
-                    "split_mode": "threshold",
+                    "split_mode": "row-wise",
                 },
             },
             name="CSVDocumentSplitter",
@@ -318,6 +319,7 @@ E,F,,,G,H
         assert splitter.row_split_threshold == 1
         assert splitter.column_split_threshold is None
         assert splitter.read_csv_kwargs == {"sep": ";"}
+        assert splitter.split_mode == "row-wise"
 
     def test_split_by_row(self, csv_with_four_rows: str) -> None:
         splitter = CSVDocumentSplitter(split_mode="row-wise")
