@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed issue with MistralChatGenerator not returning a `finish_reason` when using streaming. Fixed by adjusting how we look for the `finish_reason` when processing streaming chunks. Now, the last non-None `finish_reason` is used to handle differences between OpenAI and Mistral.
+enhancements:
+  - |
+    - Refactored the processing of streaming chunks from OpenAI to simplify logic.
+    - Added tests to ensure expected behavior when handling streaming chunks when using include_usage=True.
