@@ -96,7 +96,7 @@ def evaluation_pipeline():
     return eval_pipeline
 
 
-def built_eval_input(questions, truth_docs, truth_answers, retrieved_docs, contexts, pred_answers):
+def built_eval_input(questions, truth_docs, truth_answers, retrieved_docs, contexts, pred_answers):  # pylint: disable=too-many-positional-arguments
     """Helper function to build the input for the evaluation pipeline"""
     return {
         "doc_mrr": {"ground_truth_documents": truth_docs, "retrieved_documents": retrieved_docs},
