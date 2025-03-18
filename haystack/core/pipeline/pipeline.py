@@ -203,6 +203,11 @@ class Pipeline(PipelineBase):
         """
         pipeline_running(self)
 
+        if breakpoints:
+            pass
+            # ToDo: validate breakpoints, make sure they are all valid components and if the visit nr is not given
+            # assume is 0
+
         # TODO: Remove this warmup once we can check reliably whether a component has been warmed up or not
         # As of now it's here to make sure we don't have failing tests that assume warm_up() is called in run()
         self.warm_up()
@@ -306,6 +311,7 @@ class Pipeline(PipelineBase):
         if hasattr(value, "to_dict") and callable(getattr(value, "to_dict")):
             return value.to_dict()
 
+        # this is a hack to serialize inputs that don't have a to_dict
         elif hasattr(value, "__dict__"):
             return {
                 "_type": value.__class__.__name__,
@@ -329,25 +335,20 @@ class Pipeline(PipelineBase):
         ordered_component_names: Optional[Set[str]],
         original_input_data,
         callback_fun: Callable = None,
-        save_path: str = "pipeline_state.json",
     ) -> None:
         """
-        Saves the current state of the pipeline execution to a JSON file.
-
-        :param inputs: Current state of inputs in the pipeline
-        :param component_name: Name of the component where execution was paused
-        :param component_visits: Dictionary tracking component visit counts
-        :param ordered_component_names: Set of component names in execution order
-        :param original_input_data: Original input data provided to the pipeline
-        :param callback_fun: Optional callback function to execute after saving
-        :param save_path: Path where to save the JSON file (default: "pipeline_state.json")
+        Saves the state of the pipeline at a given component visit count.
         """
+
         import json
         from datetime import datetime
 
+        dt = datetime.now()
+        timestamp = f"{component_name}_state_{dt.strftime('%Y_%m_%d_%H_%M_%S')}.json"
+
         state = {
             "input_data": original_input_data,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": dt.isoformat(),
             "breakpoint": {"component": component_name, "visits": component_visits[component_name]},
             "pipeline_state": {
                 "inputs": inputs,
@@ -359,10 +360,12 @@ class Pipeline(PipelineBase):
             serialized_inputs = Pipeline._serialize_value(state["pipeline_state"]["inputs"])
             state["pipeline_state"]["inputs"] = serialized_inputs
 
-            with open(save_path, "w") as f:
-                json.dump(state, f, indent=2)
-            logger.info(f"Pipeline state saved at: {save_path}")
+            with open(timestamp, "w") as f_out:
+                json.dump(state, f_out, indent=2)
 
+            logger.info(f"Pipeline state saved at: {timestamp}")
+
+            # pass the state to some user-defined callback function
             if callback_fun:
                 callback_fun(state)
 
