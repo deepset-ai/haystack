@@ -2,12 +2,14 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, Iterator, List, Optional, Union
+from dataclasses import dataclass, field
+from typing import Any, Dict, Iterator, List, Union
 
 from haystack.core.serialization import generate_qualified_class_name, import_class_by_name
 from haystack.tools.tool import Tool, _check_duplicate_tool_names
 
 
+@dataclass
 class Toolset:
     """
     A collection of related Tools that can be bootstrapped collectively and managed as a cohesive unit.
@@ -151,25 +153,23 @@ class Toolset:
     - You need to serialize/deserialize a collection of tools as a unit
     """
 
-    def __init__(self, tools: Optional[Union[List[Tool], Tool, "Toolset"]] = None):
+    # Use field() with default_factory to initialize the list
+    tools: List[Tool] = field(default_factory=list)
+
+    def __post_init__(self):
         """
-        Initialize a Toolset with optional tools.
+        Validate and set up the toolset after initialization.
 
-        :param tools: Optional initial tools as a list of Tools, a single Tool, or another Toolset
-        :raises ValueError: If duplicate tool names are found
+        This handles the case when tools are provided during initialization.
         """
-        self._tools: List[Tool] = []
+        # If initialization was done with a Toolset, list of Tools, or a single Tool
+        if isinstance(self.tools, Toolset):
+            self.tools = list(self.tools)
+        elif isinstance(self.tools, Tool):
+            self.tools = [self.tools]
 
-        if tools is not None:
-            if isinstance(tools, Tool):
-                self._tools = [tools]
-            elif isinstance(tools, Toolset):
-                self._tools = list(tools)
-            else:
-                self._tools = list(tools)
-
-        # Check for duplicate tool names
-        _check_duplicate_tool_names(self._tools)
+        # Check for duplicate tool names in the initial set
+        _check_duplicate_tool_names(self.tools)
 
     def __iter__(self) -> Iterator[Tool]:
         """
@@ -179,7 +179,7 @@ class Toolset:
 
         :returns: An iterator yielding Tool instances
         """
-        return iter(self._tools)
+        return iter(self.tools)
 
     def register_tool(self, tool: Union[Tool, "Toolset"]) -> None:
         """
@@ -199,10 +199,10 @@ class Toolset:
             raise TypeError(f"Expected Tool or Toolset, got {type(tool).__name__}")
 
         # Check for duplicates before adding
-        combined_tools = self._tools + new_tools
+        combined_tools = self.tools + new_tools
         _check_duplicate_tool_names(combined_tools)
 
-        self._tools.extend(new_tools)
+        self.tools.extend(new_tools)
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -212,7 +212,7 @@ class Toolset:
         """
         return {
             "type": generate_qualified_class_name(type(self)),
-            "data": {"tools": [tool.to_dict() for tool in self._tools]},
+            "data": {"tools": [tool.to_dict() for tool in self.tools]},
         }
 
     @classmethod
@@ -245,11 +245,11 @@ class Toolset:
         :raises ValueError: If the combination would result in duplicate tool names
         """
         if isinstance(other, Tool):
-            combined_tools = self._tools + [other]
+            combined_tools = self.tools + [other]
         elif isinstance(other, Toolset):
-            combined_tools = self._tools + list(other)
+            combined_tools = self.tools + list(other)
         elif isinstance(other, list) and all(isinstance(item, Tool) for item in other):
-            combined_tools = self._tools + other
+            combined_tools = self.tools + other
         else:
             raise TypeError(f"Cannot add {type(other).__name__} to Toolset")
 
@@ -264,7 +264,7 @@ class Toolset:
 
         :returns: Number of Tools
         """
-        return len(self._tools)
+        return len(self.tools)
 
     def __getitem__(self, index):
         """
@@ -273,4 +273,4 @@ class Toolset:
         :param index: Index of the Tool to get
         :returns: The Tool at the specified index
         """
-        return self._tools[index]
+        return self.tools[index]
