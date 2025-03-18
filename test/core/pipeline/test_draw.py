@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
+import time
 
 from haystack.core.errors import PipelineDrawingError
 from haystack.core.pipeline import Pipeline
@@ -52,6 +53,7 @@ def test_to_mermaid_image_applies_timeout(mock_requests):
     assert mock_requests.get.call_args[1]["timeout"] == 1
 
 
+@patch("haystack.core.pipeline.draw.requests")
 def test_to_mermaid_image_failing_request(tmp_path):
     pipe = Pipeline()
     pipe.add_component("comp1", Double())
@@ -80,33 +82,41 @@ def test_to_mermaid_image_retries_on_failure(mock_requests):
     pipe.add_component("comp1", Double())
     pipe.add_component("comp2", Double())
     pipe.connect("comp1", "comp2")
+
     mock_response = MagicMock()
     mock_response.status_code = 500
+    mock_response.raise_for_status.side_effect = requests.HTTPError()
+
     mock_requests.get.return_value = mock_response
 
-    with pytest.raises(PipelineDrawingError):
+    with pytest.raises(PipelineDrawingError, match="There was an issue with https://mermaid.ink"):
         _to_mermaid_image(pipe.graph, max_retries=2, initial_delay=0.1)
 
     assert mock_requests.get.call_count == 2
 
 
 @patch("haystack.core.pipeline.draw.requests")
-def test_to_mermaid_image_exponential_backoff(mock_requests):
+@patch("time.sleep")
+def test_to_mermaid_image_exponential_backoff(mock_sleep, mock_requests):
     pipe = Pipeline()
     pipe.add_component("comp1", Double())
     pipe.add_component("comp2", Double())
     pipe.connect("comp1", "comp2")
+
     mock_response = MagicMock()
     mock_response.status_code = 500
+    mock_response.raise_for_status.side_effect = requests.HTTPError()
     mock_requests.get.return_value = mock_response
 
     with pytest.raises(PipelineDrawingError):
         _to_mermaid_image(pipe.graph, max_retries=3, initial_delay=0.1)
 
     assert mock_requests.get.call_count == 3
-    assert mock_requests.get.call_args_list[0][1]["timeout"] == 30
-    assert mock_requests.get.call_args_list[1][1]["timeout"] == 30
-    assert mock_requests.get.call_args_list[2][1]["timeout"] == 30
+    assert mock_sleep.call_count == 2  # 2 sleeps, since there are 3 retries.
+
+    expected_delays = [0.1, 0.2]
+    actual_delays = [call_args[0][0] for call_args in mock_sleep.call_args_list]
+    assert actual_delays == pytest.approx(expected_delays)
 
 
 def test_to_mermaid_text():
