@@ -131,7 +131,8 @@ class EvaluationRunResult:
             JSON or DataFrame with aggregated scores, in case the output is set to a CSV file, a message confirming the
             successful write or an error message.
         """
-        results = {k: v["score"] for k, v in self.results.items()}
+
+        results = {k: float(v["score"]) for k, v in self.results.items()}
         data = {"metrics": list(results.keys()), "score": list(results.values())}
         return self._handle_output(data, output_format, csv_file)
 
