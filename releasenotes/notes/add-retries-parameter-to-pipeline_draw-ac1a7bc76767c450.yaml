@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    The _to_mermaid_image function now includes an
+    exponential retry mechanism with max_retries and i
+    nitial_delay to handle connection failures.
