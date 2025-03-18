@@ -220,7 +220,7 @@ def test_evaluation_pipeline(samples_path):
     }
     results_a = built_input_for_results_eval(results_rag_a)
     evaluation_result_a = EvaluationRunResult(run_name="rag_pipeline_a", results=results_a, inputs=inputs_a)
-    df_score_report = evaluation_result_a.score_report()
+    df_score_report = evaluation_result_a.aggregated_report()
 
     # assert the score report has all the metrics
     assert len(df_score_report) == 7
@@ -236,7 +236,7 @@ def test_evaluation_pipeline(samples_path):
     ]
 
     # assert the evaluation result has all the metrics, inputs and questions
-    df = evaluation_result_a.to_pandas()
+    df = evaluation_result_a.detailed_report()
     assert list(df.columns) == [
         "question",
         "contexts",
@@ -266,7 +266,7 @@ def test_evaluation_pipeline(samples_path):
     }
     results_b = built_input_for_results_eval(results_rag_b)
     evaluation_result_b = EvaluationRunResult(run_name="rag_pipeline_b", results=results_b, inputs=inputs_b)
-    df_comparative = evaluation_result_a.comparative_individual_scores_report(evaluation_result_b)
+    df_comparative = evaluation_result_a.comparative_detailed_report(evaluation_result_b)
 
     # assert the comparative score report has all the metrics, inputs and questions
     assert len(df_comparative) == 3
