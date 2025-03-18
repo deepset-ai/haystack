@@ -134,6 +134,7 @@ def _to_mermaid_image(
     server_url: str = "https://mermaid.ink",
     params: Optional[dict] = None,
     timeout: int = 30,
+    *,
     max_retries: int = 5,
     initial_delay: float = 1,
 ) -> bytes:
