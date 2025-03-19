@@ -4,10 +4,8 @@
 
 from typing import List
 
-from haystack import component, logging
+from haystack import component
 from haystack.core.component.types import Variadic
-
-logger = logging.getLogger(__name__)
 
 
 @component
