@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from .csv_document_splitter import CSVDocumentSplitter
     from .document_cleaner import DocumentCleaner
     from .document_splitter import DocumentSplitter
-    from .hierarchical_doc_splitter import HierarchicalDocumentSplitter
+    from .hierarchical_document_splitter import HierarchicalDocumentSplitter
     from .recursive_splitter import RecursiveDocumentSplitter
     from .text_cleaner import TextCleaner
 

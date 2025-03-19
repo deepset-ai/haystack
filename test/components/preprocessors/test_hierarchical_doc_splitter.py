@@ -200,48 +200,47 @@ class TestHierarchicalDocumentSplitter:
         assert docs["doc_writer"]["documents_written"] == 3
         assert len(doc_store.storage.values()) == 3
 
+    def test_hierarchical_splitter_multiple_block_sizes(self):
+        # Test with three different block sizes
+        doc = Document(
+            content="This is a simple test document with multiple sentences. It should be split into various sizes. This helps test the hierarchy."
+        )
 
-def test_hierarchical_splitter_multiple_block_sizes():
-    # Test with three different block sizes
-    doc = Document(
-        content="This is a simple test document with multiple sentences. It should be split into various sizes. This helps test the hierarchy."
-    )
+        # Using three block sizes: 10, 5, 2 words
+        splitter = HierarchicalDocumentSplitter(block_sizes={10, 5, 2}, split_overlap=0, split_by="word")
+        result = splitter.run([doc])
 
-    # Using three block sizes: 10, 5, 2 words
-    splitter = HierarchicalDocumentSplitter(block_sizes={10, 5, 2}, split_overlap=0, split_by="word")
-    result = splitter.run([doc])
+        documents = result["documents"]
 
-    documents = result["documents"]
+        # Verify root document
+        assert len(documents) > 1
+        root = documents[0]
+        assert root.meta["__level"] == 0
+        assert root.meta["__parent_id"] is None
 
-    # Verify root document
-    assert len(documents) > 1
-    root = documents[0]
-    assert root.meta["__level"] == 0
-    assert root.meta["__parent_id"] is None
+        # Verify level 1 documents (block_size=10)
+        level_1_docs = [d for d in documents if d.meta["__level"] == 1]
+        for doc in level_1_docs:
+            assert doc.meta["__block_size"] == 10
+            assert doc.meta["__parent_id"] == root.id
 
-    # Verify level 1 documents (block_size=10)
-    level_1_docs = [d for d in documents if d.meta["__level"] == 1]
-    for doc in level_1_docs:
-        assert doc.meta["__block_size"] == 10
-        assert doc.meta["__parent_id"] == root.id
+        # Verify level 2 documents (block_size=5)
+        level_2_docs = [d for d in documents if d.meta["__level"] == 2]
+        for doc in level_2_docs:
+            assert doc.meta["__block_size"] == 5
+            assert doc.meta["__parent_id"] in [d.id for d in level_1_docs]
 
-    # Verify level 2 documents (block_size=5)
-    level_2_docs = [d for d in documents if d.meta["__level"] == 2]
-    for doc in level_2_docs:
-        assert doc.meta["__block_size"] == 5
-        assert doc.meta["__parent_id"] in [d.id for d in level_1_docs]
+        # Verify level 3 documents (block_size=2)
+        level_3_docs = [d for d in documents if d.meta["__level"] == 3]
+        for doc in level_3_docs:
+            assert doc.meta["__block_size"] == 2
+            assert doc.meta["__parent_id"] in [d.id for d in level_2_docs]
 
-    # Verify level 3 documents (block_size=2)
-    level_3_docs = [d for d in documents if d.meta["__level"] == 3]
-    for doc in level_3_docs:
-        assert doc.meta["__block_size"] == 2
-        assert doc.meta["__parent_id"] in [d.id for d in level_2_docs]
-
-    # Verify children references
-    for doc in documents:
-        if doc.meta["__children_ids"]:
-            child_ids = doc.meta["__children_ids"]
-            children = [d for d in documents if d.id in child_ids]
-            for child in children:
-                assert child.meta["__parent_id"] == doc.id
-                assert child.meta["__level"] == doc.meta["__level"] + 1
+        # Verify children references
+        for doc in documents:
+            if doc.meta["__children_ids"]:
+                child_ids = doc.meta["__children_ids"]
+                children = [d for d in documents if d.id in child_ids]
+                for child in children:
+                    assert child.meta["__parent_id"] == doc.id
+                    assert child.meta["__level"] == doc.meta["__level"] + 1
