@@ -200,7 +200,7 @@ class PipelineBase:
                                 f"Successfully imported module '{module}' but couldn't find"
                                 f"'{component_data['type']}' in the component registry.\n"
                                 f"The component might be registered under a different path."
-                                f"Here are the components registered:\n {list(component.registry.keys())}\n"
+                                f"Here are the registered components:\n {list(component.registry.keys())}\n"
                             )
                     except (ImportError, PipelineError, ValueError) as e:
                         raise PipelineError(
