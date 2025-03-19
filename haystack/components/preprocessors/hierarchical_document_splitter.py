@@ -19,7 +19,7 @@ class HierarchicalDocumentSplitter:
     ## Usage example
     ```python
     from haystack import Document
-    from haystack_experimental.components.splitters import HierarchicalDocumentSplitter
+    from haystack.components.preprocessors import HierarchicalDocumentSplitter
 
     doc = Document(content="This is a simple test document")
     splitter = HierarchicalDocumentSplitter(block_sizes={3, 2}, split_overlap=0, split_by="word")
