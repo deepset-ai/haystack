@@ -127,7 +127,7 @@ class ChatPromptBuilder:
         variables = variables or []
         try:
             # The Jinja2TimeExtension needs an optional dependency to be installed.
-            # If it's not available we can do without it and use the PromptBuilder as is.
+            # If it's not available we can do without it and use the ChatPromptBuilder as is.
             self._env = SandboxedEnvironment(extensions=[Jinja2TimeExtension])
         except ImportError:
             self._env = SandboxedEnvironment()
