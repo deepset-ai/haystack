@@ -59,7 +59,7 @@ class TextLanguageRouter:
         if not languages:
             languages = ["en"]
         self.languages = languages
-        component.set_output_types(self, unmatched=str, **{language: str for language in languages})
+        component.set_output_types(self, unmatched=str, **dict.fromkeys(languages, str))
 
     def run(self, text: str) -> Dict[str, str]:
         """

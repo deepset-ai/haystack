@@ -3,10 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Union
 
-# pylint: disable=import-error
-from openai.lib.azure import AsyncAzureOpenAI, AzureOpenAI
+from openai.lib.azure import AsyncAzureADTokenProvider, AsyncAzureOpenAI, AzureADTokenProvider, AzureOpenAI
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.generators.chat import OpenAIChatGenerator
@@ -22,7 +21,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
     """
     Generates text using OpenAI's models on Azure.
 
-    It works with the gpt-4 and gpt-3.5-turbo - type models and supports streaming responses
+    It works with the gpt-4 - type models and supports streaming responses
     from OpenAI API. It uses [ChatMessage](https://docs.haystack.deepset.ai/docs/chatmessage)
     format in input and output.
 
@@ -78,6 +77,8 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         default_headers: Optional[Dict[str, str]] = None,
         tools: Optional[List[Tool]] = None,
         tools_strict: bool = False,
+        *,
+        azure_ad_token_provider: Optional[Union[AzureADTokenProvider, AsyncAzureADTokenProvider]] = None,
     ):
         """
         Initialize the Azure OpenAI Chat Generator component.
@@ -120,6 +121,8 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         :param tools_strict:
             Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
             the schema provided in the `parameters` field of the tool definition, but this may increase latency.
+        :param azure_ad_token_provider: A function that returns an Azure Active Directory token, will be invoked on
+            every request.
         """
         # We intentionally do not call super().__init__ here because we only need to instantiate the client to interact
         # with the API.
@@ -146,9 +149,10 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         self.azure_deployment = azure_deployment
         self.organization = organization
         self.model = azure_deployment or "gpt-4o-mini"
-        self.timeout = timeout or float(os.environ.get("OPENAI_TIMEOUT", 30.0))
-        self.max_retries = max_retries or int(os.environ.get("OPENAI_MAX_RETRIES", 5))
+        self.timeout = timeout or float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
+        self.max_retries = max_retries or int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
         self.default_headers = default_headers or {}
+        self.azure_ad_token_provider = azure_ad_token_provider
 
         _check_duplicate_tool_names(tools)
         self.tools = tools
@@ -164,6 +168,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
             "timeout": self.timeout,
             "max_retries": self.max_retries,
             "default_headers": self.default_headers,
+            "azure_ad_token_provider": azure_ad_token_provider,
         }
 
         self.client = AzureOpenAI(**client_args)
@@ -177,6 +182,9 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
             The serialized component as a dictionary.
         """
         callback_name = serialize_callable(self.streaming_callback) if self.streaming_callback else None
+        azure_ad_token_provider_name = None
+        if self.azure_ad_token_provider:
+            azure_ad_token_provider_name = serialize_callable(self.azure_ad_token_provider)
         return default_to_dict(
             self,
             azure_endpoint=self.azure_endpoint,
@@ -192,6 +200,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
             default_headers=self.default_headers,
             tools=[tool.to_dict() for tool in self.tools] if self.tools else None,
             tools_strict=self.tools_strict,
+            azure_ad_token_provider=azure_ad_token_provider_name,
         )
 
     @classmethod
@@ -209,4 +218,9 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         serialized_callback_handler = init_params.get("streaming_callback")
         if serialized_callback_handler:
             data["init_parameters"]["streaming_callback"] = deserialize_callable(serialized_callback_handler)
+        serialized_azure_ad_token_provider = init_params.get("azure_ad_token_provider")
+        if serialized_azure_ad_token_provider:
+            data["init_parameters"]["azure_ad_token_provider"] = deserialize_callable(
+                serialized_azure_ad_token_provider
+            )
         return default_from_dict(cls, data)

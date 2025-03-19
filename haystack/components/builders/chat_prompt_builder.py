@@ -143,6 +143,15 @@ class ChatPromptBuilder:
                     variables += list(template_variables)
         self.variables = variables
 
+        if len(self.variables) > 0 and required_variables is None:
+            logger.warning(
+                "ChatPromptBuilder has {length} prompt variables, but `required_variables` is not set. "
+                "By default, all prompt variables are treated as optional, which may lead to unintended behavior in "
+                "multi-branch pipelines. To avoid unexpected execution, ensure that variables intended to be required "
+                "are explicitly set in `required_variables`.",
+                length=len(self.variables),
+            )
+
         # setup inputs
         for var in self.variables:
             if self.required_variables == "*" or var in self.required_variables:

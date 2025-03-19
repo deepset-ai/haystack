@@ -7,11 +7,11 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from more_itertools import batched
 from openai import APIError
-from openai.lib.azure import AzureOpenAI
+from openai.lib.azure import AzureADTokenProvider, AzureOpenAI
 from tqdm import tqdm
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
-from haystack.utils import Secret, deserialize_secrets_inplace
+from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +57,7 @@ class AzureOpenAIDocumentEmbedder:
         max_retries: Optional[int] = None,
         *,
         default_headers: Optional[Dict[str, str]] = None,
+        azure_ad_token_provider: Optional[AzureADTokenProvider] = None,
     ):
         """
         Creates an AzureOpenAIDocumentEmbedder component.
@@ -102,6 +103,8 @@ class AzureOpenAIDocumentEmbedder:
         :param max_retries: Maximum number of retries to contact AzureOpenAI after an internal error.
             If not set, defaults to either the `OPENAI_MAX_RETRIES` environment variable or to 5 retries.
         :param default_headers: Default headers to send to the AzureOpenAI client.
+        :param azure_ad_token_provider: A function that returns an Azure Active Directory token, will be invoked on
+            every request.
         """
         # if not provided as a parameter, azure_endpoint is read from the env var AZURE_OPENAI_ENDPOINT
         azure_endpoint = azure_endpoint or os.environ.get("AZURE_OPENAI_ENDPOINT")
@@ -124,14 +127,16 @@ class AzureOpenAIDocumentEmbedder:
         self.progress_bar = progress_bar
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
-        self.timeout = timeout or float(os.environ.get("OPENAI_TIMEOUT", 30.0))
-        self.max_retries = max_retries or int(os.environ.get("OPENAI_MAX_RETRIES", 5))
+        self.timeout = timeout or float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
+        self.max_retries = max_retries or int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
         self.default_headers = default_headers or {}
+        self.azure_ad_token_provider = azure_ad_token_provider
 
         self._client = AzureOpenAI(
             api_version=api_version,
             azure_endpoint=azure_endpoint,
             azure_deployment=azure_deployment,
+            azure_ad_token_provider=azure_ad_token_provider,
             api_key=api_key.resolve_value() if api_key is not None else None,
             azure_ad_token=azure_ad_token.resolve_value() if azure_ad_token is not None else None,
             organization=organization,
@@ -153,6 +158,9 @@ class AzureOpenAIDocumentEmbedder:
         :returns:
             Dictionary with serialized data.
         """
+        azure_ad_token_provider_name = None
+        if self.azure_ad_token_provider:
+            azure_ad_token_provider_name = serialize_callable(self.azure_ad_token_provider)
         return default_to_dict(
             self,
             azure_endpoint=self.azure_endpoint,
@@ -171,6 +179,7 @@ class AzureOpenAIDocumentEmbedder:
             timeout=self.timeout,
             max_retries=self.max_retries,
             default_headers=self.default_headers,
+            azure_ad_token_provider=azure_ad_token_provider_name,
         )
 
     @classmethod
@@ -184,6 +193,11 @@ class AzureOpenAIDocumentEmbedder:
             Deserialized component.
         """
         deserialize_secrets_inplace(data["init_parameters"], keys=["api_key", "azure_ad_token"])
+        serialized_azure_ad_token_provider = data["init_parameters"].get("azure_ad_token_provider")
+        if serialized_azure_ad_token_provider:
+            data["init_parameters"]["azure_ad_token_provider"] = deserialize_callable(
+                serialized_azure_ad_token_provider
+            )
         return default_from_dict(cls, data)
 
     def _prepare_texts_to_embed(self, documents: List[Document]) -> Dict[str, str]:
