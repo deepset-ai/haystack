@@ -15,6 +15,7 @@ _import_structure = {
 }
 
 if TYPE_CHECKING:
+    from .auto_merging_retriever import AutoMergingRetriever
     from .filter_retriever import FilterRetriever
     from .in_memory import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
     from .sentence_window_retriever import SentenceWindowRetriever
