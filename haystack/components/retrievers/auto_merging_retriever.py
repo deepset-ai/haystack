@@ -35,8 +35,8 @@ class AutoMergingRetriever:
 
     ```python
     from haystack import Document
-    from haystack_experimental.components.splitters import HierarchicalDocumentSplitter
-    from haystack_experimental.components.retrievers.auto_merging_retriever import AutoMergingRetriever
+    from haystack.components.preprocessors import HierarchicalDocumentSplitter
+    from haystack.components.retrievers.auto_merging_retriever import AutoMergingRetriever
     from haystack.document_stores.in_memory import InMemoryDocumentStore
 
     # create a hierarchical document structure with 3 levels, where the parent document has 3 children
