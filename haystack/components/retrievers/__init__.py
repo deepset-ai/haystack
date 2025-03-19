@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from lazy_imports import LazyImporter
 
 _import_structure = {
+    "auto_merging_retriever": ["AutoMergingRetriever"],
     "filter_retriever": ["FilterRetriever"],
     "in_memory": ["InMemoryBM25Retriever", "InMemoryEmbeddingRetriever"],
     "sentence_window_retriever": ["SentenceWindowRetriever"],
