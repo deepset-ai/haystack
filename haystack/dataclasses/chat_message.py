@@ -84,15 +84,19 @@ class TextContent:
 ChatMessageContentT = Union[TextContent, ToolCall, ToolCallResult]
 
 
-def _deserialize_content_list(content_parts: List[Dict[str, Any]]) -> List[ChatMessageContentT]:
+def _deserialize_content(serialized_content: List[Dict[str, Any]]) -> List[ChatMessageContentT]:
     """
-    Deserialize the `content` field of a serialized ChatMessage into a list of ChatMessageContentT objects.
+    Deserialize the `content` field of a serialized ChatMessage.
 
-    The `content` field in the serialized ChatMessage consists of a list of dictionaries.
+    :param serialized_content:
+        The `content` field of a serialized ChatMessage (a list of dictionaries).
+
+    :returns:
+        Deserialized `content` field as a list of `ChatMessageContentT` objects.
     """
     content: List[ChatMessageContentT] = []
 
-    for part in content_parts:
+    for part in serialized_content:
         if "text" in part:
             content.append(TextContent(text=part["text"]))
         elif "tool_call" in part:
@@ -104,7 +108,7 @@ def _deserialize_content_list(content_parts: List[Dict[str, Any]]) -> List[ChatM
             tcr = ToolCallResult(result=result, origin=origin, error=error)
             content.append(tcr)
         else:
-            raise ValueError(f"Unsupported content in serialized ChatMessage: `{part}`")
+            raise ValueError(f"Unsupported part in serialized ChatMessage: `{part}`")
 
     return content
 
@@ -356,24 +360,26 @@ class ChatMessage:
             init_params["_role"] = ChatRole(data["role"])
             init_params["_name"] = data["name"]
             init_params["_meta"] = data["meta"]
-            if isinstance(data["content"], str):
+
+            if isinstance(data["content"], list):
+                # current format - the serialized `content` field is a list of dictionaries
+                init_params["_content"] = _deserialize_content(data["content"])
+            elif isinstance(data["content"], str):
                 # pre 2.9.0 format - the `content` field is a string
                 init_params["_content"] = [TextContent(text=data["content"])]
-            elif isinstance(data["content"], list):
-                # current format - the serialized `content` field is a list of dictionaries
-                init_params["_content"] = _deserialize_content_list(data["content"])
             else:
                 raise TypeError(f"Unsupported content type in serialized ChatMessage: `{(data['content'])}`")
-        elif "_content" in data:
+            return cls(**init_params)
+
+        if "_content" in data:
             # format for versions >=2.9.0 and <2.12.0 - the serialized `_content` field is a list of dictionaries
             init_params["_role"] = ChatRole(data["_role"])
-            init_params["_content"] = _deserialize_content_list(data["_content"])
+            init_params["_content"] = _deserialize_content(data["_content"])
             init_params["_name"] = data["_name"]
             init_params["_meta"] = data["_meta"]
-        else:
-            raise ValueError(f"Missing 'content' or '_content' in serialized ChatMessage: `{data}`")
+            return cls(**init_params)
 
-        return cls(**init_params)
+        raise ValueError(f"Missing 'content' or '_content' in serialized ChatMessage: `{data}`")
 
     def to_openai_dict_format(self) -> Dict[str, Any]:
         """

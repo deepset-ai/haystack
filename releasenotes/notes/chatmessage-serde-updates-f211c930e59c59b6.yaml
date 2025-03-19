@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    Updates to `ChatMessage` serialization and deserialization.
+    `ChatMessage.to_dict()` now returns a dictionary with the keys: `role`, `content`, `meta`, and `name`.
+    `ChatMessage.from_dict()` supports this format and maintains compatibility with older formats.
