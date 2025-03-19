@@ -207,6 +207,7 @@ class Pipeline(PipelineBase):
             pass
             # ToDo: validate breakpoints, make sure they are all valid components and if the visit nr is not given
             # assume is 0
+            # if -1 it will break on all visits
 
         # TODO: Remove this warmup once we can check reliably whether a component has been warmed up or not
         # As of now it's here to make sure we don't have failing tests that assume warm_up() is called in run()
