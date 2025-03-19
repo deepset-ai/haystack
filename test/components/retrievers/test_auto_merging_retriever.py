@@ -2,8 +2,8 @@ import pytest
 
 from haystack import Document, Pipeline
 from haystack.components.retrievers import InMemoryBM25Retriever
-from haystack_experimental.components.splitters import HierarchicalDocumentSplitter
-from haystack_experimental.components.retrievers.auto_merging_retriever import AutoMergingRetriever
+from haystack.components.preprocessors import HierarchicalDocumentSplitter
+from haystack.components.retrievers.auto_merging_retriever import AutoMergingRetriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 
@@ -60,10 +60,7 @@ class TestAutoMergingRetriever:
     def test_to_dict(self):
         retriever = AutoMergingRetriever(InMemoryDocumentStore(), threshold=0.7)
         expected = retriever.to_dict()
-        assert (
-            expected["type"]
-            == "haystack_experimental.components.retrievers.auto_merging_retriever.AutoMergingRetriever"
-        )
+        assert expected["type"] == "haystack.components.retrievers.auto_merging_retriever.AutoMergingRetriever"
         assert expected["init_parameters"]["threshold"] == 0.7
         assert (
             expected["init_parameters"]["document_store"]["type"]
@@ -72,7 +69,7 @@ class TestAutoMergingRetriever:
 
     def test_from_dict(self):
         data = {
-            "type": "haystack_experimental.components.retrievers.auto_merging_retriever.AutoMergingRetriever",
+            "type": "haystack.components.retrievers.auto_merging_retriever.AutoMergingRetriever",
             "init_parameters": {
                 "document_store": {
                     "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore",

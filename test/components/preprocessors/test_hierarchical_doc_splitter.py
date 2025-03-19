@@ -5,7 +5,7 @@
 import pytest
 
 from haystack import Document, Pipeline
-from haystack_experimental.components.splitters import HierarchicalDocumentSplitter
+from haystack.components.preprocessors import HierarchicalDocumentSplitter
 from haystack.components.writers import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 
@@ -27,13 +27,13 @@ class TestHierarchicalDocumentSplitter:
         builder = HierarchicalDocumentSplitter(block_sizes={100, 200, 300}, split_overlap=25, split_by="word")
         expected = builder.to_dict()
         assert expected == {
-            "type": "haystack_experimental.components.splitters.hierarchical_doc_splitter.HierarchicalDocumentSplitter",
+            "type": "haystack.components.preprocessors.hierarchical_document_splitter.HierarchicalDocumentSplitter",
             "init_parameters": {"block_sizes": [300, 200, 100], "split_overlap": 25, "split_by": "word"},
         }
 
     def test_from_dict(self):
         data = {
-            "type": "haystack_experimental.components.splitters.hierarchical_doc_splitter.HierarchicalDocumentSplitter",
+            "type": "haystack.components.preprocessors.hierarchical_document_splitter.HierarchicalDocumentSplitter",
             "init_parameters": {"block_sizes": [10, 5, 2], "split_overlap": 0, "split_by": "word"},
         }
 
@@ -110,7 +110,7 @@ class TestHierarchicalDocumentSplitter:
         assert expected["components"].keys() == {"hierarchical_doc_splitter", "doc_writer"}
 
         assert expected["components"]["hierarchical_doc_splitter"] == {
-            "type": "haystack_experimental.components.splitters.hierarchical_doc_splitter.HierarchicalDocumentSplitter",
+            "type": "haystack.components.preprocessors.hierarchical_document_splitter.HierarchicalDocumentSplitter",
             "init_parameters": {"block_sizes": [10, 5, 2], "split_overlap": 0, "split_by": "word"},
         }
 
@@ -119,8 +119,8 @@ class TestHierarchicalDocumentSplitter:
             "metadata": {},
             "max_runs_per_component": 100,
             "components": {
-                "hierarchical_doc_splitter": {
-                    "type": "haystack_experimental.components.splitters.hierarchical_doc_splitter.HierarchicalDocumentSplitter",
+                "hierarchical_document_splitter": {
+                    "type": "haystack.components.preprocessors.hierarchical_document_splitter.HierarchicalDocumentSplitter",
                     "init_parameters": {"block_sizes": [10, 5, 2], "split_overlap": 0, "split_by": "word"},
                 },
                 "doc_writer": {
@@ -140,7 +140,7 @@ class TestHierarchicalDocumentSplitter:
                     },
                 },
             },
-            "connections": [{"sender": "hierarchical_doc_splitter.documents", "receiver": "doc_writer.documents"}],
+            "connections": [{"sender": "hierarchical_document_splitter.documents", "receiver": "doc_writer.documents"}],
         }
 
         assert Pipeline.from_dict(data)
@@ -199,3 +199,49 @@ class TestHierarchicalDocumentSplitter:
 
         assert docs["doc_writer"]["documents_written"] == 3
         assert len(doc_store.storage.values()) == 3
+
+
+def test_hierarchical_splitter_multiple_block_sizes():
+    # Test with three different block sizes
+    doc = Document(
+        content="This is a simple test document with multiple sentences. It should be split into various sizes. This helps test the hierarchy."
+    )
+
+    # Using three block sizes: 10, 5, 2 words
+    splitter = HierarchicalDocumentSplitter(block_sizes={10, 5, 2}, split_overlap=0, split_by="word")
+    result = splitter.run([doc])
+
+    documents = result["documents"]
+
+    # Verify root document
+    assert len(documents) > 1
+    root = documents[0]
+    assert root.meta["__level"] == 0
+    assert root.meta["__parent_id"] is None
+
+    # Verify level 1 documents (block_size=10)
+    level_1_docs = [d for d in documents if d.meta["__level"] == 1]
+    for doc in level_1_docs:
+        assert doc.meta["__block_size"] == 10
+        assert doc.meta["__parent_id"] == root.id
+
+    # Verify level 2 documents (block_size=5)
+    level_2_docs = [d for d in documents if d.meta["__level"] == 2]
+    for doc in level_2_docs:
+        assert doc.meta["__block_size"] == 5
+        assert doc.meta["__parent_id"] in [d.id for d in level_1_docs]
+
+    # Verify level 3 documents (block_size=2)
+    level_3_docs = [d for d in documents if d.meta["__level"] == 3]
+    for doc in level_3_docs:
+        assert doc.meta["__block_size"] == 2
+        assert doc.meta["__parent_id"] in [d.id for d in level_2_docs]
+
+    # Verify children references
+    for doc in documents:
+        if doc.meta["__children_ids"]:
+            child_ids = doc.meta["__children_ids"]
+            children = [d for d in documents if d.id in child_ids]
+            for child in children:
+                assert child.meta["__parent_id"] == doc.id
+                assert child.meta["__level"] == doc.meta["__level"] + 1
