@@ -197,14 +197,14 @@ class PipelineBase:
                         # ...then try again
                         if component_data["type"] not in component.registry:
                             raise PipelineError(
-                                f"Successfully imported module '{module}' but couldn't find"
+                                f"Successfully imported module '{module}' but couldn't find "
                                 f"'{component_data['type']}' in the component registry.\n"
-                                f"The component might be registered under a different path."
+                                f"The component might be registered under a different path. "
                                 f"Here are the registered components:\n {list(component.registry.keys())}\n"
                             )
                     except (ImportError, PipelineError, ValueError) as e:
                         raise PipelineError(
-                            f"Component '{component_data['type']}' (name: '{name}') not imported. Please"
+                            f"Component '{component_data['type']}' (name: '{name}') not imported. Please "
                             f"check that the package is installed and the component path is correct."
                         ) from e
 
