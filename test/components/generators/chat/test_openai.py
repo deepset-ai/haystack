@@ -886,7 +886,7 @@ class TestOpenAIChatGenerator:
 
         # check that the completion_start_time is set and valid ISO format
         assert "completion_start_time" in message.meta
-        assert datetime.fromisoformat(message.meta["completion_start_time"]) < datetime.now()
+        assert datetime.fromisoformat(message.meta["completion_start_time"]) <= datetime.now()
 
         assert isinstance(message.meta["usage"], dict)
         assert message.meta["usage"]["prompt_tokens"] > 0
