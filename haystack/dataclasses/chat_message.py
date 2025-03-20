@@ -354,12 +354,8 @@ class ChatMessage:
         :returns:
             The created object.
         """
-        init_params: Dict[str, Any] = {}
-
         if "content" in data:
-            init_params["_role"] = ChatRole(data["role"])
-            init_params["_name"] = data["name"]
-            init_params["_meta"] = data["meta"]
+            init_params = {"_role": ChatRole(data["role"]), "_name": data["name"], "_meta": data["meta"]}
 
             if isinstance(data["content"], list):
                 # current format - the serialized `content` field is a list of dictionaries
@@ -373,11 +369,12 @@ class ChatMessage:
 
         if "_content" in data:
             # format for versions >=2.9.0 and <2.12.0 - the serialized `_content` field is a list of dictionaries
-            init_params["_role"] = ChatRole(data["_role"])
-            init_params["_content"] = _deserialize_content(data["_content"])
-            init_params["_name"] = data["_name"]
-            init_params["_meta"] = data["_meta"]
-            return cls(**init_params)
+            return cls(
+                _role=ChatRole(data["_role"]),
+                _content=_deserialize_content(data["_content"]),
+                _name=data["_name"],
+                _meta=data["_meta"],
+            )
 
         raise ValueError(f"Missing 'content' or '_content' in serialized ChatMessage: `{data}`")
 
