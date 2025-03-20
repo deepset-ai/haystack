@@ -153,7 +153,7 @@ class AsyncPipeline(PipelineBase):
         with tracing.tracer.trace(
             "haystack.async_pipeline.run",
             tags={
-                "haystack.pipeline.input_data": data,
+                "haystack.pipeline.input_data": prepared_data,
                 "haystack.pipeline.output_data": pipeline_outputs,
                 "haystack.pipeline.metadata": self.metadata,
                 "haystack.pipeline.max_runs_per_component": self._max_runs_per_component,
