@@ -5,7 +5,7 @@
 from datetime import datetime
 from typing import Any, AsyncIterable, Callable, Dict, Iterable, List, Optional, Union
 
-from haystack import component, default_from_dict, default_to_dict, logging
+from haystack import component, default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall, select_streaming_callback
 from haystack.lazy_imports import LazyImport
 from haystack.tools.tool import Tool, _check_duplicate_tool_names, deserialize_tools_inplace
@@ -22,9 +22,6 @@ with LazyImport(message="Run 'pip install \"huggingface_hub[inference]>=0.27.0\"
         ChatCompletionStreamOutput,
         InferenceClient,
     )
-
-
-logger = logging.getLogger(__name__)
 
 
 @component

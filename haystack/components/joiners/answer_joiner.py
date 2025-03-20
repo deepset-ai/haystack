@@ -7,13 +7,11 @@ from enum import Enum
 from math import inf
 from typing import Any, Callable, Dict, List, Optional, Union
 
-from haystack import component, default_from_dict, default_to_dict, logging
+from haystack import component, default_from_dict, default_to_dict
 from haystack.core.component.types import Variadic
 from haystack.dataclasses.answer import ExtractedAnswer, GeneratedAnswer
 
 AnswerType = Union[GeneratedAnswer, ExtractedAnswer]
-
-logger = logging.getLogger(__name__)
 
 
 class JoinMode(Enum):
