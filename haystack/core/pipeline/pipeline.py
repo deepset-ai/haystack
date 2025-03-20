@@ -390,8 +390,7 @@ class Pipeline(PipelineBase):
         from datetime import datetime
 
         dt = datetime.now()
-        state_id = f"{component_name}_state_{dt.strftime('%Y_%m_%d_%H_%M_%S')}"
-        file_name = f"{state_id}.json"
+        file_name = f"{component_name}_state_{dt.strftime('%Y_%m_%d_%H_%M_%S')}.json"
 
         state = {
             "input_data": self.original_input_data,
