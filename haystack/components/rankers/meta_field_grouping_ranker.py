@@ -5,9 +5,7 @@
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, cast
 
-from haystack import Document, component, logging
-
-logger = logging.getLogger(__name__)
+from haystack import Document, component
 
 
 @component

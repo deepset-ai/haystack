@@ -6,7 +6,7 @@ import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Union, get_args
 
-from haystack import Document, component, default_from_dict, default_to_dict, logging
+from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.dataclasses import ByteStream
 from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice
@@ -14,8 +14,6 @@ from haystack.utils import ComponentDevice
 with LazyImport("Run 'pip install \"openai-whisper>=20231106\"' to install whisper.") as whisper_import:
     import whisper
 
-
-logger = logging.getLogger(__name__)
 WhisperLocalModel = Literal[
     "base",
     "base.en",
