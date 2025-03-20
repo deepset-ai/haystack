@@ -7,7 +7,7 @@ import sys
 from copy import deepcopy
 from pathlib import Path
 from pprint import pprint
-from typing import Any, Callable, Dict, Mapping, Optional, Set, Tuple, Union, cast
+from typing import Any, Callable, Dict, List, Mapping, Optional, Set, Tuple, Union, cast
 
 from haystack import logging, tracing
 from haystack.core.component import Component
@@ -336,9 +336,9 @@ class Pipeline(PipelineBase):
         inputs: Dict[str, Any],
         component_name: str,
         component_visits: Dict[str, int],
-        ordered_component_names: Optional[Set[str]],
+        ordered_component_names: Optional[List[str]],
         original_input_data,
-        callback_fun: Callable = None,
+        callback_fun: Optional[Callable[..., Any]] = None,
     ) -> None:
         """
         Saves the state of the pipeline at a given component visit count.
@@ -370,7 +370,7 @@ class Pipeline(PipelineBase):
             logger.info(f"Pipeline state saved at: {file_name}")
 
             # pass the state to some user-defined callback function
-            if callback_fun:
+            if callback_fun is not None:
                 callback_fun(state)
 
         except Exception as e:
