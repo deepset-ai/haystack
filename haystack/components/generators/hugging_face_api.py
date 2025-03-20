@@ -6,7 +6,7 @@ from dataclasses import asdict
 from datetime import datetime
 from typing import Any, Callable, Dict, Iterable, List, Optional, Union, cast
 
-from haystack import component, default_from_dict, default_to_dict, logging
+from haystack import component, default_from_dict, default_to_dict
 from haystack.dataclasses import StreamingChunk
 from haystack.lazy_imports import LazyImport
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
@@ -20,9 +20,6 @@ with LazyImport(message="Run 'pip install \"huggingface_hub>=0.27.0\"'") as hugg
         TextGenerationStreamOutput,
         TextGenerationStreamOutputToken,
     )
-
-
-logger = logging.getLogger(__name__)
 
 
 @component

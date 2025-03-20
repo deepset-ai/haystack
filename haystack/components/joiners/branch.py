@@ -4,11 +4,9 @@
 
 from typing import Any, Dict, Type
 
-from haystack import component, default_from_dict, default_to_dict, logging
+from haystack import component, default_from_dict, default_to_dict
 from haystack.core.component.types import GreedyVariadic
 from haystack.utils import deserialize_type, serialize_type
-
-logger = logging.getLogger(__name__)
 
 
 @component
