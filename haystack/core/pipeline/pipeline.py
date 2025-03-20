@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+
 import json
 import sys
 from copy import deepcopy
@@ -330,6 +331,7 @@ class Pipeline(PipelineBase):
 
         return value
 
+    @staticmethod
     def save_state(
         inputs: Dict[str, Any],
         component_name: str,
@@ -375,24 +377,11 @@ class Pipeline(PipelineBase):
             logger.error(f"Failed to save pipeline state: {str(e)}")
             raise
 
-    def resume_from_state(self, state: Dict[str, Any], validate_components: bool = True) -> Dict[str, Any]:
+    def resume_from_state(self, state: Dict[str, Any]):
         """
         Resume pipeline execution from a saved state.
 
-        Args:
-            state: Loaded pipeline state
-            validate_components: Whether to validate component compatibility before resuming
-
-        Returns:
-            Dict containing the pipeline outputs
         """
-        try:
-            self._validate_components_state(state)
-            return self.run(data=state["pipeline_state"]["original_input_data"], resume_state=state)
-
-        except Exception as e:
-            logger.error(f"Failed to resume pipeline: {str(e)}")
-            raise
 
     def load_state(self, file_path: Union[str, Path]) -> Dict[str, Any]:
         """
@@ -431,7 +420,7 @@ class Pipeline(PipelineBase):
 
         :param resume_state: The saved state to validate.
         """
-        # Check for the presence of the 'pipeline_state' key.
+        # This can be removed if we always load the state using the load_state method
         if "pipeline_state" not in resume_state:
             raise PipelineRuntimeError("Invalid resume state: missing 'pipeline_state' key.")
 
@@ -479,11 +468,6 @@ class Pipeline(PipelineBase):
         Validates the loaded pipeline state.
 
         Ensures that the state contains required keys: "metadata", "breakpoint", and "pipeline_state".
-        Also checks that the sets of component names in:
-        - pipeline_state["inputs"],
-        - state["input_data"], and
-        - pipeline_state["ordered_component_names"]
-        are identical.
 
         Raises:
             ValueError: If required keys are missing or the component sets are inconsistent.
