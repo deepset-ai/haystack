@@ -2,9 +2,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 import sys
 from copy import deepcopy
-from typing import Any, Callable, Dict, Mapping, Optional, Set, Tuple, cast
+from pathlib import Path
+from pprint import pprint
+from typing import Any, Callable, Dict, List, Mapping, Optional, Set, Tuple, Union, cast
 
 from haystack import logging, tracing
 from haystack.core.component import Component
@@ -22,8 +25,10 @@ class Pipeline(PipelineBase):
     Orchestrates component execution according to the execution graph, one after the other.
     """
 
-    ordered_component_names: Optional[list[str]] = None
-    original_input_data: Optional[dict[str, Any]] = (None,)
+    def __init__(self):
+        super().__init__()
+        self.ordered_component_names: Optional[List[str]] = None
+        self.original_input_data: Optional[Dict[str, Any]] = None
 
     def _run_component(
         self,
@@ -57,22 +62,25 @@ class Pipeline(PipelineBase):
         component_inputs = self._add_missing_input_defaults(component_inputs, component["input_sockets"])
 
         # check if the component is in the breakpoints
-        if component_name in [bp[0] for bp in breakpoints]:
-            bp = [bp for bp in breakpoints if bp[0] == component_name]
+        if breakpoints:
+            matching_breakpoints = [bp for bp in breakpoints if bp[0] == component_name]
+            for bp in matching_breakpoints:
+                # Safely unpack the breakpoint tuple
+                visit_count = bp[1]
 
-            # if the visit count is = -1, break at every visit
-            if bp[1] == -1:
-                msg = f"Breaking at component: {component_name}"
-                logger.info(msg)
-                self.save_state(inputs, component_name, component_visits)
-                sys.exit()  # ToDo: do this in a more graceful way
+                # Break at every visit if visit_count is -1
+                if visit_count == -1 or visit_count == component_visits[component_name]:
+                    msg = f"Breaking at component: {component_name}"
+                    logger.info(msg)
+                    self.save_state(inputs, component_name, component_visits)
+                    sys.exit()
 
-            # check if the visit count is the same
-            elif bp[1] == component_visits[component_name]:
-                msg = f"nBreaking at component: {component_name} visit count: {component_visits[component_name]}"
-                logger.info(msg)
-                self.save_state(inputs, component_name, component_visits)
-                sys.exit()  # ToDo: do this in a more graceful way
+                # check if the visit count is the same
+                elif bp[1] == component_visits[component_name]:
+                    msg = f"nBreaking at component: {component_name} visit count: {component_visits[component_name]}"
+                    logger.info(msg)
+                    self.save_state(inputs, component_name, component_visits)
+                    sys.exit()  # ToDo: do this in a more graceful way
 
         with tracing.tracer.trace(
             "haystack.component.run",
@@ -249,7 +257,7 @@ class Pipeline(PipelineBase):
             cached_receivers = {name: self._find_receivers_from(name) for name in self.ordered_component_names}
 
         else:
-            # ToDo: validate that this is a valid resume_state
+            self._validate_components_state(resume_state)
             data = self._prepare_component_input_data(resume_state["pipeline_state"]["inputs"])
             component_visits = resume_state["pipeline_state"]["component_visits"]
             self.ordered_component_names = resume_state["pipeline_state"]["ordered_component_names"]
@@ -296,6 +304,7 @@ class Pipeline(PipelineBase):
                         component_name, component_visits[component_name]
                     )
 
+                self.original_input_data = data
                 component_outputs = self._run_component(
                     component, inputs, component_visits, breakpoints, parent_span=span
                 )
@@ -371,7 +380,7 @@ class Pipeline(PipelineBase):
         inputs: Dict[str, Any],
         component_name: str,
         component_visits: Dict[str, int],
-        callback_fun: Callable = None,
+        callback_fun: Optional[Callable[..., Any]] = None,
     ) -> None:
         """
         Saves the state of the pipeline at a given component visit count.
@@ -381,7 +390,7 @@ class Pipeline(PipelineBase):
         from datetime import datetime
 
         dt = datetime.now()
-        timestamp = f"{component_name}_state_{dt.strftime('%Y_%m_%d_%H_%M_%S')}.json"
+        file_name = f"{component_name}_state_{dt.strftime('%Y_%m_%d_%H_%M_%S')}.json"
 
         state = {
             "input_data": self.original_input_data,
@@ -397,15 +406,121 @@ class Pipeline(PipelineBase):
             serialized_inputs = Pipeline._serialize_value(state["pipeline_state"]["inputs"])
             state["pipeline_state"]["inputs"] = serialized_inputs
 
-            with open(timestamp, "w") as f_out:
+            with open(file_name, "w") as f_out:
                 json.dump(state, f_out, indent=2)
 
-            logger.info(f"Pipeline state saved at: {timestamp}")
+            logger.info(f"Pipeline state saved at: {file_name}")
 
             # pass the state to some user-defined callback function
-            if callback_fun:
+            if callback_fun is not None:
                 callback_fun(state)
 
         except Exception as e:
             logger.error(f"Failed to save pipeline state: {str(e)}")
             raise
+
+    def load_state(self, file_path: Union[str, Path]) -> Dict[str, Any]:
+        """
+        Load a saved pipeline state.
+
+        Args:
+            file_path: Path to the state file
+            format: Format of the state file ('json' or 'pickle'). If None, inferred from file extension.
+
+        Returns:
+            Dict containing the loaded state
+        """
+        file_path = Path(file_path)
+
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                state = json.load(f)
+
+            # Validate state structure
+            self._validate_resume_state(state=state)
+            logger.info(f"Successfully loaded pipeline state from: {file_path}")
+            return state
+
+        except FileNotFoundError:
+            raise FileNotFoundError(f"File not found: {file_path}")
+        except json.JSONDecodeError as e:
+            raise json.JSONDecodeError(f"Invalid JSON in file {file_path}: {str(e)}", e.doc, e.pos)
+        except IOError as e:
+            raise IOError(f"Error reading file {file_path}: {str(e)}")
+
+    def _validate_components_state(self, resume_state: Dict[str, Any]) -> None:
+        """
+        Validates that the resume_state contains a valid component configuration for the current pipeline.
+
+        Raises a PipelineRuntimeError if any component is missing or if the state structure is invalid.
+
+        :param resume_state: The saved state to validate.
+        """
+
+        pipeline_state = resume_state["pipeline_state"]
+
+        valid_components = set(self.graph.nodes.keys())
+
+        # Check if the ordered_component_names are valid components in the pipeline
+        missing_ordered = set(pipeline_state["ordered_component_names"]) - valid_components
+        if missing_ordered:
+            raise PipelineRuntimeError(
+                f"Invalid resume state: components {missing_ordered} in 'ordered_component_names' "
+                f"are not part of the current pipeline."
+            )
+
+        # Check if the input_data is valid components in the pipeline
+        missing_input = set(resume_state["input_data"].keys()) - valid_components
+        if missing_input:
+            raise PipelineRuntimeError(
+                f"Invalid resume state: components {missing_input} in 'input_data' "
+                f"are not part of the current pipeline."
+            )
+
+        # Validate 'component_visits'
+        missing_visits = set(pipeline_state["component_visits"].keys()) - valid_components
+        if missing_visits:
+            raise PipelineRuntimeError(
+                f"Invalid resume state: components {missing_visits} in 'component_visits' "
+                f"are not part of the current pipeline."
+            )
+
+        logger.info(
+            f"Resuming pipeline from component: {resume_state['breakpoint']['component']} "
+            f"(visit {resume_state['breakpoint']['visits']})"
+        )
+
+    def _validate_resume_state(self, state: Dict[str, Any]) -> None:
+        """
+        Validates the loaded pipeline state.
+
+        Ensures that the state contains required keys: "input_data", "breakpoint", and "pipeline_state".
+
+        Raises:
+            ValueError: If required keys are missing or the component sets are inconsistent.
+        """
+        # Ensure the top-level state has all required keys.
+        required_top_keys = {"input_data", "breakpoint", "pipeline_state"}
+        missing_top = required_top_keys - state.keys()
+        if missing_top:
+            raise ValueError(f"Invalid state file: missing required keys {missing_top}")
+
+        pipeline_state = state["pipeline_state"]
+
+        # Ensure the pipeline_state has the necessary keys.
+        required_pipeline_keys = {"inputs", "component_visits", "ordered_component_names"}
+        missing_pipeline = required_pipeline_keys - pipeline_state.keys()
+        if missing_pipeline:
+            raise ValueError(f"Invalid pipeline_state: missing required keys {missing_pipeline}")
+
+        # Ensure the component_visits and ordered_component_names are consistent
+        components_in_state = set(pipeline_state["component_visits"].keys())
+        components_in_order = set(pipeline_state["ordered_component_names"])
+
+        if components_in_state != components_in_order:
+            raise ValueError(
+                f"Inconsistent state: components in pipeline_state['component_visits'] {components_in_state} "
+                f"do not match components in ordered_component_names {components_in_order}"
+            )
+
+        logger.info("Passed resume state validated successfully.")

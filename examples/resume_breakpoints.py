@@ -87,34 +87,12 @@ def hybrid_retrieval(doc_store):
     return rag_pipeline
 
 
-def load_json(file_path: str) -> dict:
-    """
-    Loads a JSON file into a dictionary.
-
-    :param file_path: Path to the JSON file
-    :return: The loaded JSON as a dictionary
-    :raises FileNotFoundError: If the file doesn't exist
-    :raises json.JSONDecodeError: If the file contains invalid JSON
-    :raises IOError: If there's an issue reading the file
-    """
-    try:
-        with open(file_path, "r") as file:
-            data = json.load(file)
-        return data
-    except FileNotFoundError:
-        raise FileNotFoundError(f"File not found: {file_path}")
-    except json.JSONDecodeError as e:
-        raise json.JSONDecodeError(f"Invalid JSON in file {file_path}: {str(e)}", e.doc, e.pos)
-    except IOError as e:
-        raise IOError(f"Error reading file {file_path}: {str(e)}")
-
-
 def main():
     """blah"""
     doc_store = indexing()
     pipeline = hybrid_retrieval(doc_store)
 
-    resume_state = load_json(sys.argv[1])
+    resume_state = pipeline.load_state((sys.argv[1]))
 
     pipeline.run(data={}, resume_state=resume_state)
 
