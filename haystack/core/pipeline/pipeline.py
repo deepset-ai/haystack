@@ -1,10 +1,12 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+import json
 import sys
 from copy import deepcopy
+from pathlib import Path
 from pprint import pprint
-from typing import Any, Callable, Dict, Mapping, Optional, Set, Tuple, cast
+from typing import Any, Callable, Dict, Mapping, Optional, Set, Tuple, Union, cast
 
 from haystack import logging, tracing
 from haystack.core.component import Component
@@ -54,7 +56,7 @@ class Pipeline(PipelineBase):
         component_inputs = self._add_missing_input_defaults(component_inputs, component["input_sockets"])
 
         if breakpoints is not None and (component_name, component_visits[component_name]) in breakpoints:
-            self.save_state(inputs, component_name, component_visits, ordered_component_names, original_input_data)
+            Pipeline.save_state(inputs, component_name, component_visits, ordered_component_names, original_input_data)
             sys.exit()  # ToDo: do this in a more graceful way
 
         with tracing.tracer.trace(
@@ -235,7 +237,7 @@ class Pipeline(PipelineBase):
             cached_receivers = {name: self._find_receivers_from(name) for name in ordered_component_names}
 
         else:
-            # ToDo: validate that this is a valid resume_state
+            self._validate_components_state(resume_state)
             data = self._prepare_component_input_data(resume_state["pipeline_state"]["inputs"])
             component_visits = resume_state["pipeline_state"]["component_visits"]
             ordered_component_names = resume_state["pipeline_state"]["ordered_component_names"]
@@ -328,7 +330,6 @@ class Pipeline(PipelineBase):
 
         return value
 
-    @staticmethod
     def save_state(
         inputs: Dict[str, Any],
         component_name: str,
@@ -345,11 +346,11 @@ class Pipeline(PipelineBase):
         from datetime import datetime
 
         dt = datetime.now()
-        timestamp = f"{component_name}_state_{dt.strftime('%Y_%m_%d_%H_%M_%S')}.json"
+        state_id = f"{component_name}_state_{dt.strftime('%Y_%m_%d_%H_%M_%S')}"
+        file_name = f"{state_id}.json"
 
         state = {
-            "input_data": original_input_data,
-            "timestamp": dt.isoformat(),
+            "metadata": {"input_data": original_input_data, "timestamp": dt.isoformat(), "state_id": state_id},
             "breakpoint": {"component": component_name, "visits": component_visits[component_name]},
             "pipeline_state": {
                 "inputs": inputs,
@@ -361,10 +362,10 @@ class Pipeline(PipelineBase):
             serialized_inputs = Pipeline._serialize_value(state["pipeline_state"]["inputs"])
             state["pipeline_state"]["inputs"] = serialized_inputs
 
-            with open(timestamp, "w") as f_out:
+            with open(file_name, "w") as f_out:
                 json.dump(state, f_out, indent=2)
 
-            logger.info(f"Pipeline state saved at: {timestamp}")
+            logger.info(f"Pipeline state saved at: {file_name}")
 
             # pass the state to some user-defined callback function
             if callback_fun:
@@ -373,3 +374,148 @@ class Pipeline(PipelineBase):
         except Exception as e:
             logger.error(f"Failed to save pipeline state: {str(e)}")
             raise
+
+    def resume_from_state(self, state: Dict[str, Any], validate_components: bool = True) -> Dict[str, Any]:
+        """
+        Resume pipeline execution from a saved state.
+
+        Args:
+            state: Loaded pipeline state
+            validate_components: Whether to validate component compatibility before resuming
+
+        Returns:
+            Dict containing the pipeline outputs
+        """
+        try:
+            self._validate_components_state(state)
+            return self.run(data=state["pipeline_state"]["original_input_data"], resume_state=state)
+
+        except Exception as e:
+            logger.error(f"Failed to resume pipeline: {str(e)}")
+            raise
+
+    def load_state(self, file_path: Union[str, Path]) -> Dict[str, Any]:
+        """
+        Load a saved pipeline state.
+
+        Args:
+            file_path: Path to the state file
+            format: Format of the state file ('json' or 'pickle'). If None, inferred from file extension.
+
+        Returns:
+            Dict containing the loaded state
+        """
+        file_path = Path(file_path)
+
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                state = json.load(f)
+
+            # Validate state structure
+            self._validate_state(state=state)
+            logger.info(f"Successfully loaded pipeline state from: {file_path}")
+            return state
+
+        except FileNotFoundError:
+            raise FileNotFoundError(f"File not found: {file_path}")
+        except json.JSONDecodeError as e:
+            raise json.JSONDecodeError(f"Invalid JSON in file {file_path}: {str(e)}", e.doc, e.pos)
+        except IOError as e:
+            raise IOError(f"Error reading file {file_path}: {str(e)}")
+
+    def _validate_components_state(self, resume_state: Dict[str, Any]) -> None:
+        """
+        Validates that the resume_state contains a valid component configuration for the current pipeline.
+
+        Raises a PipelineRuntimeError if any component is missing or if the state structure is invalid.
+
+        :param resume_state: The saved state to validate.
+        """
+        # Check for the presence of the 'pipeline_state' key.
+        if "pipeline_state" not in resume_state:
+            raise PipelineRuntimeError("Invalid resume state: missing 'pipeline_state' key.")
+
+        pipeline_state = resume_state["pipeline_state"]
+
+        # Verify that all required keys are present.
+        required_keys = {"inputs", "component_visits", "ordered_component_names"}
+        missing_keys = required_keys - pipeline_state.keys()
+        if missing_keys:
+            raise PipelineRuntimeError(f"Invalid resume state: missing {missing_keys} in pipeline_state.")
+
+        valid_components = set(self.graph.nodes.keys())
+
+        # Validate 'ordered_component_names'
+        missing_ordered = set(pipeline_state["ordered_component_names"]) - valid_components
+        if missing_ordered:
+            raise PipelineRuntimeError(
+                f"Invalid resume state: components {missing_ordered} in 'ordered_component_names' "
+                f"are not part of the current pipeline."
+            )
+
+        # Validate 'input_data' if present at the top level.
+        missing_input = set(resume_state["metadata"]["input_data"].keys()) - valid_components
+        if missing_input:
+            raise PipelineRuntimeError(
+                f"Invalid resume state: components {missing_input} in 'input_data' "
+                f"are not part of the current pipeline."
+            )
+
+        # Validate 'component_visits'
+        missing_visits = set(pipeline_state["component_visits"].keys()) - valid_components
+        if missing_visits:
+            raise PipelineRuntimeError(
+                f"Invalid resume state: components {missing_visits} in 'component_visits' "
+                f"are not part of the current pipeline."
+            )
+
+        logger.info(
+            f"Resuming pipeline from component: {resume_state['breakpoint']['component']} "
+            f"(visit {resume_state['breakpoint']['visits']})"
+        )
+
+    def _validate_state(self, state: Dict[str, Any]) -> None:
+        """
+        Validates the loaded pipeline state.
+
+        Ensures that the state contains required keys: "metadata", "breakpoint", and "pipeline_state".
+        Also checks that the sets of component names in:
+        - pipeline_state["inputs"],
+        - state["input_data"], and
+        - pipeline_state["ordered_component_names"]
+        are identical.
+
+        Raises:
+            ValueError: If required keys are missing or the component sets are inconsistent.
+        """
+        # Ensure the top-level state has all required keys.
+        required_top_keys = {"metadata", "breakpoint", "pipeline_state"}
+        missing_top = required_top_keys - state.keys()
+        if missing_top:
+            raise ValueError(f"Invalid state file: missing required keys {missing_top}")
+
+        pipeline_state = state["pipeline_state"]
+        metadata = state["metadata"]
+
+        # Ensure the pipeline_state has the necessary keys.
+        required_pipeline_keys = {"inputs", "component_visits", "ordered_component_names"}
+        missing_pipeline = required_pipeline_keys - pipeline_state.keys()
+        if missing_pipeline:
+            raise ValueError(f"Invalid pipeline_state: missing required keys {missing_pipeline}")
+
+        # Ensure the metadata has the necessary keys.
+        required_metadata_keys = {"input_data", "state_id", "timestamp"}
+        missing_metadata = required_metadata_keys - metadata.keys()
+        if missing_metadata:
+            raise ValueError(f"Invalid metadata: missing required keys {missing_metadata}")
+
+        components_in_state = set(pipeline_state["component_visits"].keys())
+        components_in_order = set(pipeline_state["ordered_component_names"])
+
+        if components_in_state != components_in_order:
+            raise ValueError(
+                f"Inconsistent state: components in pipeline_state['component_visits'] {components_in_state} "
+                f"do not match components in ordered_component_names {components_in_order}"
+            )
+
+        logger.info("Pipeline state validated successfully.")
