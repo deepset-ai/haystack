@@ -25,8 +25,10 @@ class Pipeline(PipelineBase):
     Orchestrates component execution according to the execution graph, one after the other.
     """
 
-    ordered_component_names: Optional[list[str]] = None
-    original_input_data: Optional[dict[str, Any]] = (None,)
+    def __init__(self):
+        super().__init__()
+        self.ordered_component_names: Optional[List[str]] = None
+        self.original_input_data: Optional[Dict[str, Any]] = None
 
     def _run_component(
         self,
@@ -71,14 +73,14 @@ class Pipeline(PipelineBase):
                     msg = f"Breaking at component: {component_name}"
                     logger.info(msg)
                     self.save_state(inputs, component_name, component_visits)
-                    sys.exit()  # ToDo: do this in a more graceful way
+                    sys.exit()
 
                 # check if the visit count is the same
                 elif bp[1] == component_visits[component_name]:
                     msg = f"nBreaking at component: {component_name} visit count: {component_visits[component_name]}"
                     logger.info(msg)
                     self.save_state(inputs, component_name, component_visits)
-            sys.exit()  # ToDo: do this in a more graceful way
+                    sys.exit()  # ToDo: do this in a more graceful way
 
         with tracing.tracer.trace(
             "haystack.component.run",
@@ -302,6 +304,7 @@ class Pipeline(PipelineBase):
                         component_name, component_visits[component_name]
                     )
 
+                self.original_input_data = data
                 component_outputs = self._run_component(
                     component, inputs, component_visits, breakpoints, parent_span=span
                 )
