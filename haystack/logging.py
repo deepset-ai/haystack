@@ -192,7 +192,7 @@ def patch_make_records_to_use_kwarg_string_interpolation(original_make_records: 
         safe_extra = extra or {}
         try:
             interpolated_msg = msg.format(**safe_extra)
-        except (KeyError, ValueError):
+        except (KeyError, ValueError, IndexError):
             interpolated_msg = msg
         return original_make_records(name, level, fn, lno, interpolated_msg, (), exc_info, func, extra, sinfo)
 
