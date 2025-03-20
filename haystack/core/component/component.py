@@ -76,7 +76,9 @@ from contextvars import ContextVar
 from copy import deepcopy
 from dataclasses import dataclass
 from types import new_class
-from typing import Any, Dict, Optional, Protocol, Type, runtime_checkable
+from typing import Any, Dict, Optional, Protocol, Type, TypeVar, runtime_checkable
+
+from typing_extensions import ParamSpec
 
 from haystack import logging
 from haystack.core.errors import ComponentError
@@ -85,6 +87,9 @@ from .sockets import Sockets
 from .types import InputSocket, OutputSocket, _empty
 
 logger = logging.getLogger(__name__)
+
+P = ParamSpec("P")
+R = TypeVar("R", bound=Dict[str, Any])
 
 
 @dataclass
@@ -442,7 +447,7 @@ class _Component:
             instance, {name: OutputSocket(name=name, type=type_) for name, type_ in types.items()}, OutputSocket
         )
 
-    def output_types(self, **types):
+    def output_types(self, **types: Any) -> Callable[[Callable[P, R]], Callable[P, R]]:
         """
         Decorator factory that specifies the output types of a component.
 
@@ -457,7 +462,7 @@ class _Component:
         ```
         """
 
-        def output_types_decorator(run_method):
+        def output_types_decorator(run_method: Callable[P, R]) -> Callable[P, R]:
             """
             Decorator that sets the output types of the decorated method.
 
