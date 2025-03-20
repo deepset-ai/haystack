@@ -10,6 +10,7 @@ from jinja2.sandbox import SandboxedEnvironment
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses.chat_message import ChatMessage, ChatRole, TextContent
+from haystack.utils import Jinja2TimeExtension
 
 logger = logging.getLogger(__name__)
 
@@ -124,7 +125,13 @@ class ChatPromptBuilder:
         self.required_variables = required_variables or []
         self.template = template
         variables = variables or []
-        self._env = SandboxedEnvironment()
+        try:
+            # The Jinja2TimeExtension needs an optional dependency to be installed.
+            # If it's not available we can do without it and use the ChatPromptBuilder as is.
+            self._env = SandboxedEnvironment(extensions=[Jinja2TimeExtension])
+        except ImportError:
+            self._env = SandboxedEnvironment()
+
         if template and not variables:
             for message in template:
                 if message.is_from(ChatRole.USER) or message.is_from(ChatRole.SYSTEM):

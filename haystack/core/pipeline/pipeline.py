@@ -25,14 +25,15 @@ class Pipeline(PipelineBase):
     Orchestrates component execution according to the execution graph, one after the other.
     """
 
+    ordered_component_names: Optional[list[str]] = None
+    original_input_data: Optional[dict[str, Any]] = (None,)
+
     def _run_component(
         self,
         component: Dict[str, Any],
         inputs: Dict[str, Any],
         component_visits: Dict[str, int],
         breakpoints: Optional[Set[Tuple[str, int]]] = None,
-        ordered_component_names: Optional[Set[str]] = None,
-        original_input_data: Optional[Dict[str, Any]] = None,
         parent_span: Optional[tracing.Span] = None,
     ) -> Dict[str, Any]:
         """
@@ -41,6 +42,8 @@ class Pipeline(PipelineBase):
         :param component: Component with component metadata.
         :param inputs: Inputs for the Component.
         :param component_visits: Current state of component visits.
+        :param breakpoints: Set of tuples of component names and visit counts at which the pipeline
+                            should break execution.
         :param parent_span: The parent span to use for the newly created span.
             This is to allow tracing to be correctly linked to the pipeline run.
         :raises PipelineRuntimeError: If Component doesn't return a dictionary.
@@ -56,9 +59,23 @@ class Pipeline(PipelineBase):
         # might not provide these defaults for components with inputs defined dynamically upon component initialization
         component_inputs = self._add_missing_input_defaults(component_inputs, component["input_sockets"])
 
-        if breakpoints is not None and (component_name, component_visits[component_name]) in breakpoints:
-            Pipeline.save_state(inputs, component_name, component_visits, ordered_component_names, original_input_data)
-            sys.exit()  # ToDo: do this in a more graceful way
+        # check if the component is in the breakpoints
+        if component_name in [bp[0] for bp in breakpoints]:
+            bp = [bp for bp in breakpoints if bp[0] == component_name]
+
+            # if the visit count is = -1, break at every visit
+            if bp[1] == -1:
+                msg = f"Breaking at component: {component_name}"
+                logger.info(msg)
+                self.save_state(inputs, component_name, component_visits)
+                sys.exit()  # ToDo: do this in a more graceful way
+
+            # check if the visit count is the same
+            elif bp[1] == component_visits[component_name]:
+                msg = f"nBreaking at component: {component_name} visit count: {component_visits[component_name]}"
+                logger.info(msg)
+                self.save_state(inputs, component_name, component_visits)
+                sys.exit()  # ToDo: do this in a more graceful way
 
         with tracing.tracer.trace(
             "haystack.component.run",
@@ -207,10 +224,7 @@ class Pipeline(PipelineBase):
         pipeline_running(self)
 
         if breakpoints:
-            pass
-            # ToDo: validate breakpoints, make sure they are all valid components and if the visit nr is not given
-            # assume is 0
-            # if -1 it will break on all visits
+            breakpoints = self._validate_breakpoints(breakpoints)
 
         # TODO: Remove this warmup once we can check reliably whether a component has been warmed up or not
         # As of now it's here to make sure we don't have failing tests that assume warm_up() is called in run()
@@ -228,21 +242,21 @@ class Pipeline(PipelineBase):
 
             # We create a list of components in the pipeline sorted by name, so that the algorithm runs
             # deterministically and independent of insertion order into the pipeline.
-            ordered_component_names = sorted(self.graph.nodes.keys())
+            self.ordered_component_names = sorted(self.graph.nodes.keys())
 
             # We track component visits to decide if a component can run.
-            component_visits = dict.fromkeys(ordered_component_names, 0)
+            component_visits = dict.fromkeys(self.ordered_component_names, 0)
 
             # We need to access a component's receivers multiple times during a pipeline run.
             # We store them here for easy access.
-            cached_receivers = {name: self._find_receivers_from(name) for name in ordered_component_names}
+            cached_receivers = {name: self._find_receivers_from(name) for name in self.ordered_component_names}
 
         else:
             self._validate_components_state(resume_state)
             data = self._prepare_component_input_data(resume_state["pipeline_state"]["inputs"])
             component_visits = resume_state["pipeline_state"]["component_visits"]
-            ordered_component_names = resume_state["pipeline_state"]["ordered_component_names"]
-            cached_receivers = {name: self._find_receivers_from(name) for name in ordered_component_names}
+            self.ordered_component_names = resume_state["pipeline_state"]["ordered_component_names"]
+            cached_receivers = {name: self._find_receivers_from(name) for name in self.ordered_component_names}
 
             print(
                 f"\n\nResuming pipeline from component: {resume_state['breakpoint']['component']} visit count: "
@@ -262,7 +276,7 @@ class Pipeline(PipelineBase):
             },
         ) as span:
             inputs = self._convert_to_internal_format(pipeline_inputs=data)
-            priority_queue = self._fill_queue(ordered_component_names, inputs, component_visits)
+            priority_queue = self._fill_queue(self.ordered_component_names, inputs, component_visits)
 
             # check if pipeline is blocked before execution
             self.validate_pipeline(priority_queue)
@@ -286,7 +300,7 @@ class Pipeline(PipelineBase):
                     )
 
                 component_outputs = self._run_component(
-                    component, inputs, component_visits, breakpoints, ordered_component_names, data, parent_span=span
+                    component, inputs, component_visits, breakpoints, parent_span=span
                 )
 
                 # Updates global input state with component outputs and returns outputs that should go to
@@ -303,9 +317,33 @@ class Pipeline(PipelineBase):
                 if component_pipeline_outputs:
                     pipeline_outputs[component_name] = deepcopy(component_pipeline_outputs)
                 if self._is_queue_stale(priority_queue):
-                    priority_queue = self._fill_queue(ordered_component_names, inputs, component_visits)
+                    priority_queue = self._fill_queue(self.ordered_component_names, inputs, component_visits)
 
             return pipeline_outputs
+
+    def _validate_breakpoints(self, breakpoints: Set[Tuple[str, Optional[int]]]) -> Set[Tuple[str, int]]:
+        """
+        Validates the breakpoints passed to the pipeline.
+
+        Make sure they are all valid components registered in the pipeline,
+        If the visit is not given, it is assumed to be 0, it will break on the first visit.
+        If a negative number is given it means it will break on all visits, e.g.: a component running in a loop.
+
+        :param breakpoints: Set of tuples of component names and visit counts at which the pipeline should stop.
+        :returns:
+            Set of valid breakpoints.
+        """
+
+        processed_breakpoints = set()
+
+        for break_point in breakpoints:
+            if break_point[0] not in self.graph.nodes:
+                raise ValueError(f"Breakpoint {break_point} is not a registered component in the pipeline")
+            if break_point[1] is None:
+                break_point = (break_point[0], 0)
+            processed_breakpoints.add(break_point)
+
+        return processed_breakpoints
 
     @staticmethod
     def _serialize_value(value: Any) -> Any:
@@ -331,14 +369,12 @@ class Pipeline(PipelineBase):
 
         return value
 
-    @staticmethod
     def save_state(
+        self,
         inputs: Dict[str, Any],
         component_name: str,
         component_visits: Dict[str, int],
-        ordered_component_names: Optional[List[str]],
-        original_input_data,
-        callback_fun: Optional[Callable[..., Any]] = None,
+        callback_fun: Callable = None,
     ) -> None:
         """
         Saves the state of the pipeline at a given component visit count.
@@ -352,12 +388,13 @@ class Pipeline(PipelineBase):
         file_name = f"{state_id}.json"
 
         state = {
-            "metadata": {"input_data": original_input_data, "timestamp": dt.isoformat(), "state_id": state_id},
+            "input_data": self.original_input_data,
+            "timestamp": dt.isoformat(),
             "breakpoint": {"component": component_name, "visits": component_visits[component_name]},
             "pipeline_state": {
                 "inputs": inputs,
                 "component_visits": component_visits,
-                "ordered_component_names": list(ordered_component_names) if ordered_component_names else None,
+                "ordered_component_names": list(self.ordered_component_names) if self.ordered_component_names else None,
             },
         }
         try:
