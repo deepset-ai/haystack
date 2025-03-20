@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from tqdm import tqdm
 
-from haystack import component, default_from_dict, default_to_dict, logging
+from haystack import component, default_from_dict, default_to_dict
 from haystack.dataclasses import Document
 from haystack.lazy_imports import LazyImport
 from haystack.utils import Secret, deserialize_secrets_inplace
@@ -16,8 +16,6 @@ from haystack.utils.url_validation import is_valid_http_url
 
 with LazyImport(message="Run 'pip install \"huggingface_hub>=0.27.0\"'") as huggingface_hub_import:
     from huggingface_hub import InferenceClient
-
-logger = logging.getLogger(__name__)
 
 
 @component
