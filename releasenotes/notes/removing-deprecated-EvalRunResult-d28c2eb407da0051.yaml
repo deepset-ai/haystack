@@ -1,0 +1,4 @@
+---
+upgrade:
+  - |
+    `to_pandas`, `comparative_individual_scores_report` and `score_report` were removed from `EvaluationRunResult`, please use now `detailed_report`, `comparative_detailed_report` and `aggregated_report` instead.

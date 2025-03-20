@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Replace lazy imports with eager imports in `haystack/__init__.py` to avoid potential static type checking issues
+    and simplify maintenance.

@@ -6,11 +6,8 @@ from typing import Dict, List
 
 import networkx  # type:ignore
 
-from haystack import logging
 from haystack.core.component.types import InputSocket, OutputSocket
 from haystack.core.type_utils import _type_name
-
-logger = logging.getLogger(__name__)
 
 
 def find_pipeline_inputs(
