@@ -221,10 +221,7 @@ class Pipeline(PipelineBase):
         pipeline_running(self)
 
         if breakpoints:
-            pass
-            # ToDo: validate breakpoints, make sure they are all valid components and if the visit nr is not given
-            # assume is 0
-            # if -1 it will break on all visits
+            breakpoints = self._validate_breakpoints(breakpoints)
 
         # TODO: Remove this warmup once we can check reliably whether a component has been warmed up or not
         # As of now it's here to make sure we don't have failing tests that assume warm_up() is called in run()
@@ -320,6 +317,30 @@ class Pipeline(PipelineBase):
                     priority_queue = self._fill_queue(self.ordered_component_names, inputs, component_visits)
 
             return pipeline_outputs
+
+    def _validate_breakpoints(self, breakpoints: Set[Tuple[str, Optional[int]]]) -> Set[Tuple[str, int]]:
+        """
+        Validates the breakpoints passed to the pipeline.
+
+        Make sure they are all valid components registered in the pipeline,
+        If the visit is not given, it is assumed to be 0, it will break on the first visit.
+        If a negative number is given it means it will break on all visits, e.g.: a component running in a loop.
+
+        :param breakpoints: Set of tuples of component names and visit counts at which the pipeline should stop.
+        :returns:
+            Set of valid breakpoints.
+        """
+
+        processed_breakpoints = set()
+
+        for break_point in breakpoints:
+            if break_point[0] not in self.graph.nodes:
+                raise ValueError(f"Breakpoint {break_point} is not a registered component in the pipeline")
+            if break_point[1] is None:
+                break_point = (break_point[0], 0)
+            processed_breakpoints.add(break_point)
+
+        return processed_breakpoints
 
     @staticmethod
     def _serialize_value(value: Any) -> Any:
