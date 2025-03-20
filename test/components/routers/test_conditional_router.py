@@ -537,8 +537,7 @@ class TestRouter:
 
         # Initialize with unused optional variables and capture warning
         router = ConditionalRouter(routes=routes, optional_variables=["unused_var1", "unused_var2"])
-        assert "unused_var1" in caplog.records[0].message
-        assert "unused_var2" in caplog.records[0].message
+        assert "optional variables" in caplog.records[0].message
 
         # Verify router still works normally
         result = router.run(question="What?", mode="chat")

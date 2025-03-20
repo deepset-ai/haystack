@@ -191,12 +191,12 @@ class EvaluationRunResult:
 
         if self.run_name == other.run_name:
             logger.warning(
-                "The run names of the two evaluation results are the same ('run_name')", run_name=self.run_name
+                "The run names of the two evaluation results are the same ('{run_name}')", run_name=self.run_name
             )
 
         if self.inputs.keys() != other.inputs.keys():
             logger.warning(
-                "The input columns differ between the results; using the input columns of 'run_name'",
+                "The input columns differ between the results; using the input columns of '{run_name}'",
                 run_name=self.run_name,
             )
 
