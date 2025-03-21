@@ -4,6 +4,7 @@
 
 import base64
 import json
+import time
 import zlib
 from typing import Any, Dict, Optional
 
@@ -133,6 +134,9 @@ def _to_mermaid_image(
     server_url: str = "https://mermaid.ink",
     params: Optional[dict] = None,
     timeout: int = 30,
+    *,
+    max_retries: int = 5,
+    initial_delay: float = 1,
 ) -> bytes:
     """
     Renders a pipeline using a Mermaid server.
@@ -145,6 +149,10 @@ def _to_mermaid_image(
         Dictionary of customization parameters. See `validate_mermaid_params` for valid keys.
     :param timeout:
         Timeout in seconds for the request to the Mermaid server.
+    :param max_retries:
+        The maximum number of attempts to retry a failed request.
+    :param initial_delay:
+        The initial time, in seconds, to wait before the first retry attempt.
     :returns:
         The image, SVG, or PDF data returned by the Mermaid server as bytes.
     :raises ValueError:
@@ -191,25 +199,36 @@ def _to_mermaid_image(
         url += "?" + "&".join(query_params)
 
     logger.debug("Rendering graph at {url}", url=url)
-    try:
-        resp = requests.get(url, timeout=timeout)
-        if resp.status_code >= 400:
-            logger.warning(
-                "Failed to draw the pipeline: {server_url} returned status {status_code}",
-                server_url=server_url,
-                status_code=resp.status_code,
-            )
-            logger.info("Exact URL requested: {url}", url=url)
-            logger.warning("No pipeline diagram will be saved.")
-            resp.raise_for_status()
+    for attempt in range(max_retries):
+        try:
+            resp = requests.get(url, timeout=timeout)
+            if resp.status_code >= 400:
+                logger.warning(
+                    "Failed to draw the pipeline: {server_url} returned status {status_code}",
+                    server_url=server_url,
+                    status_code=resp.status_code,
+                )
+                logger.info("Exact URL requested: {url}", url=url)
+                logger.warning("No pipeline diagram will be saved.")
+                resp.raise_for_status()
 
-    except Exception as exc:  # pylint: disable=broad-except
-        logger.warning(
-            "Failed to draw the pipeline: could not connect to {server_url} ({error})", server_url=server_url, error=exc
-        )
-        logger.info("Exact URL requested: {url}", url=url)
-        logger.warning("No pipeline diagram will be saved.")
-        raise PipelineDrawingError(f"There was an issue with {server_url}, see the stacktrace for details.") from exc
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.warning(
+                "Failed to draw the pipeline: could not connect to {server_url} ({error}) - Attempt: {attempt}",
+                server_url=server_url,
+                error=exc,
+                attempt=attempt + 1,
+            )
+            if attempt < max_retries - 1:
+                delay = initial_delay * (2**attempt)  # Exponential backoff
+                logger.info("Retrying in {delay:.2f} seconds", delay=delay)
+                time.sleep(delay)
+            else:
+                logger.info("Exact URL requested: {url}", url=url)
+                logger.warning("No pipeline diagram will be saved.")
+                raise PipelineDrawingError(
+                    f"There was an issue with {server_url}, see the stacktrace for details."
+                ) from exc
 
     return resp.content
 
@@ -234,7 +253,7 @@ def _to_mermaid_text(graph: networkx.MultiDiGraph, init_params: str) -> str:
         for comp, data in graph.nodes(data=True)
     }
     optional_inputs = {
-        comp: f"<br><br>Optional inputs:<ul style='text-align:left;'>{sockets}</ul>" if sockets else ""
+        comp: (f"<br><br>Optional inputs:<ul style='text-align:left;'>{sockets}</ul>" if sockets else "")
         for comp, sockets in sockets.items()
     }
 
