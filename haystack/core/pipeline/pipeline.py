@@ -2,11 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import json
 import sys
 from copy import deepcopy
 from pathlib import Path
-from pprint import pprint
 from typing import Any, Callable, Dict, List, Mapping, Optional, Set, Tuple, Union, cast
 
 from haystack import logging, tracing
@@ -63,24 +61,8 @@ class Pipeline(PipelineBase):
 
         # check if the component is in the breakpoints
         if breakpoints:
-            matching_breakpoints = [bp for bp in breakpoints if bp[0] == component_name]
-            for bp in matching_breakpoints:
-                # Safely unpack the breakpoint tuple
-                visit_count = bp[1]
-
-                # Break at every visit if visit_count is -1
-                if visit_count == -1 or visit_count == component_visits[component_name]:
-                    msg = f"Breaking at component: {component_name}"
-                    logger.info(msg)
-                    self.save_state(inputs, component_name, component_visits)
-                    sys.exit()
-
-                # check if the visit count is the same
-                elif bp[1] == component_visits[component_name]:
-                    msg = f"nBreaking at component: {component_name} visit count: {component_visits[component_name]}"
-                    logger.info(msg)
-                    self.save_state(inputs, component_name, component_visits)
-                    sys.exit()  # ToDo: do this in a more graceful way
+            # check if the component is in the breakpoints and if it should break
+            self.check_breakpoints(breakpoints, component_name, component_visits, inputs)
 
         with tracing.tracer.trace(
             "haystack.component.run",
@@ -228,8 +210,8 @@ class Pipeline(PipelineBase):
         """
         pipeline_running(self)
 
-        if breakpoints:
-            breakpoints = self._validate_breakpoints(breakpoints)
+        # make sure breakpoints are valid and have a default visit count
+        breakpoints = self._validate_breakpoints(breakpoints) if breakpoints else None
 
         # TODO: Remove this warmup once we can check reliably whether a component has been warmed up or not
         # As of now it's here to make sure we don't have failing tests that assume warm_up() is called in run()
@@ -262,11 +244,11 @@ class Pipeline(PipelineBase):
             component_visits = resume_state["pipeline_state"]["component_visits"]
             self.ordered_component_names = resume_state["pipeline_state"]["ordered_component_names"]
             cached_receivers = {name: self._find_receivers_from(name) for name in self.ordered_component_names}
-
-            print(
-                f"\n\nResuming pipeline from component: {resume_state['breakpoint']['component']} visit count: "
-                f"{resume_state['breakpoint']['visits']}"
+            msg = (
+                f"Resuming pipeline from {resume_state['breakpoint']['component']} "
+                f"visit count {resume_state['breakpoint']['visits']}"
             )
+            logger.info(msg)
 
         cached_topological_sort = None
 
@@ -351,8 +333,34 @@ class Pipeline(PipelineBase):
 
         return processed_breakpoints
 
+    def check_breakpoints(self, breakpoints, component_name, component_visits, inputs):
+        """
+        Check if the `component_name` is in the breakpoints and if it should break.
+
+        :param breakpoints: Set of tuples of component names and visit counts at which the pipeline should stop.
+        :param component_name: Name of the component to check.
+        :param component_visits: The number of times the component has been visited.
+        :param inputs: The inputs to the pipeline.
+        """
+        matching_breakpoints = [bp for bp in breakpoints if bp[0] == component_name]
+        for bp in matching_breakpoints:
+            visit_count = bp[1]
+            # break at every visit if visit_count is -1
+            if visit_count == -1 or visit_count == component_visits[component_name]:
+                msg = f"Breaking at component: {component_name}"
+                logger.info(msg)
+                self.save_state(inputs, component_name, component_visits)
+                sys.exit()
+
+            # check if the visit count is the same
+            elif bp[1] == component_visits[component_name]:
+                msg = f"nBreaking at component {component_name} visit count {component_visits[component_name]}"
+                logger.info(msg)
+                self.save_state(inputs, component_name, component_visits)
+                sys.exit()  # ToDo: do this in a more graceful way
+
     @staticmethod
-    def _serialize_value(value: Any) -> Any:
+    def _serialize_component_input(value: Any) -> Any:
         """
         Tries to serialise any type of input that can be passed to as input to a pipeline component.
         """
@@ -368,10 +376,10 @@ class Pipeline(PipelineBase):
             }
 
         elif isinstance(value, dict):  # for inputs in dictionary values
-            return {k: Pipeline._serialize_value(v) for k, v in value.items()}
+            return {k: Pipeline._serialize_component_input(v) for k, v in value.items()}
 
         elif isinstance(value, (list, tuple)):  # for inputs in lists or tuples
-            return [Pipeline._serialize_value(item) for item in value]
+            return [Pipeline._serialize_component_input(item) for item in value]
 
         return value
 
@@ -403,7 +411,7 @@ class Pipeline(PipelineBase):
             },
         }
         try:
-            serialized_inputs = Pipeline._serialize_value(state["pipeline_state"]["inputs"])
+            serialized_inputs = Pipeline._serialize_component_input(state["pipeline_state"]["inputs"])
             state["pipeline_state"]["inputs"] = serialized_inputs
 
             with open(file_name, "w") as f_out:
@@ -419,34 +427,31 @@ class Pipeline(PipelineBase):
             logger.error(f"Failed to save pipeline state: {str(e)}")
             raise
 
-    def load_state(self, file_path: Union[str, Path]) -> Dict[str, Any]:
+    @staticmethod
+    def load_state(file_path: Union[str, Path]) -> Dict[str, Any]:
         """
         Load a saved pipeline state.
 
-        Args:
-            file_path: Path to the state file
-            format: Format of the state file ('json' or 'pickle'). If None, inferred from file extension.
-
-        Returns:
+        :param file_path: Path to the state file
+        :returns:
             Dict containing the loaded state
         """
+        import json
+
         file_path = Path(file_path)
 
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 state = json.load(f)
-
-            # Validate state structure
-            self._validate_resume_state(state=state)
+            Pipeline._validate_resume_state(state=state)
             logger.info(f"Successfully loaded pipeline state from: {file_path}")
             return state
-
         except FileNotFoundError:
             raise FileNotFoundError(f"File not found: {file_path}")
         except json.JSONDecodeError as e:
-            raise json.JSONDecodeError(f"Invalid JSON in file {file_path}: {str(e)}", e.doc, e.pos)
+            raise json.JSONDecodeError(f"Invalid JSON file {file_path}: {str(e)}", e.doc, e.pos)
         except IOError as e:
-            raise IOError(f"Error reading file {file_path}: {str(e)}")
+            raise IOError(f"Error reading {file_path}: {str(e)}")
 
     def _validate_components_state(self, resume_state: Dict[str, Any]) -> None:
         """
@@ -458,7 +463,6 @@ class Pipeline(PipelineBase):
         """
 
         pipeline_state = resume_state["pipeline_state"]
-
         valid_components = set(self.graph.nodes.keys())
 
         # Check if the ordered_component_names are valid components in the pipeline
@@ -490,7 +494,8 @@ class Pipeline(PipelineBase):
             f"(visit {resume_state['breakpoint']['visits']})"
         )
 
-    def _validate_resume_state(self, state: Dict[str, Any]) -> None:
+    @staticmethod
+    def _validate_resume_state(state: Dict[str, Any]) -> None:
         """
         Validates the loaded pipeline state.
 
@@ -499,21 +504,21 @@ class Pipeline(PipelineBase):
         Raises:
             ValueError: If required keys are missing or the component sets are inconsistent.
         """
-        # Ensure the top-level state has all required keys.
+
+        # top-level state has all required keys
         required_top_keys = {"input_data", "breakpoint", "pipeline_state"}
         missing_top = required_top_keys - state.keys()
         if missing_top:
             raise ValueError(f"Invalid state file: missing required keys {missing_top}")
 
+        # pipeline_state has the necessary keys
         pipeline_state = state["pipeline_state"]
-
-        # Ensure the pipeline_state has the necessary keys.
         required_pipeline_keys = {"inputs", "component_visits", "ordered_component_names"}
         missing_pipeline = required_pipeline_keys - pipeline_state.keys()
         if missing_pipeline:
             raise ValueError(f"Invalid pipeline_state: missing required keys {missing_pipeline}")
 
-        # Ensure the component_visits and ordered_component_names are consistent
+        # component_visits and ordered_component_names must be consistent
         components_in_state = set(pipeline_state["component_visits"].keys())
         components_in_order = set(pipeline_state["ordered_component_names"])
 
