@@ -23,10 +23,8 @@ class Pipeline(PipelineBase):
     Orchestrates component execution according to the execution graph, one after the other.
     """
 
-    def __init__(self):
-        super().__init__()
-        self.ordered_component_names: Optional[List[str]] = None
-        self.original_input_data: Optional[Dict[str, Any]] = None
+    ordered_component_names: list[str]
+    original_input_data: dict[str, Any]
 
     def _run_component(
         self,
@@ -62,7 +60,7 @@ class Pipeline(PipelineBase):
         # check if the component is in the breakpoints
         if breakpoints:
             # check if the component is in the breakpoints and if it should break
-            self.check_breakpoints(breakpoints, component_name, component_visits, inputs)
+            self._check_breakpoints(breakpoints, component_name, component_visits, inputs)
 
         with tracing.tracer.trace(
             "haystack.component.run",
@@ -109,7 +107,7 @@ class Pipeline(PipelineBase):
         self,
         data: Dict[str, Any],
         include_outputs_from: Optional[Set[str]] = None,
-        breakpoints: Optional[Set[Tuple[str, int]]] = None,
+        breakpoints: Optional[Set[Tuple[str, Optional[int]]]] = None,
         resume_state: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
@@ -211,7 +209,7 @@ class Pipeline(PipelineBase):
         pipeline_running(self)
 
         # make sure breakpoints are valid and have a default visit count
-        breakpoints = self._validate_breakpoints(breakpoints) if breakpoints else None
+        validated_breakpoints = self._validate_breakpoints(breakpoints) if breakpoints else None
 
         # TODO: Remove this warmup once we can check reliably whether a component has been warmed up or not
         # As of now it's here to make sure we don't have failing tests that assume warm_up() is called in run()
@@ -288,7 +286,7 @@ class Pipeline(PipelineBase):
 
                 self.original_input_data = data
                 component_outputs = self._run_component(
-                    component, inputs, component_visits, breakpoints, parent_span=span
+                    component, inputs, component_visits, validated_breakpoints, parent_span=span
                 )
 
                 # Updates global input state with component outputs and returns outputs that should go to
@@ -322,18 +320,18 @@ class Pipeline(PipelineBase):
             Set of valid breakpoints.
         """
 
-        processed_breakpoints = set()
+        processed_breakpoints: Set[Tuple[str, int]] = set()
 
         for break_point in breakpoints:
             if break_point[0] not in self.graph.nodes:
                 raise ValueError(f"Breakpoint {break_point} is not a registered component in the pipeline")
             if break_point[1] is None:
                 break_point = (break_point[0], 0)
-            processed_breakpoints.add(break_point)
+            processed_breakpoints.add(break_point)  # type: ignore  # at this point break_point is Tuple[str, int]
 
         return processed_breakpoints
 
-    def check_breakpoints(self, breakpoints, component_name, component_visits, inputs):
+    def _check_breakpoints(self, breakpoints: Set[Tuple[str, int]], component_name, component_visits, inputs):
         """
         Check if the `component_name` is in the breakpoints and if it should break.
 
@@ -407,7 +405,7 @@ class Pipeline(PipelineBase):
             "pipeline_state": {
                 "inputs": inputs,
                 "component_visits": component_visits,
-                "ordered_component_names": list(self.ordered_component_names) if self.ordered_component_names else None,
+                "ordered_component_names": self.ordered_component_names,
             },
         }
         try:
