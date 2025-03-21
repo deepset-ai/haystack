@@ -2,14 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import sys
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Mapping, Optional, Set, Tuple, Union, cast
+from typing import Any, Callable, Dict, Mapping, Optional, Set, Tuple, Union, cast
 
 from haystack import logging, tracing
 from haystack.core.component import Component
-from haystack.core.errors import PipelineRuntimeError
+from haystack.core.errors import PipelineBreakException, PipelineRuntimeError
 from haystack.core.pipeline.base import ComponentPriority, PipelineBase
 from haystack.telemetry import pipeline_running
 
@@ -205,6 +204,8 @@ class Pipeline(PipelineBase):
             Or if a Component fails or returns output in an unsupported type.
         :raises PipelineMaxComponentRuns:
             If a Component reaches the maximum number of times it can be run in this Pipeline.
+        :raises PipelineBreakException:
+            When a breakpoint is triggered. Contains the component name, state, and partial results.
         """
         pipeline_running(self)
 
@@ -266,44 +267,50 @@ class Pipeline(PipelineBase):
             # check if pipeline is blocked before execution
             self.validate_pipeline(priority_queue)
 
-            while True:
-                candidate = self._get_next_runnable_component(priority_queue, component_visits)
-                if candidate is None:
-                    break
+            try:
+                while True:
+                    candidate = self._get_next_runnable_component(priority_queue, component_visits)
+                    if candidate is None:
+                        break
 
-                priority, component_name, component = candidate
-                if len(priority_queue) > 0 and priority in [ComponentPriority.DEFER, ComponentPriority.DEFER_LAST]:
-                    component_name, topological_sort = self._tiebreak_waiting_components(
+                    priority, component_name, component = candidate
+                    if len(priority_queue) > 0 and priority in [ComponentPriority.DEFER, ComponentPriority.DEFER_LAST]:
+                        component_name, topological_sort = self._tiebreak_waiting_components(
+                            component_name=component_name,
+                            priority=priority,
+                            priority_queue=priority_queue,
+                            topological_sort=cached_topological_sort,
+                        )
+                        cached_topological_sort = topological_sort
+                        component = self._get_component_with_graph_metadata_and_visits(
+                            component_name, component_visits[component_name]
+                        )
+
+                    self.original_input_data = data
+                    component_outputs = self._run_component(
+                        component, inputs, component_visits, validated_breakpoints, parent_span=span
+                    )
+
+                    # Updates global input state with component outputs and returns outputs that should go to
+                    # pipeline outputs.
+
+                    component_pipeline_outputs = self._write_component_outputs(
                         component_name=component_name,
-                        priority=priority,
-                        priority_queue=priority_queue,
-                        topological_sort=cached_topological_sort,
-                    )
-                    cached_topological_sort = topological_sort
-                    component = self._get_component_with_graph_metadata_and_visits(
-                        component_name, component_visits[component_name]
+                        component_outputs=component_outputs,
+                        inputs=inputs,
+                        receivers=cached_receivers[component_name],
+                        include_outputs_from=include_outputs_from,
                     )
 
-                self.original_input_data = data
-                component_outputs = self._run_component(
-                    component, inputs, component_visits, validated_breakpoints, parent_span=span
-                )
+                    if component_pipeline_outputs:
+                        pipeline_outputs[component_name] = deepcopy(component_pipeline_outputs)
+                    if self._is_queue_stale(priority_queue):
+                        priority_queue = self._fill_queue(self.ordered_component_names, inputs, component_visits)
 
-                # Updates global input state with component outputs and returns outputs that should go to
-                # pipeline outputs.
-
-                component_pipeline_outputs = self._write_component_outputs(
-                    component_name=component_name,
-                    component_outputs=component_outputs,
-                    inputs=inputs,
-                    receivers=cached_receivers[component_name],
-                    include_outputs_from=include_outputs_from,
-                )
-
-                if component_pipeline_outputs:
-                    pipeline_outputs[component_name] = deepcopy(component_pipeline_outputs)
-                if self._is_queue_stale(priority_queue):
-                    priority_queue = self._fill_queue(self.ordered_component_names, inputs, component_visits)
+            except PipelineBreakException as e:
+                # Add the current pipeline results to the exception
+                e.results = pipeline_outputs
+                raise
 
             return pipeline_outputs
 
@@ -339,6 +346,7 @@ class Pipeline(PipelineBase):
         :param component_name: Name of the component to check.
         :param component_visits: The number of times the component has been visited.
         :param inputs: The inputs to the pipeline.
+        :raises PipelineBreakException: When a breakpoint is triggered, with component state information.
         """
         matching_breakpoints = [bp for bp in breakpoints if bp[0] == component_name]
         for bp in matching_breakpoints:
@@ -347,15 +355,15 @@ class Pipeline(PipelineBase):
             if visit_count == -1 or visit_count == component_visits[component_name]:
                 msg = f"Breaking at component: {component_name}"
                 logger.info(msg)
-                self.save_state(inputs, str(component_name), component_visits)
-                sys.exit()
+                state = self.save_state(inputs, str(component_name), component_visits)
+                raise PipelineBreakException(msg, component=component_name, state=state)
 
             # check if the visit count is the same
             elif bp[1] == component_visits[component_name]:
-                msg = f"nBreaking at component {component_name} visit count {component_visits[component_name]}"
+                msg = f"Breaking at component {component_name} visit count {component_visits[component_name]}"
                 logger.info(msg)
-                self.save_state(inputs, str(component_name), component_visits)
-                sys.exit()  # ToDo: do this in a more graceful way
+                state = self.save_state(inputs, str(component_name), component_visits)
+                raise PipelineBreakException(msg, component=component_name, state=state)
 
     @staticmethod
     def _serialize_component_input(value):
@@ -387,11 +395,12 @@ class Pipeline(PipelineBase):
         component_name: str,
         component_visits: Dict[str, int],
         callback_fun: Optional[Callable[..., Any]] = None,
-    ) -> None:
+    ) -> Dict[str, Any]:
         """
         Saves the state of the pipeline at a given component visit count.
-        """
 
+        :returns: The saved state dictionary
+        """
         import json
         from datetime import datetime
 
@@ -420,6 +429,8 @@ class Pipeline(PipelineBase):
             # pass the state to some user-defined callback function
             if callback_fun is not None:
                 callback_fun(state)
+
+            return state  # Return the state
 
         except Exception as e:
             logger.error(f"Failed to save pipeline state: {str(e)}")

@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 import pytest
 
 from haystack.components.joiners import BranchJoiner
-from haystack.core.component import component
+from haystack.core.component import component, Component
 from haystack.core.errors import PipelineRuntimeError
 from haystack.core.pipeline import Pipeline
 
@@ -92,4 +92,38 @@ class TestPipeline:
         pp.add_component("joiner_2", joiner_2)
         pp.connect("joiner_1", "joiner_2")
 
-        outputs = pp.run({"value": "test_value"})
+        _ = pp.run({"value": "test_value"})
+
+    def test_validate_breakpoints(self):
+        # simple pipeline
+        joiner_1 = BranchJoiner(type_=str)
+        joiner_2 = BranchJoiner(type_=str)
+        pipeline = Pipeline()
+        pipeline.add_component("comp1", joiner_1)
+        pipeline.add_component("comp2", joiner_2)
+        pipeline.connect("comp1", "comp2")
+
+        # valid breakpoints
+        breakpoints = {("comp1", 0), ("comp2", 1)}
+        validated = pipeline._validate_breakpoints(breakpoints)
+        assert validated == {("comp1", 0), ("comp2", 1)}
+
+        # should default to 0
+        breakpoints = {("comp1", None), ("comp2", 1)}
+        validated = pipeline._validate_breakpoints(breakpoints)
+        assert validated == {("comp1", 0), ("comp2", 1)}
+
+        # should remain as it is
+        breakpoints = {("comp1", -1)}
+        validated = pipeline._validate_breakpoints(breakpoints)
+        assert validated == {("comp1", -1)}
+
+        # contains invalid components
+        breakpoints = {("comp1", 0), ("non_existent_component", 1)}
+        with pytest.raises(ValueError, match="Breakpoint .* is not a registered component"):
+            pipeline._validate_breakpoints(breakpoints)
+
+        # no breakpoints are defined
+        breakpoints = set()
+        validated = pipeline._validate_breakpoints(breakpoints)
+        assert validated == set()
