@@ -25,7 +25,7 @@ class Pipeline(PipelineBase):
     ordered_component_names: list[str]
     original_input_data: dict[str, Any]
 
-    def _run_component(
+    def _run_component(  # pylint: disable=too-many-positional-arguments
         self,
         component: Dict[str, Any],
         inputs: Dict[str, Any],
@@ -359,7 +359,7 @@ class Pipeline(PipelineBase):
                 raise PipelineBreakException(msg, component=component_name, state=state)
 
             # check if the visit count is the same
-            elif bp[1] == component_visits[component_name]:
+            if bp[1] == component_visits[component_name]:
                 msg = f"Breaking at component {component_name} visit count {component_visits[component_name]}"
                 logger.info(msg)
                 state = self.save_state(inputs, str(component_name), component_visits)
