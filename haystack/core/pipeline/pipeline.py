@@ -347,18 +347,18 @@ class Pipeline(PipelineBase):
             if visit_count == -1 or visit_count == component_visits[component_name]:
                 msg = f"Breaking at component: {component_name}"
                 logger.info(msg)
-                self.save_state(inputs, component_name, component_visits)
+                self.save_state(inputs, str(component_name), component_visits)
                 sys.exit()
 
             # check if the visit count is the same
             elif bp[1] == component_visits[component_name]:
                 msg = f"nBreaking at component {component_name} visit count {component_visits[component_name]}"
                 logger.info(msg)
-                self.save_state(inputs, component_name, component_visits)
+                self.save_state(inputs, str(component_name), component_visits)
                 sys.exit()  # ToDo: do this in a more graceful way
 
     @staticmethod
-    def _serialize_component_input(value: Any) -> Any:
+    def _serialize_component_input(value):
         """
         Tries to serialise any type of input that can be passed to as input to a pipeline component.
         """
@@ -409,8 +409,8 @@ class Pipeline(PipelineBase):
             },
         }
         try:
-            serialized_inputs = Pipeline._serialize_component_input(state["pipeline_state"]["inputs"])
-            state["pipeline_state"]["inputs"] = serialized_inputs
+            serialized_inputs = Pipeline._serialize_component_input(state["pipeline_state"]["inputs"])  # type: ignore
+            state["pipeline_state"]["inputs"] = serialized_inputs  # type: ignore
 
             with open(file_name, "w") as f_out:
                 json.dump(state, f_out, indent=2)
