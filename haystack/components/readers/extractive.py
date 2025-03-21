@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import math
-import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -215,9 +214,10 @@ class ExtractiveReader:
         document_contents = []
         for i, doc in enumerate(documents):
             if doc.content is None:
-                warnings.warn(
-                    f"Document with id {doc.id} was passed to ExtractiveReader. The Document doesn't "
-                    f"contain any text and it will be ignored."
+                logger.warning(
+                    "Document with id {doc_id} was passed to ExtractiveReader. The Document doesn't "
+                    "contain any text and it will be ignored.",
+                    doc_id=doc.id,
                 )
                 continue
             texts.append(doc.content)

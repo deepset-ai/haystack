@@ -5,7 +5,6 @@
 import ast
 import contextlib
 from typing import Any, Callable, Dict, Optional, Set
-from warnings import warn
 
 import jinja2.runtime
 from jinja2 import Environment, TemplateSyntaxError, meta
@@ -13,8 +12,10 @@ from jinja2.nativetypes import NativeEnvironment
 from jinja2.sandbox import SandboxedEnvironment
 from typing_extensions import TypeAlias
 
-from haystack import component, default_from_dict, default_to_dict
+from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.utils import deserialize_callable, deserialize_type, serialize_callable, serialize_type
+
+logger = logging.getLogger(__name__)
 
 
 class OutputAdaptationException(Exception):
@@ -76,7 +77,7 @@ class OutputAdapter:
                 "Unsafe mode is enabled. This allows execution of arbitrary code in the Jinja template. "
                 "Use this only if you trust the source of the template."
             )
-            warn(msg)
+            logger.warning(msg)
         self._env = (
             NativeEnvironment() if self._unsafe else SandboxedEnvironment(undefined=jinja2.runtime.StrictUndefined)
         )
