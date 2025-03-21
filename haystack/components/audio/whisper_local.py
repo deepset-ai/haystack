@@ -113,12 +113,12 @@ class LocalWhisperTranscriber:
         """
         Transcribes a list of audio files into a list of documents.
 
-        For the supported audio formats, languages, and other parameters, see the
-        [Whisper API documentation](https://platform.openai.com/docs/guides/speech-to-text) and the official Whisper
-        [GitHup repo](https://github.com/openai/whisper).
-
         :param sources:
             A list of paths or binary streams to transcribe.
+        :param whisper_params:
+            For the supported audio formats, languages, and other parameters, see the
+            [Whisper API documentation](https://platform.openai.com/docs/guides/speech-to-text) and the official Whisper
+            [GitHup repo](https://github.com/openai/whisper).
 
         :returns: A dictionary with the following keys:
             - `documents`: A list of documents where each document is a transcribed audio file. The content of
