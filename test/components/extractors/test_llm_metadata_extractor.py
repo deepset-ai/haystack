@@ -167,6 +167,25 @@ class TestLLMMetadataExtractor:
         assert isinstance(extractor._chat_generator, OpenAIChatGenerator)
         assert extractor._chat_generator.model == "gpt-4o-mini"
 
+    def test_from_dict_openai_using_chat_generator(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        chat_generator = OpenAIChatGenerator(model="gpt-4o-mini", generation_kwargs={"temperature": 0.5})
+
+        extractor_dict = {
+            "type": "haystack.components.extractors.llm_metadata_extractor.LLMMetadataExtractor",
+            "init_parameters": {
+                "prompt": "some prompt that was used with the LLM {{document.content}}",
+                "expected_keys": ["key1", "key2"],
+                "chat_generator": chat_generator.to_dict(),
+                "raise_on_failure": True,
+            },
+        }
+        extractor = LLMMetadataExtractor.from_dict(extractor_dict)
+        assert extractor.raise_on_failure is True
+        assert extractor.expected_keys == ["key1", "key2"]
+        assert extractor.prompt == "some prompt that was used with the LLM {{document.content}}"
+        assert extractor._chat_generator.to_dict() == chat_generator.to_dict()
+
     def test_warm_up_with_chat_generator(self, monkeypatch):
         mock_chat_generator = Mock()
 
