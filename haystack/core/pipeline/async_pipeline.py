@@ -208,7 +208,15 @@ class AsyncPipeline(PipelineBase):
                     logger.info("Running component {component_name}", component_name=component_name)
 
                     if getattr(instance, "__haystack_supports_async__", False):
-                        outputs = await instance.run_async(**component_inputs)  # type: ignore
+                        try:
+                            outputs = await instance.run_async(**component_inputs)  # type: ignore
+                        except Exception as error:
+                            raise PipelineRuntimeError(
+                                f"The following component failed to run:\n"
+                                f"Component name: '{component_name}'\n"
+                                f"Component type: '{instance.__class__.__name__}'\n"
+                                f"Error: {str(error)}"
+                            ) from error
                     else:
                         loop = asyncio.get_running_loop()
                         outputs = await loop.run_in_executor(None, lambda: instance.run(**component_inputs))
