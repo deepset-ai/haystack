@@ -4,11 +4,9 @@
 
 from typing import Any, Dict, List
 
-from haystack import Document, component, default_from_dict, default_to_dict, logging
+from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.document_stores.types import DocumentStore
 from haystack.utils import deserialize_document_store_in_init_params_inplace
-
-logger = logging.getLogger(__name__)
 
 
 @component

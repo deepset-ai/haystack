@@ -8,10 +8,8 @@ from typing import Any, Dict, List, Literal, Optional
 from openai import OpenAI
 from openai.types.image import Image
 
-from haystack import component, default_from_dict, default_to_dict, logging
+from haystack import component, default_from_dict, default_to_dict
 from haystack.utils import Secret, deserialize_secrets_inplace
-
-logger = logging.getLogger(__name__)
 
 
 @component

@@ -4,14 +4,11 @@
 
 from typing import Any, Dict, List, Optional, Protocol
 
-from haystack import logging
 from haystack.dataclasses import Document
 from haystack.document_stores.types.policy import DuplicatePolicy
 
 # Ellipsis are needed for the type checker, it's safe to disable module-wide
 # pylint: disable=unnecessary-ellipsis
-
-logger = logging.getLogger(__name__)
 
 
 class DocumentStore(Protocol):

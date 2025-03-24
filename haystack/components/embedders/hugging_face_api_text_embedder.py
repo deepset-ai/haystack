@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import warnings
 from typing import Any, Dict, List, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
@@ -202,11 +201,11 @@ class HuggingFaceAPITextEmbedder:
         if self.api_type == HFEmbeddingAPIType.SERVERLESS_INFERENCE_API:
             if truncate is not None:
                 msg = "`truncate` parameter is not supported for Serverless Inference API. It will be ignored."
-                warnings.warn(msg)
+                logger.warning(msg)
                 truncate = None
             if normalize is not None:
                 msg = "`normalize` parameter is not supported for Serverless Inference API. It will be ignored."
-                warnings.warn(msg)
+                logger.warning(msg)
                 normalize = None
 
         text_to_embed = self.prefix + text + self.suffix

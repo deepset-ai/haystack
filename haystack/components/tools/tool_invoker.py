@@ -5,11 +5,9 @@
 import json
 from typing import Any, Dict, List
 
-from haystack import component, default_from_dict, default_to_dict, logging
+from haystack import component, default_from_dict, default_to_dict
 from haystack.dataclasses.chat_message import ChatMessage, ToolCall
 from haystack.tools.tool import Tool, ToolInvocationError, _check_duplicate_tool_names, deserialize_tools_inplace
-
-logger = logging.getLogger(__name__)
 
 _TOOL_INVOCATION_FAILURE = "Tool invocation failed with error: {error}."
 _TOOL_NOT_FOUND = "Tool {tool_name} not found in the list of tools. Available tools are: {available_tools}."
