@@ -213,12 +213,12 @@ class LLMMetadataExtractor:
             if generator_api is not None:
                 logger.warning(
                     "Both chat_generator and generator_api are provided. "
-                    "chat_generator will be used. generator_api/generator_api_params are deprecated and "
+                    "chat_generator will be used. generator_api/generator_api_params/LLMProvider are deprecated and "
                     "will be removed in Haystack 2.13.0."
                 )
         else:
             warnings.warn(
-                "generator_api and generator_api_params are deprecated and will be removed in Haystack "
+                "generator_api, generator_api_params, and LLMProvider are deprecated and will be removed in Haystack "
                 "2.13.0. Use chat_generator instead. For example, change `generator_api=LLMProvider.OPENAI` to "
                 "`chat_generator=OpenAIChatGenerator()`.",
                 DeprecationWarning,

@@ -8,6 +8,7 @@ enhancements:
     for the future removal of `generator_api` and `generator_api_params`.
 deprecations:
   - |
-    The `generator_api` and `generator_api_params` initialization parameters are deprecated and will be removed in
-    Haystack 2.13.0. Use `chat_generator` instead. For example, change `generator_api=LLMProvider.OPENAI` to
+    The `generator_api` and `generator_api_params` initialization parameters of `LLMMetadataExtractor` and the
+    `LLMProvider` enum are deprecated and will be removed in Haystack 2.13.0. Use `chat_generator` instead to configure
+    the underlying LLM. For example, change `generator_api=LLMProvider.OPENAI` to
     `chat_generator=OpenAIChatGenerator()`.
