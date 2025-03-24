@@ -3,7 +3,11 @@ enhancements:
   - |
     `LLMMetadataExtractor` now accepts a `chat_generator` initialization parameter, consisting of a pre-configured
     `ChatGenerator` instance.
+    Regardless of whether `LLMMetadataExtractor` is initialized using `generator_api` and `generator_api_params` or
+    the new `chat_generator` parameter, the serialization format will only include `chat_generator` in preparation
+    for the future removal of `generator_api` and `generator_api_params`.
 deprecations:
   - |
     The `generator_api` and `generator_api_params` initialization parameters are deprecated and will be removed in
-    Haystack 2.13.0. Use `chat_generator` instead.
+    Haystack 2.13.0. Use `chat_generator` instead. For example, change `generator_api=LLMProvider.OPENAI` to
+    `chat_generator=OpenAIChatGenerator()`.

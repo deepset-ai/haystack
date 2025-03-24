@@ -20,7 +20,7 @@ from haystack.components.preprocessors import DocumentSplitter
 from haystack.core.serialization import import_class_by_name
 from haystack.dataclasses import ChatMessage
 from haystack.lazy_imports import LazyImport
-from haystack.utils import deserialize_callable, deserialize_secrets_inplace, expand_page_range
+from haystack.utils import expand_page_range
 
 with LazyImport(message="Run 'pip install \"amazon-bedrock-haystack>=1.0.2\"'") as amazon_bedrock_generator:
     from haystack_integrations.components.generators.amazon_bedrock import (  #  pylint: disable=import-error
@@ -31,7 +31,6 @@ with LazyImport(message="Run 'pip install \"google-vertex-haystack>=2.0.0\"'") a
     from haystack_integrations.components.generators.google_vertex.chat.gemini import (  # pylint: disable=import-error
         VertexAIGeminiChatGenerator,
     )
-    from vertexai.generative_models import GenerationConfig  # pylint: disable=import-error
 
 
 logger = logging.getLogger(__name__)
@@ -209,7 +208,7 @@ class LLMMetadataExtractor:
         if generator_api is None and chat_generator is None:
             raise ValueError("Either generator_api or chat_generator must be provided.")
 
-        elif chat_generator is not None:
+        if chat_generator is not None:
             self._chat_generator = chat_generator
             if generator_api is not None:
                 logger.warning(
@@ -220,17 +219,16 @@ class LLMMetadataExtractor:
         else:
             warnings.warn(
                 "generator_api and generator_api_params are deprecated and will be removed in Haystack "
-                "2.13.0. Use chat_generator instead.",
+                "2.13.0. Use chat_generator instead. For example, change `generator_api=LLMProvider.OPENAI` to "
+                "`chat_generator=OpenAIChatGenerator()`.",
                 DeprecationWarning,
             )
             assert generator_api is not None  # verified by the checks above
             generator_api = (
                 generator_api if isinstance(generator_api, LLMProvider) else LLMProvider.from_str(generator_api)
             )
-            self.llm_provider = self._init_generator(generator_api, generator_api_params)
+            self._chat_generator = self._init_generator(generator_api, generator_api_params)
 
-        self.generator_api = generator_api
-        self.generator_api_params = generator_api_params
         self.splitter = DocumentSplitter(split_by="page", split_length=1)
         self.expanded_range = expand_page_range(page_range) if page_range else None
         self.max_workers = max_workers
@@ -264,9 +262,7 @@ class LLMMetadataExtractor:
         """
         Warm up the LLM provider component.
         """
-        if hasattr(self, "llm_provider") and hasattr(self.llm_provider, "warm_up"):
-            self.llm_provider.warm_up()
-        if hasattr(self, "_chat_generator") and hasattr(self._chat_generator, "warm_up"):
+        if hasattr(self._chat_generator, "warm_up"):
             self._chat_generator.warm_up()
 
     def to_dict(self) -> Dict[str, Any]:
@@ -276,29 +272,16 @@ class LLMMetadataExtractor:
         :returns:
             Dictionary with serialized data.
         """
-        common_params = {
-            "prompt": self.prompt,
-            "expected_keys": self.expected_keys,
-            "page_range": self.expanded_range,
-            "raise_on_failure": self.raise_on_failure,
-            "max_workers": self.max_workers,
-        }
 
-        if hasattr(self, "llm_provider"):
-            # legacy serialization with llm_provider
-            llm_provider_dict = self.llm_provider.to_dict()
-
-            # if self has the attribute llm_provider, then self.generator_api is always an LLMProvider
-            assert isinstance(self.generator_api, LLMProvider)
-            return default_to_dict(
-                self,
-                generator_api=self.generator_api.value,
-                generator_api_params=llm_provider_dict["init_parameters"],
-                **common_params,
-            )
-        else:
-            # new serialization with chat_generator
-            return default_to_dict(self, chat_generator=self._chat_generator.to_dict(), **common_params)
+        return default_to_dict(
+            self,
+            prompt=self.prompt,
+            chat_generator=self._chat_generator.to_dict(),
+            expected_keys=self.expected_keys,
+            page_range=self.expanded_range,
+            raise_on_failure=self.raise_on_failure,
+            max_workers=self.max_workers,
+        )
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "LLMMetadataExtractor":
@@ -311,52 +294,10 @@ class LLMMetadataExtractor:
             An instance of the component.
         """
 
-        init_parameters = data.get("init_parameters", {})
-
-        # new deserialization with chat_generator
-        if init_parameters.get("chat_generator") is not None:
-            chat_generator_class = import_class_by_name(data["init_parameters"]["chat_generator"]["type"])
-            assert hasattr(chat_generator_class, "from_dict")  # we know but mypy doesn't
-            chat_generator_instance = chat_generator_class.from_dict(init_parameters["chat_generator"])
-            data["init_parameters"]["chat_generator"] = chat_generator_instance
-            return default_from_dict(cls, data)
-
-        # legacy deserialization
-        if "generator_api" in init_parameters:
-            data["init_parameters"]["generator_api"] = LLMProvider.from_str(data["init_parameters"]["generator_api"])
-
-        if "generator_api_params" in init_parameters:
-            # Check all the keys that need to be deserialized
-            azure_openai_keys = ["azure_ad_token"]
-            aws_bedrock_keys = [
-                "aws_access_key_id",
-                "aws_secret_access_key",
-                "aws_session_token",
-                "aws_region_name",
-                "aws_profile_name",
-            ]
-            deserialize_secrets_inplace(
-                data["init_parameters"]["generator_api_params"], keys=["api_key"] + azure_openai_keys + aws_bedrock_keys
-            )
-
-            # For VertexAI
-            if "generation_config" in init_parameters["generator_api_params"]:
-                data["init_parameters"]["generation_config"] = GenerationConfig.from_dict(
-                    init_parameters["generator_api_params"]["generation_config"]
-                )
-
-            # For AzureOpenAI
-            serialized_azure_ad_token_provider = init_parameters["generator_api_params"].get("azure_ad_token_provider")
-            if serialized_azure_ad_token_provider:
-                data["init_parameters"]["azure_ad_token_provider"] = deserialize_callable(
-                    serialized_azure_ad_token_provider
-                )
-
-            # For all
-            serialized_callback_handler = init_parameters["generator_api_params"].get("streaming_callback")
-            if serialized_callback_handler:
-                data["init_parameters"]["streaming_callback"] = deserialize_callable(serialized_callback_handler)
-
+        chat_generator_class = import_class_by_name(data["init_parameters"]["chat_generator"]["type"])
+        assert hasattr(chat_generator_class, "from_dict")  # we know but mypy doesn't
+        chat_generator_instance = chat_generator_class.from_dict(data["init_parameters"]["chat_generator"])
+        data["init_parameters"]["chat_generator"] = chat_generator_instance
         return default_from_dict(cls, data)
 
     def _extract_metadata(self, llm_answer: str) -> Dict[str, Any]:
