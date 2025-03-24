@@ -7,7 +7,6 @@
 # - they make this module more complicated and hard to maintain
 # - they offer minimal performance gains in this case.
 
-# A NICE TRIGGER
 
 import haystack.logging
 import haystack.tracing
