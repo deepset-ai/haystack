@@ -1,0 +1,9 @@
+---
+enhancements:
+  - |
+    `LLMMetadataExtractor` now accepts a `chat_generator` initialization parameter, which allows passing a
+    pre-configured `ChatGenerator` instance.
+deprecations:
+  - |
+    The `generator_api` and `generator_api_params` initialization parameters are deprecated and will be removed in
+    Haystack 2.13.0. Use `chat_generator` instead.
