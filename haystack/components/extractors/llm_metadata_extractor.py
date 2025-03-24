@@ -356,16 +356,14 @@ class LLMMetadataExtractor:
         if prompt is None:
             return {"replies": ["{}"]}
 
-        llm = self.llm_provider if hasattr(self, "llm_provider") else self._chat_generator
-
         try:
-            result = llm.run(messages=[prompt])
+            result = self._chat_generator.run(messages=[prompt])
         except Exception as e:
             if self.raise_on_failure:
                 raise e
             logger.error(
                 "LLM {class_name} execution failed. Skipping metadata extraction. Failed with exception '{error}'.",
-                class_name=llm.__class__.__name__,
+                class_name=self._chat_generator.__class__.__name__,
                 error=e,
             )
             result = {"error": "LLM failed with exception: " + str(e)}
