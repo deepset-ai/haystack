@@ -90,8 +90,8 @@ class Toolset:
 
     # Create a complete pipeline that can use the toolset
     pipeline = Pipeline()
-    pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-3.5-turbo", tools=math_toolset))
-    pipeline.add_component("tool_invoker", ToolInvoker(tools=math_toolset))
+    pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-3.5-turbo", tools=list(math_toolset)))
+    pipeline.add_component("tool_invoker", ToolInvoker(tools=list(math_toolset)))
     pipeline.add_component(
         "adapter",
         OutputAdapter(

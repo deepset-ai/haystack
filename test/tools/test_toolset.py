@@ -92,7 +92,7 @@ def test_toolset_with_multiple_tools():
     assert toolset[1].name == "multiply"
 
     # Create a ToolInvoker with the toolset
-    invoker = ToolInvoker(tools=toolset)
+    invoker = ToolInvoker(tools=list(toolset))
 
     # Create messages with tool calls
     add_call = ToolCall(tool_name="add", arguments={"a": 2, "b": 3})
@@ -140,7 +140,7 @@ def test_toolset_registration():
     assert toolset[0].name == "add"
 
     # Test with ToolInvoker
-    invoker = ToolInvoker(tools=toolset)
+    invoker = ToolInvoker(tools=list(toolset))
     tool_call = ToolCall(tool_name="add", arguments={"a": 2, "b": 3})
     message = ChatMessage.from_assistant(tool_calls=[tool_call])
     result = invoker.run(messages=[message])
@@ -215,7 +215,7 @@ def test_toolset_addition():
     assert "subtract" in tool_names
 
     # Test with ToolInvoker
-    invoker = ToolInvoker(tools=combined_toolset)
+    invoker = ToolInvoker(tools=list(combined_toolset))
 
     # Create messages with tool calls
     add_call = ToolCall(tool_name="add", arguments={"a": 10, "b": 5})
@@ -269,7 +269,7 @@ def test_toolset_serialization():
     assert deserialized[0].description == "Add two numbers"
 
     # Test that the deserialized toolset works with ToolInvoker
-    invoker = ToolInvoker(tools=deserialized)
+    invoker = ToolInvoker(tools=list(deserialized))
     tool_call = ToolCall(tool_name="add", arguments={"a": 2, "b": 3})
     message = ChatMessage.from_assistant(tool_calls=[tool_call])
     result = invoker.run(messages=[message])
@@ -379,8 +379,8 @@ class TestToolsetIntegration:
 
         # Create a complete pipeline
         pipeline = Pipeline()
-        pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=math_toolset))
-        pipeline.add_component("tool_invoker", ToolInvoker(tools=math_toolset))
+        pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=list(math_toolset)))
+        pipeline.add_component("tool_invoker", ToolInvoker(tools=list(math_toolset)))
         pipeline.add_component(
             "adapter",
             OutputAdapter(
@@ -450,7 +450,7 @@ class TestToolsetIntegration:
         # Create a complete pipeline
         pipeline = Pipeline()
         pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=combined_toolset))
-        pipeline.add_component("tool_invoker", ToolInvoker(tools=combined_toolset))
+        pipeline.add_component("tool_invoker", ToolInvoker(tools=list(combined_toolset)))
         pipeline.add_component(
             "adapter",
             OutputAdapter(
@@ -528,8 +528,8 @@ class TestToolsetIntegration:
 
         # Create a complete pipeline
         pipeline = Pipeline()
-        pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=calculator_toolset))
-        pipeline.add_component("tool_invoker", ToolInvoker(tools=calculator_toolset))
+        pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=list(calculator_toolset)))
+        pipeline.add_component("tool_invoker", ToolInvoker(tools=list(calculator_toolset)))
         pipeline.add_component(
             "adapter",
             OutputAdapter(
@@ -590,8 +590,8 @@ class TestToolsetIntegration:
 
         # Create and configure the pipeline
         pipeline = Pipeline()
-        pipeline.add_component("tool_invoker", ToolInvoker(tools=combined_toolset))
-        pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-3.5-turbo", tools=combined_toolset))
+        pipeline.add_component("tool_invoker", ToolInvoker(tools=list(combined_toolset)))
+        pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-3.5-turbo", tools=list(combined_toolset)))
         pipeline.add_component(
             "adapter",
             OutputAdapter(
@@ -669,7 +669,7 @@ class TestToolsetIntegration:
 
         # Create a pipeline with the toolset
         pipeline = Pipeline()
-        pipeline.add_component("tool_invoker", ToolInvoker(tools=calculator_toolset))
+        pipeline.add_component("tool_invoker", ToolInvoker(tools=list(calculator_toolset)))
 
         # Serialize the pipeline
         pipeline_dict = pipeline.to_dict()
