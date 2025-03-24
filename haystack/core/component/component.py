@@ -454,11 +454,25 @@ class _Component:
     ) -> Callable[[Callable[RunParamsT, RunReturnT]], Callable[RunParamsT, RunReturnT]]:
         """
         Decorator factory that specifies the output types of a component.
+
+        Use as:
+        ```python
+        @component
+        class MyComponent:
+            @component.output_types(output_1=int, output_2=str)
+            def run(self, value: int):
+                return {"output_1": 1, "output_2": "2"}
+        ```
         """
 
         def output_types_decorator(run_method: Callable[RunParamsT, RunReturnT]) -> Callable[RunParamsT, RunReturnT]:
             """
             Decorator that sets the output types of the decorated method.
+
+            This happens at class creation time, and since we don't have the decorated
+            class available here, we temporarily store the output types as an attribute of
+            the decorated method. The ComponentMeta metaclass will use this data to create
+            sockets at instance creation time.
             """
             method_name = run_method.__name__
             if method_name not in ("run", "run_async"):
