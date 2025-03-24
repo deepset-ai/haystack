@@ -20,7 +20,7 @@ from haystack.components.preprocessors import DocumentSplitter
 from haystack.core.serialization import import_class_by_name
 from haystack.dataclasses import ChatMessage
 from haystack.lazy_imports import LazyImport
-from haystack.utils import expand_page_range
+from haystack.utils import deserialize_callable, deserialize_secrets_inplace, expand_page_range
 
 with LazyImport(message="Run 'pip install \"amazon-bedrock-haystack>=1.0.2\"'") as amazon_bedrock_generator:
     from haystack_integrations.components.generators.amazon_bedrock import (  #  pylint: disable=import-error
@@ -31,6 +31,7 @@ with LazyImport(message="Run 'pip install \"google-vertex-haystack>=2.0.0\"'") a
     from haystack_integrations.components.generators.google_vertex.chat.gemini import (  # pylint: disable=import-error
         VertexAIGeminiChatGenerator,
     )
+    from vertexai.generative_models import GenerationConfig  # pylint: disable=import-error
 
 
 logger = logging.getLogger(__name__)
@@ -294,10 +295,52 @@ class LLMMetadataExtractor:
             An instance of the component.
         """
 
-        chat_generator_class = import_class_by_name(data["init_parameters"]["chat_generator"]["type"])
-        assert hasattr(chat_generator_class, "from_dict")  # we know but mypy doesn't
-        chat_generator_instance = chat_generator_class.from_dict(data["init_parameters"]["chat_generator"])
-        data["init_parameters"]["chat_generator"] = chat_generator_instance
+        init_parameters = data.get("init_parameters", {})
+
+        # new deserialization with chat_generator
+        if init_parameters.get("chat_generator") is not None:
+            chat_generator_class = import_class_by_name(init_parameters["chat_generator"]["type"])
+            assert hasattr(chat_generator_class, "from_dict")  # we know but mypy doesn't
+            chat_generator_instance = chat_generator_class.from_dict(init_parameters["chat_generator"])
+            data["init_parameters"]["chat_generator"] = chat_generator_instance
+            return default_from_dict(cls, data)
+
+        # legacy deserialization
+        if "generator_api" in init_parameters:
+            data["init_parameters"]["generator_api"] = LLMProvider.from_str(data["init_parameters"]["generator_api"])
+
+        if "generator_api_params" in init_parameters:
+            # Check all the keys that need to be deserialized
+            azure_openai_keys = ["azure_ad_token"]
+            aws_bedrock_keys = [
+                "aws_access_key_id",
+                "aws_secret_access_key",
+                "aws_session_token",
+                "aws_region_name",
+                "aws_profile_name",
+            ]
+            deserialize_secrets_inplace(
+                data["init_parameters"]["generator_api_params"], keys=["api_key"] + azure_openai_keys + aws_bedrock_keys
+            )
+
+            # For VertexAI
+            if "generation_config" in init_parameters["generator_api_params"]:
+                data["init_parameters"]["generation_config"] = GenerationConfig.from_dict(
+                    init_parameters["generator_api_params"]["generation_config"]
+                )
+
+            # For AzureOpenAI
+            serialized_azure_ad_token_provider = init_parameters["generator_api_params"].get("azure_ad_token_provider")
+            if serialized_azure_ad_token_provider:
+                data["init_parameters"]["azure_ad_token_provider"] = deserialize_callable(
+                    serialized_azure_ad_token_provider
+                )
+
+            # For all
+            serialized_callback_handler = init_parameters["generator_api_params"].get("streaming_callback")
+            if serialized_callback_handler:
+                data["init_parameters"]["streaming_callback"] = deserialize_callable(serialized_callback_handler)
+
         return default_from_dict(cls, data)
 
     def _extract_metadata(self, llm_answer: str) -> Dict[str, Any]:
