@@ -204,7 +204,7 @@ class LLMMetadataExtractor:
         self.builder = PromptBuilder(prompt, required_variables=variables)
         self.raise_on_failure = raise_on_failure
         self.expected_keys = expected_keys or []
-        self.generator_api_params = generator_api_params or {}
+        generator_api_params = generator_api_params or {}
 
         if generator_api is None and chat_generator is None:
             raise ValueError("Either generator_api or chat_generator must be provided.")
@@ -229,6 +229,7 @@ class LLMMetadataExtractor:
             self.llm_provider = self._init_generator(generator_api, generator_api_params)
 
         self.generator_api = generator_api
+        self.generator_api_params = generator_api_params
         self.splitter = DocumentSplitter(split_by="page", split_length=1)
         self.expanded_range = expand_page_range(page_range) if page_range else None
         self.max_workers = max_workers
@@ -262,9 +263,9 @@ class LLMMetadataExtractor:
         """
         Warm up the LLM provider component.
         """
-        if hasattr(self.llm_provider, "warm_up"):
+        if hasattr(self, "llm_provider") and hasattr(self.llm_provider, "warm_up"):
             self.llm_provider.warm_up()
-        if hasattr(self._chat_generator, "warm_up"):
+        if hasattr(self, "_chat_generator") and hasattr(self._chat_generator, "warm_up"):
             self._chat_generator.warm_up()
 
     def to_dict(self) -> Dict[str, Any]:
@@ -289,18 +290,11 @@ class LLMMetadataExtractor:
                 self,
                 generator_api=self.generator_api.value,
                 generator_api_params=llm_provider_dict["init_parameters"],
-                chat_generator=None,
                 **common_params,
             )
         else:
             # new serialization with chat_generator
-            return default_to_dict(
-                self,
-                generator_api=None,
-                generator_api_params=None,
-                chat_generator=self._chat_generator.to_dict(),
-                **common_params,
-            )
+            return default_to_dict(self, chat_generator=self._chat_generator.to_dict(), **common_params)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "LLMMetadataExtractor":
@@ -417,19 +411,18 @@ class LLMMetadataExtractor:
         if prompt is None:
             return {"replies": ["{}"]}
 
+        llm = self.llm_provider if hasattr(self, "llm_provider") else self._chat_generator
+
         try:
-            if hasattr(self, "llm_provider"):
-                result = self.llm_provider.run(messages=[prompt])
-            else:
-                result = self._chat_generator.run(messages=[prompt])
+            result = llm.run(messages=[prompt])
         except Exception as e:
-            logger.error(
-                "LLM {class_name} execution failed. Skipping metadata extraction. Failed with exception '{error}'.",
-                class_name=self.llm_provider.__class__.__name__,
-                error=e,
-            )
             if self.raise_on_failure:
                 raise e
+            logger.error(
+                "LLM {class_name} execution failed. Skipping metadata extraction. Failed with exception '{error}'.",
+                class_name=llm.__class__.__name__,
+                error=e,
+            )
             result = {"error": "LLM failed with exception: " + str(e)}
         return result
 
