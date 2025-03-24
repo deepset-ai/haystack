@@ -1,0 +1,9 @@
+---
+upgrade:
+  - |
+    Updated `ChatMessage` serialization and deserialization.
+    `ChatMessage.to_dict()` now returns a dictionary with the keys: `role`, `content`, `meta`, and `name`.
+    `ChatMessage.from_dict()` supports this format and maintains compatibility with older formats.
+
+    If your application consumes the result of `ChatMessage.to_dict()`, update your code to handle the new format.
+    No changes are needed if you're using `ChatPromptBuilder` in a Pipeline.

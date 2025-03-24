@@ -2,12 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import warnings
 from typing import Any, Dict, List, Optional, Union
 
 from tqdm import tqdm
 
-from haystack import component, default_from_dict, default_to_dict
+from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import Document
 from haystack.lazy_imports import LazyImport
 from haystack.utils import Secret, deserialize_secrets_inplace
@@ -16,6 +15,8 @@ from haystack.utils.url_validation import is_valid_http_url
 
 with LazyImport(message="Run 'pip install \"huggingface_hub>=0.27.0\"'") as huggingface_hub_import:
     from huggingface_hub import InferenceClient
+
+logger = logging.getLogger(__name__)
 
 
 @component
@@ -241,11 +242,11 @@ class HuggingFaceAPIDocumentEmbedder:
         if self.api_type == HFEmbeddingAPIType.SERVERLESS_INFERENCE_API:
             if truncate is not None:
                 msg = "`truncate` parameter is not supported for Serverless Inference API. It will be ignored."
-                warnings.warn(msg)
+                logger.warning(msg)
                 truncate = None
             if normalize is not None:
                 msg = "`normalize` parameter is not supported for Serverless Inference API. It will be ignored."
-                warnings.warn(msg)
+                logger.warning(msg)
                 normalize = None
 
         all_embeddings = []

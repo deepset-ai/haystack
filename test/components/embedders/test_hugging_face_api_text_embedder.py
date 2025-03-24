@@ -136,7 +136,7 @@ class TestHuggingFaceAPITextEmbedder:
         with pytest.raises(TypeError):
             embedder.run(text=list_integers_input)
 
-    def test_run(self, mock_check_valid_model, recwarn):
+    def test_run(self, mock_check_valid_model, caplog):
         with patch("huggingface_hub.InferenceClient.feature_extraction") as mock_embedding_patch:
             mock_embedding_patch.return_value = array([[random.random() for _ in range(384)]])
 
@@ -158,9 +158,9 @@ class TestHuggingFaceAPITextEmbedder:
         assert all(isinstance(x, float) for x in result["embedding"])
 
         # Check that warnings about ignoring truncate and normalize are raised
-        assert len(recwarn) == 2
-        assert "truncate" in str(recwarn[0].message)
-        assert "normalize" in str(recwarn[1].message)
+        assert len(caplog.records) == 2
+        assert "truncate" in caplog.records[0].message
+        assert "normalize" in caplog.records[1].message
 
     def test_run_wrong_embedding_shape(self, mock_check_valid_model):
         # embedding ndim > 2
