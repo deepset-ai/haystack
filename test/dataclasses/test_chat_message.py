@@ -170,7 +170,7 @@ def test_serde():
 
     serialized_message = message.to_dict()
     assert serialized_message == {
-        "_content": [
+        "content": [
             {"text": "Hello"},
             {"tool_call": {"id": "123", "tool_name": "mytool", "arguments": {"a": 1}}},
             {
@@ -181,9 +181,9 @@ def test_serde():
                 }
             },
         ],
-        "_role": "assistant",
-        "_name": None,
-        "_meta": {"some": "info"},
+        "role": "assistant",
+        "name": None,
+        "meta": {"some": "info"},
     }
 
     deserialized_message = ChatMessage.from_dict(serialized_message)
@@ -210,9 +210,45 @@ def test_from_dict_with_invalid_content_type():
         ChatMessage.from_dict(data)
 
 
-def test_from_dict_with_legacy_init_parameters():
-    with pytest.raises(TypeError):
-        ChatMessage.from_dict({"role": "user", "content": "This is a message"})
+def test_from_dict_with_pre29_format():
+    """Test that we can deserialize messages serialized with pre-2.9.0 format, where the `content` field is a string."""
+    serialized_msg_pre_29 = {
+        "role": "user",
+        "content": "This is a message",
+        "name": "some_name",
+        "meta": {"some": "info"},
+    }
+    msg = ChatMessage.from_dict(serialized_msg_pre_29)
+
+    assert msg.role == ChatRole.USER
+    assert msg._content == [TextContent(text="This is a message")]
+    assert msg.name == "some_name"
+    assert msg.meta == {"some": "info"}
+
+
+def test_from_dict_with_pre212_format():
+    """
+    Test that we can deserialize messages serialized with versions >=2.9.0 and <2.12.0,
+    where the serialized message has fields `_role`, `_content`, `_name`, and `_meta`.
+    """
+    serialized_msg_pre_212 = {
+        "_role": "user",
+        "_content": [{"text": "This is a message"}],
+        "_name": "some_name",
+        "_meta": {"some": "info"},
+    }
+    msg = ChatMessage.from_dict(serialized_msg_pre_212)
+
+    assert msg.role == ChatRole.USER
+    assert msg._content == [TextContent(text="This is a message")]
+    assert msg.name == "some_name"
+    assert msg.meta == {"some": "info"}
+
+
+def test_from_dict_missing_content_field():
+    serialized_msg = {"role": "user", "name": "some_name", "meta": {"some": "info"}}
+    with pytest.raises(ValueError):
+        ChatMessage.from_dict(serialized_msg)
 
 
 def test_chat_message_content_attribute_removed():
