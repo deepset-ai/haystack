@@ -70,13 +70,15 @@ method decorated with `@component.input`. This dataclass contains:
 """
 
 import inspect
-from collections.abc import Callable
+from collections.abc import Callable, Coroutine
 from contextlib import contextmanager
 from contextvars import ContextVar
 from copy import deepcopy
 from dataclasses import dataclass
 from types import new_class
-from typing import Any, Dict, Optional, Protocol, Type, runtime_checkable
+from typing import Any, Dict, Optional, Protocol, Type, TypeVar, Union, runtime_checkable
+
+from typing_extensions import ParamSpec
 
 from haystack import logging
 from haystack.core.errors import ComponentError
@@ -85,6 +87,11 @@ from .sockets import Sockets
 from .types import InputSocket, OutputSocket, _empty
 
 logger = logging.getLogger(__name__)
+
+RunParamsT = ParamSpec("RunParamsT")
+SyncRunReturnT = TypeVar("SyncRunReturnT", bound=Dict[str, Any])
+AsyncRunReturnT = TypeVar("AsyncRunReturnT", bound=Coroutine[Any, Any, Dict[str, Any]])
+RunReturnT = Union[SyncRunReturnT, AsyncRunReturnT]
 
 
 @dataclass
@@ -442,12 +449,13 @@ class _Component:
             instance, {name: OutputSocket(name=name, type=type_) for name, type_ in types.items()}, OutputSocket
         )
 
-    def output_types(self, **types):
+    def output_types(
+        self, **types: Any
+    ) -> Callable[[Callable[RunParamsT, RunReturnT]], Callable[RunParamsT, RunReturnT]]:
         """
         Decorator factory that specifies the output types of a component.
 
         Use as:
-
         ```python
         @component
         class MyComponent:
@@ -457,7 +465,7 @@ class _Component:
         ```
         """
 
-        def output_types_decorator(run_method):
+        def output_types_decorator(run_method: Callable[RunParamsT, RunReturnT]) -> Callable[RunParamsT, RunReturnT]:
             """
             Decorator that sets the output types of the decorated method.
 

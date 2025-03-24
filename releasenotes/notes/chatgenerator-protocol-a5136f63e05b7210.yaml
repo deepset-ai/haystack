@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    Introduce a `ChatGenerator` Protocol to qualify `ChatGenerator` components from a static type-checking perspective.
+    It defines the minimal interface that Chat Generators must implement.
+    This will especially help to standardize the integration of Chat Generators into other more complex components.

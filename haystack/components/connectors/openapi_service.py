@@ -7,11 +7,9 @@ from collections import defaultdict
 from copy import copy
 from typing import Any, Dict, List, Optional, Union
 
-from haystack import component, default_from_dict, default_to_dict, logging
+from haystack import component, default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, ChatRole
 from haystack.lazy_imports import LazyImport
-
-logger = logging.getLogger(__name__)
 
 with LazyImport("Run 'pip install openapi3'") as openapi_imports:
     import requests

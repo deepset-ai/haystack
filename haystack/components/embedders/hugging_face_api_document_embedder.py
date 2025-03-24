@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import warnings
 from typing import Any, Dict, List, Optional, Union
 
 from tqdm import tqdm
@@ -243,11 +242,11 @@ class HuggingFaceAPIDocumentEmbedder:
         if self.api_type == HFEmbeddingAPIType.SERVERLESS_INFERENCE_API:
             if truncate is not None:
                 msg = "`truncate` parameter is not supported for Serverless Inference API. It will be ignored."
-                warnings.warn(msg)
+                logger.warning(msg)
                 truncate = None
             if normalize is not None:
                 msg = "`normalize` parameter is not supported for Serverless Inference API. It will be ignored."
-                warnings.warn(msg)
+                logger.warning(msg)
                 normalize = None
 
         all_embeddings = []

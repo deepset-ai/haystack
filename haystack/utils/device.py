@@ -7,10 +7,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, Optional, Tuple, Union
 
-from haystack import logging
 from haystack.lazy_imports import LazyImport
-
-logger = logging.getLogger(__name__)
 
 with LazyImport(
     message="PyTorch must be installed to use torch.device or use GPU support in HuggingFace transformers. "
