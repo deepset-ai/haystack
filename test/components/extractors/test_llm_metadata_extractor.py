@@ -1,13 +1,16 @@
 import os
 
 import pytest
+from unittest.mock import Mock
 from haystack import Document, Pipeline
 from haystack.components.builders import PromptBuilder
 from haystack.components.writers import DocumentWriter
 from haystack.dataclasses import ChatMessage
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 
+
 from haystack.components.extractors import LLMMetadataExtractor, LLMProvider
+from haystack.components.generators.chat import OpenAIChatGenerator
 
 
 class TestLLMMetadataExtractor:
@@ -17,7 +20,7 @@ class TestLLMMetadataExtractor:
             prompt="prompt {{document.content}}", expected_keys=["key1", "key2"], generator_api=LLMProvider.OPENAI
         )
         assert isinstance(extractor.builder, PromptBuilder)
-        assert extractor.generator_api == LLMProvider.OPENAI
+        assert isinstance(extractor._chat_generator, OpenAIChatGenerator)
         assert extractor.expected_keys == ["key1", "key2"]
         assert extractor.raise_on_failure is False
 
@@ -34,9 +37,22 @@ class TestLLMMetadataExtractor:
         assert isinstance(extractor.builder, PromptBuilder)
         assert extractor.expected_keys == ["key1", "key2"]
         assert extractor.raise_on_failure is True
-        assert extractor.generator_api == LLMProvider.OPENAI
-        assert extractor.generator_api_params == {"model": "gpt-3.5-turbo", "generation_kwargs": {"temperature": 0.5}}
+        assert isinstance(extractor._chat_generator, OpenAIChatGenerator)
+        assert extractor._chat_generator.model == "gpt-3.5-turbo"
+        assert extractor._chat_generator.generation_kwargs == {"temperature": 0.5}
         assert extractor.expanded_range == [1, 2, 3, 4, 5]
+
+    def test_init_with_chat_generator(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        chat_generator = OpenAIChatGenerator(model="gpt-4o-mini", generation_kwargs={"temperature": 0.5})
+
+        extractor = LLMMetadataExtractor(
+            prompt="prompt {{document.content}}", expected_keys=["key1", "key2"], chat_generator=chat_generator
+        )
+        assert isinstance(extractor._chat_generator, OpenAIChatGenerator)
+        assert extractor._chat_generator.model == "gpt-4o-mini"
+        assert extractor._chat_generator.generation_kwargs == {"temperature": 0.5}
+        assert extractor.expected_keys == ["key1", "key2"]
 
     def test_init_missing_prompt_variable(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -44,6 +60,25 @@ class TestLLMMetadataExtractor:
             _ = LLMMetadataExtractor(
                 prompt="prompt {{ wrong_variable }}", expected_keys=["key1", "key2"], generator_api=LLMProvider.OPENAI
             )
+
+    def test_init_fails_without_generator_api_or_chat_generator(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        with pytest.raises(ValueError):
+            _ = LLMMetadataExtractor(prompt="prompt {{document.content}}", expected_keys=["key1", "key2"])
+
+    def test_init_chat_generator_overrides_generator_api(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        chat_generator = OpenAIChatGenerator(model="gpt-4o-mini", generation_kwargs={"temperature": 0.5})
+        extractor = LLMMetadataExtractor(
+            prompt="prompt {{document.content}}",
+            expected_keys=["key1", "key2"],
+            generator_api=LLMProvider.AWS_BEDROCK,
+            chat_generator=chat_generator,
+        )
+
+        assert isinstance(extractor._chat_generator, OpenAIChatGenerator)
+        assert extractor._chat_generator.model == "gpt-4o-mini"
+        assert extractor._chat_generator.generation_kwargs == {"temperature": 0.5}
 
     def test_to_dict_openai(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -59,29 +94,55 @@ class TestLLMMetadataExtractor:
         assert extractor_dict == {
             "type": "haystack.components.extractors.llm_metadata_extractor.LLMMetadataExtractor",
             "init_parameters": {
+                "chat_generator": {
+                    "init_parameters": {
+                        "api_base_url": None,
+                        "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
+                        "generation_kwargs": {"temperature": 0.5},
+                        "max_retries": None,
+                        "model": "gpt-4o-mini",
+                        "organization": None,
+                        "streaming_callback": None,
+                        "timeout": None,
+                        "tools": None,
+                        "tools_strict": False,
+                    },
+                    "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
+                },
                 "prompt": "some prompt that was used with the LLM {{document.content}}",
                 "expected_keys": ["key1", "key2"],
                 "raise_on_failure": True,
-                "generator_api": "openai",
                 "page_range": None,
-                "generator_api_params": {
-                    "api_base_url": None,
-                    "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
-                    "generation_kwargs": {"temperature": 0.5},
-                    "model": "gpt-4o-mini",
-                    "organization": None,
-                    "streaming_callback": None,
-                    "max_retries": None,
-                    "timeout": None,
-                    "tools": None,
-                    "tools_strict": False,
-                },
+                "max_workers": 3,
+            },
+        }
+
+    def test_to_dict_openai_using_chat_generator(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        chat_generator = OpenAIChatGenerator(model="gpt-4o-mini", generation_kwargs={"temperature": 0.5})
+        extractor = LLMMetadataExtractor(
+            prompt="some prompt that was used with the LLM {{document.content}}",
+            expected_keys=["key1", "key2"],
+            chat_generator=chat_generator,
+            raise_on_failure=True,
+        )
+        extractor_dict = extractor.to_dict()
+
+        assert extractor_dict == {
+            "type": "haystack.components.extractors.llm_metadata_extractor.LLMMetadataExtractor",
+            "init_parameters": {
+                "prompt": "some prompt that was used with the LLM {{document.content}}",
+                "expected_keys": ["key1", "key2"],
+                "raise_on_failure": True,
+                "chat_generator": chat_generator.to_dict(),
+                "page_range": None,
                 "max_workers": 3,
             },
         }
 
     def test_from_dict_openai(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+
         extractor_dict = {
             "type": "haystack.components.extractors.llm_metadata_extractor.LLMMetadataExtractor",
             "init_parameters": {
@@ -103,12 +164,38 @@ class TestLLMMetadataExtractor:
         assert extractor.raise_on_failure is True
         assert extractor.expected_keys == ["key1", "key2"]
         assert extractor.prompt == "some prompt that was used with the LLM {{document.content}}"
-        assert extractor.generator_api == LLMProvider.OPENAI
+        assert isinstance(extractor._chat_generator, OpenAIChatGenerator)
+        assert extractor._chat_generator.model == "gpt-4o-mini"
 
-    def test_warm_up(self, monkeypatch):
+    def test_from_dict_openai_using_chat_generator(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        extractor = LLMMetadataExtractor(prompt="prompt {{document.content}}", generator_api=LLMProvider.OPENAI)
-        assert extractor.warm_up() is None
+        chat_generator = OpenAIChatGenerator(model="gpt-4o-mini", generation_kwargs={"temperature": 0.5})
+
+        extractor_dict = {
+            "type": "haystack.components.extractors.llm_metadata_extractor.LLMMetadataExtractor",
+            "init_parameters": {
+                "prompt": "some prompt that was used with the LLM {{document.content}}",
+                "expected_keys": ["key1", "key2"],
+                "chat_generator": chat_generator.to_dict(),
+                "raise_on_failure": True,
+            },
+        }
+        extractor = LLMMetadataExtractor.from_dict(extractor_dict)
+        assert extractor.raise_on_failure is True
+        assert extractor.expected_keys == ["key1", "key2"]
+        assert extractor.prompt == "some prompt that was used with the LLM {{document.content}}"
+        assert extractor._chat_generator.to_dict() == chat_generator.to_dict()
+
+    def test_warm_up_with_chat_generator(self, monkeypatch):
+        mock_chat_generator = Mock()
+
+        extractor = LLMMetadataExtractor(prompt="prompt {{document.content}}", chat_generator=mock_chat_generator)
+
+        mock_chat_generator.warm_up.assert_not_called()
+
+        extractor.warm_up()
+
+        mock_chat_generator.warm_up.assert_called_once()
 
     def test_extract_metadata(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -287,7 +374,7 @@ output:
 
         doc_store = InMemoryDocumentStore()
         extractor = LLMMetadataExtractor(
-            prompt=ner_prompt, expected_keys=["entities"], generator_api=LLMProvider.OPENAI
+            prompt=ner_prompt, expected_keys=["entities"], chat_generator=OpenAIChatGenerator()
         )
         writer = DocumentWriter(document_store=doc_store)
         pipeline = Pipeline()
