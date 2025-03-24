@@ -209,7 +209,7 @@ class LLMMetadataExtractor:
         if generator_api is None and chat_generator is None:
             raise ValueError("Either generator_api or chat_generator must be provided.")
 
-        if chat_generator is not None:
+        elif chat_generator is not None:
             self._chat_generator = chat_generator
             if generator_api is not None:
                 logger.warning(
@@ -223,6 +223,7 @@ class LLMMetadataExtractor:
                 "2.13.0. Use chat_generator instead.",
                 DeprecationWarning,
             )
+            assert generator_api is not None  # verified by the checks above
             generator_api = (
                 generator_api if isinstance(generator_api, LLMProvider) else LLMProvider.from_str(generator_api)
             )
@@ -286,6 +287,9 @@ class LLMMetadataExtractor:
         if hasattr(self, "llm_provider"):
             # legacy serialization with llm_provider
             llm_provider_dict = self.llm_provider.to_dict()
+
+            # if self has the attribute llm_provider, then self.generator_api is always an LLMProvider
+            assert isinstance(self.generator_api, LLMProvider)
             return default_to_dict(
                 self,
                 generator_api=self.generator_api.value,
