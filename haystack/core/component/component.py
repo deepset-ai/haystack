@@ -91,7 +91,7 @@ logger = logging.getLogger(__name__)
 RunParamsT = ParamSpec("RunParamsT")
 SyncRunReturnT = TypeVar("SyncRunReturnT", bound=Dict[str, Any])
 AsyncRunReturnT = TypeVar("AsyncRunReturnT", bound=Coroutine[Any, Any, Dict[str, Any]])
-ComponentRunReturnT = Union[SyncRunReturnT, AsyncRunReturnT]
+RunReturnT = Union[SyncRunReturnT, AsyncRunReturnT]
 
 
 @dataclass
@@ -451,14 +451,12 @@ class _Component:
 
     def output_types(
         self, **types: Any
-    ) -> Callable[[Callable[RunParamsT, ComponentRunReturnT]], Callable[RunParamsT, ComponentRunReturnT]]:
+    ) -> Callable[[Callable[RunParamsT, RunReturnT]], Callable[RunParamsT, RunReturnT]]:
         """
         Decorator factory that specifies the output types of a component.
         """
 
-        def output_types_decorator(
-            run_method: Callable[RunParamsT, ComponentRunReturnT],
-        ) -> Callable[RunParamsT, ComponentRunReturnT]:
+        def output_types_decorator(run_method: Callable[RunParamsT, RunReturnT]) -> Callable[RunParamsT, RunReturnT]:
             """
             Decorator that sets the output types of the decorated method.
             """
