@@ -87,7 +87,7 @@ class TestTool:
         )
 
         assert tool.to_dict() == {
-            "type": "haystack_experimental.tools.tool.Tool",
+            "type": "haystack.tools.tool.Tool",
             "data": {
                 "name": "weather",
                 "description": "Get weather report",
@@ -102,7 +102,7 @@ class TestTool:
 
     def test_from_dict(self):
         tool_dict = {
-            "type": "haystack_experimental.tools.tool.Tool",
+            "type": "haystack.tools.tool.Tool",
             "data": {
                 "name": "weather",
                 "description": "Get weather report",

@@ -581,7 +581,7 @@ class TestToolComponentInPipelineWithOpenAI:
 
         # Test serialization
         tool_dict = tool.to_dict()
-        assert tool_dict["type"] == "haystack_experimental.tools.component_tool.ComponentTool"
+        assert tool_dict["type"] == "haystack.tools.component_tool.ComponentTool"
         assert tool_dict["data"]["name"] == "simple_tool"
         assert tool_dict["data"]["description"] == "A simple tool"
         assert "component" in tool_dict["data"]
