@@ -7,8 +7,8 @@ from typing import Any, Callable, Dict, Optional, Union
 
 from pydantic import create_model
 
-from haystack.tools import Tool
-from haystack.tools.errors import SchemaGenerationError
+from .errors import SchemaGenerationError
+from .tool import Tool
 
 
 def create_tool_from_function(
