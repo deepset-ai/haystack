@@ -1,8 +1,13 @@
 import pytest
 
-from haystack.tools.from_function import create_tool_from_function, _remove_title_from_schema, tool
 from haystack.tools.errors import SchemaGenerationError
-from typing import Annotated, Literal, Optional
+from haystack.tools.from_function import create_tool_from_function, _remove_title_from_schema, tool
+from typing import Literal, Optional
+
+try:
+    from typing import Annotated
+except ImportError:
+    from typing_extensions import Annotated
 
 
 def function_with_docstring(city: str) -> str:
@@ -131,6 +136,38 @@ def test_tool_decorator_with_annotated_params():
     }
     assert callable(get_weather.function)
     assert get_weather.function("Berlin", "short") == "Weather report for Berlin (short format): 20°C, sunny"
+
+
+def test_tool_decorator_with_parameters():
+    @tool(name="fetch_weather", description="A tool to check the weather.")
+    def get_weather(
+        city: Annotated[str, "The target city"] = "Berlin",
+        format: Annotated[Literal["short", "long"], "Output format"] = "short",
+    ) -> str:
+        """Get weather report for a city."""
+        return f"Weather report for {city} ({format} format): 20°C, sunny"
+
+    assert get_weather.name == "fetch_weather"
+    assert get_weather.description == "A tool to check the weather."
+
+
+def test_tool_decorator_with_inputs_and_outputs():
+    @tool(inputs={"format": "format"}, outputs={"output": {"source": "output"}})
+    def get_weather(
+        city: Annotated[str, "The target city"] = "Berlin",
+        format: Annotated[Literal["short", "long"], "Output format"] = "short",
+    ) -> str:
+        """Get weather report for a city."""
+        return f"Weather report for {city} ({format} format): 20°C, sunny"
+
+    assert get_weather.name == "get_weather"
+    assert get_weather.inputs_from_state == {"format": "format"}
+    assert get_weather.outputs_to_state == {"output": {"source": "output"}}
+    # Inputs should be excluded from auto-generated parameters
+    assert get_weather.parameters == {
+        "type": "object",
+        "properties": {"city": {"type": "string", "description": "The target city", "default": "Berlin"}},
+    }
 
 
 def test_remove_title_from_schema():
