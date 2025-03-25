@@ -84,7 +84,7 @@ class TestPipeline:
 
         assert "didn't return a dictionary" in str(exc_info.value)
 
-    def test__run_component_error(self):
+    def test_run_component_error(self):
         """Test error when component fails to run"""
 
         @component
