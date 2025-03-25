@@ -2,14 +2,14 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.components.generators.chat.types import ChatGenerator
+from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.tools import ToolInvoker
 from haystack.core.component import Component
 from haystack.core.pipeline.base import PipelineError
-from haystack.core.serialization import component_from_dict, import_class_by_name
+from haystack.core.serialization import component_from_dict
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.state import State, _schema_from_dict, _schema_to_dict, _validate_schema
 from haystack.dataclasses.streaming_chunk import SyncStreamingCallbackT
@@ -18,6 +18,9 @@ from haystack.utils import type_serialization
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 
 logger = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    from haystack_integrations.components.generators.anthropic.chat.chat_generator import AnthropicChatGenerator
 
 
 @component
@@ -55,7 +58,7 @@ class Agent:
     def __init__(
         self,
         *,
-        chat_generator: ChatGenerator,
+        chat_generator: Union[OpenAIChatGenerator, "AnthropicChatGenerator"],
         tools: Optional[List[Tool]] = None,
         system_prompt: Optional[str] = None,
         exit_condition: str = "text",
@@ -147,10 +150,7 @@ class Agent:
         """
         init_params = data.get("init_parameters", {})
 
-        chat_generator_class = import_class_by_name(init_params["chat_generator"]["type"])
-        assert hasattr(chat_generator_class, "from_dict")  # we know but mypy doesn't
-        chat_generator_instance = chat_generator_class.from_dict(init_params["chat_generator"])
-        data["init_parameters"]["chat_generator"] = chat_generator_instance
+        init_params["chat_generator"] = Agent._load_component(init_params["chat_generator"])
 
         if "state_schema" in init_params:
             init_params["state_schema"] = _schema_from_dict(init_params["state_schema"])
