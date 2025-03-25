@@ -22,7 +22,9 @@ with LazyImport("Run 'pip install python-docx'") as docx_import:
     import docx
     from docx.document import Document as DocxDocument
     from docx.table import Table
+    from docx.text.hyperlink import Hyperlink
     from docx.text.paragraph import Paragraph
+    from docx.text.run import Run
     from lxml.etree import _Comment
 
 
@@ -89,6 +91,31 @@ class DOCXTableFormat(Enum):
         return table_format
 
 
+class DOCXLinkFormat(Enum):
+    """
+    Supported formats for storing DOCX link information in a Document.
+    """
+
+    MARKDOWN = "markdown"
+    PLAIN = "plain"
+    NONE = "none"
+
+    def __str__(self):
+        return self.value
+
+    @staticmethod
+    def from_str(string: str) -> "DOCXLinkFormat":
+        """
+        Convert a string to a DOCXLinkFormat enum.
+        """
+        enum_map = {e.value: e for e in DOCXLinkFormat}
+        link_format = enum_map.get(string.lower())
+        if link_format is None:
+            msg = f"Unknown link format '{string}'. Supported formats are: {list(enum_map.keys())}"
+            raise ValueError(msg)
+        return link_format
+
+
 @component
 class DOCXToDocument:
     """
@@ -99,9 +126,9 @@ class DOCXToDocument:
 
     Usage example:
     ```python
-    from haystack.components.converters.docx import DOCXToDocument, DOCXTableFormat
+    from haystack.components.converters.docx import DOCXToDocument, DOCXTableFormat, DOCXLinkFormat
 
-    converter = DOCXToDocument(table_format=DOCXTableFormat.CSV)
+    converter = DOCXToDocument(table_format=DOCXTableFormat.CSV, link_format=DOCXLinkFormat.MARKDOWN)
     results = converter.run(sources=["sample.docx"], meta={"date_added": datetime.now().isoformat()})
     documents = results["documents"]
     print(documents[0].content)
@@ -109,18 +136,28 @@ class DOCXToDocument:
     ```
     """
 
-    def __init__(self, table_format: Union[str, DOCXTableFormat] = DOCXTableFormat.CSV, store_full_path: bool = False):
+    def __init__(
+        self,
+        table_format: Union[str, DOCXTableFormat] = DOCXTableFormat.CSV,
+        link_format: Union[str, DOCXLinkFormat] = DOCXLinkFormat.NONE,
+        store_full_path: bool = False,
+    ):
         """
         Create a DOCXToDocument component.
 
         :param table_format: The format for table output. Can be either DOCXTableFormat.MARKDOWN,
-            DOCXTableFormat.CSV, "markdown", or "csv". Defaults to DOCXTableFormat.CSV.
+            DOCXTableFormat.CSV, "markdown", or "csv".
+        :param link_format: The format for link output. Can be either:
+            DOCXLinkFormat.MARKDOWN or "markdown" to get [text](address),
+            DOCXLinkFormat.PLAIN or "plain" to get text (address),
+            DOCXLinkFormat.NONE or "none" to get text without links.
         :param store_full_path:
             If True, the full path of the file is stored in the metadata of the document.
             If False, only the file name is stored.
         """
         docx_import.check()
         self.table_format = DOCXTableFormat.from_str(table_format) if isinstance(table_format, str) else table_format
+        self.link_format = DOCXLinkFormat.from_str(link_format) if isinstance(link_format, str) else link_format
         self.store_full_path = store_full_path
 
     def to_dict(self) -> Dict[str, Any]:
@@ -130,7 +167,12 @@ class DOCXToDocument:
         :returns:
             Dictionary with serialized data.
         """
-        return default_to_dict(self, table_format=str(self.table_format), store_full_path=self.store_full_path)
+        return default_to_dict(
+            self,
+            table_format=str(self.table_format),
+            link_format=str(self.link_format),
+            store_full_path=self.store_full_path,
+        )
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "DOCXToDocument":
@@ -144,6 +186,8 @@ class DOCXToDocument:
         """
         if "table_format" in data["init_parameters"]:
             data["init_parameters"]["table_format"] = DOCXTableFormat.from_str(data["init_parameters"]["table_format"])
+        if "link_format" in data["init_parameters"]:
+            data["init_parameters"]["link_format"] = DOCXLinkFormat.from_str(data["init_parameters"]["link_format"])
         return default_from_dict(cls, data)
 
     @component.output_types(documents=List[Document])
@@ -218,7 +262,7 @@ class DOCXToDocument:
                 if paragraph.contains_page_break:
                     para_text = self._process_paragraph_with_page_breaks(paragraph)
                 else:
-                    para_text = paragraph.text
+                    para_text = self._process_links_in_paragraph(paragraph)
                 elements.append(para_text)
             elif element.tag.endswith("tbl"):
                 table = docx.table.Table(element, document)
@@ -244,17 +288,41 @@ class DOCXToDocument:
             # Can only extract text from first paragraph page break, unfortunately
             if pb_index == 0:
                 if page_break.preceding_paragraph_fragment:
-                    para_text += page_break.preceding_paragraph_fragment.text
+                    para_text += self._process_links_in_paragraph(page_break.preceding_paragraph_fragment)
                 para_text += "\f"
                 if page_break.following_paragraph_fragment:
                     # following_paragraph_fragment contains all text for remainder of paragraph.
                     # However, if the remainder of the paragraph spans multiple page breaks, it won't include
                     # those later page breaks so we have to add them at end of text in the `else` block below.
                     # This is not ideal, but this case should be very rare and this is likely good enough.
-                    para_text += page_break.following_paragraph_fragment.text
+                    para_text += self._process_links_in_paragraph(page_break.following_paragraph_fragment)
             else:
                 para_text += "\f"
         return para_text
+
+    def _process_links_in_paragraph(self, paragraph: "Paragraph") -> str:
+        """
+        Processes links in a paragraph and formats them according to the specified link format.
+
+        :param paragraph: The DOCX paragraph to process.
+        :returns: A string with links formatted according to the specified format.
+        """
+        if self.link_format == DOCXLinkFormat.NONE:
+            return paragraph.text
+        text = ""
+        # Iterate over all hyperlinks and other content in the paragraph
+        # https://python-docx.readthedocs.io/en/latest/api/text.html#docx.text.paragraph.Paragraph.iter_inner_content
+        for content in paragraph.iter_inner_content():
+            if isinstance(content, Run):
+                text += content.text
+            elif isinstance(content, Hyperlink):
+                if self.link_format == DOCXLinkFormat.MARKDOWN:
+                    formatted_link = f"[{content.text}]({content.address})"
+                else:  # PLAIN format
+                    formatted_link = f"{content.text} ({content.address})"
+                text += formatted_link
+
+        return text
 
     def _table_to_markdown(self, table: "Table") -> str:
         """
