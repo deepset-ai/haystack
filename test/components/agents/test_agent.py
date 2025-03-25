@@ -101,7 +101,7 @@ class TestAgent:
 
         init_parameters = serialized_agent["init_parameters"]
 
-        assert serialized_agent["type"] == "haystack_experimental.components.agents.agent.Agent"
+        assert serialized_agent["type"] == "haystack.components.agents.agent.Agent"
         assert (
             init_parameters["chat_generator"]["type"]
             == "haystack.components.generators.chat.openai.OpenAIChatGenerator"
