@@ -10,6 +10,7 @@ import pytest
 from haystack import Pipeline
 from haystack.components.evaluators import FaithfulnessEvaluator
 from haystack.utils.auth import Secret
+from haystack.dataclasses.chat_message import ChatMessage
 
 
 class TestFaithfulnessEvaluator:
@@ -146,12 +147,16 @@ class TestFaithfulnessEvaluator:
         component = FaithfulnessEvaluator()
 
         def generator_run(self, *args, **kwargs):
-            if "Football" in kwargs["prompt"]:
-                return {"replies": ['{"statements": ["a", "b"], "statement_scores": [1, 0]}']}
+            if "Football" in kwargs["messages"][0].text:
+                return {
+                    "replies": [ChatMessage.from_assistant('{"statements": ["a", "b"], "statement_scores": [1, 0]}')]
+                }
             else:
-                return {"replies": ['{"statements": ["c", "d"], "statement_scores": [1, 1]}']}
+                return {
+                    "replies": [ChatMessage.from_assistant('{"statements": ["c", "d"], "statement_scores": [1, 1]}')]
+                }
 
-        monkeypatch.setattr("haystack.components.generators.openai.OpenAIGenerator.run", generator_run)
+        monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", generator_run)
 
         questions = ["Which is the most popular global sport?", "Who created the Python language?"]
         contexts = [
@@ -187,12 +192,14 @@ class TestFaithfulnessEvaluator:
         component = FaithfulnessEvaluator()
 
         def generator_run(self, *args, **kwargs):
-            if "Football" in kwargs["prompt"]:
-                return {"replies": ['{"statements": ["a", "b"], "statement_scores": [1, 0]}']}
+            if "Football" in kwargs["messages"][0].text:
+                return {
+                    "replies": [ChatMessage.from_assistant('{"statements": ["a", "b"], "statement_scores": [1, 0]}')]
+                }
             else:
-                return {"replies": ['{"statements": [], "statement_scores": []}']}
+                return {"replies": [ChatMessage.from_assistant('{"statements": [], "statement_scores": []}')]}
 
-        monkeypatch.setattr("haystack.components.generators.openai.OpenAIGenerator.run", generator_run)
+        monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", generator_run)
 
         questions = ["Which is the most popular global sport?", "Who created the Python language?"]
         contexts = [
@@ -230,12 +237,14 @@ class TestFaithfulnessEvaluator:
         component = FaithfulnessEvaluator(raise_on_failure=False)
 
         def generator_run(self, *args, **kwargs):
-            if "Python" in kwargs["prompt"]:
+            if "Python" in kwargs["messages"][0].text:
                 raise Exception("OpenAI API request failed.")
             else:
-                return {"replies": ['{"statements": ["c", "d"], "statement_scores": [1, 1]}']}
+                return {
+                    "replies": [ChatMessage.from_assistant('{"statements": ["c", "d"], "statement_scores": [1, 1]}')]
+                }
 
-        monkeypatch.setattr("haystack.components.generators.openai.OpenAIGenerator.run", generator_run)
+        monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", generator_run)
 
         questions = ["Which is the most popular global sport?", "Who created the Python language?"]
         contexts = [

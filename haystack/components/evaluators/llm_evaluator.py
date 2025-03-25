@@ -9,7 +9,8 @@ from tqdm import tqdm
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.builders import PromptBuilder
-from haystack.components.generators import OpenAIGenerator
+from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.dataclasses.chat_message import ChatMessage
 from haystack.utils import Secret, deserialize_secrets_inplace, deserialize_type, serialize_type
 
 logger = logging.getLogger(__name__)
@@ -110,7 +111,7 @@ class LLMEvaluator:
             generator_kwargs = {**self.api_params}
             if api_key:
                 generator_kwargs["api_key"] = api_key
-            self.generator = OpenAIGenerator(**generator_kwargs)
+            self.generator = OpenAIChatGenerator(**generator_kwargs)
         else:
             raise ValueError(f"Unsupported API: {api}")
 
@@ -204,8 +205,10 @@ class LLMEvaluator:
         errors = 0
         for input_names_to_values in tqdm(list_of_input_names_to_values, disable=not self.progress_bar):
             prompt = self.builder.run(**input_names_to_values)
+            messages = [ChatMessage.from_user(prompt["prompt"])]
+            print(messages)
             try:
-                result = self.generator.run(prompt=prompt["prompt"])
+                result = self.generator.run(messages=messages)
             except Exception as e:
                 if self.raise_on_failure:
                     raise ValueError(f"Error while generating response for prompt: {prompt}. Error: {e}")
@@ -214,8 +217,8 @@ class LLMEvaluator:
                 errors += 1
                 continue
 
-            if self.is_valid_json_and_has_expected_keys(expected=self.outputs, received=result["replies"][0]):
-                parsed_result = json.loads(result["replies"][0])
+            if self.is_valid_json_and_has_expected_keys(expected=self.outputs, received=result["replies"][0].text):
+                parsed_result = json.loads(result["replies"][0].text)
                 results.append(parsed_result)
             else:
                 results.append(None)

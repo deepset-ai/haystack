@@ -9,6 +9,7 @@ import pytest
 from haystack import Pipeline
 from haystack.components.evaluators import LLMEvaluator
 from haystack.utils.auth import Secret
+from haystack.dataclasses.chat_message import ChatMessage
 
 
 class TestLLMEvaluator:
@@ -343,9 +344,9 @@ class TestLLMEvaluator:
         )
 
         def generator_run(self, *args, **kwargs):
-            return {"replies": ['{"score": 0.5}']}
+            return {"replies": [ChatMessage.from_assistant('{"score": 0.5}')]}
 
-        monkeypatch.setattr("haystack.components.generators.openai.OpenAIGenerator.run", generator_run)
+        monkeypatch.setattr("haystack.components.generators.chat.openai.OpenAIChatGenerator.run", generator_run)
 
         results = component.run(questions=["What is the capital of Germany?"], predicted_answers=["Berlin"])
         assert results == {"results": [{"score": 0.5}], "meta": None}
