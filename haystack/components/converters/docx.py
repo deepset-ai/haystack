@@ -146,9 +146,11 @@ class DOCXToDocument:
         Create a DOCXToDocument component.
 
         :param table_format: The format for table output. Can be either DOCXTableFormat.MARKDOWN,
-            DOCXTableFormat.CSV, "markdown", or "csv". Defaults to DOCXTableFormat.CSV.
-        :param link_format: The format for link output. Can be either DOCXLinkFormat.MARKDOWN,
-            DOCXLinkFormat.PLAIN, DOCXLinkFormat.NONE, "markdown", "plain", or "none". Defaults to DOCXLinkFormat.NONE.
+            DOCXTableFormat.CSV, "markdown", or "csv".
+        :param link_format: The format for link output. Can be either:
+            DOCXLinkFormat.MARKDOWN or "markdown" to get [text](address),
+            DOCXLinkFormat.PLAIN or "plain" to get text (address),
+            DOCXLinkFormat.NONE or "none" to get text without links.
         :param store_full_path:
             If True, the full path of the file is stored in the metadata of the document.
             If False, only the file name is stored.
@@ -308,6 +310,8 @@ class DOCXToDocument:
         if self.link_format == DOCXLinkFormat.NONE:
             return paragraph.text
         text = ""
+        # Iterate over all hyperlinks and other content in the paragraph
+        # https://python-docx.readthedocs.io/en/latest/api/text.html#docx.text.paragraph.Paragraph.iter_inner_content
         for content in paragraph.iter_inner_content():
             if isinstance(content, Run):
                 text += content.text
