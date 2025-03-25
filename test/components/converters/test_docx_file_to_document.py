@@ -6,7 +6,7 @@ import csv
 from io import StringIO
 
 from haystack import Document, Pipeline
-from haystack.components.converters.docx import DOCXMetadata, DOCXToDocument, DOCXTableFormat
+from haystack.components.converters.docx import DOCXMetadata, DOCXToDocument, DOCXTableFormat, DOCXLinkFormat
 from haystack.dataclasses import ByteStream
 
 
@@ -33,36 +33,36 @@ class TestDOCXToDocument:
         data = converter.to_dict()
         assert data == {
             "type": "haystack.components.converters.docx.DOCXToDocument",
-            "init_parameters": {"store_full_path": False, "table_format": "csv"},
+            "init_parameters": {"store_full_path": False, "table_format": "csv", "link_format": "plain"},
         }
 
     def test_to_dict_custom_parameters(self):
-        converter = DOCXToDocument(table_format="markdown")
+        converter = DOCXToDocument(table_format="markdown", link_format="markdown")
         data = converter.to_dict()
         assert data == {
             "type": "haystack.components.converters.docx.DOCXToDocument",
-            "init_parameters": {"store_full_path": False, "table_format": "markdown"},
+            "init_parameters": {"store_full_path": False, "table_format": "markdown", "link_format": "markdown"},
         }
 
-        converter = DOCXToDocument(table_format="csv")
+        converter = DOCXToDocument(table_format="csv", link_format="plain")
         data = converter.to_dict()
         assert data == {
             "type": "haystack.components.converters.docx.DOCXToDocument",
-            "init_parameters": {"store_full_path": False, "table_format": "csv"},
+            "init_parameters": {"store_full_path": False, "table_format": "csv", "link_format": "plain"},
         }
 
-        converter = DOCXToDocument(table_format=DOCXTableFormat.MARKDOWN)
+        converter = DOCXToDocument(table_format=DOCXTableFormat.MARKDOWN, link_format=DOCXLinkFormat.MARKDOWN)
         data = converter.to_dict()
         assert data == {
             "type": "haystack.components.converters.docx.DOCXToDocument",
-            "init_parameters": {"store_full_path": False, "table_format": "markdown"},
+            "init_parameters": {"store_full_path": False, "table_format": "markdown", "link_format": "markdown"},
         }
 
-        converter = DOCXToDocument(table_format=DOCXTableFormat.CSV)
+        converter = DOCXToDocument(table_format=DOCXTableFormat.CSV, link_format=DOCXLinkFormat.PLAIN)
         data = converter.to_dict()
         assert data == {
             "type": "haystack.components.converters.docx.DOCXToDocument",
-            "init_parameters": {"store_full_path": False, "table_format": "csv"},
+            "init_parameters": {"store_full_path": False, "table_format": "csv", "link_format": "plain"},
         }
 
     def test_from_dict(self):
@@ -76,10 +76,11 @@ class TestDOCXToDocument:
     def test_from_dict_custom_parameters(self):
         data = {
             "type": "haystack.components.converters.docx.DOCXToDocument",
-            "init_parameters": {"table_format": "markdown"},
+            "init_parameters": {"table_format": "markdown", "link_format": "markdown"},
         }
         converter = DOCXToDocument.from_dict(data)
         assert converter.table_format == DOCXTableFormat.MARKDOWN
+        assert converter.link_format == DOCXLinkFormat.MARKDOWN
 
     def test_from_dict_invalid_table_format(self):
         data = {
@@ -397,3 +398,43 @@ class TestDOCXToDocument:
         # check it is JSON serializable
         json_str = json.dumps(doc.to_dict(flatten=False))
         assert json.loads(json_str) == doc.to_dict(flatten=False)
+
+    def test_link_format_initialization(self):
+        converter = DOCXToDocument(link_format="markdown")
+        assert converter.link_format == DOCXLinkFormat.MARKDOWN
+
+        converter = DOCXToDocument(link_format=DOCXLinkFormat.PLAIN)
+        assert converter.link_format == DOCXLinkFormat.PLAIN
+
+    def test_link_format_invalid(self):
+        with pytest.raises(ValueError, match="Unknown link format 'invalid_format'"):
+            DOCXToDocument(link_format="invalid_format")
+
+    @pytest.mark.parametrize("link_format", ["markdown", "plain"])
+    def test_link_extraction(self, test_files_path, link_format):
+        docx_converter = DOCXToDocument(link_format=link_format)
+        paths = [test_files_path / "docx" / "sample_docx_with_links.docx"]
+        output = docx_converter.run(sources=paths)
+        content = output["documents"][0].content
+
+        if link_format == "markdown":
+            assert "[PDF](https://en.wikipedia.org/wiki/PDF)" in content
+            assert "[disambiguation link](https://en.wikipedia.org/wiki/PDF_(disambiguation))" in content
+        else:  # plain format
+            assert "PDF (https://en.wikipedia.org/wiki/PDF)" in content
+            assert "disambiguation link (https://en.wikipedia.org/wiki/PDF_(disambiguation))" in content
+
+    def test_link_format_serialization(self):
+        converter = DOCXToDocument(link_format="markdown")
+        data = converter.to_dict()
+        assert data == {
+            "type": "haystack.components.converters.docx.DOCXToDocument",
+            "init_parameters": {"store_full_path": False, "table_format": "csv", "link_format": "markdown"},
+        }
+
+        converter = DOCXToDocument(link_format="plain")
+        data = converter.to_dict()
+        assert data == {
+            "type": "haystack.components.converters.docx.DOCXToDocument",
+            "init_parameters": {"store_full_path": False, "table_format": "csv", "link_format": "plain"},
+        }

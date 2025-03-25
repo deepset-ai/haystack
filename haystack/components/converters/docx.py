@@ -89,6 +89,30 @@ class DOCXTableFormat(Enum):
         return table_format
 
 
+class DOCXLinkFormat(Enum):
+    """
+    Supported formats for storing DOCX link information in a Document.
+    """
+
+    MARKDOWN = "markdown"
+    PLAIN = "plain"
+
+    def __str__(self):
+        return self.value
+
+    @staticmethod
+    def from_str(string: str) -> "DOCXLinkFormat":
+        """
+        Convert a string to a DOCXLinkFormat enum.
+        """
+        enum_map = {e.value: e for e in DOCXLinkFormat}
+        link_format = enum_map.get(string.lower())
+        if link_format is None:
+            msg = f"Unknown link format '{string}'. Supported formats are: {list(enum_map.keys())}"
+            raise ValueError(msg)
+        return link_format
+
+
 @component
 class DOCXToDocument:
     """
@@ -99,9 +123,9 @@ class DOCXToDocument:
 
     Usage example:
     ```python
-    from haystack.components.converters.docx import DOCXToDocument, DOCXTableFormat
+    from haystack.components.converters.docx import DOCXToDocument, DOCXTableFormat, DOCXLinkFormat
 
-    converter = DOCXToDocument(table_format=DOCXTableFormat.CSV)
+    converter = DOCXToDocument(table_format=DOCXTableFormat.CSV, link_format=DOCXLinkFormat.MARKDOWN)
     results = converter.run(sources=["sample.docx"], meta={"date_added": datetime.now().isoformat()})
     documents = results["documents"]
     print(documents[0].content)
@@ -109,18 +133,26 @@ class DOCXToDocument:
     ```
     """
 
-    def __init__(self, table_format: Union[str, DOCXTableFormat] = DOCXTableFormat.CSV, store_full_path: bool = False):
+    def __init__(
+        self,
+        table_format: Union[str, DOCXTableFormat] = DOCXTableFormat.CSV,
+        link_format: Union[str, DOCXLinkFormat] = DOCXLinkFormat.PLAIN,
+        store_full_path: bool = False,
+    ):
         """
         Create a DOCXToDocument component.
 
         :param table_format: The format for table output. Can be either DOCXTableFormat.MARKDOWN,
             DOCXTableFormat.CSV, "markdown", or "csv". Defaults to DOCXTableFormat.CSV.
+        :param link_format: The format for link output. Can be either DOCXLinkFormat.MARKDOWN,
+            DOCXLinkFormat.PLAIN, "markdown", or "plain". Defaults to DOCXLinkFormat.PLAIN.
         :param store_full_path:
             If True, the full path of the file is stored in the metadata of the document.
             If False, only the file name is stored.
         """
         docx_import.check()
         self.table_format = DOCXTableFormat.from_str(table_format) if isinstance(table_format, str) else table_format
+        self.link_format = DOCXLinkFormat.from_str(link_format) if isinstance(link_format, str) else link_format
         self.store_full_path = store_full_path
 
     def to_dict(self) -> Dict[str, Any]:
@@ -130,7 +162,12 @@ class DOCXToDocument:
         :returns:
             Dictionary with serialized data.
         """
-        return default_to_dict(self, table_format=str(self.table_format), store_full_path=self.store_full_path)
+        return default_to_dict(
+            self,
+            table_format=str(self.table_format),
+            link_format=str(self.link_format),
+            store_full_path=self.store_full_path,
+        )
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "DOCXToDocument":
@@ -144,6 +181,8 @@ class DOCXToDocument:
         """
         if "table_format" in data["init_parameters"]:
             data["init_parameters"]["table_format"] = DOCXTableFormat.from_str(data["init_parameters"]["table_format"])
+        if "link_format" in data["init_parameters"]:
+            data["init_parameters"]["link_format"] = DOCXLinkFormat.from_str(data["init_parameters"]["link_format"])
         return default_from_dict(cls, data)
 
     @component.output_types(documents=List[Document])
@@ -219,6 +258,7 @@ class DOCXToDocument:
                     para_text = self._process_paragraph_with_page_breaks(paragraph)
                 else:
                     para_text = paragraph.text
+                # para_text = self._process_links_in_paragraph(paragraph)
                 elements.append(para_text)
             elif element.tag.endswith("tbl"):
                 table = docx.table.Table(element, document)
@@ -255,6 +295,50 @@ class DOCXToDocument:
             else:
                 para_text += "\f"
         return para_text
+
+    def _process_links_in_paragraph(self, paragraph: "Paragraph") -> str:
+        """
+        Processes links in a paragraph and formats them according to the specified link format.
+
+        :param paragraph: The DOCX paragraph to process.
+        :returns: A string with links formatted according to the specified format.
+        """
+        text = paragraph.text
+        if not paragraph._p.xpath(".//w:hyperlink"):
+            return text
+
+        # Find all hyperlinks in the paragraph
+        hyperlinks = paragraph._p.xpath(".//w:hyperlink")
+        for hyperlink in hyperlinks:
+            # Get the link text and URL
+            link_text = "".join(t.text for t in hyperlink.xpath(".//w:t"))
+            link_url = hyperlink.get("{http://schemas.openxmlformats.org/wordprocessingml/2006/main}id")
+
+            if not link_url:
+                continue
+
+            # Get the relationship ID and find the actual URL
+            rel_id = hyperlink.get("{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id")
+            if not rel_id:
+                continue
+
+            # Find the actual URL in the document's relationships
+            rels = paragraph.part.rels
+            if rel_id not in rels:
+                continue
+
+            actual_url = rels[rel_id].target_ref
+
+            # Format the link according to the specified format
+            if self.link_format == DOCXLinkFormat.MARKDOWN:
+                formatted_link = f"[{link_text}]({actual_url})"
+            else:  # PLAIN format
+                formatted_link = f"{link_text} ({actual_url})"
+
+            # Replace the original link text with the formatted version
+            text = text.replace(link_text, formatted_link)
+
+        return text
 
     def _table_to_markdown(self, table: "Table") -> str:
         """
