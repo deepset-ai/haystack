@@ -413,15 +413,31 @@ class TestDOCXToDocument:
     @pytest.mark.parametrize("link_format", ["markdown", "plain"])
     def test_link_extraction(self, test_files_path, link_format):
         docx_converter = DOCXToDocument(link_format=link_format)
+        paths = [test_files_path / "docx" / "sample_docx_with_single_link.docx"]
+        output = docx_converter.run(sources=paths)
+        content = output["documents"][0].content
+
+        if link_format == "markdown":
+            assert "[PDF](https://en.wikipedia.org/wiki/PDF)" in content
+        else:  # plain format
+            assert "PDF (https://en.wikipedia.org/wiki/PDF)" in content
+
+    @pytest.mark.parametrize("link_format", ["markdown", "plain"])
+    def test_link_extraction_page_break(self, test_files_path, link_format):
+        docx_converter = DOCXToDocument(link_format=link_format)
         paths = [test_files_path / "docx" / "sample_docx_with_links.docx"]
         output = docx_converter.run(sources=paths)
         content = output["documents"][0].content
 
         if link_format == "markdown":
             assert "[PDF](https://en.wikipedia.org/wiki/PDF)" in content
+            assert "[of](https://en.wikipedia.org/wiki/OF)" in content
+            assert "[charge](https://en.wikipedia.org/wiki/Charge)" in content
             assert "[disambiguation link](https://en.wikipedia.org/wiki/PDF_(disambiguation))" in content
         else:  # plain format
             assert "PDF (https://en.wikipedia.org/wiki/PDF)" in content
+            assert "of (https://en.wikipedia.org/wiki/OF)" in content
+            assert "charge (https://en.wikipedia.org/wiki/Charge)" in content
             assert "disambiguation link (https://en.wikipedia.org/wiki/PDF_(disambiguation))" in content
 
     def test_link_format_serialization(self):

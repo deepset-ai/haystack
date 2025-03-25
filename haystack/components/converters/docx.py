@@ -22,7 +22,9 @@ with LazyImport("Run 'pip install python-docx'") as docx_import:
     import docx
     from docx.document import Document as DocxDocument
     from docx.table import Table
+    from docx.text.hyperlink import Hyperlink
     from docx.text.paragraph import Paragraph
+    from docx.text.run import Run
     from lxml.etree import _Comment
 
 
@@ -257,8 +259,7 @@ class DOCXToDocument:
                 if paragraph.contains_page_break:
                     para_text = self._process_paragraph_with_page_breaks(paragraph)
                 else:
-                    para_text = paragraph.text
-                # para_text = self._process_links_in_paragraph(paragraph)
+                    para_text = self._process_links_in_paragraph(paragraph)
                 elements.append(para_text)
             elif element.tag.endswith("tbl"):
                 table = docx.table.Table(element, document)
@@ -284,14 +285,14 @@ class DOCXToDocument:
             # Can only extract text from first paragraph page break, unfortunately
             if pb_index == 0:
                 if page_break.preceding_paragraph_fragment:
-                    para_text += page_break.preceding_paragraph_fragment.text
+                    para_text += self._process_links_in_paragraph(page_break.preceding_paragraph_fragment)
                 para_text += "\f"
                 if page_break.following_paragraph_fragment:
                     # following_paragraph_fragment contains all text for remainder of paragraph.
                     # However, if the remainder of the paragraph spans multiple page breaks, it won't include
                     # those later page breaks so we have to add them at end of text in the `else` block below.
                     # This is not ideal, but this case should be very rare and this is likely good enough.
-                    para_text += page_break.following_paragraph_fragment.text
+                    para_text += self._process_links_in_paragraph(page_break.following_paragraph_fragment)
             else:
                 para_text += "\f"
         return para_text
@@ -303,40 +304,16 @@ class DOCXToDocument:
         :param paragraph: The DOCX paragraph to process.
         :returns: A string with links formatted according to the specified format.
         """
-        text = paragraph.text
-        if not paragraph._p.xpath(".//w:hyperlink"):
-            return text
-
-        # Find all hyperlinks in the paragraph
-        hyperlinks = paragraph._p.xpath(".//w:hyperlink")
-        for hyperlink in hyperlinks:
-            # Get the link text and URL
-            link_text = "".join(t.text for t in hyperlink.xpath(".//w:t"))
-            link_url = hyperlink.get("{http://schemas.openxmlformats.org/wordprocessingml/2006/main}id")
-
-            if not link_url:
-                continue
-
-            # Get the relationship ID and find the actual URL
-            rel_id = hyperlink.get("{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id")
-            if not rel_id:
-                continue
-
-            # Find the actual URL in the document's relationships
-            rels = paragraph.part.rels
-            if rel_id not in rels:
-                continue
-
-            actual_url = rels[rel_id].target_ref
-
-            # Format the link according to the specified format
-            if self.link_format == DOCXLinkFormat.MARKDOWN:
-                formatted_link = f"[{link_text}]({actual_url})"
-            else:  # PLAIN format
-                formatted_link = f"{link_text} ({actual_url})"
-
-            # Replace the original link text with the formatted version
-            text = text.replace(link_text, formatted_link)
+        text = ""
+        for content in paragraph.iter_inner_content():
+            if isinstance(content, Run):
+                text += content.text
+            elif isinstance(content, Hyperlink):
+                if self.link_format == DOCXLinkFormat.MARKDOWN:
+                    formatted_link = f"[{content.text}]({content.address})"
+                else:  # PLAIN format
+                    formatted_link = f"{content.text} ({content.address})"
+                text += formatted_link
 
         return text
 
