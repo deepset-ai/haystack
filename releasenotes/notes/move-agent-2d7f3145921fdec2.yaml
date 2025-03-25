@@ -1,0 +1,26 @@
+---
+highlights: >
+    The [`Agent`](https://github.com/deepset-ai/haystack-experimental/blob/main/haystack_experimental/components/agents/agent.py) component enables tool-calling functionality with provider-agnostic chat model support and can be used as a standalone component or within a pipeline.
+    See the `Agent` in action: [Build a GitHub Issue Resolver Agent](https://haystack.deepset.ai/cookbook/github_issue_resolver_agent)
+
+    ```python
+    from haystack.components.agents import Agent
+    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.websearch import SerperDevWebSearch
+    from haystack.dataclasses import ChatMessage
+    from haystack.tools.component_tool import ComponentTool
+
+    web_tool = ComponentTool(
+        component=SerperDevWebSearch(),
+    )
+
+    agent = Agent(
+        chat_generator=OpenAIChatGenerator(),
+        tools=[web_tool],
+        exit_condition="text",
+    )
+
+    result = agent.run(
+        messages=[ChatMessage.from_user("Find information about Haystack")]
+    )
+    ```
