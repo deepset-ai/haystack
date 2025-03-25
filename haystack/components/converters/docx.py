@@ -98,6 +98,7 @@ class DOCXLinkFormat(Enum):
 
     MARKDOWN = "markdown"
     PLAIN = "plain"
+    NONE = "none"
 
     def __str__(self):
         return self.value
@@ -138,7 +139,7 @@ class DOCXToDocument:
     def __init__(
         self,
         table_format: Union[str, DOCXTableFormat] = DOCXTableFormat.CSV,
-        link_format: Union[str, DOCXLinkFormat] = DOCXLinkFormat.PLAIN,
+        link_format: Union[str, DOCXLinkFormat] = DOCXLinkFormat.NONE,
         store_full_path: bool = False,
     ):
         """
@@ -147,7 +148,7 @@ class DOCXToDocument:
         :param table_format: The format for table output. Can be either DOCXTableFormat.MARKDOWN,
             DOCXTableFormat.CSV, "markdown", or "csv". Defaults to DOCXTableFormat.CSV.
         :param link_format: The format for link output. Can be either DOCXLinkFormat.MARKDOWN,
-            DOCXLinkFormat.PLAIN, "markdown", or "plain". Defaults to DOCXLinkFormat.PLAIN.
+            DOCXLinkFormat.PLAIN, DOCXLinkFormat.NONE, "markdown", "plain", or "none". Defaults to DOCXLinkFormat.NONE.
         :param store_full_path:
             If True, the full path of the file is stored in the metadata of the document.
             If False, only the file name is stored.
@@ -304,6 +305,8 @@ class DOCXToDocument:
         :param paragraph: The DOCX paragraph to process.
         :returns: A string with links formatted according to the specified format.
         """
+        if self.link_format == DOCXLinkFormat.NONE:
+            return paragraph.text
         text = ""
         for content in paragraph.iter_inner_content():
             if isinstance(content, Run):

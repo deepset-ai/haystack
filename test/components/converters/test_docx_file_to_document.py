@@ -33,7 +33,7 @@ class TestDOCXToDocument:
         data = converter.to_dict()
         assert data == {
             "type": "haystack.components.converters.docx.DOCXToDocument",
-            "init_parameters": {"store_full_path": False, "table_format": "csv", "link_format": "plain"},
+            "init_parameters": {"store_full_path": False, "table_format": "csv", "link_format": "none"},
         }
 
     def test_to_dict_custom_parameters(self):
@@ -440,17 +440,11 @@ class TestDOCXToDocument:
             assert "charge (https://en.wikipedia.org/wiki/Charge)" in content
             assert "disambiguation link (https://en.wikipedia.org/wiki/PDF_(disambiguation))" in content
 
-    def test_link_format_serialization(self):
-        converter = DOCXToDocument(link_format="markdown")
-        data = converter.to_dict()
-        assert data == {
-            "type": "haystack.components.converters.docx.DOCXToDocument",
-            "init_parameters": {"store_full_path": False, "table_format": "csv", "link_format": "markdown"},
-        }
+    def test_no_link_extraction(self, test_files_path):
+        docx_converter = DOCXToDocument()
+        paths = [test_files_path / "docx" / "sample_docx_with_single_link.docx"]
+        output = docx_converter.run(sources=paths)
+        content = output["documents"][0].content
 
-        converter = DOCXToDocument(link_format="plain")
-        data = converter.to_dict()
-        assert data == {
-            "type": "haystack.components.converters.docx.DOCXToDocument",
-            "init_parameters": {"store_full_path": False, "table_format": "csv", "link_format": "plain"},
-        }
+        assert "[PDF](https://en.wikipedia.org/wiki/PDF)" not in content
+        assert "PDF (https://en.wikipedia.org/wiki/PDF)" not in content
