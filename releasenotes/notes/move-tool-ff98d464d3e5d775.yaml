@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Enhance error logging of Tool and extend the ToolInvoker component to work with newly introduced State in Agent.
+fixes:
+  - |
+    Fix an issue that prevented Jinja2-based ComponentTools from being passed into pipelines at runtime
