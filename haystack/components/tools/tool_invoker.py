@@ -7,6 +7,7 @@ import json
 from typing import Any, Dict, List, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
+from haystack.core.component.sockets import Sockets
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.dataclasses.state import State
 from haystack.tools import Tool, deserialize_tools_inplace
@@ -199,6 +200,10 @@ class ToolInvoker:
         # ComponentTool wraps the function with a function that accepts kwargs, so we need to look at input sockets
         # to find out which parameters the tool accepts.
         if isinstance(tool, ComponentTool):
+            # mypy doesn't know that ComponentMeta always adds __haystack_input__ to Component
+            assert hasattr(tool._component, "__haystack_input__") and isinstance(
+                tool._component.__haystack_input__, Sockets
+            )
             func_params = set(tool._component.__haystack_input__._sockets_dict.keys())
         else:
             func_params = set(inspect.signature(tool.function).parameters.keys())
