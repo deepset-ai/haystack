@@ -206,7 +206,6 @@ class LLMEvaluator:
         for input_names_to_values in tqdm(list_of_input_names_to_values, disable=not self.progress_bar):
             prompt = self.builder.run(**input_names_to_values)
             messages = [ChatMessage.from_user(prompt["prompt"])]
-            print(messages)
             try:
                 result = self._chat_generator.run(messages=messages)
             except Exception as e:
