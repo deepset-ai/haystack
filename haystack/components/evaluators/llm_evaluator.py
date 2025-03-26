@@ -10,6 +10,7 @@ from tqdm import tqdm
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.builders import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.components.generators.chat.types import ChatGenerator
 from haystack.dataclasses.chat_message import ChatMessage
 from haystack.utils import Secret, deserialize_secrets_inplace, deserialize_type, serialize_type
 
@@ -58,9 +59,10 @@ class LLMEvaluator:
         progress_bar: bool = True,
         *,
         raise_on_failure: bool = True,
-        api: str = "openai",
+        api: Optional[str] = None,
         api_key: Optional[Secret] = None,
         api_params: Optional[Dict[str, Any]] = None,
+        chat_generator: Optional[ChatGenerator] = None,
     ):
         """
         Creates an instance of LLMEvaluator.
@@ -83,13 +85,17 @@ class LLMEvaluator:
         :param progress_bar:
             Whether to show a progress bar during the evaluation.
         :param api:
-            The API to use for calling an LLM through a Generator.
-            Supported APIs: "openai".
+            The API to use for calling an LLM through a Generator. Supported APIs: "openai".
+            Deprecated. Use `chat_generator` to configure the LLM.
         :param api_key:
             The API key to be passed to a LLM provider. It may not be necessary when using a locally hosted model.
+            Deprecated. Use `chat_generator` to configure the LLM.
         :param api_params:
             Parameters for an OpenAI API compatible completions call.
-
+            Deprecated. Use `chat_generator` to configure the LLM.
+        :param chat_generator:
+            a ChatGenerator instance which represents the LLM. If provided, this will override
+            settings in api, api_key, and api_params.
         """
         self.validate_init_parameters(inputs, outputs, examples)
         self.raise_on_failure = raise_on_failure
