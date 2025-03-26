@@ -6,7 +6,7 @@ import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Union, get_args
 
-from haystack import Document, component, default_from_dict, default_to_dict, logging
+from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.dataclasses import ByteStream
 from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice
@@ -14,8 +14,6 @@ from haystack.utils import ComponentDevice
 with LazyImport("Run 'pip install \"openai-whisper>=20231106\"' to install whisper.") as whisper_import:
     import whisper
 
-
-logger = logging.getLogger(__name__)
 WhisperLocalModel = Literal[
     "base",
     "base.en",
@@ -115,12 +113,12 @@ class LocalWhisperTranscriber:
         """
         Transcribes a list of audio files into a list of documents.
 
-        For the supported audio formats, languages, and other parameters, see the
-        [Whisper API documentation](https://platform.openai.com/docs/guides/speech-to-text) and the official Whisper
-        [GitHup repo](https://github.com/openai/whisper).
-
         :param sources:
             A list of paths or binary streams to transcribe.
+        :param whisper_params:
+            For the supported audio formats, languages, and other parameters, see the
+            [Whisper API documentation](https://platform.openai.com/docs/guides/speech-to-text) and the official Whisper
+            [GitHup repo](https://github.com/openai/whisper).
 
         :returns: A dictionary with the following keys:
             - `documents`: A list of documents where each document is a transcribed audio file. The content of

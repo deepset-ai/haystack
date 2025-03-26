@@ -4,12 +4,9 @@
 
 from typing import Any, Dict, List, Optional
 
-from haystack import component, default_from_dict, default_to_dict, logging
+from haystack import component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
-
-logger = logging.getLogger(__name__)
-
 
 with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
     from transformers import pipeline
@@ -128,7 +125,7 @@ class TransformersZeroShotTextRouter:
         self.token = token
         self.labels = labels
         self.multi_label = multi_label
-        component.set_output_types(self, **{label: str for label in labels})
+        component.set_output_types(self, **dict.fromkeys(labels, str))
 
         huggingface_pipeline_kwargs = resolve_hf_pipeline_kwargs(
             huggingface_pipeline_kwargs=huggingface_pipeline_kwargs or {},

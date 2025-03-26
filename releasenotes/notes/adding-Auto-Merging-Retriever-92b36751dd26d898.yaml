@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    We added a new retrieval technique, `AutoMergingRetriever` which together with the `HierarchicalDocumentSplitter` implement a auto-merging retrieval technique.

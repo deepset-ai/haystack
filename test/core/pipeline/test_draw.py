@@ -111,6 +111,7 @@ def test_to_mermaid_text_does_not_edit_graph():
     assert expected_pipe == pipe.to_dict()
 
 
+@pytest.mark.skip(reason="This is a nice to have, but frequently fails due to mermaid.ink issues")
 @pytest.mark.integration
 @pytest.mark.parametrize(
     "params",
@@ -140,20 +141,6 @@ def test_to_mermaid_image_invalid_format():
 
     with pytest.raises(ValueError, match="Invalid image format:"):
         _to_mermaid_image(pipe.graph, params={"format": "invalid_format"})
-
-
-@pytest.mark.integration
-def test_to_mermaid_image_missing_theme():
-    # Test default theme (neutral)
-    pipe = Pipeline()
-    pipe.add_component("comp1", Double())
-    pipe.add_component("comp2", Double())
-    pipe.connect("comp1", "comp2")
-
-    params = {"format": "img"}
-    image_data = _to_mermaid_image(pipe.graph, params=params)
-
-    assert image_data  # Ensure some data is returned
 
 
 def test_to_mermaid_image_invalid_scale():

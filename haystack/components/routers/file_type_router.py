@@ -8,12 +8,9 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-from haystack import component, default_from_dict, default_to_dict, logging
+from haystack import component, default_from_dict, default_to_dict
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
 from haystack.dataclasses import ByteStream
-
-logger = logging.getLogger(__name__)
-
 
 CUSTOM_MIMETYPES = {
     # we add markdown because it is not added by the mimetypes module
@@ -96,7 +93,7 @@ class FileTypeRouter:
         component.set_output_types(
             self,
             unclassified=List[Union[str, Path, ByteStream]],
-            **{mime_type: List[Union[str, Path, ByteStream]] for mime_type in mime_types},
+            **dict.fromkeys(mime_types, List[Union[str, Path, ByteStream]]),
         )
         self.mime_types = mime_types
         self._additional_mimetypes = additional_mimetypes

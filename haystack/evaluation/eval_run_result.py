@@ -5,12 +5,14 @@
 import csv
 from copy import deepcopy
 from typing import Any, Dict, List, Literal, Optional, Union
-from warnings import warn
 
+from haystack import logging
 from haystack.lazy_imports import LazyImport
 
 with LazyImport("Run 'pip install pandas'") as pandas_import:
     from pandas import DataFrame
+
+logger = logging.getLogger(__name__)
 
 
 class EvaluationRunResult:
@@ -188,10 +190,15 @@ class EvaluationRunResult:
             raise ValueError("The 'other' parameter must have 'run_name', 'inputs', and 'results' attributes.")
 
         if self.run_name == other.run_name:
-            warn(f"The run names of the two evaluation results are the same ('{self.run_name}')")
+            logger.warning(
+                "The run names of the two evaluation results are the same ('{run_name}')", run_name=self.run_name
+            )
 
         if self.inputs.keys() != other.inputs.keys():
-            warn(f"The input columns differ between the results; using the input columns of '{self.run_name}'.")
+            logger.warning(
+                "The input columns differ between the results; using the input columns of '{run_name}'",
+                run_name=self.run_name,
+            )
 
         # got both detailed reports
         detailed_a = self.detailed_report(output_format="json")
@@ -220,30 +227,3 @@ class EvaluationRunResult:
         # combine both detailed reports
         combined_results = {**renamed_detailed_a, **filtered_detailed_b}
         return self._handle_output(combined_results, output_format, csv_file)
-
-    def score_report(self) -> "DataFrame":
-        """Generates a DataFrame report with aggregated scores for each metric."""
-        msg = (
-            "The `score_report` method is deprecated and will be removed in Haystack 2.12.0. Use "
-            "`aggregated_report` instead."
-        )
-        warn(msg, DeprecationWarning, stacklevel=2)
-        return self.aggregated_report(output_format="df")
-
-    def to_pandas(self) -> "DataFrame":
-        """Generates a DataFrame report with detailed scores for each metric."""
-        msg = (
-            "The `to_pandas` method is deprecated and will be removed in Haystack 2.12.0. Use `detailed_report` "
-            "instead."
-        )
-        warn(msg, DeprecationWarning, stacklevel=2)
-        return self.detailed_report(output_format="df")
-
-    def comparative_individual_scores_report(self, other: "EvaluationRunResult") -> "DataFrame":
-        """Generates a DataFrame report with detailed scores for each metric from two evaluation runs for comparison."""
-        msg = (
-            "The `comparative_individual_scores_report` method is deprecated will be removed in Haystack 2.12.0. Use "
-            "`comparative_detailed_report` instead."
-        )
-        warn(msg, DeprecationWarning, stacklevel=2)
-        return self.comparative_detailed_report(other, output_format="df")

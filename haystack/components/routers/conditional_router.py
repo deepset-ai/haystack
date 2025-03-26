@@ -5,7 +5,6 @@
 import ast
 import contextlib
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Set, Union, get_args, get_origin
-from warnings import warn
 
 from jinja2 import Environment, TemplateSyntaxError, meta
 from jinja2.nativetypes import NativeEnvironment
@@ -192,7 +191,7 @@ class ConditionalRouter:
                 "Unsafe mode is enabled. This allows execution of arbitrary code in the Jinja template. "
                 "Use this only if you trust the source of the template."
             )
-            warn(msg)
+            logger.warning(msg)
 
         self._env = NativeEnvironment() if self._unsafe else SandboxedEnvironment()
         self._env.filters.update(self.custom_filters)
@@ -216,16 +215,14 @@ class ConditionalRouter:
         # warn about unused optional variables
         unused_optional_vars = set(self.optional_variables) - input_types if self.optional_variables else None
         if unused_optional_vars:
-            msg = (
-                f"The following optional variables are specified but not used in any route: {unused_optional_vars}. "
-                "Check if there's a typo in variable names."
+            logger.warning(
+                "The following optional variables are specified but not used in any route: {unused_optional_vars}. "
+                "Check if there's a typo in variable names.",
+                unused_optional_vars=unused_optional_vars,
             )
-            # intentionally using both warn and logger
-            warn(msg, UserWarning)
-            logger.warning(msg)
 
         # add mandatory input types
-        component.set_input_types(self, **{var: Any for var in mandatory_input_types})
+        component.set_input_types(self, **dict.fromkeys(mandatory_input_types, Any))
 
         # now add optional input types
         for optional_var_name in self.optional_variables:

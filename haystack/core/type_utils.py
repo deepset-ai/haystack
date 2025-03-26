@@ -4,10 +4,6 @@
 import collections.abc
 from typing import Any, TypeVar, Union, get_args, get_origin
 
-from haystack import logging
-
-logger = logging.getLogger(__name__)
-
 T = TypeVar("T")
 
 

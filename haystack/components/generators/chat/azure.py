@@ -7,13 +7,11 @@ from typing import Any, Callable, Dict, List, Optional, Union
 
 from openai.lib.azure import AsyncAzureADTokenProvider, AsyncAzureOpenAI, AzureADTokenProvider, AzureOpenAI
 
-from haystack import component, default_from_dict, default_to_dict, logging
+from haystack import component, default_from_dict, default_to_dict
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import StreamingChunk
 from haystack.tools.tool import Tool, _check_duplicate_tool_names, deserialize_tools_inplace
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
-
-logger = logging.getLogger(__name__)
 
 
 @component
@@ -149,8 +147,8 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         self.azure_deployment = azure_deployment
         self.organization = organization
         self.model = azure_deployment or "gpt-4o-mini"
-        self.timeout = timeout or float(os.environ.get("OPENAI_TIMEOUT", 30.0))
-        self.max_retries = max_retries or int(os.environ.get("OPENAI_MAX_RETRIES", 5))
+        self.timeout = timeout or float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
+        self.max_retries = max_retries or int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
         self.default_headers = default_headers or {}
         self.azure_ad_token_provider = azure_ad_token_provider
 

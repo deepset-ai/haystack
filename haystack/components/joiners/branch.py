@@ -4,11 +4,9 @@
 
 from typing import Any, Dict, Type
 
-from haystack import component, default_from_dict, default_to_dict, logging
+from haystack import component, default_from_dict, default_to_dict
 from haystack.core.component.types import GreedyVariadic
 from haystack.utils import deserialize_type, serialize_type
-
-logger = logging.getLogger(__name__)
 
 
 @component
@@ -60,7 +58,7 @@ class BranchJoiner:
     pipe.add_component('joiner', BranchJoiner(List[ChatMessage]))
     pipe.add_component('generator', OpenAIChatGenerator(model="gpt-4o-mini"))
     pipe.add_component('validator', JsonSchemaValidator(json_schema=person_schema))
-    pipe.add_component('adapter', OutputAdapter("{{chat_message}}", List[ChatMessage]))
+    pipe.add_component('adapter', OutputAdapter("{{chat_message}}", List[ChatMessage], unsafe=True))
 
     # And connect them
     pipe.connect("adapter", "joiner")
@@ -74,7 +72,7 @@ class BranchJoiner:
         "adapter": {"chat_message": [ChatMessage.from_user("Create json from Peter Parker")]}}
     )
 
-    print(json.loads(result["validator"]["validated"][0].content))
+    print(json.loads(result["validator"]["validated"][0].text))
 
 
     >> {'first_name': 'Peter', 'last_name': 'Parker', 'nationality': 'American', 'name': 'Spider-Man', 'occupation':

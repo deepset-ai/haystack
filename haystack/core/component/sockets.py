@@ -4,12 +4,9 @@
 
 from typing import Dict, Optional, Type, Union
 
-from haystack import logging
 from haystack.core.type_utils import _type_name
 
 from .types import InputSocket, OutputSocket
-
-logger = logging.getLogger(__name__)
 
 SocketsDict = Dict[str, Union[InputSocket, OutputSocket]]
 SocketsIOType = Union[Type[InputSocket], Type[OutputSocket]]

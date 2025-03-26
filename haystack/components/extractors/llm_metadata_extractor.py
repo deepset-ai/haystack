@@ -4,6 +4,7 @@
 
 import copy
 import json
+import warnings
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
@@ -14,7 +15,9 @@ from jinja2.sandbox import SandboxedEnvironment
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.components.builders import PromptBuilder
 from haystack.components.generators.chat import AzureOpenAIChatGenerator, OpenAIChatGenerator
+from haystack.components.generators.chat.types import ChatGenerator
 from haystack.components.preprocessors import DocumentSplitter
+from haystack.core.serialization import import_class_by_name
 from haystack.dataclasses import ChatMessage
 from haystack.lazy_imports import LazyImport
 from haystack.utils import deserialize_callable, deserialize_secrets_inplace, expand_page_range
@@ -76,7 +79,8 @@ class LLMMetadataExtractor:
 
     ```python
     from haystack import Document
-    from haystack_experimental.components.extractors.llm_metadata_extractor import LLMMetadataExtractor
+    from haystack.components.extractors.llm_metadata_extractor import LLMMetadataExtractor
+    from haystack.components.generators.chat import OpenAIChatGenerator
 
     NER_PROMPT = '''
     -Goal-
@@ -122,22 +126,24 @@ class LLMMetadataExtractor:
         Document(content="Hugging Face is a company that was founded in New York, USA and is known for its Transformers library")
     ]
 
+    chat_generator = OpenAIChatGenerator(
+        generation_kwargs={
+            "max_tokens": 500,
+            "temperature": 0.0,
+            "seed": 0,
+            "response_format": {"type": "json_object"},
+        },
+        max_retries=1,
+        timeout=60.0,
+    )
+
     extractor = LLMMetadataExtractor(
         prompt=NER_PROMPT,
-        generator_api="openai",
-        generator_api_params={
-            "generation_kwargs": {
-                "max_tokens": 500,
-                "temperature": 0.0,
-                "seed": 0,
-                "response_format": {"type": "json_object"},
-            },
-            "max_retries": 1,
-            "timeout": 60.0,
-        },
+        chat_generator=generator,
         expected_keys=["entities"],
         raise_on_failure=False,
     )
+
     extractor.warm_up()
     extractor.run(documents=docs)
     >> {'documents': [
@@ -159,8 +165,9 @@ class LLMMetadataExtractor:
     def __init__(  # pylint: disable=R0917
         self,
         prompt: str,
-        generator_api: Union[str, LLMProvider],
+        generator_api: Optional[Union[str, LLMProvider]] = None,
         generator_api_params: Optional[Dict[str, Any]] = None,
+        chat_generator: Optional[ChatGenerator] = None,
         expected_keys: Optional[List[str]] = None,
         page_range: Optional[List[Union[str, int]]] = None,
         raise_on_failure: bool = False,
@@ -170,18 +177,20 @@ class LLMMetadataExtractor:
         Initializes the LLMMetadataExtractor.
 
         :param prompt: The prompt to be used for the LLM.
-        :param generator_api: The API provider for the LLM. Currently supported providers are:
-                              "openai", "openai_azure", "aws_bedrock", "google_vertex"
-        :param generator_api_params: The parameters for the LLM generator.
+        :param generator_api: The API provider for the LLM. Deprecated. Use chat_generator to configure the LLM.
+            Currently supported providers are: "openai", "openai_azure", "aws_bedrock", "google_vertex".
+        :param generator_api_params: The parameters for the LLM generator. Deprecated. Use chat_generator to configure
+            the LLM.
+        :param chat_generator: a ChatGenerator instance which represents the LLM. If provided, this will override
+            settings in generator_api and generator_api_params.
         :param expected_keys: The keys expected in the JSON output from the LLM.
         :param page_range: A range of pages to extract metadata from. For example, page_range=['1', '3'] will extract
-                           metadata from the first and third pages of each document. It also accepts printable range
-                           strings, e.g.: ['1-3', '5', '8', '10-12'] will extract metadata from pages 1, 2, 3, 5, 8, 10,
-                           11, 12. If None, metadata will be extracted from the entire document for each document in the
-                           documents list.
-                           This parameter is optional and can be overridden in the `run` method.
+            metadata from the first and third pages of each document. It also accepts printable range strings, e.g.:
+            ['1-3', '5', '8', '10-12'] will extract metadata from pages 1, 2, 3, 5, 8, 10,11, 12.
+            If None, metadata will be extracted from the entire document for each document in the documents list.
+            This parameter is optional and can be overridden in the `run` method.
         :param raise_on_failure: Whether to raise an error on failure during the execution of the Generator or
-                                 validation of the JSON output.
+            validation of the JSON output.
         :param max_workers: The maximum number of workers to use in the thread pool executor.
         """
         self.prompt = prompt
@@ -195,11 +204,32 @@ class LLMMetadataExtractor:
         self.builder = PromptBuilder(prompt, required_variables=variables)
         self.raise_on_failure = raise_on_failure
         self.expected_keys = expected_keys or []
-        self.generator_api = (
-            generator_api if isinstance(generator_api, LLMProvider) else LLMProvider.from_str(generator_api)
-        )
-        self.generator_api_params = generator_api_params or {}
-        self.llm_provider = self._init_generator(self.generator_api, self.generator_api_params)
+        generator_api_params = generator_api_params or {}
+
+        if generator_api is None and chat_generator is None:
+            raise ValueError("Either generator_api or chat_generator must be provided.")
+
+        if chat_generator is not None:
+            self._chat_generator = chat_generator
+            if generator_api is not None:
+                logger.warning(
+                    "Both chat_generator and generator_api are provided. "
+                    "chat_generator will be used. generator_api/generator_api_params/LLMProvider are deprecated and "
+                    "will be removed in Haystack 2.13.0."
+                )
+        else:
+            warnings.warn(
+                "generator_api, generator_api_params, and LLMProvider are deprecated and will be removed in Haystack "
+                "2.13.0. Use chat_generator instead. For example, change `generator_api=LLMProvider.OPENAI` to "
+                "`chat_generator=OpenAIChatGenerator()`.",
+                DeprecationWarning,
+            )
+            assert generator_api is not None  # verified by the checks above
+            generator_api = (
+                generator_api if isinstance(generator_api, LLMProvider) else LLMProvider.from_str(generator_api)
+            )
+            self._chat_generator = self._init_generator(generator_api, generator_api_params)
+
         self.splitter = DocumentSplitter(split_by="page", split_length=1)
         self.expanded_range = expand_page_range(page_range) if page_range else None
         self.max_workers = max_workers
@@ -233,8 +263,8 @@ class LLMMetadataExtractor:
         """
         Warm up the LLM provider component.
         """
-        if hasattr(self.llm_provider, "warm_up"):
-            self.llm_provider.warm_up()
+        if hasattr(self._chat_generator, "warm_up"):
+            self._chat_generator.warm_up()
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -244,13 +274,10 @@ class LLMMetadataExtractor:
             Dictionary with serialized data.
         """
 
-        llm_provider = self.llm_provider.to_dict()
-
         return default_to_dict(
             self,
             prompt=self.prompt,
-            generator_api=self.generator_api.value,
-            generator_api_params=llm_provider["init_parameters"],
+            chat_generator=self._chat_generator.to_dict(),
             expected_keys=self.expected_keys,
             page_range=self.expanded_range,
             raise_on_failure=self.raise_on_failure,
@@ -270,6 +297,15 @@ class LLMMetadataExtractor:
 
         init_parameters = data.get("init_parameters", {})
 
+        # new deserialization with chat_generator
+        if init_parameters.get("chat_generator") is not None:
+            chat_generator_class = import_class_by_name(init_parameters["chat_generator"]["type"])
+            assert hasattr(chat_generator_class, "from_dict")  # we know but mypy doesn't
+            chat_generator_instance = chat_generator_class.from_dict(init_parameters["chat_generator"])
+            data["init_parameters"]["chat_generator"] = chat_generator_instance
+            return default_from_dict(cls, data)
+
+        # legacy deserialization
         if "generator_api" in init_parameters:
             data["init_parameters"]["generator_api"] = LLMProvider.from_str(data["init_parameters"]["generator_api"])
 
@@ -364,15 +400,15 @@ class LLMMetadataExtractor:
             return {"replies": ["{}"]}
 
         try:
-            result = self.llm_provider.run(messages=[prompt])
+            result = self._chat_generator.run(messages=[prompt])
         except Exception as e:
-            logger.error(
-                "LLM {class_name} execution failed. Skipping metadata extraction. Failed with exception '{error}'.",
-                class_name=self.llm_provider.__class__.__name__,
-                error=e,
-            )
             if self.raise_on_failure:
                 raise e
+            logger.error(
+                "LLM {class_name} execution failed. Skipping metadata extraction. Failed with exception '{error}'.",
+                class_name=self._chat_generator.__class__.__name__,
+                error=e,
+            )
             result = {"error": "LLM failed with exception: " + str(e)}
         return result
 

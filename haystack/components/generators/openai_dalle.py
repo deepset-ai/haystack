@@ -8,10 +8,8 @@ from typing import Any, Dict, List, Literal, Optional
 from openai import OpenAI
 from openai.types.image import Image
 
-from haystack import component, default_from_dict, default_to_dict, logging
+from haystack import component, default_from_dict, default_to_dict
 from haystack.utils import Secret, deserialize_secrets_inplace
-
-logger = logging.getLogger(__name__)
 
 
 @component
@@ -71,8 +69,8 @@ class DALLEImageGenerator:
         self.api_base_url = api_base_url
         self.organization = organization
 
-        self.timeout = timeout or float(os.environ.get("OPENAI_TIMEOUT", 30.0))
-        self.max_retries = max_retries or int(os.environ.get("OPENAI_MAX_RETRIES", 5))
+        self.timeout = timeout or float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
+        self.max_retries = max_retries or int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
 
         self.client: Optional[OpenAI] = None
 

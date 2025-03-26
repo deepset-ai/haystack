@@ -76,7 +76,15 @@ class Pipeline(PipelineBase):
             # when we delete them in case they're sent to other Components
             span.set_content_tag("haystack.component.input", deepcopy(component_inputs))
             logger.info("Running component {component_name}", component_name=component_name)
-            component_output = instance.run(**component_inputs)
+            try:
+                component_output = instance.run(**component_inputs)
+            except Exception as error:
+                raise PipelineRuntimeError(
+                    f"The following component failed to run:\n"
+                    f"Component name: '{component_name}'\n"
+                    f"Component type: '{instance.__class__.__name__}'\n"
+                    f"Error: {str(error)}"
+                ) from error
             component_visits[component_name] += 1
 
             if not isinstance(component_output, Mapping):
@@ -202,7 +210,7 @@ class Pipeline(PipelineBase):
         ordered_component_names = sorted(self.graph.nodes.keys())
 
         # We track component visits to decide if a component can run.
-        component_visits = {component_name: 0 for component_name in ordered_component_names}
+        component_visits = dict.fromkeys(ordered_component_names, 0)
 
         # We need to access a component's receivers multiple times during a pipeline run.
         # We store them here for easy access.
