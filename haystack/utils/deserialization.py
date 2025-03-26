@@ -37,3 +37,27 @@ def deserialize_document_store_in_init_params_inplace(data: Dict[str, Any], key:
         data["init_parameters"][key] = doc_store_class.from_dict(doc_store_data)
     else:
         data["init_parameters"][key] = default_from_dict(doc_store_class, doc_store_data)
+
+
+def deserialize_chatgenerator_inplace(data: Dict[str, Any], key: str = "chat_generator"):
+    """
+    Deserialize a ChatGenerator in a dictionary inplace.
+
+    :param data:
+        The dictionary with the serialized data.
+    :param key:
+        The key in the dictionary where the ChatGenerator is stored.
+    """
+    if key in data:
+        serialized_chat_generator = data[key]
+        if serialized_chat_generator is None:
+            return
+
+        if not isinstance(serialized_chat_generator, dict):
+            raise TypeError(f"The value of '{key}' is not a dictionary")
+
+        chat_generator_class = import_class_by_name(serialized_chat_generator["type"])
+        if not hasattr(chat_generator_class, "from_dict"):
+            raise TypeError(f"Class '{chat_generator_class}' does not have a 'from_dict' method")
+
+        data[key] = chat_generator_class.from_dict(serialized_chat_generator)
