@@ -3,4 +3,4 @@ upgrade:
   - |
     `LLMEvaluator`, `ContextRelevanceEvaluator`, and `FaithfulnessEvaluator` now internally use a
     `ChatGenerator` instance instead of a `Generator` instance.
-    The public attribute `generator` has been removed and replaced with `_chat_generator`.
+    The public attribute `generator` has been replaced with `_chat_generator`.
