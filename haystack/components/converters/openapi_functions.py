@@ -84,7 +84,7 @@ class OpenAPIServiceToFunctions:
                             "IO error reading OpenAPI specification file: {source}. Error: {e}", source=source, e=e
                         )
                 else:
-                    logger.warning(f"OpenAPI specification file not found: {source}")
+                    logger.warning("OpenAPI specification file not found: {source}", source=source)
             elif isinstance(source, ByteStream):
                 openapi_spec_content = source.data.decode("utf-8")
                 if not openapi_spec_content:

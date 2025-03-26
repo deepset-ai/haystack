@@ -4,14 +4,12 @@
 
 from typing import Any, Dict, Optional
 
-from haystack import component, default_from_dict, default_to_dict, logging
+from haystack import component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
 from haystack.utils import Secret, deserialize_secrets_inplace
 
 with LazyImport("Run 'pip install openapi-llm'") as openapi_llm_imports:
     from openapi_llm.client.openapi import OpenAPIClient
-
-logger = logging.getLogger(__name__)
 
 
 @component

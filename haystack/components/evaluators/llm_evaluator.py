@@ -4,14 +4,15 @@
 
 import json
 from typing import Any, Dict, List, Optional, Tuple, Type
-from warnings import warn
 
 from tqdm import tqdm
 
-from haystack import component, default_from_dict, default_to_dict
+from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.builders import PromptBuilder
 from haystack.components.generators import OpenAIGenerator
 from haystack.utils import Secret, deserialize_secrets_inplace, deserialize_type, serialize_type
+
+logger = logging.getLogger(__name__)
 
 
 @component
@@ -206,10 +207,9 @@ class LLMEvaluator:
             try:
                 result = self.generator.run(prompt=prompt["prompt"])
             except Exception as e:
-                msg = f"Error while generating response for prompt: {prompt}. Error: {e}"
                 if self.raise_on_failure:
-                    raise ValueError(msg)
-                warn(msg)
+                    raise ValueError(f"Error while generating response for prompt: {prompt}. Error: {e}")
+                logger.warning("Error while generating response for prompt: {prompt}. Error: {e}", prompt=prompt, e=e)
                 results.append(None)
                 errors += 1
                 continue
@@ -225,8 +225,11 @@ class LLMEvaluator:
                 metadata = result["meta"]
 
         if errors > 0:
-            msg = f"LLM evaluator failed for {errors} out of {len(list_of_input_names_to_values)} inputs."
-            warn(msg)
+            logger.warning(
+                "LLM evaluator failed for {errors} out of {len(list_of_input_names_to_values)} inputs.",
+                errors=errors,
+                len=len(list_of_input_names_to_values),
+            )
 
         return {"results": results, "meta": metadata}
 
@@ -374,14 +377,19 @@ class LLMEvaluator:
             msg = "Response from LLM evaluator is not a valid JSON."
             if self.raise_on_failure:
                 raise ValueError(msg)
-            warn(msg)
+            logger.warning(msg)
             return False
 
         if not all(output in parsed_output for output in expected):
-            msg = f"Expected response from LLM evaluator to be JSON with keys {expected}, got {received}."
             if self.raise_on_failure:
-                raise ValueError(msg)
-            warn(msg)
+                raise ValueError(
+                    f"Expected response from LLM evaluator to be JSON with keys {expected}, got {{received}}."
+                )
+            logger.warning(
+                "Expected response from LLM evaluator to be JSON with keys {expected}, got {received}.",
+                expected=expected,
+                received=received,
+            )
             return False
 
         return True

@@ -203,7 +203,7 @@ class TestHuggingFaceAPIDocumentEmbedder:
             "my_prefix document number 4 my_suffix",
         ]
 
-    def test_embed_batch(self, mock_check_valid_model, recwarn):
+    def test_embed_batch(self, mock_check_valid_model, caplog):
         texts = ["text 1", "text 2", "text 3", "text 4", "text 5"]
 
         with patch("huggingface_hub.InferenceClient.feature_extraction") as mock_embedding_patch:
@@ -225,10 +225,10 @@ class TestHuggingFaceAPIDocumentEmbedder:
             assert len(embedding) == 384
             assert all(isinstance(x, float) for x in embedding)
 
-        # Check that warnings about ignoring truncate and normalize are raised
-        assert len(recwarn) == 2
-        assert "truncate" in str(recwarn[0].message)
-        assert "normalize" in str(recwarn[1].message)
+        # Check that logger warnings about ignoring truncate and normalize are raised
+        assert len(caplog.records) == 2
+        assert "truncate" in caplog.records[0].message
+        assert "normalize" in caplog.records[1].message
 
     def test_embed_batch_wrong_embedding_shape(self, mock_check_valid_model):
         texts = ["text 1", "text 2", "text 3", "text 4", "text 5"]
