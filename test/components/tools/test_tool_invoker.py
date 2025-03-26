@@ -294,7 +294,7 @@ class TestToolInvoker:
                                         "properties": {"location": {"type": "string"}},
                                         "required": ["location"],
                                     },
-                                    "function": "test.components.tools.test_tool_invoker.weather_function",
+                                    "function": "tools.test_tool_invoker.weather_function",
                                     "inputs_from_state": None,
                                     "outputs_to_state": None,
                                 },

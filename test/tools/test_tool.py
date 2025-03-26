@@ -92,11 +92,9 @@ class TestTool:
                 "name": "weather",
                 "description": "Get weather report",
                 "parameters": parameters,
-                "function": "test.tools.test_tool.get_weather_report",
+                "function": "test_tool.get_weather_report",
                 "inputs_from_state": None,
-                "outputs_to_state": {
-                    "documents": {"source": "docs", "handler": "test.tools.test_tool.get_weather_report"}
-                },
+                "outputs_to_state": {"documents": {"source": "docs", "handler": "test_tool.get_weather_report"}},
             },
         }
 
@@ -107,10 +105,8 @@ class TestTool:
                 "name": "weather",
                 "description": "Get weather report",
                 "parameters": parameters,
-                "function": "test.tools.test_tool.get_weather_report",
-                "outputs_to_state": {
-                    "documents": {"source": "docs", "handler": "test.tools.test_tool.get_weather_report"}
-                },
+                "function": "test_tool.get_weather_report",
+                "outputs_to_state": {"documents": {"source": "docs", "handler": "test_tool.get_weather_report"}},
             },
         }
 

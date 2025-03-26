@@ -533,40 +533,38 @@ class TestToolComponentInPipelineWithOpenAI:
         assert "Nikola Tesla" in tool_message.tool_call_result.result
         assert not tool_message.tool_call_result.error
 
-    # TODO: Commenting out this test for now since the check in `deserialize_tools_inplace` fails
-    #  in the OpenAIChatGenerator. We need to discuss if we can relax the check for subclass (duck-typing) to fix this.
-    # def test_serde_in_pipeline(self, monkeypatch):
-    #     monkeypatch.setenv("SERPERDEV_API_KEY", "test-key")
-    #     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
-    #
-    #     # Create the search component and tool
-    #     search = SerperDevWebSearch(top_k=3)
-    #     tool = ComponentTool(component=search, name="web_search", description="Search the web for current information")
-    #
-    #     # Create and configure the pipeline
-    #     pipeline = Pipeline()
-    #     pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
-    #     pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=[tool]))
-    #     pipeline.connect("tool_invoker.tool_messages", "llm.messages")
-    #
-    #     # Serialize to dict and verify structure
-    #     pipeline_dict = pipeline.to_dict()
-    #     assert (
-    #         pipeline_dict["components"]["tool_invoker"]["type"] == "haystack_experimental.components.tools.tool_invoker.ToolInvoker"
-    #     )
-    #     assert len(pipeline_dict["components"]["tool_invoker"]["init_parameters"]["tools"]) == 1
-    #
-    #     tool_dict = pipeline_dict["components"]["tool_invoker"]["init_parameters"]["tools"][0]
-    #     assert tool_dict["type"] == "haystack_experimental.tools.component_tool.ComponentTool"
-    #     assert tool_dict["data"]["name"] == "web_search"
-    #     assert tool_dict["data"]["component"]["type"] == "haystack.components.websearch.serper_dev.SerperDevWebSearch"
-    #     assert tool_dict["data"]["component"]["init_parameters"]["top_k"] == 3
-    #     assert tool_dict["data"]["component"]["init_parameters"]["api_key"]["type"] == "env_var"
-    #
-    #     # Test round-trip serialization
-    #     pipeline_yaml = pipeline.dumps()
-    #     new_pipeline = Pipeline.loads(pipeline_yaml)
-    #     assert new_pipeline == pipeline
+    def test_serde_in_pipeline(self, monkeypatch):
+        monkeypatch.setenv("SERPERDEV_API_KEY", "test-key")
+        monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+
+        # Create the search component and tool
+        search = SerperDevWebSearch(top_k=3)
+        tool = ComponentTool(component=search, name="web_search", description="Search the web for current information")
+
+        # Create and configure the pipeline
+        pipeline = Pipeline()
+        pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
+        pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=[tool]))
+        pipeline.connect("tool_invoker.tool_messages", "llm.messages")
+
+        # Serialize to dict and verify structure
+        pipeline_dict = pipeline.to_dict()
+        assert (
+            pipeline_dict["components"]["tool_invoker"]["type"] == "haystack.components.tools.tool_invoker.ToolInvoker"
+        )
+        assert len(pipeline_dict["components"]["tool_invoker"]["init_parameters"]["tools"]) == 1
+
+        tool_dict = pipeline_dict["components"]["tool_invoker"]["init_parameters"]["tools"][0]
+        assert tool_dict["type"] == "haystack.tools.component_tool.ComponentTool"
+        assert tool_dict["data"]["name"] == "web_search"
+        assert tool_dict["data"]["component"]["type"] == "haystack.components.websearch.serper_dev.SerperDevWebSearch"
+        assert tool_dict["data"]["component"]["init_parameters"]["top_k"] == 3
+        assert tool_dict["data"]["component"]["init_parameters"]["api_key"]["type"] == "env_var"
+
+        # Test round-trip serialization
+        pipeline_yaml = pipeline.dumps()
+        new_pipeline = Pipeline.loads(pipeline_yaml)
+        assert new_pipeline == pipeline
 
     def test_component_tool_serde(self):
         component = SimpleComponent()
@@ -586,10 +584,7 @@ class TestToolComponentInPipelineWithOpenAI:
         assert tool_dict["data"]["description"] == "A simple tool"
         assert "component" in tool_dict["data"]
         assert tool_dict["data"]["inputs_from_state"] == {"test": "input"}
-        assert (
-            tool_dict["data"]["outputs_to_state"]["output"]["handler"]
-            == "test.tools.test_component_tool.output_handler"
-        )
+        assert tool_dict["data"]["outputs_to_state"]["output"]["handler"] == "test_component_tool.output_handler"
 
         # Test deserialization
         new_tool = ComponentTool.from_dict(tool_dict)
