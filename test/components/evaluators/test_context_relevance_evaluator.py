@@ -19,7 +19,7 @@ class TestContextRelevanceEvaluator:
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = ContextRelevanceEvaluator()
         assert component.api == "openai"
-        assert component.generator.client.api_key == "test-api-key"
+        assert component._chat_generator.client.api_key == "test-api-key"
         assert component.instructions == (
             "Please extract only sentences from the provided context which are absolutely relevant and "
             "required to answer the following question. If no relevant sentences are found, or if you "
@@ -66,7 +66,7 @@ class TestContextRelevanceEvaluator:
                 {"inputs": {"questions": "Football is the most popular sport."}, "outputs": {"custom_score": 0}},
             ],
         )
-        assert component.generator.client.api_key == "test-api-key"
+        assert component._chat_generator.client.api_key == "test-api-key"
         assert component.api == "openai"
         assert component.examples == [
             {"inputs": {"questions": "Damn, this is straight outta hell!!!"}, "outputs": {"custom_score": 1}},
@@ -108,7 +108,7 @@ class TestContextRelevanceEvaluator:
         }
         component = ContextRelevanceEvaluator.from_dict(data)
         assert component.api == "openai"
-        assert component.generator.client.api_key == "test-api-key"
+        assert component._chat_generator.client.api_key == "test-api-key"
         assert component.examples == [{"inputs": {"questions": "What is football?"}, "outputs": {"score": 0}}]
 
         pipeline = Pipeline()
@@ -119,13 +119,13 @@ class TestContextRelevanceEvaluator:
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = ContextRelevanceEvaluator()
 
-        def generator_run(self, *args, **kwargs):
+        def chat_generator_run(self, *args, **kwargs):
             if "Football" in kwargs["messages"][0].text:
                 return {"replies": [ChatMessage.from_assistant('{"relevant_statements": ["a", "b"], "score": 1}')]}
             else:
                 return {"replies": [ChatMessage.from_assistant('{"relevant_statements": [], "score": 0}')]}
 
-        monkeypatch.setattr("haystack.components.generators.chat.openai.OpenAIChatGenerator.run", generator_run)
+        monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
 
         questions = ["Which is the most popular global sport?", "Who created the Python language?"]
         contexts = [
@@ -153,13 +153,13 @@ class TestContextRelevanceEvaluator:
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = ContextRelevanceEvaluator()
 
-        def generator_run(self, *args, **kwargs):
+        def chat_generator_run(self, *args, **kwargs):
             if "Football" in kwargs["messages"][0].text:
                 return {"replies": [ChatMessage.from_assistant('{"relevant_statements": ["a", "b"], "score": 1}')]}
             else:
                 return {"replies": [ChatMessage.from_assistant('{"relevant_statements": [], "score": 0}')]}
 
-        monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", generator_run)
+        monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
 
         questions = ["Which is the most popular global sport?", "Who created the Python language?"]
         contexts = [
@@ -189,13 +189,13 @@ class TestContextRelevanceEvaluator:
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = ContextRelevanceEvaluator(raise_on_failure=False)
 
-        def generator_run(self, *args, **kwargs):
+        def chat_generator_run(self, *args, **kwargs):
             if "Python" in kwargs["messages"][0].text:
                 raise Exception("OpenAI API request failed.")
             else:
                 return {"replies": [ChatMessage.from_assistant('{"relevant_statements": ["c", "d"], "score": 1}')]}
 
-        monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", generator_run)
+        monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
 
         questions = ["Which is the most popular global sport?", "Who created the Python language?"]
         contexts = [

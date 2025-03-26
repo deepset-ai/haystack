@@ -24,7 +24,7 @@ class TestLLMEvaluator:
             ],
         )
         assert component.api == "openai"
-        assert component.generator.client.api_key == "test-api-key"
+        assert component._chat_generator.client.api_key == "test-api-key"
         assert component.api_params == {"generation_kwargs": {"response_format": {"type": "json_object"}, "seed": 42}}
         assert component.instructions == "test-instruction"
         assert component.inputs == [("predicted_answers", List[str])]
@@ -65,7 +65,7 @@ class TestLLMEvaluator:
                 },
             ],
         )
-        assert component.generator.client.api_key == "test-api-key"
+        assert component._chat_generator.client.api_key == "test-api-key"
         assert component.api_params == {"generation_kwargs": {"response_format": {"type": "json_object"}, "seed": 43}}
         assert component.api == "openai"
         assert component.examples == [
@@ -240,7 +240,7 @@ class TestLLMEvaluator:
         }
         component = LLMEvaluator.from_dict(data)
         assert component.api == "openai"
-        assert component.generator.client.api_key == "test-api-key"
+        assert component._chat_generator.client.api_key == "test-api-key"
         assert component.api_params == {"generation_kwargs": {"response_format": {"type": "json_object"}, "seed": 42}}
         assert component.instructions == "test-instruction"
         assert component.inputs == [("predicted_answers", List[str])]
@@ -318,10 +318,10 @@ class TestLLMEvaluator:
             ],
         )
 
-        def generator_run(self, *args, **kwargs):
-            return {"replies": ['{"score": 0.5}']}
+        def chat_generator_run(self, *args, **kwargs):
+            return {"replies": [ChatMessage.from_assistant('{"score": 0.5}')]}
 
-        monkeypatch.setattr("haystack.components.generators.openai.OpenAIGenerator.run", generator_run)
+        monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
 
         with pytest.raises(ValueError):
             component.run(questions=["What is the capital of Germany?"], predicted_answers=[["Berlin"], ["Paris"]])
@@ -343,10 +343,10 @@ class TestLLMEvaluator:
             ],
         )
 
-        def generator_run(self, *args, **kwargs):
+        def chat_generator_run(self, *args, **kwargs):
             return {"replies": [ChatMessage.from_assistant('{"score": 0.5}')]}
 
-        monkeypatch.setattr("haystack.components.generators.chat.openai.OpenAIChatGenerator.run", generator_run)
+        monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
 
         results = component.run(questions=["What is the capital of Germany?"], predicted_answers=["Berlin"])
         assert results == {"results": [{"score": 0.5}], "meta": None}
@@ -472,7 +472,7 @@ class TestLLMEvaluator:
                 },
             ],
         )
-        assert component.generator.client.api_key == "test-api-key"
+        assert component._chat_generator.client.api_key == "test-api-key"
         assert component.api_params == {
             "generation_kwargs": {"response_format": {"type": "json_object"}, "seed": 42},
             "api_base_url": "http://127.0.0.1:11434/v1",

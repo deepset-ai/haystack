@@ -111,7 +111,7 @@ class LLMEvaluator:
             generator_kwargs = {**self.api_params}
             if api_key:
                 generator_kwargs["api_key"] = api_key
-            self.generator = OpenAIChatGenerator(**generator_kwargs)
+            self._chat_generator = OpenAIChatGenerator(**generator_kwargs)
         else:
             raise ValueError(f"Unsupported API: {api}")
 
@@ -201,14 +201,14 @@ class LLMEvaluator:
         list_of_input_names_to_values = [dict(zip(input_names, v)) for v in values]
 
         results: List[Optional[Dict[str, Any]]] = []
-        metadata = None
+        metadata = []
         errors = 0
         for input_names_to_values in tqdm(list_of_input_names_to_values, disable=not self.progress_bar):
             prompt = self.builder.run(**input_names_to_values)
             messages = [ChatMessage.from_user(prompt["prompt"])]
             print(messages)
             try:
-                result = self.generator.run(messages=messages)
+                result = self._chat_generator.run(messages=messages)
             except Exception as e:
                 if self.raise_on_failure:
                     raise ValueError(f"Error while generating response for prompt: {prompt}. Error: {e}")
@@ -224,8 +224,8 @@ class LLMEvaluator:
                 results.append(None)
                 errors += 1
 
-            if self.api == "openai" and "meta" in result:
-                metadata = result["meta"]
+            if result["replies"][0].meta:
+                metadata.append(result["replies"][0].meta)
 
         if errors > 0:
             logger.warning(
@@ -234,7 +234,7 @@ class LLMEvaluator:
                 len=len(list_of_input_names_to_values),
             )
 
-        return {"results": results, "meta": metadata}
+        return {"results": results, "meta": metadata or None}
 
     def prepare_template(self) -> str:
         """
