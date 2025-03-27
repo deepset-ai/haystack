@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import re
+import time  # trigger lint error
 from typing import Any, Dict, List, Optional, Union
 
 from haystack import Document, GeneratedAnswer, component, logging
