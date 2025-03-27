@@ -17,7 +17,6 @@ from haystack.components.builders import PromptBuilder
 from haystack.components.generators.chat import AzureOpenAIChatGenerator, OpenAIChatGenerator
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.components.preprocessors import DocumentSplitter
-from haystack.core.serialization import import_class_by_name
 from haystack.dataclasses import ChatMessage
 from haystack.lazy_imports import LazyImport
 from haystack.utils import (
