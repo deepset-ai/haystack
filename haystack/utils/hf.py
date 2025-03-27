@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import copy
-import inspect
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Union
 
@@ -17,7 +16,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as torch_im
     import torch
 
 with LazyImport(message="Run 'pip install \"huggingface_hub>=0.27.0\"'") as huggingface_hub_import:
-    from huggingface_hub import HfApi, InferenceClient, model_info
+    from huggingface_hub import HfApi, model_info
     from huggingface_hub.utils import RepositoryNotFoundError
 
 logger = logging.getLogger(__name__)
