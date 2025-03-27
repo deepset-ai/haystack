@@ -245,31 +245,6 @@ def check_valid_model(model_id: str, model_type: HFModelType, token: Optional[Se
         raise ValueError(error_msg)
 
 
-def check_generation_params(kwargs: Optional[Dict[str, Any]], additional_accepted_params: Optional[List[str]] = None):
-    """
-    Check the provided generation parameters for validity.
-
-    :param kwargs: A dictionary containing the generation parameters.
-    :param additional_accepted_params: An optional list of strings representing additional accepted parameters.
-    :raises ValueError: If any unknown text generation parameters are provided.
-    """
-    huggingface_hub_import.check()
-
-    if kwargs:
-        accepted_params = {
-            param
-            for param in inspect.signature(InferenceClient.text_generation).parameters.keys()
-            if param not in ["self", "prompt"]
-        }
-        if additional_accepted_params:
-            accepted_params.update(additional_accepted_params)
-        unknown_params = set(kwargs.keys()) - accepted_params
-        if unknown_params:
-            raise ValueError(
-                f"Unknown text generation parameters: {unknown_params}. The valid parameters are: {accepted_params}."
-            )
-
-
 def convert_message_to_hf_format(message: ChatMessage) -> Dict[str, Any]:
     """
     Convert a message to the format expected by Hugging Face.
