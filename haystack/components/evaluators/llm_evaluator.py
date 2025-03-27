@@ -122,7 +122,7 @@ class LLMEvaluator:
         template = self.prepare_template()
         self.builder = PromptBuilder(template=template)
 
-        if api != "openai":
+        if api is not None and api != "openai":
             raise ValueError(f"Unsupported API: {api}. To pass a custom LLM, use the chat_generator parameter.")
 
         if api or api_params or api_key:
@@ -341,7 +341,9 @@ class LLMEvaluator:
         ]
 
         deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
-        deserialize_chatgenerator_inplace(data["init_parameters"], key="chat_generator")
+
+        if data["init_parameters"].get("chat_generator"):
+            deserialize_chatgenerator_inplace(data["init_parameters"], key="chat_generator")
 
         return default_from_dict(cls, data)
 

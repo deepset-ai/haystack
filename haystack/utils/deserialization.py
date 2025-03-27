@@ -47,24 +47,28 @@ def deserialize_chatgenerator_inplace(data: Dict[str, Any], key: str = "chat_gen
         The dictionary with the serialized data.
     :param key:
         The key in the dictionary where the ChatGenerator is stored.
+
+    :raises DeserializationError:
+        If the key is missing in the serialized data, the value is not a dictionary,
+        the type key is missing, the class cannot be imported, or the class lacks a 'from_dict' method.
     """
-    if key in data:
-        serialized_chat_generator = data[key]
-        if serialized_chat_generator is None:
-            return
+    if key not in data:
+        raise DeserializationError(f"Missing '{key}' in serialization data")
 
-        if not isinstance(serialized_chat_generator, dict):
-            raise DeserializationError(f"The value of '{key}' is not a dictionary")
+    serialized_chat_generator = data[key]
 
-        if "type" not in serialized_chat_generator:
-            raise DeserializationError(f"Missing 'type' in {key} serialization data")
+    if not isinstance(serialized_chat_generator, dict):
+        raise DeserializationError(f"The value of '{key}' is not a dictionary")
 
-        try:
-            chat_generator_class = import_class_by_name(serialized_chat_generator["type"])
-        except ImportError as e:
-            raise DeserializationError(f"Class '{serialized_chat_generator['type']}' not correctly imported") from e
+    if "type" not in serialized_chat_generator:
+        raise DeserializationError(f"Missing 'type' in {key} serialization data")
 
-        if not hasattr(chat_generator_class, "from_dict"):
-            raise DeserializationError(f"Class '{chat_generator_class}' does not have a 'from_dict' method")
+    try:
+        chat_generator_class = import_class_by_name(serialized_chat_generator["type"])
+    except ImportError as e:
+        raise DeserializationError(f"Class '{serialized_chat_generator['type']}' not correctly imported") from e
 
-        data[key] = chat_generator_class.from_dict(serialized_chat_generator)
+    if not hasattr(chat_generator_class, "from_dict"):
+        raise DeserializationError(f"Class '{chat_generator_class}' does not have a 'from_dict' method")
+
+    data[key] = chat_generator_class.from_dict(serialized_chat_generator)

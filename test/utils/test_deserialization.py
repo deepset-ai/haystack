@@ -107,8 +107,8 @@ class TestDeserializeDocumentStoreInInitParamsInplace:
 
         def test_missing_chat_generator_key(self):
             data = {"some_key": "some_value"}
-            deserialize_chatgenerator_inplace(data)
-            assert data == {"some_key": "some_value"}
+            with pytest.raises(DeserializationError):
+                deserialize_chatgenerator_inplace(data)
 
         def test_chat_generator_is_not_a_dict(self):
             data = {"chat_generator": "not_a_dict"}
