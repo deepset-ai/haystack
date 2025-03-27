@@ -68,7 +68,8 @@ class _SentenceTransformersEmbeddingBackend:
     ):
         sentence_transformers_import.check()
 
-        self.model = SentenceTransformer(
+        self.model = SentenceTransformer(  # type: ignore[call-overload, misc]
+            # type issues with sentence-transformers 4.0.1 - https://github.com/UKPLab/sentence-transformers/issues/3290
             model_name_or_path=model,
             device=device,
             token=auth_token.resolve_value() if auth_token else None,
