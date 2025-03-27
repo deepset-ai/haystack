@@ -12,7 +12,7 @@ from haystack.core.pipeline.draw import _to_mermaid_image, _to_mermaid_text
 from haystack.testing.sample_components import AddFixedValue, Double
 
 
-@pytest.mark.flaky(reruns=5, reruns_delay=5)
+@pytest.mark.skip(reason="Temporarily skipped due to mermaid.ink issues")
 @pytest.mark.integration
 def test_to_mermaid_image():
     pipe = Pipeline()
