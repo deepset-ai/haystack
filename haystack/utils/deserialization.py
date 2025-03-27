@@ -54,10 +54,17 @@ def deserialize_chatgenerator_inplace(data: Dict[str, Any], key: str = "chat_gen
             return
 
         if not isinstance(serialized_chat_generator, dict):
-            raise TypeError(f"The value of '{key}' is not a dictionary")
+            raise DeserializationError(f"The value of '{key}' is not a dictionary")
 
-        chat_generator_class = import_class_by_name(serialized_chat_generator["type"])
+        if "type" not in serialized_chat_generator:
+            raise DeserializationError(f"Missing 'type' in {key} serialization data")
+
+        try:
+            chat_generator_class = import_class_by_name(serialized_chat_generator["type"])
+        except ImportError as e:
+            raise DeserializationError(f"Class '{serialized_chat_generator['type']}' not correctly imported") from e
+
         if not hasattr(chat_generator_class, "from_dict"):
-            raise TypeError(f"Class '{chat_generator_class}' does not have a 'from_dict' method")
+            raise DeserializationError(f"Class '{chat_generator_class}' does not have a 'from_dict' method")
 
         data[key] = chat_generator_class.from_dict(serialized_chat_generator)
