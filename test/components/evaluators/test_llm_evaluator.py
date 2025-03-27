@@ -376,7 +376,7 @@ class TestLLMEvaluator:
             {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
         ]
 
-    def test_serde(self, monkeypatch):
+    def test_pipeline_serde(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         pipeline = Pipeline()
         component = LLMEvaluator(
