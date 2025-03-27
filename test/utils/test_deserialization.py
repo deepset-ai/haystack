@@ -96,37 +96,38 @@ class TestDeserializeDocumentStoreInInitParamsInplace:
         with pytest.raises(DeserializationError):
             deserialize_document_store_in_init_params_inplace(data)
 
-    class TestDeserializeChatGeneratorInplace:
-        def test_deserialize_chatgenerator_inplace(self):
-            chat_generator = OpenAIChatGenerator()
-            data = {"chat_generator": chat_generator.to_dict()}
 
+class TestDeserializeChatGeneratorInplace:
+    def test_deserialize_chatgenerator_inplace(self):
+        chat_generator = OpenAIChatGenerator()
+        data = {"chat_generator": chat_generator.to_dict()}
+
+        deserialize_chatgenerator_inplace(data)
+        assert isinstance(data["chat_generator"], OpenAIChatGenerator)
+        assert data["chat_generator"].to_dict() == chat_generator.to_dict()
+
+    def test_missing_chat_generator_key(self):
+        data = {"some_key": "some_value"}
+        with pytest.raises(DeserializationError):
             deserialize_chatgenerator_inplace(data)
-            assert isinstance(data["chat_generator"], OpenAIChatGenerator)
-            assert data["chat_generator"].to_dict() == chat_generator.to_dict()
 
-        def test_missing_chat_generator_key(self):
-            data = {"some_key": "some_value"}
-            with pytest.raises(DeserializationError):
-                deserialize_chatgenerator_inplace(data)
+    def test_chat_generator_is_not_a_dict(self):
+        data = {"chat_generator": "not_a_dict"}
+        with pytest.raises(DeserializationError):
+            deserialize_chatgenerator_inplace(data)
 
-        def test_chat_generator_is_not_a_dict(self):
-            data = {"chat_generator": "not_a_dict"}
-            with pytest.raises(DeserializationError):
-                deserialize_chatgenerator_inplace(data)
+    def test_type_key_missing(self):
+        data = {"chat_generator": {"some_key": "some_value"}}
+        with pytest.raises(DeserializationError):
+            deserialize_chatgenerator_inplace(data)
 
-        def test_type_key_missing(self):
-            data = {"chat_generator": {"some_key": "some_value"}}
-            with pytest.raises(DeserializationError):
-                deserialize_chatgenerator_inplace(data)
+    def test_class_not_correctly_imported(self):
+        data = {"chat_generator": {"type": "invalid.module.InvalidClass"}}
+        with pytest.raises(DeserializationError):
+            deserialize_chatgenerator_inplace(data)
 
-        def test_class_not_correctly_imported(self):
-            data = {"chat_generator": {"type": "invalid.module.InvalidClass"}}
-            with pytest.raises(DeserializationError):
-                deserialize_chatgenerator_inplace(data)
-
-        def test_chat_generator_no_from_dict_method(self):
-            chat_generator = ChatGeneratorWithoutFromDict()
-            data = {"chat_generator": chat_generator.to_dict()}
-            with pytest.raises(DeserializationError):
-                deserialize_chatgenerator_inplace(data)
+    def test_chat_generator_no_from_dict_method(self):
+        chat_generator = ChatGeneratorWithoutFromDict()
+        data = {"chat_generator": chat_generator.to_dict()}
+        with pytest.raises(DeserializationError):
+            deserialize_chatgenerator_inplace(data)
