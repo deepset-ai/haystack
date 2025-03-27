@@ -10,6 +10,19 @@ def function_with_docstring(city: str) -> str:
     return f"Weather report for {city}: 20°C, sunny"
 
 
+def function_with_rest_docstring(city: str) -> str:
+    """
+    Get weather report for a city.
+
+    :param city: The city for which to get the weather.
+    :return: The weather report for the city.
+    :raises ValueError: If the city is not found.
+    """
+    if city == "":
+        raise ValueError("City not found.")
+    return f"Weather report for {city}: 20°C, sunny"
+
+
 def test_from_function_description_from_docstring():
     tool = create_tool_from_function(function=function_with_docstring)
 
@@ -17,6 +30,23 @@ def test_from_function_description_from_docstring():
     assert tool.description == "Get weather report for a city."
     assert tool.parameters == {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}
     assert tool.function == function_with_docstring
+
+
+def test_from_function_description_from_rest_docstring():
+    tool = create_tool_from_function(function=function_with_rest_docstring)
+
+    assert tool.name == "function_with_rest_docstring"
+    assert tool.description == (
+        "Get weather report for a city.\n\n"
+        "Returns: The weather report for the city.\n\n"
+        "Raises:\n- ValueError: If the city is not found."
+    )
+    assert tool.parameters == {
+        "type": "object",
+        "properties": {"city": {"type": "string", "description": "The city for which to get the weather."}},
+        "required": ["city"],
+    }
+    assert tool.function == function_with_rest_docstring
 
 
 def test_from_function_with_empty_description():
