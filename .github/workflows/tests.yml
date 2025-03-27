@@ -482,6 +482,8 @@ jobs:
     # This way we'll be able to mark only this test as required
     # and skip it accordingly.
     needs:
+      - check-imports
+      - lint
       - integration-tests-linux
       - integration-tests-macos
       - integration-tests-windows
