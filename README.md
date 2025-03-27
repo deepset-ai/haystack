@@ -1,12 +1,26 @@
 > ⚠️ **End of Life Notice**
-> 
+>
 > Haystack version 1.x reached End of Life (EOL) on March 11, 2025, and is no longer receiving updates or support. The final version released is 1.26.4. We recommend migrating to Haystack version 2.x, which has been stable and available since March 2024. It is distributed via a different package named [haystack-ai](https://pypi.org/project/haystack-ai/).
-> 
+>
+> **Why Upgrade to Haystack 2.x?**
+>
+> - More Flexible & Composable Pipelines
+> We introduced cyclic [pipeline](https://docs.haystack.deepset.ai/docs/pipelines) graphs, allowing for loops, condition-based routing and concurrent execution, which are essential for modern LLM applications.
+>
+> - Customizable & Extensible Components
+> While there are many ready-made components, including an Agent component, creating [custom components](https://docs.haystack.deepset.ai/docs/custom-components) is a core functionality and all you need is to decorate your custom logic with @component.
+>
+> - Improved 70+ Integrations
+> Unified interfaces for document stores and also for chat generators support a broad range of vector databases. Plus, all [integrations](https://haystack.deepset.ai/integrations) are build for robust, build for real-world production use and tested nightly.
+>
+> - Production-Ready Features
+> Enhanced, [structured logging](https://docs.haystack.deepset.ai/docs/logging), [tracing](https://docs.haystack.deepset.ai/docs/tracing), and [Hayhooks](https://docs.haystack.deepset.ai/docs/hayhooks) make it easy to deploy and serve pipelines as RESTful APIs.
+>
 > **Migration Resources:**
 > - [Migration Guide](https://docs.haystack.deepset.ai/docs/migration) - Learn how to migrate your applications to Haystack 2.x
 > - [Historical Documentation]([https://core-engineering.s3.eu-central-1.amazonaws.com/public/docs/v1.26.zip](https://core-engineering.s3.eu-central-1.amazonaws.com/public/docs/haystack-v1-docs.zip)) - Download the complete documentation for Haystack 1.x (versions 1.0 to 1.26)
 > - [GitHub History]([https://github.com/deepset-ai/haystack-tutorials](https://github.com/deepset-ai/haystack-tutorials/tree/5917718cbfbb61410aab4121ee6fe754040a5dc7)) - Access old tutorials and examples in the repository history
-> 
+>
 > **Important Migration Note:**
 > The package name has changed from `farm-haystack` to `haystack-ai`. These packages cannot coexist in the same Python environment. To migrate:
 > ```bash
