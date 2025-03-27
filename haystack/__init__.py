@@ -7,6 +7,8 @@
 # - they make this module more complicated and hard to maintain
 # - they offer minimal performance gains in this case.
 
+import time  # trigger lint error
+
 import haystack.logging
 import haystack.tracing
 from haystack.core.component import component
