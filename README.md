@@ -4,8 +4,7 @@
 >
 > **Why Upgrade to Haystack 2.x?**
 >
-> - More Flexible & Composable Pipelines
-> We introduced cyclic [pipeline](https://docs.haystack.deepset.ai/docs/pipelines) graphs, allowing for loops, condition-based routing and concurrent execution, which are essential for modern LLM applications.
+> - More Flexible & Composable Pipelines: We introduced cyclic [pipeline](https://docs.haystack.deepset.ai/docs/pipelines) graphs, allowing for loops, condition-based routing and concurrent execution, which are essential for modern LLM applications.
 > - Customizable & Extensible Components: While there are many ready-made components, including an Agent component, creating [custom components](https://docs.haystack.deepset.ai/docs/custom-components) is a core functionality and all you need is to decorate your custom logic with @component.
 > - Improved 70+ Integrations: Unified interfaces for document stores and also for chat generators support a broad range of vector databases. Plus, all [integrations](https://haystack.deepset.ai/integrations) are build for robust, build for real-world production use and tested nightly.
 > - Production-Ready Features: Enhanced, [structured logging](https://docs.haystack.deepset.ai/docs/logging), [tracing](https://docs.haystack.deepset.ai/docs/tracing), and [Hayhooks](https://docs.haystack.deepset.ai/docs/hayhooks) make it easy to deploy and serve pipelines as RESTful APIs.
