@@ -35,11 +35,11 @@ jobs:
           # keep the list in sync with the paths defined in the `tests.yml` workflow and above in this file
           filters: |
             code_changes:
-              - haystack/**/*.py
-              - haystack/core/pipeline/predefined/*
-              - test/**/*.py
-              - pyproject.toml
-              - .github/utils/check_imports.py
+              - "haystack/**/*.py"
+              - "haystack/core/pipeline/predefined/*"
+              - "test/**/*.py"
+              - "pyproject.toml"
+              - ".github/utils/check_imports.py"
 
   trigger-catch-all:
     name: Tests completed
