@@ -8,11 +8,9 @@ from typing import Any, Dict, List, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.core.component.sockets import Sockets
-from haystack.dataclasses import ChatMessage, ToolCall
-from haystack.dataclasses.state import State
-from haystack.tools import Tool, deserialize_tools_inplace
+from haystack.dataclasses import ChatMessage, State, ToolCall
 from haystack.tools.component_tool import ComponentTool
-from haystack.tools.errors import ToolInvocationError
+from haystack.tools.tool import Tool, ToolInvocationError, _check_duplicate_tool_names, deserialize_tools_inplace
 
 logger = logging.getLogger(__name__)
 
@@ -131,6 +129,7 @@ class ToolInvoker:
         """
         if not tools:
             raise ValueError("ToolInvoker requires at least one tool.")
+        _check_duplicate_tool_names(tools)
         tool_names = [tool.name for tool in tools]
         duplicates = {name for name in tool_names if tool_names.count(name) > 1}
         if duplicates:
