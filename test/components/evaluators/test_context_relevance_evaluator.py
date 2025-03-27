@@ -145,6 +145,24 @@ class TestContextRelevanceEvaluator:
         assert component._chat_generator.generation_kwargs == {"response_format": {"type": "json_object"}, "seed": 42}
         assert component.examples == [{"inputs": {"questions": "What is football?"}, "outputs": {"score": 0}}]
 
+    def test_from_dict(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        chat_generator = OpenAIChatGenerator(generation_kwargs={"response_format": {"type": "json_object"}, "seed": 42})
+
+        data = {
+            "type": "haystack.components.evaluators.context_relevance.ContextRelevanceEvaluator",
+            "init_parameters": {
+                "chat_generator": chat_generator.to_dict(),
+                "examples": [{"inputs": {"questions": "What is football?"}, "outputs": {"score": 0}}],
+            },
+        }
+
+        component = ContextRelevanceEvaluator.from_dict(data)
+        assert isinstance(component._chat_generator, OpenAIChatGenerator)
+        assert component._chat_generator.client.api_key == "test-api-key"
+        assert component._chat_generator.generation_kwargs == {"response_format": {"type": "json_object"}, "seed": 42}
+        assert component.examples == [{"inputs": {"questions": "What is football?"}, "outputs": {"score": 0}}]
+
     def test_pipeline_serde(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
 
