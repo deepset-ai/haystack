@@ -246,7 +246,7 @@ jobs:
         if: steps.files.outputs.any_changed == 'true'
         run: |
           mkdir .mypy_cache
-          hatch run test:types ${{ steps.files.outputs.all_changed_files }}
+          hatch run test:types
 
       - name: Pylint
         if: steps.files.outputs.any_changed == 'true'
@@ -482,6 +482,8 @@ jobs:
     # This way we'll be able to mark only this test as required
     # and skip it accordingly.
     needs:
+      - check-imports
+      - lint
       - integration-tests-linux
       - integration-tests-macos
       - integration-tests-windows
