@@ -56,7 +56,7 @@ class TestDALLEImageGenerator:
 
     def test_init_max_retries_0(self, monkeypatch):
         """
-        Test that the max_retries parameter is taken into account also if it is 0.
+        Test that the max_retries parameter is taken into account even if it is 0.
         """
         component = DALLEImageGenerator(max_retries=0)
         assert component.max_retries == 0
