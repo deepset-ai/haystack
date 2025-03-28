@@ -69,7 +69,7 @@ class DALLEImageGenerator:
         self.api_base_url = api_base_url
         self.organization = organization
 
-        self.timeout = timeout or float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
+        self.timeout = timeout if timeout is not None else float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
         self.max_retries = max_retries if max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
 
         self.client: Optional[OpenAI] = None
