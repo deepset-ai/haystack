@@ -205,5 +205,5 @@ class TestSuperComponent:
         custom_super_component = CustomSuperComponent(rag_pipeline)
         custom_serialized = custom_super_component.to_dict()
 
-        assert custom_serialized["type"] == "test.core.super_component.test_super_component.CustomSuperComponent"
+        assert custom_serialized["type"] == "test_super_component.CustomSuperComponent"
         assert custom_super_component._to_super_component_dict() == serialized

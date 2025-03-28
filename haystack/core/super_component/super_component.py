@@ -4,11 +4,11 @@
 
 from typing import Any, Dict, List, Optional, Tuple
 
-from haystack_experimental.core.super_component.utils import _delegate_default, _is_compatible
-
-from haystack import Pipeline, component
+from haystack.core.component import component
+from haystack.core.pipeline import Pipeline
 from haystack.core.pipeline.utils import parse_connect_string
 from haystack.core.serialization import default_from_dict, default_to_dict, generate_qualified_class_name
+from haystack.core.super_component.utils import _delegate_default, _is_compatible
 
 
 class InvalidMappingError(Exception):
