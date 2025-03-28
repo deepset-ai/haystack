@@ -43,6 +43,7 @@ class TestAzureOpenAITextEmbedder:
                 "suffix": "",
                 "default_headers": {},
                 "azure_ad_token_provider": None,
+                "custom_http_client_kargs": None,
             },
         }
 
@@ -59,6 +60,7 @@ class TestAzureOpenAITextEmbedder:
             suffix=" suffix",
             default_headers={"x-custom-header": "custom-value"},
             azure_ad_token_provider=default_azure_ad_token_provider,
+            custom_http_client_kargs={"proxy": "http://example.com:3128", "verify": False},
         )
         data = component.to_dict()
         assert data == {
@@ -77,6 +79,7 @@ class TestAzureOpenAITextEmbedder:
                 "suffix": " suffix",
                 "default_headers": {"x-custom-header": "custom-value"},
                 "azure_ad_token_provider": "haystack.utils.azure.default_azure_ad_token_provider",
+                "custom_http_client_kargs": {"proxy": "http://example.com:3128", "verify": False},
             },
         }
 
@@ -160,3 +163,16 @@ class TestAzureOpenAITextEmbedder:
         assert len(result["embedding"]) == 1536
         assert all(isinstance(x, float) for x in result["embedding"])
         assert result["meta"] == {"model": "text-embedding-ada-002", "usage": {"prompt_tokens": 6, "total_tokens": 6}}
+
+    def test_from_dict_initializes_http_client(self):
+        # Define custom client arguments, e.g., proxy and SSL verification options.
+        custom_client_kargs = {"proxy": "http://example.com:3128", "verify": False}
+        embedder = AzureOpenAITextEmbedder(
+            azure_endpoint="https://dummy-endpoint.azure.com",
+            api_version="2023-05-15",
+            azure_deployment="dummy-deployment",
+            custom_http_client_kargs=custom_client_kargs,
+        )
+        data = embedder.to_dict()
+        new_embedder = AzureOpenAITextEmbedder.from_dict(data)
+        assert new_embedder.custom_http_client_kargs == custom_client_kargs
