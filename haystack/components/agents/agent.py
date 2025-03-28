@@ -67,7 +67,7 @@ class Agent:
         """
         Initialize the agent component.
 
-        :param chat_generator: An instance of the chat generator that your agent should use.
+        :param chat_generator: An instance of the chat generator that your agent should use. It must support tools.
         :param tools: List of Tool objects available to the agent
         :param system_prompt: System prompt for the agent.
         :param exit_condition: Either "text" if the agent should return when it generates a message without tool calls

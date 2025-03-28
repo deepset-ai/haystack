@@ -92,8 +92,8 @@ def openai_mock_chat_completion_chunk():
 
 
 class TestAgent:
-    def test_serde(self, weather_tool, component_tool):
-        os.environ["FAKE_OPENAI_KEY"] = "fake-key"
+    def test_serde(self, weather_tool, component_tool, monkeypatch):
+        monkeypatch.setenv("FAKE_OPENAI_KEY", "fake-key")
         generator = OpenAIChatGenerator(api_key=Secret.from_env_var("FAKE_OPENAI_KEY"))
         agent = Agent(chat_generator=generator, tools=[weather_tool, component_tool])
 
@@ -120,8 +120,8 @@ class TestAgent:
         assert deserialized_agent.tools[0].function is weather_function
         assert isinstance(deserialized_agent.tools[1]._component, PromptBuilder)
 
-    def test_serde_with_streaming_callback(self, weather_tool, component_tool):
-        os.environ["FAKE_OPENAI_KEY"] = "fake-key"
+    def test_serde_with_streaming_callback(self, weather_tool, component_tool, monkeypatch):
+        monkeypatch.setenv("FAKE_OPENAI_KEY", "fake-key")
         generator = OpenAIChatGenerator(api_key=Secret.from_env_var("FAKE_OPENAI_KEY"))
         agent = Agent(
             chat_generator=generator,

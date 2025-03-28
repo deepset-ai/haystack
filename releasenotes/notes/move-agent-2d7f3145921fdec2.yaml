@@ -1,7 +1,6 @@
 ---
 highlights: >
-    The [`Agent`](https://github.com/deepset-ai/haystack-experimental/blob/main/haystack_experimental/components/agents/agent.py) component enables tool-calling functionality with provider-agnostic chat model support and can be used as a standalone component or within a pipeline.
-    See the `Agent` in action: [Build a GitHub Issue Resolver Agent](https://haystack.deepset.ai/cookbook/github_issue_resolver_agent)
+    The Agent component enables tool-calling functionality with provider-agnostic chat model support and can be used as a standalone component or within a pipeline.
 
     ```python
     from haystack.components.agents import Agent
