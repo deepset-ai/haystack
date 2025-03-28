@@ -2,7 +2,7 @@ loaders:
   - type: haystack_pydoc_tools.loaders.CustomPythonLoader
     search_path: [../../../haystack/dataclasses]
     modules:
-      ["answer", "byte_stream", "chat_message", "document", "streaming_chunk", "sparse_embedding",]
+      ["answer", "byte_stream", "chat_message", "document", "sparse_embedding", "state", "streaming_chunk"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
