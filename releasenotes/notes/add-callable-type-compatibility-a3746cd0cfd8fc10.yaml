@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Add compatibility for Callable types.

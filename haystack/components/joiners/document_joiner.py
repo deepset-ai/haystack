@@ -140,8 +140,6 @@ class DocumentJoiner:
             A dictionary with the following keys:
             - `documents`: Merged list of Documents
         """
-        output_documents = []
-
         documents = list(documents)
         output_documents = self.join_mode_function(documents)
 
