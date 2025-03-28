@@ -120,7 +120,7 @@ class SASEvaluator:
             return
 
         token = self._token.resolve_value() if self._token else None
-        config = AutoConfig.from_pretrained(self._model, token=token)
+        config = AutoConfig.from_pretrained(self._model, use_auth_token=token)
         cross_encoder_used = False
         if config.architectures:
             cross_encoder_used = any(arch.endswith("ForSequenceClassification") for arch in config.architectures)
@@ -128,9 +128,14 @@ class SASEvaluator:
         # Based on the Model string we can load either Bi-Encoders or Cross Encoders.
         # Similarity computation changes for both approaches
         if cross_encoder_used:
-            self._similarity_model = CrossEncoder(self._model, device=device, token=token)
+            self._similarity_model = CrossEncoder(
+                self._model,
+                device=device,
+                tokenizer_args={"use_auth_token": token},
+                automodel_args={"use_auth_token": token},
+            )
         else:
-            self._similarity_model = SentenceTransformer(self._model, device=device, token=token)
+            self._similarity_model = SentenceTransformer(self._model, device=device, use_auth_token=token)
 
     @component.output_types(score=float, individual_scores=List[float])
     def run(self, ground_truth_answers: List[str], predicted_answers: List[str]) -> Dict[str, Any]:
