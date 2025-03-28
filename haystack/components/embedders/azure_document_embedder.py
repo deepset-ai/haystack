@@ -128,7 +128,7 @@ class AzureOpenAIDocumentEmbedder:
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
         self.timeout = timeout or float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
-        self.max_retries = max_retries or int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
+        self.max_retries = max_retries if max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
         self.default_headers = default_headers or {}
         self.azure_ad_token_provider = azure_ad_token_provider
 

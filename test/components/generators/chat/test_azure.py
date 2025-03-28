@@ -63,6 +63,7 @@ class TestAzureOpenAIChatGenerator:
         assert component.max_retries == 5
 
     def test_init_with_0_max_retries(self, tools):
+        """Tests that the max_retries init param is set correctly if equal 0"""
         component = AzureOpenAIChatGenerator(
             api_key=Secret.from_token("test-api-key"),
             azure_endpoint="some-non-existing-endpoint",
