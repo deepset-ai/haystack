@@ -11,7 +11,7 @@ from threading import Lock
 from types import ModuleType
 from typing import Any, get_args
 
-from haystack import DeserializationError
+from haystack.core.errors import DeserializationError
 
 _import_lock = Lock()
 
