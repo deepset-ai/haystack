@@ -290,7 +290,7 @@ class TestSentenceTransformersDiversityRanker:
             mock_model_class.assert_called_once_with(
                 model_name_or_path="mock_model_name",
                 device=ComponentDevice.resolve_device(None).to_torch_str(),
-                use_auth_token=None,
+                token=None,
                 model_kwargs=None,
                 tokenizer_kwargs=None,
                 config_kwargs=None,
@@ -740,7 +740,7 @@ class TestSentenceTransformersDiversityRanker:
         mocked_sentence_transformer.assert_called_once_with(
             model_name_or_path="sentence-transformers/all-MiniLM-L6-v2",
             device="cpu",
-            use_auth_token=None,
+            token=None,
             model_kwargs={"file_name": "onnx/model.onnx"},
             tokenizer_kwargs=None,
             config_kwargs=None,
@@ -761,7 +761,7 @@ class TestSentenceTransformersDiversityRanker:
         mocked_sentence_transformer.assert_called_once_with(
             model_name_or_path="sentence-transformers/all-MiniLM-L6-v2",
             device="cpu",
-            use_auth_token=None,
+            token=None,
             model_kwargs={"file_name": "openvino/openvino_model.xml"},
             tokenizer_kwargs=None,
             config_kwargs=None,
@@ -782,7 +782,7 @@ class TestSentenceTransformersDiversityRanker:
         mocked_sentence_transformer.assert_called_once_with(
             model_name_or_path="sentence-transformers/all-MiniLM-L6-v2",
             device="cuda:0",
-            use_auth_token=None,
+            token=None,
             model_kwargs=model_kwargs,
             tokenizer_kwargs=None,
             config_kwargs=None,
