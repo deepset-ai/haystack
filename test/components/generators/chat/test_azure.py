@@ -60,6 +60,28 @@ class TestAzureOpenAIChatGenerator:
         assert component.tools == tools
         assert component.tools_strict
         assert component.azure_ad_token_provider is not None
+        assert component.max_retries == 5
+
+    def test_init_with_0_max_retries(self, tools):
+        """Tests that the max_retries init param is set correctly if equal 0"""
+        component = AzureOpenAIChatGenerator(
+            api_key=Secret.from_token("test-api-key"),
+            azure_endpoint="some-non-existing-endpoint",
+            streaming_callback=print_streaming_chunk,
+            generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
+            tools=tools,
+            tools_strict=True,
+            azure_ad_token_provider=default_azure_ad_token_provider,
+            max_retries=0,
+        )
+        assert component.client.api_key == "test-api-key"
+        assert component.azure_deployment == "gpt-4o-mini"
+        assert component.streaming_callback is print_streaming_chunk
+        assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
+        assert component.tools == tools
+        assert component.tools_strict
+        assert component.azure_ad_token_provider is not None
+        assert component.max_retries == 0
 
     def test_to_dict_default(self, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
