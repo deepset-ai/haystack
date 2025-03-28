@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Introduce new State dataclass with a customizable schema for managing Agent state.
+    Enhance error logging of Tool and extend the ToolInvoker component to work with newly introduced State.
+fixes:
+  - |
+    Fix an issue that prevented Jinja2-based ComponentTools from being passed into pipelines at runtime.

@@ -2,32 +2,44 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import inspect
 import json
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Union
 
-from haystack import component, default_from_dict, default_to_dict
-from haystack.dataclasses.chat_message import ChatMessage, ToolCall
+from haystack import component, default_from_dict, default_to_dict, logging
+from haystack.core.component.sockets import Sockets
+from haystack.dataclasses import ChatMessage, State, ToolCall
+from haystack.tools.component_tool import ComponentTool
 from haystack.tools.tool import Tool, ToolInvocationError, _check_duplicate_tool_names, deserialize_tools_inplace
 
-_TOOL_INVOCATION_FAILURE = "Tool invocation failed with error: {error}."
-_TOOL_NOT_FOUND = "Tool {tool_name} not found in the list of tools. Available tools are: {available_tools}."
-_TOOL_RESULT_CONVERSION_FAILURE = (
-    "Failed to convert tool result to string using '{conversion_function}'. Error: {error}."
-)
+logger = logging.getLogger(__name__)
 
 
-class ToolNotFoundException(Exception):
-    """
-    Exception raised when a tool is not found in the list of available tools.
-    """
+class ToolInvokerError(Exception):
+    """Base exception class for ToolInvoker errors."""
 
-    pass
+    def __init__(self, message: str):
+        super().__init__(message)
 
 
-class StringConversionError(Exception):
-    """
-    Exception raised when the conversion of a tool result to a string fails.
-    """
+class ToolNotFoundException(ToolInvokerError):
+    """Exception raised when a tool is not found in the list of available tools."""
+
+    def __init__(self, tool_name: str, available_tools: List[str]):
+        message = f"Tool '{tool_name}' not found. Available tools: {', '.join(available_tools)}"
+        super().__init__(message)
+
+
+class StringConversionError(ToolInvokerError):
+    """Exception raised when the conversion of a tool result to a string fails."""
+
+    def __init__(self, tool_name: str, conversion_function: str, error: Exception):
+        message = f"Failed to convert tool result from tool {tool_name} using '{conversion_function}'. Error: {error}"
+        super().__init__(message)
+
+
+class ToolOutputMergeError(ToolInvokerError):
+    """Exception raised when merging tool outputs into state fails."""
 
     pass
 
@@ -37,6 +49,7 @@ class ToolInvoker:
     """
     Invokes tools based on prepared tool calls and returns the results as a list of ChatMessage objects.
 
+    Also handles reading/writing from a shared `State`.
     At initialization, the ToolInvoker component is provided with a list of available tools.
     At runtime, the component processes a list of ChatMessage object containing tool calls
     and invokes the corresponding tools.
@@ -111,19 +124,35 @@ class ToolInvoker:
         :param convert_result_to_json_string:
             If True, the tool invocation result will be converted to a string using `json.dumps`.
             If False, the tool invocation result will be converted to a string using `str`.
-
         :raises ValueError:
             If no tools are provided or if duplicate tool names are found.
         """
-
         if not tools:
-            raise ValueError("ToolInvoker requires at least one tool to be provided.")
+            raise ValueError("ToolInvoker requires at least one tool.")
         _check_duplicate_tool_names(tools)
+        tool_names = [tool.name for tool in tools]
+        duplicates = {name for name in tool_names if tool_names.count(name) > 1}
+        if duplicates:
+            raise ValueError(f"Duplicate tool names found: {duplicates}")
 
         self.tools = tools
-        self._tools_with_names = dict(zip([tool.name for tool in tools], tools))
+        self._tools_with_names = dict(zip(tool_names, tools))
         self.raise_on_failure = raise_on_failure
         self.convert_result_to_json_string = convert_result_to_json_string
+
+    def _handle_error(self, error: Exception) -> str:
+        """
+        Handles errors by logging and either raising or returning a fallback error message.
+
+        :param error: The exception instance.
+        :returns: The fallback error message when `raise_on_failure` is False.
+        :raises: The provided error if `raise_on_failure` is True.
+        """
+        logger.error("{error_exception}", error_exception=error)
+        if self.raise_on_failure:
+            # We re-raise the original error maintaining the exception chain
+            raise error
+        return str(error)
 
     def _prepare_tool_result_message(self, result: Any, tool_call: ToolCall) -> ChatMessage:
         """
@@ -133,40 +162,141 @@ class ToolInvoker:
             The tool result.
         :returns:
             A ChatMessage object containing the tool result as a string.
-
         :raises
             StringConversionError: If the conversion of the tool result to a string fails
             and `raise_on_failure` is True.
         """
         error = False
-
-        if self.convert_result_to_json_string:
-            try:
+        try:
+            if self.convert_result_to_json_string:
                 # We disable ensure_ascii so special chars like emojis are not converted
                 tool_result_str = json.dumps(result, ensure_ascii=False)
-            except Exception as e:
-                if self.raise_on_failure:
-                    raise StringConversionError("Failed to convert tool result to string using `json.dumps`") from e
-                tool_result_str = _TOOL_RESULT_CONVERSION_FAILURE.format(error=e, conversion_function="json.dumps")
-                error = True
-            return ChatMessage.from_tool(tool_result=tool_result_str, error=error, origin=tool_call)
-
-        try:
-            tool_result_str = str(result)
+            else:
+                tool_result_str = str(result)
         except Exception as e:
-            if self.raise_on_failure:
-                raise StringConversionError("Failed to convert tool result to string using `str`") from e
-            tool_result_str = _TOOL_RESULT_CONVERSION_FAILURE.format(error=e, conversion_function="str")
-            error = True
+            conversion_method = "json.dumps" if self.convert_result_to_json_string else "str"
+            try:
+                tool_result_str = self._handle_error(StringConversionError(tool_call.tool_name, conversion_method, e))
+                error = True
+            except StringConversionError as conversion_error:
+                # If _handle_error re-raises, this properly preserves the chain
+                raise conversion_error from e
+
         return ChatMessage.from_tool(tool_result=tool_result_str, error=error, origin=tool_call)
 
-    @component.output_types(tool_messages=List[ChatMessage])
-    def run(self, messages: List[ChatMessage]) -> Dict[str, Any]:
+    @staticmethod
+    def _inject_state_args(tool: Tool, llm_args: Dict[str, Any], state: State) -> Dict[str, Any]:
+        """
+        Combine LLM-provided arguments (llm_args) with state-based arguments.
+
+        Tool arguments take precedence in the following order:
+          - LLM overrides state if the same param is present in both
+          - local tool.inputs mappings (if any)
+          - function signature name matching
+        """
+        final_args = dict(llm_args)  # start with LLM-provided
+
+        # ComponentTool wraps the function with a function that accepts kwargs, so we need to look at input sockets
+        # to find out which parameters the tool accepts.
+        if isinstance(tool, ComponentTool):
+            # mypy doesn't know that ComponentMeta always adds __haystack_input__ to Component
+            assert hasattr(tool._component, "__haystack_input__") and isinstance(
+                tool._component.__haystack_input__, Sockets
+            )
+            func_params = set(tool._component.__haystack_input__._sockets_dict.keys())
+        else:
+            func_params = set(inspect.signature(tool.function).parameters.keys())
+
+        # Determine the source of parameter mappings (explicit tool inputs or direct function parameters)
+        # Typically, a "Tool" might have .inputs_from_state = {"state_key": "tool_param_name"}
+        if hasattr(tool, "inputs_from_state") and isinstance(tool.inputs_from_state, dict):
+            param_mappings = tool.inputs_from_state
+        else:
+            param_mappings = {name: name for name in func_params}
+
+        # Populate final_args from state if not provided by LLM
+        for state_key, param_name in param_mappings.items():
+            if param_name not in final_args and state.has(state_key):
+                final_args[param_name] = state.get(state_key)
+
+        return final_args
+
+    def _merge_tool_outputs(self, tool: Tool, result: Any, state: State) -> Any:
+        """
+        Merges the tool result into the global state and determines the response message.
+
+        This method processes the output of a tool execution and integrates it into the global state.
+        It also determines what message, if any, should be returned for further processing in a conversation.
+
+        Processing Steps:
+        1. If `result` is not a dictionary, nothing is stored into state and the full `result` is returned.
+        2. If the `tool` does not define an `outputs_to_state` mapping nothing is stored into state.
+           The return value in this case is simply the full `result` dictionary.
+        3. If the tool defines an `outputs_to_state` mapping (a dictionary describing how the tool's output should be
+           processed), the method delegates to `_handle_tool_outputs` to process the output accordingly.
+           This allows certain fields in `result` to be mapped explicitly to state fields or formatted using custom
+           handlers.
+
+        :param tool: Tool instance containing optional `outputs_to_state` mapping to guide result processing.
+        :param result: The output from tool execution. Can be a dictionary, or any other type.
+        :param state: The global State object to which results should be merged.
+        :returns: Three possible values:
+            - A string message for conversation
+            - The merged result dictionary
+            - Or the raw result if not a dictionary
+        """
+        # If result is not a dictionary, return it as the output message.
+        if not isinstance(result, dict):
+            return result
+
+        # If there is no specific `outputs_to_state` mapping, we just return the full result
+        if not hasattr(tool, "outputs_to_state") or not isinstance(tool.outputs_to_state, dict):
+            return result
+
+        # Handle tool outputs with specific mapping for message and state updates
+        return self._handle_tool_outputs(tool.outputs_to_state, result, state)
+
+    @staticmethod
+    def _handle_tool_outputs(outputs_to_state: dict, result: dict, state: State) -> Union[dict, str]:
+        """
+        Handles the `outputs_to_state` mapping from the tool and updates the state accordingly.
+
+        :param outputs_to_state: Mapping of outputs from the tool.
+        :param result: Result of the tool execution.
+        :param state: Global state to merge results into.
+        :returns: Final message for LLM or the entire result.
+        """
+        message_content = None
+
+        for state_key, config in outputs_to_state.items():
+            # Get the source key from the output config, otherwise use the entire result
+            source_key = config.get("source", None)
+            output_value = result if source_key is None else result.get(source_key)
+
+            # Get the handler function, if any
+            handler = config.get("handler", None)
+
+            if state_key == "message":
+                # Handle the message output separately
+                if handler is not None:
+                    message_content = handler(output_value)
+                else:
+                    message_content = str(output_value)
+            else:
+                # Merge other outputs into the state
+                state.set(state_key, output_value, handler_override=handler)
+
+        # If no "message" key was found, return the result or message content
+        return message_content if message_content is not None else result
+
+    @component.output_types(tool_messages=List[ChatMessage], state=State)
+    def run(self, messages: List[ChatMessage], state: Optional[State] = None) -> Dict[str, Any]:
         """
         Processes ChatMessage objects containing tool calls and invokes the corresponding tools, if available.
 
         :param messages:
             A list of ChatMessage objects.
+        :param state: The runtime state that should be used by the tools.
         :returns:
             A dictionary with the key `tool_messages` containing a list of ChatMessage objects with tool role.
             Each ChatMessage objects wraps the result of a tool invocation.
@@ -177,39 +307,61 @@ class ToolInvoker:
             If the tool invocation fails and `raise_on_failure` is True.
         :raises StringConversionError:
             If the conversion of the tool result to a string fails and `raise_on_failure` is True.
+        :raises ToolOutputMergeError:
+            If merging tool outputs into state fails and `raise_on_failure` is True.
         """
+        if state is None:
+            state = State(schema={})
+
+        # Only keep messages with tool calls
+        messages_with_tool_calls = [message for message in messages if message.tool_calls]
+
         tool_messages = []
-
-        for message in messages:
-            tool_calls = message.tool_calls
-            if not tool_calls:
-                continue
-
-            for tool_call in tool_calls:
+        for message in messages_with_tool_calls:
+            for tool_call in message.tool_calls:
                 tool_name = tool_call.tool_name
-                tool_arguments = tool_call.arguments
 
-                if not tool_name in self._tools_with_names:
-                    msg = _TOOL_NOT_FOUND.format(tool_name=tool_name, available_tools=self._tools_with_names.keys())
-                    if self.raise_on_failure:
-                        raise ToolNotFoundException(msg)
-                    tool_messages.append(ChatMessage.from_tool(tool_result=msg, origin=tool_call, error=True))
+                # Check if the tool is available, otherwise return an error message
+                if tool_name not in self._tools_with_names:
+                    error_message = self._handle_error(
+                        ToolNotFoundException(tool_name, list(self._tools_with_names.keys()))
+                    )
+                    tool_messages.append(ChatMessage.from_tool(tool_result=error_message, origin=tool_call, error=True))
                     continue
 
                 tool_to_invoke = self._tools_with_names[tool_name]
+
+                # 1) Combine user + state inputs
+                llm_args = tool_call.arguments.copy()
+                final_args = self._inject_state_args(tool_to_invoke, llm_args, state)
+
+                # 2) Invoke the tool
                 try:
-                    tool_result = tool_to_invoke.invoke(**tool_arguments)
+                    tool_result = tool_to_invoke.invoke(**final_args)
                 except ToolInvocationError as e:
-                    if self.raise_on_failure:
-                        raise e
-                    msg = _TOOL_INVOCATION_FAILURE.format(error=e)
-                    tool_messages.append(ChatMessage.from_tool(tool_result=msg, origin=tool_call, error=True))
+                    error_message = self._handle_error(e)
+                    tool_messages.append(ChatMessage.from_tool(tool_result=error_message, origin=tool_call, error=True))
                     continue
 
-                tool_message = self._prepare_tool_result_message(tool_result, tool_call)
-                tool_messages.append(tool_message)
+                # 3) Merge outputs into state & create a single ChatMessage for the LLM
+                try:
+                    tool_text = self._merge_tool_outputs(tool_to_invoke, tool_result, state)
+                except Exception as e:
+                    try:
+                        error_message = self._handle_error(
+                            ToolOutputMergeError(f"Failed to merge tool outputs from tool {tool_name} into State: {e}")
+                        )
+                        tool_messages.append(
+                            ChatMessage.from_tool(tool_result=error_message, origin=tool_call, error=True)
+                        )
+                        continue
+                    except ToolOutputMergeError as propagated_e:
+                        # Re-raise with proper error chain
+                        raise propagated_e from e
 
-        return {"tool_messages": tool_messages}
+                tool_messages.append(self._prepare_tool_result_message(result=tool_text, tool_call=tool_call))
+
+        return {"tool_messages": tool_messages, "state": state}
 
     def to_dict(self) -> Dict[str, Any]:
         """
