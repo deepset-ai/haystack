@@ -12,14 +12,14 @@ from haystack import Pipeline
 from haystack.components.evaluators import ContextRelevanceEvaluator
 from haystack.utils.auth import Secret
 from haystack.dataclasses.chat_message import ChatMessage
+from haystack.components.generators.chat.openai import OpenAIChatGenerator
 
 
 class TestContextRelevanceEvaluator:
     def test_init_default(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = ContextRelevanceEvaluator()
-        assert component.api == "openai"
-        assert component._chat_generator.client.api_key == "test-api-key"
+
         assert component.instructions == (
             "Please extract only sentences from the provided context which are absolutely relevant and "
             "required to answer the following question. If no relevant sentences are found, or if you "
@@ -52,6 +52,10 @@ class TestContextRelevanceEvaluator:
             },
         ]
 
+        assert isinstance(component._chat_generator, OpenAIChatGenerator)
+        assert component._chat_generator.client.api_key == "test-api-key"
+        assert component._chat_generator.generation_kwargs == {"response_format": {"type": "json_object"}, "seed": 42}
+
     def test_init_fail_wo_openai_api_key(self, monkeypatch):
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         with pytest.raises(ValueError, match="None of the .* environment variables are set"):
@@ -66,15 +70,46 @@ class TestContextRelevanceEvaluator:
                 {"inputs": {"questions": "Football is the most popular sport."}, "outputs": {"custom_score": 0}},
             ],
         )
-        assert component._chat_generator.client.api_key == "test-api-key"
-        assert component.api == "openai"
+
         assert component.examples == [
             {"inputs": {"questions": "Damn, this is straight outta hell!!!"}, "outputs": {"custom_score": 1}},
             {"inputs": {"questions": "Football is the most popular sport."}, "outputs": {"custom_score": 0}},
         ]
 
+        assert isinstance(component._chat_generator, OpenAIChatGenerator)
+        assert component._chat_generator.client.api_key == "test-api-key"
+        assert component._chat_generator.generation_kwargs == {"response_format": {"type": "json_object"}, "seed": 42}
+
+    def test_init_with_chat_generator(self):
+        chat_generator = OpenAIChatGenerator(generation_kwargs={"response_format": {"type": "json_object"}, "seed": 42})
+        component = ContextRelevanceEvaluator(chat_generator=chat_generator)
+
+        assert component._chat_generator is chat_generator
+
+    def test_init_with_api_and_chat_generator(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        chat_generator = OpenAIChatGenerator(generation_kwargs={"key_from_chat_generator": "value_from_chat_generator"})
+
+        component = ContextRelevanceEvaluator(
+            api="openai",
+            api_params={"generation_kwargs": {"key_from_api_params": "value_from_api_params"}},
+            chat_generator=chat_generator,
+        )
+
+        assert component._chat_generator is chat_generator
+        assert component._chat_generator.generation_kwargs == {"key_from_chat_generator": "value_from_chat_generator"}
+
+    def test_init_fail_with_api_not_openai(self):
+        with pytest.raises(ValueError):
+            ContextRelevanceEvaluator(api="unsupported-api")
+
     def test_to_dict_with_parameters(self, monkeypatch):
         monkeypatch.setenv("ENV_VAR", "test-api-key")
+        chat_generator = OpenAIChatGenerator(
+            generation_kwargs={"response_format": {"type": "json_object"}, "seed": 42},
+            api_key=Secret.from_env_var("ENV_VAR"),
+        )
+
         component = ContextRelevanceEvaluator(
             api="openai",
             api_key=Secret.from_env_var("ENV_VAR"),
@@ -86,16 +121,14 @@ class TestContextRelevanceEvaluator:
         assert data == {
             "type": "haystack.components.evaluators.context_relevance.ContextRelevanceEvaluator",
             "init_parameters": {
-                "api_key": {"env_vars": ["ENV_VAR"], "strict": True, "type": "env_var"},
-                "api": "openai",
-                "api_params": {"generation_kwargs": {"response_format": {"type": "json_object"}, "seed": 42}},
+                "chat_generator": chat_generator.to_dict(),
                 "examples": [{"inputs": {"questions": "What is football?"}, "outputs": {"score": 0}}],
                 "progress_bar": False,
                 "raise_on_failure": False,
             },
         }
 
-    def test_from_dict(self, monkeypatch):
+    def test_from_dict_legacy(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
 
         data = {
@@ -107,13 +140,39 @@ class TestContextRelevanceEvaluator:
             },
         }
         component = ContextRelevanceEvaluator.from_dict(data)
-        assert component.api == "openai"
+        assert isinstance(component._chat_generator, OpenAIChatGenerator)
         assert component._chat_generator.client.api_key == "test-api-key"
+        assert component._chat_generator.generation_kwargs == {"response_format": {"type": "json_object"}, "seed": 42}
         assert component.examples == [{"inputs": {"questions": "What is football?"}, "outputs": {"score": 0}}]
 
+    def test_from_dict(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        chat_generator = OpenAIChatGenerator(generation_kwargs={"response_format": {"type": "json_object"}, "seed": 42})
+
+        data = {
+            "type": "haystack.components.evaluators.context_relevance.ContextRelevanceEvaluator",
+            "init_parameters": {
+                "chat_generator": chat_generator.to_dict(),
+                "examples": [{"inputs": {"questions": "What is football?"}, "outputs": {"score": 0}}],
+            },
+        }
+
+        component = ContextRelevanceEvaluator.from_dict(data)
+        assert isinstance(component._chat_generator, OpenAIChatGenerator)
+        assert component._chat_generator.client.api_key == "test-api-key"
+        assert component._chat_generator.generation_kwargs == {"response_format": {"type": "json_object"}, "seed": 42}
+        assert component.examples == [{"inputs": {"questions": "What is football?"}, "outputs": {"score": 0}}]
+
+    def test_pipeline_serde(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+
+        component = ContextRelevanceEvaluator()
         pipeline = Pipeline()
         pipeline.add_component("evaluator", component)
-        assert pipeline.loads(pipeline.dumps())
+
+        serialized_pipeline = pipeline.dumps()
+        deserialized_pipeline = Pipeline.loads(serialized_pipeline)
+        assert deserialized_pipeline == pipeline
 
     def test_run_calculates_mean_score(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")

@@ -37,3 +37,38 @@ def deserialize_document_store_in_init_params_inplace(data: Dict[str, Any], key:
         data["init_parameters"][key] = doc_store_class.from_dict(doc_store_data)
     else:
         data["init_parameters"][key] = default_from_dict(doc_store_class, doc_store_data)
+
+
+def deserialize_chatgenerator_inplace(data: Dict[str, Any], key: str = "chat_generator"):
+    """
+    Deserialize a ChatGenerator in a dictionary inplace.
+
+    :param data:
+        The dictionary with the serialized data.
+    :param key:
+        The key in the dictionary where the ChatGenerator is stored.
+
+    :raises DeserializationError:
+        If the key is missing in the serialized data, the value is not a dictionary,
+        the type key is missing, the class cannot be imported, or the class lacks a 'from_dict' method.
+    """
+    if key not in data:
+        raise DeserializationError(f"Missing '{key}' in serialization data")
+
+    serialized_chat_generator = data[key]
+
+    if not isinstance(serialized_chat_generator, dict):
+        raise DeserializationError(f"The value of '{key}' is not a dictionary")
+
+    if "type" not in serialized_chat_generator:
+        raise DeserializationError(f"Missing 'type' in {key} serialization data")
+
+    try:
+        chat_generator_class = import_class_by_name(serialized_chat_generator["type"])
+    except ImportError as e:
+        raise DeserializationError(f"Class '{serialized_chat_generator['type']}' not correctly imported") from e
+
+    if not hasattr(chat_generator_class, "from_dict"):
+        raise DeserializationError(f"Class '{chat_generator_class}' does not have a 'from_dict' method")
+
+    data[key] = chat_generator_class.from_dict(serialized_chat_generator)

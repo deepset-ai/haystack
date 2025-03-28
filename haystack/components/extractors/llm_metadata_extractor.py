@@ -17,10 +17,14 @@ from haystack.components.builders import PromptBuilder
 from haystack.components.generators.chat import AzureOpenAIChatGenerator, OpenAIChatGenerator
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.components.preprocessors import DocumentSplitter
-from haystack.core.serialization import import_class_by_name
 from haystack.dataclasses import ChatMessage
 from haystack.lazy_imports import LazyImport
-from haystack.utils import deserialize_callable, deserialize_secrets_inplace, expand_page_range
+from haystack.utils import (
+    deserialize_callable,
+    deserialize_chatgenerator_inplace,
+    deserialize_secrets_inplace,
+    expand_page_range,
+)
 
 with LazyImport(message="Run 'pip install \"amazon-bedrock-haystack>=1.0.2\"'") as amazon_bedrock_generator:
     from haystack_integrations.components.generators.amazon_bedrock import (  #  pylint: disable=import-error
@@ -299,10 +303,7 @@ class LLMMetadataExtractor:
 
         # new deserialization with chat_generator
         if init_parameters.get("chat_generator") is not None:
-            chat_generator_class = import_class_by_name(init_parameters["chat_generator"]["type"])
-            assert hasattr(chat_generator_class, "from_dict")  # we know but mypy doesn't
-            chat_generator_instance = chat_generator_class.from_dict(init_parameters["chat_generator"])
-            data["init_parameters"]["chat_generator"] = chat_generator_instance
+            deserialize_chatgenerator_inplace(data["init_parameters"], key="chat_generator")
             return default_from_dict(cls, data)
 
         # legacy deserialization
