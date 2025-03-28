@@ -95,7 +95,9 @@ class TestAgent:
     def test_serde(self, weather_tool, component_tool, monkeypatch):
         monkeypatch.setenv("FAKE_OPENAI_KEY", "fake-key")
         generator = OpenAIChatGenerator(api_key=Secret.from_env_var("FAKE_OPENAI_KEY"))
-        agent = Agent(chat_generator=generator, tools=[weather_tool, component_tool])
+        agent = Agent(
+            chat_generator=generator, tools=[weather_tool, component_tool], exit_conditions=["text", "weather_tool"]
+        )
 
         serialized_agent = agent.to_dict()
 
@@ -112,6 +114,7 @@ class TestAgent:
             init_parameters["tools"][1]["data"]["component"]["type"]
             == "haystack.components.builders.prompt_builder.PromptBuilder"
         )
+        assert init_parameters["exit_conditions"] == ["text", "weather_tool"]
 
         deserialized_agent = Agent.from_dict(serialized_agent)
 
@@ -119,6 +122,7 @@ class TestAgent:
         assert isinstance(deserialized_agent.chat_generator, OpenAIChatGenerator)
         assert deserialized_agent.tools[0].function is weather_function
         assert isinstance(deserialized_agent.tools[1]._component, PromptBuilder)
+        assert deserialized_agent.exit_conditions == ["text", "weather_tool"]
 
     def test_serde_with_streaming_callback(self, weather_tool, component_tool, monkeypatch):
         monkeypatch.setenv("FAKE_OPENAI_KEY", "fake-key")
@@ -136,6 +140,24 @@ class TestAgent:
 
         deserialized_agent = Agent.from_dict(serialized_agent)
         assert deserialized_agent.streaming_callback is streaming_callback_for_serde
+
+    def test_exit_conditions_validation(self, weather_tool, component_tool, monkeypatch):
+        monkeypatch.setenv("FAKE_OPENAI_KEY", "fake-key")
+        generator = OpenAIChatGenerator(api_key=Secret.from_env_var("FAKE_OPENAI_KEY"))
+
+        # Test invalid exit condition
+        with pytest.raises(ValueError, match="Exit conditions must be a subset of"):
+            Agent(chat_generator=generator, tools=[weather_tool, component_tool], exit_conditions=["invalid_tool"])
+
+        # Test default exit condition
+        agent = Agent(chat_generator=generator, tools=[weather_tool, component_tool])
+        assert agent.exit_conditions == ["text"]
+
+        # Test multiple valid exit conditions
+        agent = Agent(
+            chat_generator=generator, tools=[weather_tool, component_tool], exit_conditions=["text", "weather_tool"]
+        )
+        assert agent.exit_conditions == ["text", "weather_tool"]
 
     def test_run_with_params_streaming(self, openai_mock_chat_completion_chunk, weather_tool):
         chat_generator = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
