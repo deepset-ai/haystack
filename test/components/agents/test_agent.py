@@ -132,7 +132,7 @@ class TestAgent:
         serialized_agent = agent.to_dict()
 
         init_parameters = serialized_agent["init_parameters"]
-        assert init_parameters["streaming_callback"] == "test.components.agents.test_agent.streaming_callback_for_serde"
+        assert init_parameters["streaming_callback"] == "test_agent.streaming_callback_for_serde"
 
         deserialized_agent = Agent.from_dict(serialized_agent)
         assert deserialized_agent.streaming_callback is streaming_callback_for_serde
