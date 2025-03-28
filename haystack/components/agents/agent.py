@@ -7,14 +7,11 @@ from typing import Any, Dict, List, Optional
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.components.tools import ToolInvoker
-from haystack.core.component import Component
-from haystack.core.pipeline.base import PipelineError
-from haystack.core.serialization import component_from_dict, import_class_by_name
+from haystack.core.serialization import import_class_by_name
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.state import State, _schema_from_dict, _schema_to_dict, _validate_schema
 from haystack.dataclasses.streaming_chunk import SyncStreamingCallbackT
 from haystack.tools import Tool, deserialize_tools_inplace
-from haystack.utils import type_serialization
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 
 logger = logging.getLogger(__name__)
@@ -161,28 +158,6 @@ class Agent:
         deserialize_tools_inplace(init_params, key="tools")
 
         return default_from_dict(cls, data)
-
-    @staticmethod
-    def _load_component(component_data: Dict[str, Any]) -> Component:
-        if component_data["type"] not in component.registry:
-            try:
-                # Import the module first...
-                module, _ = component_data["type"].rsplit(".", 1)
-                logger.debug("Trying to import module {module_name}", module_name=module)
-                type_serialization.thread_safe_import(module)
-                # ...then try again
-                if component_data["type"] not in component.registry:
-                    raise PipelineError(
-                        f"Successfully imported module {module} but can't find it in the component registry."
-                        "This is unexpected and most likely a bug."
-                    )
-            except (ImportError, PipelineError) as e:
-                raise PipelineError(f"Component '{component_data['type']}' not imported.") from e
-
-        # Create a new one
-        component_class = component.registry[component_data["type"]]
-        instance = component_from_dict(component_class, component_data, "")
-        return instance
 
     def run(
         self, messages: List[ChatMessage], streaming_callback: Optional[SyncStreamingCallbackT] = None, **kwargs
