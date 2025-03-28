@@ -29,12 +29,23 @@ class Tool:
         A JSON schema defining the parameters expected by the Tool.
     :param function:
         The function that will be invoked when the Tool is called.
+    :param inputs_from_state:
+        Optional dictionary mapping state keys to tool parameter names.
+        Example: {"repository": "repo"} maps state's "repository" to tool's "repo" parameter.
+    :param outputs_to_state:
+        Optional dictionary defining how tool outputs map to keys within state as well as optional handlers.
+        Example: {
+            "documents": {"source": "docs", "handler": custom_handler},
+            "message": {"source": "summary", "handler": format_summary}
+        }
     """
 
     name: str
     description: str
     parameters: Dict[str, Any]
     function: Callable
+    inputs_from_state: Optional[Dict[str, str]] = None
+    outputs_to_state: Optional[Dict[str, Dict[str, Any]]] = None
 
     def __post_init__(self):
         # Check that the parameters define a valid JSON schema
@@ -42,6 +53,16 @@ class Tool:
             Draft202012Validator.check_schema(self.parameters)
         except SchemaError as e:
             raise ValueError("The provided parameters do not define a valid JSON schema") from e
+
+        # Validate outputs structure if provided
+        if self.outputs_to_state is not None:
+            for key, config in self.outputs_to_state.items():
+                if not isinstance(config, dict):
+                    raise ValueError(f"Output configuration for key '{key}' must be a dictionary")
+                if "source" in config and not isinstance(config["source"], str):
+                    raise ValueError(f"Output source for key '{key}' must be a string.")
+                if "handler" in config and not callable(config["handler"]):
+                    raise ValueError(f"Output handler for key '{key}' must be callable")
 
     @property
     def tool_spec(self) -> Dict[str, Any]:
@@ -54,11 +75,12 @@ class Tool:
         """
         Invoke the Tool with the provided keyword arguments.
         """
-
         try:
             result = self.function(**kwargs)
         except Exception as e:
-            raise ToolInvocationError(f"Failed to invoke Tool `{self.name}` with parameters {kwargs}") from e
+            raise ToolInvocationError(
+                f"Failed to invoke Tool `{self.name}` with parameters {kwargs}. Error: {e}"
+            ) from e
         return result
 
     def to_dict(self) -> Dict[str, Any]:
@@ -68,9 +90,19 @@ class Tool:
         :returns:
             Dictionary with serialized data.
         """
-
         data = asdict(self)
         data["function"] = serialize_callable(self.function)
+
+        # Serialize output handlers if they exist
+        if self.outputs_to_state:
+            serialized_outputs = {}
+            for key, config in self.outputs_to_state.items():
+                serialized_config = config.copy()
+                if "handler" in config:
+                    serialized_config["handler"] = serialize_callable(config["handler"])
+                serialized_outputs[key] = serialized_config
+            data["outputs_to_state"] = serialized_outputs
+
         return {"type": generate_qualified_class_name(type(self)), "data": data}
 
     @classmethod
@@ -85,6 +117,17 @@ class Tool:
         """
         init_parameters = data["data"]
         init_parameters["function"] = deserialize_callable(init_parameters["function"])
+
+        # Deserialize output handlers if they exist
+        if "outputs_to_state" in init_parameters and init_parameters["outputs_to_state"]:
+            deserialized_outputs = {}
+            for key, config in init_parameters["outputs_to_state"].items():
+                deserialized_config = config.copy()
+                if "handler" in config:
+                    deserialized_config["handler"] = deserialize_callable(config["handler"])
+                deserialized_outputs[key] = deserialized_config
+            init_parameters["outputs_to_state"] = deserialized_outputs
+
         return cls(**init_parameters)
 
 

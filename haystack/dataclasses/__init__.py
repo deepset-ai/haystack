@@ -13,6 +13,7 @@ _import_structure = {
     "chat_message": ["ChatMessage", "ChatRole", "TextContent", "ToolCall", "ToolCallResult"],
     "document": ["Document"],
     "sparse_embedding": ["SparseEmbedding"],
+    "state": ["State"],
     "streaming_chunk": [
         "StreamingChunk",
         "AsyncStreamingCallbackT",
@@ -28,6 +29,7 @@ if TYPE_CHECKING:
     from .chat_message import ChatMessage, ChatRole, TextContent, ToolCall, ToolCallResult
     from .document import Document
     from .sparse_embedding import SparseEmbedding
+    from .state import State
     from .streaming_chunk import (
         AsyncStreamingCallbackT,
         StreamingCallbackT,

@@ -258,7 +258,9 @@ class TestHuggingFaceAPIChatGenerator:
                 "data": {
                     "description": "description",
                     "function": "builtins.print",
+                    "inputs_from_state": None,
                     "name": "name",
+                    "outputs_to_state": None,
                     "parameters": {"x": {"type": "string"}},
                 },
             }
@@ -319,7 +321,9 @@ class TestHuggingFaceAPIChatGenerator:
                             {
                                 "type": "haystack.tools.tool.Tool",
                                 "data": {
+                                    "inputs_from_state": None,
                                     "name": "name",
+                                    "outputs_to_state": None,
                                     "description": "description",
                                     "parameters": {"x": {"type": "string"}},
                                     "function": "builtins.print",
