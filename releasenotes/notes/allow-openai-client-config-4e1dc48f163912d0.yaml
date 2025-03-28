@@ -1,0 +1,7 @@
+---
+highlights: >
+  AzureOpenAITextEmbedder now supports custom HTTP client configs via `custom_client_kargs`, enabling proxy and SSL setup.
+
+features:
+  - |
+    Added `custom_client_kargs` to AzureOpenAITextEmbedder for configuring HTTP client options like proxies and SSL.
