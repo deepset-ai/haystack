@@ -44,6 +44,25 @@ class TestAzureOpenAIGenerator:
         assert component.timeout == 30.0
         assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
         assert component.azure_ad_token_provider is not None
+        assert component.max_retries == 5
+
+    def test_init_with_0_max_retries(self):
+        component = AzureOpenAIGenerator(
+            api_key=Secret.from_token("fake-api-key"),
+            azure_endpoint="some-non-existing-endpoint",
+            azure_deployment="gpt-4o-mini",
+            streaming_callback=print_streaming_chunk,
+            generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
+            azure_ad_token_provider=default_azure_ad_token_provider,
+            max_retries=0,
+        )
+        assert component.client.api_key == "fake-api-key"
+        assert component.azure_deployment == "gpt-4o-mini"
+        assert component.streaming_callback is print_streaming_chunk
+        assert component.timeout == 30.0
+        assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
+        assert component.azure_ad_token_provider is not None
+        assert component.max_retries == 0
 
     def test_to_dict_default(self, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
