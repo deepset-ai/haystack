@@ -15,8 +15,8 @@ def create_tool_from_function(
     function: Callable,
     name: Optional[str] = None,
     description: Optional[str] = None,
-    inputs: Optional[Dict[str, str]] = None,
-    outputs: Optional[Dict[str, Dict[str, Any]]] = None,
+    inputs_from_state: Optional[Dict[str, str]] = None,
+    outputs_to_state: Optional[Dict[str, Dict[str, Any]]] = None,
 ) -> "Tool":
     """
     Create a Tool instance from a function.
@@ -66,10 +66,10 @@ def create_tool_from_function(
     :param description:
         The description of the Tool. If not provided, the docstring of the function will be used.
         To intentionally leave the description empty, pass an empty string.
-    :param inputs:
+    :param inputs_from_state:
         Optional dictionary mapping state keys to tool parameter names.
         Example: {"repository": "repo"} maps state's "repository" to tool's "repo" parameter.
-    :param outputs:
+    :param outputs_to_state:
         Optional dictionary defining how tool outputs map to state and message handling.
         Example: {
             "documents": {"source": "docs", "handler": custom_handler},
@@ -93,7 +93,7 @@ def create_tool_from_function(
 
     for param_name, param in signature.parameters.items():
         # Skip adding parameter names that will be passed to the tool from State
-        if inputs and param_name in inputs.values():
+        if inputs_from_state and param_name in inputs_from_state.values():
             continue
 
         if param.annotation is param.empty:
@@ -129,8 +129,8 @@ def create_tool_from_function(
         description=tool_description,
         parameters=schema,
         function=function,
-        inputs_from_state=inputs,
-        outputs_to_state=outputs,
+        inputs_from_state=inputs_from_state,
+        outputs_to_state=outputs_to_state,
     )
 
 
@@ -139,8 +139,8 @@ def tool(
     *,
     name: Optional[str] = None,
     description: Optional[str] = None,
-    inputs: Optional[Dict[str, str]] = None,
-    outputs: Optional[Dict[str, Dict[str, Any]]] = None,
+    inputs_from_state: Optional[Dict[str, str]] = None,
+    outputs_to_state: Optional[Dict[str, Dict[str, Any]]] = None,
 ) -> Union[Tool, Callable[[Callable], Tool]]:
     """
     Decorator to convert a function into a Tool.
@@ -184,14 +184,18 @@ def tool(
     :param function: The function to decorate (when used without parameters)
     :param name: Optional custom name for the tool
     :param description: Optional custom description
-    :param inputs: Optional dictionary mapping state keys to tool parameter names
-    :param outputs: Optional dictionary defining how tool outputs map to state and message handling
+    :param inputs_from_state: Optional dictionary mapping state keys to tool parameter names
+    :param outputs_to_state: Optional dictionary defining how tool outputs map to state and message handling
     :return: Either a Tool instance or a decorator function that will create one
     """
 
     def decorator(func: Callable) -> Tool:
         return create_tool_from_function(
-            function=func, name=name, description=description, inputs=inputs, outputs=outputs
+            function=func,
+            name=name,
+            description=description,
+            inputs_from_state=inputs_from_state,
+            outputs_to_state=outputs_to_state,
         )
 
     if function is None:

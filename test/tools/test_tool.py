@@ -34,21 +34,21 @@ class TestTool:
             Tool(name="irrelevant", description="irrelevant", parameters=params, function=get_weather_report)
 
     @pytest.mark.parametrize(
-        "outputs",
+        "outputs_to_state",
         [
             pytest.param({"documents": ["some_value"]}, id="config-not-a-dict"),
             pytest.param({"documents": {"source": get_weather_report}}, id="source-not-a-string"),
             pytest.param({"documents": {"handler": "some_string", "source": "docs"}}, id="handler-not-callable"),
         ],
     )
-    def test_init_invalid_output_structure(self, outputs):
+    def test_init_invalid_output_structure(self, outputs_to_state):
         with pytest.raises(ValueError):
             Tool(
                 name="irrelevant",
                 description="irrelevant",
                 parameters={"type": "object", "properties": {"city": {"type": "string"}}},
                 function=get_weather_report,
-                outputs_to_state=outputs,
+                outputs_to_state=outputs_to_state,
             )
 
     def test_tool_spec(self):

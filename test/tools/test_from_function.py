@@ -147,7 +147,7 @@ def test_tool_decorator_with_parameters():
 
 
 def test_tool_decorator_with_inputs_and_outputs():
-    @tool(inputs={"format": "format"}, outputs={"output": {"source": "output"}})
+    @tool(inputs_from_state={"format": "format"}, outputs_to_state={"output": {"source": "output"}})
     def get_weather(
         city: Annotated[str, "The target city"] = "Berlin",
         format: Annotated[Literal["short", "long"], "Output format"] = "short",
