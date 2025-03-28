@@ -29,6 +29,7 @@ class TestAzureOpenAIDocumentEmbedder:
         assert embedder.embedding_separator == "\n"
         assert embedder.default_headers == {}
         assert embedder.azure_ad_token_provider is None
+        assert embedder.http_client_kargs is None
 
     def test_to_dict(self, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
@@ -54,6 +55,7 @@ class TestAzureOpenAIDocumentEmbedder:
                 "timeout": 30.0,
                 "default_headers": {},
                 "azure_ad_token_provider": None,
+                "http_client_kargs": None,
             },
         }
 
@@ -70,6 +72,7 @@ class TestAzureOpenAIDocumentEmbedder:
             suffix=" suffix",
             default_headers={"x-custom-header": "custom-value"},
             azure_ad_token_provider=default_azure_ad_token_provider,
+            http_client_kargs={"proxy": "http://example.com:3128", "verify": False},
         )
         data = component.to_dict()
         assert data == {
@@ -92,6 +95,7 @@ class TestAzureOpenAIDocumentEmbedder:
                 "timeout": 60.0,
                 "default_headers": {"x-custom-header": "custom-value"},
                 "azure_ad_token_provider": "haystack.utils.azure.default_azure_ad_token_provider",
+                "http_client_kargs": {"proxy": "http://example.com:3128", "verify": False},
             },
         }
 
@@ -117,6 +121,7 @@ class TestAzureOpenAIDocumentEmbedder:
                 "timeout": 30.0,
                 "default_headers": {},
                 "azure_ad_token_provider": None,
+                "http_client_kargs": None,
             },
         }
         component = AzureOpenAIDocumentEmbedder.from_dict(data)
@@ -129,6 +134,7 @@ class TestAzureOpenAIDocumentEmbedder:
         assert component.suffix == ""
         assert component.default_headers == {}
         assert component.azure_ad_token_provider is None
+        assert component.http_client_kargs is None
 
     def test_from_dict_with_parameters(self, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
@@ -152,6 +158,7 @@ class TestAzureOpenAIDocumentEmbedder:
                 "timeout": 60.0,
                 "default_headers": {"x-custom-header": "custom-value"},
                 "azure_ad_token_provider": "haystack.utils.azure.default_azure_ad_token_provider",
+                "http_client_kargs": {"proxy": "http://example.com:3128", "verify": False},
             },
         }
         component = AzureOpenAIDocumentEmbedder.from_dict(data)
@@ -164,6 +171,7 @@ class TestAzureOpenAIDocumentEmbedder:
         assert component.suffix == " suffix"
         assert component.default_headers == {"x-custom-header": "custom-value"}
         assert component.azure_ad_token_provider is not None
+        assert component.http_client_kargs == {"proxy": "http://example.com:3128", "verify": False}
 
     def test_embed_batch_handles_exceptions_gracefully(self, caplog):
         embedder = AzureOpenAIDocumentEmbedder(
@@ -219,3 +227,11 @@ class TestAzureOpenAIDocumentEmbedder:
             assert len(doc.embedding) == 1536
             assert all(isinstance(x, float) for x in doc.embedding)
         assert metadata == {"model": "text-embedding-ada-002", "usage": {"prompt_tokens": 15, "total_tokens": 15}}
+
+    def test_http_client_kargs_type_validation(self):
+        with pytest.raises(TypeError, match="The parameter 'http_client_kargs' must be a dictionary."):
+            AzureOpenAIDocumentEmbedder(http_client_kargs="invalid_argument")
+
+    def test_http_client_kargs_with_invalid_params(self):
+        with pytest.raises(TypeError, match="unexpected keyword argument"):
+            AzureOpenAIDocumentEmbedder(http_client_kargs={"invalid_key": "invalid_value"})

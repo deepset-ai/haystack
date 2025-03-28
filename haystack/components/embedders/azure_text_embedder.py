@@ -50,7 +50,7 @@ class AzureOpenAITextEmbedder:
         *,
         default_headers: Optional[Dict[str, str]] = None,
         azure_ad_token_provider: Optional[AzureADTokenProvider] = None,
-        custom_http_client_kargs: Optional[Dict[str, Any]] = None,
+        http_client_kargs: Optional[Dict[str, Any]] = None,
     ):
         """
         Creates an AzureOpenAITextEmbedder component.
@@ -90,7 +90,8 @@ class AzureOpenAITextEmbedder:
         :param default_headers: Default headers to send to the AzureOpenAI client.
         :param azure_ad_token_provider: A function that returns an Azure Active Directory token, will be invoked on
             every request.
-        :param custom_http_client_kargs: A dictionary of keyword arguments to configure a custom httpx.Client.
+        :param http_client_kargs: A dictionary of keyword arguments to configure a custom httpx.Client.
+
         """
         # Why is this here?
         # AzureOpenAI init is forcing us to use an init method that takes either base_url or azure_endpoint as not
@@ -116,7 +117,7 @@ class AzureOpenAITextEmbedder:
         self.suffix = suffix
         self.default_headers = default_headers or {}
         self.azure_ad_token_provider = azure_ad_token_provider
-        self.custom_http_client_kargs = custom_http_client_kargs
+        self.http_client_kargs = http_client_kargs
 
         self._client = AzureOpenAI(
             api_version=api_version,
@@ -134,8 +135,10 @@ class AzureOpenAITextEmbedder:
 
     def _init_client(self):
         """Internal method to initialize the httpx.Client."""
-        if self.custom_http_client_kargs:
-            return httpx.Client(**self.custom_http_client_kargs)
+        if self.http_client_kargs:
+            if not isinstance(self.http_client_kargs, dict):
+                raise TypeError("The parameter 'http_client_kargs' must be a dictionary.")
+            return httpx.Client(**self.http_client_kargs)
         return None
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
@@ -169,7 +172,7 @@ class AzureOpenAITextEmbedder:
             max_retries=self.max_retries,
             default_headers=self.default_headers,
             azure_ad_token_provider=azure_ad_token_provider_name,
-            custom_http_client_kargs=self.custom_http_client_kargs,
+            http_client_kargs=self.http_client_kargs,
         )
 
     @classmethod

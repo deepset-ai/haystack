@@ -22,6 +22,7 @@ class TestAzureOpenAITextEmbedder:
         assert embedder.suffix == ""
         assert embedder.default_headers == {}
         assert embedder.azure_ad_token_provider is None
+        assert embedder.http_client_kargs is None
 
     def test_to_dict_default(self, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
@@ -43,7 +44,7 @@ class TestAzureOpenAITextEmbedder:
                 "suffix": "",
                 "default_headers": {},
                 "azure_ad_token_provider": None,
-                "custom_http_client_kargs": None,
+                "http_client_kargs": None,
             },
         }
 
@@ -60,7 +61,7 @@ class TestAzureOpenAITextEmbedder:
             suffix=" suffix",
             default_headers={"x-custom-header": "custom-value"},
             azure_ad_token_provider=default_azure_ad_token_provider,
-            custom_http_client_kargs={"proxy": "http://example.com:3128", "verify": False},
+            http_client_kargs={"proxy": "http://example.com:3128", "verify": False},
         )
         data = component.to_dict()
         assert data == {
@@ -79,7 +80,7 @@ class TestAzureOpenAITextEmbedder:
                 "suffix": " suffix",
                 "default_headers": {"x-custom-header": "custom-value"},
                 "azure_ad_token_provider": "haystack.utils.azure.default_azure_ad_token_provider",
-                "custom_http_client_kargs": {"proxy": "http://example.com:3128", "verify": False},
+                "http_client_kargs": {"proxy": "http://example.com:3128", "verify": False},
             },
         }
 
@@ -100,6 +101,7 @@ class TestAzureOpenAITextEmbedder:
                 "prefix": "",
                 "suffix": "",
                 "default_headers": {},
+                "http_client_kargs": None,
             },
         }
         component = AzureOpenAITextEmbedder.from_dict(data)
@@ -112,6 +114,7 @@ class TestAzureOpenAITextEmbedder:
         assert component.suffix == ""
         assert component.default_headers == {}
         assert component.azure_ad_token_provider is None
+        assert component.http_client_kargs is None
 
     def test_from_dict_with_parameters(self, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
@@ -131,6 +134,7 @@ class TestAzureOpenAITextEmbedder:
                 "suffix": " suffix",
                 "default_headers": {"x-custom-header": "custom-value"},
                 "azure_ad_token_provider": "haystack.utils.azure.default_azure_ad_token_provider",
+                "http_client_kargs": {"proxy": "http://example.com:3128", "verify": False},
             },
         }
         component = AzureOpenAITextEmbedder.from_dict(data)
@@ -143,6 +147,7 @@ class TestAzureOpenAITextEmbedder:
         assert component.suffix == " suffix"
         assert component.default_headers == {"x-custom-header": "custom-value"}
         assert component.azure_ad_token_provider is not None
+        assert component.http_client_kargs == {"proxy": "http://example.com:3128", "verify": False}
 
     @pytest.mark.integration
     @pytest.mark.skipif(
@@ -164,15 +169,10 @@ class TestAzureOpenAITextEmbedder:
         assert all(isinstance(x, float) for x in result["embedding"])
         assert result["meta"] == {"model": "text-embedding-ada-002", "usage": {"prompt_tokens": 6, "total_tokens": 6}}
 
-    def test_from_dict_initializes_http_client(self):
-        # Define custom client arguments, e.g., proxy and SSL verification options.
-        custom_client_kargs = {"proxy": "http://example.com:3128", "verify": False}
-        embedder = AzureOpenAITextEmbedder(
-            azure_endpoint="https://dummy-endpoint.azure.com",
-            api_version="2023-05-15",
-            azure_deployment="dummy-deployment",
-            custom_http_client_kargs=custom_client_kargs,
-        )
-        data = embedder.to_dict()
-        new_embedder = AzureOpenAITextEmbedder.from_dict(data)
-        assert new_embedder.custom_http_client_kargs == custom_client_kargs
+    def test_http_client_kargs_type_validation(self):
+        with pytest.raises(TypeError, match="The parameter 'http_client_kargs' must be a dictionary."):
+            AzureOpenAITextEmbedder(http_client_kargs="invalid_argument")
+
+    def test_http_client_kargs_with_invalid_params(self):
+        with pytest.raises(TypeError, match="unexpected keyword argument"):
+            AzureOpenAITextEmbedder(http_client_kargs={"invalid_key": "invalid_value"})
