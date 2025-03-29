@@ -401,6 +401,25 @@ def test_run_split_document_with_overlap_character_unit():
     assert doc_chunks[4].meta["_split_overlap"] == [{"doc_id": doc_chunks[3].id, "range": (10, 20)}]
 
 
+def test_run_split_document_with_overlap_and_fallback_character_unit():
+    splitter = RecursiveDocumentSplitter(split_length=8, split_overlap=4, separators=["."], split_unit="char")
+    text = "A simple sentence1. Short. Short."
+
+    doc = Document(content=text)
+    doc_chunks = splitter.run([doc])
+    doc_chunks = doc_chunks["documents"]
+
+    assert len(doc_chunks) == 8
+    assert doc_chunks[0].content == "A simple"
+    assert doc_chunks[1].content == "mple sen"
+    assert doc_chunks[2].content == " sentenc"
+    assert doc_chunks[3].content == "tence1. "
+    assert doc_chunks[4].content == "e1. Shor"
+    assert doc_chunks[5].content == "Short. S"
+    assert doc_chunks[6].content == "t. Short"
+    assert doc_chunks[7].content == "hort."
+
+
 def test_run_separator_exists_but_split_length_too_small_fall_back_to_character_chunking():
     splitter = RecursiveDocumentSplitter(separators=[" "], split_length=2, split_unit="char")
     doc = Document(content="This is some text")
@@ -882,6 +901,25 @@ def test_run_split_by_token_with_fallback():
     assert len(chunks) > 1
     for chunk in chunks:
         assert splitter._chunk_length(chunk.content) <= 2
+
+
+def test_run_split_by_token_with_overlap_and_fallback():
+    splitter = RecursiveDocumentSplitter(split_length=4, split_overlap=2, separators=["."], split_unit="token")
+    splitter.warm_up()
+
+    text = "This is a test. This is another test. This is the final test."
+    doc = Document(content=text)
+    chunks = splitter.run([doc])["documents"]
+
+    assert len(chunks) == 8
+    assert chunks[0].content == "This is a test"
+    assert chunks[1].content == " a test."
+    assert chunks[2].content == " test. This is"
+    assert chunks[3].content == " This is another test"
+    assert chunks[4].content == " another test. This"
+    assert chunks[5].content == ". This is the"
+    assert chunks[6].content == " is the final test"
+    assert chunks[7].content == " final test."
 
 
 def test_run_without_warm_up_raises_error():

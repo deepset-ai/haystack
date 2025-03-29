@@ -370,7 +370,6 @@ class RecursiveDocumentSplitter:
             A list of text chunks.
         """
         chunks = []
-        step = self.split_length - self.split_overlap
 
         if split_units == "word":
             words = re.findall(r"\S+|\s+", text)
@@ -381,7 +380,7 @@ class RecursiveDocumentSplitter:
                 if word != " ":
                     current_chunk.append(word)
                     current_length += 1
-                    if current_length == step and current_chunk:
+                    if current_length == self.split_length and current_chunk:
                         chunks.append("".join(current_chunk))
                         current_chunk = []
                         current_length = 0
@@ -391,12 +390,12 @@ class RecursiveDocumentSplitter:
             if current_chunk:
                 chunks.append("".join(current_chunk))
         elif split_units == "char":
-            for i in range(0, self._chunk_length(text), step):
+            for i in range(0, self._chunk_length(text), self.split_length):
                 chunks.append(text[i : i + self.split_length])
         else:  # token
             assert self.tiktoken_tokenizer is not None  # mypy doesn't know that warm_up() is called
             tokens = self.tiktoken_tokenizer.encode(text)
-            for i in range(0, len(tokens), step):
+            for i in range(0, len(tokens), self.split_length):
                 chunk_tokens = tokens[i : i + self.split_length]
                 chunks.append(self.tiktoken_tokenizer.decode(chunk_tokens))
         return chunks
