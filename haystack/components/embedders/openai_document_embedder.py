@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from more_itertools import batched
 from openai import APIError, OpenAI
 from tqdm import tqdm
+from tqdm.asyncio import tqdm as async_tqdm
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.utils import Secret, deserialize_secrets_inplace
@@ -216,6 +217,58 @@ class OpenAIDocumentEmbedder:
 
         return all_embeddings, meta
 
+    async def _embed_batch_async(
+        self, texts_to_embed: Dict[str, str], batch_size: int
+    ) -> Tuple[List[List[float]], Dict[str, Any]]:
+        """
+        Embed a list of texts in batches asynchronously.
+        """
+
+        from openai import AsyncOpenAI
+
+        async_client = AsyncOpenAI(
+            api_key=self.api_key.resolve_value(),
+            organization=self.organization,
+            base_url=self.api_base_url,
+            timeout=self.client.timeout,
+            max_retries=self.client.max_retries,
+        )
+
+        all_embeddings = []
+        meta: Dict[str, Any] = {}
+
+        batches = list(batched(texts_to_embed.items(), batch_size))
+        if self.progress_bar:
+            batches = async_tqdm(batches, desc="Calculating embeddings")
+
+        for batch in batches:
+            args: Dict[str, Any] = {"model": self.model, "input": [b[1] for b in batch]}
+
+            if self.dimensions is not None:
+                args["dimensions"] = self.dimensions
+
+            try:
+                response = await async_client.embeddings.create(**args)
+            except APIError as exc:
+                ids = ", ".join(b[0] for b in batch)
+                msg = "Failed embedding of documents {ids} caused by {exc}"
+                logger.exception(msg, ids=ids, exc=exc)
+                continue
+
+            embeddings = [el.embedding for el in response.data]
+            all_embeddings.extend(embeddings)
+
+            if "model" not in meta:
+                meta["model"] = response.model
+            if "usage" not in meta:
+                meta["usage"] = dict(response.usage)
+            else:
+                meta["usage"]["prompt_tokens"] += response.usage.prompt_tokens
+                meta["usage"]["total_tokens"] += response.usage.total_tokens
+
+        await async_client.close()
+        return all_embeddings, meta
+
     @component.output_types(documents=List[Document], meta=Dict[str, Any])
     def run(self, documents: List[Document]):
         """
@@ -238,6 +291,34 @@ class OpenAIDocumentEmbedder:
         texts_to_embed = self._prepare_texts_to_embed(documents=documents)
 
         embeddings, meta = self._embed_batch(texts_to_embed=texts_to_embed, batch_size=self.batch_size)
+
+        for doc, emb in zip(documents, embeddings):
+            doc.embedding = emb
+
+        return {"documents": documents, "meta": meta}
+
+    @component.output_types(documents=List[Document], meta=Dict[str, Any])
+    async def run_async(self, documents: List[Document]):
+        """
+        Embeds a list of documents asynchronously.
+
+        :param documents:
+            A list of documents to embed.
+
+        :returns:
+            A dictionary with the following keys:
+            - `documents`: A list of documents with embeddings.
+            - `meta`: Information about the usage of the model.
+        """
+        if not isinstance(documents, list) or documents and not isinstance(documents[0], Document):
+            raise TypeError(
+                "OpenAIDocumentEmbedder expects a list of Documents as input. "
+                "In case you want to embed a string, please use the OpenAITextEmbedder."
+            )
+
+        texts_to_embed = self._prepare_texts_to_embed(documents=documents)
+
+        embeddings, meta = await self._embed_batch_async(texts_to_embed=texts_to_embed, batch_size=self.batch_size)
 
         for doc, emb in zip(documents, embeddings):
             doc.embedding = emb

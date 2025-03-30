@@ -256,3 +256,36 @@ class TestOpenAIDocumentEmbedder:
         )
 
         assert result["meta"]["usage"] == {"prompt_tokens": 15, "total_tokens": 15}, "Usage information does not match"
+
+    @pytest.mark.integration
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
+    @pytest.mark.asyncio
+    async def test_run_async(self):
+        docs = [
+            Document(content="I love cheese", meta={"topic": "Cuisine"}),
+            Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
+        ]
+
+        model = "text-embedding-ada-002"
+
+        embedder = OpenAIDocumentEmbedder(model=model, meta_fields_to_embed=["topic"], embedding_separator=" | ")
+
+        with patch.object(embedder, "_embed_batch_async") as mock_embed:
+            mock_embed.return_value = (
+                [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]],
+                {"model": "text-embedding-ada-002", "usage": {"prompt_tokens": 10, "total_tokens": 10}},
+            )
+
+            result = await embedder.run_async(documents=docs)
+
+            prepared_texts = embedder._prepare_texts_to_embed(docs)
+            mock_embed.assert_called_once_with(texts_to_embed=prepared_texts, batch_size=32)
+
+        assert len(result["documents"]) == 2
+        for doc in result["documents"]:
+            assert isinstance(doc.embedding, list)
+            assert len(doc.embedding) == 3
+            assert all(isinstance(x, float) for x in doc.embedding)
+
+        assert "text" in result["meta"]["model"] and "ada" in result["meta"]["model"]
+        assert result["meta"]["usage"] == {"prompt_tokens": 10, "total_tokens": 10}
