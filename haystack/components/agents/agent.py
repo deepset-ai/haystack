@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import inspect
 from typing import Any, Dict, List, Optional
 
 from haystack import component, default_from_dict, default_to_dict, logging
@@ -76,7 +77,16 @@ class Agent:
         :param raise_on_tool_invocation_failure: Should the agent raise an exception when a tool invocation fails?
             If set to False, the exception will be turned into a chat message and passed to the LLM.
         :param streaming_callback: A callback that will be invoked when a response is streamed from the LLM.
+        :raises TypeError: If the chat_generator does not support tools parameter in its run method.
         """
+        # Check if chat_generator supports tools parameter
+        chat_generator_run_method = inspect.signature(chat_generator.run)
+        if "tools" not in chat_generator_run_method.parameters:
+            raise TypeError(
+                f"{type(chat_generator).__name__} does not accept tools parameter in its run method. "
+                "The Agent component requires a chat generator that supports tools."
+            )
+
         valid_exits = ["text"] + [tool.name for tool in tools or []]
         if exit_conditions is None:
             exit_conditions = ["text"]
