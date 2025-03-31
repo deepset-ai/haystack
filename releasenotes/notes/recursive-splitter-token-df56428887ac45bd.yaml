@@ -1,5 +1,5 @@
 ---
 features:
   - |
-    RecursiveDocumentSplitter supports splitting by number of tokens.
+    The `RecursiveDocumentSplitter` now supports splitting by number of tokens.
     Setting "split_unit" to "token" will use a hard-coded tiktoken tokenizer (o200k_base) and requires having tiktoken installed.
