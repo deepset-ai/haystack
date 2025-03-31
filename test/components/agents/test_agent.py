@@ -20,8 +20,6 @@ from haystack.dataclasses.streaming_chunk import StreamingChunk
 from haystack.tools import Tool, ComponentTool
 from haystack.utils import serialize_callable, Secret
 
-import os
-
 
 def streaming_callback_for_serde(chunk: StreamingChunk):
     pass
@@ -111,7 +109,10 @@ class TestAgent:
         monkeypatch.setenv("FAKE_OPENAI_KEY", "fake-key")
         generator = OpenAIChatGenerator(api_key=Secret.from_env_var("FAKE_OPENAI_KEY"))
         agent = Agent(
-            chat_generator=generator, tools=[weather_tool, component_tool], exit_conditions=["text", "weather_tool"]
+            chat_generator=generator,
+            tools=[weather_tool, component_tool],
+            exit_conditions=["text", "weather_tool"],
+            state_schema={"foo": {"type": str}},
         )
 
         serialized_agent = agent.to_dict()
@@ -138,6 +139,7 @@ class TestAgent:
         assert deserialized_agent.tools[0].function is weather_function
         assert isinstance(deserialized_agent.tools[1]._component, PromptBuilder)
         assert deserialized_agent.exit_conditions == ["text", "weather_tool"]
+        assert deserialized_agent.state_schema == {"foo": {"type": str}}
 
     def test_serde_with_streaming_callback(self, weather_tool, component_tool, monkeypatch):
         monkeypatch.setenv("FAKE_OPENAI_KEY", "fake-key")
