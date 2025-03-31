@@ -55,7 +55,7 @@ class Agent:
         chat_generator: ChatGenerator,
         tools: Optional[List[Tool]] = None,
         system_prompt: Optional[str] = None,
-        exit_conditions: List[str] = None,
+        exit_conditions: Optional[List[str]] = None,
         state_schema: Optional[Dict[str, Any]] = None,
         max_runs_per_component: int = 100,
         raise_on_tool_invocation_failure: bool = False,
