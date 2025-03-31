@@ -370,7 +370,7 @@ class TestHuggingFaceAPIDocumentEmbedder:
 
         embedder = HuggingFaceAPIDocumentEmbedder(
             api_type=HFEmbeddingAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "sentence-transformers/all-MiniLM-L6-v2"},
+            api_params={"model": "BAAI/bge-small-en-v1.5"},
             meta_fields_to_embed=["topic"],
             embedding_separator=" | ",
         )

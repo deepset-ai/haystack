@@ -193,8 +193,7 @@ class TestHuggingFaceAPITextEmbedder:
     )
     def test_live_run_serverless(self):
         embedder = HuggingFaceAPITextEmbedder(
-            api_type=HFEmbeddingAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "sentence-transformers/all-MiniLM-L6-v2"},
+            api_type=HFEmbeddingAPIType.SERVERLESS_INFERENCE_API, api_params={"model": "BAAI/bge-small-en-v1.5"}
         )
         result = embedder.run(text="The food was delicious")
 
