@@ -1,0 +1,15 @@
+---
+enhancements:
+  - |
+    `LLMEvaluator`, `ContextRelevanceEvaluator` and `FaithfulnessEvaluator` now accept a `chat_generator`
+    initialization parameter, consisting of `ChatGenerator` instance configured to return a JSON object.
+    Previously, these components only supported OpenAI and LLMs with OpenAI-compatible APIs.
+    Regardless of whether the evaluator components are initialized with `api`, `api_key`, and `api_params` or
+    the new `chat_generator` parameter, the serialization format will now only include `chat_generator` in preparation
+    for the future removal of `api`, `api_key`, and `api_params`.
+deprecations:
+  - |
+    The `api`, `api_key`, and `api_params` parameters for `LLMEvaluator`, `ContextRelevanceEvaluator`, and
+    `FaithfulnessEvaluator` are now deprecated and will be removed in Haystack 2.13.0.
+    By default, these components will continue to use OpenAI in JSON mode.
+    To configure a specific LLM, use the `chat_generator` parameter.
