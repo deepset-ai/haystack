@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from datetime import datetime
-from typing import Iterator
+from typing import Iterator, Dict, Any, List
 
 from unittest.mock import MagicMock, patch
 import pytest
@@ -14,6 +14,7 @@ from openai.types.chat import ChatCompletionChunk, chat_completion_chunk
 from haystack.components.agents import Agent
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.components.generators.chat.types import ChatGenerator
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.streaming_chunk import StreamingChunk
 from haystack.tools import Tool, ComponentTool
@@ -89,6 +90,20 @@ def openai_mock_chat_completion_chunk():
             completion, cast_to=None, response=None, client=None
         )
         yield mock_chat_completion_create
+
+
+class MockChatGeneratorWithoutTools(ChatGenerator):
+    """A mock chat generator that implements ChatGenerator protocol but doesn't support tools."""
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"type": "MockChatGeneratorWithoutTools", "data": {}}
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "MockChatGeneratorWithoutTools":
+        return cls()
+
+    def run(self, messages: List[ChatMessage]) -> Dict[str, Any]:
+        return {"replies": [ChatMessage.from_assistant("Hello")]}
 
 
 class TestAgent:
@@ -231,3 +246,9 @@ class TestAgent:
         assert len(response["messages"]) == 2
         assert [isinstance(reply, ChatMessage) for reply in response["messages"]]
         assert "Hello" in response["messages"][1].text  # see openai_mock_chat_completion_chunk
+
+    def test_chat_generator_must_support_tools(self, weather_tool):
+        chat_generator = MockChatGeneratorWithoutTools()
+
+        with pytest.raises(TypeError, match="MockChatGeneratorWithoutTools does not accept tools"):
+            Agent(chat_generator=chat_generator, tools=[weather_tool])
