@@ -142,11 +142,11 @@ class RecursiveDocumentSplitter:
             remaining_chars = text[self.split_length :]
             return current_chunk, remaining_chars
         else:  # token
-            assert self.tiktoken_tokenizer is not None  # mypy doesn't know that warm_up() is called
-            tokens = self.tiktoken_tokenizer.encode(current_chunk)
+            # at this point we know that the tokenizer is already initialized
+            tokens = self.tiktoken_tokenizer.encode(current_chunk)  # type: ignore
             current_tokens = tokens[: self.split_length]
             remaining_tokens = tokens[self.split_length :]
-            return self.tiktoken_tokenizer.decode(current_tokens), self.tiktoken_tokenizer.decode(remaining_tokens)
+            return self.tiktoken_tokenizer.decode(current_tokens), self.tiktoken_tokenizer.decode(remaining_tokens)  # type: ignore
 
     def _apply_overlap(self, chunks: List[str]) -> List[str]:
         """
@@ -187,10 +187,10 @@ class RecursiveDocumentSplitter:
                         chunks[idx + 1] = remaining_text + " " + chunks[idx + 1]
                     elif self.split_units == "token":
                         # For token-based splitting, combine at token level
-                        assert self.tiktoken_tokenizer is not None  # mypy doesn't know that warm_up() is called
-                        remaining_tokens = self.tiktoken_tokenizer.encode(remaining_text)
-                        next_chunk_tokens = self.tiktoken_tokenizer.encode(chunks[idx + 1])
-                        chunks[idx + 1] = self.tiktoken_tokenizer.decode(remaining_tokens + next_chunk_tokens)
+                        # at this point we know that the tokenizer is already initialized
+                        remaining_tokens = self.tiktoken_tokenizer.encode(remaining_text)  # type: ignore
+                        next_chunk_tokens = self.tiktoken_tokenizer.encode(chunks[idx + 1])  # type: ignore
+                        chunks[idx + 1] = self.tiktoken_tokenizer.decode(remaining_tokens + next_chunk_tokens)  # type: ignore
                     else:  # char
                         chunks[idx + 1] = remaining_text + chunks[idx + 1]
                 elif remaining_text:
@@ -230,10 +230,10 @@ class RecursiveDocumentSplitter:
             current_chunk = overlap + " " + chunk
         elif self.split_units == "token":
             # For token-based splitting, combine at token level
-            assert self.tiktoken_tokenizer is not None  # mypy doesn't know that warm_up() is called
-            overlap_tokens = self.tiktoken_tokenizer.encode(overlap)
-            chunk_tokens = self.tiktoken_tokenizer.encode(chunk)
-            current_chunk = self.tiktoken_tokenizer.decode(overlap_tokens + chunk_tokens)
+            # at this point we know that the tokenizer is already initialized
+            overlap_tokens = self.tiktoken_tokenizer.encode(overlap)  # type: ignore
+            chunk_tokens = self.tiktoken_tokenizer.encode(chunk)  # type: ignore
+            current_chunk = self.tiktoken_tokenizer.decode(overlap_tokens + chunk_tokens)  # type: ignore
         else:  # char
             current_chunk = overlap + chunk
         return current_chunk
@@ -248,10 +248,10 @@ class RecursiveDocumentSplitter:
             overlap = " ".join(word_chunks[overlap_start:])
         elif self.split_units == "token":
             # For token-based splitting, handle overlap at token level
-            assert self.tiktoken_tokenizer is not None  # mypy doesn't know that warm_up() is called
-            tokens = self.tiktoken_tokenizer.encode(prev_chunk)
+            # at this point we know that the tokenizer is already initialized
+            tokens = self.tiktoken_tokenizer.encode(prev_chunk)  # type: ignore
             overlap_tokens = tokens[overlap_start:]
-            overlap = self.tiktoken_tokenizer.decode(overlap_tokens)
+            overlap = self.tiktoken_tokenizer.decode(overlap_tokens)  # type: ignore
         else:  # char
             overlap = prev_chunk[overlap_start:]
 
@@ -270,8 +270,8 @@ class RecursiveDocumentSplitter:
         elif self.split_units == "char":
             return len(text)
         else:  # token
-            assert self.tiktoken_tokenizer is not None  # mypy doesn't know that warm_up() is called
-            return len(self.tiktoken_tokenizer.encode(text))
+            # at this point we know that the tokenizer is already initialized
+            return len(self.tiktoken_tokenizer.encode(text))  # type: ignore
 
     def _chunk_text(self, text: str) -> List[str]:
         """
@@ -393,11 +393,11 @@ class RecursiveDocumentSplitter:
             for i in range(0, self._chunk_length(text), self.split_length):
                 chunks.append(text[i : i + self.split_length])
         else:  # token
-            assert self.tiktoken_tokenizer is not None  # mypy doesn't know that warm_up() is called
-            tokens = self.tiktoken_tokenizer.encode(text)
+            # at this point we know that the tokenizer is already initialized
+            tokens = self.tiktoken_tokenizer.encode(text)  # type: ignore
             for i in range(0, len(tokens), self.split_length):
                 chunk_tokens = tokens[i : i + self.split_length]
-                chunks.append(self.tiktoken_tokenizer.decode(chunk_tokens))
+                chunks.append(self.tiktoken_tokenizer.decode(chunk_tokens))  # type: ignore
         return chunks
 
     def _add_overlap_info(self, curr_pos: int, new_doc: Document, new_docs: List[Document]) -> None:
