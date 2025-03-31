@@ -837,6 +837,7 @@ def test_run_serialization_in_pipeline():
     assert pipeline_dict == new_pipeline.dumps()
 
 
+@pytest.mark.integration
 def test_run_split_by_token_count():
     splitter = RecursiveDocumentSplitter(split_length=5, separators=["."], split_unit="token")
     splitter.warm_up()
@@ -852,6 +853,7 @@ def test_run_split_by_token_count():
     assert chunks[3].content == "."
 
 
+@pytest.mark.integration
 def test_run_split_by_token_count_with_html_tags():
     splitter = RecursiveDocumentSplitter(split_length=4, separators=["."], split_unit="token")
     splitter.warm_up()
@@ -863,6 +865,7 @@ def test_run_split_by_token_count_with_html_tags():
     assert len(chunks) == 10
 
 
+@pytest.mark.integration
 def test_run_split_by_token_with_sentence_tokenizer():
     splitter = RecursiveDocumentSplitter(split_length=4, separators=["sentence"], split_unit="token")
     splitter.warm_up()
@@ -878,6 +881,7 @@ def test_run_split_by_token_with_sentence_tokenizer():
     assert chunks[3].content == "."
 
 
+@pytest.mark.integration
 def test_run_split_by_token_with_empty_document(caplog: LogCaptureFixture):
     splitter = RecursiveDocumentSplitter(split_length=4, separators=["."], split_unit="token")
     splitter.warm_up()
@@ -890,6 +894,7 @@ def test_run_split_by_token_with_empty_document(caplog: LogCaptureFixture):
     assert "has an empty content. Skipping this document." in caplog.text
 
 
+@pytest.mark.integration
 def test_run_split_by_token_with_fallback():
     splitter = RecursiveDocumentSplitter(split_length=2, separators=["."], split_unit="token")
     splitter.warm_up()
@@ -903,6 +908,7 @@ def test_run_split_by_token_with_fallback():
         assert splitter._chunk_length(chunk.content) <= 2
 
 
+@pytest.mark.integration
 def test_run_split_by_token_with_overlap_and_fallback():
     splitter = RecursiveDocumentSplitter(split_length=4, split_overlap=2, separators=["."], split_unit="token")
     splitter.warm_up()
