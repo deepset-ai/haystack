@@ -337,6 +337,10 @@ class PipelineBase:
         if name == "_debug":
             raise ValueError("'_debug' is a reserved name for debug output. Choose another name.")
 
+        # Component names can't have "."
+        if "." in name:
+            raise ValueError("Component names cannot contain '.' (dot) characters.")
+
         # Component instances must be components
         if not isinstance(instance, Component):
             raise PipelineValidationError(

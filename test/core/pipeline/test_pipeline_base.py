@@ -176,6 +176,13 @@ class TestPipelineBase:
         assert image_path.read_bytes() == mock_to_mermaid_image.return_value
 
     # UNIT
+    def test_add_invalid_component_name(self):
+        pipe = PipelineBase()
+        with pytest.raises(ValueError):
+            pipe.add_component("this.is.not.a.valida.name", FakeComponent)
+        with pytest.raises(ValueError):
+            pipe.add_component("debug", FakeComponent)
+
     def test_add_component_to_different_pipelines(self):
         first_pipe = PipelineBase()
         second_pipe = PipelineBase()
