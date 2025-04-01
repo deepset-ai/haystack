@@ -209,10 +209,8 @@ class Agent:
             llm_messages = self.chat_generator.run(messages=messages, **generator_inputs)["replies"]
             state.set("messages", llm_messages)
 
-            # TODO Possible for LLM to return multiple messages (e.g. multiple tool calls)
-            #      Would a better check be to see if any of the messages contain a tool call?
-            # 2. Check if the LLM response contains a tool call
-            if llm_messages[0].tool_call is None:
+            # 2. Check if any of the LLM responses contain a tool call
+            if not any(msg.tool_call for msg in llm_messages):
                 return {**state.data}
 
             # 3. Call the ToolInvoker
@@ -222,21 +220,35 @@ class Agent:
             state = tool_invoker_result["state"]
             state.set("messages", tool_messages)
 
-            # 4. Check the LLM and Tool response for exit conditions, if exit_conditions contains a tool name
-            # TODO Possible for LLM to return multiple messages (e.g. multiple tool calls)
-            #      So exit conditions could be missed if it's not the first message
-            if self.exit_conditions != ["text"] and (
-                llm_messages[0].tool_call.tool_name in self.exit_conditions
-                and not tool_messages[0].tool_call_result.error
-            ):
-                return {**state.data}
+            # 4. Check if any LLM message's tool call name matches an exit condition
+            if self.exit_conditions != ["text"]:
+                matched_exit_conditions = set()
+                has_errors = False
 
-            # 5. Combine messages, llm_messages and tool_messages and send to the ChatGenerator
+                for msg in llm_messages:
+                    if msg.tool_call and msg.tool_call.tool_name in self.exit_conditions:
+                        matched_exit_conditions.add(msg.tool_call.tool_name)
+
+                        # Check if any error is specifically from the tool matching the exit condition
+                        tool_errors = [
+                            tool_msg.tool_call_result.error
+                            for tool_msg in tool_messages
+                            if tool_msg.tool_call_result.origin.tool_name == msg.tool_call.tool_name
+                        ]
+                        if any(tool_errors):
+                            has_errors = True
+                            # No need to check further if we found an error
+                            break
+
+                # Only return if at least one exit condition was matched AND none had errors
+                if matched_exit_conditions and not has_errors:
+                    return {**state.data}
+
+            # 5. Fetch the combined messages and send them back to the LLM
             messages = state.get("messages")
             counter += 1
 
         logger.warning(
-            "Agent exceeded maximum runs per component ({max_agent_steps}), stopping.",
-            max_agent_steps=self.max_agent_steps,
+            "Agent exceeded maximum agent steps of {max_agent_steps}, stopping.", max_agent_steps=self.max_agent_steps
         )
         return {**state.data}
