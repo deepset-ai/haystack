@@ -4,4 +4,4 @@
 
 from .super_component import SuperComponent
 
-_all_ = ["SuperComponent"]
+__all__ = ["SuperComponent"]
