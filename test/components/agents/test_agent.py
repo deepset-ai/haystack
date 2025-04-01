@@ -161,7 +161,7 @@ class TestAgent:
         generator = OpenAIChatGenerator(api_key=Secret.from_env_var("FAKE_OPENAI_KEY"))
 
         # Test invalid exit condition
-        with pytest.raises(ValueError, match="Exit conditions must be a subset of"):
+        with pytest.raises(ValueError, match="Invalid exit conditions provided:"):
             Agent(chat_generator=generator, tools=[weather_tool, component_tool], exit_conditions=["invalid_tool"])
 
         # Test default exit condition
