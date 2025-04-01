@@ -7,8 +7,9 @@ import json
 from dataclasses import asdict, dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional, Sequence, Union
-
+import base64
 from haystack import logging
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +86,30 @@ class TextContent:
     """
 
     text: str
+
+
+@dataclass
+class ImageContent:
+    """
+    The image content of a chat message.
+    """
+
+    base64_image: str
+
+    @classmethod
+    def from_file_path(cls, file_path: str) -> "ImageContent":
+        """
+        Create an ImageContent from a file path.
+        """
+        with open(file_path, "rb") as f:
+            return cls(base64_image=base64.b64encode(f.read()).decode("utf-8"))
+
+    @classmethod
+    def from_url(cls, url: str) -> "ImageContent":
+        """
+        Create an ImageContent from a URL.
+        """
+        return cls(base64_image=base64.b64encode(requests.get(url).content).decode("utf-8"))
 
 
 ChatMessageContentT = Union[TextContent, ToolCall, ToolCallResult]
@@ -416,6 +441,25 @@ class ChatMessage:
         # Add name field if present
         if self._name is not None:
             openai_msg["name"] = self._name
+
+        if openai_msg["role"] == "user":
+            if len(self._content) == 1:
+                if isinstance(self._content[0], TextContent):
+                    openai_msg["content"] = self._content[0].text
+                    return openai_msg
+                raise ValueError("The user message must contain a `TextContent`.")
+
+            # list-like content
+            content = []
+            for part in self._content:
+                if isinstance(part, TextContent):
+                    content.append({"type": "text", "text": part.text})
+                elif isinstance(part, ImageContent):
+                    content.append(
+                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{part.base64_image}"}}
+                    )
+            openai_msg["content"] = content
+            return openai_msg
 
         if tool_call_results:
             result = tool_call_results[0]
