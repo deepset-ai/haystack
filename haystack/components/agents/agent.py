@@ -58,7 +58,7 @@ class Agent:
         system_prompt: Optional[str] = None,
         exit_conditions: Optional[List[str]] = None,
         state_schema: Optional[Dict[str, Any]] = None,
-        max_runs_per_component: int = 100,
+        max_agent_steps: int = 100,
         raise_on_tool_invocation_failure: bool = False,
         streaming_callback: Optional[SyncStreamingCallbackT] = None,
     ):
@@ -72,8 +72,8 @@ class Agent:
             Can include "text" if the agent should return when it generates a message without tool calls,
             or tool names that will cause the agent to return once the tool was executed. Defaults to ["text"].
         :param state_schema: The schema for the runtime state used by the tools.
-        :param max_runs_per_component: Maximum number of runs per component. Agent will raise an exception if a
-            component exceeds the maximum number of runs per component.
+        :param max_agent_steps: Maximum number of steps the agent will run before stopping. Defaults to 100.
+            If the agent exceeds this number of steps, it will stop and return the current state.
         :param raise_on_tool_invocation_failure: Should the agent raise an exception when a tool invocation fails?
             If set to False, the exception will be turned into a chat message and passed to the LLM.
         :param streaming_callback: A callback that will be invoked when a response is streamed from the LLM.
@@ -91,7 +91,11 @@ class Agent:
         if exit_conditions is None:
             exit_conditions = ["text"]
         if not all(condition in valid_exits for condition in exit_conditions):
-            raise ValueError(f"Exit conditions must be a subset of {valid_exits}")
+            raise ValueError(
+                f"Invalid exit conditions provided: {exit_conditions}. "
+                f"Valid exit conditions must be a subset of {valid_exits}. "
+                "Ensure that each exit condition corresponds to either 'text' or a valid tool name."
+            )
 
         if state_schema is not None:
             _validate_schema(state_schema)
@@ -101,18 +105,17 @@ class Agent:
         self.tools = tools or []
         self.system_prompt = system_prompt
         self.exit_conditions = exit_conditions
-        self.max_runs_per_component = max_runs_per_component
+        self.max_agent_steps = max_agent_steps
         self.raise_on_tool_invocation_failure = raise_on_tool_invocation_failure
         self.streaming_callback = streaming_callback
 
-        output_types = {"messages": List[ChatMessage]}
+        output_types = {}
         for param, config in self.state_schema.items():
             component.set_input_type(self, name=param, type=config["type"], default=None)
             output_types[param] = config["type"]
         component.set_output_types(self, **output_types)
 
         self._tool_invoker = ToolInvoker(tools=self.tools, raise_on_failure=self.raise_on_tool_invocation_failure)
-
         self._is_warmed_up = False
 
     def warm_up(self) -> None:
@@ -142,7 +145,7 @@ class Agent:
             system_prompt=self.system_prompt,
             exit_conditions=self.exit_conditions,
             state_schema=_schema_to_dict(self.state_schema),
-            max_runs_per_component=self.max_runs_per_component,
+            max_agent_steps=self.max_agent_steps,
             raise_on_tool_invocation_failure=self.raise_on_tool_invocation_failure,
             streaming_callback=streaming_callback,
         )
@@ -170,7 +173,10 @@ class Agent:
         return default_from_dict(cls, data)
 
     def run(
-        self, messages: List[ChatMessage], streaming_callback: Optional[SyncStreamingCallbackT] = None, **kwargs
+        self,
+        messages: List[ChatMessage],
+        streaming_callback: Optional[SyncStreamingCallbackT] = None,
+        **kwargs: Dict[str, Any],
     ) -> Dict[str, Any]:
         """
         Process messages and execute tools until the exit condition is met.
@@ -188,6 +194,7 @@ class Agent:
 
         if self.system_prompt is not None:
             messages = [ChatMessage.from_system(self.system_prompt)] + messages
+        state.set("messages", messages)
 
         generator_inputs: Dict[str, Any] = {"tools": self.tools}
 
@@ -197,19 +204,21 @@ class Agent:
 
         # Repeat until the exit condition is met
         counter = 0
-        while counter < self.max_runs_per_component:
+        while counter < self.max_agent_steps:
             # 1. Call the ChatGenerator
             llm_messages = self.chat_generator.run(messages=messages, **generator_inputs)["replies"]
+            state.set("messages", llm_messages)
 
             # 2. Check if any of the LLM responses contain a tool call
             if not any(msg.tool_call for msg in llm_messages):
-                return {"messages": messages + llm_messages, **state.data}
+                return {**state.data}
 
             # 3. Call the ToolInvoker
             # We only send the messages from the LLM to the tool invoker
             tool_invoker_result = self._tool_invoker.run(messages=llm_messages, state=state)
             tool_messages = tool_invoker_result["tool_messages"]
             state = tool_invoker_result["state"]
+            state.set("messages", tool_messages)
 
             # 4. Check if any LLM message's tool call name matches an exit condition
             if self.exit_conditions != ["text"]:
@@ -219,13 +228,14 @@ class Agent:
                         and msg.tool_call.tool_name in self.exit_conditions
                         and not any(tool_msg.tool_call_result.error for tool_msg in tool_messages)
                     ):
-                        return {"messages": messages + llm_messages + tool_messages, **state.data}
+                        return {**state.data}
 
             # 5. Combine messages, llm_messages and tool_messages and send to the ChatGenerator
-            messages = messages + llm_messages + tool_messages
+            messages = state.get("messages")
             counter += 1
 
         logger.warning(
-            "Agent exceeded maximum runs per component ({max_loops}), stopping.", max_loops=self.max_runs_per_component
+            "Agent exceeded maximum runs per component ({max_agent_steps}), stopping.",
+            max_agent_steps=self.max_agent_steps,
         )
-        return {"messages": messages, **state.data}
+        return {**state.data}

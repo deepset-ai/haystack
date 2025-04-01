@@ -1,7 +1,9 @@
 import pytest
 from typing import List, Dict
 
+from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.state import State, _validate_schema
+from haystack.dataclasses.state_utils import merge_lists
 
 
 @pytest.fixture
@@ -106,6 +108,7 @@ def test_state_has(basic_schema):
 def test_state_empty_schema():
     state = State({})
     assert state.data == {}
+    assert state.schema == {"messages": {"type": List[ChatMessage], "handler": merge_lists}}
     with pytest.raises(ValueError, match="Key 'any_key' not found in schema"):
         state.set("any_key", "value")
 
