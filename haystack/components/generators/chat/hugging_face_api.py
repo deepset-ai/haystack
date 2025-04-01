@@ -252,7 +252,7 @@ class HuggingFaceAPIChatGenerator:
         # validate and select the streaming callback
         streaming_callback = select_streaming_callback(
             self.streaming_callback, streaming_callback, requires_async=False
-        )  # type: ignore
+        )
 
         if streaming_callback:
             return self._run_streaming(formatted_messages, generation_kwargs, streaming_callback)
@@ -309,7 +309,7 @@ class HuggingFaceAPIChatGenerator:
         _check_duplicate_tool_names(tools)
 
         # validate and select the streaming callback
-        streaming_callback = select_streaming_callback(self.streaming_callback, streaming_callback, requires_async=True)  # type: ignore
+        streaming_callback = select_streaming_callback(self.streaming_callback, streaming_callback, requires_async=True)
 
         if streaming_callback:
             return await self._run_streaming_async(formatted_messages, generation_kwargs, streaming_callback)
