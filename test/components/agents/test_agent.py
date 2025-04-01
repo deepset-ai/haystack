@@ -264,7 +264,7 @@ class TestAgent:
             ),
         ]
 
-        agent = Agent(chat_generator=generator, tools=[weather_tool], max_runs_per_component=1)
+        agent = Agent(chat_generator=generator, tools=[weather_tool], max_agent_steps=1)
         agent.warm_up()
 
         # Patch agent.chat_generator.run to return mock_messages
