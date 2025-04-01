@@ -59,7 +59,7 @@ def _check_union_compatibility(type1: T, type2: T, type1_origin: Any, type2_orig
         return any(_types_are_compatible(union_arg, type2) for union_arg in get_args(type1))
     if type2_origin is Union and type1_origin is not Union:
         return any(_types_are_compatible(type1, union_arg) for union_arg in get_args(type2))
-    # Both are Union types
+    # Both are Union types. Check all type combinations are compatible.
     return any(any(_types_are_compatible(arg1, arg2) for arg2 in get_args(type2)) for arg1 in get_args(type1))
 
 
@@ -97,11 +97,9 @@ def _unwrap_all(t: T, recursive: bool) -> T:
     else:
         # If it's a generic type and we're unwrapping recursively
         origin = get_origin(t)
-        if recursive and origin is not None:
-            args = get_args(t)
-            if args:
-                unwrapped_args = tuple(_unwrap_all(arg, recursive) for arg in args)
-                t = origin[unwrapped_args]
+        if recursive and origin is not None and (args := get_args(t)):
+            unwrapped_args = tuple(_unwrap_all(arg, recursive) for arg in args)
+            t = origin[unwrapped_args]
 
     # Then handle top-level Optional
     if _is_optional_type(t):

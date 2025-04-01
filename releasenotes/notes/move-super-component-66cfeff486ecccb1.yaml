@@ -1,5 +1,5 @@
 ---
 highlights: >
-    SuperComponent is a new class that wraps around a pipeline while abstracting away its details.
+    The `SuperComponent` is a new class that wraps around a pipeline while abstracting away its details.
     That makes it easy to reuse as a higher-level component. For example, there can be a SuperComponent that converts various file types to Documents.
     You can customize the input/output connections and the init parameters of your custom SuperComponents.
