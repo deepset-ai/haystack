@@ -201,26 +201,25 @@ class Agent:
             # 1. Call the ChatGenerator
             llm_messages = self.chat_generator.run(messages=messages, **generator_inputs)["replies"]
 
-            # TODO Possible for LLM to return multiple messages (e.g. multiple tool calls)
-            #      Would a better check be to see if any of the messages contain a tool call?
-            # 2. Check if the LLM response contains a tool call
-            if llm_messages[0].tool_call is None:
+            # 2. Check if any of the LLM responses contain a tool call
+            if not any(msg.tool_call for msg in llm_messages):
                 return {"messages": messages + llm_messages, **state.data}
 
             # 3. Call the ToolInvoker
             # We only send the messages from the LLM to the tool invoker
             tool_invoker_result = self._tool_invoker.run(messages=llm_messages, state=state)
-            tool_messages = tool_invoker_result["messages"]
+            tool_messages = tool_invoker_result["tool_messages"]
             state = tool_invoker_result["state"]
 
-            # 4. Check the LLM and Tool response for exit conditions, if exit_conditions contains a tool name
-            # TODO Possible for LLM to return multiple messages (e.g. multiple tool calls)
-            #      So exit conditions could be missed if it's not the first message
-            if self.exit_conditions != ["text"] and (
-                llm_messages[0].tool_call.tool_name in self.exit_conditions
-                and not tool_messages[0].tool_call_result.error
-            ):
-                return {"messages": messages + llm_messages + tool_messages, **state.data}
+            # 4. Check if any LLM message's tool call name matches an exit condition
+            if self.exit_conditions != ["text"]:
+                for msg in llm_messages:
+                    if (
+                        msg.tool_call
+                        and msg.tool_call.tool_name in self.exit_conditions
+                        and not any(tool_msg.tool_call_result.error for tool_msg in tool_messages)
+                    ):
+                        return {"messages": messages + llm_messages + tool_messages, **state.data}
 
             # 5. Combine messages, llm_messages and tool_messages and send to the ChatGenerator
             messages = messages + llm_messages + tool_messages
