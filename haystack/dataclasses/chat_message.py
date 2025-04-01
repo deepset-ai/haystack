@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional, Sequence, Union
 import base64
 from haystack import logging
 import requests
-
+import mimetypes
 logger = logging.getLogger(__name__)
 
 
@@ -95,6 +95,8 @@ class ImageContent:
     """
 
     base64_image: str
+    mime_type: str
+    kwargs: Dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_file_path(cls, file_path: str) -> "ImageContent":
@@ -102,14 +104,14 @@ class ImageContent:
         Create an ImageContent from a file path.
         """
         with open(file_path, "rb") as f:
-            return cls(base64_image=base64.b64encode(f.read()).decode("utf-8"))
+            return cls(base64_image=base64.b64encode(f.read()).decode("utf-8"), mime_type=mimetypes.guess_type(file_path)[0])
 
     @classmethod
     def from_url(cls, url: str) -> "ImageContent":
         """
         Create an ImageContent from a URL.
         """
-        return cls(base64_image=base64.b64encode(requests.get(url).content).decode("utf-8"))
+        return cls(base64_image=base64.b64encode(requests.get(url).content).decode("utf-8"), mime_type=mimetypes.guess_type(url)[0])
 
 
 ChatMessageContentT = Union[TextContent, ToolCall, ToolCallResult]
