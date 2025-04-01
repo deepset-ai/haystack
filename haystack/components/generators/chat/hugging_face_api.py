@@ -3,11 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from datetime import datetime
-from typing import Any, AsyncIterable, Callable, Dict, Iterable, List, Optional, Union
+from typing import Any, AsyncIterable, Dict, Iterable, List, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall, select_streaming_callback
-from haystack.dataclasses.streaming_chunk import AsyncStreamingCallbackT, StreamingCallbackT, SyncStreamingCallbackT
+from haystack.dataclasses.streaming_chunk import StreamingCallbackT
 from haystack.lazy_imports import LazyImport
 from haystack.tools.tool import Tool, _check_duplicate_tool_names, deserialize_tools_inplace
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
