@@ -32,6 +32,63 @@ class SuperComponent:
     This component allows for remapping of input and output socket names between the wrapped pipeline and the
     SuperComponent's input and output names. This is useful for creating higher-level components that abstract
     away the details of the wrapped pipeline.
+
+    ### Usage example
+
+    ```python
+    from haystack import Pipeline, SuperComponent
+    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.builders import ChatPromptBuilder
+    from haystack.components.retrievers import InMemoryBM25Retriever
+    from haystack.dataclasses.chat_message import ChatMessage
+    from haystack.document_stores.in_memory import InMemoryDocumentStore
+    from haystack.dataclasses import Document
+
+    document_store = InMemoryDocumentStore()
+    documents = [
+        Document(content="Paris is the capital of France."),
+        Document(content="London is the capital of England."),
+    ]
+    document_store.write_documents(documents)
+
+    prompt_template = [
+        ChatMessage.from_user(
+        '''
+        According to the following documents:
+        {% for document in documents %}
+        {{document.content}}
+        {% endfor %}
+        Answer the given question: {{query}}
+        Answer:
+        '''
+        )
+    ]
+
+    prompt_builder = ChatPromptBuilder(template=prompt_template, required_variables="*")
+
+    pipeline = Pipeline()
+    pipeline.add_component("retriever", InMemoryBM25Retriever(document_store=document_store))
+    pipeline.add_component("prompt_builder", prompt_builder)
+    pipeline.add_component("llm", OpenAIChatGenerator())
+    pipeline.connect("retriever.documents", "prompt_builder.documents")
+    pipeline.connect("prompt_builder.prompt", "llm.messages")
+
+    # Create a super component with simplified input/output mapping
+    wrapper = SuperComponent(
+        pipeline=pipeline,
+        input_mapping={
+            "query": ["retriever.query", "prompt_builder.query"],
+        },
+        output_mapping={"llm.replies": "replies"}
+    )
+
+    # Run the pipeline with simplified interface
+    result = wrapper.run(query="What is the capital of France?")
+    print(result)
+    {'replies': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>,
+     _content=[TextContent(text='The capital of France is Paris.')],...)
+    ```
+
     """
 
     def __init__(
