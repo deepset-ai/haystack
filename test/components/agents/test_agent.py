@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import os
 from datetime import datetime
 from typing import Iterator, Dict, Any, List
 
@@ -34,15 +35,12 @@ def weather_function(location):
     return weather_info.get(location, {"weather": "unknown", "temperature": 0, "unit": "celsius"})
 
 
-weather_parameters = {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}
-
-
 @pytest.fixture
 def weather_tool():
     return Tool(
         name="weather_tool",
         description="Provides weather information for a given location.",
-        parameters=weather_parameters,
+        parameters={"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]},
         function=weather_function,
     )
 
@@ -163,7 +161,7 @@ class TestAgent:
         generator = OpenAIChatGenerator(api_key=Secret.from_env_var("FAKE_OPENAI_KEY"))
 
         # Test invalid exit condition
-        with pytest.raises(ValueError, match="Exit conditions must be a subset of"):
+        with pytest.raises(ValueError, match="Invalid exit conditions provided:"):
             Agent(chat_generator=generator, tools=[weather_tool, component_tool], exit_conditions=["invalid_tool"])
 
         # Test default exit condition
@@ -254,3 +252,32 @@ class TestAgent:
 
         with pytest.raises(TypeError, match="MockChatGeneratorWithoutTools does not accept tools"):
             Agent(chat_generator=chat_generator, tools=[weather_tool])
+
+    @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
+    @pytest.mark.integration
+    def test_run(self, weather_tool):
+        chat_generator = OpenAIChatGenerator(model="gpt-4o-mini")
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool], max_agent_steps=3)
+        agent.warm_up()
+        response = agent.run([ChatMessage.from_user("What is the weather in Berlin?")])
+
+        assert isinstance(response, dict)
+        assert "messages" in response
+        assert isinstance(response["messages"], list)
+        assert len(response["messages"]) == 4
+        assert [isinstance(reply, ChatMessage) for reply in response["messages"]]
+        # Loose check of message texts
+        assert response["messages"][0].text == "What is the weather in Berlin?"
+        assert response["messages"][1].text is None
+        assert response["messages"][2].text is None
+        assert response["messages"][3].text is not None
+        # Loose check of message metadata
+        assert response["messages"][0].meta == {}
+        assert response["messages"][1].meta.get("model") is not None
+        assert response["messages"][2].meta == {}
+        assert response["messages"][3].meta.get("model") is not None
+        # Loose check of tool calls and results
+        assert response["messages"][1].tool_calls[0].tool_name == "weather_tool"
+        assert response["messages"][1].tool_calls[0].arguments is not None
+        assert response["messages"][2].tool_call_results[0].result is not None
+        assert response["messages"][2].tool_call_results[0].origin is not None
