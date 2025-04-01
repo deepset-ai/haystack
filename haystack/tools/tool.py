@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import asdict, dataclass
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional
 
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import SchemaError
@@ -55,9 +55,9 @@ class Tool:
     description: str
     parameters: Dict[str, Any]
     function: Callable
-    outputs_to_string: Optional[Dict[str, Union[str, Callable[[Any], str]]]] = None
+    outputs_to_string: Optional[Dict[str, Any]] = None
     inputs_from_state: Optional[Dict[str, str]] = None
-    outputs_to_state: Optional[Dict[str, Dict[str, Union[str, Callable]]]] = None
+    outputs_to_state: Optional[Dict[str, Dict[str, Any]]] = None
 
     def __post_init__(self):
         # Check that the parameters define a valid JSON schema
