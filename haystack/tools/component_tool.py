@@ -96,8 +96,9 @@ class ComponentTool(Tool):
         description: Optional[str] = None,
         parameters: Optional[Dict[str, Any]] = None,
         *,
-        inputs_from_state: Optional[Dict[str, Any]] = None,
-        outputs_to_state: Optional[Dict[str, Any]] = None,
+        outputs_to_string: Optional[Dict[str, Union[str, Callable[[Any], str]]]] = None,
+        inputs_from_state: Optional[Dict[str, str]] = None,
+        outputs_to_state: Optional[Dict[str, Dict[str, Union[str, Callable]]]] = None,
     ):
         """
         Create a Tool instance from a Haystack component.
@@ -108,14 +109,25 @@ class ComponentTool(Tool):
         :param parameters:
             A JSON schema defining the parameters expected by the Tool.
             Will fall back to the parameters defined in the component's run method signature if not provided.
+        :param outputs_to_string:
+            Optional dictionary defining how a tool outputs should be converted into a string.
+            If the source is provided only the specified output key is sent to the handler.
+            If the source is omitted the whole tool result is sent to the handler.
+            Example: {
+                "source": "docs", "handler": format_documents
+            }
         :param inputs_from_state:
             Optional dictionary mapping state keys to tool parameter names.
             Example: {"repository": "repo"} maps state's "repository" to tool's "repo" parameter.
         :param outputs_to_state:
             Optional dictionary defining how tool outputs map to keys within state as well as optional handlers.
+            If the source is provided only the specified output key is sent to the handler.
             Example: {
-                "documents": {"source": "docs", "handler": custom_handler},
-                "message": {"source": "summary", "handler": format_summary}
+                "documents": {"source": "docs", "handler": custom_handler}
+            }
+            If the source is omitted the whole tool result is sent to the handler.
+            Example: {
+                "documents": {"handler": custom_handler}
             }
         :raises ValueError: If the component is invalid or schema generation fails.
         """
@@ -186,6 +198,7 @@ class ComponentTool(Tool):
             function=component_invoker,
             inputs_from_state=inputs_from_state,
             outputs_to_state=outputs_to_state,
+            outputs_to_string=outputs_to_string,
         )
         self._component = component
 
@@ -200,7 +213,9 @@ class ComponentTool(Tool):
             "name": self.name,
             "description": self.description,
             "parameters": self._unresolved_parameters,
+            "outputs_to_string": self.outputs_to_string,
             "inputs_from_state": self.inputs_from_state,
+            "outputs_to_state": self.outputs_to_state,
         }
 
         if self.outputs_to_state is not None:
@@ -211,6 +226,9 @@ class ComponentTool(Tool):
                     serialized_config["handler"] = serialize_callable(config["handler"])
                 serialized_outputs[key] = serialized_config
             serialized["outputs_to_state"] = serialized_outputs
+
+        if self.outputs_to_string is not None and self.outputs_to_string.get("handler") is not None:
+            serialized["outputs_to_string"] = serialize_callable(self.outputs_to_string["handler"])
 
         return {"type": generate_qualified_class_name(type(self)), "data": serialized}
 
@@ -232,11 +250,20 @@ class ComponentTool(Tool):
                 deserialized_outputs[key] = deserialized_config
             inner_data["outputs_to_state"] = deserialized_outputs
 
+        if (
+            inner_data.get("outputs_to_string") is not None
+            and inner_data["outputs_to_string"].get("handler") is not None
+        ):
+            inner_data["outputs_to_string"]["handler"] = deserialize_callable(
+                inner_data["outputs_to_string"]["handler"]
+            )
+
         return cls(
             component=component,
             name=inner_data["name"],
             description=inner_data["description"],
             parameters=inner_data.get("parameters", None),
+            outputs_to_string=inner_data.get("outputs_to_string", None),
             inputs_from_state=inner_data.get("inputs_from_state", None),
             outputs_to_state=inner_data.get("outputs_to_state", None),
         )

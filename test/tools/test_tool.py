@@ -93,6 +93,7 @@ class TestTool:
                 "description": "Get weather report",
                 "parameters": parameters,
                 "function": "test_tool.get_weather_report",
+                "outputs_to_string": None,
                 "inputs_from_state": None,
                 "outputs_to_state": {"documents": {"source": "docs", "handler": "test_tool.get_weather_report"}},
             },
