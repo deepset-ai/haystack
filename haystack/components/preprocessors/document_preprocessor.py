@@ -12,7 +12,7 @@ from haystack.utils import deserialize_callable, serialize_callable
 
 
 @component
-class DocumentPreProcessor(SuperComponent):
+class DocumentPreprocessor(SuperComponent):
     """
     A SuperComponent that cleans documents and then splits them.
 
@@ -139,7 +139,7 @@ class DocumentPreProcessor(SuperComponent):
         output_mapping = {"splitter.documents": "documents"}
 
         # Initialize the SuperComponent
-        super(DocumentPreProcessor, self).__init__(
+        super(DocumentPreprocessor, self).__init__(
             pipeline=pp, input_mapping=input_mapping, output_mapping=output_mapping
         )
 
@@ -173,7 +173,7 @@ class DocumentPreProcessor(SuperComponent):
         return data
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "DocumentPreProcessor":
+    def from_dict(cls, data: Dict[str, Any]) -> "DocumentPreprocessor":
         """
         Load this instance from a dictionary.
         """

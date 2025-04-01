@@ -7,7 +7,7 @@ import pytest
 from haystack import Document, Pipeline
 from haystack.dataclasses import ByteStream
 from haystack.core.super_component import SuperComponent
-from haystack.super_components.converters.multi_file_converter import MultiFileConverter
+from haystack.components.converters.multi_file_converter import MultiFileConverter
 
 
 @pytest.fixture
