@@ -339,7 +339,7 @@ class PipelineBase:
 
         # Component names can't have "."
         if "." in name:
-            raise ValueError("Component names cannot contain '.' (dot) characters.")
+            raise ValueError(f"{name} is an invalid component name, cannot contain '.' (dot) characters.")
 
         # Component instances must be components
         if not isinstance(instance, Component):
