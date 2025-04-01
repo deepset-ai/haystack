@@ -72,8 +72,8 @@ class Agent:
             Can include "text" if the agent should return when it generates a message without tool calls,
             or tool names that will cause the agent to return once the tool was executed. Defaults to ["text"].
         :param state_schema: The schema for the runtime state used by the tools.
-        :param max_agent_steps: Maximum number of runs per component. Agent will raise an exception if a
-            component exceeds the maximum number of runs per component.
+        :param max_agent_steps: Maximum number of steps the agent will run before stopping. Defaults to 100.
+            If the agent exceeds this number of steps, it will stop and return the current state.
         :param raise_on_tool_invocation_failure: Should the agent raise an exception when a tool invocation fails?
             If set to False, the exception will be turned into a chat message and passed to the LLM.
         :param streaming_callback: A callback that will be invoked when a response is streamed from the LLM.
