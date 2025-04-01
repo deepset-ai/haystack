@@ -256,8 +256,8 @@ class TestAgent:
             Agent(chat_generator=chat_generator, tools=[weather_tool])
 
     def test_multiple_llm_responses_with_tool_call(self, monkeypatch, weather_tool):
-        monkeypatch.setenv("FAKE_OPENAI_KEY", "fake-key")
-        generator = OpenAIChatGenerator(api_key=Secret.from_env_var("FAKE_OPENAI_KEY"))
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        generator = OpenAIChatGenerator()
 
         mock_messages = [
             ChatMessage.from_assistant("First response"),
@@ -282,8 +282,8 @@ class TestAgent:
         )
 
     def test_exit_conditions_checked_across_all_llm_messages(self, monkeypatch, weather_tool):
-        monkeypatch.setenv("FAKE_OPENAI_KEY", "fake-key")
-        generator = OpenAIChatGenerator(api_key=Secret.from_env_var("FAKE_OPENAI_KEY"))
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        generator = OpenAIChatGenerator()
 
         # Mock messages where the exit condition appears in the second message
         mock_messages = [
