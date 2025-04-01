@@ -174,6 +174,10 @@ class ToolInvoker:
 
         :param result:
             The tool result.
+        :param tool_call:
+            The ToolCall object containing the tool name and arguments.
+        :param tool_to_invoke:
+            The Tool object that was invoked.
         :returns:
             A ChatMessage object containing the tool result as a string.
         :raises
