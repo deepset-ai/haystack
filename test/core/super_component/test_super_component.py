@@ -14,7 +14,7 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
 from haystack.utils.auth import Secret
 from haystack.core.serialization import default_from_dict, default_to_dict
-from haystack.core.super_component.super_component import InvalidMappingError
+from haystack.core.super_component.super_component import InvalidMappingTypeError, InvalidMappingValueError
 
 
 @pytest.fixture
@@ -85,8 +85,36 @@ class TestSuperComponent:
 
     def test_split_component_path_error(self):
         path = "router"
-        with pytest.raises(InvalidMappingError):
+        with pytest.raises(InvalidMappingValueError):
             SuperComponent._split_component_path(path)
+
+    def test_invalid_input_mapping_type(self, rag_pipeline):
+        input_mapping = {"search_query": "not_a_list"}  # Should be a list
+        with pytest.raises(InvalidMappingTypeError):
+            SuperComponent(pipeline=rag_pipeline, input_mapping=input_mapping)
+
+    def test_invalid_input_mapping_value(self, rag_pipeline):
+        input_mapping = {"search_query": ["nonexistent_component.query"]}
+        with pytest.raises(InvalidMappingValueError):
+            SuperComponent(pipeline=rag_pipeline, input_mapping=input_mapping)
+
+    def test_invalid_output_mapping_type(self, rag_pipeline):
+        output_mapping = {"answer_builder.answers": 123}  # Should be a string
+        with pytest.raises(InvalidMappingTypeError):
+            SuperComponent(pipeline=rag_pipeline, output_mapping=output_mapping)
+
+    def test_invalid_output_mapping_value(self, rag_pipeline):
+        output_mapping = {"nonexistent_component.answers": "final_answers"}
+        with pytest.raises(InvalidMappingValueError):
+            SuperComponent(pipeline=rag_pipeline, output_mapping=output_mapping)
+
+    def test_duplicate_output_names(self, rag_pipeline):
+        output_mapping = {
+            "answer_builder.answers": "final_answers",
+            "answer_builder.answers": "another_name",  # Duplicate key
+        }
+        with pytest.raises(InvalidMappingValueError):
+            SuperComponent(pipeline=rag_pipeline, output_mapping=output_mapping)
 
     def test_explicit_input_mapping(self, rag_pipeline):
         input_mapping = {"search_query": ["retriever.query", "prompt_builder.query", "answer_builder.query"]}
