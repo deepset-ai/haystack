@@ -222,15 +222,29 @@ class Agent:
 
             # 4. Check if any LLM message's tool call name matches an exit condition
             if self.exit_conditions != ["text"]:
-                for msg in llm_messages:
-                    if (
-                        msg.tool_call
-                        and msg.tool_call.tool_name in self.exit_conditions
-                        and not any(tool_msg.tool_call_result.error for tool_msg in tool_messages)
-                    ):
-                        return {**state.data}
+                matched_exit_conditions = set()
+                has_errors = False
 
-            # 5. Combine messages, llm_messages and tool_messages and send to the ChatGenerator
+                for msg in llm_messages:
+                    if msg.tool_call and msg.tool_call.tool_name in self.exit_conditions:
+                        matched_exit_conditions.add(msg.tool_call.tool_name)
+
+                        # Check if any error is specifically from the tool matching the exit condition
+                        tool_errors = [
+                            tool_msg.tool_call_result.error
+                            for tool_msg in tool_messages
+                            if tool_msg.tool_call_result.origin.tool_name == msg.tool_call.tool_name
+                        ]
+                        if any(tool_errors):
+                            has_errors = True
+                            # No need to check further if we found an error
+                            break
+
+                # Only return if at least one exit condition was matched AND none had errors
+                if matched_exit_conditions and not has_errors:
+                    return {**state.data}
+
+            # 5. Fetch the combined messages and send them back to the LLM
             messages = state.get("messages")
             counter += 1
 
