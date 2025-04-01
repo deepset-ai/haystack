@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    In Agent we check all messages from the LLM when doing an exit condition check.
+    For example, it's possible the LLM returns multiple messages such as multiple tool calls or includes messages with reasoning.
+    Now we check all messages to before assessing if we should exit the loop.
