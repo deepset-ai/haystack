@@ -115,7 +115,8 @@ extra-dependencies = [
   "tabulate",                         # XLSXToDocument
   "python-oxmsg",                     # MSGToDocument
 
-  "nltk>=3.9.1", # NLTKDocumentSplitter
+  "nltk>=3.9.1", # NLTKDocumentSplitter, RecursiveDocumentSplitter
+  "tiktoken", # RecursiveDocumentSplitter
 
   # OpenAPI
   "jsonref",              # OpenAPIServiceConnector, OpenAPIServiceToFunctions
