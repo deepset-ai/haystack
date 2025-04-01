@@ -249,7 +249,6 @@ class Agent:
             counter += 1
 
         logger.warning(
-            "Agent exceeded maximum runs per component ({max_agent_steps}), stopping.",
-            max_agent_steps=self.max_agent_steps,
+            "Agent exceeded maximum agent steps of {max_agent_steps}, stopping.", max_agent_steps=self.max_agent_steps
         )
         return {**state.data}
