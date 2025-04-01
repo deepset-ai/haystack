@@ -16,7 +16,7 @@ from haystack.components.agents import Agent
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.generators.chat.types import ChatGenerator
-from haystack.dataclasses import ChatMessage
+from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.dataclasses.streaming_chunk import StreamingChunk
 from haystack.tools import Tool, ComponentTool
 from haystack.utils import serialize_callable, Secret
@@ -252,6 +252,60 @@ class TestAgent:
 
         with pytest.raises(TypeError, match="MockChatGeneratorWithoutTools does not accept tools"):
             Agent(chat_generator=chat_generator, tools=[weather_tool])
+
+    def test_multiple_llm_responses_with_tool_call(self, monkeypatch, weather_tool):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        generator = OpenAIChatGenerator()
+
+        mock_messages = [
+            ChatMessage.from_assistant("First response"),
+            ChatMessage.from_assistant(
+                tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
+            ),
+        ]
+
+        agent = Agent(chat_generator=generator, tools=[weather_tool], max_agent_steps=1)
+        agent.warm_up()
+
+        # Patch agent.chat_generator.run to return mock_messages
+        agent.chat_generator.run = MagicMock(return_value={"replies": mock_messages})
+
+        result = agent.run([ChatMessage.from_user("Hello")])
+
+        assert "messages" in result
+        assert len(result["messages"]) == 4
+        assert (
+            result["messages"][-1].tool_call_result.result
+            == "{'weather': 'mostly sunny', 'temperature': 7, 'unit': 'celsius'}"
+        )
+
+    def test_exit_conditions_checked_across_all_llm_messages(self, monkeypatch, weather_tool):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        generator = OpenAIChatGenerator()
+
+        # Mock messages where the exit condition appears in the second message
+        mock_messages = [
+            ChatMessage.from_assistant("First response"),
+            ChatMessage.from_assistant(
+                tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
+            ),
+        ]
+
+        agent = Agent(chat_generator=generator, tools=[weather_tool], exit_conditions=["weather_tool"])
+        agent.warm_up()
+
+        # Patch agent.chat_generator.run to return mock_messages
+        agent.chat_generator.run = MagicMock(return_value={"replies": mock_messages})
+
+        result = agent.run([ChatMessage.from_user("Hello")])
+
+        assert "messages" in result
+        assert len(result["messages"]) == 4
+        assert result["messages"][-2].tool_call.tool_name == "weather_tool"
+        assert (
+            result["messages"][-1].tool_call_result.result
+            == "{'weather': 'mostly sunny', 'temperature': 7, 'unit': 'celsius'}"
+        )
 
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
