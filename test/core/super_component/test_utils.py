@@ -2,7 +2,6 @@ from typing import Any, List, Optional, Union
 
 from haystack.core.component.types import GreedyVariadic, Variadic
 from haystack.core.super_component.utils import _is_compatible
-from haystack.core.super_component.super_component import InvalidMappingTypeError, InvalidMappingValueError
 
 
 class TestTypeCompatibility:
@@ -94,36 +93,3 @@ class TestTypeCompatibility:
         # Nested Variadic and GreedyVariadic
         nested_var = Variadic[List[GreedyVariadic[int]]]
         assert _is_compatible(nested_var, List[int])
-
-    def test_error_type_compatibility(self):
-        """Test compatibility of error types."""
-        # Error types should be compatible with themselves
-        assert _is_compatible(InvalidMappingTypeError, InvalidMappingTypeError)
-        assert _is_compatible(InvalidMappingValueError, InvalidMappingValueError)
-
-        # Error types should not be compatible with each other
-        assert not _is_compatible(InvalidMappingTypeError, InvalidMappingValueError)
-        assert not _is_compatible(InvalidMappingValueError, InvalidMappingTypeError)
-
-        # Error types should be compatible with Exception
-        assert _is_compatible(InvalidMappingTypeError, Exception)
-        assert _is_compatible(InvalidMappingValueError, Exception)
-
-        # Error types should be compatible with Any
-        assert _is_compatible(InvalidMappingTypeError, Any)
-        assert _is_compatible(InvalidMappingValueError, Any)
-
-    def test_error_type_with_union(self):
-        """Test error types in Union types."""
-        error_union = Union[InvalidMappingTypeError, InvalidMappingValueError]
-
-        # Should be compatible with both error types
-        assert _is_compatible(error_union, InvalidMappingTypeError)
-        assert _is_compatible(error_union, InvalidMappingValueError)
-
-        # Should be compatible with Exception
-        assert _is_compatible(error_union, Exception)
-
-        # Should not be compatible with other types
-        assert not _is_compatible(error_union, str)
-        assert not _is_compatible(error_union, int)

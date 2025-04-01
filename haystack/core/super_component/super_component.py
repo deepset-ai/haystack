@@ -2,10 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from haystack.core.component import component
 from haystack.core.pipeline import Pipeline
+from haystack.core.pipeline.async_pipeline import AsyncPipeline
 from haystack.core.pipeline.utils import parse_connect_string
 from haystack.core.serialization import default_from_dict, default_to_dict, generate_qualified_class_name
 from haystack.core.super_component.utils import _delegate_default, _is_compatible
@@ -35,14 +36,14 @@ class SuperComponent:
 
     def __init__(
         self,
-        pipeline: Pipeline,
+        pipeline: Union[Pipeline, AsyncPipeline],
         input_mapping: Optional[Dict[str, List[str]]] = None,
         output_mapping: Optional[Dict[str, str]] = None,
     ) -> None:
         """
         Creates a SuperComponent with optional input and output mappings.
 
-        :param pipeline: The pipeline instance to be wrapped
+        :param pipeline: The pipeline instance or async pipeline instance to be wrapped
         :param input_mapping: A dictionary mapping component input names to pipeline input socket paths.
             If not provided, a default input mapping will be created based on all pipeline inputs.
         :param output_mapping: A dictionary mapping pipeline output socket paths to component output names.
@@ -53,7 +54,7 @@ class SuperComponent:
         if pipeline is None:
             raise ValueError("Pipeline must be provided to SuperComponent.")
 
-        self.pipeline: Pipeline = pipeline
+        self.pipeline: Union[Pipeline, AsyncPipeline] = pipeline
         self._warmed_up = False
 
         # Determine input types based on pipeline and mapping
@@ -132,6 +133,29 @@ class SuperComponent:
         filtered_inputs = {param: value for param, value in kwargs.items() if value != _delegate_default}
         pipeline_inputs = self._map_explicit_inputs(input_mapping=self.input_mapping, inputs=filtered_inputs)
         pipeline_outputs = self.pipeline.run(data=pipeline_inputs)
+        return self._map_explicit_outputs(pipeline_outputs, self.output_mapping)
+
+    async def run_async(self, **kwargs: Any) -> Dict[str, Any]:
+        """
+        Runs the wrapped pipeline with the provided inputs async.
+
+        Steps:
+        1. Maps the inputs from kwargs to pipeline component inputs
+        2. Runs the pipeline async
+        3. Maps the pipeline outputs to the SuperComponent's outputs
+
+        :param kwargs: Keyword arguments matching the SuperComponent's input names
+        :returns:
+            Dictionary containing the SuperComponent's output values
+        :raises TypeError:
+            If the pipeline is not an AsyncPipeline
+        """
+        if not isinstance(self.pipeline, AsyncPipeline):
+            raise TypeError("Pipeline is not an AsyncPipeline. run_async is not supported.")
+
+        filtered_inputs = {param: value for param, value in kwargs.items() if value != _delegate_default}
+        pipeline_inputs = self._map_explicit_inputs(input_mapping=self.input_mapping, inputs=filtered_inputs)
+        pipeline_outputs = await self.pipeline.run_async(data=pipeline_inputs)
         return self._map_explicit_outputs(pipeline_outputs, self.output_mapping)
 
     @staticmethod

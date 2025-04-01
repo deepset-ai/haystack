@@ -4,7 +4,7 @@
 from typing import List
 
 import pytest
-from haystack import Document, SuperComponent, Pipeline, component
+from haystack import Document, SuperComponent, Pipeline, AsyncPipeline, component
 from haystack.components.builders import AnswerBuilder, PromptBuilder
 from haystack.components.generators import OpenAIGenerator
 from haystack.components.joiners import DocumentJoiner
@@ -77,6 +77,37 @@ def rag_pipeline(document_store):
     return pipeline
 
 
+@pytest.fixture
+def async_rag_pipeline(document_store):
+    """Create a simple asyncRAG pipeline."""
+
+    @component
+    class FakeGenerator:
+        @component.output_types(replies=List[str])
+        def run(self, prompt: str, **kwargs):
+            return {"replies": ["This is a test response about capitals."]}
+
+    pipeline = AsyncPipeline()
+    pipeline.add_component("retriever", InMemoryBM25Retriever(document_store=document_store))
+    pipeline.add_component(
+        "prompt_builder",
+        PromptBuilder(
+            template="Given these documents: {{documents|join(', ',attribute='content')}} Answer: {{query}}",
+            required_variables="*",
+        ),
+    )
+    pipeline.add_component("llm", FakeGenerator())
+    pipeline.add_component("answer_builder", AnswerBuilder())
+    pipeline.add_component("joiner", DocumentJoiner())
+
+    pipeline.connect("retriever", "prompt_builder.documents")
+    pipeline.connect("prompt_builder", "llm")
+    pipeline.connect("llm.replies", "answer_builder.replies")
+    pipeline.connect("retriever.documents", "joiner.documents")
+
+    return pipeline
+
+
 class TestSuperComponent:
     def test_split_component_path(self):
         path = "router.chat_query"
@@ -111,7 +142,7 @@ class TestSuperComponent:
     def test_duplicate_output_names(self, rag_pipeline):
         output_mapping = {
             "answer_builder.answers": "final_answers",
-            "answer_builder.answers": "another_name",  # Duplicate key
+            "llm.replies": "final_answers",  # Different path but same output name
         }
         with pytest.raises(InvalidMappingValueError):
             SuperComponent(pipeline=rag_pipeline, output_mapping=output_mapping)
@@ -179,6 +210,18 @@ class TestSuperComponent:
         wrapper = SuperComponent(pipeline=rag_pipeline, input_mapping=input_mapping, output_mapping=output_mapping)
         wrapper.warm_up()
         result = wrapper.run(search_query="What is the capital of France?")
+        assert "final_answers" in result
+        assert isinstance(result["final_answers"][0], GeneratedAnswer)
+
+    @pytest.mark.asyncio
+    async def test_super_component_run_async(self, async_rag_pipeline):
+        input_mapping = {"search_query": ["retriever.query", "prompt_builder.query", "answer_builder.query"]}
+        output_mapping = {"answer_builder.answers": "final_answers"}
+        wrapper = SuperComponent(
+            pipeline=async_rag_pipeline, input_mapping=input_mapping, output_mapping=output_mapping
+        )
+        wrapper.warm_up()
+        result = await wrapper.run_async(search_query="What is the capital of France?")
         assert "final_answers" in result
         assert isinstance(result["final_answers"][0], GeneratedAnswer)
 
