@@ -242,7 +242,9 @@ class OpenAIChatGenerator:
         if len(messages) == 0:
             return {"replies": []}
 
-        streaming_callback = streaming_callback or self.streaming_callback
+        streaming_callback = select_streaming_callback(
+            init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=False
+        )
 
         api_args = self._prepare_api_call(
             messages=messages,
@@ -314,7 +316,9 @@ class OpenAIChatGenerator:
             - `replies`: A list containing the generated responses as ChatMessage instances.
         """
         # validate and select the streaming callback
-        streaming_callback = select_streaming_callback(self.streaming_callback, streaming_callback, requires_async=True)  # type: ignore
+        streaming_callback = select_streaming_callback(
+            init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=True
+        )
 
         if len(messages) == 0:
             return {"replies": []}

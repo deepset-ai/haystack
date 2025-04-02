@@ -84,6 +84,29 @@ class TestPipeline:
 
         assert "didn't return a dictionary" in str(exc_info.value)
 
+    def test_run_component_error(self):
+        """Test error when component fails to run"""
+
+        @component
+        class ErroringComponent:
+            @component.output_types(output=str)
+            def run(self):
+                raise ValueError("Test error")
+
+        erroring_component = ErroringComponent()
+        pp = Pipeline()
+        pp.add_component("erroring_component", erroring_component)
+
+        inputs = {"wrong": {"value": [{"sender": None, "value": "test_value"}]}}
+
+        with pytest.raises(PipelineRuntimeError) as exc_info:
+            pp._run_component(
+                component=pp._get_component_with_graph_metadata_and_visits("erroring_component", 0),
+                inputs=inputs,
+                component_visits={"erroring_component": 0},
+            )
+        assert "Component name: 'erroring_component'" in str(exc_info.value)
+
     def test_run(self):
         joiner_1 = BranchJoiner(type_=str)
         joiner_2 = BranchJoiner(type_=str)

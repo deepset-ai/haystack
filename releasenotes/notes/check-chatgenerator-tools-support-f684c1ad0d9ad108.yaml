@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    The Agent component checks that the ChatGenerator it is initialized with supports tools. If it doesn't, the Agent raises a TypeError.

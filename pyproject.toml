@@ -115,7 +115,8 @@ extra-dependencies = [
   "tabulate",                         # XLSXToDocument
   "python-oxmsg",                     # MSGToDocument
 
-  "nltk>=3.9.1", # NLTKDocumentSplitter
+  "nltk>=3.9.1", # NLTKDocumentSplitter, RecursiveDocumentSplitter
+  "tiktoken", # RecursiveDocumentSplitter
 
   # OpenAPI
   "jsonref",              # OpenAPIServiceConnector, OpenAPIServiceToFunctions
@@ -131,6 +132,9 @@ extra-dependencies = [
 
   # ComponentTool
   "docstring-parser",
+
+  # needed in link content fetcher tests
+  "httpx[http2]",
 
   # Azure Utils
   "azure-identity",

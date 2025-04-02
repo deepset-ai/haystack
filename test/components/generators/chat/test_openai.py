@@ -205,7 +205,10 @@ class TestOpenAIChatGenerator:
                         "data": {
                             "description": "description",
                             "function": "builtins.print",
+                            "inputs_from_state": None,
                             "name": "name",
+                            "outputs_to_state": None,
+                            "outputs_to_string": None,
                             "parameters": {"x": {"type": "string"}},
                         },
                     }

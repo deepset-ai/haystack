@@ -3,13 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from openai.lib.azure import AsyncAzureADTokenProvider, AsyncAzureOpenAI, AzureADTokenProvider, AzureOpenAI
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.generators.chat import OpenAIChatGenerator
-from haystack.dataclasses import StreamingChunk
+from haystack.dataclasses.streaming_chunk import StreamingCallbackT
 from haystack.tools.tool import Tool, _check_duplicate_tool_names, deserialize_tools_inplace
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 
@@ -68,7 +68,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         api_key: Optional[Secret] = Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=False),
         azure_ad_token: Optional[Secret] = Secret.from_env_var("AZURE_OPENAI_AD_TOKEN", strict=False),
         organization: Optional[str] = None,
-        streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
+        streaming_callback: Optional[StreamingCallbackT] = None,
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
@@ -147,8 +147,8 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         self.azure_deployment = azure_deployment
         self.organization = organization
         self.model = azure_deployment or "gpt-4o-mini"
-        self.timeout = timeout or float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
-        self.max_retries = max_retries or int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
+        self.timeout = timeout if timeout is not None else float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
+        self.max_retries = max_retries if max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
         self.default_headers = default_headers or {}
         self.azure_ad_token_provider = azure_ad_token_provider
 

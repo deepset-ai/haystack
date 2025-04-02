@@ -3,14 +3,23 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+import warnings
 from typing import Any, Dict, List, Optional, Tuple, Type
 
 from tqdm import tqdm
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.builders import PromptBuilder
-from haystack.components.generators import OpenAIGenerator
-from haystack.utils import Secret, deserialize_secrets_inplace, deserialize_type, serialize_type
+from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.components.generators.chat.types import ChatGenerator
+from haystack.dataclasses.chat_message import ChatMessage
+from haystack.utils import (
+    Secret,
+    deserialize_chatgenerator_inplace,
+    deserialize_secrets_inplace,
+    deserialize_type,
+    serialize_type,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -57,12 +66,15 @@ class LLMEvaluator:
         progress_bar: bool = True,
         *,
         raise_on_failure: bool = True,
-        api: str = "openai",
+        api: Optional[str] = None,
         api_key: Optional[Secret] = None,
         api_params: Optional[Dict[str, Any]] = None,
+        chat_generator: Optional[ChatGenerator] = None,
     ):
         """
         Creates an instance of LLMEvaluator.
+
+        If no LLM is specified using the available parameters, the component will use OpenAI in JSON mode.
 
         :param instructions:
             The prompt instructions to use for evaluation.
@@ -82,42 +94,58 @@ class LLMEvaluator:
         :param progress_bar:
             Whether to show a progress bar during the evaluation.
         :param api:
-            The API to use for calling an LLM through a Generator.
-            Supported APIs: "openai".
+            The API to use for calling an LLM through a ChatGenerator. Supported APIs: "openai".
+            Deprecated. Use `chat_generator` to configure the LLM.
         :param api_key:
             The API key to be passed to a LLM provider. It may not be necessary when using a locally hosted model.
+            Deprecated. Use `chat_generator` to configure the LLM.
         :param api_params:
-            Parameters for an OpenAI API compatible completions call.
-
+            Parameters for an OpenAI API compatible chat completions call.
+            Deprecated. Use `chat_generator` to configure the LLM.
+        :param chat_generator:
+            a ChatGenerator instance which represents the LLM. If provided, settings in api, api_key, and api_params
+            will be ignored.
+            In order for the component to work, the LLM should be configured to return a JSON object. For example,
+            when using the OpenAIChatGenerator, you should pass `{"response_format": {"type": "json_object"}}` in the
+            `generation_kwargs`.
         """
         self.validate_init_parameters(inputs, outputs, examples)
+        component.set_input_types(self, **dict(inputs))
+
         self.raise_on_failure = raise_on_failure
         self.instructions = instructions
         self.inputs = inputs
         self.outputs = outputs
         self.examples = examples
-        self.api = api
-        self.api_key = api_key
-        self.api_params = api_params or {}
         self.progress_bar = progress_bar
-
-        default_generation_kwargs = {"response_format": {"type": "json_object"}, "seed": 42}
-        user_generation_kwargs = self.api_params.get("generation_kwargs", {})
-        merged_generation_kwargs = {**default_generation_kwargs, **user_generation_kwargs}
-        self.api_params["generation_kwargs"] = merged_generation_kwargs
-
-        if api == "openai":
-            generator_kwargs = {**self.api_params}
-            if api_key:
-                generator_kwargs["api_key"] = api_key
-            self.generator = OpenAIGenerator(**generator_kwargs)
-        else:
-            raise ValueError(f"Unsupported API: {api}")
 
         template = self.prepare_template()
         self.builder = PromptBuilder(template=template)
 
-        component.set_input_types(self, **dict(inputs))
+        if api is not None and api != "openai":
+            raise ValueError(f"Unsupported API: {api}. To pass a custom LLM, use the chat_generator parameter.")
+
+        if api or api_params or api_key:
+            warnings.warn(
+                "api, api_params, and api_key are deprecated and will be removed in Haystack 2.13.0. Use "
+                "chat_generator instead.",
+                DeprecationWarning,
+            )
+
+        api_params = api_params or {}
+        default_generation_kwargs = {"response_format": {"type": "json_object"}, "seed": 42}
+        user_generation_kwargs = api_params.get("generation_kwargs", {})
+        merged_generation_kwargs = {**default_generation_kwargs, **user_generation_kwargs}
+        api_params["generation_kwargs"] = merged_generation_kwargs
+        if api_key:
+            api_params["api_key"] = api_key
+
+        if chat_generator is not None:
+            self._chat_generator = chat_generator
+            if api or api_params or api_key:
+                logger.warning("Both chat_generator and api are provided. chat_generator will be used.")
+        else:
+            self._chat_generator = OpenAIChatGenerator(**api_params)
 
     @staticmethod
     def validate_init_parameters(
@@ -200,12 +228,13 @@ class LLMEvaluator:
         list_of_input_names_to_values = [dict(zip(input_names, v)) for v in values]
 
         results: List[Optional[Dict[str, Any]]] = []
-        metadata = None
+        metadata = []
         errors = 0
         for input_names_to_values in tqdm(list_of_input_names_to_values, disable=not self.progress_bar):
             prompt = self.builder.run(**input_names_to_values)
+            messages = [ChatMessage.from_user(prompt["prompt"])]
             try:
-                result = self.generator.run(prompt=prompt["prompt"])
+                result = self._chat_generator.run(messages=messages)
             except Exception as e:
                 if self.raise_on_failure:
                     raise ValueError(f"Error while generating response for prompt: {prompt}. Error: {e}")
@@ -214,15 +243,15 @@ class LLMEvaluator:
                 errors += 1
                 continue
 
-            if self.is_valid_json_and_has_expected_keys(expected=self.outputs, received=result["replies"][0]):
-                parsed_result = json.loads(result["replies"][0])
+            if self.is_valid_json_and_has_expected_keys(expected=self.outputs, received=result["replies"][0].text):
+                parsed_result = json.loads(result["replies"][0].text)
                 results.append(parsed_result)
             else:
                 results.append(None)
                 errors += 1
 
-            if self.api == "openai" and "meta" in result:
-                metadata = result["meta"]
+            if result["replies"][0].meta:
+                metadata.append(result["replies"][0].meta)
 
         if errors > 0:
             logger.warning(
@@ -231,7 +260,7 @@ class LLMEvaluator:
                 len=len(list_of_input_names_to_values),
             )
 
-        return {"results": results, "meta": metadata}
+        return {"results": results, "meta": metadata or None}
 
     def prepare_template(self) -> str:
         """
@@ -293,9 +322,7 @@ class LLMEvaluator:
             inputs=inputs,
             outputs=self.outputs,
             examples=self.examples,
-            api=self.api,
-            api_key=self.api_key and self.api_key.to_dict(),
-            api_params=self.api_params,
+            chat_generator=self._chat_generator.to_dict(),
             progress_bar=self.progress_bar,
         )
 
@@ -314,6 +341,10 @@ class LLMEvaluator:
         ]
 
         deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
+
+        if data["init_parameters"].get("chat_generator"):
+            deserialize_chatgenerator_inplace(data["init_parameters"], key="chat_generator")
+
         return default_from_dict(cls, data)
 
     @staticmethod
