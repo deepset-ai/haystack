@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    `AzureOpenAITextEmbedder` and `AzureOpenAIDocumentEmbedder` now support custom HTTP client config via `http_client_kwargs`, enabling proxy and SSL setup.
