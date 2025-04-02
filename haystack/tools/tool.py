@@ -29,14 +29,25 @@ class Tool:
         A JSON schema defining the parameters expected by the Tool.
     :param function:
         The function that will be invoked when the Tool is called.
+    :param outputs_to_string:
+        Optional dictionary defining how a tool outputs should be converted into a string.
+        If the source is provided only the specified output key is sent to the handler.
+        If the source is omitted the whole tool result is sent to the handler.
+        Example: {
+            "source": "docs", "handler": format_documents
+        }
     :param inputs_from_state:
         Optional dictionary mapping state keys to tool parameter names.
         Example: {"repository": "repo"} maps state's "repository" to tool's "repo" parameter.
     :param outputs_to_state:
         Optional dictionary defining how tool outputs map to keys within state as well as optional handlers.
+        If the source is provided only the specified output key is sent to the handler.
         Example: {
-            "documents": {"source": "docs", "handler": custom_handler},
-            "message": {"source": "summary", "handler": format_summary}
+            "documents": {"source": "docs", "handler": custom_handler}
+        }
+        If the source is omitted the whole tool result is sent to the handler.
+        Example: {
+            "documents": {"handler": custom_handler}
         }
     """
 
@@ -44,6 +55,7 @@ class Tool:
     description: str
     parameters: Dict[str, Any]
     function: Callable
+    outputs_to_string: Optional[Dict[str, Any]] = None
     inputs_from_state: Optional[Dict[str, str]] = None
     outputs_to_state: Optional[Dict[str, Dict[str, Any]]] = None
 
@@ -58,11 +70,17 @@ class Tool:
         if self.outputs_to_state is not None:
             for key, config in self.outputs_to_state.items():
                 if not isinstance(config, dict):
-                    raise ValueError(f"Output configuration for key '{key}' must be a dictionary")
+                    raise ValueError(f"outputs_to_state configuration for key '{key}' must be a dictionary")
                 if "source" in config and not isinstance(config["source"], str):
-                    raise ValueError(f"Output source for key '{key}' must be a string.")
+                    raise ValueError(f"outputs_to_state source for key '{key}' must be a string.")
                 if "handler" in config and not callable(config["handler"]):
-                    raise ValueError(f"Output handler for key '{key}' must be callable")
+                    raise ValueError(f"outputs_to_state handler for key '{key}' must be callable")
+
+        if self.outputs_to_string is not None:
+            if "source" in self.outputs_to_string and not isinstance(self.outputs_to_string["source"], str):
+                raise ValueError("outputs_to_string source must be a string.")
+            if "handler" in self.outputs_to_string and not callable(self.outputs_to_string["handler"]):
+                raise ValueError("outputs_to_string handler must be callable")
 
     @property
     def tool_spec(self) -> Dict[str, Any]:
@@ -103,6 +121,9 @@ class Tool:
                 serialized_outputs[key] = serialized_config
             data["outputs_to_state"] = serialized_outputs
 
+        if self.outputs_to_string is not None and self.outputs_to_string.get("handler") is not None:
+            data["outputs_to_string"] = serialize_callable(self.outputs_to_string["handler"])
+
         return {"type": generate_qualified_class_name(type(self)), "data": data}
 
     @classmethod
@@ -127,6 +148,14 @@ class Tool:
                     deserialized_config["handler"] = deserialize_callable(config["handler"])
                 deserialized_outputs[key] = deserialized_config
             init_parameters["outputs_to_state"] = deserialized_outputs
+
+        if (
+            init_parameters.get("outputs_to_string") is not None
+            and init_parameters["outputs_to_string"].get("handler") is not None
+        ):
+            init_parameters["outputs_to_string"]["handler"] = deserialize_callable(
+                init_parameters["outputs_to_string"]["handler"]
+            )
 
         return cls(**init_parameters)
 

@@ -199,7 +199,7 @@ class SentenceTransformersDiversityRanker:
             self.model = SentenceTransformer(
                 model_name_or_path=self.model_name_or_path,
                 device=self.device.to_torch_str(),
-                use_auth_token=self.token.resolve_value() if self.token else None,
+                token=self.token.resolve_value() if self.token else None,
                 model_kwargs=self.model_kwargs,
                 tokenizer_kwargs=self.tokenizer_kwargs,
                 config_kwargs=self.config_kwargs,

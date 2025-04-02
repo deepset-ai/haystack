@@ -227,7 +227,7 @@ class TestToolInvoker:
 
         tool_result = datetime.datetime.now()
         with pytest.raises(StringConversionError):
-            invoker._prepare_tool_result_message(result=tool_result, tool_call=tool_call)
+            invoker._prepare_tool_result_message(result=tool_result, tool_call=tool_call, tool_to_invoke=weather_tool)
 
     def test_string_conversion_error_does_not_raise_exception(self, weather_tool):
         invoker = ToolInvoker(tools=[weather_tool], raise_on_failure=False, convert_result_to_json_string=True)
@@ -235,7 +235,9 @@ class TestToolInvoker:
         tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
 
         tool_result = datetime.datetime.now()
-        tool_message = invoker._prepare_tool_result_message(result=tool_result, tool_call=tool_call)
+        tool_message = invoker._prepare_tool_result_message(
+            result=tool_result, tool_call=tool_call, tool_to_invoke=weather_tool
+        )
 
         assert tool_message.tool_call_results[0].error
         assert "Failed to convert" in tool_message.tool_call_results[0].result
@@ -295,6 +297,7 @@ class TestToolInvoker:
                                         "required": ["location"],
                                     },
                                     "function": "tools.test_tool_invoker.weather_function",
+                                    "outputs_to_string": None,
                                     "inputs_from_state": None,
                                     "outputs_to_state": None,
                                 },
@@ -333,24 +336,21 @@ class TestMergeToolOutputs:
     def test_merge_tool_outputs_result_not_a_dict(self, weather_tool):
         invoker = ToolInvoker(tools=[weather_tool])
         state = State(schema={"weather": {"type": str}})
-        merged_results = invoker._merge_tool_outputs(tool=weather_tool, result="test", state=state)
-        assert merged_results == "test"
+        invoker._merge_tool_outputs(tool=weather_tool, result="test", state=state)
         assert state.data == {}
 
     def test_merge_tool_outputs_empty_dict(self, weather_tool):
         invoker = ToolInvoker(tools=[weather_tool])
         state = State(schema={"weather": {"type": str}})
-        merged_results = invoker._merge_tool_outputs(tool=weather_tool, result={}, state=state)
-        assert merged_results == {}
+        invoker._merge_tool_outputs(tool=weather_tool, result={}, state=state)
         assert state.data == {}
 
     def test_merge_tool_outputs_no_output_mapping(self, weather_tool):
         invoker = ToolInvoker(tools=[weather_tool])
         state = State(schema={"weather": {"type": str}})
-        merged_results = invoker._merge_tool_outputs(
+        invoker._merge_tool_outputs(
             tool=weather_tool, result={"weather": "sunny", "temperature": 14, "unit": "celsius"}, state=state
         )
-        assert merged_results == {"weather": "sunny", "temperature": 14, "unit": "celsius"}
         assert state.data == {}
 
     def test_merge_tool_outputs_with_output_mapping(self):
@@ -363,10 +363,9 @@ class TestMergeToolOutputs:
         )
         invoker = ToolInvoker(tools=[weather_tool])
         state = State(schema={"weather": {"type": str}})
-        merged_results = invoker._merge_tool_outputs(
+        invoker._merge_tool_outputs(
             tool=weather_tool, result={"weather": "sunny", "temperature": 14, "unit": "celsius"}, state=state
         )
-        assert merged_results == {"weather": "sunny", "temperature": 14, "unit": "celsius"}
         assert state.data == {"weather": "sunny"}
 
     def test_merge_tool_outputs_with_output_mapping_2(self):
@@ -379,10 +378,9 @@ class TestMergeToolOutputs:
         )
         invoker = ToolInvoker(tools=[weather_tool])
         state = State(schema={"all_weather_results": {"type": str}})
-        merged_results = invoker._merge_tool_outputs(
+        invoker._merge_tool_outputs(
             tool=weather_tool, result={"weather": "sunny", "temperature": 14, "unit": "celsius"}, state=state
         )
-        assert merged_results == {"weather": "sunny", "temperature": 14, "unit": "celsius"}
         assert state.data == {"all_weather_results": {"weather": "sunny", "temperature": 14, "unit": "celsius"}}
 
     def test_merge_tool_outputs_with_output_mapping_and_handler(self):
@@ -396,24 +394,7 @@ class TestMergeToolOutputs:
         )
         invoker = ToolInvoker(tools=[weather_tool])
         state = State(schema={"temperature": {"type": str}})
-        merged_results = invoker._merge_tool_outputs(
+        invoker._merge_tool_outputs(
             tool=weather_tool, result={"weather": "sunny", "temperature": 14, "unit": "celsius"}, state=state
         )
-        assert merged_results == {"weather": "sunny", "temperature": 14, "unit": "celsius"}
         assert state.data == {"temperature": "14"}
-
-    def test_merge_tool_outputs_with_message_output_mapping(self):
-        weather_tool = Tool(
-            name="weather_tool",
-            description="Provides weather information for a given location.",
-            parameters=weather_parameters,
-            function=weather_function,
-            outputs_to_state={"message": {"source": "weather"}},
-        )
-        invoker = ToolInvoker(tools=[weather_tool])
-        state = State(schema={})
-        merged_results = invoker._merge_tool_outputs(
-            tool=weather_tool, result={"weather": "sunny", "temperature": 14, "unit": "celsius"}, state=state
-        )
-        assert merged_results == "sunny"
-        assert state.data == {}

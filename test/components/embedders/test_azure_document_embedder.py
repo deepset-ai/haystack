@@ -31,6 +31,25 @@ class TestAzureOpenAIDocumentEmbedder:
         assert embedder.azure_ad_token_provider is None
         assert embedder.http_client_kwargs is None
 
+    def test_init_with_0_max_retries(self, monkeypatch):
+        """Tests that the max_retries init param is set correctly if equal 0"""
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
+        embedder = AzureOpenAIDocumentEmbedder(
+            azure_endpoint="https://example-resource.azure.openai.com/", max_retries=0
+        )
+        assert embedder.azure_deployment == "text-embedding-ada-002"
+        assert embedder.dimensions is None
+        assert embedder.organization is None
+        assert embedder.prefix == ""
+        assert embedder.suffix == ""
+        assert embedder.batch_size == 32
+        assert embedder.progress_bar is True
+        assert embedder.meta_fields_to_embed == []
+        assert embedder.embedding_separator == "\n"
+        assert embedder.default_headers == {}
+        assert embedder.azure_ad_token_provider is None
+        assert embedder.max_retries == 0
+
     def test_to_dict(self, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
         component = AzureOpenAIDocumentEmbedder(azure_endpoint="https://example-resource.azure.openai.com/")

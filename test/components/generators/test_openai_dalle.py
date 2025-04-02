@@ -54,6 +54,13 @@ class TestDALLEImageGenerator:
         assert pytest.approx(component.timeout) == 60.0
         assert component.max_retries == 10
 
+    def test_init_max_retries_0(self, monkeypatch):
+        """
+        Test that the max_retries parameter is taken into account even if it is 0.
+        """
+        component = DALLEImageGenerator(max_retries=0)
+        assert component.max_retries == 0
+
     def test_warm_up(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = DALLEImageGenerator()
