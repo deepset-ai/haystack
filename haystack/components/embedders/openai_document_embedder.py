@@ -6,7 +6,7 @@ import os
 from typing import Any, Dict, List, Optional, Tuple
 
 from more_itertools import batched
-from openai import APIError, OpenAI
+from openai import APIError, AsyncOpenAI, OpenAI
 from tqdm import tqdm
 from tqdm.asyncio import tqdm as async_tqdm
 
@@ -113,13 +113,16 @@ class OpenAIDocumentEmbedder:
         if max_retries is None:
             max_retries = int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
 
-        self.client = OpenAI(
-            api_key=api_key.resolve_value(),
-            organization=organization,
-            base_url=api_base_url,
-            timeout=timeout,
-            max_retries=max_retries,
-        )
+        client_args: Dict[str, Any] = {
+            "api_key": api_key.resolve_value(),
+            "organization": organization,
+            "base_url": api_base_url,
+            "timeout": timeout,
+            "max_retries": max_retries,
+        }
+
+        self.client = OpenAI(**client_args)
+        self.async_client = AsyncOpenAI(**client_args)
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -224,16 +227,6 @@ class OpenAIDocumentEmbedder:
         Embed a list of texts in batches asynchronously.
         """
 
-        from openai import AsyncOpenAI
-
-        async_client = AsyncOpenAI(
-            api_key=self.api_key.resolve_value(),
-            organization=self.organization,
-            base_url=self.api_base_url,
-            timeout=self.client.timeout,
-            max_retries=self.client.max_retries,
-        )
-
         all_embeddings = []
         meta: Dict[str, Any] = {}
 
@@ -248,7 +241,7 @@ class OpenAIDocumentEmbedder:
                 args["dimensions"] = self.dimensions
 
             try:
-                response = await async_client.embeddings.create(**args)
+                response = await self.async_client.embeddings.create(**args)
             except APIError as exc:
                 ids = ", ".join(b[0] for b in batch)
                 msg = "Failed embedding of documents {ids} caused by {exc}"
@@ -266,7 +259,6 @@ class OpenAIDocumentEmbedder:
                 meta["usage"]["prompt_tokens"] += response.usage.prompt_tokens
                 meta["usage"]["total_tokens"] += response.usage.total_tokens
 
-        await async_client.close()
         return all_embeddings, meta
 
     @component.output_types(documents=List[Document], meta=Dict[str, Any])
