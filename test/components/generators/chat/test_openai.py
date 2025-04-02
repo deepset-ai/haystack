@@ -22,6 +22,25 @@ from haystack.utils.auth import Secret
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.tools import Tool
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.tools.toolset import Toolset
+
+
+# Define a custom Toolset subclass
+class CustomToolset(Toolset):
+    def __init__(self, tools, custom_attr):
+        super().__init__(tools)
+        self.custom_attr = custom_attr
+
+    def to_dict(self):
+        data = super().to_dict()
+        data["custom_attr"] = self.custom_attr
+        return data
+
+    @classmethod
+    def from_dict(cls, data):
+        tools = [Tool.from_dict(tool_data) for tool_data in data["data"]["tools"]]
+        custom_attr = data["custom_attr"]
+        return cls(tools=tools, custom_attr=custom_attr)
 
 
 @pytest.fixture
@@ -71,6 +90,10 @@ def mock_chat_completion_chunk_with_tools(openai_mock_stream):
         yield mock_chat_completion_create
 
 
+def mock_tool_function(x):
+    return x
+
+
 @pytest.fixture
 def tools():
     tool_parameters = {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}
@@ -78,7 +101,7 @@ def tools():
         name="weather",
         description="useful to determine the weather in a given location",
         parameters=tool_parameters,
-        function=lambda x: x,
+        function=mock_tool_function,
     )
 
     return [tool]
@@ -217,6 +240,16 @@ class TestOpenAIChatGenerator:
             },
         }
 
+    def test_to_dict_with_toolset(self, tools, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        toolset = Toolset(tools)
+        component = OpenAIChatGenerator(tools=toolset)
+        data = component.to_dict()
+
+        assert data["init_parameters"]["tools"]["type"] == "haystack.tools.toolset.Toolset"
+        assert "tools" in data["init_parameters"]["tools"]["data"]
+        assert len(data["init_parameters"]["tools"]["data"]["tools"]) == len(tools)
+
     def test_from_dict(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         data = {
@@ -269,6 +302,7 @@ class TestOpenAIChatGenerator:
                 "api_base_url": "test-base-url",
                 "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
+                "tools": None,
             },
         }
         with pytest.raises(ValueError):
@@ -925,6 +959,116 @@ class TestOpenAIChatGenerator:
     def test_live_run_with_tools_streaming(self, tools):
         chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
         component = OpenAIChatGenerator(tools=tools, streaming_callback=print_streaming_chunk)
+        results = component.run(chat_messages)
+        assert len(results["replies"]) == 1
+        message = results["replies"][0]
+
+        assert not message.texts
+        assert not message.text
+        assert message.tool_calls
+        tool_call = message.tool_call
+        assert isinstance(tool_call, ToolCall)
+        assert tool_call.tool_name == "weather"
+        assert tool_call.arguments == {"city": "Paris"}
+        assert message.meta["finish_reason"] == "tool_calls"
+
+    def test_openai_chat_generator_with_toolset_initialization(self, tools, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")  # Set the API key for the test
+        # Create a Toolset with the tools
+        toolset = Toolset(tools)
+
+        # Initialize OpenAIChatGenerator with the Toolset
+        generator = OpenAIChatGenerator(tools=toolset)
+
+        # Assert that the generator's tools match those in the Toolset
+        assert generator.tools == toolset
+
+    def test_from_dict_with_toolset(self, tools, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        toolset = Toolset(tools)
+        component = OpenAIChatGenerator(tools=toolset)
+        data = component.to_dict()
+
+        deserialized_component = OpenAIChatGenerator.from_dict(data)
+
+        assert isinstance(deserialized_component.tools, Toolset)
+        assert len(deserialized_component.tools) == len(tools)
+        assert all(isinstance(tool, Tool) for tool in deserialized_component.tools)
+
+    def test_toolset_serde_with_single_tool(self, tools):
+        # Create a Toolset with a single tool
+        toolset = Toolset(tools)
+
+        # Serialize the Toolset
+        serialized_toolset = toolset.to_dict()
+
+        # Deserialize the Toolset
+        deserialized_toolset = Toolset.from_dict(serialized_toolset)
+
+        # Assert that the deserialized Toolset matches the original
+        assert isinstance(deserialized_toolset, Toolset)
+        assert len(deserialized_toolset) == len(tools)
+        assert all(isinstance(tool, Tool) for tool in deserialized_toolset)
+        assert deserialized_toolset[0].name == tools[0].name
+        assert deserialized_toolset[0].description == tools[0].description
+        assert deserialized_toolset[0].parameters == tools[0].parameters
+
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_live_run_with_toolset(self, tools):
+        chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
+        toolset = Toolset(tools)
+        component = OpenAIChatGenerator(tools=toolset)
+        results = component.run(chat_messages)
+        assert len(results["replies"]) == 1
+        message = results["replies"][0]
+
+        assert not message.texts
+        assert not message.text
+        assert message.tool_calls
+        tool_call = message.tool_call
+        assert isinstance(tool_call, ToolCall)
+        assert tool_call.tool_name == "weather"
+        assert tool_call.arguments == {"city": "Paris"}
+        assert message.meta["finish_reason"] == "tool_calls"
+
+    def test_serde_with_custom_toolset(self, tools, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+
+        # Create a CustomToolset with a single tool
+        custom_toolset = CustomToolset(tools, custom_attr="custom_value")
+
+        # Initialize OpenAIChatGenerator with the CustomToolset
+        component = OpenAIChatGenerator(tools=custom_toolset)
+
+        # Serialize the component
+        data = component.to_dict()
+        # Assert that the tools data in the serialized component is a dictionary
+        assert isinstance(data["init_parameters"]["tools"], dict)
+        # Assert that the tools data contains the custom attribute
+        assert data["init_parameters"]["tools"]["custom_attr"] == "custom_value"
+
+        # Deserialize the component
+        deserialized_component = OpenAIChatGenerator.from_dict(data)
+
+        # Assert that the deserialized component's toolset matches the original
+        assert isinstance(deserialized_component.tools, CustomToolset)
+        assert len(deserialized_component.tools) == len(tools)
+        assert deserialized_component.tools.custom_attr == "custom_value"
+        assert all(isinstance(tool, Tool) for tool in deserialized_component.tools)
+
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_live_run_with_custom_toolset(self, tools):
+        chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
+        custom_toolset = CustomToolset(tools, custom_attr="custom_value")
+        component = OpenAIChatGenerator(tools=custom_toolset)
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message = results["replies"][0]

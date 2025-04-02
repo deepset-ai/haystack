@@ -11,6 +11,7 @@ from jsonschema.exceptions import SchemaError
 from haystack.core.serialization import generate_qualified_class_name, import_class_by_name
 from haystack.tools.errors import ToolInvocationError
 from haystack.utils import deserialize_callable, serialize_callable
+from haystack.utils.deserialization import deserialize_toolset_inplace
 
 
 @dataclass
@@ -190,8 +191,13 @@ def deserialize_tools_inplace(data: Dict[str, Any], key: str = "tools"):
         if serialized_tools is None:
             return
 
+        if isinstance(serialized_tools, dict):
+            # Assume it's a serialized Toolset
+            deserialize_toolset_inplace(data, key=key)
+            return
+
         if not isinstance(serialized_tools, list):
-            raise TypeError(f"The value of '{key}' is not a list")
+            raise TypeError(f"The value of '{key}' is not a list or a dictionary")
 
         deserialized_tools = []
         for tool in serialized_tools:
