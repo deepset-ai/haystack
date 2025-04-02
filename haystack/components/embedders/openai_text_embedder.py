@@ -160,7 +160,7 @@ class OpenAITextEmbedder:
         # replace newlines, which can negatively affect performance.
         text_to_embed = text_to_embed.replace("\n", " ")
 
-        kwargs = {"model": self.model, "input": text}
+        kwargs: Dict[str, Any] = {"model": self.model, "input": text}
         if self.dimensions is not None:
             kwargs["dimensions"] = self.dimensions
         return kwargs
