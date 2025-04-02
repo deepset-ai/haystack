@@ -437,6 +437,7 @@ class ToolInvoker:
         :returns:
             Dictionary with serialized data.
         """
+        tools_data: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None
         if isinstance(self.tools, Toolset):
             tools_data = self.tools.to_dict()
         else:

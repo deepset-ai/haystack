@@ -183,6 +183,7 @@ class OpenAIChatGenerator:
             The serialized component as a dictionary.
         """
         callback_name = serialize_callable(self.streaming_callback) if self.streaming_callback else None
+        tools_data: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None
         if isinstance(self.tools, Toolset):
             tools_data = self.tools.to_dict()
         else:
@@ -386,6 +387,8 @@ class OpenAIChatGenerator:
         openai_formatted_messages = [message.to_openai_dict_format() for message in messages]
 
         tools = tools or self.tools
+        if isinstance(tools, Toolset):
+            tools = list(tools)
         tools_strict = tools_strict if tools_strict is not None else self.tools_strict
         _check_duplicate_tool_names(tools)
 

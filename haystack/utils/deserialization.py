@@ -96,6 +96,8 @@ def deserialize_toolset_inplace(data: Dict[str, Any], key: str = "tools"):
 
         # Extract the class type from the serialized data
         toolset_class_name = serialized_toolset.get("type")
+        if toolset_class_name is None:
+            raise DeserializationError("The 'type' key is missing or None in the serialized toolset data")
         toolset_class = import_class_by_name(toolset_class_name)
         if not issubclass(toolset_class, Toolset):
             raise TypeError(f"Class '{toolset_class}' is not a subclass of Toolset")
