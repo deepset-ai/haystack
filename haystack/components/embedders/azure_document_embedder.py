@@ -59,7 +59,7 @@ class AzureOpenAIDocumentEmbedder:
         *,
         default_headers: Optional[Dict[str, str]] = None,
         azure_ad_token_provider: Optional[AzureADTokenProvider] = None,
-        http_client_kargs: Optional[Dict[str, Any]] = None,
+        http_client_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
         Creates an AzureOpenAIDocumentEmbedder component.
@@ -107,7 +107,7 @@ class AzureOpenAIDocumentEmbedder:
         :param default_headers: Default headers to send to the AzureOpenAI client.
         :param azure_ad_token_provider: A function that returns an Azure Active Directory token, will be invoked on
             every request.
-        :param http_client_kargs: A dictionary of keyword arguments to configure a custom httpx.Client.
+        :param http_client_kwargs: A dictionary of keyword arguments to configure a custom httpx.Client.
         """
         # if not provided as a parameter, azure_endpoint is read from the env var AZURE_OPENAI_ENDPOINT
         azure_endpoint = azure_endpoint or os.environ.get("AZURE_OPENAI_ENDPOINT")
@@ -134,7 +134,7 @@ class AzureOpenAIDocumentEmbedder:
         self.max_retries = max_retries or int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
         self.default_headers = default_headers or {}
         self.azure_ad_token_provider = azure_ad_token_provider
-        self.http_client_kargs = http_client_kargs
+        self.http_client_kwargs = http_client_kwargs
 
         self._client = AzureOpenAI(
             api_version=api_version,
@@ -147,15 +147,15 @@ class AzureOpenAIDocumentEmbedder:
             timeout=self.timeout,
             max_retries=self.max_retries,
             default_headers=self.default_headers,
-            http_client=self._init_client(),
+            http_client=self._init_http_client(),
         )
 
-    def _init_client(self):
+    def _init_http_client(self):
         """Internal method to initialize the httpx.Client."""
-        if self.http_client_kargs:
-            if not isinstance(self.http_client_kargs, dict):
-                raise TypeError("The parameter 'http_client_kargs' must be a dictionary.")
-            return httpx.Client(**self.http_client_kargs)
+        if self.http_client_kwargs:
+            if not isinstance(self.http_client_kwargs, dict):
+                raise TypeError("The parameter 'http_client_kwargs' must be a dictionary.")
+            return httpx.Client(**self.http_client_kwargs)
         return None
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
@@ -193,7 +193,7 @@ class AzureOpenAIDocumentEmbedder:
             max_retries=self.max_retries,
             default_headers=self.default_headers,
             azure_ad_token_provider=azure_ad_token_provider_name,
-            http_client_kargs=self.http_client_kargs,
+            http_client_kwargs=self.http_client_kwargs,
         )
 
     @classmethod
