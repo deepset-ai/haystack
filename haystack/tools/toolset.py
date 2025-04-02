@@ -209,6 +209,17 @@ class Toolset:
         Serialize the Toolset to a dictionary.
 
         :returns: A dictionary representation of the Toolset
+
+        Note for subclass implementers:
+        The default implementation is ideal for scenarios where Tool resolution is static. However, if your subclass
+        of Toolset dynamically resolves Tool instances from external sources—such as an MCP server, OpenAPI URL, or
+        a local OpenAPI specification—you should consider serializing the endpoint descriptor instead of the Tool
+        instances themselves. This strategy preserves the dynamic nature of your Toolset and minimizes the overhead
+        associated with serializing potentially large collections of Tool objects. Moreover, by serializing the
+        descriptor, you ensure that the deserialization process can accurately reconstruct the Tool instances, even
+        if they have been modified or removed since the last serialization. Failing to serialize the descriptor may
+        lead to issues where outdated or incorrect Tool configurations are loaded, potentially causing errors or
+        unexpected behavior.
         """
         return {
             "type": generate_qualified_class_name(type(self)),
