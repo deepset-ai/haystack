@@ -99,6 +99,9 @@ extra-dependencies = [
   "spacy>=3.8,<3.9",
   "spacy-curated-transformers>=0.2,<=0.3",
   "en-core-web-trf @ https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.8.0/en_core_web_trf-3.8.0-py3-none-any.whl",
+  # spacy requires thinc, which depends on blis. We pin blis because version 1.2.1 does not have wheels for python 3.9
+  # and compiling it from source takes much time.
+  "blis<1.2.1; python_version < '3.10'",
 
   # Converters
   "pypdf",                            # PyPDFToDocument
@@ -115,7 +118,8 @@ extra-dependencies = [
   "tabulate",                         # XLSXToDocument
   "python-oxmsg",                     # MSGToDocument
 
-  "nltk>=3.9.1", # NLTKDocumentSplitter
+  "nltk>=3.9.1", # NLTKDocumentSplitter, RecursiveDocumentSplitter
+  "tiktoken", # RecursiveDocumentSplitter
 
   # OpenAPI
   "jsonref",              # OpenAPIServiceConnector, OpenAPIServiceToFunctions

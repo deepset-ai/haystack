@@ -3,10 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from datetime import datetime
-from typing import Any, AsyncIterable, Callable, Dict, Iterable, List, Optional, Union
+from typing import Any, AsyncIterable, Dict, Iterable, List, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall, select_streaming_callback
+from haystack.dataclasses.streaming_chunk import StreamingCallbackT
 from haystack.lazy_imports import LazyImport
 from haystack.tools.tool import Tool, _check_duplicate_tool_names, deserialize_tools_inplace
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
@@ -101,7 +102,7 @@ class HuggingFaceAPIChatGenerator:
         token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         generation_kwargs: Optional[Dict[str, Any]] = None,
         stop_words: Optional[List[str]] = None,
-        streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
+        streaming_callback: Optional[StreamingCallbackT] = None,
         tools: Optional[List[Tool]] = None,
     ):
         """
@@ -220,7 +221,7 @@ class HuggingFaceAPIChatGenerator:
         messages: List[ChatMessage],
         generation_kwargs: Optional[Dict[str, Any]] = None,
         tools: Optional[List[Tool]] = None,
-        streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
+        streaming_callback: Optional[StreamingCallbackT] = None,
     ):
         """
         Invoke the text generation inference based on the provided messages and generation parameters.
@@ -252,7 +253,7 @@ class HuggingFaceAPIChatGenerator:
         # validate and select the streaming callback
         streaming_callback = select_streaming_callback(
             self.streaming_callback, streaming_callback, requires_async=False
-        )  # type: ignore
+        )
 
         if streaming_callback:
             return self._run_streaming(formatted_messages, generation_kwargs, streaming_callback)
@@ -276,7 +277,7 @@ class HuggingFaceAPIChatGenerator:
         messages: List[ChatMessage],
         generation_kwargs: Optional[Dict[str, Any]] = None,
         tools: Optional[List[Tool]] = None,
-        streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
+        streaming_callback: Optional[StreamingCallbackT] = None,
     ):
         """
         Asynchronously invokes the text generation inference based on the provided messages and generation parameters.
@@ -309,7 +310,7 @@ class HuggingFaceAPIChatGenerator:
         _check_duplicate_tool_names(tools)
 
         # validate and select the streaming callback
-        streaming_callback = select_streaming_callback(self.streaming_callback, streaming_callback, requires_async=True)  # type: ignore
+        streaming_callback = select_streaming_callback(self.streaming_callback, streaming_callback, requires_async=True)
 
         if streaming_callback:
             return await self._run_streaming_async(formatted_messages, generation_kwargs, streaming_callback)
@@ -328,10 +329,7 @@ class HuggingFaceAPIChatGenerator:
         return await self._run_non_streaming_async(formatted_messages, generation_kwargs, hf_tools)
 
     def _run_streaming(
-        self,
-        messages: List[Dict[str, str]],
-        generation_kwargs: Dict[str, Any],
-        streaming_callback: Callable[[StreamingChunk], None],
+        self, messages: List[Dict[str, str]], generation_kwargs: Dict[str, Any], streaming_callback: StreamingCallbackT
     ):
         api_output: Iterable[ChatCompletionStreamOutput] = self._client.chat_completion(
             messages, stream=True, **generation_kwargs
@@ -421,10 +419,7 @@ class HuggingFaceAPIChatGenerator:
         return {"replies": [message]}
 
     async def _run_streaming_async(
-        self,
-        messages: List[Dict[str, str]],
-        generation_kwargs: Dict[str, Any],
-        streaming_callback: Callable[[StreamingChunk], None],
+        self, messages: List[Dict[str, str]], generation_kwargs: Dict[str, Any], streaming_callback: StreamingCallbackT
     ):
         api_output: AsyncIterable[ChatCompletionStreamOutput] = await self._async_client.chat_completion(
             messages, stream=True, **generation_kwargs

@@ -3,16 +3,20 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import inspect
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, Union
 
 from pydantic import create_model
 
-from haystack.tools.errors import SchemaGenerationError
-from haystack.tools.tool import Tool
+from .errors import SchemaGenerationError
+from .tool import Tool
 
 
 def create_tool_from_function(
-    function: Callable, name: Optional[str] = None, description: Optional[str] = None
+    function: Callable,
+    name: Optional[str] = None,
+    description: Optional[str] = None,
+    inputs_from_state: Optional[Dict[str, str]] = None,
+    outputs_to_state: Optional[Dict[str, Dict[str, Any]]] = None,
 ) -> "Tool":
     """
     Create a Tool instance from a function.
@@ -62,7 +66,15 @@ def create_tool_from_function(
     :param description:
         The description of the Tool. If not provided, the docstring of the function will be used.
         To intentionally leave the description empty, pass an empty string.
-
+    :param inputs_from_state:
+        Optional dictionary mapping state keys to tool parameter names.
+        Example: {"repository": "repo"} maps state's "repository" to tool's "repo" parameter.
+    :param outputs_to_state:
+        Optional dictionary defining how tool outputs map to state and message handling.
+        Example: {
+            "documents": {"source": "docs", "handler": custom_handler},
+            "message": {"source": "summary", "handler": format_summary}
+        }
     :returns:
         The Tool created from the function.
 
@@ -71,7 +83,6 @@ def create_tool_from_function(
     :raises SchemaGenerationError:
         If there is an error generating the JSON schema for the Tool.
     """
-
     tool_description = description if description is not None else (function.__doc__ or "")
 
     signature = inspect.signature(function)
@@ -81,6 +92,10 @@ def create_tool_from_function(
     descriptions = {}
 
     for param_name, param in signature.parameters.items():
+        # Skip adding parameter names that will be passed to the tool from State
+        if inputs_from_state and param_name in inputs_from_state.values():
+            continue
+
         if param.annotation is param.empty:
             raise ValueError(f"Function '{function.__name__}': parameter '{param_name}' does not have a type hint.")
 
@@ -109,15 +124,33 @@ def create_tool_from_function(
         if param_name in schema["properties"]:
             schema["properties"][param_name]["description"] = param_description
 
-    return Tool(name=name or function.__name__, description=tool_description, parameters=schema, function=function)
+    return Tool(
+        name=name or function.__name__,
+        description=tool_description,
+        parameters=schema,
+        function=function,
+        inputs_from_state=inputs_from_state,
+        outputs_to_state=outputs_to_state,
+    )
 
 
-def tool(function: Callable) -> Tool:
+def tool(
+    function: Optional[Callable] = None,
+    *,
+    name: Optional[str] = None,
+    description: Optional[str] = None,
+    inputs_from_state: Optional[Dict[str, str]] = None,
+    outputs_to_state: Optional[Dict[str, Dict[str, Any]]] = None,
+) -> Union[Tool, Callable[[Callable], Tool]]:
     """
     Decorator to convert a function into a Tool.
 
-    Tool name, description, and parameters are inferred from the function.
-    If you need to customize more the Tool, use `create_tool_from_function` instead.
+    Can be used with or without parameters:
+    @tool  # without parameters
+    def my_function(): ...
+
+    @tool(name="custom_name")  # with parameters
+    def my_function(): ...
 
     ### Usage example
     ```python
@@ -147,8 +180,27 @@ def tool(function: Callable) -> Tool:
     >>> },
     >>> function=<function get_weather at 0x7f7b3a8a9b80>)
     ```
+
+    :param function: The function to decorate (when used without parameters)
+    :param name: Optional custom name for the tool
+    :param description: Optional custom description
+    :param inputs_from_state: Optional dictionary mapping state keys to tool parameter names
+    :param outputs_to_state: Optional dictionary defining how tool outputs map to state and message handling
+    :return: Either a Tool instance or a decorator function that will create one
     """
-    return create_tool_from_function(function)
+
+    def decorator(func: Callable) -> Tool:
+        return create_tool_from_function(
+            function=func,
+            name=name,
+            description=description,
+            inputs_from_state=inputs_from_state,
+            outputs_to_state=outputs_to_state,
+        )
+
+    if function is None:
+        return decorator
+    return decorator(function)
 
 
 def _remove_title_from_schema(schema: Dict[str, Any]):
