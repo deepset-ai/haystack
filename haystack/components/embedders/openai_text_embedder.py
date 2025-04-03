@@ -5,6 +5,7 @@
 import os
 from typing import Any, Dict, List, Optional
 
+import httpx
 from openai import OpenAI
 
 from haystack import component, default_from_dict, default_to_dict
@@ -46,6 +47,7 @@ class OpenAITextEmbedder:
         suffix: str = "",
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
+        http_client: httpx.Client | None = None,
     ):
         """
         Creates an OpenAITextEmbedder component.
@@ -80,6 +82,10 @@ class OpenAITextEmbedder:
         :param max_retries:
             Maximum number of retries to contact OpenAI after an internal error.
             If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
+        :param http_client:
+            Overrides default `httpx.Client` to customize it for your use case.
+            See HTTPX's [advanced functionality](https://www.python-httpx.org/advanced/clients).
+            Use `DefaultHttpxClient` from `openai`.
         """
         self.model = model
         self.dimensions = dimensions
@@ -100,6 +106,7 @@ class OpenAITextEmbedder:
             base_url=api_base_url,
             timeout=timeout,
             max_retries=max_retries,
+            http_client=http_client,
         )
 
     def _get_telemetry_data(self) -> Dict[str, Any]:

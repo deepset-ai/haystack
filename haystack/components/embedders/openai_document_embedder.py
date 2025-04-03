@@ -5,6 +5,7 @@
 import os
 from typing import Any, Dict, List, Optional, Tuple
 
+import httpx
 from more_itertools import batched
 from openai import APIError, OpenAI
 from tqdm import tqdm
@@ -52,6 +53,7 @@ class OpenAIDocumentEmbedder:
         embedding_separator: str = "\n",
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
+        http_client: httpx.Client | None = None,
     ):
         """
         Creates an OpenAIDocumentEmbedder component.
@@ -94,6 +96,10 @@ class OpenAIDocumentEmbedder:
         :param max_retries:
             Maximum number of retries to contact OpenAI after an internal error.
             If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or 5 retries.
+        :param http_client:
+            Overrides default `httpx.Client` to customize it for your use case.
+            See HTTPX's [advanced functionality](https://www.python-httpx.org/advanced/clients).
+            Use `DefaultHttpxClient` from `openai`.
         """
         self.api_key = api_key
         self.model = model
@@ -118,6 +124,7 @@ class OpenAIDocumentEmbedder:
             base_url=api_base_url,
             timeout=timeout,
             max_retries=max_retries,
+            http_client=http_client,
         )
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
