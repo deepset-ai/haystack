@@ -20,10 +20,10 @@ template = [
 
 builder = ChatPromptBuilder(template=template)
 
-with open("test/test_files/images/apple.jpg", "rb") as f:
+with open("../test/test_files/images/apple.jpg", "rb") as f:
     base64_image = base64.b64encode(f.read()).decode("utf-8")
 
-with open("test/test_files/images/haystack-logo.png", "rb") as f:
+with open("../test/test_files/images/haystack-logo.png", "rb") as f:
     base64_image2 = base64.b64encode(f.read()).decode("utf-8")
 
 prompt = builder.run(template_variables={"base64_image": base64_image, "base64_image2": base64_image2})["prompt"]
