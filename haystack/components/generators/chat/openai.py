@@ -25,6 +25,7 @@ from haystack.dataclasses import (
 from haystack.tools.tool import Tool, _check_duplicate_tool_names, deserialize_tools_inplace
 from haystack.tools.toolset import Toolset
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
+from haystack.utils.misc import serialize_tools
 
 logger = logging.getLogger(__name__)
 
@@ -128,9 +129,8 @@ class OpenAIChatGenerator:
             Maximum number of retries to contact OpenAI after an internal error.
             If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
         :param tools:
-            A list of tools or a Toolset for which the model can prepare calls. If set, it will override the
-            `tools` parameter set during component initialization. This parameter can accept either a list of
-            `Tool` objects or a `Toolset` instance.
+            A list of tools or a Toolset for which the model can prepare calls. This parameter can accept either a
+            list of `Tool` objects or a `Toolset` instance.
         :param tools_strict:
             Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
             the schema provided in the `parameters` field of the tool definition, but this may increase latency.
@@ -146,11 +146,8 @@ class OpenAIChatGenerator:
         self.tools = tools  # Store tools as-is, whether it's a list or a Toolset
         self.tools_strict = tools_strict
 
-        # Convert Toolset to list for internal use only when necessary
-        if isinstance(self.tools, Toolset):
-            _check_duplicate_tool_names(list(self.tools))
-        else:
-            _check_duplicate_tool_names(self.tools)
+        # Check for duplicate tool names
+        _check_duplicate_tool_names(list(self.tools or []))
 
         if timeout is None:
             timeout = float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
@@ -182,11 +179,6 @@ class OpenAIChatGenerator:
             The serialized component as a dictionary.
         """
         callback_name = serialize_callable(self.streaming_callback) if self.streaming_callback else None
-        tools_data: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None
-        if isinstance(self.tools, Toolset):
-            tools_data = self.tools.to_dict()
-        else:
-            tools_data = [tool.to_dict() for tool in self.tools] if self.tools else None
         return default_to_dict(
             self,
             model=self.model,
@@ -197,7 +189,7 @@ class OpenAIChatGenerator:
             api_key=self.api_key.to_dict(),
             timeout=self.timeout,
             max_retries=self.max_retries,
-            tools=tools_data,
+            tools=serialize_tools(self.tools),
             tools_strict=self.tools_strict,
         )
 

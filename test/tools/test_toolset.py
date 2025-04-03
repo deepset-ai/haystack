@@ -111,8 +111,8 @@ def test_toolset_with_multiple_tools():
     assert "20" in tool_results
 
 
-def test_toolset_registration():
-    """Test that tools can be registered with a Toolset."""
+def test_toolset_adding():
+    """Test that tools can be added to a Toolset."""
 
     # Create an empty toolset
     toolset = Toolset()
@@ -134,8 +134,8 @@ def test_toolset_registration():
         function=add_numbers,
     )
 
-    # Register the tool
-    toolset.register_tool(add_tool)
+    # Add the tool
+    toolset.add(add_tool)
     assert len(toolset) == 1
     assert toolset[0].name == "add"
 
@@ -315,9 +315,9 @@ def test_toolset_duplicate_tool_names():
     # Create a toolset with one tool
     toolset = Toolset([add_tool1])
 
-    # Check that registering a tool with a duplicate name raises an error
+    # Check that adding a tool with a duplicate name raises an error
     with pytest.raises(ValueError, match="Duplicate tool names found"):
-        toolset.register_tool(add_tool2)
+        toolset.add(add_tool2)
 
     # Check that combining toolsets with duplicate tool names raises an error
     toolset2 = Toolset([add_tool2])
@@ -519,9 +519,9 @@ class TestToolsetIntegration:
                     function=multiply_numbers,
                 )
 
-                # Register the tools
-                self.register_tool(add_tool)
-                self.register_tool(multiply_tool)
+                # Add the tools
+                self.add(add_tool)
+                self.add(multiply_tool)
 
         # Create a CalculatorToolset instance
         calculator_toolset = CalculatorToolset()
@@ -622,21 +622,9 @@ class TestToolsetIntegration:
         assert "multiply" in tool_names
 
         # Test round-trip serialization
-        pipeline_yaml = pipeline.dumps()
-        new_pipeline = Pipeline.loads(pipeline_yaml)
-
-        # Compare components
-        original_components = set(pipeline_dict["components"].keys())
-        new_components = set(new_pipeline.to_dict()["components"].keys())
-        assert original_components == new_components
-
-        for name in original_components:
-            assert type(pipeline.get_component(name)) == type(new_pipeline.get_component(name))
-
-        # Compare connections
-        original_connections = {(edge[0], edge[1]) for edge in pipeline.graph.edges()}
-        new_connections = {(edge[0], edge[1]) for edge in new_pipeline.graph.edges()}
-        assert original_connections == new_connections
+        pipeline_dict = pipeline.to_dict()
+        new_pipeline = Pipeline.from_dict(pipeline_dict)
+        assert new_pipeline == pipeline
 
     def test_toolset_serde_in_pipeline(self):
         """Test serialization and deserialization of toolsets within a pipeline."""
@@ -662,7 +650,7 @@ class TestToolsetIntegration:
                     function=add_numbers_for_calculator,
                 )
 
-                self.register_tool(add_tool)
+                self.add(add_tool)
 
         # Create a CalculatorToolset instance
         calculator_toolset = CalculatorToolset()

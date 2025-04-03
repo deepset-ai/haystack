@@ -191,8 +191,8 @@ def deserialize_tools_inplace(data: Dict[str, Any], key: str = "tools"):
         if serialized_tools is None:
             return
 
-        if isinstance(serialized_tools, dict):
-            # Assume it's a serialized Toolset
+        # Check if it's a serialized Toolset (a dict with "type" and "data" keys containing a Toolset)
+        if isinstance(serialized_tools, dict) and all(k in serialized_tools for k in ["type", "data"]):
             deserialize_toolset_inplace(data, key=key)
             return
 

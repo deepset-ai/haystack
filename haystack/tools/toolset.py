@@ -27,7 +27,7 @@ class Toolset:
     actual loading from an endpoint must be implemented in your subclass.
 
     Important: When implementing a custom Toolset subclass, you should perform the dynamic loading of tools in the
-    `__init__` method. This ensures tools are loaded and registered when the Toolset is instantiated. The base class
+    `__init__` method. This ensures tools are loaded and added when the Toolset is instantiated. The base class
     will automatically handle tool registration and deduplication. For example:
 
     ```python
@@ -36,13 +36,13 @@ class Toolset:
             # Always call parent's __init__ first to initialize the tools list
             super().__init__([])
             self.api_endpoint = api_endpoint
-            # Load and register tools during initialization
+            # Load and add tools during initialization
             self._load_tools_from_endpoint()
 
         def _load_tools_from_endpoint(self):
             # Fetch tool definitions from the endpoint
             tool_definitions = self._fetch_from_endpoint()
-            # Create and register each tool
+            # Create and add each tool
             for definition in tool_definitions:
                 tool = Tool(
                     name=definition["name"],
@@ -50,12 +50,13 @@ class Toolset:
                     parameters=definition["parameters"],
                     function=self._create_tool_function(definition)
                 )
-                # register_tool handles adding to internal list and deduplication
-                self.register_tool(tool)
+                # add handles adding to internal list and deduplication
+                self.add(tool)
     ```
 
-    Toolset implements the Iterable protocol, making it compatible with any component that accepts a list of Tools,
-    such as ToolInvoker or any of the Haystack chat generators.
+    Toolset implements the __iter__, __contains__, and __len__ methods, making it behave like a collection.
+    This makes it compatible with any component that expects iterable tools, such as ToolInvoker or
+    any of the Haystack chat generators.
 
     Example:
     ```python
@@ -141,8 +142,8 @@ class Toolset:
                 },
                 function=add_numbers
             )
-            # register_tool handles adding to the internal list and deduplication
-            self.register_tool(add_tool)
+            # add handles adding to the internal list and deduplication
+            self.add(add_tool)
     ```
 
     The Toolset class is particularly useful when:
@@ -181,9 +182,26 @@ class Toolset:
         """
         return iter(self.tools)
 
-    def register_tool(self, tool: Union[Tool, "Toolset"]) -> None:
+    def __contains__(self, item: Any) -> bool:
         """
-        Register a new Tool or merge another Toolset.
+        Check if a tool is in this Toolset.
+
+        Supports checking by:
+        - Tool instance: tool in toolset
+        - Tool name: "tool_name" in toolset
+
+        :param item: Tool instance or tool name string
+        :returns: True if contained, False otherwise
+        """
+        if isinstance(item, str):
+            return any(tool.name == item for tool in self.tools)
+        if isinstance(item, Tool):
+            return item in self.tools
+        return False
+
+    def add(self, tool: Union[Tool, "Toolset"]) -> None:
+        """
+        Add a new Tool or merge another Toolset.
 
         :param tool: A Tool instance or another Toolset to add
         :raises ValueError: If adding the tool would result in duplicate tool names

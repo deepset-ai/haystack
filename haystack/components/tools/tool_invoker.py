@@ -12,6 +12,7 @@ from haystack.dataclasses import ChatMessage, State, ToolCall
 from haystack.tools.component_tool import ComponentTool
 from haystack.tools.tool import Tool, ToolInvocationError, _check_duplicate_tool_names, deserialize_tools_inplace
 from haystack.tools.toolset import Toolset
+from haystack.utils.misc import serialize_tools
 
 logger = logging.getLogger(__name__)
 
@@ -436,15 +437,9 @@ class ToolInvoker:
         :returns:
             Dictionary with serialized data.
         """
-        tools_data: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None
-        if isinstance(self.tools, Toolset):
-            tools_data = self.tools.to_dict()
-        else:
-            tools_data = [tool.to_dict() for tool in self.tools] if self.tools else None
-
         return default_to_dict(
             self,
-            tools=tools_data,
+            tools=serialize_tools(self.tools),
             raise_on_failure=self.raise_on_failure,
             convert_result_to_json_string=self.convert_result_to_json_string,
         )

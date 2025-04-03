@@ -2,9 +2,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import List, Union
+from typing import Any, Dict, List, Union
 
 from numpy import exp
+
+from haystack.tools.tool import Tool
+from haystack.tools.toolset import Toolset
 
 
 def expand_page_range(page_range: List[Union[str, int]]) -> List[int]:
@@ -52,3 +55,18 @@ def expit(x) -> float:
     :param x: input value. Can be a scalar or a numpy array.
     """
     return 1 / (1 + exp(-x))
+
+
+def serialize_tools(tools: Union[Toolset, List[Tool], None]) -> Union[Dict[str, Any], List[Dict[str, Any]], None]:
+    """
+    Serialize a Toolset or a list of Tools to a dictionary or a list of tool dictionaries.
+
+    :param tools: A Toolset, a list of Tools, or None
+    :returns: A dictionary, a list of tool dictionaries, or None if tools is None
+    """
+    if tools is None:
+        return None
+    if isinstance(tools, Toolset):
+        return tools.to_dict()
+    else:
+        return [tool.to_dict() for tool in tools] if tools else []
