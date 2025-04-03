@@ -93,28 +93,48 @@ class ImageContent:
     """
     The image content of a chat message.
     """
-
     base64_image: str
-    mime_type: str
-    kwargs: Dict[str, Any] = field(default_factory=dict)
+    mime_type: Optional[str] = None
+    meta: Dict[str, Any] = field(default_factory=dict)
+    provider_options: Dict[str, Any] = field(default_factory=dict)
+    # too many parameters?
+
+    def __repr__(self) -> str:
+        """
+        Return a string representation of the ImageContent, truncating the base64_image to 100 bytes.
+        """
+        fields = []
+        truncated_data = self.base64_image[:100] + "..." if len(self.base64_image) > 100 else self.base64_image
+        fields.append(f"base64_image={truncated_data!r}")
+        fields.append(f"mime_type={self.mime_type!r}")
+        fields.append(f"meta={self.meta!r}")
+        fields.append(f"provider_options={self.provider_options!r}")
+        fields_str = ", ".join(fields)
+        return f"{self.__class__.__name__}({fields_str})"
 
     @classmethod
-    def from_file_path(cls, file_path: str) -> "ImageContent":
+    def from_file_path(cls, file_path: str, mime_type: Optional[str] = None, meta: Optional[Dict[str, Any]] = None, provider_options: Optional[Dict[str, Any]] = None) -> "ImageContent":
         """
-        Create an ImageContent from a file path.
+        Create an ImageContent from a file path. Cannot be used with ChatPromptBuilder.
         """
         with open(file_path, "rb") as f:
-            return cls(base64_image=base64.b64encode(f.read()).decode("utf-8"), mime_type=mimetypes.guess_type(file_path)[0])
+            return cls(base64_image=base64.b64encode(f.read()).decode("utf-8"), 
+                       mime_type=mime_type or mimetypes.guess_type(file_path)[0], 
+                       meta=meta or {}, 
+                       provider_options=provider_options or {})
 
     @classmethod
-    def from_url(cls, url: str) -> "ImageContent":
+    def from_url(cls, url: str, mime_type: Optional[str] = None, meta: Optional[Dict[str, Any]] = None, provider_options: Optional[Dict[str, Any]] = None) -> "ImageContent":
         """
-        Create an ImageContent from a URL.
+        Create an ImageContent from a URL. Cannot be used with ChatPromptBuilder.
         """
-        return cls(base64_image=base64.b64encode(requests.get(url).content).decode("utf-8"), mime_type=mimetypes.guess_type(url)[0])
+        return cls(base64_image=base64.b64encode(requests.get(url).content).decode("utf-8"), 
+                   mime_type=mime_type or mimetypes.guess_type(url)[0], 
+                   meta=meta or {}, 
+                   provider_options=provider_options or {})
 
 
-ChatMessageContentT = Union[TextContent, ToolCall, ToolCallResult]
+ChatMessageContentT = Union[TextContent, ToolCall, ToolCallResult, ImageContent]
 
 
 def _deserialize_content(serialized_content: List[Dict[str, Any]]) -> List[ChatMessageContentT]:
@@ -285,16 +305,30 @@ class ChatMessage:
         return self._role == role
 
     @classmethod
-    def from_user(cls, text: str, meta: Optional[Dict[str, Any]] = None, name: Optional[str] = None) -> "ChatMessage":
+    def from_user(cls, text: Optional[str] = None, meta: Optional[Dict[str, Any]] = None, name: Optional[str] = None, 
+                  content_parts: Optional[Sequence[Union[TextContent, str, ImageContent]]] = None) -> "ChatMessage":
         """
         Create a message from the user.
 
-        :param text: The text content of the message.
+        :param text: The text content of the message. Specify this or content_parts.
         :param meta: Additional metadata associated with the message.
         :param name: An optional name for the participant. This field is only supported by OpenAI.
+        :param content_parts: A list of content parts to include in the message. Specify this or text.
         :returns: A new ChatMessage instance.
         """
-        return cls(_role=ChatRole.USER, _content=[TextContent(text=text)], _meta=meta or {}, _name=name)
+        if not text and not content_parts:
+            raise ValueError("Either text or content_parts must be provided.")
+        if text and content_parts:
+            raise ValueError("Only one of text or content_parts can be provided.")
+        
+        content: Sequence[Union[TextContent, ImageContent]] = []
+
+        if text is not None:
+            content = [TextContent(text=text)]
+        elif content_parts is not None:
+            content = [TextContent(el) if isinstance(el, str) else el for el in content_parts]
+        
+        return cls(_role=ChatRole.USER, _content=content, _meta=meta or {}, _name=name)
 
     @classmethod
     def from_system(cls, text: str, meta: Optional[Dict[str, Any]] = None, name: Optional[str] = None) -> "ChatMessage":
@@ -457,9 +491,10 @@ class ChatMessage:
                 if isinstance(part, TextContent):
                     content.append({"type": "text", "text": part.text})
                 elif isinstance(part, ImageContent):
-                    content.append(
-                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{part.base64_image}"}}
-                    )
+                    image_item = {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{part.base64_image}"}}
+                    if detail := part.provider_options.get("detail"):
+                        image_item["image_url"]["detail"] = detail
+                    content.append(image_item)
             openai_msg["content"] = content
             return openai_msg
 

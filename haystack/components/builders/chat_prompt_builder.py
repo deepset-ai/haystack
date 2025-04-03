@@ -9,7 +9,7 @@ from jinja2 import meta
 from jinja2.sandbox import SandboxedEnvironment
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.dataclasses.chat_message import ChatMessage, ChatRole, TextContent
+from haystack.dataclasses.chat_message import ChatMessage, ChatRole, TextContent, ImageContent
 from haystack.utils import Jinja2TimeExtension
 
 logger = logging.getLogger(__name__)
@@ -208,7 +208,7 @@ class ChatPromptBuilder:
 
         processed_messages = []
         for message in template:
-            if message.is_from(ChatRole.USER) or message.is_from(ChatRole.SYSTEM):
+            if message.is_from(ChatRole.SYSTEM):
                 self._validate_variables(set(template_variables_combined.keys()))
                 if message.text is None:
                     raise ValueError(f"The provided ChatMessage has no text. ChatMessage: {message}")
@@ -217,6 +217,22 @@ class ChatPromptBuilder:
                 # deep copy the message to avoid modifying the original message
                 rendered_message: ChatMessage = deepcopy(message)
                 rendered_message._content = [TextContent(text=rendered_text)]
+                processed_messages.append(rendered_message)
+            elif message.is_from(ChatRole.USER):
+                self._validate_variables(set(template_variables_combined.keys()))
+                if not message._content:
+                    raise ValueError(f"The provided ChatMessage has no content. ChatMessage: {message}")
+                rendered_message: ChatMessage = deepcopy(message)
+                rendered_message._content = []
+                for content_part in message._content:
+                    if isinstance(content_part, TextContent):
+                        compiled_template_part = self._env.from_string(content_part.text)
+                        rendered_text = compiled_template_part.render(template_variables_combined)
+                        rendered_message._content.append(TextContent(text=rendered_text))
+                    elif isinstance(content_part, ImageContent):
+                        compiled_template_part = self._env.from_string(content_part.base64_image)
+                        rendered_text = compiled_template_part.render(template_variables_combined)
+                        rendered_message._content.append(ImageContent(base64_image=rendered_text))
                 processed_messages.append(rendered_message)
             else:
                 processed_messages.append(message)
