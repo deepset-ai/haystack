@@ -5,6 +5,7 @@
 import os
 from typing import Any, Dict, List, Literal, Optional
 
+import httpx
 from openai import OpenAI
 from openai.types.image import Image
 
@@ -41,6 +42,7 @@ class DALLEImageGenerator:
         organization: Optional[str] = None,
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
+        http_client: httpx.Client | None = None,
     ):
         """
         Creates an instance of DALLEImageGenerator. Unless specified otherwise in `model`, uses OpenAI's dall-e-3.
@@ -60,6 +62,10 @@ class DALLEImageGenerator:
         :param max_retries:
             Maximum retries to establish contact with OpenAI if it returns an internal error. If not set, it is inferred
             from the `OPENAI_MAX_RETRIES` environment variable or set to 5.
+        :param http_client:
+            Overrides default `httpx.Client` to customize it for your use case.
+            See HTTPX's [advanced functionality](https://www.python-httpx.org/advanced/clients).
+            Use `DefaultHttpxClient` from `openai`.
         """
         self.model = model
         self.quality = quality
@@ -71,6 +77,7 @@ class DALLEImageGenerator:
 
         self.timeout = timeout if timeout is not None else float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
         self.max_retries = max_retries if max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
+        self.http_client = http_client
 
         self.client: Optional[OpenAI] = None
 
@@ -85,6 +92,7 @@ class DALLEImageGenerator:
                 base_url=self.api_base_url,
                 timeout=self.timeout,
                 max_retries=self.max_retries,
+                http_client=self.http_client,
             )
 
     @component.output_types(images=List[str], revised_prompt=str)

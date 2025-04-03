@@ -7,6 +7,7 @@ import os
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
+import httpx
 from openai import AsyncOpenAI, AsyncStream, OpenAI, Stream
 from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletionMessage
 from openai.types.chat.chat_completion import Choice
@@ -81,6 +82,8 @@ class OpenAIChatGenerator:
         generation_kwargs: Optional[Dict[str, Any]] = None,
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
+        http_client: httpx.Client | None = None,
+        http_async_client: httpx.AsyncClient | None = None,
         tools: Optional[List[Tool]] = None,
         tools_strict: bool = False,
     ):
@@ -126,6 +129,14 @@ class OpenAIChatGenerator:
         :param max_retries:
             Maximum number of retries to contact OpenAI after an internal error.
             If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
+        :param http_client:
+            Overrides default `httpx.Client` to customize it for your use case.
+            See HTTPX's [advanced functionality](https://www.python-httpx.org/advanced/clients).
+            Use `DefaultHttpxClient` from `openai`.
+        :param http_async_client:
+            Overrides default `httpx.AsyncClient` to customize it for your use case.
+            See HTTPX's [advanced functionality](https://www.python-httpx.org/advanced/clients).
+            Use `DefaultAsyncHttpxClient` from `openai`.
         :param tools:
             A list of tools for which the model can prepare calls.
         :param tools_strict:
@@ -158,8 +169,8 @@ class OpenAIChatGenerator:
             "max_retries": max_retries,
         }
 
-        self.client = OpenAI(**client_args)
-        self.async_client = AsyncOpenAI(**client_args)
+        self.client = OpenAI(http_client=http_client, **client_args)
+        self.async_client = AsyncOpenAI(http_client=http_async_client, **client_args)
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
