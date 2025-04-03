@@ -42,9 +42,6 @@ def test_dense_doc_search_pipeline(tmp_path, samples_path):
     indexing_pipeline.connect("splitter.documents", "embedder.documents")
     indexing_pipeline.connect("embedder.documents", "writer.documents")
 
-    # Draw the indexing pipeline
-    indexing_pipeline.draw(tmp_path / "test_dense_doc_search_indexing_pipeline.png")
-
     # Serialize the indexing pipeline to YAML.
     with open(tmp_path / "test_dense_doc_search_indexing_pipeline.yaml", "w") as f:
         indexing_pipeline.dump(f)
@@ -71,9 +68,6 @@ def test_dense_doc_search_pipeline(tmp_path, samples_path):
 
     querying_result = query_pipeline.run({"text_embedder": {"text": "Who lives in Rome?"}})
     assert querying_result["embedding_retriever"]["documents"][0].content == "My name is Giorgio and I live in Rome."
-
-    # Draw the querying pipeline
-    query_pipeline.draw(tmp_path / "test_dense_doc_search_query_pipeline.png")
 
     # Serialize the querying pipeline to JSON
     with open(tmp_path / "test_dense_doc_search_query_pipeline.json", "w") as f:
