@@ -2,15 +2,18 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import base64
 import inspect
 import json
+import mimetypes
 from dataclasses import asdict, dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional, Sequence, Union
-import base64
-from haystack import logging
+
 import requests
-import mimetypes
+
+from haystack import logging
+
 logger = logging.getLogger(__name__)
 
 
@@ -93,6 +96,7 @@ class ImageContent:
     """
     The image content of a chat message.
     """
+
     base64_image: str
     mime_type: Optional[str] = None
     meta: Dict[str, Any] = field(default_factory=dict)
@@ -113,25 +117,41 @@ class ImageContent:
         return f"{self.__class__.__name__}({fields_str})"
 
     @classmethod
-    def from_file_path(cls, file_path: str, mime_type: Optional[str] = None, meta: Optional[Dict[str, Any]] = None, provider_options: Optional[Dict[str, Any]] = None) -> "ImageContent":
+    def from_file_path(
+        cls,
+        file_path: str,
+        mime_type: Optional[str] = None,
+        meta: Optional[Dict[str, Any]] = None,
+        provider_options: Optional[Dict[str, Any]] = None,
+    ) -> "ImageContent":
         """
         Create an ImageContent from a file path. Cannot be used with ChatPromptBuilder.
         """
         with open(file_path, "rb") as f:
-            return cls(base64_image=base64.b64encode(f.read()).decode("utf-8"), 
-                       mime_type=mime_type or mimetypes.guess_type(file_path)[0], 
-                       meta=meta or {}, 
-                       provider_options=provider_options or {})
+            return cls(
+                base64_image=base64.b64encode(f.read()).decode("utf-8"),
+                mime_type=mime_type or mimetypes.guess_type(file_path)[0],
+                meta=meta or {},
+                provider_options=provider_options or {},
+            )
 
     @classmethod
-    def from_url(cls, url: str, mime_type: Optional[str] = None, meta: Optional[Dict[str, Any]] = None, provider_options: Optional[Dict[str, Any]] = None) -> "ImageContent":
+    def from_url(
+        cls,
+        url: str,
+        mime_type: Optional[str] = None,
+        meta: Optional[Dict[str, Any]] = None,
+        provider_options: Optional[Dict[str, Any]] = None,
+    ) -> "ImageContent":
         """
         Create an ImageContent from a URL. Cannot be used with ChatPromptBuilder.
         """
-        return cls(base64_image=base64.b64encode(requests.get(url).content).decode("utf-8"), 
-                   mime_type=mime_type or mimetypes.guess_type(url)[0], 
-                   meta=meta or {}, 
-                   provider_options=provider_options or {})
+        return cls(
+            base64_image=base64.b64encode(requests.get(url).content).decode("utf-8"),
+            mime_type=mime_type or mimetypes.guess_type(url)[0],
+            meta=meta or {},
+            provider_options=provider_options or {},
+        )
 
 
 ChatMessageContentT = Union[TextContent, ToolCall, ToolCallResult, ImageContent]
@@ -305,8 +325,13 @@ class ChatMessage:
         return self._role == role
 
     @classmethod
-    def from_user(cls, text: Optional[str] = None, meta: Optional[Dict[str, Any]] = None, name: Optional[str] = None, 
-                  content_parts: Optional[Sequence[Union[TextContent, str, ImageContent]]] = None) -> "ChatMessage":
+    def from_user(
+        cls,
+        text: Optional[str] = None,
+        meta: Optional[Dict[str, Any]] = None,
+        name: Optional[str] = None,
+        content_parts: Optional[Sequence[Union[TextContent, str, ImageContent]]] = None,
+    ) -> "ChatMessage":
         """
         Create a message from the user.
 
@@ -320,14 +345,14 @@ class ChatMessage:
             raise ValueError("Either text or content_parts must be provided.")
         if text and content_parts:
             raise ValueError("Only one of text or content_parts can be provided.")
-        
+
         content: Sequence[Union[TextContent, ImageContent]] = []
 
         if text is not None:
             content = [TextContent(text=text)]
         elif content_parts is not None:
             content = [TextContent(el) if isinstance(el, str) else el for el in content_parts]
-        
+
         return cls(_role=ChatRole.USER, _content=content, _meta=meta or {}, _name=name)
 
     @classmethod
@@ -491,7 +516,10 @@ class ChatMessage:
                 if isinstance(part, TextContent):
                     content.append({"type": "text", "text": part.text})
                 elif isinstance(part, ImageContent):
-                    image_item = {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{part.base64_image}"}}
+                    image_item = {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:image/jpeg;base64,{part.base64_image}"},
+                    }
                     if detail := part.provider_options.get("detail"):
                         image_item["image_url"]["detail"] = detail
                     content.append(image_item)
