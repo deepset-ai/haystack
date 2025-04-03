@@ -1,5 +1,3 @@
-from typing import List  # Import for explicit conversion
-
 from haystack import Pipeline
 from haystack.components.converters import OutputAdapter
 from haystack.components.generators.chat import OpenAIChatGenerator

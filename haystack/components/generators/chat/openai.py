@@ -25,7 +25,6 @@ from haystack.dataclasses import (
 from haystack.tools.tool import Tool, _check_duplicate_tool_names, deserialize_tools_inplace
 from haystack.tools.toolset import Toolset
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
-from haystack.utils.deserialization import deserialize_toolset_inplace
 
 logger = logging.getLogger(__name__)
 

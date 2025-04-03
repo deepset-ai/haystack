@@ -12,7 +12,6 @@ from haystack.dataclasses import ChatMessage, State, ToolCall
 from haystack.tools.component_tool import ComponentTool
 from haystack.tools.tool import Tool, ToolInvocationError, _check_duplicate_tool_names, deserialize_tools_inplace
 from haystack.tools.toolset import Toolset
-from haystack.utils.deserialization import deserialize_toolset_inplace
 
 logger = logging.getLogger(__name__)
 
