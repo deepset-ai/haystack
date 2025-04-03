@@ -1,6 +1,7 @@
 name: Project release on PyPi
 
 on:
+  workflow_dispatch:  # manually trigger the release process without a new tag
   push:
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+*"
