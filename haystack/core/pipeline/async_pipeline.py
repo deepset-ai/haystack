@@ -230,7 +230,7 @@ class AsyncPipeline(PipelineBase):
                         )
 
                     span.set_tag("haystack.component.visits", component_visits[component_name])
-                    span.set_content_tag("haystack.component.outputs", deepcopy(outputs))
+                    span.set_content_tag("haystack.component.output", deepcopy(outputs))
 
                     # Distribute outputs to downstream inputs; also prune outputs based on `include_outputs_from`
                     pruned = self._write_component_outputs(
