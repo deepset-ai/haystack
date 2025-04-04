@@ -86,7 +86,8 @@ class Toolset:
                super().__init__(tools)
 
            def _create_tools(self):
-               # Define and add tools dynamically
+               # These Tool instances are obviously defined statically and for illustration purposes only.
+               # In a real-world scenario, you would dynamically load tools from an external source here.
                tools = []
                add_tool = Tool(
                    name="add",
