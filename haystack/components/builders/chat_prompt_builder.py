@@ -11,6 +11,7 @@ from jinja2.sandbox import SandboxedEnvironment
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses.chat_message import ChatMessage, ChatRole, ImageContent, TextContent
 from haystack.utils import Jinja2TimeExtension
+from haystack.utils.jinja2_extensions import Jinja2ImageExtension
 
 logger = logging.getLogger(__name__)
 
@@ -128,19 +129,22 @@ class ChatPromptBuilder:
         try:
             # The Jinja2TimeExtension needs an optional dependency to be installed.
             # If it's not available we can do without it and use the ChatPromptBuilder as is.
-            self._env = SandboxedEnvironment(extensions=[Jinja2TimeExtension])
+            self._env = SandboxedEnvironment(extensions=[Jinja2TimeExtension, Jinja2ImageExtension])
         except ImportError:
-            self._env = SandboxedEnvironment()
+            self._env = SandboxedEnvironment(extensions=[Jinja2ImageExtension])
 
         if template and not variables:
             for message in template:
                 if message.is_from(ChatRole.USER) or message.is_from(ChatRole.SYSTEM):
-                    # infer variables from template
-                    if message.text is None:
-                        raise ValueError(f"The provided ChatMessage has no text. ChatMessage: {message}")
-                    ast = self._env.parse(message.text)
-                    template_variables = meta.find_undeclared_variables(ast)
-                    variables += list(template_variables)
+                    for part in message._content:
+                        if isinstance(part, TextContent):
+                            ast = self._env.parse(part.text)
+                            template_variables = meta.find_undeclared_variables(ast)
+                            variables += list(template_variables)
+                        elif isinstance(part, ImageContent):
+                            ast = self._env.parse(part.base64_image)
+                            template_variables = meta.find_undeclared_variables(ast)
+                            variables += list(template_variables)
         self.variables = variables
 
         if len(self.variables) > 0 and required_variables is None:

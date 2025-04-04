@@ -6,6 +6,7 @@ import base64
 import inspect
 import json
 import mimetypes
+from binascii import Error as BinasciiError
 from dataclasses import asdict, dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional, Sequence, Union
@@ -101,13 +102,13 @@ class ImageContent:
     mime_type: Optional[str] = None
     meta: Dict[str, Any] = field(default_factory=dict)
     provider_options: Dict[str, Any] = field(default_factory=dict)
-    # too many parameters?
 
     def __repr__(self) -> str:
         """
         Return a string representation of the ImageContent, truncating the base64_image to 100 bytes.
         """
         fields = []
+
         truncated_data = self.base64_image[:100] + "..." if len(self.base64_image) > 100 else self.base64_image
         fields.append(f"base64_image={truncated_data!r}")
         fields.append(f"mime_type={self.mime_type!r}")
@@ -129,7 +130,7 @@ class ImageContent:
         """
         with open(file_path, "rb") as f:
             return cls(
-                base64_image=base64.b64encode(f.read()).decode("utf-8"),
+                source=f.read(),
                 mime_type=mime_type or mimetypes.guess_type(file_path)[0],
                 meta=meta or {},
                 provider_options=provider_options or {},
@@ -147,7 +148,7 @@ class ImageContent:
         Create an ImageContent from a URL. Cannot be used with ChatPromptBuilder.
         """
         return cls(
-            base64_image=base64.b64encode(requests.get(url).content).decode("utf-8"),
+            source=requests.get(url).content,
             mime_type=mime_type or mimetypes.guess_type(url)[0],
             meta=meta or {},
             provider_options=provider_options or {},
