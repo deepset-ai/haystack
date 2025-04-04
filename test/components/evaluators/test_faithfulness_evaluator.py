@@ -100,7 +100,8 @@ class TestFaithfulnessEvaluator:
         assert component._chat_generator.client.api_key == "test-api-key"
         assert component._chat_generator.generation_kwargs == {"response_format": {"type": "json_object"}, "seed": 42}
 
-    def test_init_with_chat_generator(self):
+    def test_init_with_chat_generator(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         chat_generator = OpenAIChatGenerator(generation_kwargs={"response_format": {"type": "json_object"}, "seed": 42})
         component = FaithfulnessEvaluator(chat_generator=chat_generator)
 

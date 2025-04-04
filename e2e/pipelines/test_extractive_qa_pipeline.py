@@ -2,8 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import json
-
 from haystack import Document, Pipeline
 from haystack.components.readers import ExtractiveReader
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
@@ -16,9 +14,6 @@ def test_extractive_qa_pipeline(tmp_path):
     qa_pipeline.add_component(instance=InMemoryBM25Retriever(document_store=InMemoryDocumentStore()), name="retriever")
     qa_pipeline.add_component(instance=ExtractiveReader(model="deepset/tinyroberta-squad2"), name="reader")
     qa_pipeline.connect("retriever", "reader")
-
-    # Draw the pipeline
-    qa_pipeline.draw(tmp_path / "test_extractive_qa_pipeline.png")
 
     # Serialize the pipeline to YAML
     with open(tmp_path / "test_bm25_rag_pipeline.yaml", "w") as f:

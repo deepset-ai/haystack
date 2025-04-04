@@ -31,14 +31,14 @@ class TestLLMMetadataExtractor:
             expected_keys=["key1", "key2"],
             raise_on_failure=True,
             generator_api=LLMProvider.OPENAI,
-            generator_api_params={"model": "gpt-3.5-turbo", "generation_kwargs": {"temperature": 0.5}},
+            generator_api_params={"model": "gpt-4o-mini", "generation_kwargs": {"temperature": 0.5}},
             page_range=["1-5"],
         )
         assert isinstance(extractor.builder, PromptBuilder)
         assert extractor.expected_keys == ["key1", "key2"]
         assert extractor.raise_on_failure is True
         assert isinstance(extractor._chat_generator, OpenAIChatGenerator)
-        assert extractor._chat_generator.model == "gpt-3.5-turbo"
+        assert extractor._chat_generator.model == "gpt-4o-mini"
         assert extractor._chat_generator.generation_kwargs == {"temperature": 0.5}
         assert extractor.expanded_range == [1, 2, 3, 4, 5]
 

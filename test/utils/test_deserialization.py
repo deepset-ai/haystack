@@ -98,7 +98,8 @@ class TestDeserializeDocumentStoreInInitParamsInplace:
 
 
 class TestDeserializeChatGeneratorInplace:
-    def test_deserialize_chatgenerator_inplace(self):
+    def test_deserialize_chatgenerator_inplace(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         chat_generator = OpenAIChatGenerator()
         data = {"chat_generator": chat_generator.to_dict()}
 
