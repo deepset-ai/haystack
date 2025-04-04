@@ -2,8 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import json
-
 from haystack import Document, Pipeline
 from haystack.components.readers import ExtractiveReader
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
