@@ -57,6 +57,31 @@ class TestRemoteWhisperTranscriber:
             "temperature": "0.5",
         }
 
+    def test_init_with_custom_http_client(self):
+        import openai
+
+        custom_http_client = openai.DefaultHttpxClient()
+        embedder = RemoteWhisperTranscriber(api_key=Secret.from_token("fake-api-key"), http_client=custom_http_client)
+        assert embedder.client._client == custom_http_client
+
+    def test_init_fail_when_http_client_not_httpx_client(self):
+        class FakeClient:
+            def __init__(self):
+                self.timeout = None
+
+        with pytest.raises(
+            TypeError,
+            match="Invalid `http_client` argument; Expected an instance of `httpx.Client` but got <class '"
+            "audio.test_whisper_remote.TestRemoteWhisperTranscriber."
+            "test_init_fail_when_http_client_not_httpx_client.<locals>."
+            "FakeClient"
+            "'>",
+        ):
+            RemoteWhisperTranscriber(
+                api_key=Secret.from_token("fake-api-key"),
+                http_client=FakeClient(),  # type: ignore
+            )
+
     def test_to_dict_default_parameters(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test_api_key")
         transcriber = RemoteWhisperTranscriber()
