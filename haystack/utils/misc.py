@@ -69,5 +69,4 @@ def serialize_tools_or_toolset(
         return None
     if isinstance(tools, Toolset):
         return tools.to_dict()
-    else:
-        return [tool.to_dict() for tool in tools] if tools else []
+    return [tool.to_dict() for tool in tools]
