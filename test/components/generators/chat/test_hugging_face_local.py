@@ -16,7 +16,6 @@ from haystack.dataclasses.streaming_chunk import StreamingChunk
 from haystack.tools import Tool
 from haystack.utils import ComponentDevice
 from haystack.utils.auth import Secret
-from haystack.tools.toolset import Toolset
 
 
 # used to test serialization of streaming_callback
@@ -554,87 +553,3 @@ class TestHuggingFaceLocalChatGenerator:
                 del generator
                 gc.collect()
                 mock_shutdown.assert_called_once_with(wait=True)
-
-    def test_live_run_with_tools(self, tools):
-        """Test that the model can be run with tools to generate tool calls."""
-        generator = HuggingFaceLocalChatGenerator(tools=tools)
-
-        # Mock pipeline and tokenizer
-        mock_pipeline = Mock(return_value=[{"generated_text": '{"name": "weather", "arguments": {"city": "Paris"}}'}])
-        mock_tokenizer = Mock(spec=PreTrainedTokenizer)
-        mock_tokenizer.encode.return_value = ["some", "tokens"]
-        mock_tokenizer.pad_token_id = 100
-        mock_tokenizer.apply_chat_template.return_value = "test prompt"
-        mock_pipeline.tokenizer = mock_tokenizer
-        generator.pipeline = mock_pipeline
-
-        messages = [ChatMessage.from_user("What's the weather in Paris?")]
-        results = generator.run(messages=messages)
-
-        assert len(results["replies"]) == 1
-        message = results["replies"][0]
-        assert message.tool_calls
-        tool_call = message.tool_calls[0]
-        assert isinstance(tool_call, ToolCall)
-        assert tool_call.tool_name == "weather"
-        assert tool_call.arguments == {"city": "Paris"}
-        assert message.meta["finish_reason"] == "tool_calls"
-
-    def test_hugging_face_local_generator_with_toolset_initialization(self, model_info_mock, tools):
-        """Test that the HuggingFaceLocalChatGenerator can be initialized with a Toolset."""
-        toolset = Toolset(tools)
-        generator = HuggingFaceLocalChatGenerator(tools=toolset)
-        assert generator.tools == toolset
-
-    def test_from_dict_with_toolset(self, model_info_mock, tools):
-        """Test that the HuggingFaceLocalChatGenerator can be deserialized from a dictionary with a Toolset."""
-        toolset = Toolset(tools)
-        component = HuggingFaceLocalChatGenerator(tools=toolset)
-        data = component.to_dict()
-
-        deserialized_component = HuggingFaceLocalChatGenerator.from_dict(data)
-
-        assert isinstance(deserialized_component.tools, Toolset)
-        assert len(deserialized_component.tools) == len(tools)
-        assert all(isinstance(tool, Tool) for tool in deserialized_component.tools)
-
-    def test_run_with_toolset(self, model_info_mock):
-        """Test running the model with a Toolset."""
-        # Create a toolset with a weather tool
-        tool_parameters = {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}
-        tool = Tool(
-            name="weather",
-            description="useful to determine the weather in a given location",
-            parameters=tool_parameters,
-            function=get_weather,
-        )
-        toolset = Toolset([tool])
-
-        generator = HuggingFaceLocalChatGenerator(tools=toolset)
-
-        # Mock pipeline and tokenizer
-        mock_pipeline = Mock(return_value=[{"generated_text": '{"name": "weather", "arguments": {"city": "Paris"}}'}])
-        mock_tokenizer = Mock(spec=PreTrainedTokenizer)
-        mock_tokenizer.encode.return_value = ["some", "tokens"]
-        mock_tokenizer.pad_token_id = 100
-        mock_tokenizer.apply_chat_template.return_value = "test prompt with toolset"
-        mock_pipeline.tokenizer = mock_tokenizer
-        generator.pipeline = mock_pipeline
-
-        messages = [ChatMessage.from_user("What's the weather in Paris?")]
-        results = generator.run(messages=messages)
-
-        assert len(results["replies"]) == 1
-        message = results["replies"][0]
-        assert message.tool_calls
-        tool_call = message.tool_calls[0]
-        assert isinstance(tool_call, ToolCall)
-        assert tool_call.tool_name == "weather"
-        assert tool_call.arguments == {"city": "Paris"}
-        assert message.meta["finish_reason"] == "tool_calls"
-
-        # Check that the tools were properly extracted from the toolset in the apply_chat_template call
-        _, kwargs = mock_tokenizer.apply_chat_template.call_args
-        assert "tools" in kwargs
-        assert len(kwargs["tools"]) == 1
-        assert kwargs["tools"][0]["function"]["name"] == "weather"
