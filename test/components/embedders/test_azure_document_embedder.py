@@ -212,6 +212,18 @@ class TestAzureOpenAIDocumentEmbedder:
         assert len(caplog.records) == 1
         assert "Failed embedding of documents 1, 2 caused by Mocked error" in caplog.text
 
+    def test_http_client_kwargs_type_validation(self, monkeypatch):
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
+        monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://test.openai.azure.com")
+        with pytest.raises(TypeError, match="The parameter 'http_client_kwargs' must be a dictionary."):
+            AzureOpenAIDocumentEmbedder(http_client_kwargs="invalid_argument")
+
+    def test_http_client_kwargs_with_invalid_params(self, monkeypatch):
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
+        monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://test.openai.azure.com")
+        with pytest.raises(TypeError, match="unexpected keyword argument"):
+            AzureOpenAIDocumentEmbedder(http_client_kwargs={"invalid_key": "invalid_value"})
+
     @pytest.mark.integration
     @pytest.mark.skipif(
         not os.environ.get("AZURE_OPENAI_API_KEY", None) and not os.environ.get("AZURE_OPENAI_ENDPOINT", None),
@@ -246,11 +258,3 @@ class TestAzureOpenAIDocumentEmbedder:
             assert len(doc.embedding) == 1536
             assert all(isinstance(x, float) for x in doc.embedding)
         assert metadata == {"model": "text-embedding-ada-002", "usage": {"prompt_tokens": 15, "total_tokens": 15}}
-
-    def test_http_client_kwargs_type_validation(self):
-        with pytest.raises(TypeError, match="The parameter 'http_client_kwargs' must be a dictionary."):
-            AzureOpenAIDocumentEmbedder(http_client_kwargs="invalid_argument")
-
-    def test_http_client_kwargs_with_invalid_params(self):
-        with pytest.raises(TypeError, match="unexpected keyword argument"):
-            AzureOpenAIDocumentEmbedder(http_client_kwargs={"invalid_key": "invalid_value"})
