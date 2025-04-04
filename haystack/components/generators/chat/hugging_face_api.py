@@ -10,8 +10,10 @@ from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall, select_s
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT
 from haystack.lazy_imports import LazyImport
 from haystack.tools.tool import Tool, _check_duplicate_tool_names, deserialize_tools_inplace
+from haystack.tools.toolset import Toolset
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 from haystack.utils.hf import HFGenerationAPIType, HFModelType, check_valid_model, convert_message_to_hf_format
+from haystack.utils.misc import serialize_tools_or_toolset
 from haystack.utils.url_validation import is_valid_http_url
 
 with LazyImport(message="Run 'pip install \"huggingface_hub[inference]>=0.27.0\"'") as huggingface_hub_import:
@@ -103,7 +105,7 @@ class HuggingFaceAPIChatGenerator:
         generation_kwargs: Optional[Dict[str, Any]] = None,
         stop_words: Optional[List[str]] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
-        tools: Optional[List[Tool]] = None,
+        tools: Optional[Union[List[Tool], Toolset]] = None,
     ):
         """
         Initialize the HuggingFaceAPIChatGenerator instance.
@@ -130,10 +132,10 @@ class HuggingFaceAPIChatGenerator:
         :param streaming_callback:
             An optional callable for handling streaming responses.
         :param tools:
-            A list of tools for which the model can prepare calls.
+            A list of tools or a Toolset for which the model can prepare calls.
             The chosen model should support tool/function calling, according to the model card.
             Support for tools in the Hugging Face API and TGI is not yet fully refined and you may experience
-            unexpected behavior.
+            unexpected behavior. This parameter can accept either a list of `Tool` objects or a `Toolset` instance.
         """
 
         huggingface_hub_import.check()
@@ -166,7 +168,7 @@ class HuggingFaceAPIChatGenerator:
 
         if tools and streaming_callback is not None:
             raise ValueError("Using tools and streaming at the same time is not supported. Please choose one.")
-        _check_duplicate_tool_names(tools)
+        _check_duplicate_tool_names(list(tools or []))
 
         # handle generation kwargs setup
         generation_kwargs = generation_kwargs.copy() if generation_kwargs else {}
@@ -191,7 +193,6 @@ class HuggingFaceAPIChatGenerator:
             A dictionary containing the serialized component.
         """
         callback_name = serialize_callable(self.streaming_callback) if self.streaming_callback else None
-        serialized_tools = [tool.to_dict() for tool in self.tools] if self.tools else None
         return default_to_dict(
             self,
             api_type=str(self.api_type),
@@ -199,7 +200,7 @@ class HuggingFaceAPIChatGenerator:
             token=self.token.to_dict() if self.token else None,
             generation_kwargs=self.generation_kwargs,
             streaming_callback=callback_name,
-            tools=serialized_tools,
+            tools=serialize_tools_or_toolset(self.tools),
         )
 
     @classmethod
@@ -220,7 +221,7 @@ class HuggingFaceAPIChatGenerator:
         self,
         messages: List[ChatMessage],
         generation_kwargs: Optional[Dict[str, Any]] = None,
-        tools: Optional[List[Tool]] = None,
+        tools: Optional[Union[List[Tool], Toolset]] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
     ):
         """
@@ -231,8 +232,9 @@ class HuggingFaceAPIChatGenerator:
         :param generation_kwargs:
             Additional keyword arguments for text generation.
         :param tools:
-            A list of tools for which the model can prepare calls. If set, it will override the `tools` parameter set
-            during component initialization.
+            A list of tools or a Toolset for which the model can prepare calls. If set, it will override
+            the `tools` parameter set during component initialization. This parameter can accept either a
+            list of `Tool` objects or a `Toolset` instance.
         :param streaming_callback:
             An optional callable for handling streaming responses. If set, it will override the `streaming_callback`
             parameter set during component initialization.
@@ -248,7 +250,7 @@ class HuggingFaceAPIChatGenerator:
         tools = tools or self.tools
         if tools and self.streaming_callback:
             raise ValueError("Using tools and streaming at the same time is not supported. Please choose one.")
-        _check_duplicate_tool_names(tools)
+        _check_duplicate_tool_names(list(tools or []))
 
         # validate and select the streaming callback
         streaming_callback = select_streaming_callback(
@@ -260,6 +262,8 @@ class HuggingFaceAPIChatGenerator:
 
         hf_tools = None
         if tools:
+            if isinstance(tools, Toolset):
+                tools = list(tools)
             hf_tools = [
                 ChatCompletionInputTool(
                     function=ChatCompletionInputFunctionDefinition(
@@ -276,7 +280,7 @@ class HuggingFaceAPIChatGenerator:
         self,
         messages: List[ChatMessage],
         generation_kwargs: Optional[Dict[str, Any]] = None,
-        tools: Optional[List[Tool]] = None,
+        tools: Optional[Union[List[Tool], Toolset]] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
     ):
         """
@@ -290,8 +294,9 @@ class HuggingFaceAPIChatGenerator:
         :param generation_kwargs:
             Additional keyword arguments for text generation.
         :param tools:
-            A list of tools for which the model can prepare calls. If set, it will override the `tools` parameter set
-            during component initialization.
+            A list of tools or a Toolset for which the model can prepare calls. If set, it will override the `tools`
+            parameter set during component initialization. This parameter can accept either a list of `Tool` objects
+            or a `Toolset` instance.
         :param streaming_callback:
             An optional callable for handling streaming responses. If set, it will override the `streaming_callback`
             parameter set during component initialization.
@@ -307,7 +312,7 @@ class HuggingFaceAPIChatGenerator:
         tools = tools or self.tools
         if tools and self.streaming_callback:
             raise ValueError("Using tools and streaming at the same time is not supported. Please choose one.")
-        _check_duplicate_tool_names(tools)
+        _check_duplicate_tool_names(list(tools or []))
 
         # validate and select the streaming callback
         streaming_callback = select_streaming_callback(self.streaming_callback, streaming_callback, requires_async=True)
@@ -317,6 +322,8 @@ class HuggingFaceAPIChatGenerator:
 
         hf_tools = None
         if tools:
+            if isinstance(tools, Toolset):
+                tools = list(tools)
             hf_tools = [
                 ChatCompletionInputTool(
                     function=ChatCompletionInputFunctionDefinition(
