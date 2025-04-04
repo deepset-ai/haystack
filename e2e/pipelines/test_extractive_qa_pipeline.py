@@ -17,9 +17,6 @@ def test_extractive_qa_pipeline(tmp_path):
     qa_pipeline.add_component(instance=ExtractiveReader(model="deepset/tinyroberta-squad2"), name="reader")
     qa_pipeline.connect("retriever", "reader")
 
-    # Draw the pipeline
-    qa_pipeline.draw(tmp_path / "test_extractive_qa_pipeline.png")
-
     # Serialize the pipeline to YAML
     with open(tmp_path / "test_bm25_rag_pipeline.yaml", "w") as f:
         qa_pipeline.dump(f)

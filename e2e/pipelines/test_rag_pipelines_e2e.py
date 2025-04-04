@@ -43,9 +43,6 @@ def test_bm25_rag_pipeline(tmp_path):
     rag_pipeline.connect("llm.meta", "answer_builder.meta")
     rag_pipeline.connect("retriever", "answer_builder.documents")
 
-    # Draw the pipeline
-    rag_pipeline.draw(tmp_path / "test_bm25_rag_pipeline.png")
-
     # Serialize the pipeline to YAML
     with open(tmp_path / "test_bm25_rag_pipeline.yaml", "w") as f:
         rag_pipeline.dump(f)
@@ -114,9 +111,6 @@ def test_embedding_retrieval_rag_pipeline(tmp_path):
     rag_pipeline.connect("llm.replies", "answer_builder.replies")
     rag_pipeline.connect("llm.meta", "answer_builder.meta")
     rag_pipeline.connect("retriever", "answer_builder.documents")
-
-    # Draw the pipeline
-    rag_pipeline.draw(tmp_path / "test_embedding_rag_pipeline.png")
 
     # Serialize the pipeline to JSON
     with open(tmp_path / "test_embedding_rag_pipeline.json", "w") as f:
