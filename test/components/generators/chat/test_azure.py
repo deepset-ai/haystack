@@ -11,6 +11,7 @@ from haystack.components.generators.chat import AzureOpenAIChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.tools.tool import Tool
+from haystack.tools.toolset import Toolset
 from haystack.utils.auth import Secret
 from haystack.utils.azure import default_azure_ad_token_provider
 
@@ -227,6 +228,52 @@ class TestAzureOpenAIChatGenerator:
         p_str = p.dumps()
         q = Pipeline.loads(p_str)
         assert p.to_dict() == q.to_dict(), "Pipeline serialization/deserialization w/ AzureOpenAIChatGenerator failed."
+
+    def test_azure_chat_generator_with_toolset_initialization(self, tools, monkeypatch):
+        """Test that the AzureOpenAIChatGenerator can be initialized with a Toolset."""
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
+        toolset = Toolset(tools)
+        generator = AzureOpenAIChatGenerator(azure_endpoint="some-non-existing-endpoint", tools=toolset)
+        assert generator.tools == toolset
+
+    def test_from_dict_with_toolset(self, tools, monkeypatch):
+        """Test that the AzureOpenAIChatGenerator can be deserialized from a dictionary with a Toolset."""
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
+        toolset = Toolset(tools)
+        component = AzureOpenAIChatGenerator(azure_endpoint="some-non-existing-endpoint", tools=toolset)
+        data = component.to_dict()
+
+        deserialized_component = AzureOpenAIChatGenerator.from_dict(data)
+
+        assert isinstance(deserialized_component.tools, Toolset)
+        assert len(deserialized_component.tools) == len(tools)
+        assert all(isinstance(tool, Tool) for tool in deserialized_component.tools)
+
+    @pytest.mark.integration
+    @pytest.mark.skipif(
+        not os.environ.get("AZURE_OPENAI_API_KEY", None) or not os.environ.get("AZURE_OPENAI_ENDPOINT", None),
+        reason=(
+            "Please export env variables called AZURE_OPENAI_API_KEY containing "
+            "the Azure OpenAI key, AZURE_OPENAI_ENDPOINT containing "
+            "the Azure OpenAI endpoint URL to run this test."
+        ),
+    )
+    def test_live_run_with_toolset(self, tools):
+        chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
+        toolset = Toolset(tools)
+        component = AzureOpenAIChatGenerator(tools=toolset, organization="HaystackCI")
+        results = component.run(chat_messages)
+        assert len(results["replies"]) == 1
+        message = results["replies"][0]
+
+        assert not message.texts
+        assert not message.text
+        assert message.tool_calls
+        tool_call = message.tool_call
+        assert isinstance(tool_call, ToolCall)
+        assert tool_call.tool_name == "weather"
+        assert tool_call.arguments == {"city": "Paris"}
+        assert message.meta["finish_reason"] == "tool_calls"
 
     @pytest.mark.integration
     @pytest.mark.skipif(
