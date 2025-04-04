@@ -115,9 +115,8 @@ class ToolInvoker:
     Usage example with a Toolset:
     ```python
     from haystack.dataclasses import ChatMessage, ToolCall
-    from haystack.tools import Tool
+    from haystack.tools import Tool, Toolset
     from haystack.components.tools import ToolInvoker
-    from haystack.tools.toolset import Toolset
 
     # Tool definition
     def dummy_weather_function(city: str):

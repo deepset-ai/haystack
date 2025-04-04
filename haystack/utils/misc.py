@@ -6,8 +6,7 @@ from typing import Any, Dict, List, Union
 
 from numpy import exp
 
-from haystack.tools.tool import Tool
-from haystack.tools.toolset import Toolset
+from haystack.tools import Tool, Toolset
 
 
 def expand_page_range(page_range: List[Union[str, int]]) -> List[int]:
