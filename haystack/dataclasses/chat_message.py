@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import inspect
 import json
 from dataclasses import asdict, dataclass, field
 from enum import Enum
