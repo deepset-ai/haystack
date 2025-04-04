@@ -6,6 +6,7 @@ import io
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
+import httpx
 from openai import OpenAI
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
@@ -41,6 +42,7 @@ class RemoteWhisperTranscriber:
         model: str = "whisper-1",
         api_base_url: Optional[str] = None,
         organization: Optional[str] = None,
+        http_client: httpx.Client | None = None,
         **kwargs,
     ):
         """
@@ -58,6 +60,10 @@ class RemoteWhisperTranscriber:
         :param api_base:
             An optional URL to use as the API base. For details, see the
             OpenAI [documentation](https://platform.openai.com/docs/api-reference/audio).
+        :param http_client:
+            Overrides default `httpx.Client` to customize it for your use case.
+            See HTTPX's [advanced functionality](https://www.python-httpx.org/advanced/clients).
+            Use `DefaultHttpxClient` from `openai`.
         :param kwargs:
             Other optional parameters for the model. These are sent directly to the OpenAI
             endpoint. See OpenAI [documentation](https://platform.openai.com/docs/api-reference/audio) for more details.
@@ -92,7 +98,9 @@ class RemoteWhisperTranscriber:
             )
         whisper_params["response_format"] = "json"
         self.whisper_params = whisper_params
-        self.client = OpenAI(api_key=api_key.resolve_value(), organization=organization, base_url=api_base_url)
+        self.client = OpenAI(
+            api_key=api_key.resolve_value(), organization=organization, base_url=api_base_url, http_client=http_client
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         """
