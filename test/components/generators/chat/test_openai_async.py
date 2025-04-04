@@ -99,6 +99,25 @@ class TestOpenAIChatGeneratorAsync:
         assert component.async_client.timeout == 30
         assert component.async_client.max_retries == 5
 
+    def test_init_with_custom_http_async_client(self):
+        import openai
+
+        custom_http_async_client = openai.DefaultAsyncHttpxClient()
+        generator = OpenAIChatGenerator(
+            api_key=Secret.from_token("fake-api-key"), http_async_client=custom_http_async_client
+        )
+        assert generator.async_client._client == custom_http_async_client
+
+    def test_init_fail_when_http_async_client_not_httpx_client(self):
+        with pytest.raises(
+            TypeError,
+            match="Invalid `http_client` argument; Expected an instance of `httpx.AsyncClient` but got <class 'str'>",
+        ):
+            OpenAIChatGenerator(
+                api_key=Secret.from_token("fake-api-key"),
+                http_async_client="fake-client",  # type: ignore
+            )
+
     @pytest.mark.asyncio
     async def test_run_async(self, chat_messages, openai_mock_async_chat_completion):
         component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))

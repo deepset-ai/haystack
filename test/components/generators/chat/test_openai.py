@@ -151,6 +151,23 @@ class TestOpenAIChatGenerator:
         assert component.client.timeout == 100.0
         assert component.client.max_retries == 10
 
+    def test_init_with_custom_http_client(self):
+        import openai
+
+        custom_http_client = openai.DefaultHttpxClient()
+        generator = OpenAIChatGenerator(api_key=Secret.from_token("fake-api-key"), http_client=custom_http_client)
+        assert generator.client._client == custom_http_client
+
+    def test_init_fail_when_http_client_not_httpx_client(self):
+        with pytest.raises(
+            TypeError,
+            match="Invalid `http_client` argument; Expected an instance of `httpx.Client` but got <class 'str'>",
+        ):
+            OpenAIChatGenerator(
+                api_key=Secret.from_token("fake-api-key"),
+                http_client="fake-client",  # type: ignore
+            )
+
     def test_to_dict_default(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = OpenAIChatGenerator()
