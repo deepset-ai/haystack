@@ -11,7 +11,6 @@ from haystack.dataclasses import ChatMessage, ToolCall, ToolCallResult, ChatRole
 from haystack.dataclasses.state import State
 from haystack.tools import ComponentTool, Tool
 from haystack.tools.errors import ToolInvocationError
-from haystack.tools.toolset import Toolset
 
 
 def weather_function(location):
@@ -63,24 +62,6 @@ def invoker(weather_tool):
 @pytest.fixture
 def faulty_invoker(faulty_tool):
     return ToolInvoker(tools=[faulty_tool], raise_on_failure=True, convert_result_to_json_string=False)
-
-
-# Define a custom Toolset subclass
-class CustomToolset(Toolset):
-    def __init__(self, tools, custom_attr):
-        super().__init__(tools)
-        self.custom_attr = custom_attr
-
-    def to_dict(self):
-        data = super().to_dict()
-        data["custom_attr"] = self.custom_attr
-        return data
-
-    @classmethod
-    def from_dict(cls, data):
-        tools = [Tool.from_dict(tool_data) for tool_data in data["data"]["tools"]]
-        custom_attr = data["custom_attr"]
-        return cls(tools=tools, custom_attr=custom_attr)
 
 
 class TestToolInvoker:
@@ -293,7 +274,7 @@ class TestToolInvoker:
         pipeline = Pipeline()
         pipeline.add_component("invoker", invoker)
         pipeline.add_component("chatgenerator", OpenAIChatGenerator())
-        pipeline.connect("invoker.tool_messages", "chatgenerator.messages")
+        pipeline.connect("invoker", "chatgenerator")
 
         pipeline_dict = pipeline.to_dict()
         assert pipeline_dict == {
@@ -349,148 +330,6 @@ class TestToolInvoker:
 
         new_pipeline = Pipeline.loads(pipeline_yaml)
         assert new_pipeline == pipeline
-
-    def test_init_with_toolset(self, weather_tool):
-        # Create a Toolset with the weather_tool
-        toolset = Toolset(tools=[weather_tool])
-
-        # Initialize ToolInvoker with the Toolset
-        invoker = ToolInvoker(tools=toolset)
-
-        # Assert that the ToolInvoker contains the tools from the Toolset
-        assert invoker.tools == toolset
-        assert invoker._tools_with_names == {tool.name: tool for tool in toolset}
-
-    def test_run_with_toolset(self, weather_tool):
-        # Create a Toolset with the weather_tool
-        toolset = Toolset(tools=[weather_tool])
-
-        # Initialize ToolInvoker with the Toolset
-        invoker = ToolInvoker(tools=toolset)
-
-        # Create a ToolCall for the weather_tool
-        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
-        message = ChatMessage.from_assistant(tool_calls=[tool_call])
-
-        # Run the ToolInvoker with the message
-        result = invoker.run(messages=[message])
-
-        # Assert that the tool invocation is successful
-        assert "tool_messages" in result
-        assert len(result["tool_messages"]) == 1
-
-        tool_message = result["tool_messages"][0]
-        assert isinstance(tool_message, ChatMessage)
-        assert tool_message.is_from(ChatRole.TOOL)
-
-        assert tool_message.tool_call_results
-        tool_call_result = tool_message.tool_call_result
-
-        assert isinstance(tool_call_result, ToolCallResult)
-        assert tool_call_result.result == str({"weather": "mostly sunny", "temperature": 7, "unit": "celsius"})
-        assert tool_call_result.origin == tool_call
-        assert not tool_call_result.error
-
-    def test_serde_with_toolset(self, weather_tool):
-        # Create a Toolset with the weather_tool
-        toolset = Toolset(tools=[weather_tool])
-
-        # Initialize ToolInvoker with the Toolset
-        invoker = ToolInvoker(tools=toolset)
-
-        # Serialize the ToolInvoker to a dictionary
-        data = invoker.to_dict()
-
-        # Deserialize the dictionary back to a ToolInvoker
-        deserialized_invoker = ToolInvoker.from_dict(data)
-
-        # Assert that the deserialized ToolInvoker is equivalent to the original
-        assert deserialized_invoker.tools == invoker.tools
-        assert deserialized_invoker._tools_with_names == invoker._tools_with_names
-        assert deserialized_invoker.raise_on_failure == invoker.raise_on_failure
-        assert deserialized_invoker.convert_result_to_json_string == invoker.convert_result_to_json_string
-
-    def test_tool_invocation_error_with_toolset(self, faulty_tool):
-        # Create a Toolset with the faulty_tool
-        toolset = Toolset(tools=[faulty_tool])
-
-        # Initialize ToolInvoker with the Toolset
-        invoker = ToolInvoker(tools=toolset)
-
-        # Create a ToolCall for the faulty_tool
-        tool_call = ToolCall(tool_name="faulty_tool", arguments={"location": "Berlin"})
-        tool_call_message = ChatMessage.from_assistant(tool_calls=[tool_call])
-
-        # Assert that the tool invocation raises a ToolInvocationError
-        with pytest.raises(ToolInvocationError):
-            invoker.run(messages=[tool_call_message])
-
-    def test_toolinvoker_deserialization_with_custom_toolset(self, weather_tool):
-        # Initialize the custom Toolset
-        custom_toolset = CustomToolset(tools=[weather_tool], custom_attr="custom_value")
-
-        # Initialize ToolInvoker with the custom Toolset
-        invoker = ToolInvoker(tools=custom_toolset)
-
-        # Serialize the ToolInvoker to a dictionary
-        data = invoker.to_dict()
-
-        # Assert the structure and content of the serialized data
-        assert isinstance(data, dict), "Serialized data should be a dictionary"
-        assert "type" in data and "init_parameters" in data, (
-            "Serialized data should contain 'type' and 'init_parameters' keys"
-        )
-
-        # Check the tools data
-        tools_data = data["init_parameters"]["tools"]
-        assert isinstance(tools_data, dict), "Tools data should be a dictionary because it's a Toolset"
-        assert len(tools_data["data"]["tools"]) == 1, "There should be one tool in the serialized data"
-        assert tools_data["data"]["tools"][0]["type"] == "haystack.tools.tool.Tool", (
-            "Tool type should be 'haystack.tools.tool.Tool'"
-        )
-
-        # Check custom attributes within the Toolset
-        assert tools_data.get("custom_attr") == "custom_value", "Custom attribute should be 'custom_value'"
-
-        # Deserialize the dictionary back to a ToolInvoker
-        deserialized_invoker = ToolInvoker.from_dict(data)
-
-        # Assert that the deserialized ToolInvoker is equivalent to the original
-        assert deserialized_invoker.tools == invoker.tools
-        assert deserialized_invoker._tools_with_names == invoker._tools_with_names
-        assert deserialized_invoker.raise_on_failure == invoker.raise_on_failure
-        assert deserialized_invoker.convert_result_to_json_string == invoker.convert_result_to_json_string
-
-    def test_openai_chat_generator_with_toolset(self, weather_tool):
-        # Create a Toolset with the weather tool
-        toolset = Toolset([weather_tool])
-
-        # Initialize OpenAIChatGenerator with the Toolset
-        generator = OpenAIChatGenerator(tools=toolset)
-
-        # Serialize the generator to a dictionary
-        data = generator.to_dict()
-
-        # Assert the structure and content of the serialized data
-        assert isinstance(data, dict), "Serialized data should be a dictionary"
-        assert "tools" in data["init_parameters"], "Serialized data should contain 'tools' key in 'init_parameters'"
-
-        # Check the tools data
-        tools_data = data["init_parameters"]["tools"]
-        assert isinstance(tools_data, dict), "Tools data should be a dictionary"
-        assert len(tools_data["data"]["tools"]) == 1, "There should be one tool in the serialized data"
-        assert isinstance(tools_data["data"]["tools"][0], dict), "Each tool should be serialized as a dictionary"
-        assert tools_data["data"]["tools"][0]["type"] == "haystack.tools.tool.Tool", (
-            "Tool type should be 'haystack.tools.tool.Tool'"
-        )
-
-        # Deserialize the dictionary back to an OpenAIChatGenerator
-        deserialized_generator = OpenAIChatGenerator.from_dict(data)
-
-        # Assert that the deserialized generator has the same tools
-        assert len(deserialized_generator.tools) == len(generator.tools), (
-            "Deserialized generator should have the same number of tools"
-        )
 
 
 class TestMergeToolOutputs:

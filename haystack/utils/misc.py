@@ -57,7 +57,9 @@ def expit(x) -> float:
     return 1 / (1 + exp(-x))
 
 
-def serialize_tools(tools: Union[Toolset, List[Tool], None]) -> Union[Dict[str, Any], List[Dict[str, Any]], None]:
+def serialize_tools_or_toolset(
+    tools: Union[Toolset, List[Tool], None],
+) -> Union[Dict[str, Any], List[Dict[str, Any]], None]:
     """
     Serialize a Toolset or a list of Tools to a dictionary or a list of tool dictionaries.
 

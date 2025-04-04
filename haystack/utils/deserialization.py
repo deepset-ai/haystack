@@ -72,36 +72,3 @@ def deserialize_chatgenerator_inplace(data: Dict[str, Any], key: str = "chat_gen
         raise DeserializationError(f"Class '{chat_generator_class}' does not have a 'from_dict' method")
 
     data[key] = chat_generator_class.from_dict(serialized_chat_generator)
-
-
-def deserialize_toolset_inplace(data: Dict[str, Any], key: str = "tools"):
-    """
-    Deserialize a Toolset in a dictionary inplace.
-
-    :param data:
-        The dictionary with the serialized data.
-    :param key:
-        The key in the dictionary where the Toolset is stored.
-    """
-    from haystack.tools.toolset import Toolset  # avoid circular import
-
-    if key in data:
-        serialized_toolset = data[key]
-
-        if serialized_toolset is None:
-            return
-
-        if not isinstance(serialized_toolset, dict):
-            raise TypeError(f"The value of '{key}' is not a dictionary")
-
-        # Extract the class type from the serialized data
-        toolset_class_name = serialized_toolset.get("type")
-        if toolset_class_name is None:
-            raise DeserializationError("The 'type' key is missing or None in the serialized toolset data")
-        toolset_class = import_class_by_name(toolset_class_name)
-        if not issubclass(toolset_class, Toolset):
-            raise TypeError(f"Class '{toolset_class}' is not a subclass of Toolset")
-
-        deserialized_toolset = toolset_class.from_dict(serialized_toolset)
-
-        data[key] = deserialized_toolset

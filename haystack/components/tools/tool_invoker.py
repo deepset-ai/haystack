@@ -12,7 +12,7 @@ from haystack.dataclasses import ChatMessage, State, ToolCall
 from haystack.tools.component_tool import ComponentTool
 from haystack.tools.tool import Tool, ToolInvocationError, _check_duplicate_tool_names, deserialize_tools_inplace
 from haystack.tools.toolset import Toolset
-from haystack.utils.misc import serialize_tools
+from haystack.utils.misc import serialize_tools_or_toolset
 
 logger = logging.getLogger(__name__)
 
@@ -439,7 +439,7 @@ class ToolInvoker:
         """
         return default_to_dict(
             self,
-            tools=serialize_tools(self.tools),
+            tools=serialize_tools_or_toolset(self.tools),
             raise_on_failure=self.raise_on_failure,
             convert_result_to_json_string=self.convert_result_to_json_string,
         )

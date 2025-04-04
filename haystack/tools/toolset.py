@@ -91,8 +91,8 @@ class Toolset:
 
     # Create a complete pipeline that can use the toolset
     pipeline = Pipeline()
-    pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-3.5-turbo", tools=list(math_toolset)))
-    pipeline.add_component("tool_invoker", ToolInvoker(tools=list(math_toolset)))
+    pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-3.5-turbo", tools=math_toolset))
+    pipeline.add_component("tool_invoker", ToolInvoker(tools=math_toolset))
     pipeline.add_component(
         "adapter",
         OutputAdapter(
@@ -114,44 +114,7 @@ class Toolset:
     user_input_msg = ChatMessage.from_user(text=user_input)
     result = pipeline.run({"llm": {"messages": [user_input_msg]}, "adapter": {"initial_msg": [user_input_msg]}})
     # Result will contain "8" in the response
-
-    # Example of a custom toolset that loads tools dynamically:
-    class CalculatorToolset(Toolset):
-        def __init__(self):
-            # Always initialize parent first
-            super().__init__([])
-            # In a real implementation, you would load tool definitions from your endpoint here
-            self._create_tools()
-
-        def _create_tools(self):
-            # This is where you would implement the actual loading logic, for example:
-            # - Fetching tool definitions from a REST API
-            # - Reading from a configuration file
-            # - Loading from an MCP server
-            # For this example, we'll create a tool directly:
-            add_tool = Tool(
-                name="add",
-                description="Add two numbers",
-                parameters={
-                    "type": "object",
-                    "properties": {
-                        "a": {"type": "integer"},
-                        "b": {"type": "integer"}
-                    },
-                    "required": ["a", "b"]
-                },
-                function=add_numbers
-            )
-            # add handles adding to the internal list and deduplication
-            self.add(add_tool)
     ```
-
-    The Toolset class is particularly useful when:
-    - You have a collection of related tools that should be managed together
-    - You want to implement custom tool loading logic by subclassing Toolset
-    - You need to combine multiple toolsets into a larger set of tools
-    - You want to ensure there are no naming conflicts between tools
-    - You need to serialize/deserialize a collection of tools as a unit
     """
 
     # Use field() with default_factory to initialize the list
@@ -163,10 +126,8 @@ class Toolset:
 
         This handles the case when tools are provided during initialization.
         """
-        # If initialization was done with a Toolset, list of Tools, or a single Tool
-        if isinstance(self.tools, Toolset):
-            self.tools = list(self.tools)
-        elif isinstance(self.tools, Tool):
+        # If initialization was done a single Tool, convert it to a list
+        if isinstance(self.tools, Tool):
             self.tools = [self.tools]
 
         # Check for duplicate tool names in the initial set

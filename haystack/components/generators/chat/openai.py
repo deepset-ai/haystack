@@ -25,7 +25,7 @@ from haystack.dataclasses import (
 from haystack.tools.tool import Tool, _check_duplicate_tool_names, deserialize_tools_inplace
 from haystack.tools.toolset import Toolset
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
-from haystack.utils.misc import serialize_tools
+from haystack.utils.misc import serialize_tools_or_toolset
 
 logger = logging.getLogger(__name__)
 
@@ -189,7 +189,7 @@ class OpenAIChatGenerator:
             api_key=self.api_key.to_dict(),
             timeout=self.timeout,
             max_retries=self.max_retries,
-            tools=serialize_tools(self.tools),
+            tools=serialize_tools_or_toolset(self.tools),
             tools_strict=self.tools_strict,
         )
 
