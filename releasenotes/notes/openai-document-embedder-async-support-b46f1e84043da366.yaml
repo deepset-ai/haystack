@@ -2,5 +2,3 @@
 features:
   - |
     Added async support to the `OpenAIDocumentEmbedder` component.
-    - Add `run_async` method to OpenAIDocumentEmbedder.
-    - Add `_embed_batch_async` helper method for batched async embedding.
