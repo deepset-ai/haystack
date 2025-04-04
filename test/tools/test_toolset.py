@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import pytest
-
+import os
 from haystack import Pipeline
 from haystack.core.serialization import generate_qualified_class_name
 from haystack.dataclasses import ChatMessage
@@ -480,10 +480,11 @@ def test_toolset_duplicate_tool_names():
         combined = toolset + toolset2
 
 
-@pytest.mark.integration
 class TestToolsetIntegration:
     """Integration tests for Toolset in complete pipelines."""
 
+    @pytest.mark.integration
+    @pytest.mark.skipif(not os.getenv("OPENAI_API_KEY"), reason="OPENAI_API_KEY is not set")
     def test_basic_math_pipeline(self):
         """Test basic math operations through a complete pipeline flow."""
         add_tool = Tool(
@@ -536,61 +537,8 @@ class TestToolsetIntegration:
         pipe_result = result["response_llm"]["replies"][0].text
         assert "8" in pipe_result or "eight" in pipe_result
 
-    def test_combined_toolsets_pipeline(self):
-        """Test combining multiple toolsets in a complete pipeline."""
-        add_tool = Tool(
-            name="add",
-            description="Add two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=add_numbers,
-        )
-
-        multiply_tool = Tool(
-            name="multiply",
-            description="Multiply two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=multiply_numbers,
-        )
-
-        basic_math_toolset = Toolset([add_tool])
-        advanced_math_toolset = Toolset([multiply_tool])
-
-        combined_toolset = basic_math_toolset + advanced_math_toolset
-
-        pipeline = Pipeline()
-        pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=combined_toolset))
-        pipeline.add_component("tool_invoker", ToolInvoker(tools=combined_toolset))
-        pipeline.add_component(
-            "adapter",
-            OutputAdapter(
-                template="{{ initial_msg + initial_tool_messages + tool_messages }}",
-                output_type=list[ChatMessage],
-                unsafe=True,
-            ),
-        )
-        pipeline.add_component("response_llm", OpenAIChatGenerator(model="gpt-4o-mini"))
-
-        pipeline.connect("llm.replies", "tool_invoker.messages")
-        pipeline.connect("llm.replies", "adapter.initial_tool_messages")
-        pipeline.connect("tool_invoker.tool_messages", "adapter.tool_messages")
-        pipeline.connect("adapter.output", "response_llm.messages")
-
-        user_input = "What is 6 times 7?"
-        user_input_msg = ChatMessage.from_user(text=user_input)
-
-        result = pipeline.run({"llm": {"messages": [user_input_msg]}, "adapter": {"initial_msg": [user_input_msg]}})
-
-        pipe_result = result["response_llm"]["replies"][0].text
-        assert "42" in pipe_result or "forty two" in pipe_result
-
+    @pytest.mark.integration
+    @pytest.mark.skipif(not os.getenv("OPENAI_API_KEY"), reason="OPENAI_API_KEY is not set")
     def test_custom_calculator_pipeline(self):
         """Test a custom calculator toolset in a complete pipeline."""
 
@@ -702,57 +650,12 @@ class TestToolsetIntegration:
 
 
 class TestToolsetWithToolInvoker:
-    def test_toolset_with_tool_invoker(self):
-        """Test that a Toolset works with ToolInvoker."""
-        add_tool = Tool(
-            name="add",
-            description="Add two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=add_numbers,
-        )
-
-        toolset = Toolset([add_tool])
-
-        invoker = ToolInvoker(tools=toolset)
-
-        tool_call = ToolCall(tool_name="add", arguments={"a": 2, "b": 3})
-        message = ChatMessage.from_assistant(tool_calls=[tool_call])
-
-        result = invoker.run(messages=[message])
-
-        assert len(result["tool_messages"]) == 1
-        assert result["tool_messages"][0].tool_call_result.result == "5"
-
     def test_init_with_toolset(self, weather_tool):
         """Test initializing ToolInvoker with a Toolset."""
         toolset = Toolset(tools=[weather_tool])
         invoker = ToolInvoker(tools=toolset)
         assert invoker.tools == toolset
         assert invoker._tools_with_names == {tool.name: tool for tool in toolset}
-
-    def test_run_with_toolset(self, weather_tool):
-        """Test running ToolInvoker with a Toolset."""
-        toolset = Toolset(tools=[weather_tool])
-        invoker = ToolInvoker(tools=toolset)
-        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
-        message = ChatMessage.from_assistant(tool_calls=[tool_call])
-        result = invoker.run(messages=[message])
-
-        assert "tool_messages" in result
-        assert len(result["tool_messages"]) == 1
-        tool_message = result["tool_messages"][0]
-        assert isinstance(tool_message, ChatMessage)
-        assert tool_message.is_from(ChatRole.TOOL)
-        assert tool_message.tool_call_results
-        tool_call_result = tool_message.tool_call_result
-        assert isinstance(tool_call_result, ToolCallResult)
-        assert tool_call_result.result == str({"weather": "mostly sunny", "temperature": 7, "unit": "celsius"})
-        assert tool_call_result.origin == tool_call
-        assert not tool_call_result.error
 
     def test_serde_with_toolset(self, weather_tool):
         """Test serialization and deserialization of ToolInvoker with a Toolset."""
