@@ -151,9 +151,9 @@ class Toolset:
 
         This handles the case when tools are provided during initialization.
         """
-        # If initialization was done a single Tool, convert it to a list
+        # If initialization was done a single Tool, raise an error
         if isinstance(self.tools, Tool):
-            self.tools = [self.tools]
+            raise TypeError("A single Tool cannot be directly passed to Toolset. Please use a list: Toolset([tool])")
 
         # Check for duplicate tool names in the initial set
         _check_duplicate_tool_names(self.tools)
