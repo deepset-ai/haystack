@@ -12,106 +12,133 @@ from haystack.tools.tool import Tool, _check_duplicate_tool_names
 @dataclass
 class Toolset:
     """
-    A collection of related Tools that can be bootstrapped collectively and managed as a cohesive unit.
+    A collection of related Tools that can be used and managed as a cohesive unit.
 
-    1. It provides a way to group related tools together, making it easier to manage and pass them around as a single
-       unit.
-    2. It provides a base class for implementing dynamic tool loading - by subclassing Toolset, you can create
-       custom implementations that load tools from resource endpoints (e.g., an API endpoint or a configuration file).
-       This allows you to define tools externally and load them at runtime, rather than defining each tool explicitly in
-       code.
+    Toolset serves two main purposes:
 
+    1. Group related tools together:
+       Toolset allows you to organize related tools into a single collection, making it easier
+       to manage and use them as a unit in Haystack pipelines.
 
-    Note: To implement dynamic tool loading, you must create a subclass of Toolset that implements the loading logic.
-    The base Toolset class provides the infrastructure (like registration, deduplication, and serialization), but the
-    actual loading from an endpoint must be implemented in your subclass.
+       Example:
+       ```python
+       from haystack.tools import Tool, Toolset
+       from haystack.components.tools import ToolInvoker
 
-    Important: When implementing a custom Toolset subclass, you should perform the dynamic loading of tools in the
-    `__init__` method. This ensures tools are loaded and added when the Toolset is instantiated. The base class
-    will automatically handle tool registration and deduplication. For example:
+       # Define math functions
+       def add_numbers(a: int, b: int) -> int:
+           return a + b
 
-    ```python
-    class CustomToolset(Toolset):
-        def __init__(self, api_endpoint: str):
-            tools = self._load_tools_from_endpoint(api_endpoint)
-            super().__init__(tools)
-            self.api_endpoint = api_endpoint
+       def subtract_numbers(a: int, b: int) -> int:
+           return a - b
 
-        def _load_tools_from_endpoint(self, api_endpoint: str) -> List[Tool]:
-            tool_definitions = self._fetch_from_endpoint(api_endpoint)
-            tools = []
-            for definition in tool_definitions:
-                tool = Tool(
-                    name=definition["name"],
-                    description=definition["description"],
-                    parameters=definition["parameters"],
-                    function=self._create_tool_function(definition)
-                )
-                tools.append(tool)
-            return tools
-    ```
+       # Create tools with proper schemas
+       add_tool = Tool(
+           name="add",
+           description="Add two numbers",
+           parameters={
+               "type": "object",
+               "properties": {
+                   "a": {"type": "integer"},
+                   "b": {"type": "integer"}
+               },
+               "required": ["a", "b"]
+           },
+           function=add_numbers
+       )
 
-    Toolset implements the __iter__, __contains__, and __len__ methods, making it behave like a collection.
-    This makes it compatible with any component that expects iterable tools, such as ToolInvoker or
-    any of the Haystack chat generators.
+       subtract_tool = Tool(
+           name="subtract",
+           description="Subtract b from a",
+           parameters={
+               "type": "object",
+               "properties": {
+                   "a": {"type": "integer"},
+                   "b": {"type": "integer"}
+               },
+               "required": ["a", "b"]
+           },
+           function=subtract_numbers
+       )
 
-    Example:
-    ```python
-    from haystack import Pipeline
-    from haystack.tools import Tool, Toolset
-    from haystack.components.tools import ToolInvoker
-    from haystack.components.generators.chat import OpenAIChatGenerator
-    from haystack.components.converters import OutputAdapter
-    from haystack.dataclasses import ChatMessage
+       # Create a toolset with the math tools
+       math_toolset = Toolset([add_tool, subtract_tool])
 
-    # Define a simple math function
-    def add_numbers(a: int, b: int) -> int:
-        return a + b
+       # Use the toolset with a ToolInvoker or ChatGenerator component
+       invoker = ToolInvoker(tools=math_toolset)
+       ```
 
-    # Create a tool with proper schema
-    add_tool = Tool(
-        name="add",
-        description="Add two numbers",
-        parameters={
-            "type": "object",
-            "properties": {
-                "a": {"type": "integer"},
-                "b": {"type": "integer"}
-            },
-            "required": ["a", "b"]
-        },
-        function=add_numbers
-    )
+    2. Base class for dynamic tool loading:
+       By subclassing Toolset, you can create implementations that dynamically load tools
+       from external sources like OpenAPI URLs, MCP servers, or other resources.
 
-    # Create a toolset with the math tool
-    math_toolset = Toolset([add_tool])
+       Example:
+       ```python
+       from haystack.core.serialization import generate_qualified_class_name
+       from haystack.tools import Tool, Toolset
+       from haystack.components.tools import ToolInvoker
 
-    # Create a complete pipeline that can use the toolset
-    pipeline = Pipeline()
-    pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-3.5-turbo", tools=math_toolset))
-    pipeline.add_component("tool_invoker", ToolInvoker(tools=math_toolset))
-    pipeline.add_component(
-        "adapter",
-        OutputAdapter(
-            template="{{ initial_msg + initial_tool_messages + tool_messages }}",
-            output_type=list[ChatMessage],
-            unsafe=True,
-        ),
-    )
-    pipeline.add_component("response_llm", OpenAIChatGenerator(model="gpt-3.5-turbo"))
+       class CalculatorToolset(Toolset):
+           '''A toolset for calculator operations.'''
 
-    # Connect the components
-    pipeline.connect("llm.replies", "tool_invoker.messages")
-    pipeline.connect("llm.replies", "adapter.initial_tool_messages")
-    pipeline.connect("tool_invoker.tool_messages", "adapter.tool_messages")
-    pipeline.connect("adapter.output", "response_llm.messages")
+           def __init__(self):
+               tools = self._create_tools()
+               super().__init__(tools)
 
-    # Use the pipeline with the toolset
-    user_input = "What is 5 plus 3?"
-    user_input_msg = ChatMessage.from_user(text=user_input)
-    result = pipeline.run({"llm": {"messages": [user_input_msg]}, "adapter": {"initial_msg": [user_input_msg]}})
-    # Result will contain "8" in the response
-    ```
+           def _create_tools(self):
+               # Define and add tools dynamically
+               tools = []
+               add_tool = Tool(
+                   name="add",
+                   description="Add two numbers",
+                   parameters={
+                       "type": "object",
+                       "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
+                       "required": ["a", "b"],
+                   },
+                   function=lambda a, b: a + b,
+               )
+
+               multiply_tool = Tool(
+                   name="multiply",
+                   description="Multiply two numbers",
+                   parameters={
+                       "type": "object",
+                       "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
+                       "required": ["a", "b"],
+                   },
+                   function=lambda a, b: a * b,
+               )
+
+               tools.append(add_tool)
+               tools.append(multiply_tool)
+
+               return tools
+
+           def to_dict(self):
+               return {
+                   "type": generate_qualified_class_name(type(self)),
+                   "data": {},  # no data to serialize as we define the tools dynamically
+               }
+
+           @classmethod
+           def from_dict(cls, data):
+               return cls()  # Recreate the tools dynamically during deserialization
+
+       # Create the dynamic toolset and use it with ToolInvoker
+       calculator_toolset = CalculatorToolset()
+       invoker = ToolInvoker(tools=calculator_toolset)
+       ```
+
+    Toolset implements the collection interface (__iter__, __contains__, __len__, __getitem__),
+    making it behave like a list of Tools. This makes it compatible with components that expect
+    iterable tools, such as ToolInvoker or Haystack chat generators.
+
+    When implementing a custom Toolset subclass for dynamic tool loading:
+    - Perform the dynamic loading in the __init__ method
+    - Override to_dict() and from_dict() methods if your tools are defined dynamically
+    - Serialize endpoint descriptors rather than tool instances if your tools
+      are loaded from external sources
     """
 
     # Use field() with default_factory to initialize the list
