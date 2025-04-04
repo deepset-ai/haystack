@@ -33,16 +33,13 @@ class Toolset:
     ```python
     class CustomToolset(Toolset):
         def __init__(self, api_endpoint: str):
-            # Always call parent's __init__ first to initialize the tools list
-            super().__init__([])
+            tools = self._load_tools_from_endpoint(api_endpoint)
+            super().__init__(tools)
             self.api_endpoint = api_endpoint
-            # Load and add tools during initialization
-            self._load_tools_from_endpoint()
 
-        def _load_tools_from_endpoint(self):
-            # Fetch tool definitions from the endpoint
-            tool_definitions = self._fetch_from_endpoint()
-            # Create and add each tool
+        def _load_tools_from_endpoint(self, api_endpoint: str) -> List[Tool]:
+            tool_definitions = self._fetch_from_endpoint(api_endpoint)
+            tools = []
             for definition in tool_definitions:
                 tool = Tool(
                     name=definition["name"],
@@ -50,8 +47,8 @@ class Toolset:
                     parameters=definition["parameters"],
                     function=self._create_tool_function(definition)
                 )
-                # add handles adding to internal list and deduplication
-                self.add(tool)
+                tools.append(tool)
+            return tools
     ```
 
     Toolset implements the __iter__, __contains__, and __len__ methods, making it behave like a collection.
