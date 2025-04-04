@@ -8,6 +8,7 @@ from typing import Any, Callable, Dict, List, Optional
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import SchemaError
 
+from haystack.core.errors import DeserializationError
 from haystack.core.serialization import generate_qualified_class_name, import_class_by_name
 from haystack.tools.errors import ToolInvocationError
 from haystack.utils import deserialize_callable, serialize_callable
@@ -190,8 +191,23 @@ def deserialize_tools_inplace(data: Dict[str, Any], key: str = "tools"):
         if serialized_tools is None:
             return
 
+        # Check if it's a serialized Toolset (a dict with "type" and "data" keys)
+        if isinstance(serialized_tools, dict) and all(k in serialized_tools for k in ["type", "data"]):
+            toolset_class_name = serialized_tools.get("type")
+            if not toolset_class_name:
+                raise DeserializationError("The 'type' key is missing or None in the serialized toolset data")
+
+            toolset_class = import_class_by_name(toolset_class_name)
+            from haystack.tools.toolset import Toolset  # avoid circular import
+
+            if not issubclass(toolset_class, Toolset):
+                raise TypeError(f"Class '{toolset_class}' is not a subclass of Toolset")
+
+            data[key] = toolset_class.from_dict(serialized_tools)
+            return
+
         if not isinstance(serialized_tools, list):
-            raise TypeError(f"The value of '{key}' is not a list")
+            raise TypeError(f"The value of '{key}' is not a list or a dictionary")
 
         deserialized_tools = []
         for tool in serialized_tools:
