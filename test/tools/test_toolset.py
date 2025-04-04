@@ -5,6 +5,7 @@
 import pytest
 
 from haystack import Pipeline
+from haystack.core.serialization import generate_qualified_class_name
 from haystack.dataclasses import ChatMessage
 from haystack.components.tools import ToolInvoker
 from haystack.components.generators.chat import OpenAIChatGenerator
@@ -45,6 +46,50 @@ class CustomToolset(Toolset):
         tools = [Tool.from_dict(tool_data) for tool_data in data["data"]["tools"]]
         custom_attr = data["custom_attr"]
         return cls(tools=tools, custom_attr=custom_attr)
+
+
+class CalculatorToolset(Toolset):
+    """A toolset for calculator operations."""
+
+    def __init__(self):
+        super().__init__([])
+        self._create_tools()
+
+    def _create_tools(self):
+        add_tool = Tool(
+            name="add",
+            description="Add two numbers",
+            parameters={
+                "type": "object",
+                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
+                "required": ["a", "b"],
+            },
+            function=add_numbers,
+        )
+
+        multiply_tool = Tool(
+            name="multiply",
+            description="Multiply two numbers",
+            parameters={
+                "type": "object",
+                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
+                "required": ["a", "b"],
+            },
+            function=multiply_numbers,
+        )
+
+        self.add(add_tool)
+        self.add(multiply_tool)
+
+    def to_dict(self):
+        return {
+            "type": generate_qualified_class_name(type(self)),
+            "data": {},  # no data to serialize as we define the tools dynamically
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        return cls()
 
 
 def weather_function(location):
@@ -549,39 +594,6 @@ class TestToolsetIntegration:
     def test_custom_calculator_pipeline(self):
         """Test a custom calculator toolset in a complete pipeline."""
 
-        class CalculatorToolset(Toolset):
-            """A toolset for calculator operations."""
-
-            def __init__(self):
-                super().__init__([])
-                self._create_tools()
-
-            def _create_tools(self):
-                add_tool = Tool(
-                    name="add",
-                    description="Add two numbers",
-                    parameters={
-                        "type": "object",
-                        "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                        "required": ["a", "b"],
-                    },
-                    function=add_numbers,
-                )
-
-                multiply_tool = Tool(
-                    name="multiply",
-                    description="Multiply two numbers",
-                    parameters={
-                        "type": "object",
-                        "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                        "required": ["a", "b"],
-                    },
-                    function=multiply_numbers,
-                )
-
-                self.add(add_tool)
-                self.add(multiply_tool)
-
         calculator_toolset = CalculatorToolset()
 
         pipeline = Pipeline()
@@ -662,10 +674,10 @@ class TestToolsetIntegration:
         assert (
             pipeline_dict["components"]["tool_invoker"]["type"] == "haystack.components.tools.tool_invoker.ToolInvoker"
         )
-        assert len(pipeline_dict["components"]["tool_invoker"]["init_parameters"]["tools"]) == 2
-
         tools_dict = pipeline_dict["components"]["tool_invoker"]["init_parameters"]["tools"]
-        tool_names = [tool["data"]["name"] for tool in tools_dict]
+        assert all(keys in tools_dict for keys in ["data", "type"])
+
+        tool_names = [tool["data"]["name"] for tool in tools_dict["data"]["tools"]]
         assert "add" in tool_names
         assert "multiply" in tool_names
 
@@ -676,44 +688,16 @@ class TestToolsetIntegration:
     def test_toolset_serde_in_pipeline(self):
         """Test serialization and deserialization of toolsets within a pipeline."""
 
-        class CalculatorToolset(Toolset):
-            """A toolset for calculator operations."""
-
-            def __init__(self):
-                super().__init__([])
-                self._create_tools()
-
-            def _create_tools(self):
-                add_tool = Tool(
-                    name="add",
-                    description="Add two numbers",
-                    parameters={
-                        "type": "object",
-                        "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                        "required": ["a", "b"],
-                    },
-                    function=add_numbers,
-                )
-
-                self.add(add_tool)
-
-        calculator_toolset = CalculatorToolset()
-
         pipeline = Pipeline()
-        pipeline.add_component("tool_invoker", ToolInvoker(tools=calculator_toolset))
+        pipeline.add_component("tool_invoker", ToolInvoker(tools=CalculatorToolset()))
 
         pipeline_dict = pipeline.to_dict()
 
         tool_invoker_dict = pipeline_dict["components"]["tool_invoker"]
         assert tool_invoker_dict["type"] == "haystack.components.tools.tool_invoker.ToolInvoker"
-        assert len(tool_invoker_dict["init_parameters"]["tools"]) == 1
+        assert len(tool_invoker_dict["init_parameters"]["tools"]["data"]) == 0
 
-        tool_dict = tool_invoker_dict["init_parameters"]["tools"][0]
-        assert tool_dict["data"]["name"] == "add"
-        assert tool_dict["data"]["description"] == "Add two numbers"
-
-        pipeline_yaml = pipeline.dumps()
-        new_pipeline = Pipeline.loads(pipeline_yaml)
+        new_pipeline = Pipeline.from_dict(pipeline_dict)
         assert new_pipeline == pipeline
 
 
