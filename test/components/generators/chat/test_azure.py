@@ -16,6 +16,11 @@ from haystack.utils.auth import Secret
 from haystack.utils.azure import default_azure_ad_token_provider
 
 
+def get_weather(city: str) -> str:
+    """Get weather information for a city."""
+    return f"Weather info for {city}"
+
+
 @pytest.fixture
 def tools():
     tool_parameters = {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}
@@ -23,7 +28,7 @@ def tools():
         name="weather",
         description="useful to determine the weather in a given location",
         parameters=tool_parameters,
-        function=lambda x: x,
+        function=get_weather,
     )
 
     return [tool]
