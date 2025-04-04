@@ -11,14 +11,15 @@ from haystack import Pipeline
 from haystack.components.evaluators import FaithfulnessEvaluator
 from haystack.utils.auth import Secret
 from haystack.dataclasses.chat_message import ChatMessage
+from haystack.components.generators.chat.openai import OpenAIChatGenerator
 
 
 class TestFaithfulnessEvaluator:
     def test_init_default(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+
         component = FaithfulnessEvaluator()
-        assert component.api == "openai"
-        assert component._chat_generator.client.api_key == "test-api-key"
+
         assert component.instructions == (
             "Your task is to judge the faithfulness or groundedness of statements based "
             "on context information. First, please extract statements from a provided predicted "
@@ -65,6 +66,10 @@ class TestFaithfulnessEvaluator:
             },
         ]
 
+        assert isinstance(component._chat_generator, OpenAIChatGenerator)
+        assert component._chat_generator.client.api_key == "test-api-key"
+        assert component._chat_generator.generation_kwargs == {"response_format": {"type": "json_object"}, "seed": 42}
+
     def test_init_fail_wo_openai_api_key(self, monkeypatch):
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         with pytest.raises(ValueError, match="None of the .* environment variables are set"):
@@ -85,15 +90,46 @@ class TestFaithfulnessEvaluator:
                 },
             ],
         )
-        assert component._chat_generator.client.api_key == "test-api-key"
-        assert component.api == "openai"
+
         assert component.examples == [
             {"inputs": {"predicted_answers": "Damn, this is straight outta hell!!!"}, "outputs": {"custom_score": 1}},
             {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"custom_score": 0}},
         ]
 
+        assert isinstance(component._chat_generator, OpenAIChatGenerator)
+        assert component._chat_generator.client.api_key == "test-api-key"
+        assert component._chat_generator.generation_kwargs == {"response_format": {"type": "json_object"}, "seed": 42}
+
+    def test_init_with_chat_generator(self):
+        chat_generator = OpenAIChatGenerator(generation_kwargs={"response_format": {"type": "json_object"}, "seed": 42})
+        component = FaithfulnessEvaluator(chat_generator=chat_generator)
+
+        assert component._chat_generator is chat_generator
+
+    def test_init_with_api_and_chat_generator(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        chat_generator = OpenAIChatGenerator(generation_kwargs={"key_from_chat_generator": "value_from_chat_generator"})
+
+        component = FaithfulnessEvaluator(
+            api="openai",
+            api_params={"generation_kwargs": {"key_from_api_params": "value_from_api_params"}},
+            chat_generator=chat_generator,
+        )
+
+        assert component._chat_generator is chat_generator
+        assert component._chat_generator.generation_kwargs == {"key_from_chat_generator": "value_from_chat_generator"}
+
+    def test_init_fail_with_api_not_openai(self):
+        with pytest.raises(ValueError):
+            FaithfulnessEvaluator(api="unsupported-api")
+
     def test_to_dict_with_parameters(self, monkeypatch):
         monkeypatch.setenv("ENV_VAR", "test-api-key")
+        chat_generator = OpenAIChatGenerator(
+            generation_kwargs={"response_format": {"type": "json_object"}, "seed": 42},
+            api_key=Secret.from_env_var("ENV_VAR"),
+        )
+
         component = FaithfulnessEvaluator(
             api="openai",
             api_key=Secret.from_env_var("ENV_VAR"),
@@ -104,12 +140,11 @@ class TestFaithfulnessEvaluator:
             progress_bar=False,
         )
         data = component.to_dict()
+
         assert data == {
             "type": "haystack.components.evaluators.faithfulness.FaithfulnessEvaluator",
             "init_parameters": {
-                "api_key": {"env_vars": ["ENV_VAR"], "strict": True, "type": "env_var"},
-                "api": "openai",
-                "api_params": {"generation_kwargs": {"response_format": {"type": "json_object"}, "seed": 42}},
+                "chat_generator": chat_generator.to_dict(),
                 "examples": [
                     {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
                 ],
@@ -118,7 +153,7 @@ class TestFaithfulnessEvaluator:
             },
         }
 
-    def test_from_dict(self, monkeypatch):
+    def test_from_dict_legacy(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
 
         data = {
@@ -132,15 +167,44 @@ class TestFaithfulnessEvaluator:
             },
         }
         component = FaithfulnessEvaluator.from_dict(data)
-        assert component.api == "openai"
+        assert isinstance(component._chat_generator, OpenAIChatGenerator)
         assert component._chat_generator.client.api_key == "test-api-key"
+        assert component._chat_generator.generation_kwargs == {"response_format": {"type": "json_object"}, "seed": 42}
         assert component.examples == [
             {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
         ]
 
+    def test_from_dict(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        chat_generator = OpenAIChatGenerator(generation_kwargs={"response_format": {"type": "json_object"}, "seed": 42})
+
+        data = {
+            "type": "haystack.components.evaluators.faithfulness.FaithfulnessEvaluator",
+            "init_parameters": {
+                "chat_generator": chat_generator.to_dict(),
+                "examples": [
+                    {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
+                ],
+            },
+        }
+        component = FaithfulnessEvaluator.from_dict(data)
+        assert isinstance(component._chat_generator, OpenAIChatGenerator)
+        assert component._chat_generator.client.api_key == "test-api-key"
+        assert component._chat_generator.generation_kwargs == {"response_format": {"type": "json_object"}, "seed": 42}
+        assert component.examples == [
+            {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
+        ]
+
+    def test_pipeline_serde(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+
+        component = FaithfulnessEvaluator()
         pipeline = Pipeline()
         pipeline.add_component("evaluator", component)
-        assert pipeline.loads(pipeline.dumps())
+
+        serialized_pipeline = pipeline.dumps()
+        deserialized_pipeline = Pipeline.loads(serialized_pipeline)
+        assert deserialized_pipeline == pipeline
 
     def test_run_calculates_mean_score(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")

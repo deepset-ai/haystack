@@ -2,8 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import os
 from datetime import datetime
-from typing import Iterator
+from typing import Iterator, Dict, Any, List
 
 from unittest.mock import MagicMock, patch
 import pytest
@@ -14,12 +15,11 @@ from openai.types.chat import ChatCompletionChunk, chat_completion_chunk
 from haystack.components.agents import Agent
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
-from haystack.dataclasses import ChatMessage
+from haystack.components.generators.chat.types import ChatGenerator
+from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.dataclasses.streaming_chunk import StreamingChunk
 from haystack.tools import Tool, ComponentTool
 from haystack.utils import serialize_callable, Secret
-
-import os
 
 
 def streaming_callback_for_serde(chunk: StreamingChunk):
@@ -35,15 +35,12 @@ def weather_function(location):
     return weather_info.get(location, {"weather": "unknown", "temperature": 0, "unit": "celsius"})
 
 
-weather_parameters = {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}
-
-
 @pytest.fixture
 def weather_tool():
     return Tool(
         name="weather_tool",
         description="Provides weather information for a given location.",
-        parameters=weather_parameters,
+        parameters={"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]},
         function=weather_function,
     )
 
@@ -91,11 +88,30 @@ def openai_mock_chat_completion_chunk():
         yield mock_chat_completion_create
 
 
+class MockChatGeneratorWithoutTools(ChatGenerator):
+    """A mock chat generator that implements ChatGenerator protocol but doesn't support tools."""
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"type": "MockChatGeneratorWithoutTools", "data": {}}
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "MockChatGeneratorWithoutTools":
+        return cls()
+
+    def run(self, messages: List[ChatMessage]) -> Dict[str, Any]:
+        return {"replies": [ChatMessage.from_assistant("Hello")]}
+
+
 class TestAgent:
     def test_serde(self, weather_tool, component_tool, monkeypatch):
         monkeypatch.setenv("FAKE_OPENAI_KEY", "fake-key")
         generator = OpenAIChatGenerator(api_key=Secret.from_env_var("FAKE_OPENAI_KEY"))
-        agent = Agent(chat_generator=generator, tools=[weather_tool, component_tool])
+        agent = Agent(
+            chat_generator=generator,
+            tools=[weather_tool, component_tool],
+            exit_conditions=["text", "weather_tool"],
+            state_schema={"foo": {"type": str}},
+        )
 
         serialized_agent = agent.to_dict()
 
@@ -112,6 +128,7 @@ class TestAgent:
             init_parameters["tools"][1]["data"]["component"]["type"]
             == "haystack.components.builders.prompt_builder.PromptBuilder"
         )
+        assert init_parameters["exit_conditions"] == ["text", "weather_tool"]
 
         deserialized_agent = Agent.from_dict(serialized_agent)
 
@@ -119,6 +136,8 @@ class TestAgent:
         assert isinstance(deserialized_agent.chat_generator, OpenAIChatGenerator)
         assert deserialized_agent.tools[0].function is weather_function
         assert isinstance(deserialized_agent.tools[1]._component, PromptBuilder)
+        assert deserialized_agent.exit_conditions == ["text", "weather_tool"]
+        assert deserialized_agent.state_schema == {"foo": {"type": str}}
 
     def test_serde_with_streaming_callback(self, weather_tool, component_tool, monkeypatch):
         monkeypatch.setenv("FAKE_OPENAI_KEY", "fake-key")
@@ -136,6 +155,24 @@ class TestAgent:
 
         deserialized_agent = Agent.from_dict(serialized_agent)
         assert deserialized_agent.streaming_callback is streaming_callback_for_serde
+
+    def test_exit_conditions_validation(self, weather_tool, component_tool, monkeypatch):
+        monkeypatch.setenv("FAKE_OPENAI_KEY", "fake-key")
+        generator = OpenAIChatGenerator(api_key=Secret.from_env_var("FAKE_OPENAI_KEY"))
+
+        # Test invalid exit condition
+        with pytest.raises(ValueError, match="Invalid exit conditions provided:"):
+            Agent(chat_generator=generator, tools=[weather_tool, component_tool], exit_conditions=["invalid_tool"])
+
+        # Test default exit condition
+        agent = Agent(chat_generator=generator, tools=[weather_tool, component_tool])
+        assert agent.exit_conditions == ["text"]
+
+        # Test multiple valid exit conditions
+        agent = Agent(
+            chat_generator=generator, tools=[weather_tool, component_tool], exit_conditions=["text", "weather_tool"]
+        )
+        assert agent.exit_conditions == ["text", "weather_tool"]
 
     def test_run_with_params_streaming(self, openai_mock_chat_completion_chunk, weather_tool):
         chat_generator = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
@@ -209,3 +246,92 @@ class TestAgent:
         assert len(response["messages"]) == 2
         assert [isinstance(reply, ChatMessage) for reply in response["messages"]]
         assert "Hello" in response["messages"][1].text  # see openai_mock_chat_completion_chunk
+
+    def test_chat_generator_must_support_tools(self, weather_tool):
+        chat_generator = MockChatGeneratorWithoutTools()
+
+        with pytest.raises(TypeError, match="MockChatGeneratorWithoutTools does not accept tools"):
+            Agent(chat_generator=chat_generator, tools=[weather_tool])
+
+    def test_multiple_llm_responses_with_tool_call(self, monkeypatch, weather_tool):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        generator = OpenAIChatGenerator()
+
+        mock_messages = [
+            ChatMessage.from_assistant("First response"),
+            ChatMessage.from_assistant(
+                tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
+            ),
+        ]
+
+        agent = Agent(chat_generator=generator, tools=[weather_tool], max_agent_steps=1)
+        agent.warm_up()
+
+        # Patch agent.chat_generator.run to return mock_messages
+        agent.chat_generator.run = MagicMock(return_value={"replies": mock_messages})
+
+        result = agent.run([ChatMessage.from_user("Hello")])
+
+        assert "messages" in result
+        assert len(result["messages"]) == 4
+        assert (
+            result["messages"][-1].tool_call_result.result
+            == "{'weather': 'mostly sunny', 'temperature': 7, 'unit': 'celsius'}"
+        )
+
+    def test_exit_conditions_checked_across_all_llm_messages(self, monkeypatch, weather_tool):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        generator = OpenAIChatGenerator()
+
+        # Mock messages where the exit condition appears in the second message
+        mock_messages = [
+            ChatMessage.from_assistant("First response"),
+            ChatMessage.from_assistant(
+                tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
+            ),
+        ]
+
+        agent = Agent(chat_generator=generator, tools=[weather_tool], exit_conditions=["weather_tool"])
+        agent.warm_up()
+
+        # Patch agent.chat_generator.run to return mock_messages
+        agent.chat_generator.run = MagicMock(return_value={"replies": mock_messages})
+
+        result = agent.run([ChatMessage.from_user("Hello")])
+
+        assert "messages" in result
+        assert len(result["messages"]) == 4
+        assert result["messages"][-2].tool_call.tool_name == "weather_tool"
+        assert (
+            result["messages"][-1].tool_call_result.result
+            == "{'weather': 'mostly sunny', 'temperature': 7, 'unit': 'celsius'}"
+        )
+
+    @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
+    @pytest.mark.integration
+    def test_run(self, weather_tool):
+        chat_generator = OpenAIChatGenerator(model="gpt-4o-mini")
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool], max_agent_steps=3)
+        agent.warm_up()
+        response = agent.run([ChatMessage.from_user("What is the weather in Berlin?")])
+
+        assert isinstance(response, dict)
+        assert "messages" in response
+        assert isinstance(response["messages"], list)
+        assert len(response["messages"]) == 4
+        assert [isinstance(reply, ChatMessage) for reply in response["messages"]]
+        # Loose check of message texts
+        assert response["messages"][0].text == "What is the weather in Berlin?"
+        assert response["messages"][1].text is None
+        assert response["messages"][2].text is None
+        assert response["messages"][3].text is not None
+        # Loose check of message metadata
+        assert response["messages"][0].meta == {}
+        assert response["messages"][1].meta.get("model") is not None
+        assert response["messages"][2].meta == {}
+        assert response["messages"][3].meta.get("model") is not None
+        # Loose check of tool calls and results
+        assert response["messages"][1].tool_calls[0].tool_name == "weather_tool"
+        assert response["messages"][1].tool_calls[0].arguments is not None
+        assert response["messages"][2].tool_call_results[0].result is not None
+        assert response["messages"][2].tool_call_results[0].origin is not None

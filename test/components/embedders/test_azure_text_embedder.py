@@ -22,6 +22,7 @@ class TestAzureOpenAITextEmbedder:
         assert embedder.suffix == ""
         assert embedder.default_headers == {}
         assert embedder.azure_ad_token_provider is None
+        assert embedder.http_client_kwargs is None
 
     def test_init_with_zero_max_retries(self, monkeypatch):
         """Tests that the max_retries init param is set correctly if equal 0"""
@@ -58,6 +59,7 @@ class TestAzureOpenAITextEmbedder:
                 "suffix": "",
                 "default_headers": {},
                 "azure_ad_token_provider": None,
+                "http_client_kwargs": None,
             },
         }
 
@@ -74,6 +76,7 @@ class TestAzureOpenAITextEmbedder:
             suffix=" suffix",
             default_headers={"x-custom-header": "custom-value"},
             azure_ad_token_provider=default_azure_ad_token_provider,
+            http_client_kwargs={"proxy": "http://example.com:3128", "verify": False},
         )
         data = component.to_dict()
         assert data == {
@@ -92,6 +95,7 @@ class TestAzureOpenAITextEmbedder:
                 "suffix": " suffix",
                 "default_headers": {"x-custom-header": "custom-value"},
                 "azure_ad_token_provider": "haystack.utils.azure.default_azure_ad_token_provider",
+                "http_client_kwargs": {"proxy": "http://example.com:3128", "verify": False},
             },
         }
 
@@ -112,6 +116,7 @@ class TestAzureOpenAITextEmbedder:
                 "prefix": "",
                 "suffix": "",
                 "default_headers": {},
+                "http_client_kwargs": None,
             },
         }
         component = AzureOpenAITextEmbedder.from_dict(data)
@@ -124,6 +129,7 @@ class TestAzureOpenAITextEmbedder:
         assert component.suffix == ""
         assert component.default_headers == {}
         assert component.azure_ad_token_provider is None
+        assert component.http_client_kwargs is None
 
     def test_from_dict_with_parameters(self, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
@@ -143,6 +149,7 @@ class TestAzureOpenAITextEmbedder:
                 "suffix": " suffix",
                 "default_headers": {"x-custom-header": "custom-value"},
                 "azure_ad_token_provider": "haystack.utils.azure.default_azure_ad_token_provider",
+                "http_client_kwargs": {"proxy": "http://example.com:3128", "verify": False},
             },
         }
         component = AzureOpenAITextEmbedder.from_dict(data)
@@ -155,6 +162,19 @@ class TestAzureOpenAITextEmbedder:
         assert component.suffix == " suffix"
         assert component.default_headers == {"x-custom-header": "custom-value"}
         assert component.azure_ad_token_provider is not None
+        assert component.http_client_kwargs == {"proxy": "http://example.com:3128", "verify": False}
+
+    def test_http_client_kwargs_type_validation(self, monkeypatch):
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
+        monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://test.openai.azure.com")
+        with pytest.raises(TypeError, match="The parameter 'http_client_kwargs' must be a dictionary."):
+            AzureOpenAITextEmbedder(http_client_kwargs="invalid_argument")
+
+    def test_http_client_kwargs_with_invalid_params(self, monkeypatch):
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
+        monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://test.openai.azure.com")
+        with pytest.raises(TypeError, match="unexpected keyword argument"):
+            AzureOpenAITextEmbedder(http_client_kwargs={"invalid_key": "invalid_value"})
 
     @pytest.mark.integration
     @pytest.mark.skipif(
