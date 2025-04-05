@@ -57,6 +57,7 @@ dependencies = [
   "numpy",
   "python-dateutil",
   "jsonschema",             # JsonSchemaValidator, Tool
+  "filetype",
   "haystack-experimental",
 ]
 

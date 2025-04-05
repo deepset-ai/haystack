@@ -11,6 +11,7 @@ from dataclasses import asdict, dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional, Sequence, Union
 
+import filetype
 import requests
 
 from haystack import logging
@@ -102,6 +103,21 @@ class ImageContent:
     mime_type: Optional[str] = None
     meta: Dict[str, Any] = field(default_factory=dict)
     provider_options: Dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self):
+        if not self.mime_type:
+            try:
+                # Attempt to decode the string as base64
+                decoded_image = base64.b64decode(self.base64_image)
+
+                guess = filetype.guess(decoded_image)
+                if guess:
+                    self.mime_type = guess.mime
+                    print(f"Guessed mime type: {self.mime_type}")
+            except:
+                pass
+
+        print(self)
 
     def __repr__(self) -> str:
         """

@@ -21,17 +21,15 @@ document_store.write_documents(docs)
 pipeline = Pipeline()
 
 chat_template = [
-    ChatMessage.from_user(
-        content_parts=["{{query}}", ImageContent(base64_image="{{documents[0] | document_to_image}}")]
-    )
+    ChatMessage.from_user(content_parts=["{{query}}", ImageContent("{{documents[0] | get_base64_image}}")])
 ]
-pipeline.add_component("retriever", InMemoryBM25Retriever(document_store=document_store))
+pipeline.add_component("retriever", InMemoryBM25Retriever(document_store=document_store, top_k=1))
 pipeline.add_component("prompt_builder", ChatPromptBuilder(template=chat_template))
 pipeline.add_component("generator", OpenAIChatGenerator(model="gpt-4o-mini"))
 
 pipeline.connect("retriever.documents", "prompt_builder.documents")
 pipeline.connect("prompt_builder.prompt", "generator.messages")
 
-query = "What the image from the TextGrad paper tries to show?"
+query = "What the image from the Lora vs Full Fine-tuning paper tries to show? Be short."
 
 print(pipeline.run(data={"query": query}))

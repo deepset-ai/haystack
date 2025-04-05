@@ -103,31 +103,30 @@ class Jinja2ImageExtension(Extension):
     A Jinja2 extension to extract image data in base64 format from a Document object.
 
     Usage in templates:
-        {{ document | document_to_image }}
+        {{ document | get_base64_image }}
     """
 
     def __init__(self, environment: Environment):
         super().__init__(environment)
-        environment.filters["document_to_image"] = self.document_to_image
+        environment.filters["get_base64_image"] = self.get_base64_image
 
-    def document_to_image(self, document: Document) -> str:
+    def get_base64_image(self, document: Document) -> str:
         """
-        Convert a Document object to a image in base64 format.
+        Extract the image data from a Document object and return it as a base64 encoded string.
 
         Args:
-            document: A Document object containing the image data
+            document: A Document object containing the image data stored in the blob field
 
         Returns:
             A base64 encoded string of the image data
 
         Raises:
-            ValueError: If the input is empty
+            ValueError: If the Document object does not have a blob field
         """
         if document.blob is None:
-            raise ValueError("Document does not have a blob")
+            raise ValueError("Document does not have a blob field")
 
-        # TODO:
-        # - mime_type
-        # - return ImageContent?
+        # maybe we should add some field to Document or ByteStream to indicate the media type of data,
+        # so we can fail early if the data is not an image
 
         return base64.b64encode(document.blob.data).decode("utf-8")

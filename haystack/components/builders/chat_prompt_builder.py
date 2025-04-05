@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import dataclasses
 from copy import deepcopy
 from typing import Any, Dict, List, Literal, Optional, Set, Union
 
@@ -136,15 +137,19 @@ class ChatPromptBuilder:
         if template and not variables:
             for message in template:
                 if message.is_from(ChatRole.USER) or message.is_from(ChatRole.SYSTEM):
+                    # infer variables from template
+                    if message.text is None:
+                        raise ValueError(f"The provided ChatMessage has no text. ChatMessage: {message}")
                     for part in message._content:
-                        if isinstance(part, TextContent):
-                            ast = self._env.parse(part.text)
-                            template_variables = meta.find_undeclared_variables(ast)
-                            variables += list(template_variables)
-                        elif isinstance(part, ImageContent):
-                            ast = self._env.parse(part.base64_image)
-                            template_variables = meta.find_undeclared_variables(ast)
-                            variables += list(template_variables)
+                        part_vars: List[str] = []
+                        for field in dataclasses.fields(part):
+                            attr_value = getattr(part, field.name, None)
+                            # Check if the attribute value is a string that might contain a template
+                            if isinstance(attr_value, str):
+                                ast = self._env.parse(attr_value)
+                                template_variables = meta.find_undeclared_variables(ast)
+                                part_vars.extend(list(template_variables))
+                        variables.extend(part_vars)
         self.variables = variables
 
         if len(self.variables) > 0 and required_variables is None:
@@ -173,22 +178,11 @@ class ChatPromptBuilder:
         """
         Renders the prompt template with the provided variables.
 
-        It applies the template variables to render the final prompt. You can provide variables with pipeline kwargs.
-        To overwrite the default template, you can set the `template` parameter.
-        To overwrite pipeline kwargs, you can set the `template_variables` parameter.
-
-        :param template:
-            An optional list of `ChatMessage` objects to overwrite ChatPromptBuilder's default template.
-            If `None`, the default template provided at initialization is used.
-        :param template_variables:
-            An optional dictionary of template variables to overwrite the pipeline variables.
-        :param kwargs:
-            Pipeline variables used for rendering the prompt.
-
-        :returns: A dictionary with the following keys:
-            - `prompt`: The updated list of `ChatMessage` objects after rendering the templates.
-        :raises ValueError:
-            If `chat_messages` is empty or contains elements that are not instances of `ChatMessage`.
+        :param template: Optional list of ChatMessage objects to override default template
+        :param template_variables: Optional dictionary of template variables to override pipeline variables
+        :param kwargs: Pipeline variables used for rendering the prompt
+        :returns: Dictionary with rendered prompt messages
+        :raises ValueError: If template is empty or invalid
         """
         kwargs = kwargs or {}
         template_variables = template_variables or {}
@@ -211,35 +205,36 @@ class ChatPromptBuilder:
             )
 
         processed_messages = []
+
         for message in template:
-            if message.is_from(ChatRole.SYSTEM):
-                self._validate_variables(set(template_variables_combined.keys()))
-                if message.text is None:
-                    raise ValueError(f"The provided ChatMessage has no text. ChatMessage: {message}")
-                compiled_template = self._env.from_string(message.text)
-                rendered_text = compiled_template.render(template_variables_combined)
-                # deep copy the message to avoid modifying the original message
-                rendered_message: ChatMessage = deepcopy(message)
-                rendered_message._content = [TextContent(text=rendered_text)]
-                processed_messages.append(rendered_message)
-            elif message.is_from(ChatRole.USER):
-                self._validate_variables(set(template_variables_combined.keys()))
-                if not message._content:
-                    raise ValueError(f"The provided ChatMessage has no content. ChatMessage: {message}")
-                rendered_message: ChatMessage = deepcopy(message)
-                rendered_message._content = []
-                for content_part in message._content:
-                    if isinstance(content_part, TextContent):
-                        compiled_template_part = self._env.from_string(content_part.text)
-                        rendered_text = compiled_template_part.render(template_variables_combined)
-                        rendered_message._content.append(TextContent(text=rendered_text))
-                    elif isinstance(content_part, ImageContent):
-                        compiled_template_part = self._env.from_string(content_part.base64_image)
-                        rendered_text = compiled_template_part.render(template_variables_combined)
-                        rendered_message._content.append(ImageContent(base64_image=rendered_text))
-                processed_messages.append(rendered_message)
-            else:
+            if not message.is_from(ChatRole.USER) and not message.is_from(ChatRole.SYSTEM):
                 processed_messages.append(message)
+                continue
+
+            self._validate_variables(set(template_variables_combined.keys()))
+            if message.text is None:
+                raise ValueError(f"The provided ChatMessage has no text. ChatMessage: {message}")
+
+            # Create a copy to avoid modifying original
+            rendered_message = deepcopy(message)
+            rendered_message._content = []
+
+            for content_part in message._content:
+                rendered_attrs = {}
+
+                for field in dataclasses.fields(content_part):
+                    value = getattr(content_part, field.name, None)
+                    if isinstance(value, str):
+                        compiled_template = self._env.from_string(value)
+                        rendered_attrs[field.name] = compiled_template.render(template_variables_combined)
+                    else:
+                        rendered_attrs[field.name] = value
+
+                # Create new content part with rendered attributes
+                rendered_part = content_part.__class__(**rendered_attrs)
+                rendered_message._content.append(rendered_part)
+
+            processed_messages.append(rendered_message)
 
         return {"prompt": processed_messages}
 
