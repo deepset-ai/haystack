@@ -21,7 +21,12 @@ document_store.write_documents(docs)
 pipeline = Pipeline()
 
 chat_template = [
-    ChatMessage.from_user(content_parts=["{{query}}", ImageContent("{{documents[0] | get_base64_image}}")])
+    ChatMessage.from_user(
+        content_parts=[
+            "{{query}}",
+            ImageContent("{{documents[0] | get_base64_image}}", provider_options={"{{something}}": "{{detail}}"}),
+        ]
+    )
 ]
 pipeline.add_component("retriever", InMemoryBM25Retriever(document_store=document_store, top_k=1))
 pipeline.add_component("prompt_builder", ChatPromptBuilder(template=chat_template))
@@ -32,4 +37,4 @@ pipeline.connect("prompt_builder.prompt", "generator.messages")
 
 query = "What the image from the Lora vs Full Fine-tuning paper tries to show? Be short."
 
-print(pipeline.run(data={"query": query}))
+print(pipeline.run(data={"query": query, "detail": "low", "something": "detail"}))

@@ -149,6 +149,24 @@ class ChatPromptBuilder:
                                 ast = self._env.parse(attr_value)
                                 template_variables = meta.find_undeclared_variables(ast)
                                 part_vars.extend(list(template_variables))
+                            elif isinstance(attr_value, dict):
+                                # Check both dictionary keys and values
+                                for k, v in attr_value.items():
+                                    if isinstance(k, str):
+                                        ast = self._env.parse(k)
+                                        template_variables = meta.find_undeclared_variables(ast)
+                                        part_vars.extend(list(template_variables))
+                                    if isinstance(v, str):
+                                        ast = self._env.parse(v)
+                                        template_variables = meta.find_undeclared_variables(ast)
+                                        part_vars.extend(list(template_variables))
+                            elif hasattr(attr_value, "__dict__"):
+                                # Check object attributes
+                                for attr_val in attr_value.__dict__.values():
+                                    if isinstance(attr_val, str):
+                                        ast = self._env.parse(attr_val)
+                                        template_variables = meta.find_undeclared_variables(ast)
+                                        part_vars.extend(list(template_variables))
                         variables.extend(part_vars)
         self.variables = variables
 
@@ -220,15 +238,41 @@ class ChatPromptBuilder:
             rendered_message._content = []
 
             for content_part in message._content:
-                rendered_attrs = {}
+                rendered_attrs: Dict[str, Any] = {}
+
+                def render_value(value: Any) -> Any:
+                    if isinstance(value, str):
+                        compiled_template = self._env.from_string(value)
+                        return compiled_template.render(template_variables_combined)
+                    elif isinstance(value, (list, tuple)):
+                        return [render_value(v) for v in value]
+                    elif isinstance(value, dict):
+                        # Handle dictionaries by rendering both keys and values
+                        rendered_dict = {}
+                        for k, v in value.items():
+                            if isinstance(k, str):
+                                compiled_template = self._env.from_string(k)
+                                rendered_key = compiled_template.render(template_variables_combined)
+                            else:
+                                rendered_key = k
+                            if isinstance(v, str):
+                                compiled_template = self._env.from_string(v)
+                                rendered_dict[rendered_key] = compiled_template.render(template_variables_combined)
+                            else:
+                                rendered_dict[rendered_key] = render_value(v)
+                        return rendered_dict
+                    elif hasattr(value, "__dict__"):
+                        # Handle any object with attributes
+                        rendered_obj = {}
+                        for attr_name, attr_value in value.__dict__.items():
+                            rendered_obj[attr_name] = render_value(attr_value)
+                        return value.__class__(**rendered_obj)
+                    else:
+                        return value
 
                 for field in dataclasses.fields(content_part):
                     value = getattr(content_part, field.name, None)
-                    if isinstance(value, str):
-                        compiled_template = self._env.from_string(value)
-                        rendered_attrs[field.name] = compiled_template.render(template_variables_combined)
-                    else:
-                        rendered_attrs[field.name] = value
+                    rendered_attrs[field.name] = render_value(value)
 
                 # Create new content part with rendered attributes
                 rendered_part = content_part.__class__(**rendered_attrs)
