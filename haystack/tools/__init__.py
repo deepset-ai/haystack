@@ -8,6 +8,7 @@
 from .from_function import create_tool_from_function, tool
 from .tool import Tool, _check_duplicate_tool_names, deserialize_tools_inplace
 from .component_tool import ComponentTool
+from .toolset import Toolset
 
 
 __all__ = [
@@ -17,4 +18,5 @@ __all__ = [
     "create_tool_from_function",
     "tool",
     "ComponentTool",
+    "Toolset",
 ]

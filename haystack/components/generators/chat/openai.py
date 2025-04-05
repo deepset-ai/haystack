@@ -23,7 +23,9 @@ from haystack.dataclasses import (
     select_streaming_callback,
 )
 from haystack.tools.tool import Tool, _check_duplicate_tool_names, deserialize_tools_inplace
+from haystack.tools.toolset import Toolset
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
+from haystack.utils.misc import serialize_tools_or_toolset
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +35,7 @@ class OpenAIChatGenerator:
     """
     Completes chats using OpenAI's large language models (LLMs).
 
-    It works with the gpt-4 and gpt-3.5-turbo models and supports streaming responses
+    It works with the gpt-4 and o-series models and supports streaming responses
     from OpenAI API. It uses [ChatMessage](https://docs.haystack.deepset.ai/docs/chatmessage)
     format in input and output.
 
@@ -81,7 +83,7 @@ class OpenAIChatGenerator:
         generation_kwargs: Optional[Dict[str, Any]] = None,
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
-        tools: Optional[List[Tool]] = None,
+        tools: Optional[Union[List[Tool], Toolset]] = None,
         tools_strict: bool = False,
     ):
         """
@@ -127,7 +129,8 @@ class OpenAIChatGenerator:
             Maximum number of retries to contact OpenAI after an internal error.
             If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
         :param tools:
-            A list of tools for which the model can prepare calls.
+            A list of tools or a Toolset for which the model can prepare calls. This parameter can accept either a
+            list of `Tool` objects or a `Toolset` instance.
         :param tools_strict:
             Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
             the schema provided in the `parameters` field of the tool definition, but this may increase latency.
@@ -140,10 +143,11 @@ class OpenAIChatGenerator:
         self.organization = organization
         self.timeout = timeout
         self.max_retries = max_retries
-        self.tools = tools
+        self.tools = tools  # Store tools as-is, whether it's a list or a Toolset
         self.tools_strict = tools_strict
 
-        _check_duplicate_tool_names(tools)
+        # Check for duplicate tool names
+        _check_duplicate_tool_names(list(self.tools or []))
 
         if timeout is None:
             timeout = float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
@@ -185,7 +189,7 @@ class OpenAIChatGenerator:
             api_key=self.api_key.to_dict(),
             timeout=self.timeout,
             max_retries=self.max_retries,
-            tools=[tool.to_dict() for tool in self.tools] if self.tools else None,
+            tools=serialize_tools_or_toolset(self.tools),
             tools_strict=self.tools_strict,
         )
 
@@ -213,7 +217,7 @@ class OpenAIChatGenerator:
         streaming_callback: Optional[StreamingCallbackT] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
         *,
-        tools: Optional[List[Tool]] = None,
+        tools: Optional[Union[List[Tool], Toolset]] = None,
         tools_strict: Optional[bool] = None,
     ):
         """
@@ -228,8 +232,9 @@ class OpenAIChatGenerator:
             override the parameters passed during component initialization.
             For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat/create).
         :param tools:
-            A list of tools for which the model can prepare calls. If set, it will override the `tools` parameter set
-            during component initialization.
+            A list of tools or a Toolset for which the model can prepare calls. If set, it will override the
+            `tools` parameter set during component initialization. This parameter can accept either a list of
+            `Tool` objects or a `Toolset` instance.
         :param tools_strict:
             Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
             the schema provided in the `parameters` field of the tool definition, but this may increase latency.
@@ -285,7 +290,7 @@ class OpenAIChatGenerator:
         streaming_callback: Optional[StreamingCallbackT] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
         *,
-        tools: Optional[List[Tool]] = None,
+        tools: Optional[Union[List[Tool], Toolset]] = None,
         tools_strict: Optional[bool] = None,
     ):
         """
@@ -304,8 +309,9 @@ class OpenAIChatGenerator:
             override the parameters passed during component initialization.
             For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat/create).
         :param tools:
-            A list of tools for which the model can prepare calls. If set, it will override the `tools` parameter set
-            during component initialization.
+            A list of tools or a Toolset for which the model can prepare calls. If set, it will override the
+            `tools` parameter set during component initialization. This parameter can accept either a list of
+            `Tool` objects or a `Toolset` instance.
         :param tools_strict:
             Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
             the schema provided in the `parameters` field of the tool definition, but this may increase latency.
@@ -362,7 +368,7 @@ class OpenAIChatGenerator:
         messages: List[ChatMessage],
         streaming_callback: Optional[StreamingCallbackT] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
-        tools: Optional[List[Tool]] = None,
+        tools: Optional[Union[List[Tool], Toolset]] = None,
         tools_strict: Optional[bool] = None,
     ) -> Dict[str, Any]:
         # update generation kwargs by merging with the generation kwargs passed to the run method
@@ -372,6 +378,8 @@ class OpenAIChatGenerator:
         openai_formatted_messages = [message.to_openai_dict_format() for message in messages]
 
         tools = tools or self.tools
+        if isinstance(tools, Toolset):
+            tools = list(tools)
         tools_strict = tools_strict if tools_strict is not None else self.tools_strict
         _check_duplicate_tool_names(tools)
 

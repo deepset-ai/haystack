@@ -164,6 +164,18 @@ class TestAzureOpenAITextEmbedder:
         assert component.azure_ad_token_provider is not None
         assert component.http_client_kwargs == {"proxy": "http://example.com:3128", "verify": False}
 
+    def test_http_client_kwargs_type_validation(self, monkeypatch):
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
+        monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://test.openai.azure.com")
+        with pytest.raises(TypeError, match="The parameter 'http_client_kwargs' must be a dictionary."):
+            AzureOpenAITextEmbedder(http_client_kwargs="invalid_argument")
+
+    def test_http_client_kwargs_with_invalid_params(self, monkeypatch):
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
+        monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://test.openai.azure.com")
+        with pytest.raises(TypeError, match="unexpected keyword argument"):
+            AzureOpenAITextEmbedder(http_client_kwargs={"invalid_key": "invalid_value"})
+
     @pytest.mark.integration
     @pytest.mark.skipif(
         not os.environ.get("AZURE_OPENAI_API_KEY", None) and not os.environ.get("AZURE_OPENAI_ENDPOINT", None),
@@ -183,11 +195,3 @@ class TestAzureOpenAITextEmbedder:
         assert len(result["embedding"]) == 1536
         assert all(isinstance(x, float) for x in result["embedding"])
         assert result["meta"] == {"model": "text-embedding-ada-002", "usage": {"prompt_tokens": 6, "total_tokens": 6}}
-
-    def test_http_client_kwargs_type_validation(self):
-        with pytest.raises(TypeError, match="The parameter 'http_client_kwargs' must be a dictionary."):
-            AzureOpenAITextEmbedder(http_client_kwargs="invalid_argument")
-
-    def test_http_client_kwargs_with_invalid_params(self):
-        with pytest.raises(TypeError, match="unexpected keyword argument"):
-            AzureOpenAITextEmbedder(http_client_kwargs={"invalid_key": "invalid_value"})
