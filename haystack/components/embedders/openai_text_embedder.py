@@ -156,11 +156,7 @@ class OpenAITextEmbedder:
 
         text_to_embed = self.prefix + text + self.suffix
 
-        # copied from OpenAI embedding_utils (https://github.com/openai/openai-python/blob/main/openai/embeddings_utils.py)
-        # replace newlines, which can negatively affect performance.
-        text_to_embed = text_to_embed.replace("\n", " ")
-
-        kwargs: Dict[str, Any] = {"model": self.model, "input": text}
+        kwargs: Dict[str, Any] = {"model": self.model, "input": text_to_embed}
         if self.dimensions is not None:
             kwargs["dimensions"] = self.dimensions
         return kwargs
