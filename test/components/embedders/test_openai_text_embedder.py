@@ -135,3 +135,21 @@ class TestOpenAITextEmbedder:
         )
 
         assert result["meta"]["usage"] == {"prompt_tokens": 6, "total_tokens": 6}, "Usage information does not match"
+
+    @pytest.mark.asyncio
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
+    @pytest.mark.integration
+    async def test_run_async(self):
+        model = "text-embedding-ada-002"
+
+        embedder = OpenAITextEmbedder(model=model, prefix="prefix ", suffix=" suffix")
+        result = await embedder.run_async(text="The food was delicious")
+
+        assert len(result["embedding"]) == 1536
+        assert all(isinstance(x, float) for x in result["embedding"])
+
+        assert "text" in result["meta"]["model"] and "ada" in result["meta"]["model"], (
+            "The model name does not contain 'text' and 'ada'"
+        )
+
+        assert result["meta"]["usage"] == {"prompt_tokens": 6, "total_tokens": 6}, "Usage information does not match"
