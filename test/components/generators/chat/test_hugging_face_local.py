@@ -79,15 +79,6 @@ def custom_tool_parser(text: str) -> Optional[List[ToolCall]]:
 
 
 class TestHuggingFaceLocalChatGenerator:
-    @pytest.fixture
-    def mock_model_info(self, monkeypatch):
-        """Mock the model_info function to prevent real HTTP requests."""
-
-        def mock_model_info(*args, **kwargs):
-            return {"pipeline_tag": "text2text-generation"}
-
-        monkeypatch.setattr("huggingface_hub.HfApi.model_info", mock_model_info)
-
     def test_initialize_with_valid_model_and_generation_parameters(self, model_info_mock):
         model = "HuggingFaceH4/zephyr-7b-alpha"
         generation_kwargs = {"n": 1}
