@@ -82,7 +82,7 @@ class TestPipeline:
                 component_visits={"wrong": 0},
             )
 
-        assert "Invalid output type:" in str(exc_info.value)
+        assert "Expected a dict" in str(exc_info.value)
 
     def test_run_component_error(self):
         """Test error when component fails to run"""

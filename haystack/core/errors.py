@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Type
+from typing import Any, Optional, Type
 
 
 class PipelineError(Exception):
@@ -10,32 +10,36 @@ class PipelineError(Exception):
 
 
 class PipelineRuntimeError(Exception):
-    def __init__(self, component_name: str, component_type: Type, detail: str) -> None:
+    def __init__(self, component_name: Optional[str], component_type: Optional[Type], message: str) -> None:
         self.component_name = component_name
         self.component_type = component_type
-        self.detail = detail
-
-    def __str__(self):
-        return (
-            f"PipelineRuntimeError:\n"
-            f"Component name: '{self.component_name}'\n"
-            f"Component type: '{self.component_type.__name__}'\n"
-            f"Details: {self.detail}"
-        )
+        super().__init__(message)
 
     @classmethod
     def from_exception(cls, component_name: str, component_type: Type, error: Exception):
         """
         Create a PipelineRuntimeError from an exception.
         """
-        return cls(component_name, component_type, f"Failed to run component. Error: {str(error)}")
+        message = (
+            f"The following component failed to run:\n"
+            f"Component name: '{component_name}'\n"
+            f"Component type: '{component_type.__name__}'\n"
+            f"Error: {str(error)}"
+        )
+        return cls(component_name, component_type, message)
 
     @classmethod
     def from_invalid_output(cls, component_name: str, component_type: Type, output: Any):
         """
         Create a PipelineRuntimeError from an invalid output.
         """
-        return cls(component_name, component_type, f"Invalid output type: {type(output)}. Expected a dictionary.")
+        message = (
+            f"The following component returned an invalid output:\n"
+            f"Component name: '{component_name}'\n"
+            f"Component type: '{component_type.__name__}'\n"
+            f"Expected a dict, but got {type(output).__name__} instead."
+        )
+        return cls(component_name, component_type, message)
 
 
 class PipelineConnectError(PipelineError):
