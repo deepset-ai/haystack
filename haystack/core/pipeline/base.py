@@ -20,7 +20,6 @@ from haystack.core.errors import (
     PipelineDrawingError,
     PipelineError,
     PipelineMaxComponentRuns,
-    PipelineRuntimeError,
     PipelineUnmarshalError,
     PipelineValidationError,
 )
@@ -1202,7 +1201,7 @@ class PipelineBase:
 
         candidate = priority_queue.peek()
         if candidate is not None and candidate[0] == ComponentPriority.BLOCKED:
-            raise PipelineRuntimeError(
+            raise PipelineValidationError(
                 "Cannot run pipeline - all components are blocked. "
                 "This typically happens when:\n"
                 "1. There is no valid entry point for the pipeline\n"
