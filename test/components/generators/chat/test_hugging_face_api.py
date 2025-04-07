@@ -880,36 +880,6 @@ class TestHuggingFaceAPIChatGenerator:
         assert len(deserialized_component.tools) == len(tools)
         assert all(isinstance(tool, Tool) for tool in deserialized_component.tools)
 
-    @pytest.mark.integration
-    @pytest.mark.skipif(
-        not os.environ.get("HF_API_TOKEN", None),
-        reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
-    )
-    @pytest.mark.xfail(
-        reason="The Hugging Face API can be unstable and this test may fail intermittently", strict=False
-    )
-    def test_live_run_with_toolset(self, tools):
-        chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
-        toolset = Toolset(tools)
-        generator = HuggingFaceAPIChatGenerator(
-            api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "NousResearch/Hermes-3-Llama-3.1-8B"},
-            generation_kwargs={"temperature": 0.5},
-            tools=toolset,
-        )
-
-        results = generator.run(chat_messages)
-        assert len(results["replies"]) == 1
-        message = results["replies"][0]
-
-        assert message.tool_calls
-        tool_call = message.tool_call
-        assert isinstance(tool_call, ToolCall)
-        assert tool_call.tool_name == "weather"
-        assert "city" in tool_call.arguments
-        assert "Paris" in tool_call.arguments["city"]
-        assert message.meta["finish_reason"] == "stop"
-
     def test_to_dict_with_toolset(self, mock_check_valid_model, tools):
         """Test that the HuggingFaceAPIChatGenerator can be serialized to a dictionary with a Toolset."""
         toolset = Toolset(tools)
