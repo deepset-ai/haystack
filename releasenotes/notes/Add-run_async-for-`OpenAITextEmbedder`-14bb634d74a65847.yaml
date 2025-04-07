@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Add run_async for `OpenAITextEmbedder`
