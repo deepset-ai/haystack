@@ -160,14 +160,14 @@ class OpenAITextEmbedder:
 
         text_to_embed = self.prefix + text + self.suffix
 
-        # copied from OpenAI embedding_utils (https://github.com/openai/openai-python/blob/main/openai/embeddings_utils.py)
-        # replace newlines, which can negatively affect performance.
+        # Replace newlines, which can negatively affect performance, as recommended by OpenAI.
         text_to_embed = text_to_embed.replace("\n", " ")
 
+        api_params: Dict[str, Any] = {"model": self.model, "input": text_to_embed}
         if self.dimensions is not None:
-            response = self.client.embeddings.create(model=self.model, dimensions=self.dimensions, input=text_to_embed)
-        else:
-            response = self.client.embeddings.create(model=self.model, input=text_to_embed)
+            api_params["dimensions"] = self.dimensions
+
+        response = self.client.embeddings.create(**api_params)
 
         meta = {"model": response.model, "usage": dict(response.usage)}
 

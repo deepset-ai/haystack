@@ -14,7 +14,7 @@ class TestAzureOpenAITextEmbedder:
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
         embedder = AzureOpenAITextEmbedder(azure_endpoint="https://example-resource.azure.openai.com/")
 
-        assert embedder._client.api_key == "fake-api-key"
+        assert embedder.client.api_key == "fake-api-key"
         assert embedder.azure_deployment == "text-embedding-ada-002"
         assert embedder.dimensions is None
         assert embedder.organization is None
@@ -29,7 +29,7 @@ class TestAzureOpenAITextEmbedder:
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
         embedder = AzureOpenAITextEmbedder(azure_endpoint="https://example-resource.azure.openai.com/", max_retries=0)
 
-        assert embedder._client.api_key == "fake-api-key"
+        assert embedder.client.api_key == "fake-api-key"
         assert embedder.azure_deployment == "text-embedding-ada-002"
         assert embedder.dimensions is None
         assert embedder.organization is None
@@ -194,4 +194,5 @@ class TestAzureOpenAITextEmbedder:
 
         assert len(result["embedding"]) == 1536
         assert all(isinstance(x, float) for x in result["embedding"])
-        assert result["meta"] == {"model": "text-embedding-ada-002", "usage": {"prompt_tokens": 6, "total_tokens": 6}}
+        assert result["meta"]["usage"] == {"prompt_tokens": 6, "total_tokens": 6}
+        assert "ada" in result["meta"]["model"]

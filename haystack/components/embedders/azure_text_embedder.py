@@ -9,11 +9,12 @@ import httpx
 from openai.lib.azure import AzureADTokenProvider, AzureOpenAI
 
 from haystack import Document, component, default_from_dict, default_to_dict
+from haystack.components.embedders import OpenAITextEmbedder
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 
 
 @component
-class AzureOpenAITextEmbedder:
+class AzureOpenAITextEmbedder(OpenAITextEmbedder):
     """
     Embeds strings using OpenAI models deployed on Azure.
 
@@ -34,6 +35,7 @@ class AzureOpenAITextEmbedder:
     ```
     """
 
+    # pylint: disable=super-init-not-called
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         azure_endpoint: Optional[str] = None,
@@ -93,6 +95,9 @@ class AzureOpenAITextEmbedder:
         :param http_client_kwargs: A dictionary of keyword arguments to configure a custom httpx.Client.
 
         """
+        # We intentionally do not call super().__init__ here because we only need to instantiate the client to interact
+        # with the API.
+
         # Why is this here?
         # AzureOpenAI init is forcing us to use an init method that takes either base_url or azure_endpoint as not
         # None init parameters. This way we accommodate the use case where env var AZURE_OPENAI_ENDPOINT is set instead
@@ -109,6 +114,7 @@ class AzureOpenAITextEmbedder:
         self.api_version = api_version
         self.azure_endpoint = azure_endpoint
         self.azure_deployment = azure_deployment
+        self.model = azure_deployment
         self.dimensions = dimensions
         self.organization = organization
         self.timeout = timeout if timeout is not None else float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
@@ -119,7 +125,7 @@ class AzureOpenAITextEmbedder:
         self.azure_ad_token_provider = azure_ad_token_provider
         self.http_client_kwargs = http_client_kwargs
 
-        self._client = AzureOpenAI(
+        self.client = AzureOpenAI(
             api_version=api_version,
             azure_endpoint=azure_endpoint,
             azure_deployment=azure_deployment,
@@ -140,12 +146,6 @@ class AzureOpenAITextEmbedder:
                 raise TypeError("The parameter 'http_client_kwargs' must be a dictionary.")
             return httpx.Client(**self.http_client_kwargs)
         return None
-
-    def _get_telemetry_data(self) -> Dict[str, Any]:
-        """
-        Data that is sent to Posthog for usage analytics.
-        """
-        return {"model": self.azure_deployment}
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -192,40 +192,3 @@ class AzureOpenAITextEmbedder:
                 serialized_azure_ad_token_provider
             )
         return default_from_dict(cls, data)
-
-    @component.output_types(embedding=List[float], meta=Dict[str, Any])
-    def run(self, text: str):
-        """
-        Embeds a single string.
-
-        :param text:
-            Text to embed.
-
-        :returns:
-            A dictionary with the following keys:
-            - `embedding`: The embedding of the input text.
-            - `meta`: Information about the usage of the model.
-        """
-        if not isinstance(text, str):
-            # Check if input is a list and all elements are instances of Document
-            if isinstance(text, list) and all(isinstance(elem, Document) for elem in text):
-                error_message = "Input must be a string. Use AzureOpenAIDocumentEmbedder for a list of Documents."
-            else:
-                error_message = "Input must be a string."
-            raise TypeError(error_message)
-
-        # Preprocess the text by adding prefixes/suffixes
-        # finally, replace newlines as recommended by OpenAI docs
-        processed_text = f"{self.prefix}{text}{self.suffix}".replace("\n", " ")
-
-        if self.dimensions is not None:
-            response = self._client.embeddings.create(
-                model=self.azure_deployment, dimensions=self.dimensions, input=processed_text
-            )
-        else:
-            response = self._client.embeddings.create(model=self.azure_deployment, input=processed_text)
-
-        return {
-            "embedding": response.data[0].embedding,
-            "meta": {"model": response.model, "usage": dict(response.usage)},
-        }
