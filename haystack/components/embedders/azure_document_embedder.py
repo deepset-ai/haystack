@@ -119,7 +119,7 @@ class AzureOpenAIDocumentEmbedder(OpenAIDocumentEmbedder):
         if api_key is None and azure_ad_token is None:
             raise ValueError("Please provide an API key or an Azure Active Directory token.")
 
-        self.api_key = api_key
+        self.api_key = api_key  # type: ignore[assignment] # mypy does not understand that api_key can be None
         self.azure_ad_token = azure_ad_token
         self.api_version = api_version
         self.azure_endpoint = azure_endpoint
