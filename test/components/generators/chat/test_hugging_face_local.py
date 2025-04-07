@@ -16,6 +16,7 @@ from haystack.dataclasses.streaming_chunk import StreamingChunk
 from haystack.tools import Tool
 from haystack.utils import ComponentDevice
 from haystack.utils.auth import Secret
+from haystack.tools.toolset import Toolset
 
 
 # used to test serialization of streaming_callback
@@ -94,7 +95,7 @@ class TestHuggingFaceLocalChatGenerator:
         assert generator.generation_kwargs == {**generation_kwargs, **{"stop_sequences": ["stop"]}}
         assert generator.streaming_callback == streaming_callback
 
-    def test_init_custom_token(self):
+    def test_init_custom_token(self, model_info_mock):
         generator = HuggingFaceLocalChatGenerator(
             model="mistralai/Mistral-7B-Instruct-v0.2",
             task="text2text-generation",
@@ -109,7 +110,7 @@ class TestHuggingFaceLocalChatGenerator:
             "device": "cpu",
         }
 
-    def test_init_custom_device(self):
+    def test_init_custom_device(self, model_info_mock):
         generator = HuggingFaceLocalChatGenerator(
             model="mistralai/Mistral-7B-Instruct-v0.2",
             task="text2text-generation",
@@ -124,7 +125,7 @@ class TestHuggingFaceLocalChatGenerator:
             "device": "cpu",
         }
 
-    def test_init_task_parameter(self):
+    def test_init_task_parameter(self, model_info_mock):
         generator = HuggingFaceLocalChatGenerator(
             task="text2text-generation", device=ComponentDevice.from_str("cpu"), token=None
         )
@@ -136,7 +137,7 @@ class TestHuggingFaceLocalChatGenerator:
             "device": "cpu",
         }
 
-    def test_init_task_in_huggingface_pipeline_kwargs(self):
+    def test_init_task_in_huggingface_pipeline_kwargs(self, model_info_mock):
         generator = HuggingFaceLocalChatGenerator(
             huggingface_pipeline_kwargs={"task": "text2text-generation"},
             device=ComponentDevice.from_str("cpu"),
@@ -553,3 +554,56 @@ class TestHuggingFaceLocalChatGenerator:
                 del generator
                 gc.collect()
                 mock_shutdown.assert_called_once_with(wait=True)
+
+    def test_hugging_face_local_generator_with_toolset_initialization(
+        self, model_info_mock, mock_pipeline_tokenizer, tools
+    ):
+        """Test that the HuggingFaceLocalChatGenerator can be initialized with a Toolset."""
+        toolset = Toolset(tools)
+        generator = HuggingFaceLocalChatGenerator(model="irrelevant", tools=toolset)
+        generator.pipeline = mock_pipeline_tokenizer
+        assert generator.tools == toolset
+
+    def test_from_dict_with_toolset(self, model_info_mock, tools):
+        """Test that the HuggingFaceLocalChatGenerator can be deserialized from a dictionary with a Toolset."""
+        toolset = Toolset(tools)
+        component = HuggingFaceLocalChatGenerator(model="irrelevant", tools=toolset)
+        data = component.to_dict()
+
+        deserialized_component = HuggingFaceLocalChatGenerator.from_dict(data)
+
+        assert isinstance(deserialized_component.tools, Toolset)
+        assert len(deserialized_component.tools) == len(tools)
+        assert all(isinstance(tool, Tool) for tool in deserialized_component.tools)
+
+    def test_to_dict_with_toolset(self, model_info_mock, mock_pipeline_tokenizer, tools):
+        """Test that the HuggingFaceLocalChatGenerator can be serialized to a dictionary with a Toolset."""
+        toolset = Toolset(tools)
+        generator = HuggingFaceLocalChatGenerator(huggingface_pipeline_kwargs={"model": "irrelevant"}, tools=toolset)
+        generator.pipeline = mock_pipeline_tokenizer
+        data = generator.to_dict()
+
+        expected_tools_data = {
+            "type": "haystack.tools.toolset.Toolset",
+            "data": {
+                "tools": [
+                    {
+                        "type": "haystack.tools.tool.Tool",
+                        "data": {
+                            "name": "weather",
+                            "description": "useful to determine the weather in a given location",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {"city": {"type": "string"}},
+                                "required": ["city"],
+                            },
+                            "function": "generators.chat.test_hugging_face_local.get_weather",
+                            "outputs_to_string": None,
+                            "inputs_from_state": None,
+                            "outputs_to_state": None,
+                        },
+                    }
+                ]
+            },
+        }
+        assert data["init_parameters"]["tools"] == expected_tools_data
