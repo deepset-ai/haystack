@@ -79,7 +79,7 @@ def custom_tool_parser(text: str) -> Optional[List[ToolCall]]:
 
 
 class TestHuggingFaceLocalChatGenerator:
-    @pytest.fixture(autouse=True)
+    @pytest.fixture
     def mock_model_info(self, monkeypatch):
         """Mock the model_info function to prevent real HTTP requests."""
 
@@ -104,7 +104,7 @@ class TestHuggingFaceLocalChatGenerator:
         assert generator.generation_kwargs == {**generation_kwargs, **{"stop_sequences": ["stop"]}}
         assert generator.streaming_callback == streaming_callback
 
-    def test_init_custom_token(self):
+    def test_init_custom_token(self, model_info_mock):
         generator = HuggingFaceLocalChatGenerator(
             model="mistralai/Mistral-7B-Instruct-v0.2",
             task="text2text-generation",
@@ -119,7 +119,7 @@ class TestHuggingFaceLocalChatGenerator:
             "device": "cpu",
         }
 
-    def test_init_custom_device(self):
+    def test_init_custom_device(self, model_info_mock):
         generator = HuggingFaceLocalChatGenerator(
             model="mistralai/Mistral-7B-Instruct-v0.2",
             task="text2text-generation",
@@ -134,7 +134,7 @@ class TestHuggingFaceLocalChatGenerator:
             "device": "cpu",
         }
 
-    def test_init_task_parameter(self):
+    def test_init_task_parameter(self, model_info_mock):
         generator = HuggingFaceLocalChatGenerator(
             task="text2text-generation", device=ComponentDevice.from_str("cpu"), token=None
         )
@@ -146,7 +146,7 @@ class TestHuggingFaceLocalChatGenerator:
             "device": "cpu",
         }
 
-    def test_init_task_in_huggingface_pipeline_kwargs(self):
+    def test_init_task_in_huggingface_pipeline_kwargs(self, model_info_mock):
         generator = HuggingFaceLocalChatGenerator(
             huggingface_pipeline_kwargs={"task": "text2text-generation"},
             device=ComponentDevice.from_str("cpu"),
