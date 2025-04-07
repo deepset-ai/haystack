@@ -2,11 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, List, Union
+from typing import List, Union
 
 from numpy import exp
-
-from haystack.tools import Tool, Toolset
 
 
 def expand_page_range(page_range: List[Union[str, int]]) -> List[int]:
