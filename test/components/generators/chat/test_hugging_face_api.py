@@ -909,3 +909,36 @@ class TestHuggingFaceAPIChatGenerator:
         assert "city" in tool_call.arguments
         assert "Paris" in tool_call.arguments["city"]
         assert message.meta["finish_reason"] == "stop"
+
+    def test_to_dict_with_toolset(self, mock_check_valid_model, tools):
+        """Test that the HuggingFaceAPIChatGenerator can be serialized to a dictionary with a Toolset."""
+        toolset = Toolset(tools)
+        generator = HuggingFaceAPIChatGenerator(
+            api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API, api_params={"model": "irrelevant"}, tools=toolset
+        )
+        data = generator.to_dict()
+
+        expected_tools_data = {
+            "type": "haystack.tools.toolset.Toolset",
+            "data": {
+                "tools": [
+                    {
+                        "type": "haystack.tools.tool.Tool",
+                        "data": {
+                            "name": "weather",
+                            "description": "useful to determine the weather in a given location",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {"city": {"type": "string"}},
+                                "required": ["city"],
+                            },
+                            "function": "generators.chat.test_hugging_face_api.get_weather",
+                            "outputs_to_string": None,
+                            "inputs_from_state": None,
+                            "outputs_to_state": None,
+                        },
+                    }
+                ]
+            },
+        }
+        assert data["init_parameters"]["tools"] == expected_tools_data

@@ -16,6 +16,7 @@ from haystack.dataclasses.streaming_chunk import StreamingChunk
 from haystack.tools import Tool
 from haystack.utils import ComponentDevice
 from haystack.utils.auth import Secret
+from haystack.tools.toolset import Toolset
 
 
 # used to test serialization of streaming_callback
@@ -78,6 +79,15 @@ def custom_tool_parser(text: str) -> Optional[List[ToolCall]]:
 
 
 class TestHuggingFaceLocalChatGenerator:
+    @pytest.fixture(autouse=True)
+    def mock_model_info(self, monkeypatch):
+        """Mock the model_info function to prevent real HTTP requests."""
+
+        def mock_model_info(*args, **kwargs):
+            return {"pipeline_tag": "text2text-generation"}
+
+        monkeypatch.setattr("huggingface_hub.HfApi.model_info", mock_model_info)
+
     def test_initialize_with_valid_model_and_generation_parameters(self, model_info_mock):
         model = "HuggingFaceH4/zephyr-7b-alpha"
         generation_kwargs = {"n": 1}
@@ -553,3 +563,56 @@ class TestHuggingFaceLocalChatGenerator:
                 del generator
                 gc.collect()
                 mock_shutdown.assert_called_once_with(wait=True)
+
+    def test_hugging_face_local_generator_with_toolset_initialization(
+        self, model_info_mock, mock_pipeline_tokenizer, tools
+    ):
+        """Test that the HuggingFaceLocalChatGenerator can be initialized with a Toolset."""
+        toolset = Toolset(tools)
+        generator = HuggingFaceLocalChatGenerator(model="irrelevant", tools=toolset)
+        generator.pipeline = mock_pipeline_tokenizer
+        assert generator.tools == toolset
+
+    def test_from_dict_with_toolset(self, model_info_mock, tools):
+        """Test that the HuggingFaceLocalChatGenerator can be deserialized from a dictionary with a Toolset."""
+        toolset = Toolset(tools)
+        component = HuggingFaceLocalChatGenerator(model="irrelevant", tools=toolset)
+        data = component.to_dict()
+
+        deserialized_component = HuggingFaceLocalChatGenerator.from_dict(data)
+
+        assert isinstance(deserialized_component.tools, Toolset)
+        assert len(deserialized_component.tools) == len(tools)
+        assert all(isinstance(tool, Tool) for tool in deserialized_component.tools)
+
+    def test_to_dict_with_toolset(self, model_info_mock, mock_pipeline_tokenizer, tools):
+        """Test that the HuggingFaceLocalChatGenerator can be serialized to a dictionary with a Toolset."""
+        toolset = Toolset(tools)
+        generator = HuggingFaceLocalChatGenerator(huggingface_pipeline_kwargs={"model": "irrelevant"}, tools=toolset)
+        generator.pipeline = mock_pipeline_tokenizer
+        data = generator.to_dict()
+
+        expected_tools_data = {
+            "type": "haystack.tools.toolset.Toolset",
+            "data": {
+                "tools": [
+                    {
+                        "type": "haystack.tools.tool.Tool",
+                        "data": {
+                            "name": "weather",
+                            "description": "useful to determine the weather in a given location",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {"city": {"type": "string"}},
+                                "required": ["city"],
+                            },
+                            "function": "generators.chat.test_hugging_face_local.get_weather",
+                            "outputs_to_string": None,
+                            "inputs_from_state": None,
+                            "outputs_to_state": None,
+                        },
+                    }
+                ]
+            },
+        }
+        assert data["init_parameters"]["tools"] == expected_tools_data

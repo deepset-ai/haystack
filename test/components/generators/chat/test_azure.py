@@ -324,7 +324,37 @@ class TestAzureOpenAIChatGenerator:
         assert tool_call.arguments == {"city": "Paris"}
         assert message.meta["finish_reason"] == "tool_calls"
 
-    # additional tests intentionally omitted as they are covered by test_openai.py
+    def test_to_dict_with_toolset(self, tools, monkeypatch):
+        """Test that the AzureOpenAIChatGenerator can be serialized to a dictionary with a Toolset."""
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
+        toolset = Toolset(tools)
+        component = AzureOpenAIChatGenerator(azure_endpoint="some-non-existing-endpoint", tools=toolset)
+        data = component.to_dict()
+
+        expected_tools_data = {
+            "type": "haystack.tools.toolset.Toolset",
+            "data": {
+                "tools": [
+                    {
+                        "type": "haystack.tools.tool.Tool",
+                        "data": {
+                            "name": "weather",
+                            "description": "useful to determine the weather in a given location",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {"city": {"type": "string"}},
+                                "required": ["city"],
+                            },
+                            "function": "generators.chat.test_azure.get_weather",
+                            "outputs_to_string": None,
+                            "inputs_from_state": None,
+                            "outputs_to_state": None,
+                        },
+                    }
+                ]
+            },
+        }
+        assert data["init_parameters"]["tools"] == expected_tools_data
 
 
 class TestAzureOpenAIChatGeneratorAsync:
