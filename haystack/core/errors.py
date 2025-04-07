@@ -13,14 +13,14 @@ class PipelineRuntimeError(Exception):
     def __init__(self, component_name: str, component_type: Type, detail: str) -> None:
         self.component_name = component_name
         self.component_type = component_type
-        super().__init__(detail)
+        self.detail = detail
 
     def __str__(self):
         return (
             f"PipelineRuntimeError:\n"
             f"Component name: '{self.component_name}'\n"
             f"Component type: '{self.component_type.__name__}'\n"
-            f"Details: {self.args[0]}"
+            f"Details: {self.detail}"
         )
 
     @classmethod
