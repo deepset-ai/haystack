@@ -54,19 +54,3 @@ def expit(x) -> float:
     :param x: input value. Can be a scalar or a numpy array.
     """
     return 1 / (1 + exp(-x))
-
-
-def serialize_tools_or_toolset(
-    tools: Union[Toolset, List[Tool], None],
-) -> Union[Dict[str, Any], List[Dict[str, Any]], None]:
-    """
-    Serialize a Toolset or a list of Tools to a dictionary or a list of tool dictionaries.
-
-    :param tools: A Toolset, a list of Tools, or None
-    :returns: A dictionary, a list of tool dictionaries, or None if tools is None
-    """
-    if tools is None:
-        return None
-    if isinstance(tools, Toolset):
-        return tools.to_dict()
-    return [tool.to_dict() for tool in tools]
