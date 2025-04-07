@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    The `AzureOpenAIDocumentEmbedder` component now inherits from the `OpenAIDocumentEmbedder` component.
+    This allows it to be used asynchronously.
