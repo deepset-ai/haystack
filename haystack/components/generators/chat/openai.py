@@ -130,13 +130,25 @@ class OpenAIChatGenerator:
             Maximum number of retries to contact OpenAI after an internal error.
             If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
         :param http_client:
-            Overrides default `httpx.Client` to customize it for your use case.
-            See HTTPX's [advanced functionality](https://www.python-httpx.org/advanced/clients).
-            Use `DefaultHttpxClient` from `openai`.
+            Overrides default `httpx.Client` to customize it for your use case:
+            [proxies](https://www.python-httpx.org/advanced/proxies),
+            [authentication](https://www.python-httpx.org/advanced/authentication) and other
+            [advanced functionalities](https://www.python-httpx.org/advanced/clients) of HTTPX.
+            Use `openai.DefaultHttpxClient`.
+            You can set a proxy with basic authorization using
+            [the environment variables](https://www.python-httpx.org/environment_variables):
+            `HTTP_PROXY` and `HTTPS_PROXY`, `ALL_PROXY` and `NO_PROXY`,
+            for example `HTTP_PROXY=http://user:password@your-proxy.net:8080`.
         :param http_async_client:
-            Overrides default `httpx.AsyncClient` to customize it for your use case.
-            See HTTPX's [advanced functionality](https://www.python-httpx.org/advanced/clients).
-            Use `DefaultAsyncHttpxClient` from `openai`.
+            Overrides default `httpx.Client` to customize it for your use case:
+            [proxies](https://www.python-httpx.org/advanced/proxies),
+            [authentication](https://www.python-httpx.org/advanced/authentication) and other
+            [advanced functionalities](https://www.python-httpx.org/advanced/clients) of HTTPX.
+            Use `openai.DefaultAsyncHttpxClient`.
+            You can set a proxy with basic authorization using
+            [the environment variables](https://www.python-httpx.org/environment_variables):
+            `HTTP_PROXY` and `HTTPS_PROXY`, `ALL_PROXY` and `NO_PROXY`,
+            for example `HTTP_PROXY=http://user:password@your-proxy.net:8080`.
         :param tools:
             A list of tools for which the model can prepare calls.
         :param tools_strict:

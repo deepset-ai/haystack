@@ -61,9 +61,15 @@ class RemoteWhisperTranscriber:
             An optional URL to use as the API base. For details, see the
             OpenAI [documentation](https://platform.openai.com/docs/api-reference/audio).
         :param http_client:
-            Overrides default `httpx.Client` to customize it for your use case.
-            See HTTPX's [advanced functionality](https://www.python-httpx.org/advanced/clients).
-            Use `DefaultHttpxClient` from `openai`.
+            Overrides default `httpx.Client` to customize it for your use case:
+            [proxies](https://www.python-httpx.org/advanced/proxies),
+            [authentication](https://www.python-httpx.org/advanced/authentication) and other
+            [advanced functionalities](https://www.python-httpx.org/advanced/clients) of HTTPX.
+            Use `openai.DefaultHttpxClient`.
+            You can set a proxy with basic authorization using
+            [the environment variables](https://www.python-httpx.org/environment_variables):
+            `HTTP_PROXY` and `HTTPS_PROXY`, `ALL_PROXY` and `NO_PROXY`,
+            for example `HTTP_PROXY=http://user:password@your-proxy.net:8080`.
         :param kwargs:
             Other optional parameters for the model. These are sent directly to the OpenAI
             endpoint. See OpenAI [documentation](https://platform.openai.com/docs/api-reference/audio) for more details.

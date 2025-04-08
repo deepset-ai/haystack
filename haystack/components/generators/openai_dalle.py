@@ -63,9 +63,15 @@ class DALLEImageGenerator:
             Maximum retries to establish contact with OpenAI if it returns an internal error. If not set, it is inferred
             from the `OPENAI_MAX_RETRIES` environment variable or set to 5.
         :param http_client:
-            Overrides default `httpx.Client` to customize it for your use case.
-            See HTTPX's [advanced functionality](https://www.python-httpx.org/advanced/clients).
-            Use `DefaultHttpxClient` from `openai`.
+            Overrides default `httpx.Client` to customize it for your use case:
+            [proxies](https://www.python-httpx.org/advanced/proxies),
+            [authentication](https://www.python-httpx.org/advanced/authentication) and other
+            [advanced functionalities](https://www.python-httpx.org/advanced/clients) of HTTPX.
+            Use `openai.DefaultHttpxClient`.
+            You can set a proxy with basic authorization using
+            [the environment variables](https://www.python-httpx.org/environment_variables):
+            `HTTP_PROXY` and `HTTPS_PROXY`, `ALL_PROXY` and `NO_PROXY`,
+            for example `HTTP_PROXY=http://user:password@your-proxy.net:8080`.
         """
         self.model = model
         self.quality = quality
