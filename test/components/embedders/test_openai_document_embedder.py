@@ -167,13 +167,12 @@ class TestOpenAIDocumentEmbedder:
 
         prepared_texts = embedder._prepare_texts_to_embed(documents)
 
-        # note that newline is replaced by space
         assert prepared_texts == {
-            "0": "meta_value 0 | document number 0: content",
-            "1": "meta_value 1 | document number 1: content",
-            "2": "meta_value 2 | document number 2: content",
-            "3": "meta_value 3 | document number 3: content",
-            "4": "meta_value 4 | document number 4: content",
+            "0": "meta_value 0 | document number 0:\ncontent",
+            "1": "meta_value 1 | document number 1:\ncontent",
+            "2": "meta_value 2 | document number 2:\ncontent",
+            "3": "meta_value 3 | document number 3:\ncontent",
+            "4": "meta_value 4 | document number 4:\ncontent",
         }
 
     def test_prepare_texts_to_embed_w_suffix(self):
