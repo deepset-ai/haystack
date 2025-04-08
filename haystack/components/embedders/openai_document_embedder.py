@@ -175,13 +175,10 @@ class OpenAIDocumentEmbedder:
                 str(doc.meta[key]) for key in self.meta_fields_to_embed if key in doc.meta and doc.meta[key] is not None
             ]
 
-            text_to_embed = (
+            texts_to_embed[doc.id] = (
                 self.prefix + self.embedding_separator.join(meta_values_to_embed + [doc.content or ""]) + self.suffix
             )
 
-            # copied from OpenAI embedding_utils (https://github.com/openai/openai-python/blob/main/openai/embeddings_utils.py)
-            # replace newlines, which can negatively affect performance.
-            texts_to_embed[doc.id] = text_to_embed.replace("\n", " ")
         return texts_to_embed
 
     def _embed_batch(self, texts_to_embed: Dict[str, str], batch_size: int) -> Tuple[List[List[float]], Dict[str, Any]]:
