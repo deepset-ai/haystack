@@ -1,40 +1,58 @@
 import glob
-from pathlib import Path
 
 from haystack import Pipeline
 from haystack.components.builders import ChatPromptBuilder
+from haystack.components.converters.image import ImageToDocument
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
-from haystack.dataclasses import ByteStream, Document
+from haystack.components.writers import DocumentWriter
 from haystack.dataclasses.chat_message import ChatMessage, ImageContent
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 
-docs = []
-
-for image_path in glob.glob("arxiv_images/*.png"):
-    text = "image from '" + image_path.split("/")[-1].replace(".png", "").replace("_", " ") + "' paper"
-    docs.append(Document(content=text, blob=ByteStream.from_file_path(Path(image_path))))
-
 document_store = InMemoryDocumentStore()
-document_store.write_documents(docs)
+indexing_pipeline = Pipeline()
+paths = glob.glob("arxiv_images/*.png")
+texts = [
+    "image from '" + image_path.split("/")[-1].replace(".png", "").replace("_", " ") + "' paper" for image_path in paths
+]
 
-pipeline = Pipeline()
+indexing_pipeline.add_component("image_to_document", ImageToDocument())
+indexing_pipeline.add_component("document_writer", DocumentWriter(document_store=document_store))
+indexing_pipeline.connect("image_to_document.documents", "document_writer.documents")
+indexing_pipeline.run(data={"sources": paths, "texts": texts})
+
+rag_pipeline = Pipeline()
 
 chat_template = [
     ChatMessage.from_user(
         content_parts=[
             "{{query}}",
-            ImageContent("{{documents[0] | get_base64_image}}", provider_options={"{{something}}": "{{detail}}"}),
+            ImageContent("{{documents[0] | get_base64_image}}", provider_options={"detail": "{{detail}}"}),
+            # also the following can work:
+            # ImageContent("{{documents[0] | get_base64_image}}", provider_options={"{{key}}": "{{value}}"}),
         ]
     )
 ]
-pipeline.add_component("retriever", InMemoryBM25Retriever(document_store=document_store, top_k=1))
-pipeline.add_component("prompt_builder", ChatPromptBuilder(template=chat_template))
-pipeline.add_component("generator", OpenAIChatGenerator(model="gpt-4o-mini"))
+rag_pipeline.add_component("retriever", InMemoryBM25Retriever(document_store=document_store, top_k=1))
+rag_pipeline.add_component("prompt_builder", ChatPromptBuilder(template=chat_template))
+rag_pipeline.add_component("generator", OpenAIChatGenerator(model="gpt-4o-mini"))
 
-pipeline.connect("retriever.documents", "prompt_builder.documents")
-pipeline.connect("prompt_builder.prompt", "generator.messages")
+rag_pipeline.connect("retriever.documents", "prompt_builder.documents")
+rag_pipeline.connect("prompt_builder.prompt", "generator.messages")
 
 query = "What the image from the Lora vs Full Fine-tuning paper tries to show? Be short."
 
-print(pipeline.run(data={"query": query, "detail": "low", "something": "detail"}))
+print(rag_pipeline.run(data={"query": query, "detail": "low"}))
+
+# {'generator': {'replies': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[TextContent(text='
+# The image from the LoRA vs. Full Fine-tuning paper illustrates the concept of "intruder dimensions" in model
+# fine-tuning. \n\n1. **Part (a)** shows how LoRA adds low-rank updates (matrix \\(B\\)) to pre-trained weights
+# (\\(W_0\\)), while full fine-tuning updates all weights.\n2. **Part (b)** compares the similarity of singular vectors
+#  between LoRA and full fine-tuning, indicating that LoRA retains more of the original structure.\n3. **Part (c)**
+# presents data on the cosine similarity of singular vectors, showing significant differences in how LoRA and full
+# fine-tuning affect model behavior.\n\nOverall, it emphasizes how LoRA minimizes disruption to the original model by
+# focusing on specific dimensions, whereas full fine-tuning leads to more substantial changes.')], _name=None, _meta={
+# 'model': 'gpt-4o-mini-2024-07-18', 'index': 0, 'finish_reason': 'stop', 'usage': {'completion_tokens': 168,
+# 'prompt_tokens': 2860, 'total_tokens': 3028, 'completion_tokens_details': CompletionTokensDetails(
+# accepted_prediction_tokens=0, audio_tokens=0, reasoning_tokens=0, rejected_prediction_tokens=0),
+# 'prompt_tokens_details': PromptTokensDetails(audio_tokens=0, cached_tokens=0)}})]}}
