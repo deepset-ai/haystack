@@ -22,10 +22,14 @@ from haystack.dataclasses import (
     ToolCall,
     select_streaming_callback,
 )
-from haystack.tools.tool import Tool, _check_duplicate_tool_names, deserialize_tools_inplace
-from haystack.tools.toolset import Toolset
+from haystack.tools import (
+    Tool,
+    Toolset,
+    _check_duplicate_tool_names,
+    deserialize_tools_inplace,
+    serialize_tools_or_toolset,
+)
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
-from haystack.utils.misc import serialize_tools_or_toolset
 
 logger = logging.getLogger(__name__)
 

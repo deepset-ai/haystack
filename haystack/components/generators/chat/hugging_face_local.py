@@ -12,8 +12,13 @@ from typing import Any, Callable, Dict, List, Literal, Optional, Union
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall, select_streaming_callback
 from haystack.lazy_imports import LazyImport
-from haystack.tools import Tool, _check_duplicate_tool_names, deserialize_tools_inplace
-from haystack.tools.toolset import Toolset
+from haystack.tools import (
+    Tool,
+    Toolset,
+    _check_duplicate_tool_names,
+    deserialize_tools_inplace,
+    serialize_tools_or_toolset,
+)
 from haystack.utils import (
     ComponentDevice,
     Secret,
@@ -21,7 +26,6 @@ from haystack.utils import (
     deserialize_secrets_inplace,
     serialize_callable,
 )
-from haystack.utils.misc import serialize_tools_or_toolset
 
 logger = logging.getLogger(__name__)
 
