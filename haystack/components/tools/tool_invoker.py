@@ -9,10 +9,15 @@ from typing import Any, Dict, List, Optional, Union
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.core.component.sockets import Sockets
 from haystack.dataclasses import ChatMessage, State, ToolCall
-from haystack.tools.component_tool import ComponentTool
-from haystack.tools.tool import Tool, ToolInvocationError, _check_duplicate_tool_names, deserialize_tools_inplace
-from haystack.tools.toolset import Toolset
-from haystack.utils.misc import serialize_tools_or_toolset
+from haystack.tools import (
+    ComponentTool,
+    Tool,
+    Toolset,
+    _check_duplicate_tool_names,
+    deserialize_tools_inplace,
+    serialize_tools_or_toolset,
+)
+from haystack.tools.errors import ToolInvocationError
 
 logger = logging.getLogger(__name__)
 

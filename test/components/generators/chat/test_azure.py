@@ -11,8 +11,14 @@ from haystack.components.generators.chat import AzureOpenAIChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.tools.tool import Tool
+from haystack.tools.toolset import Toolset
 from haystack.utils.auth import Secret
 from haystack.utils.azure import default_azure_ad_token_provider
+
+
+def get_weather(city: str) -> str:
+    """Get weather information for a city."""
+    return f"Weather info for {city}"
 
 
 @pytest.fixture
@@ -22,7 +28,7 @@ def tools():
         name="weather",
         description="useful to determine the weather in a given location",
         parameters=tool_parameters,
-        function=lambda x: x,
+        function=get_weather,
     )
 
     return [tool]
@@ -228,6 +234,26 @@ class TestAzureOpenAIChatGenerator:
         q = Pipeline.loads(p_str)
         assert p.to_dict() == q.to_dict(), "Pipeline serialization/deserialization w/ AzureOpenAIChatGenerator failed."
 
+    def test_azure_chat_generator_with_toolset_initialization(self, tools, monkeypatch):
+        """Test that the AzureOpenAIChatGenerator can be initialized with a Toolset."""
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
+        toolset = Toolset(tools)
+        generator = AzureOpenAIChatGenerator(azure_endpoint="some-non-existing-endpoint", tools=toolset)
+        assert generator.tools == toolset
+
+    def test_from_dict_with_toolset(self, tools, monkeypatch):
+        """Test that the AzureOpenAIChatGenerator can be deserialized from a dictionary with a Toolset."""
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
+        toolset = Toolset(tools)
+        component = AzureOpenAIChatGenerator(azure_endpoint="some-non-existing-endpoint", tools=toolset)
+        data = component.to_dict()
+
+        deserialized_component = AzureOpenAIChatGenerator.from_dict(data)
+
+        assert isinstance(deserialized_component.tools, Toolset)
+        assert len(deserialized_component.tools) == len(tools)
+        assert all(isinstance(tool, Tool) for tool in deserialized_component.tools)
+
     @pytest.mark.integration
     @pytest.mark.skipif(
         not os.environ.get("AZURE_OPENAI_API_KEY", None) or not os.environ.get("AZURE_OPENAI_ENDPOINT", None),
@@ -272,7 +298,37 @@ class TestAzureOpenAIChatGenerator:
         assert tool_call.arguments == {"city": "Paris"}
         assert message.meta["finish_reason"] == "tool_calls"
 
-    # additional tests intentionally omitted as they are covered by test_openai.py
+    def test_to_dict_with_toolset(self, tools, monkeypatch):
+        """Test that the AzureOpenAIChatGenerator can be serialized to a dictionary with a Toolset."""
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
+        toolset = Toolset(tools)
+        component = AzureOpenAIChatGenerator(azure_endpoint="some-non-existing-endpoint", tools=toolset)
+        data = component.to_dict()
+
+        expected_tools_data = {
+            "type": "haystack.tools.toolset.Toolset",
+            "data": {
+                "tools": [
+                    {
+                        "type": "haystack.tools.tool.Tool",
+                        "data": {
+                            "name": "weather",
+                            "description": "useful to determine the weather in a given location",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {"city": {"type": "string"}},
+                                "required": ["city"],
+                            },
+                            "function": "generators.chat.test_azure.get_weather",
+                            "outputs_to_string": None,
+                            "inputs_from_state": None,
+                            "outputs_to_state": None,
+                        },
+                    }
+                ]
+            },
+        }
+        assert data["init_parameters"]["tools"] == expected_tools_data
 
 
 class TestAzureOpenAIChatGeneratorAsync:
