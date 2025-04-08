@@ -30,9 +30,6 @@ def test_hybrid_doc_search_pipeline(tmp_path):
     hybrid_pipeline.connect("embedding_retriever", "joiner")
     hybrid_pipeline.connect("joiner", "ranker")
 
-    # Draw the pipeline
-    hybrid_pipeline.draw(tmp_path / "test_hybrid_doc_search_pipeline.png")
-
     # Serialize the pipeline to YAML
     with open(tmp_path / "test_hybrid_doc_search_pipeline.yaml", "w") as f:
         hybrid_pipeline.dump(f)

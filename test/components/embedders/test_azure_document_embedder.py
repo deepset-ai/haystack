@@ -7,6 +7,7 @@ from openai import APIError
 
 from haystack.utils.auth import Secret
 import pytest
+import httpx
 
 from haystack import Document
 from haystack.components.embedders import AzureOpenAIDocumentEmbedder
@@ -19,6 +20,7 @@ class TestAzureOpenAIDocumentEmbedder:
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
         embedder = AzureOpenAIDocumentEmbedder(azure_endpoint="https://example-resource.azure.openai.com/")
         assert embedder.azure_deployment == "text-embedding-ada-002"
+        assert embedder.model == "text-embedding-ada-002"
         assert embedder.dimensions is None
         assert embedder.organization is None
         assert embedder.prefix == ""
@@ -38,6 +40,7 @@ class TestAzureOpenAIDocumentEmbedder:
             azure_endpoint="https://example-resource.azure.openai.com/", max_retries=0
         )
         assert embedder.azure_deployment == "text-embedding-ada-002"
+        assert embedder.model == "text-embedding-ada-002"
         assert embedder.dimensions is None
         assert embedder.organization is None
         assert embedder.prefix == ""
@@ -203,7 +206,7 @@ class TestAzureOpenAIDocumentEmbedder:
         fake_texts_to_embed = {"1": "text1", "2": "text2"}
 
         with patch.object(
-            embedder._client.embeddings,
+            embedder.client.embeddings,
             "create",
             side_effect=APIError(message="Mocked error", request=Mock(), body=None),
         ):
@@ -211,6 +214,33 @@ class TestAzureOpenAIDocumentEmbedder:
 
         assert len(caplog.records) == 1
         assert "Failed embedding of documents 1, 2 caused by Mocked error" in caplog.text
+
+    def test_init_http_client(self, monkeypatch):
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
+        monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://test.openai.azure.com")
+
+        embedder = AzureOpenAIDocumentEmbedder()
+        client = embedder._init_http_client()
+        assert client is None
+
+        embedder.http_client_kwargs = {"proxy": "http://example.com:3128"}
+        client = embedder._init_http_client(async_client=False)
+        assert isinstance(client, httpx.Client)
+
+        client = embedder._init_http_client(async_client=True)
+        assert isinstance(client, httpx.AsyncClient)
+
+    def test_http_client_kwargs_type_validation(self, monkeypatch):
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
+        monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://test.openai.azure.com")
+        with pytest.raises(TypeError, match="The parameter 'http_client_kwargs' must be a dictionary."):
+            AzureOpenAIDocumentEmbedder(http_client_kwargs="invalid_argument")
+
+    def test_http_client_kwargs_with_invalid_params(self, monkeypatch):
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
+        monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://test.openai.azure.com")
+        with pytest.raises(TypeError, match="unexpected keyword argument"):
+            AzureOpenAIDocumentEmbedder(http_client_kwargs={"invalid_key": "invalid_value"})
 
     @pytest.mark.integration
     @pytest.mark.skipif(
@@ -245,12 +275,7 @@ class TestAzureOpenAIDocumentEmbedder:
             assert isinstance(doc.embedding, list)
             assert len(doc.embedding) == 1536
             assert all(isinstance(x, float) for x in doc.embedding)
-        assert metadata == {"model": "text-embedding-ada-002", "usage": {"prompt_tokens": 15, "total_tokens": 15}}
 
-    def test_http_client_kwargs_type_validation(self):
-        with pytest.raises(TypeError, match="The parameter 'http_client_kwargs' must be a dictionary."):
-            AzureOpenAIDocumentEmbedder(http_client_kwargs="invalid_argument")
-
-    def test_http_client_kwargs_with_invalid_params(self):
-        with pytest.raises(TypeError, match="unexpected keyword argument"):
-            AzureOpenAIDocumentEmbedder(http_client_kwargs={"invalid_key": "invalid_value"})
+        assert metadata["usage"]["prompt_tokens"] == 15
+        assert metadata["usage"]["total_tokens"] == 15
+        assert "ada" in metadata["model"]

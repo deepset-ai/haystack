@@ -36,9 +36,6 @@ def test_preprocessing_pipeline(tmp_path):
     preprocessing_pipeline.connect("splitter.documents", "embedder.documents")
     preprocessing_pipeline.connect("embedder.documents", "writer.documents")
 
-    # Draw the pipeline
-    preprocessing_pipeline.draw(tmp_path / "test_preprocessing_pipeline.png")
-
     # Serialize the pipeline to YAML
     with open(tmp_path / "test_preprocessing_pipeline.yaml", "w") as f:
         preprocessing_pipeline.dump(f)

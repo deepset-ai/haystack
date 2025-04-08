@@ -2,7 +2,7 @@ loaders:
   - type: haystack_pydoc_tools.loaders.CustomPythonLoader
     search_path: [../../../haystack/tools]
     modules:
-      ["tool", "from_function", "component_tool"]
+      ["tool", "from_function", "component_tool", "toolset"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter

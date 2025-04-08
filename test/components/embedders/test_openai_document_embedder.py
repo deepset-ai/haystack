@@ -184,13 +184,12 @@ class TestOpenAIDocumentEmbedder:
 
         prepared_texts = embedder._prepare_texts_to_embed(documents)
 
-        # note that newline is replaced by space
         assert prepared_texts == {
-            "0": "meta_value 0 | document number 0: content",
-            "1": "meta_value 1 | document number 1: content",
-            "2": "meta_value 2 | document number 2: content",
-            "3": "meta_value 3 | document number 3: content",
-            "4": "meta_value 4 | document number 4: content",
+            "0": "meta_value 0 | document number 0:\ncontent",
+            "1": "meta_value 1 | document number 1:\ncontent",
+            "2": "meta_value 2 | document number 2:\ncontent",
+            "3": "meta_value 3 | document number 3:\ncontent",
+            "4": "meta_value 4 | document number 4:\ncontent",
         }
 
     def test_prepare_texts_to_embed_w_suffix(self):
@@ -258,6 +257,36 @@ class TestOpenAIDocumentEmbedder:
         embedder = OpenAIDocumentEmbedder(model=model, meta_fields_to_embed=["topic"], embedding_separator=" | ")
 
         result = embedder.run(documents=docs)
+        documents_with_embeddings = result["documents"]
+
+        assert isinstance(documents_with_embeddings, list)
+        assert len(documents_with_embeddings) == len(docs)
+        for doc in documents_with_embeddings:
+            assert isinstance(doc, Document)
+            assert isinstance(doc.embedding, list)
+            assert len(doc.embedding) == 1536
+            assert all(isinstance(x, float) for x in doc.embedding)
+
+        assert "text" in result["meta"]["model"] and "ada" in result["meta"]["model"], (
+            "The model name does not contain 'text' and 'ada'"
+        )
+
+        assert result["meta"]["usage"] == {"prompt_tokens": 15, "total_tokens": 15}, "Usage information does not match"
+
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
+    @pytest.mark.integration
+    @pytest.mark.asyncio
+    async def test_run_async(self):
+        docs = [
+            Document(content="I love cheese", meta={"topic": "Cuisine"}),
+            Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
+        ]
+
+        model = "text-embedding-ada-002"
+
+        embedder = OpenAIDocumentEmbedder(model=model, meta_fields_to_embed=["topic"], embedding_separator=" | ")
+
+        result = await embedder.run_async(documents=docs)
         documents_with_embeddings = result["documents"]
 
         assert isinstance(documents_with_embeddings, list)
