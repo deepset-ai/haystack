@@ -10,7 +10,7 @@ from jinja2 import meta
 from jinja2.sandbox import SandboxedEnvironment
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.dataclasses.chat_message import ChatMessage, ChatRole, ImageContent, TextContent
+from haystack.dataclasses.chat_message import ChatMessage, ChatRole
 from haystack.utils import Jinja2TimeExtension
 from haystack.utils.jinja2_extensions import Jinja2ImageExtension
 
@@ -100,6 +100,38 @@ class ChatPromptBuilder:
 
     """
 
+    def _render_value(self, value: Any, template_variables: Dict[str, Any]) -> Any:
+        """Render a value using template variables."""
+        if isinstance(value, str):
+            return self._env.from_string(value).render(template_variables)
+        if isinstance(value, (list, tuple)):
+            return [self._render_value(v, template_variables) for v in value]
+        if isinstance(value, dict):
+            return {
+                self._env.from_string(k).render(template_variables) if isinstance(k, str) else k: self._render_value(
+                    v, template_variables
+                )
+                for k, v in value.items()
+            }
+        return value
+
+    def _extract_template_variables(self, value: Any) -> List[str]:
+        """
+        Extract template variables from a value using Jinja2.
+
+        :param value: The value to extract variables from
+        :return: List of template variable names
+        """
+        if isinstance(value, str):
+            return list(meta.find_undeclared_variables(self._env.parse(value)))
+        if isinstance(value, dict):
+            return [
+                var
+                for k, v in value.items()
+                for var in self._extract_template_variables(k) + self._extract_template_variables(v)
+            ]
+        return []
+
     def __init__(
         self,
         template: Optional[List[ChatMessage]] = None,
@@ -137,38 +169,14 @@ class ChatPromptBuilder:
         if template and not variables:
             for message in template:
                 if message.is_from(ChatRole.USER) or message.is_from(ChatRole.SYSTEM):
-                    # infer variables from template
                     if message.text is None:
                         raise ValueError(f"The provided ChatMessage has no text. ChatMessage: {message}")
                     for part in message._content:
-                        part_vars: List[str] = []
                         for field in dataclasses.fields(part):
-                            attr_value = getattr(part, field.name, None)
-                            # Check if the attribute value is a string that might contain a template
-                            if isinstance(attr_value, str):
-                                ast = self._env.parse(attr_value)
-                                template_variables = meta.find_undeclared_variables(ast)
-                                part_vars.extend(list(template_variables))
-                            elif isinstance(attr_value, dict):
-                                # Check both dictionary keys and values
-                                for k, v in attr_value.items():
-                                    if isinstance(k, str):
-                                        ast = self._env.parse(k)
-                                        template_variables = meta.find_undeclared_variables(ast)
-                                        part_vars.extend(list(template_variables))
-                                    if isinstance(v, str):
-                                        ast = self._env.parse(v)
-                                        template_variables = meta.find_undeclared_variables(ast)
-                                        part_vars.extend(list(template_variables))
-                            elif hasattr(attr_value, "__dict__"):
-                                # Check object attributes
-                                for attr_val in attr_value.__dict__.values():
-                                    if isinstance(attr_val, str):
-                                        ast = self._env.parse(attr_val)
-                                        template_variables = meta.find_undeclared_variables(ast)
-                                        part_vars.extend(list(template_variables))
-                        variables.extend(part_vars)
+                            variables.extend(self._extract_template_variables(getattr(part, field.name, None)))
         self.variables = variables
+
+        print(self.variables)
 
         if len(self.variables) > 0 and required_variables is None:
             logger.warning(
@@ -223,7 +231,6 @@ class ChatPromptBuilder:
             )
 
         processed_messages = []
-
         for message in template:
             if not message.is_from(ChatRole.USER) and not message.is_from(ChatRole.SYSTEM):
                 processed_messages.append(message)
@@ -233,50 +240,15 @@ class ChatPromptBuilder:
             if message.text is None:
                 raise ValueError(f"The provided ChatMessage has no text. ChatMessage: {message}")
 
-            # Create a copy to avoid modifying original
             rendered_message = deepcopy(message)
             rendered_message._content = []
 
             for content_part in message._content:
-                rendered_attrs: Dict[str, Any] = {}
-
-                def render_value(value: Any) -> Any:
-                    if isinstance(value, str):
-                        compiled_template = self._env.from_string(value)
-                        return compiled_template.render(template_variables_combined)
-                    elif isinstance(value, (list, tuple)):
-                        return [render_value(v) for v in value]
-                    elif isinstance(value, dict):
-                        # Handle dictionaries by rendering both keys and values
-                        rendered_dict = {}
-                        for k, v in value.items():
-                            if isinstance(k, str):
-                                compiled_template = self._env.from_string(k)
-                                rendered_key = compiled_template.render(template_variables_combined)
-                            else:
-                                rendered_key = k
-                            if isinstance(v, str):
-                                compiled_template = self._env.from_string(v)
-                                rendered_dict[rendered_key] = compiled_template.render(template_variables_combined)
-                            else:
-                                rendered_dict[rendered_key] = render_value(v)
-                        return rendered_dict
-                    elif hasattr(value, "__dict__"):
-                        # Handle any object with attributes
-                        rendered_obj = {}
-                        for attr_name, attr_value in value.__dict__.items():
-                            rendered_obj[attr_name] = render_value(attr_value)
-                        return value.__class__(**rendered_obj)
-                    else:
-                        return value
-
-                for field in dataclasses.fields(content_part):
-                    value = getattr(content_part, field.name, None)
-                    rendered_attrs[field.name] = render_value(value)
-
-                # Create new content part with rendered attributes
-                rendered_part = content_part.__class__(**rendered_attrs)
-                rendered_message._content.append(rendered_part)
+                rendered_attrs = {
+                    field.name: self._render_value(getattr(content_part, field.name, None), template_variables_combined)
+                    for field in dataclasses.fields(content_part)
+                }
+                rendered_message._content.append(content_part.__class__(**rendered_attrs))
 
             processed_messages.append(rendered_message)
 
