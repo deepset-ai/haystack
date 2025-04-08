@@ -1,5 +1,10 @@
 ---
+
 features:
   - |
-    The `AzureOpenAIDocumentEmbedder` component now inherits from the `OpenAIDocumentEmbedder` component.
-    This allows it to be used asynchronously.
+    The `AzureOpenAIDocumentEmbedder` component now inherits from the `OpenAIDocumentEmbedder` component,
+    enabling asynchronous usage.
+fixes:
+  - |
+    `OpenAIDocumentEmbedder` and `AzureOpenAIDocumentEmbedder` no longer replace newlines with spaces in the text to
+    embed. This was only required for the discontinued v1 embedding models.
