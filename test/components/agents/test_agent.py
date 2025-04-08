@@ -16,10 +16,12 @@ from haystack.components.agents import Agent
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.generators.chat.types import ChatGenerator
+from haystack.core.component.types import OutputSocket
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.dataclasses.streaming_chunk import StreamingChunk
 from haystack.tools import Tool, ComponentTool
 from haystack.utils import serialize_callable, Secret
+from haystack.dataclasses.state_utils import merge_lists
 
 
 def streaming_callback_for_serde(chunk: StreamingChunk):
@@ -103,6 +105,14 @@ class MockChatGeneratorWithoutTools(ChatGenerator):
 
 
 class TestAgent:
+    def test_output_types(self, weather_tool, component_tool, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        chat_generator = OpenAIChatGenerator()
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool, component_tool])
+        assert agent.__haystack_output__._sockets_dict == {
+            "messages": OutputSocket(name="messages", type=List[ChatMessage], receivers=[])
+        }
+
     def test_serde(self, weather_tool, component_tool, monkeypatch):
         monkeypatch.setenv("FAKE_OPENAI_KEY", "fake-key")
         generator = OpenAIChatGenerator(api_key=Secret.from_env_var("FAKE_OPENAI_KEY"))
@@ -122,7 +132,7 @@ class TestAgent:
             init_parameters["chat_generator"]["type"]
             == "haystack.components.generators.chat.openai.OpenAIChatGenerator"
         )
-        assert init_parameters["streaming_callback"] == None
+        assert init_parameters["streaming_callback"] is None
         assert init_parameters["tools"][0]["data"]["function"] == serialize_callable(weather_function)
         assert (
             init_parameters["tools"][1]["data"]["component"]["type"]
@@ -137,7 +147,10 @@ class TestAgent:
         assert deserialized_agent.tools[0].function is weather_function
         assert isinstance(deserialized_agent.tools[1]._component, PromptBuilder)
         assert deserialized_agent.exit_conditions == ["text", "weather_tool"]
-        assert deserialized_agent.state_schema == {"foo": {"type": str}}
+        assert deserialized_agent.state_schema == {
+            "foo": {"type": str},
+            "messages": {"handler": merge_lists, "type": List[ChatMessage]},
+        }
 
     def test_serde_with_streaming_callback(self, weather_tool, component_tool, monkeypatch):
         monkeypatch.setenv("FAKE_OPENAI_KEY", "fake-key")

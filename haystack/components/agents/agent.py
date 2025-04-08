@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import inspect
+from copy import deepcopy
 from typing import Any, Dict, List, Optional
 
 from haystack import component, default_from_dict, default_to_dict, logging
@@ -10,6 +11,7 @@ from haystack.components.generators.chat.types import ChatGenerator
 from haystack.components.tools import ToolInvoker
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.state import State, _schema_from_dict, _schema_to_dict, _validate_schema
+from haystack.dataclasses.state_utils import merge_lists
 from haystack.dataclasses.streaming_chunk import SyncStreamingCallbackT
 from haystack.tools import Tool, deserialize_tools_or_toolset_inplace
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
@@ -97,9 +99,14 @@ class Agent:
                 "Ensure that each exit condition corresponds to either 'text' or a valid tool name."
             )
 
+        # Handle state schema
         if state_schema is not None:
             _validate_schema(state_schema)
-        self.state_schema = state_schema or {}
+        self._state_schema = state_schema or {}
+        resolved_state_schema = deepcopy(self._state_schema)
+        if resolved_state_schema.get("messages") is None:
+            resolved_state_schema["messages"] = {"type": List[ChatMessage], "handler": merge_lists}
+        self.state_schema = resolved_state_schema
 
         self.chat_generator = chat_generator
         self.tools = tools or []
@@ -111,8 +118,11 @@ class Agent:
 
         output_types = {}
         for param, config in self.state_schema.items():
-            component.set_input_type(self, name=param, type=config["type"], default=None)
             output_types[param] = config["type"]
+            # Skip setting input types for parameters that are already in the run method
+            if param in ["messages", "streaming_callback"]:
+                continue
+            component.set_input_type(self, name=param, type=config["type"], default=None)
         component.set_output_types(self, **output_types)
 
         self._tool_invoker = ToolInvoker(tools=self.tools, raise_on_failure=self.raise_on_tool_invocation_failure)
@@ -144,7 +154,7 @@ class Agent:
             tools=[t.to_dict() for t in self.tools],
             system_prompt=self.system_prompt,
             exit_conditions=self.exit_conditions,
-            state_schema=_schema_to_dict(self.state_schema),
+            state_schema=_schema_to_dict(self._state_schema),
             max_agent_steps=self.max_agent_steps,
             raise_on_tool_invocation_failure=self.raise_on_tool_invocation_failure,
             streaming_callback=streaming_callback,
