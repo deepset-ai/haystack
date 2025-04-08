@@ -3,12 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 import httpx
-from openai.lib.azure import AzureADTokenProvider, AzureOpenAI
+from openai.lib.azure import AsyncAzureOpenAI, AzureADTokenProvider, AzureOpenAI
 
-from haystack import Document, component, default_from_dict, default_to_dict
+from haystack import component, default_from_dict, default_to_dict
 from haystack.components.embedders import OpenAITextEmbedder
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 
@@ -109,7 +109,7 @@ class AzureOpenAITextEmbedder(OpenAITextEmbedder):
         if api_key is None and azure_ad_token is None:
             raise ValueError("Please provide an API key or an Azure Active Directory token.")
 
-        self.api_key = api_key
+        self.api_key = api_key  # type: ignore[assignment] # mypy does not understand that api_key can be None
         self.azure_ad_token = azure_ad_token
         self.api_version = api_version
         self.azure_endpoint = azure_endpoint
@@ -125,27 +125,30 @@ class AzureOpenAITextEmbedder(OpenAITextEmbedder):
         self.azure_ad_token_provider = azure_ad_token_provider
         self.http_client_kwargs = http_client_kwargs
 
-        self.client = AzureOpenAI(
-            api_version=api_version,
-            azure_endpoint=azure_endpoint,
-            azure_deployment=azure_deployment,
-            azure_ad_token_provider=azure_ad_token_provider,
-            api_key=api_key.resolve_value() if api_key is not None else None,
-            azure_ad_token=azure_ad_token.resolve_value() if azure_ad_token is not None else None,
-            organization=organization,
-            timeout=self.timeout,
-            max_retries=self.max_retries,
-            default_headers=self.default_headers,
-            http_client=self._init_http_client(),
-        )
+        client_kwargs: Dict[str, Any] = {
+            "api_version": api_version,
+            "azure_endpoint": azure_endpoint,
+            "azure_deployment": azure_deployment,
+            "azure_ad_token_provider": azure_ad_token_provider,
+            "api_key": api_key.resolve_value() if api_key is not None else None,
+            "azure_ad_token": azure_ad_token.resolve_value() if azure_ad_token is not None else None,
+            "organization": organization,
+            "timeout": self.timeout,
+            "max_retries": self.max_retries,
+            "default_headers": self.default_headers,
+        }
 
-    def _init_http_client(self):
-        """Internal method to initialize the httpx.Client."""
-        if self.http_client_kwargs:
-            if not isinstance(self.http_client_kwargs, dict):
-                raise TypeError("The parameter 'http_client_kwargs' must be a dictionary.")
-            return httpx.Client(**self.http_client_kwargs)
-        return None
+        self.client = AzureOpenAI(http_client=self._init_http_client(async_client=False), **client_kwargs)
+        self.async_client = AsyncAzureOpenAI(http_client=self._init_http_client(async_client=True), **client_kwargs)
+
+    def _init_http_client(self, async_client: bool = False):
+        if not self.http_client_kwargs:
+            return None
+        if not isinstance(self.http_client_kwargs, dict):
+            raise TypeError("The parameter 'http_client_kwargs' must be a dictionary.")
+        if async_client:
+            return httpx.AsyncClient(**self.http_client_kwargs)
+        return httpx.Client(**self.http_client_kwargs)
 
     def to_dict(self) -> Dict[str, Any]:
         """

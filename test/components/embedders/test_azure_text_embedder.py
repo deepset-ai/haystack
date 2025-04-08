@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import os
 
+import httpx
 import pytest
 
 from haystack.components.embedders import AzureOpenAITextEmbedder
@@ -16,6 +17,7 @@ class TestAzureOpenAITextEmbedder:
 
         assert embedder.client.api_key == "fake-api-key"
         assert embedder.azure_deployment == "text-embedding-ada-002"
+        assert embedder.model == "text-embedding-ada-002"
         assert embedder.dimensions is None
         assert embedder.organization is None
         assert embedder.prefix == ""
@@ -31,6 +33,7 @@ class TestAzureOpenAITextEmbedder:
 
         assert embedder.client.api_key == "fake-api-key"
         assert embedder.azure_deployment == "text-embedding-ada-002"
+        assert embedder.model == "text-embedding-ada-002"
         assert embedder.dimensions is None
         assert embedder.organization is None
         assert embedder.prefix == ""
@@ -121,6 +124,7 @@ class TestAzureOpenAITextEmbedder:
         }
         component = AzureOpenAITextEmbedder.from_dict(data)
         assert component.azure_deployment == "text-embedding-ada-002"
+        assert component.model == "text-embedding-ada-002"
         assert component.azure_endpoint == "https://example-resource.azure.openai.com/"
         assert component.api_version == "2023-05-15"
         assert component.max_retries == 5
@@ -154,6 +158,7 @@ class TestAzureOpenAITextEmbedder:
         }
         component = AzureOpenAITextEmbedder.from_dict(data)
         assert component.azure_deployment == "text-embedding-ada-002"
+        assert component.model == "text-embedding-ada-002"
         assert component.azure_endpoint == "https://example-resource.azure.openai.com/"
         assert component.api_version == "2023-05-15"
         assert component.max_retries == 10
@@ -163,6 +168,21 @@ class TestAzureOpenAITextEmbedder:
         assert component.default_headers == {"x-custom-header": "custom-value"}
         assert component.azure_ad_token_provider is not None
         assert component.http_client_kwargs == {"proxy": "http://example.com:3128", "verify": False}
+
+    def test_init_http_client(self, monkeypatch):
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
+        monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://test.openai.azure.com")
+
+        embedder = AzureOpenAITextEmbedder()
+        client = embedder._init_http_client()
+        assert client is None
+
+        embedder.http_client_kwargs = {"proxy": "http://example.com:3128"}
+        client = embedder._init_http_client(async_client=False)
+        assert isinstance(client, httpx.Client)
+
+        client = embedder._init_http_client(async_client=True)
+        assert isinstance(client, httpx.AsyncClient)
 
     def test_http_client_kwargs_type_validation(self, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
