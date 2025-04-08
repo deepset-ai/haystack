@@ -1,0 +1,4 @@
+---
+upgrade:
+  - |
+    Utility function `deserialize_tools_inplace` has been renamed to `deserialize_tools_or_toolset_inplace` to reflect that it can deserialize both `Toolset` and `Tool` objects.
