@@ -3,10 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import base64
-import inspect
 import json
 import mimetypes
-from binascii import Error as BinasciiError
 from dataclasses import asdict, dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional, Sequence, Union
@@ -435,17 +433,6 @@ class ChatMessage:
         :returns:
             Serialized version of the object.
         """
-
-        # We don't want to show the warning if ChatMessage.to_dict is used in pipeline serialization
-        used_in_pipeline_serialization = any(
-            frame.function == "component_to_dict" and "serialization.py" in frame.filename for frame in inspect.stack()
-        )
-        if not used_in_pipeline_serialization:
-            logger.warning(
-                "Starting from Haystack 2.12.0, ChatMessage.to_dict returns a dictionary with keys 'role', "
-                "'meta', 'name', and 'content' instead of '_role', '_meta', '_name', and '_content'. "
-                "If your code consumes this dictionary, please update it to use the new format."
-            )
 
         serialized: Dict[str, Any] = {}
         serialized["role"] = self._role.value

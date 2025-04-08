@@ -42,10 +42,6 @@ At any given point, hit the [documentation](https://docs.haystack.deepset.ai/doc
 
 ## Features
 
-> [!IMPORTANT]
-> **You are currently looking at the readme of Haystack 2.0**. We are still maintaining Haystack 1.x to give everyone
-> enough time to migrate to 2.0. [Switch to Haystack 1.x here](https://github.com/deepset-ai/haystack/tree/v1.x).
-
 - **Technology agnostic:** Allow users the flexibility to decide what vendor or technology they want and make it easy to switch out any component for another. Haystack allows you to use and compare models available from OpenAI, Cohere and Hugging Face, as well as your own local models or models hosted on Azure, Bedrock and SageMaker.
 - **Explicit:** Make it transparent how different moving parts can “talk” to each other so it's easier to fit your tech stack and use case.
 - **Flexible:** Haystack provides all tooling in one place: database access, file conversion, cleaning, splitting, training, eval, inference, and more. And whenever custom behavior is desirable, it's easy to create custom components.
