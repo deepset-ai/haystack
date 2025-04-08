@@ -37,7 +37,8 @@ class PipelineRuntimeError(Exception):
             f"The following component returned an invalid output:\n"
             f"Component name: '{component_name}'\n"
             f"Component type: '{component_type.__name__}'\n"
-            f"Expected a dict, but got {type(output).__name__} instead."
+            f"Expected a dictionary, but got {type(output).__name__} instead.\n"
+            f"Check the component's output and ensure it is a valid dictionary."
         )
         return cls(component_name, component_type, message)
 
