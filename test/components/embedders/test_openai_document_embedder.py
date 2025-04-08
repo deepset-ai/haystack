@@ -120,6 +120,25 @@ class TestOpenAIDocumentEmbedder:
                 http_client="fake-client",  # type: ignore
             )
 
+    def test_init_with_custom_http_async_client(self):
+        import openai
+
+        custom_http_async_client = openai.DefaultAsyncHttpxClient()
+        embedder = OpenAIDocumentEmbedder(
+            api_key=Secret.from_token("fake-api-key"), http_async_client=custom_http_async_client
+        )
+        assert embedder.async_client._client == custom_http_async_client
+
+    def test_init_fail_when_http_async_client_not_httpx_client(self):
+        with pytest.raises(
+            TypeError,
+            match="Invalid `http_client` argument; Expected an instance of `httpx.AsyncClient` but got <class 'str'>",
+        ):
+            OpenAIDocumentEmbedder(
+                api_key=Secret.from_token("fake-api-key"),
+                http_async_client="fake-client",  # type: ignore
+            )
+
     def test_to_dict(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         component = OpenAIDocumentEmbedder()
