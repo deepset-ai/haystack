@@ -5,7 +5,8 @@
 import re
 import pytest
 
-from haystack.tools.tool import Tool, ToolInvocationError, deserialize_tools_inplace, _check_duplicate_tool_names
+from haystack.tools import Tool, _check_duplicate_tool_names
+from haystack.tools.errors import ToolInvocationError
 
 
 def get_weather_report(city: str) -> str:
@@ -119,45 +120,6 @@ class TestTool:
         assert tool.function == get_weather_report
         assert tool.outputs_to_state["documents"]["source"] == "docs"
         assert tool.outputs_to_state["documents"]["handler"] == get_weather_report
-
-
-def test_deserialize_tools_inplace():
-    tool = Tool(name="weather", description="Get weather report", parameters=parameters, function=get_weather_report)
-
-    data = {"tools": [tool.to_dict()]}
-    deserialize_tools_inplace(data)
-    assert data["tools"] == [tool]
-
-    data = {"mytools": [tool.to_dict()]}
-    deserialize_tools_inplace(data, key="mytools")
-    assert data["mytools"] == [tool]
-
-    data = {"no_tools": 123}
-    deserialize_tools_inplace(data)
-    assert data == {"no_tools": 123}
-
-
-def test_deserialize_tools_inplace_failures():
-    data = {"key": "value"}
-    deserialize_tools_inplace(data)
-    assert data == {"key": "value"}
-
-    data = {"tools": None}
-    deserialize_tools_inplace(data)
-    assert data == {"tools": None}
-
-    data = {"tools": "not a list"}
-    with pytest.raises(TypeError):
-        deserialize_tools_inplace(data)
-
-    data = {"tools": ["not a dictionary"]}
-    with pytest.raises(TypeError):
-        deserialize_tools_inplace(data)
-
-    # not a subclass of Tool
-    data = {"tools": [{"type": "haystack.dataclasses.ChatMessage", "data": {"irrelevant": "irrelevant"}}]}
-    with pytest.raises(TypeError):
-        deserialize_tools_inplace(data)
 
 
 def test_check_duplicate_tool_names():
