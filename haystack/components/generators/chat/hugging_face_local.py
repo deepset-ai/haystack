@@ -16,7 +16,7 @@ from haystack.tools import (
     Tool,
     Toolset,
     _check_duplicate_tool_names,
-    deserialize_tools_inplace,
+    deserialize_tools_or_toolset_inplace,
     serialize_tools_or_toolset,
 )
 from haystack.utils import (
@@ -309,7 +309,7 @@ class HuggingFaceLocalChatGenerator:
         """
         torch_and_transformers_import.check()  # leave this, cls method
         deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
-        deserialize_tools_inplace(data["init_parameters"], key="tools")
+        deserialize_tools_or_toolset_inplace(data["init_parameters"], key="tools")
         init_params = data.get("init_parameters", {})
         serialized_callback_handler = init_params.get("streaming_callback")
         if serialized_callback_handler:
