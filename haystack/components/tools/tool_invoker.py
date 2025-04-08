@@ -14,7 +14,7 @@ from haystack.tools import (
     Tool,
     Toolset,
     _check_duplicate_tool_names,
-    deserialize_tools_inplace,
+    deserialize_tools_or_toolset_inplace,
     serialize_tools_or_toolset,
 )
 from haystack.tools.errors import ToolInvocationError
@@ -458,5 +458,5 @@ class ToolInvoker:
         :returns:
             The deserialized component.
         """
-        deserialize_tools_inplace(data["init_parameters"], key="tools")
+        deserialize_tools_or_toolset_inplace(data["init_parameters"], key="tools")
         return default_from_dict(cls, data)
