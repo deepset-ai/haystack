@@ -22,10 +22,14 @@ from haystack.dataclasses import (
     ToolCall,
     select_streaming_callback,
 )
-from haystack.tools.tool import Tool, _check_duplicate_tool_names, deserialize_tools_inplace
-from haystack.tools.toolset import Toolset
+from haystack.tools import (
+    Tool,
+    Toolset,
+    _check_duplicate_tool_names,
+    deserialize_tools_or_toolset_inplace,
+    serialize_tools_or_toolset,
+)
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
-from haystack.utils.misc import serialize_tools_or_toolset
 
 logger = logging.getLogger(__name__)
 
@@ -203,7 +207,7 @@ class OpenAIChatGenerator:
             The deserialized component instance.
         """
         deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
-        deserialize_tools_inplace(data["init_parameters"], key="tools")
+        deserialize_tools_or_toolset_inplace(data["init_parameters"], key="tools")
         init_params = data.get("init_parameters", {})
         serialized_callback_handler = init_params.get("streaming_callback")
         if serialized_callback_handler:

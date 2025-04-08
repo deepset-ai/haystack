@@ -11,7 +11,7 @@ from haystack.components.tools import ToolInvoker
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.state import State, _schema_from_dict, _schema_to_dict, _validate_schema
 from haystack.dataclasses.streaming_chunk import SyncStreamingCallbackT
-from haystack.tools import Tool, deserialize_tools_inplace
+from haystack.tools import Tool, deserialize_tools_or_toolset_inplace
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 from haystack.utils.deserialization import deserialize_chatgenerator_inplace
 
@@ -168,7 +168,7 @@ class Agent:
         if init_params.get("streaming_callback") is not None:
             init_params["streaming_callback"] = deserialize_callable(init_params["streaming_callback"])
 
-        deserialize_tools_inplace(init_params, key="tools")
+        deserialize_tools_or_toolset_inplace(init_params, key="tools")
 
         return default_from_dict(cls, data)
 

@@ -10,7 +10,13 @@ from openai.lib.azure import AsyncAzureADTokenProvider, AsyncAzureOpenAI, AzureA
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT
-from haystack.tools.tool import Tool, _check_duplicate_tool_names, deserialize_tools_inplace
+from haystack.tools import (
+    Tool,
+    Toolset,
+    _check_duplicate_tool_names,
+    deserialize_tools_or_toolset_inplace,
+    serialize_tools_or_toolset,
+)
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 
 
@@ -73,7 +79,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         max_retries: Optional[int] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
         default_headers: Optional[Dict[str, str]] = None,
-        tools: Optional[List[Tool]] = None,
+        tools: Optional[Union[List[Tool], Toolset]] = None,
         tools_strict: bool = False,
         *,
         azure_ad_token_provider: Optional[Union[AzureADTokenProvider, AsyncAzureADTokenProvider]] = None,
@@ -115,7 +121,8 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
                 values are the bias to add to that token.
         :param default_headers: Default headers to use for the AzureOpenAI client.
         :param tools:
-            A list of tools for which the model can prepare calls.
+            A list of tools or a Toolset for which the model can prepare calls. This parameter can accept either a
+            list of `Tool` objects or a `Toolset` instance.
         :param tools_strict:
             Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
             the schema provided in the `parameters` field of the tool definition, but this may increase latency.
@@ -152,7 +159,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         self.default_headers = default_headers or {}
         self.azure_ad_token_provider = azure_ad_token_provider
 
-        _check_duplicate_tool_names(tools)
+        _check_duplicate_tool_names(list(tools or []))
         self.tools = tools
         self.tools_strict = tools_strict
 
@@ -196,7 +203,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
             api_key=self.api_key.to_dict() if self.api_key is not None else None,
             azure_ad_token=self.azure_ad_token.to_dict() if self.azure_ad_token is not None else None,
             default_headers=self.default_headers,
-            tools=[tool.to_dict() for tool in self.tools] if self.tools else None,
+            tools=serialize_tools_or_toolset(self.tools),
             tools_strict=self.tools_strict,
             azure_ad_token_provider=azure_ad_token_provider_name,
         )
@@ -211,7 +218,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
             The deserialized component instance.
         """
         deserialize_secrets_inplace(data["init_parameters"], keys=["api_key", "azure_ad_token"])
-        deserialize_tools_inplace(data["init_parameters"], key="tools")
+        deserialize_tools_or_toolset_inplace(data["init_parameters"], key="tools")
         init_params = data.get("init_parameters", {})
         serialized_callback_handler = init_params.get("streaming_callback")
         if serialized_callback_handler:

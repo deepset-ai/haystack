@@ -5,7 +5,8 @@
 import os
 from typing import Any, Dict, List, Optional
 
-from openai import OpenAI
+from openai import AsyncOpenAI, OpenAI
+from openai.types import CreateEmbeddingResponse
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.utils import Secret, deserialize_secrets_inplace
@@ -101,6 +102,13 @@ class OpenAITextEmbedder:
             timeout=timeout,
             max_retries=max_retries,
         )
+        self.async_client = AsyncOpenAI(
+            api_key=api_key.resolve_value(),
+            organization=organization,
+            base_url=api_base_url,
+            timeout=timeout,
+            max_retries=max_retries,
+        )
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -139,6 +147,23 @@ class OpenAITextEmbedder:
         deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         return default_from_dict(cls, data)
 
+    def _prepare_input(self, text: str) -> Dict[str, Any]:
+        if not isinstance(text, str):
+            raise TypeError(
+                "OpenAITextEmbedder expects a string as an input."
+                "In case you want to embed a list of Documents, please use the OpenAIDocumentEmbedder."
+            )
+
+        text_to_embed = self.prefix + text + self.suffix
+
+        kwargs: Dict[str, Any] = {"model": self.model, "input": text_to_embed}
+        if self.dimensions is not None:
+            kwargs["dimensions"] = self.dimensions
+        return kwargs
+
+    def _prepare_output(self, result: CreateEmbeddingResponse) -> Dict[str, Any]:
+        return {"embedding": result.data[0].embedding, "meta": {"model": result.model, "usage": dict(result.usage)}}
+
     @component.output_types(embedding=List[float], meta=Dict[str, Any])
     def run(self, text: str):
         """
@@ -152,23 +177,26 @@ class OpenAITextEmbedder:
             - `embedding`: The embedding of the input text.
             - `meta`: Information about the usage of the model.
         """
-        if not isinstance(text, str):
-            raise TypeError(
-                "OpenAITextEmbedder expects a string as an input."
-                "In case you want to embed a list of Documents, please use the OpenAIDocumentEmbedder."
-            )
+        create_kwargs = self._prepare_input(text=text)
+        response = self.client.embeddings.create(**create_kwargs)
+        return self._prepare_output(result=response)
 
-        text_to_embed = self.prefix + text + self.suffix
+    @component.output_types(embedding=List[float], meta=Dict[str, Any])
+    async def run_async(self, text: str):
+        """
+        Asynchronously embed a single string.
 
-        # copied from OpenAI embedding_utils (https://github.com/openai/openai-python/blob/main/openai/embeddings_utils.py)
-        # replace newlines, which can negatively affect performance.
-        text_to_embed = text_to_embed.replace("\n", " ")
+        This is the asynchronous version of the `run` method. It has the same parameters and return values
+        but can be used with `await` in async code.
 
-        if self.dimensions is not None:
-            response = self.client.embeddings.create(model=self.model, dimensions=self.dimensions, input=text_to_embed)
-        else:
-            response = self.client.embeddings.create(model=self.model, input=text_to_embed)
+        :param text:
+            Text to embed.
 
-        meta = {"model": response.model, "usage": dict(response.usage)}
-
-        return {"embedding": response.data[0].embedding, "meta": meta}
+        :returns:
+            A dictionary with the following keys:
+            - `embedding`: The embedding of the input text.
+            - `meta`: Information about the usage of the model.
+        """
+        create_kwargs = self._prepare_input(text=text)
+        response = await self.async_client.embeddings.create(**create_kwargs)
+        return self._prepare_output(result=response)

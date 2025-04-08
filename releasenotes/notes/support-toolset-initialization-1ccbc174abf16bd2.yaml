@@ -1,0 +1,4 @@
+---
+features:
+ - |
+   Add support for initializing chat generators with a Toolset, allowing for more flexible tool management. The tools parameter can now accept either a list of Tool objects or a Toolset instance.
