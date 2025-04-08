@@ -42,6 +42,18 @@ class PipelineRuntimeError(Exception):
         return cls(component_name, component_type, message)
 
 
+class PipelineComponentsBlockedError(PipelineRuntimeError):
+    def __init__(self) -> None:
+        message = (
+            "Cannot run pipeline - all components are blocked. "
+            "This typically happens when:\n"
+            "1. There is no valid entry point for the pipeline\n"
+            "2. There is a circular dependency preventing the pipeline from running\n"
+            "Check the connections between these components and ensure all required inputs are provided."
+        )
+        super().__init__(None, None, message)
+
+
 class PipelineConnectError(PipelineError):
     pass
 
