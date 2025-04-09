@@ -7,7 +7,7 @@ import json
 import re
 import sys
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Callable, Dict, List, Literal, Optional, Union
+from typing import Any, Callable, Dict, List, Literal, Optional, Union, cast
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall, select_streaming_callback
@@ -31,7 +31,9 @@ logger = logging.getLogger(__name__)
 
 with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as torch_and_transformers_import:
     from huggingface_hub import model_info
-    from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast, StoppingCriteriaList, pipeline
+    from transformers import StoppingCriteriaList, pipeline
+    from transformers.tokenization_utils import PreTrainedTokenizer
+    from transformers.tokenization_utils_fast import PreTrainedTokenizerFast
 
     from haystack.utils.hf import (  # pylint: disable=ungrouped-imports
         HFTokenStreamingHandler,
@@ -555,6 +557,9 @@ class HuggingFaceLocalChatGenerator:
             hf_messages, tokenize=False, chat_template=self.chat_template, add_generation_prompt=True
         )
 
+        # prepared_prompt is a string, but transformers has some type issues
+        prepared_prompt = cast(str, prepared_prompt)
+
         # Avoid some unnecessary warnings in the generation pipeline call
         generation_kwargs["pad_token_id"] = (
             generation_kwargs.get("pad_token_id", tokenizer.pad_token_id) or tokenizer.eos_token_id
@@ -606,6 +611,9 @@ class HuggingFaceLocalChatGenerator:
             add_generation_prompt=True,
             tools=[tc.tool_spec for tc in tools] if tools else None,
         )
+
+        # prepared_prompt is a string, but transformers has some type issues
+        prepared_prompt = cast(str, prepared_prompt)
 
         # Avoid some unnecessary warnings in the generation pipeline call
         generation_kwargs["pad_token_id"] = (
