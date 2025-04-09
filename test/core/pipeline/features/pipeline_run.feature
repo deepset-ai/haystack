@@ -67,4 +67,4 @@ Feature: Pipeline running
         | kind | exception |
         | that has an infinite loop | PipelineMaxComponentRuns |
         | that has a component that doesn't return a dictionary | PipelineRuntimeError |
-        | that has a cycle that would get it stuck | PipelineRuntimeError |
+        | that has a cycle that would get it stuck | PipelineComponentsBlockedError |
