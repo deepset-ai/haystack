@@ -223,6 +223,7 @@ jobs:
         with:
           files: |
             **/*.py
+            pyproject.toml
           files_ignore: |
             test/**
 
