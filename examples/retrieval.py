@@ -21,13 +21,11 @@ retriever = InMemoryBM25Retriever(document_store=document_store)
 
 query = "What the image from the spectrum paper tries to show?"
 
-result = retriever.run(query=query, top_k=1)["documents"][0]
+doc = retriever.run(query=query, top_k=1)["documents"][0]
 
-print(f"retrieved document: {result}")
+print(f"retrieved document: {doc}")
 
-message = ChatMessage.from_user(
-    content_parts=[query, ImageContent(base64_image=base64.b64encode(result.blob.data).decode("utf-8"))]
-)
+message = ChatMessage.from_user(content_parts=[query, ImageContent.from_document(doc)])
 
 generator = OpenAIChatGenerator(model="gpt-4o-mini")
 

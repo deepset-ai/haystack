@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional, Sequence, Union
 import filetype
 import requests
 
-from haystack import logging
+from haystack import Document, logging
 
 logger = logging.getLogger(__name__)
 
@@ -144,7 +144,7 @@ class ImageContent:
         """
         with open(file_path, "rb") as f:
             return cls(
-                source=f.read(),
+                base64_image=base64.b64encode(f.read()).decode("utf-8"),
                 mime_type=mime_type or mimetypes.guess_type(file_path)[0],
                 meta=meta or {},
                 provider_options=provider_options or {},
@@ -162,9 +162,25 @@ class ImageContent:
         Create an ImageContent from a URL. Cannot be used with ChatPromptBuilder.
         """
         return cls(
-            source=requests.get(url).content,
+            base64_image=base64.b64encode(requests.get(url).content).decode("utf-8"),
             mime_type=mime_type or mimetypes.guess_type(url)[0],
             meta=meta or {},
+            provider_options=provider_options or {},
+        )
+
+    @classmethod
+    def from_document(cls, document: Document, provider_options: Optional[Dict[str, Any]] = None) -> "ImageContent":
+        """
+        Create an ImageContent from a Document. Cannot be used with ChatPromptBuilder.
+        """
+
+        if document.blob is None:
+            raise ValueError("Document does not have a blob field")
+
+        return cls(
+            base64_image=base64.b64encode(document.blob.data).decode("utf-8"),
+            mime_type=document.blob.mime_type,
+            meta=document.blob.meta,
             provider_options=provider_options or {},
         )
 
