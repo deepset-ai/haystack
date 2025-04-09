@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Added async support to the `HuggingFaceAPIDocumentEmbedder` component.
