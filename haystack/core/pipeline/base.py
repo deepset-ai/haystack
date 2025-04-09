@@ -16,11 +16,11 @@ from haystack import logging
 from haystack.core.component import Component, InputSocket, OutputSocket, component
 from haystack.core.errors import (
     DeserializationError,
+    PipelineComponentsBlockedError,
     PipelineConnectError,
     PipelineDrawingError,
     PipelineError,
     PipelineMaxComponentRuns,
-    PipelineRuntimeError,
     PipelineUnmarshalError,
     PipelineValidationError,
 )
@@ -1196,19 +1196,15 @@ class PipelineBase:
         Validate the pipeline to check if it is blocked or has no valid entry point.
 
         :param priority_queue: Priority queue of component names.
+        :raises PipelineRuntimeError:
+            If the pipeline is blocked or has no valid entry point.
         """
         if len(priority_queue) == 0:
             return
 
         candidate = priority_queue.peek()
         if candidate is not None and candidate[0] == ComponentPriority.BLOCKED:
-            raise PipelineRuntimeError(
-                "Cannot run pipeline - all components are blocked. "
-                "This typically happens when:\n"
-                "1. There is no valid entry point for the pipeline\n"
-                "2. There is a circular dependency preventing the pipeline from running\n"
-                "Check the connections between these components and ensure all required inputs are provided."
-            )
+            raise PipelineComponentsBlockedError()
 
 
 def _connections_status(

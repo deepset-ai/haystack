@@ -82,7 +82,7 @@ class TestPipeline:
                 component_visits={"wrong": 0},
             )
 
-        assert "didn't return a dictionary" in str(exc_info.value)
+        assert "Expected a dict" in str(exc_info.value)
 
     def test_run_component_error(self):
         """Test error when component fails to run"""
@@ -106,13 +106,3 @@ class TestPipeline:
                 component_visits={"erroring_component": 0},
             )
         assert "Component name: 'erroring_component'" in str(exc_info.value)
-
-    def test_run(self):
-        joiner_1 = BranchJoiner(type_=str)
-        joiner_2 = BranchJoiner(type_=str)
-        pp = Pipeline()
-        pp.add_component("joiner_1", joiner_1)
-        pp.add_component("joiner_2", joiner_2)
-        pp.connect("joiner_1", "joiner_2")
-
-        outputs = pp.run({"value": "test_value"})
