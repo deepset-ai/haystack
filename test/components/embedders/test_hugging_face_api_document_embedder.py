@@ -466,7 +466,7 @@ class TestHuggingFaceAPIDocumentEmbedder:
         result = await embedder.run_async(documents=empty_list_input)
 
         assert result["documents"] is not None
-        assert not result["documents"]  # empty list
+        assert not result["documents"]  # empty list.
 
     @pytest.mark.asyncio
     async def test_run_async(self, mock_check_valid_model):
