@@ -25,9 +25,22 @@ query = "What the image from the Lora vs Full Fine-tuning paper tries to show? B
 
 rag_pipeline = Pipeline()
 
+# this is not working at the moment, but it's an idea
 chat_template = [
     ChatMessage.from_user(content_parts=["{{query | as_text_content}}", "{{documents[0] | as_image_content}}"])
 ]
+
+# another idea, more difficult to implement
+chat_template = [
+    ChatMessage.from_user("""
+    {{query | as_text_content}}
+    {% for document in documents %}
+        {{document | as_image_content}}
+    {% endfor %}
+    """)
+]
+
+
 rag_pipeline.add_component("retriever", InMemoryBM25Retriever(document_store=document_store, top_k=1))
 rag_pipeline.add_component("prompt_builder", ChatPromptBuilder(template=chat_template))
 rag_pipeline.add_component("generator", OpenAIChatGenerator(model="gpt-4o-mini"))
