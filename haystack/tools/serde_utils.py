@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import warnings
 from typing import Any, Dict, List, Union
 
 from haystack.core.errors import DeserializationError
@@ -71,3 +72,22 @@ def deserialize_tools_or_toolset_inplace(data: Dict[str, Any], key: str = "tools
             deserialized_tools.append(tool_class.from_dict(tool))
 
         data[key] = deserialized_tools
+
+
+def deserialize_tools_inplace(data: Dict[str, Any], key: str = "tools"):
+    """
+    Deserialize a list of Tools or a Toolset in a dictionary inplace.
+
+    Deprecated in favor of `deserialize_tools_or_toolset_inplace`. It will be removed in Haystack 2.14.0.
+
+    :param data:
+        The dictionary with the serialized data.
+    :param key:
+        The key in the dictionary where the list of Tools or Toolset is stored.
+    """
+    warnings.warn(
+        "`deserialize_tools_inplace` is deprecated and will be removed in Haystack 2.14.0. "
+        "Use `deserialize_tools_or_toolset_inplace` instead.",
+        DeprecationWarning,
+    )
+    deserialize_tools_or_toolset_inplace(data, key)
