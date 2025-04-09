@@ -79,19 +79,11 @@ class Pipeline(PipelineBase):
             try:
                 component_output = instance.run(**component_inputs)
             except Exception as error:
-                raise PipelineRuntimeError(
-                    f"The following component failed to run:\n"
-                    f"Component name: '{component_name}'\n"
-                    f"Component type: '{instance.__class__.__name__}'\n"
-                    f"Error: {str(error)}"
-                ) from error
+                raise PipelineRuntimeError.from_exception(component_name, instance.__class__, error) from error
             component_visits[component_name] += 1
 
             if not isinstance(component_output, Mapping):
-                raise PipelineRuntimeError(
-                    f"Component '{component_name}' didn't return a dictionary. "
-                    "Components must always return dictionaries: check the documentation."
-                )
+                raise PipelineRuntimeError.from_invalid_output(component_name, instance.__class__, component_output)
 
             span.set_tag("haystack.component.visits", component_visits[component_name])
             span.set_content_tag("haystack.component.output", component_output)
