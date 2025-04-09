@@ -156,6 +156,7 @@ class Agent:
             tools=[t.to_dict() for t in self.tools],
             system_prompt=self.system_prompt,
             exit_conditions=self.exit_conditions,
+            # We serialize the original state schema, not the resolved one to reflect the original user input
             state_schema=_schema_to_dict(self._state_schema),
             max_agent_steps=self.max_agent_steps,
             raise_on_tool_invocation_failure=self.raise_on_tool_invocation_failure,
