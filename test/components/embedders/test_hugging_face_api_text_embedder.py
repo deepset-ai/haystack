@@ -162,6 +162,33 @@ class TestHuggingFaceAPITextEmbedder:
         assert "truncate" in caplog.records[0].message
         assert "normalize" in caplog.records[1].message
 
+    @pytest.mark.asyncio
+    async def test_run_async(self, mock_check_valid_model, caplog):
+        with patch("huggingface_hub.AsyncInferenceClient.feature_extraction") as mock_embedding_patch:
+            mock_embedding_patch.return_value = array([[random.random() for _ in range(384)]])
+
+            embedder = HuggingFaceAPITextEmbedder(
+                api_type=HFEmbeddingAPIType.SERVERLESS_INFERENCE_API,
+                api_params={"model": "BAAI/bge-small-en-v1.5"},
+                token=Secret.from_token("fake-api-token"),
+                prefix="prefix ",
+                suffix=" suffix",
+            )
+
+            result = await embedder.run_async(text="The food was delicious")
+
+            mock_embedding_patch.assert_called_once_with(
+                text="prefix The food was delicious suffix", truncate=None, normalize=None
+            )
+
+        assert len(result["embedding"]) == 384
+        assert all(isinstance(x, float) for x in result["embedding"])
+
+        # Check that warnings about ignoring truncate and normalize are raised
+        assert len(caplog.records) == 2
+        assert "truncate" in caplog.records[0].message
+        assert "normalize" in caplog.records[1].message
+
     def test_run_wrong_embedding_shape(self, mock_check_valid_model):
         # embedding ndim > 2
         with patch("huggingface_hub.InferenceClient.feature_extraction") as mock_embedding_patch:
