@@ -118,7 +118,7 @@ class State:
         :param default: Value to return if key is not found
         :returns: Value associated with key or default if not found
         """
-        return self._data.get(key, default)
+        return deepcopy(self._data.get(key, default))
 
     def set(self, key: str, value: Any, handler_override: Optional[Callable[[Any, Any], Any]] = None) -> None:
         """

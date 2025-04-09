@@ -178,3 +178,12 @@ def test_schema_from_dict_with_handlers(complex_schema):
     }
     result = _schema_from_dict(schema_dict)
     assert result == complex_schema
+
+
+def test_state_mutability():
+    state = State({"my_list": {"type": list}}, {"my_list": [1, 2]})
+
+    my_list = state.get("my_list")
+    my_list.append(3)
+
+    assert state.get("my_list") == [1, 2]
