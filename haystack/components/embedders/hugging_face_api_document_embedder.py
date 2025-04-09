@@ -249,7 +249,7 @@ class HuggingFaceAPIDocumentEmbedder:
                 logger.warning(msg)
                 normalize = None
 
-        all_embeddings = []
+        all_embeddings: List = []
         for i in tqdm(
             range(0, len(texts_to_embed), batch_size), disable=not self.progress_bar, desc="Calculating embeddings"
         ):
