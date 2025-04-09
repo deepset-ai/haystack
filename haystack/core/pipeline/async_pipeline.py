@@ -211,11 +211,8 @@ class AsyncPipeline(PipelineBase):
                         try:
                             outputs = await instance.run_async(**component_inputs)  # type: ignore
                         except Exception as error:
-                            raise PipelineRuntimeError(
-                                f"The following component failed to run:\n"
-                                f"Component name: '{component_name}'\n"
-                                f"Component type: '{instance.__class__.__name__}'\n"
-                                f"Error: {str(error)}"
+                            raise PipelineRuntimeError.from_exception(
+                                component_name, instance.__class__, error
                             ) from error
                     else:
                         loop = asyncio.get_running_loop()
@@ -224,10 +221,7 @@ class AsyncPipeline(PipelineBase):
                     component_visits[component_name] += 1
 
                     if not isinstance(outputs, dict):
-                        raise PipelineRuntimeError(
-                            f"Component '{component_name}' returned an invalid output type. "
-                            f"Expected a dict, but got {type(outputs).__name__} instead. "
-                        )
+                        raise PipelineRuntimeError.from_invalid_output(component_name, instance.__class__, outputs)
 
                     span.set_tag("haystack.component.visits", component_visits[component_name])
                     span.set_content_tag("haystack.component.output", deepcopy(outputs))
