@@ -8,13 +8,14 @@
 from .from_function import create_tool_from_function, tool
 from .tool import Tool, _check_duplicate_tool_names
 from .component_tool import ComponentTool
-from .serde_utils import deserialize_tools_or_toolset_inplace, serialize_tools_or_toolset
+from .serde_utils import deserialize_tools_or_toolset_inplace, serialize_tools_or_toolset, deserialize_tools_inplace
 from .toolset import Toolset
 
 __all__ = [
     "_check_duplicate_tool_names",
     "ComponentTool",
     "create_tool_from_function",
+    "deserialize_tools_inplace",
     "deserialize_tools_or_toolset_inplace",
     "serialize_tools_or_toolset",
     "Tool",
