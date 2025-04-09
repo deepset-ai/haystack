@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from copy import deepcopy
 from typing import Any, Callable, Dict, List, Optional
 
 from haystack.dataclasses import ChatMessage
@@ -93,13 +94,13 @@ class State:
         :param data: Optional dictionary of initial data to populate the state
         """
         _validate_schema(schema)
-        self.schema = schema
+        self.schema = deepcopy(schema)
         if self.schema.get("messages") is None:
             self.schema["messages"] = {"type": List[ChatMessage], "handler": merge_lists}
         self._data = data or {}
 
         # Set default handlers if not provided in schema
-        for definition in schema.values():
+        for definition in self.schema.values():
             # Skip if handler is already defined and not None
             if definition.get("handler") is not None:
                 continue

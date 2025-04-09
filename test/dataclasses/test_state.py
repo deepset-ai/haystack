@@ -2,7 +2,7 @@ import pytest
 from typing import List, Dict
 
 from haystack.dataclasses import ChatMessage
-from haystack.dataclasses.state import State, _validate_schema
+from haystack.dataclasses.state import State, _validate_schema, _schema_to_dict, _schema_from_dict
 from haystack.dataclasses.state_utils import merge_lists
 
 
@@ -11,16 +11,15 @@ def basic_schema():
     return {"numbers": {"type": list}, "metadata": {"type": dict}, "name": {"type": str}}
 
 
+def numbers_handler(current, new):
+    if current is None:
+        return sorted(set(new))
+    return sorted(set(current + new))
+
+
 @pytest.fixture
 def complex_schema():
-    return {
-        "numbers": {
-            "type": list,
-            "handler": lambda current, new: sorted(set(current + new)) if current else sorted(set(new)),
-        },
-        "metadata": {"type": dict},
-        "name": {"type": str},
-    }
+    return {"numbers": {"type": list, "handler": numbers_handler}, "metadata": {"type": dict}, "name": {"type": str}}
 
 
 def test_validate_schema_valid(basic_schema):
@@ -147,3 +146,35 @@ def test_state_nested_structures():
 
     expected = {"a": [1, 2], "b": [3, 4, 5, 6], "c": [7, 8]}
     assert state.get("complex") == expected
+
+
+def test_schema_to_dict(basic_schema):
+    expected_dict = {"numbers": {"type": "list"}, "metadata": {"type": "dict"}, "name": {"type": "str"}}
+    result = _schema_to_dict(basic_schema)
+    assert result == expected_dict
+
+
+def test_schema_to_dict_with_handlers(complex_schema):
+    expected_dict = {
+        "numbers": {"type": "list", "handler": "test_state.numbers_handler"},
+        "metadata": {"type": "dict"},
+        "name": {"type": "str"},
+    }
+    result = _schema_to_dict(complex_schema)
+    assert result == expected_dict
+
+
+def test_schema_from_dict(basic_schema):
+    schema_dict = {"numbers": {"type": "list"}, "metadata": {"type": "dict"}, "name": {"type": "str"}}
+    result = _schema_from_dict(schema_dict)
+    assert result == basic_schema
+
+
+def test_schema_from_dict_with_handlers(complex_schema):
+    schema_dict = {
+        "numbers": {"type": "list", "handler": "test_state.numbers_handler"},
+        "metadata": {"type": "dict"},
+        "name": {"type": "str"},
+    }
+    result = _schema_from_dict(schema_dict)
+    assert result == complex_schema

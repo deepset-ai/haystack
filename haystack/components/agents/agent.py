@@ -99,10 +99,12 @@ class Agent:
                 "Ensure that each exit condition corresponds to either 'text' or a valid tool name."
             )
 
-        # Handle state schema
+        # Validate state schema if provided
         if state_schema is not None:
             _validate_schema(state_schema)
         self._state_schema = state_schema or {}
+
+        # Initialize state schema
         resolved_state_schema = deepcopy(self._state_schema)
         if resolved_state_schema.get("messages") is None:
             resolved_state_schema["messages"] = {"type": List[ChatMessage], "handler": merge_lists}

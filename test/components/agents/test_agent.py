@@ -113,6 +113,158 @@ class TestAgent:
             "messages": OutputSocket(name="messages", type=List[ChatMessage], receivers=[])
         }
 
+    def test_to_dict(self, weather_tool, component_tool, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        generator = OpenAIChatGenerator()
+        agent = Agent(
+            chat_generator=generator,
+            tools=[weather_tool, component_tool],
+            exit_conditions=["text", "weather_tool"],
+            state_schema={"foo": {"type": str}},
+        )
+        serialized_agent = agent.to_dict()
+        assert serialized_agent == {
+            "type": "haystack.components.agents.agent.Agent",
+            "init_parameters": {
+                "chat_generator": {
+                    "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
+                    "init_parameters": {
+                        "model": "gpt-4o-mini",
+                        "streaming_callback": None,
+                        "api_base_url": None,
+                        "organization": None,
+                        "generation_kwargs": {},
+                        "api_key": {"type": "env_var", "env_vars": ["OPENAI_API_KEY"], "strict": True},
+                        "timeout": None,
+                        "max_retries": None,
+                        "tools": None,
+                        "tools_strict": False,
+                    },
+                },
+                "tools": [
+                    {
+                        "type": "haystack.tools.tool.Tool",
+                        "data": {
+                            "name": "weather_tool",
+                            "description": "Provides weather information for a given location.",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {"location": {"type": "string"}},
+                                "required": ["location"],
+                            },
+                            "function": "test_agent.weather_function",
+                            "outputs_to_string": None,
+                            "inputs_from_state": None,
+                            "outputs_to_state": None,
+                        },
+                    },
+                    {
+                        "type": "haystack.tools.component_tool.ComponentTool",
+                        "data": {
+                            "component": {
+                                "type": "haystack.components.builders.prompt_builder.PromptBuilder",
+                                "init_parameters": {
+                                    "template": "{{parrot}}",
+                                    "variables": None,
+                                    "required_variables": None,
+                                },
+                            },
+                            "name": "parrot",
+                            "description": "This is a parrot.",
+                            "parameters": None,
+                            "outputs_to_string": None,
+                            "inputs_from_state": None,
+                            "outputs_to_state": None,
+                        },
+                    },
+                ],
+                "system_prompt": None,
+                "exit_conditions": ["text", "weather_tool"],
+                "state_schema": {"foo": {"type": "str"}},
+                "max_agent_steps": 100,
+                "raise_on_tool_invocation_failure": False,
+                "streaming_callback": None,
+            },
+        }
+
+    def test_from_dict(self, weather_tool, component_tool, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        data = {
+            "type": "haystack.components.agents.agent.Agent",
+            "init_parameters": {
+                "chat_generator": {
+                    "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
+                    "init_parameters": {
+                        "model": "gpt-4o-mini",
+                        "streaming_callback": None,
+                        "api_base_url": None,
+                        "organization": None,
+                        "generation_kwargs": {},
+                        "api_key": {"type": "env_var", "env_vars": ["OPENAI_API_KEY"], "strict": True},
+                        "timeout": None,
+                        "max_retries": None,
+                        "tools": None,
+                        "tools_strict": False,
+                    },
+                },
+                "tools": [
+                    {
+                        "type": "haystack.tools.tool.Tool",
+                        "data": {
+                            "name": "weather_tool",
+                            "description": "Provides weather information for a given location.",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {"location": {"type": "string"}},
+                                "required": ["location"],
+                            },
+                            "function": "test_agent.weather_function",
+                            "outputs_to_string": None,
+                            "inputs_from_state": None,
+                            "outputs_to_state": None,
+                        },
+                    },
+                    {
+                        "type": "haystack.tools.component_tool.ComponentTool",
+                        "data": {
+                            "component": {
+                                "type": "haystack.components.builders.prompt_builder.PromptBuilder",
+                                "init_parameters": {
+                                    "template": "{{parrot}}",
+                                    "variables": None,
+                                    "required_variables": None,
+                                },
+                            },
+                            "name": "parrot",
+                            "description": "This is a parrot.",
+                            "parameters": None,
+                            "outputs_to_string": None,
+                            "inputs_from_state": None,
+                            "outputs_to_state": None,
+                        },
+                    },
+                ],
+                "system_prompt": None,
+                "exit_conditions": ["text", "weather_tool"],
+                "state_schema": {"foo": {"type": "str"}},
+                "max_agent_steps": 100,
+                "raise_on_tool_invocation_failure": False,
+                "streaming_callback": None,
+            },
+        }
+        agent = Agent.from_dict(data)
+        assert isinstance(agent, Agent)
+        assert isinstance(agent.chat_generator, OpenAIChatGenerator)
+        assert agent.chat_generator.model == "gpt-4o-mini"
+        assert agent.chat_generator.api_key == Secret.from_env_var("OPENAI_API_KEY")
+        assert agent.tools[0].function is weather_function
+        assert isinstance(agent.tools[1]._component, PromptBuilder)
+        assert agent.exit_conditions == ["text", "weather_tool"]
+        assert agent.state_schema == {
+            "foo": {"type": str},
+            "messages": {"handler": merge_lists, "type": List[ChatMessage]},
+        }
+
     def test_serde(self, weather_tool, component_tool, monkeypatch):
         monkeypatch.setenv("FAKE_OPENAI_KEY", "fake-key")
         generator = OpenAIChatGenerator(api_key=Secret.from_env_var("FAKE_OPENAI_KEY"))
