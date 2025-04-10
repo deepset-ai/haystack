@@ -224,11 +224,9 @@ jobs:
           files_yaml: |
             python:
               - '**/*.py'
-              - docs/**
+              - '!test/**'
             pyproject:
               - 'pyproject.toml'
-          files_ignore: |
-            test/**
 
       - uses: actions/setup-python@v5
         with:
