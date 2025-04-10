@@ -11,7 +11,6 @@ from haystack.components.evaluators import LLMEvaluator
 from haystack.utils.auth import Secret
 from haystack.dataclasses.chat_message import ChatMessage
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
-from haystack.core.serialization import component_to_dict
 
 
 class TestLLMEvaluator:
@@ -263,7 +262,7 @@ class TestLLMEvaluator:
         assert data == {
             "type": "haystack.components.evaluators.llm_evaluator.LLMEvaluator",
             "init_parameters": {
-                "chat_generator": component_to_dict(chat_generator, "chat_generator"),
+                "chat_generator": chat_generator.to_dict(),
                 "instructions": "test-instruction",
                 "inputs": [["predicted_answers", "typing.List[str]"]],
                 "outputs": ["score"],
@@ -302,7 +301,7 @@ class TestLLMEvaluator:
         assert data == {
             "type": "haystack.components.evaluators.llm_evaluator.LLMEvaluator",
             "init_parameters": {
-                "chat_generator": component_to_dict(chat_generator, "chat_generator"),
+                "chat_generator": chat_generator.to_dict(),
                 "instructions": "test-instruction",
                 "inputs": [["predicted_answers", "typing.List[str]"]],
                 "outputs": ["custom_score"],
@@ -356,7 +355,7 @@ class TestLLMEvaluator:
         data = {
             "type": "haystack.components.evaluators.llm_evaluator.LLMEvaluator",
             "init_parameters": {
-                "chat_generator": component_to_dict(chat_generator, "chat_generator"),
+                "chat_generator": chat_generator.to_dict(),
                 "instructions": "test-instruction",
                 "inputs": [["predicted_answers", "typing.List[str]"]],
                 "outputs": ["score"],
