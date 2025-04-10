@@ -111,11 +111,8 @@ class ImageContent:
                 guess = filetype.guess(decoded_image)
                 if guess:
                     self.mime_type = guess.mime
-                    print(f"Guessed mime type: {self.mime_type}")
             except:
                 pass
-
-        print(self)
 
     def __repr__(self) -> str:
         """

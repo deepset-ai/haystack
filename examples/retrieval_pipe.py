@@ -28,11 +28,21 @@ chat_template = [
         content_parts=[
             "{{query}}",
             ImageContent("{{documents[0] | get_base64_image}}", provider_options={"detail": "{{detail}}"}),
-            # also the following can work:
-            # ImageContent("{{documents[0] | get_base64_image}}", provider_options={"{{key}}": "{{value}}"}),
         ]
     )
 ]
+
+# I would like to implement something like this, instead:
+# chat_template = """
+# {% chat role="system" %}
+# You are a helpful assistant that can answer questions about the image.
+# {% endchat %}
+# {% chat role="user" %}
+# {{query}}
+# {{documents[0] | image}}
+# {% endchat %}
+# """
+
 rag_pipeline.add_component("retriever", InMemoryBM25Retriever(document_store=document_store, top_k=1))
 rag_pipeline.add_component("prompt_builder", ChatPromptBuilder(template=chat_template))
 rag_pipeline.add_component("generator", OpenAIChatGenerator(model="gpt-4o-mini"))
