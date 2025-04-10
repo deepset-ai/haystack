@@ -1,5 +1,5 @@
 ---
-depreacations:
+deprecations:
   - |
     The utility function `deserialize_tools_inplace` has been deprecated and will be removed in Haystack 2.14.0.
     Use `deserialize_tools_or_toolset_inplace` instead.
