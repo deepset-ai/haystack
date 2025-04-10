@@ -11,7 +11,7 @@ from haystack.utils.hf import HFEmbeddingAPIType, HFModelType, check_valid_model
 from haystack.utils.url_validation import is_valid_http_url
 
 with LazyImport(message="Run 'pip install \"huggingface_hub>=0.27.0\"'") as huggingface_hub_import:
-    from huggingface_hub import InferenceClient
+    from huggingface_hub import AsyncInferenceClient, InferenceClient
 
 logger = logging.getLogger(__name__)
 
@@ -145,6 +145,31 @@ class HuggingFaceAPITextEmbedder:
         self.truncate = truncate
         self.normalize = normalize
         self._client = InferenceClient(model_or_url, token=token.resolve_value() if token else None)
+        self._async_client = AsyncInferenceClient(model_or_url, token=token.resolve_value() if token else None)
+
+    def _prepare_input(self, text: str) -> tuple[str, Optional[bool], Optional[bool]]:
+        if not isinstance(text, str):
+            raise TypeError(
+                "HuggingFaceAPITextEmbedder expects a string as an input."
+                "In case you want to embed a list of Documents, please use the HuggingFaceAPIDocumentEmbedder."
+            )
+
+        truncate = self.truncate
+        normalize = self.normalize
+
+        if self.api_type == HFEmbeddingAPIType.SERVERLESS_INFERENCE_API:
+            if truncate is not None:
+                msg = "`truncate` parameter is not supported for Serverless Inference API. It will be ignored."
+                logger.warning(msg)
+                truncate = None
+            if normalize is not None:
+                msg = "`normalize` parameter is not supported for Serverless Inference API. It will be ignored."
+                logger.warning(msg)
+                normalize = None
+
+        text_to_embed = self.prefix + text + self.suffix
+
+        return text_to_embed, truncate, normalize
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -189,28 +214,39 @@ class HuggingFaceAPITextEmbedder:
             A dictionary with the following keys:
             - `embedding`: The embedding of the input text.
         """
-        if not isinstance(text, str):
-            raise TypeError(
-                "HuggingFaceAPITextEmbedder expects a string as an input."
-                "In case you want to embed a list of Documents, please use the HuggingFaceAPIDocumentEmbedder."
-            )
+        text_to_embed, truncate_val, normalize_val = self._prepare_input(text)
 
-        truncate = self.truncate
-        normalize = self.normalize
+        np_embedding = self._client.feature_extraction(
+            text=text_to_embed, truncate=truncate_val, normalize=normalize_val
+        )
 
-        if self.api_type == HFEmbeddingAPIType.SERVERLESS_INFERENCE_API:
-            if truncate is not None:
-                msg = "`truncate` parameter is not supported for Serverless Inference API. It will be ignored."
-                logger.warning(msg)
-                truncate = None
-            if normalize is not None:
-                msg = "`normalize` parameter is not supported for Serverless Inference API. It will be ignored."
-                logger.warning(msg)
-                normalize = None
+        error_msg = f"Expected embedding shape (1, embedding_dim) or (embedding_dim,), got {np_embedding.shape}"
+        if np_embedding.ndim > 2:
+            raise ValueError(error_msg)
+        if np_embedding.ndim == 2 and np_embedding.shape[0] != 1:
+            raise ValueError(error_msg)
 
-        text_to_embed = self.prefix + text + self.suffix
+        embedding = np_embedding.flatten().tolist()
 
-        np_embedding = self._client.feature_extraction(text=text_to_embed, truncate=truncate, normalize=normalize)
+        return {"embedding": embedding}
+
+    @component.output_types(embedding=List[float])
+    async def run_async(self, text: str):
+        """
+        Embeds a single string asynchronously.
+
+        :param text:
+            Text to embed.
+
+        :returns:
+            A dictionary with the following keys:
+            - `embedding`: The embedding of the input text.
+        """
+        text_to_embed, truncate_val, normalize_val = self._prepare_input(text)
+
+        np_embedding = await self._async_client.feature_extraction(
+            text=text_to_embed, truncate=truncate_val, normalize=normalize_val
+        )
 
         error_msg = f"Expected embedding shape (1, embedding_dim) or (embedding_dim,), got {np_embedding.shape}"
         if np_embedding.ndim > 2:
