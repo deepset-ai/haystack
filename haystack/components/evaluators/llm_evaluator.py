@@ -12,6 +12,7 @@ from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.builders import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.generators.chat.types import ChatGenerator
+from haystack.core.serialization import component_to_dict
 from haystack.dataclasses.chat_message import ChatMessage
 from haystack.utils import (
     Secret,
@@ -322,7 +323,7 @@ class LLMEvaluator:
             inputs=inputs,
             outputs=self.outputs,
             examples=self.examples,
-            chat_generator=self._chat_generator.to_dict(),
+            chat_generator=component_to_dict(self._chat_generator, "chat_generator"),
             progress_bar=self.progress_bar,
         )
 

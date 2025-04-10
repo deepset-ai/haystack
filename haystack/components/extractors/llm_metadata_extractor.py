@@ -17,6 +17,7 @@ from haystack.components.builders import PromptBuilder
 from haystack.components.generators.chat import AzureOpenAIChatGenerator, OpenAIChatGenerator
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.components.preprocessors import DocumentSplitter
+from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ChatMessage
 from haystack.lazy_imports import LazyImport
 from haystack.utils import (
@@ -281,7 +282,7 @@ class LLMMetadataExtractor:
         return default_to_dict(
             self,
             prompt=self.prompt,
-            chat_generator=self._chat_generator.to_dict(),
+            chat_generator=component_to_dict(self._chat_generator, "chat_generator"),
             expected_keys=self.expected_keys,
             page_range=self.expanded_range,
             raise_on_failure=self.raise_on_failure,

@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.components.tools import ToolInvoker
+from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.state import State, _schema_from_dict, _schema_to_dict, _validate_schema
 from haystack.dataclasses.state_utils import merge_lists
@@ -152,7 +153,7 @@ class Agent:
 
         return default_to_dict(
             self,
-            chat_generator=self.chat_generator.to_dict(),
+            chat_generator=component_to_dict(self.chat_generator, "chat_generator"),
             tools=[t.to_dict() for t in self.tools],
             system_prompt=self.system_prompt,
             exit_conditions=self.exit_conditions,

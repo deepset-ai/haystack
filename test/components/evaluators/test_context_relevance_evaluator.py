@@ -13,6 +13,7 @@ from haystack.components.evaluators import ContextRelevanceEvaluator
 from haystack.utils.auth import Secret
 from haystack.dataclasses.chat_message import ChatMessage
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.core.serialization import component_to_dict
 
 
 class TestContextRelevanceEvaluator:
@@ -122,7 +123,7 @@ class TestContextRelevanceEvaluator:
         assert data == {
             "type": "haystack.components.evaluators.context_relevance.ContextRelevanceEvaluator",
             "init_parameters": {
-                "chat_generator": chat_generator.to_dict(),
+                "chat_generator": component_to_dict(chat_generator, "chat_generator"),
                 "examples": [{"inputs": {"questions": "What is football?"}, "outputs": {"score": 0}}],
                 "progress_bar": False,
                 "raise_on_failure": False,
@@ -153,7 +154,7 @@ class TestContextRelevanceEvaluator:
         data = {
             "type": "haystack.components.evaluators.context_relevance.ContextRelevanceEvaluator",
             "init_parameters": {
-                "chat_generator": chat_generator.to_dict(),
+                "chat_generator": component_to_dict(chat_generator, "chat_generator"),
                 "examples": [{"inputs": {"questions": "What is football?"}, "outputs": {"score": 0}}],
             },
         }

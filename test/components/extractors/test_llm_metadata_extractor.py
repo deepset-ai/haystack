@@ -8,7 +8,7 @@ from haystack.components.writers import DocumentWriter
 from haystack.dataclasses import ChatMessage
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 
-
+from haystack.core.serialization import component_to_dict
 from haystack.components.extractors import LLMMetadataExtractor, LLMProvider
 from haystack.components.generators.chat import OpenAIChatGenerator
 
@@ -134,7 +134,7 @@ class TestLLMMetadataExtractor:
                 "prompt": "some prompt that was used with the LLM {{document.content}}",
                 "expected_keys": ["key1", "key2"],
                 "raise_on_failure": True,
-                "chat_generator": chat_generator.to_dict(),
+                "chat_generator": component_to_dict(chat_generator, "chat_generator"),
                 "page_range": None,
                 "max_workers": 3,
             },
@@ -176,7 +176,7 @@ class TestLLMMetadataExtractor:
             "init_parameters": {
                 "prompt": "some prompt that was used with the LLM {{document.content}}",
                 "expected_keys": ["key1", "key2"],
-                "chat_generator": chat_generator.to_dict(),
+                "chat_generator": component_to_dict(chat_generator, "chat_generator"),
                 "raise_on_failure": True,
             },
         }
@@ -184,7 +184,9 @@ class TestLLMMetadataExtractor:
         assert extractor.raise_on_failure is True
         assert extractor.expected_keys == ["key1", "key2"]
         assert extractor.prompt == "some prompt that was used with the LLM {{document.content}}"
-        assert extractor._chat_generator.to_dict() == chat_generator.to_dict()
+        assert component_to_dict(extractor._chat_generator, "chat_generator") == component_to_dict(
+            chat_generator, "chat_generator"
+        )
 
     def test_warm_up_with_chat_generator(self, monkeypatch):
         mock_chat_generator = Mock()
