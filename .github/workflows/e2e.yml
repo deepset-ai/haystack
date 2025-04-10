@@ -36,7 +36,7 @@ jobs:
       run: pip install hatch==${{ env.HATCH_VERSION }}
 
     - name: Run tests
-      run: hatch run test:e2e
+      run: hatch run e2e:test
 
     - name: Send event to Datadog
       if: failure() && github.event_name == 'schedule'
