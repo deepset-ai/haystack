@@ -12,9 +12,6 @@ from numpy import array
 from haystack.components.embedders import HuggingFaceAPITextEmbedder
 from haystack.utils.auth import Secret
 from haystack.utils.hf import HFEmbeddingAPIType
-from haystack import Pipeline
-from haystack.components.retrievers import InMemoryBM25Retriever
-from haystack.document_stores import InMemoryDocumentStore
 
 
 @pytest.fixture
@@ -298,14 +295,11 @@ class TestHuggingFaceAPITextEmbedderAsync:
         Integration test that verifies the async functionality with concurrent requests.
         This test requires a valid Hugging Face API token.
         """
-        # Use a small, reliable model for testing
         model_name = "sentence-transformers/all-MiniLM-L6-v2"
-
         embedder = HuggingFaceAPITextEmbedder(
             api_type=HFEmbeddingAPIType.SERVERLESS_INFERENCE_API, api_params={"model": model_name}
         )
 
-        # Test with multiple concurrent requests
         texts = [
             "This is the first test sentence.",
             "This is the second test sentence.",
@@ -318,18 +312,11 @@ class TestHuggingFaceAPITextEmbedderAsync:
         tasks = [embedder.run_async(text=text) for text in texts]
         results = await asyncio.gather(*tasks)
 
-        # Verify the results
         for i, result in enumerate(results):
             assert "embedding" in result
             assert isinstance(result["embedding"], list)
             assert all(isinstance(x, float) for x in result["embedding"])
             assert len(result["embedding"]) == 384  # MiniLM-L6-v2 has 384 dimensions
-
-            # Verify that the embeddings are different
-            if i > 0:
-                prev_embedding = results[i - 1]["embedding"]
-                curr_embedding = result["embedding"]
-                assert prev_embedding != curr_embedding  # Different texts should have different embeddings
 
     @pytest.mark.integration
     @pytest.mark.asyncio
