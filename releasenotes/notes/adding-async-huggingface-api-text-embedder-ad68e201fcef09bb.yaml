@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    The `HuggingFaceAPITextEmbedder` now also has support for a run() method in an asynchronous way, i.e., run_async.
