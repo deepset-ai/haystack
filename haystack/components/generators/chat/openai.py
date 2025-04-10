@@ -7,6 +7,7 @@ import os
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
+import httpx
 from openai import AsyncOpenAI, AsyncStream, OpenAI, Stream
 from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletionMessage
 from openai.types.chat.chat_completion import Choice
@@ -89,6 +90,7 @@ class OpenAIChatGenerator:
         max_retries: Optional[int] = None,
         tools: Optional[Union[List[Tool], Toolset]] = None,
         tools_strict: bool = False,
+        http_client_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
         Creates an instance of OpenAIChatGenerator. Unless specified otherwise in `model`, uses OpenAI's gpt-4o-mini
@@ -138,6 +140,8 @@ class OpenAIChatGenerator:
         :param tools_strict:
             Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
             the schema provided in the `parameters` field of the tool definition, but this may increase latency.
+        :param http_client_kwargs:
+            A dictionary of keyword arguments to configure a custom httpx.Client.
         """
         self.api_key = api_key
         self.model = model
@@ -149,7 +153,7 @@ class OpenAIChatGenerator:
         self.max_retries = max_retries
         self.tools = tools  # Store tools as-is, whether it's a list or a Toolset
         self.tools_strict = tools_strict
-
+        self.http_client_kwargs = http_client_kwargs
         # Check for duplicate tool names
         _check_duplicate_tool_names(list(self.tools or []))
 
@@ -158,16 +162,38 @@ class OpenAIChatGenerator:
         if max_retries is None:
             max_retries = int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
 
+        clients = self._init_http_clients()
         client_args: Dict[str, Any] = {
             "api_key": api_key.resolve_value(),
             "organization": organization,
             "base_url": api_base_url,
             "timeout": timeout,
             "max_retries": max_retries,
+            "http_client": clients["http_client"] if clients else None,
         }
 
+        async_client_args: Dict[str, Any] = {
+            "api_key": api_key.resolve_value(),
+            "organization": organization,
+            "base_url": api_base_url,
+            "timeout": timeout,
+            "max_retries": max_retries,
+            "http_client": clients["async_http_client"] if clients else None,
+        }
         self.client = OpenAI(**client_args)
-        self.async_client = AsyncOpenAI(**client_args)
+        self.async_client = AsyncOpenAI(**async_client_args)
+
+    def _init_http_clients(self):
+        """Internal method to initialize the httpx.Client."""
+        if self.http_client_kwargs:
+            if not isinstance(self.http_client_kwargs, dict):
+                raise TypeError("The parameter 'http_client_kwargs' must be a dictionary.")
+            clients = {
+                "http_client": httpx.Client(**self.http_client_kwargs),
+                "async_http_client": httpx.AsyncClient(**self.http_client_kwargs),
+            }
+            return clients
+        return None
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -195,6 +221,7 @@ class OpenAIChatGenerator:
             max_retries=self.max_retries,
             tools=serialize_tools_or_toolset(self.tools),
             tools_strict=self.tools_strict,
+            http_client_kwargs=self.http_client_kwargs,
         )
 
     @classmethod
