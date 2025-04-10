@@ -223,9 +223,10 @@ jobs:
         with:
           files_yaml: |
             python:
-              - **/*.py
+              - '**/*.py'
+              - docs/**
             pyproject:
-              - pyproject.toml
+              - 'pyproject.toml'
           files_ignore: |
             test/**
 
