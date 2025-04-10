@@ -176,8 +176,6 @@ class ChatPromptBuilder:
                             variables.extend(self._extract_template_variables(getattr(part, field.name, None)))
         self.variables = variables
 
-        print(self.variables)
-
         if len(self.variables) > 0 and required_variables is None:
             logger.warning(
                 "ChatPromptBuilder has {length} prompt variables, but `required_variables` is not set. "

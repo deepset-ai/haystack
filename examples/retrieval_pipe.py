@@ -34,13 +34,13 @@ chat_template = [
 
 # I would like to implement something like this, instead:
 # chat_template = """
-# {% chat role="system" %}
+# {% message role="system" %}
 # You are a helpful assistant that can answer questions about the image.
-# {% endchat %}
-# {% chat role="user" %}
+# {% endmessage %}
+# {% message role="user" %}
 # {{query}}
 # {{documents[0] | image}}
-# {% endchat %}
+# {% endmessage %}
 # """
 
 rag_pipeline.add_component("retriever", InMemoryBM25Retriever(document_store=document_store, top_k=1))
