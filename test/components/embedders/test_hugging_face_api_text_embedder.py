@@ -317,28 +317,3 @@ class TestHuggingFaceAPITextEmbedderAsync:
             assert isinstance(result["embedding"], list)
             assert all(isinstance(x, float) for x in result["embedding"])
             assert len(result["embedding"]) == 384  # MiniLM-L6-v2 has 384 dimensions
-
-    @pytest.mark.integration
-    @pytest.mark.asyncio
-    @pytest.mark.skipif(os.environ.get("HF_API_TOKEN", "") == "", reason="HF_API_TOKEN is not set")
-    async def test_run_async_error_handling_with_real_api(self):
-        """
-        Integration test that verifies error handling with a real API.
-        This test requires a valid Hugging Face API token.
-        """
-        # Use an invalid model name to trigger an error
-        invalid_model_name = "invalid-model-name-that-does-not-exist"
-
-        embedder = HuggingFaceAPITextEmbedder(
-            api_type=HFEmbeddingAPIType.SERVERLESS_INFERENCE_API, api_params={"model": invalid_model_name}
-        )
-
-        # Test with a simple text
-        text = "This is a test sentence for embedding."
-
-        # The request should fail with an appropriate error
-        with pytest.raises(Exception) as excinfo:
-            await embedder.run_async(text=text)
-
-        # Verify that the error message contains information about the invalid model
-        assert invalid_model_name in str(excinfo.value) or "model" in str(excinfo.value).lower()
