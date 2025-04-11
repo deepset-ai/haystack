@@ -384,3 +384,192 @@ class TestHuggingFaceAPIDocumentEmbedder:
             assert isinstance(doc.embedding, list)
             assert len(doc.embedding) == 384
             assert all(isinstance(x, float) for x in doc.embedding)
+
+    @pytest.mark.asyncio
+    async def test_embed_batch_async(self, mock_check_valid_model, caplog):
+        texts = ["text 1", "text 2", "text 3", "text 4", "text 5"]
+
+        with patch("huggingface_hub.AsyncInferenceClient.feature_extraction") as mock_embedding_patch:
+            mock_embedding_patch.side_effect = mock_embedding_generation
+
+            embedder = HuggingFaceAPIDocumentEmbedder(
+                api_type=HFEmbeddingAPIType.SERVERLESS_INFERENCE_API,
+                api_params={"model": "BAAI/bge-small-en-v1.5"},
+                token=Secret.from_token("fake-api-token"),
+            )
+            embeddings = await embedder._embed_batch_async(texts_to_embed=texts, batch_size=2)
+
+            assert mock_embedding_patch.call_count == 3
+
+        assert isinstance(embeddings, list)
+        assert len(embeddings) == len(texts)
+        for embedding in embeddings:
+            assert isinstance(embedding, list)
+            assert len(embedding) == 384
+            assert all(isinstance(x, float) for x in embedding)
+
+        # Check that logger warnings about ignoring truncate and normalize are raised
+        assert len(caplog.records) == 2
+        assert "truncate" in caplog.records[0].message
+        assert "normalize" in caplog.records[1].message
+
+    @pytest.mark.asyncio
+    async def test_embed_batch_async_wrong_embedding_shape(self, mock_check_valid_model):
+        texts = ["text 1", "text 2", "text 3", "text 4", "text 5"]
+
+        # embedding ndim != 2
+        with patch("huggingface_hub.AsyncInferenceClient.feature_extraction") as mock_embedding_patch:
+            mock_embedding_patch.return_value = array([0.1, 0.2, 0.3])
+
+            embedder = HuggingFaceAPIDocumentEmbedder(
+                api_type=HFEmbeddingAPIType.SERVERLESS_INFERENCE_API,
+                api_params={"model": "BAAI/bge-small-en-v1.5"},
+                token=Secret.from_token("fake-api-token"),
+            )
+
+            with pytest.raises(ValueError):
+                await embedder._embed_batch_async(texts_to_embed=texts, batch_size=2)
+
+        # embedding ndim == 2 but shape[0] != len(batch)
+        with patch("huggingface_hub.AsyncInferenceClient.feature_extraction") as mock_embedding_patch:
+            mock_embedding_patch.return_value = array([[0.1, 0.2, 0.3], [0.4, 0.5, 0.6], [0.7, 0.8, 0.9]])
+
+            embedder = HuggingFaceAPIDocumentEmbedder(
+                api_type=HFEmbeddingAPIType.SERVERLESS_INFERENCE_API,
+                api_params={"model": "BAAI/bge-small-en-v1.5"},
+                token=Secret.from_token("fake-api-token"),
+            )
+
+            with pytest.raises(ValueError):
+                await embedder._embed_batch_async(texts_to_embed=texts, batch_size=2)
+
+    @pytest.mark.asyncio
+    async def test_run_async_wrong_input_format(self, mock_check_valid_model):
+        embedder = HuggingFaceAPIDocumentEmbedder(
+            api_type=HFEmbeddingAPIType.SERVERLESS_INFERENCE_API, api_params={"model": "BAAI/bge-small-en-v1.5"}
+        )
+
+        list_integers_input = [1, 2, 3]
+
+        with pytest.raises(TypeError):
+            await embedder.run_async(text=list_integers_input)
+
+    @pytest.mark.asyncio
+    async def test_run_async_on_empty_list(self, mock_check_valid_model):
+        embedder = HuggingFaceAPIDocumentEmbedder(
+            api_type=HFEmbeddingAPIType.SERVERLESS_INFERENCE_API,
+            api_params={"model": "BAAI/bge-small-en-v1.5"},
+            token=Secret.from_token("fake-api-token"),
+        )
+
+        empty_list_input = []
+        result = await embedder.run_async(documents=empty_list_input)
+
+        assert result["documents"] is not None
+        assert not result["documents"]  # empty list.
+
+    @pytest.mark.asyncio
+    async def test_run_async(self, mock_check_valid_model):
+        docs = [
+            Document(content="I love cheese", meta={"topic": "Cuisine"}),
+            Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
+        ]
+
+        with patch("huggingface_hub.AsyncInferenceClient.feature_extraction") as mock_embedding_patch:
+            mock_embedding_patch.side_effect = mock_embedding_generation
+
+            embedder = HuggingFaceAPIDocumentEmbedder(
+                api_type=HFEmbeddingAPIType.SERVERLESS_INFERENCE_API,
+                api_params={"model": "BAAI/bge-small-en-v1.5"},
+                token=Secret.from_token("fake-api-token"),
+                prefix="prefix ",
+                suffix=" suffix",
+                meta_fields_to_embed=["topic"],
+                embedding_separator=" | ",
+            )
+
+            result = await embedder.run_async(documents=docs)
+
+            mock_embedding_patch.assert_called_once_with(
+                text=[
+                    "prefix Cuisine | I love cheese suffix",
+                    "prefix ML | A transformer is a deep learning architecture suffix",
+                ],
+                truncate=None,
+                normalize=None,
+            )
+
+        documents_with_embeddings = result["documents"]
+
+        assert isinstance(documents_with_embeddings, list)
+        assert len(documents_with_embeddings) == len(docs)
+        for doc in documents_with_embeddings:
+            assert isinstance(doc, Document)
+            assert isinstance(doc.embedding, list)
+            assert len(doc.embedding) == 384
+            assert all(isinstance(x, float) for x in doc.embedding)
+
+    @pytest.mark.asyncio
+    async def test_run_async_custom_batch_size(self, mock_check_valid_model):
+        docs = [
+            Document(content="I love cheese", meta={"topic": "Cuisine"}),
+            Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
+        ]
+
+        with patch("huggingface_hub.AsyncInferenceClient.feature_extraction") as mock_embedding_patch:
+            mock_embedding_patch.side_effect = mock_embedding_generation
+
+            embedder = HuggingFaceAPIDocumentEmbedder(
+                api_type=HFEmbeddingAPIType.SERVERLESS_INFERENCE_API,
+                api_params={"model": "BAAI/bge-small-en-v1.5"},
+                token=Secret.from_token("fake-api-token"),
+                prefix="prefix ",
+                suffix=" suffix",
+                meta_fields_to_embed=["topic"],
+                embedding_separator=" | ",
+                batch_size=1,
+            )
+
+            result = await embedder.run_async(documents=docs)
+
+            assert mock_embedding_patch.call_count == 2
+
+        documents_with_embeddings = result["documents"]
+
+        assert isinstance(documents_with_embeddings, list)
+        assert len(documents_with_embeddings) == len(docs)
+        for doc in documents_with_embeddings:
+            assert isinstance(doc, Document)
+            assert isinstance(doc.embedding, list)
+            assert len(doc.embedding) == 384
+            assert all(isinstance(x, float) for x in doc.embedding)
+
+    @pytest.mark.flaky(reruns=5, reruns_delay=5)
+    @pytest.mark.asyncio
+    @pytest.mark.integration
+    @pytest.mark.skipif(
+        not os.environ.get("HF_API_TOKEN", None),
+        reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
+    )
+    async def test_live_run_async_serverless(self):
+        docs = [
+            Document(content="I love cheese", meta={"topic": "Cuisine"}),
+            Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
+        ]
+
+        embedder = HuggingFaceAPIDocumentEmbedder(
+            api_type=HFEmbeddingAPIType.SERVERLESS_INFERENCE_API,
+            api_params={"model": "sentence-transformers/all-MiniLM-L6-v2"},
+            meta_fields_to_embed=["topic"],
+            embedding_separator=" | ",
+        )
+        result = await embedder.run_async(documents=docs)
+        documents_with_embeddings = result["documents"]
+
+        assert isinstance(documents_with_embeddings, list)
+        assert len(documents_with_embeddings) == len(docs)
+        for doc in documents_with_embeddings:
+            assert isinstance(doc, Document)
+            assert isinstance(doc.embedding, list)
+            assert len(doc.embedding) == 384
+            assert all(isinstance(x, float) for x in doc.embedding)
