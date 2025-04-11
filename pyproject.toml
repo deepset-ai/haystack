@@ -141,14 +141,9 @@ dependencies = [
   "pytest",
   "pytest-bdd",
   "pytest-cov",
-  "pytest-custom_exit_code", # used in the CI
   "pytest-asyncio",
   "pytest-rerunfailures",
-  "responses",
-  "tox",
   "coverage",
-  "python-multipart",
-  "psutil",
   "mypy",
   "pip",                     # mypy needs pip to install missing stub packages
   "pylint",
@@ -279,21 +274,6 @@ addopts = "--strict-markers"
 markers = [
   "unit: unit tests",
   "integration: integration tests",
-
-  "generator: generator tests",
-  "summarizer: summarizer tests",
-  "embedding_dim: uses a document store with non-default embedding dimension (e.g @pytest.mark.embedding_dim(128))",
-
-  "tika: requires Tika container",
-  "parsr: requires Parsr container",
-  "ocr: requires Tesseract",
-
-  "elasticsearch: requires Elasticsearch container",
-  "weaviate: requires Weaviate container",
-  "pinecone: requires Pinecone credentials",
-  "faiss: uses FAISS",
-  "opensearch",
-  "document_store",
 ]
 log_cli = true
 asyncio_mode = "auto"
@@ -362,10 +342,6 @@ ignore = [
 [tool.ruff.lint.mccabe]
 max-complexity = 28
 
-[tool.ruff.lint.per-file-ignores]
-"examples/basic_qa_pipeline.py" = ["C416"]
-"haystack/preview/testing/document_store.py" = ["C416", "F821"]
-"haystack/telemetry.py" = ["F821"]
 
 [tool.ruff.lint.pylint]
 allow-magic-value-types = ["float", "int", "str"]
