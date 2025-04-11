@@ -320,6 +320,7 @@ class TestToolInvoker:
                         "api_key": {"type": "env_var", "env_vars": ["OPENAI_API_KEY"], "strict": True},
                         "tools": None,
                         "tools_strict": False,
+                        "http_client_kwargs": None,
                     },
                 },
             },

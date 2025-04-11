@@ -139,6 +139,7 @@ class TestAgent:
                         "max_retries": None,
                         "tools": None,
                         "tools_strict": False,
+                        "http_client_kwargs": None,
                     },
                 },
                 "tools": [
@@ -205,6 +206,7 @@ class TestAgent:
                         "max_retries": None,
                         "tools": None,
                         "tools_strict": False,
+                        "http_client_kwargs": None,
                     },
                 },
                 "tools": [

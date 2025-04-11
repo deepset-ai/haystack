@@ -106,6 +106,7 @@ class TestLLMMetadataExtractor:
                         "timeout": None,
                         "tools": None,
                         "tools_strict": False,
+                        "http_client_kwargs": None,
                     },
                     "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
                 },

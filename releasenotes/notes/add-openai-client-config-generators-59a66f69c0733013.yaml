@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    `OpenAIChatGenerator` and `AzureOpenAIChatGenerator` now support custom HTTP client config via `http_client_kwargs`, enabling proxy and SSL setup.
