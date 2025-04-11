@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.evaluators.llm_evaluator import LLMEvaluator
 from haystack.components.generators.chat.types import ChatGenerator
+from haystack.core.serialization import component_to_dict
 from haystack.utils import Secret, deserialize_chatgenerator_inplace, deserialize_secrets_inplace
 
 # Private global variable for default examples to include in the prompt if the user does not provide any examples
@@ -209,7 +210,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
         """
         return default_to_dict(
             self,
-            chat_generator=self._chat_generator.to_dict(),
+            chat_generator=component_to_dict(obj=self._chat_generator, name="chat_generator"),
             examples=self.examples,
             progress_bar=self.progress_bar,
             raise_on_failure=self.raise_on_failure,
