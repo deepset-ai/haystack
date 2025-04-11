@@ -18,6 +18,7 @@ from haystack.tools import (
     serialize_tools_or_toolset,
 )
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
+from haystack.utils.http_client import init_http_client
 
 
 @component
@@ -66,6 +67,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
     """
 
     # pylint: disable=super-init-not-called
+    # ruff: noqa: PLR0913
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         azure_endpoint: Optional[str] = None,
@@ -83,6 +85,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         tools_strict: bool = False,
         *,
         azure_ad_token_provider: Optional[Union[AzureADTokenProvider, AsyncAzureADTokenProvider]] = None,
+        http_client_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
         Initialize the Azure OpenAI Chat Generator component.
@@ -128,6 +131,8 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
             the schema provided in the `parameters` field of the tool definition, but this may increase latency.
         :param azure_ad_token_provider: A function that returns an Azure Active Directory token, will be invoked on
             every request.
+        :param http_client_kwargs:
+            A dictionary of keyword arguments to configure a custom httpx.Client.
         """
         # We intentionally do not call super().__init__ here because we only need to instantiate the client to interact
         # with the API.
@@ -158,7 +163,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         self.max_retries = max_retries if max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
         self.default_headers = default_headers or {}
         self.azure_ad_token_provider = azure_ad_token_provider
-
+        self.http_client_kwargs = http_client_kwargs
         _check_duplicate_tool_names(list(tools or []))
         self.tools = tools
         self.tools_strict = tools_strict
@@ -176,8 +181,12 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
             "azure_ad_token_provider": azure_ad_token_provider,
         }
 
-        self.client = AzureOpenAI(**client_args)
-        self.async_client = AsyncAzureOpenAI(**client_args)
+        self.client = AzureOpenAI(
+            http_client=init_http_client(self.http_client_kwargs, async_client=False), **client_args
+        )
+        self.async_client = AsyncAzureOpenAI(
+            http_client=init_http_client(self.http_client_kwargs, async_client=True), **client_args
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -206,6 +215,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
             tools=serialize_tools_or_toolset(self.tools),
             tools_strict=self.tools_strict,
             azure_ad_token_provider=azure_ad_token_provider_name,
+            http_client_kwargs=self.http_client_kwargs,
         )
 
     @classmethod
