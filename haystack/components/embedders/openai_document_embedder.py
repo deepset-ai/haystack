@@ -5,6 +5,7 @@
 import os
 from typing import Any, Dict, List, Optional, Tuple
 
+import httpx
 from more_itertools import batched
 from openai import APIError, AsyncOpenAI, OpenAI
 from tqdm import tqdm
@@ -38,7 +39,7 @@ class OpenAIDocumentEmbedder:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(  # noqa: PLR0913 # pylint: disable=too-many-positional-arguments
         self,
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
         model: str = "text-embedding-ada-002",
@@ -53,6 +54,8 @@ class OpenAIDocumentEmbedder:
         embedding_separator: str = "\n",
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
+        http_client: httpx.Client | None = None,
+        http_async_client: httpx.AsyncClient | None = None,
     ):
         """
         Creates an OpenAIDocumentEmbedder component.
@@ -95,6 +98,26 @@ class OpenAIDocumentEmbedder:
         :param max_retries:
             Maximum number of retries to contact OpenAI after an internal error.
             If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or 5 retries.
+        :param http_client:
+            Overrides default `httpx.Client` to customize it for your use case:
+            [proxies](https://www.python-httpx.org/advanced/proxies),
+            [authentication](https://www.python-httpx.org/advanced/authentication) and other
+            [advanced functionalities](https://www.python-httpx.org/advanced/clients) of HTTPX.
+            Use `openai.DefaultHttpxClient`.
+            You can set a proxy with basic authorization using
+            [the environment variables](https://www.python-httpx.org/environment_variables):
+            `HTTP_PROXY` and `HTTPS_PROXY`, `ALL_PROXY` and `NO_PROXY`,
+            for example `HTTP_PROXY=http://user:password@your-proxy.net:8080`.
+        :param http_async_client:
+            Overrides default `httpx.Client` to customize it for your use case:
+            [proxies](https://www.python-httpx.org/advanced/proxies),
+            [authentication](https://www.python-httpx.org/advanced/authentication) and other
+            [advanced functionalities](https://www.python-httpx.org/advanced/clients) of HTTPX.
+            Use `openai.DefaultAsyncHttpxClient`.
+            You can set a proxy with basic authorization using
+            [the environment variables](https://www.python-httpx.org/environment_variables):
+            `HTTP_PROXY` and `HTTPS_PROXY`, `ALL_PROXY` and `NO_PROXY`,
+            for example `HTTP_PROXY=http://user:password@your-proxy.net:8080`.
         """
         self.api_key = api_key
         self.model = model
@@ -121,8 +144,8 @@ class OpenAIDocumentEmbedder:
             "max_retries": max_retries,
         }
 
-        self.client = OpenAI(**client_args)
-        self.async_client = AsyncOpenAI(**client_args)
+        self.client = OpenAI(http_client=http_client, **client_args)
+        self.async_client = AsyncOpenAI(http_client=http_async_client, **client_args)
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """

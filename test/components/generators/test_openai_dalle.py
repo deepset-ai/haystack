@@ -69,6 +69,25 @@ class TestDALLEImageGenerator:
         assert component.client.timeout == 30
         assert component.client.max_retries == 5
 
+    def test_warm_up_with_custom_http_client(self):
+        import openai
+
+        custom_http_client = openai.DefaultHttpxClient()
+        generator = DALLEImageGenerator(api_key=Secret.from_token("fake-api-key"), http_client=custom_http_client)
+        generator.warm_up()
+        assert generator.client._client == custom_http_client
+
+    def test_warm_up_fail_when_http_client_not_httpx_client(self):
+        generator = DALLEImageGenerator(
+            api_key=Secret.from_token("fake-api-key"),
+            http_client="fake-client",  # type: ignore
+        )
+        with pytest.raises(
+            TypeError,
+            match="Invalid `http_client` argument; Expected an instance of `httpx.Client` but got <class 'str'>",
+        ):
+            generator.warm_up()
+
     def test_to_dict(self):
         generator = DALLEImageGenerator()
         data = generator.to_dict()

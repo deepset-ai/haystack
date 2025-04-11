@@ -7,6 +7,7 @@ import os
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
+import httpx
 from openai import AsyncOpenAI, AsyncStream, OpenAI, Stream
 from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletionMessage
 from openai.types.chat.chat_completion import Choice
@@ -87,6 +88,8 @@ class OpenAIChatGenerator:
         generation_kwargs: Optional[Dict[str, Any]] = None,
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
+        http_client: httpx.Client | None = None,
+        http_async_client: httpx.AsyncClient | None = None,
         tools: Optional[Union[List[Tool], Toolset]] = None,
         tools_strict: bool = False,
     ):
@@ -132,6 +135,26 @@ class OpenAIChatGenerator:
         :param max_retries:
             Maximum number of retries to contact OpenAI after an internal error.
             If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
+        :param http_client:
+            Overrides default `httpx.Client` to customize it for your use case:
+            [proxies](https://www.python-httpx.org/advanced/proxies),
+            [authentication](https://www.python-httpx.org/advanced/authentication) and other
+            [advanced functionalities](https://www.python-httpx.org/advanced/clients) of HTTPX.
+            Use `openai.DefaultHttpxClient`.
+            You can set a proxy with basic authorization using
+            [the environment variables](https://www.python-httpx.org/environment_variables):
+            `HTTP_PROXY` and `HTTPS_PROXY`, `ALL_PROXY` and `NO_PROXY`,
+            for example `HTTP_PROXY=http://user:password@your-proxy.net:8080`.
+        :param http_async_client:
+            Overrides default `httpx.Client` to customize it for your use case:
+            [proxies](https://www.python-httpx.org/advanced/proxies),
+            [authentication](https://www.python-httpx.org/advanced/authentication) and other
+            [advanced functionalities](https://www.python-httpx.org/advanced/clients) of HTTPX.
+            Use `openai.DefaultAsyncHttpxClient`.
+            You can set a proxy with basic authorization using
+            [the environment variables](https://www.python-httpx.org/environment_variables):
+            `HTTP_PROXY` and `HTTPS_PROXY`, `ALL_PROXY` and `NO_PROXY`,
+            for example `HTTP_PROXY=http://user:password@your-proxy.net:8080`.
         :param tools:
             A list of tools or a Toolset for which the model can prepare calls. This parameter can accept either a
             list of `Tool` objects or a `Toolset` instance.
@@ -166,8 +189,8 @@ class OpenAIChatGenerator:
             "max_retries": max_retries,
         }
 
-        self.client = OpenAI(**client_args)
-        self.async_client = AsyncOpenAI(**client_args)
+        self.client = OpenAI(http_client=http_client, **client_args)
+        self.async_client = AsyncOpenAI(http_client=http_async_client, **client_args)
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """

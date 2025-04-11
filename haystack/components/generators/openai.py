@@ -6,6 +6,7 @@ import os
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional, Union
 
+import httpx
 from openai import OpenAI, Stream
 from openai.types.chat import ChatCompletion, ChatCompletionChunk
 
@@ -60,6 +61,7 @@ class OpenAIGenerator:
         generation_kwargs: Optional[Dict[str, Any]] = None,
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
+        http_client: httpx.Client | None = None,
     ):
         """
         Creates an instance of OpenAIGenerator. Unless specified otherwise in `model`, uses OpenAI's gpt-4o-mini
@@ -100,7 +102,16 @@ class OpenAIGenerator:
         :param max_retries:
             Maximum retries to establish contact with OpenAI if it returns an internal error, if not set it is inferred
             from the `OPENAI_MAX_RETRIES` environment variable or set to 5.
-
+        :param http_client:
+            Overrides default `httpx.Client` to customize it for your use case:
+            [proxies](https://www.python-httpx.org/advanced/proxies),
+            [authentication](https://www.python-httpx.org/advanced/authentication) and other
+            [advanced functionalities](https://www.python-httpx.org/advanced/clients) of HTTPX.
+            Use `openai.DefaultHttpxClient`.
+            You can set a proxy with basic authorization using
+            [the environment variables](https://www.python-httpx.org/environment_variables):
+            `HTTP_PROXY` and `HTTPS_PROXY`, `ALL_PROXY` and `NO_PROXY`,
+            for example `HTTP_PROXY=http://user:password@your-proxy.net:8080`.
         """
         self.api_key = api_key
         self.model = model
@@ -122,6 +133,7 @@ class OpenAIGenerator:
             base_url=api_base_url,
             timeout=timeout,
             max_retries=max_retries,
+            http_client=http_client,
         )
 
     def _get_telemetry_data(self) -> Dict[str, Any]:

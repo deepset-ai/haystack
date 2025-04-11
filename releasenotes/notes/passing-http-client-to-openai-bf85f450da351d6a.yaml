@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Added HTTPX-client parameters for all OpenAI components:
+    - The parameter `http_client` was added to: `OpenAIChatGenerator`, `OpenAIGenerator`, `DALLEImageGenerator`,
+      `OpenAIDocumentEmbedder`, `OpenAITextEmbedder`, and `RemoteWhisperTranscriber`.
+    - The parameter `http_async_client` was added to: `OpenAIChatGenerator`,
+      `OpenAIDocumentEmbedder`, and `OpenAITextEmbedder`.
