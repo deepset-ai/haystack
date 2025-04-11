@@ -21,26 +21,6 @@ class ChatGenerator(Protocol):
     responses using a Language Model. They return a dictionary.
     """
 
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Serialize this ChatGenerator to a dictionary.
-
-        :returns:
-            The serialized ChatGenerator as a dictionary.
-        """
-        ...
-
-    @classmethod
-    def from_dict(cls: type[T], data: Dict[str, Any]) -> T:
-        """
-        Deserialize this ChatGenerator from a dictionary.
-
-        :param data: The dictionary representation of this ChatGenerator.
-        :returns:
-            An instance of the specific implementing class.
-        """
-        ...
-
     def run(self, messages: List[ChatMessage]) -> Dict[str, Any]:
         """
         Generate messages using the underlying Language Model.
