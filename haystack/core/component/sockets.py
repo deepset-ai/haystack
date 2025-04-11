@@ -143,3 +143,12 @@ class Sockets:
             result = "Outputs:\n"
 
         return result + "\n".join([f"  - {n}: {_type_name(s.type)}" for n, s in self._sockets_dict.items()])
+        
+    def validate_socket(self, key: str, value: Any) -> bool:
+        """
+        Validates if a value matches the socket's type and constraints
+        """
+        socket = self.get(key)
+        if not socket:
+            return False
+        return isinstance(value, socket.type)
