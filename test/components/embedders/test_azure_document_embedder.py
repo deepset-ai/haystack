@@ -13,6 +13,7 @@ from haystack import Document
 from haystack.components.embedders import AzureOpenAIDocumentEmbedder
 from haystack.utils.azure import default_azure_ad_token_provider
 from unittest.mock import Mock, patch
+from haystack.utils.http_client import init_http_client
 
 
 class TestAzureOpenAIDocumentEmbedder:
@@ -220,14 +221,14 @@ class TestAzureOpenAIDocumentEmbedder:
         monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://test.openai.azure.com")
 
         embedder = AzureOpenAIDocumentEmbedder()
-        client = embedder._init_http_client()
+        client = init_http_client(embedder.http_client_kwargs, async_client=False)
         assert client is None
 
         embedder.http_client_kwargs = {"proxy": "http://example.com:3128"}
-        client = embedder._init_http_client(async_client=False)
+        client = init_http_client(embedder.http_client_kwargs, async_client=False)
         assert isinstance(client, httpx.Client)
 
-        client = embedder._init_http_client(async_client=True)
+        client = init_http_client(embedder.http_client_kwargs, async_client=True)
         assert isinstance(client, httpx.AsyncClient)
 
     def test_http_client_kwargs_type_validation(self, monkeypatch):
