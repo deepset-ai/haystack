@@ -1,6 +1,11 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+
+# Note: We do not test the Spacy backend in this module.
+# Spacy is not installed in the test environment to keep the CI fast.
+# We test the Spacy backend in e2e/pipelines/test_named_entity_extractor.py.
+
 from haystack.utils.auth import Secret
 import pytest
 
@@ -16,10 +21,6 @@ def test_named_entity_extractor_backend():
     _ = NamedEntityExtractor(backend=NamedEntityExtractorBackend.HUGGING_FACE, model="deepset/bert-base-NER")
 
     _ = NamedEntityExtractor(backend="hugging_face", model="dslim/bert-base-NER")
-
-    _ = NamedEntityExtractor(backend=NamedEntityExtractorBackend.SPACY, model="en_core_web_sm")
-
-    _ = NamedEntityExtractor(backend="spacy", model="en_core_web_sm")
 
     with pytest.raises(ComponentError, match=r"Invalid backend"):
         NamedEntityExtractor(backend="random_backend", model="dslim/bert-base-NER")
