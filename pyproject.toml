@@ -81,7 +81,9 @@ format = "ruff format {args}"
 format-check = "ruff format --check {args}"
 
 [tool.hatch.envs.test]
-extra-dependencies = [
+
+# we override dependencies from the default environment
+dependencies = [
   "numpy>=2", # Haystack is compatible both with numpy 1.x and 2.x, but we test with 2.x
   "numba>=0.54.0", # This pin helps uv resolve the dependency tree. See https://github.com/astral-sh/uv/issues/7881
 
@@ -95,13 +97,6 @@ extra-dependencies = [
   "openai-whisper>=20231106",                  # LocalWhisperTranscriber
   "arrow>=1.3.0",                              # Jinja2TimeExtension
 
-  # NamedEntityExtractor
-  "spacy>=3.8,<3.9",
-  "spacy-curated-transformers>=0.2,<=0.3",
-  "en-core-web-trf @ https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.8.0/en_core_web_trf-3.8.0-py3-none-any.whl",
-  # spacy requires thinc, which depends on blis. We pin blis because version 1.2.1 does not have wheels for python 3.9
-  # and compiling it from source takes much time.
-  "blis<1.2.1; python_version < '3.10'",
 
   # Converters
   "pypdf",                            # PyPDFToDocument
@@ -156,13 +151,26 @@ extra-dependencies = [
 ]
 
 [tool.hatch.envs.test.scripts]
-e2e = "pytest e2e"
 unit = 'pytest --cov-report xml:coverage.xml --cov="haystack" -m "not integration" {args:test}'
 integration = 'pytest --maxfail=5 -m "integration" {args:test}'
 integration-mac = 'pytest --maxfail=5 -m "integration" -k "not tika" {args:test}'
 integration-windows = 'pytest --maxfail=5 -m "integration" -k "not tika" {args:test}'
 types = "mypy --install-types --non-interactive --cache-dir=.mypy_cache/ {args:haystack}"
 lint = "pylint -ry -j 0 {args:haystack}"
+
+[tool.hatch.envs.e2e]
+template = "test"
+extra-dependencies = [
+  # NamedEntityExtractor
+  "spacy>=3.8,<3.9",
+  "en-core-web-trf @ https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.8.0/en_core_web_trf-3.8.0-py3-none-any.whl",
+  # spacy requires thinc, which depends on blis. We pin blis because version 1.2.1 does not have wheels for python 3.9
+  # and compiling it from source takes much time.
+  "blis<1.2.1; python_version < '3.10'",
+]
+
+[tool.hatch.envs.e2e.scripts]
+test = "pytest e2e"
 
 [tool.hatch.envs.readme]
 installer = "uv"
