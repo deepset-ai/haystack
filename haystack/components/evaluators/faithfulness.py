@@ -204,7 +204,7 @@ class FaithfulnessEvaluator(LLMEvaluator):
         """
         return default_to_dict(
             self,
-            chat_generator=component_to_dict(self._chat_generator, "chat_generator"),
+            chat_generator=component_to_dict(obj=self._chat_generator, name="chat_generator"),
             examples=self.examples,
             progress_bar=self.progress_bar,
             raise_on_failure=self.raise_on_failure,

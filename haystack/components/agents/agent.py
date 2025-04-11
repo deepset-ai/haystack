@@ -153,7 +153,7 @@ class Agent:
 
         return default_to_dict(
             self,
-            chat_generator=component_to_dict(self.chat_generator, "chat_generator"),
+            chat_generator=component_to_dict(obj=self.chat_generator, name="chat_generator"),
             tools=[t.to_dict() for t in self.tools],
             system_prompt=self.system_prompt,
             exit_conditions=self.exit_conditions,

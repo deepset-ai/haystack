@@ -323,7 +323,7 @@ class LLMEvaluator:
             inputs=inputs,
             outputs=self.outputs,
             examples=self.examples,
-            chat_generator=component_to_dict(self._chat_generator, "chat_generator"),
+            chat_generator=component_to_dict(obj=self._chat_generator, name="chat_generator"),
             progress_bar=self.progress_bar,
         )
 

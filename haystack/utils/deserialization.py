@@ -68,4 +68,4 @@ def deserialize_chatgenerator_inplace(data: Dict[str, Any], key: str = "chat_gen
     except ImportError as e:
         raise DeserializationError(f"Class '{serialized_chat_generator['type']}' not correctly imported") from e
 
-    data[key] = component_from_dict(chat_generator_class, serialized_chat_generator, "chat_generator")
+    data[key] = component_from_dict(cls=chat_generator_class, data=serialized_chat_generator, name="chat_generator")

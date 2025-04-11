@@ -282,7 +282,7 @@ class LLMMetadataExtractor:
         return default_to_dict(
             self,
             prompt=self.prompt,
-            chat_generator=component_to_dict(self._chat_generator, "chat_generator"),
+            chat_generator=component_to_dict(obj=self._chat_generator, name="chat_generator"),
             expected_keys=self.expected_keys,
             page_range=self.expanded_range,
             raise_on_failure=self.raise_on_failure,
