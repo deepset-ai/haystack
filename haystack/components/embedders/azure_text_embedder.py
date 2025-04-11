@@ -11,6 +11,7 @@ from openai.lib.azure import AsyncAzureOpenAI, AzureADTokenProvider, AzureOpenAI
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.embedders import OpenAITextEmbedder
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
+from haystack.utils.http_client import init_http_client
 
 
 @component
@@ -138,17 +139,12 @@ class AzureOpenAITextEmbedder(OpenAITextEmbedder):
             "default_headers": self.default_headers,
         }
 
-        self.client = AzureOpenAI(http_client=self._init_http_client(async_client=False), **client_kwargs)
-        self.async_client = AsyncAzureOpenAI(http_client=self._init_http_client(async_client=True), **client_kwargs)
-
-    def _init_http_client(self, async_client: bool = False):
-        if not self.http_client_kwargs:
-            return None
-        if not isinstance(self.http_client_kwargs, dict):
-            raise TypeError("The parameter 'http_client_kwargs' must be a dictionary.")
-        if async_client:
-            return httpx.AsyncClient(**self.http_client_kwargs)
-        return httpx.Client(**self.http_client_kwargs)
+        self.client = AzureOpenAI(
+            http_client=init_http_client(self.http_client_kwargs, async_client=False), **client_kwargs
+        )
+        self.async_client = AsyncAzureOpenAI(
+            http_client=init_http_client(self.http_client_kwargs, async_client=True), **client_kwargs
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         """

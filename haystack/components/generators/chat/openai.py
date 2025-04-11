@@ -31,6 +31,7 @@ from haystack.tools import (
     serialize_tools_or_toolset,
 )
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
+from haystack.utils.http_client import init_http_client
 
 logger = logging.getLogger(__name__)
 
@@ -162,38 +163,18 @@ class OpenAIChatGenerator:
         if max_retries is None:
             max_retries = int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
 
-        clients = self._init_http_clients()
-        client_args: Dict[str, Any] = {
+        client_kwargs: Dict[str, Any] = {
             "api_key": api_key.resolve_value(),
             "organization": organization,
             "base_url": api_base_url,
             "timeout": timeout,
             "max_retries": max_retries,
-            "http_client": clients["http_client"] if clients else None,
         }
 
-        async_client_args: Dict[str, Any] = {
-            "api_key": api_key.resolve_value(),
-            "organization": organization,
-            "base_url": api_base_url,
-            "timeout": timeout,
-            "max_retries": max_retries,
-            "http_client": clients["async_http_client"] if clients else None,
-        }
-        self.client = OpenAI(**client_args)
-        self.async_client = AsyncOpenAI(**async_client_args)
-
-    def _init_http_clients(self):
-        """Internal method to initialize the httpx.Client."""
-        if self.http_client_kwargs:
-            if not isinstance(self.http_client_kwargs, dict):
-                raise TypeError("The parameter 'http_client_kwargs' must be a dictionary.")
-            clients = {
-                "http_client": httpx.Client(**self.http_client_kwargs),
-                "async_http_client": httpx.AsyncClient(**self.http_client_kwargs),
-            }
-            return clients
-        return None
+        self.client = OpenAI(http_client=init_http_client(self.http_client_kwargs, async_client=False), **client_kwargs)
+        self.async_client = AsyncOpenAI(
+            http_client=init_http_client(self.http_client_kwargs, async_client=True), **client_kwargs
+        )
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
