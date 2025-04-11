@@ -81,10 +81,8 @@ format = "ruff format {args}"
 format-check = "ruff format --check {args}"
 
 [tool.hatch.envs.test]
-# this is a self-referential environment: we don't need to inherit from default
-# https://hatch.pypa.io/1.13/config/environment/overview/#self-referential-environments
-template = "test"
 
+# we override dependencies from the default environment
 dependencies = [
   "numpy>=2", # Haystack is compatible both with numpy 1.x and 2.x, but we test with 2.x
   "numba>=0.54.0", # This pin helps uv resolve the dependency tree. See https://github.com/astral-sh/uv/issues/7881
