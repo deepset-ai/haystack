@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import dataclasses
 from copy import deepcopy
 from typing import Any, Dict, List, Literal, Optional, Set, Union
 
@@ -9,8 +10,9 @@ from jinja2 import meta
 from jinja2.sandbox import SandboxedEnvironment
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.dataclasses.chat_message import ChatMessage, ChatRole, TextContent
+from haystack.dataclasses.chat_message import ChatMessage, ChatRole
 from haystack.utils import Jinja2TimeExtension
+from haystack.utils.jinja2_extensions import Jinja2ImageExtension
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +100,38 @@ class ChatPromptBuilder:
 
     """
 
+    def _render_value(self, value: Any, template_variables: Dict[str, Any]) -> Any:
+        """Render a value using template variables."""
+        if isinstance(value, str):
+            return self._env.from_string(value).render(template_variables)
+        if isinstance(value, (list, tuple)):
+            return [self._render_value(v, template_variables) for v in value]
+        if isinstance(value, dict):
+            return {
+                self._env.from_string(k).render(template_variables) if isinstance(k, str) else k: self._render_value(
+                    v, template_variables
+                )
+                for k, v in value.items()
+            }
+        return value
+
+    def _extract_template_variables(self, value: Any) -> List[str]:
+        """
+        Extract template variables from a value using Jinja2.
+
+        :param value: The value to extract variables from
+        :return: List of template variable names
+        """
+        if isinstance(value, str):
+            return list(meta.find_undeclared_variables(self._env.parse(value)))
+        if isinstance(value, dict):
+            return [
+                var
+                for k, v in value.items()
+                for var in self._extract_template_variables(k) + self._extract_template_variables(v)
+            ]
+        return []
+
     def __init__(
         self,
         template: Optional[List[ChatMessage]] = None,
@@ -128,19 +162,18 @@ class ChatPromptBuilder:
         try:
             # The Jinja2TimeExtension needs an optional dependency to be installed.
             # If it's not available we can do without it and use the ChatPromptBuilder as is.
-            self._env = SandboxedEnvironment(extensions=[Jinja2TimeExtension])
+            self._env = SandboxedEnvironment(extensions=[Jinja2TimeExtension, Jinja2ImageExtension])
         except ImportError:
-            self._env = SandboxedEnvironment()
+            self._env = SandboxedEnvironment(extensions=[Jinja2ImageExtension])
 
         if template and not variables:
             for message in template:
                 if message.is_from(ChatRole.USER) or message.is_from(ChatRole.SYSTEM):
-                    # infer variables from template
                     if message.text is None:
                         raise ValueError(f"The provided ChatMessage has no text. ChatMessage: {message}")
-                    ast = self._env.parse(message.text)
-                    template_variables = meta.find_undeclared_variables(ast)
-                    variables += list(template_variables)
+                    for part in message._content:
+                        for field in dataclasses.fields(part):
+                            variables.extend(self._extract_template_variables(getattr(part, field.name, None)))
         self.variables = variables
 
         if len(self.variables) > 0 and required_variables is None:
@@ -169,22 +202,11 @@ class ChatPromptBuilder:
         """
         Renders the prompt template with the provided variables.
 
-        It applies the template variables to render the final prompt. You can provide variables with pipeline kwargs.
-        To overwrite the default template, you can set the `template` parameter.
-        To overwrite pipeline kwargs, you can set the `template_variables` parameter.
-
-        :param template:
-            An optional list of `ChatMessage` objects to overwrite ChatPromptBuilder's default template.
-            If `None`, the default template provided at initialization is used.
-        :param template_variables:
-            An optional dictionary of template variables to overwrite the pipeline variables.
-        :param kwargs:
-            Pipeline variables used for rendering the prompt.
-
-        :returns: A dictionary with the following keys:
-            - `prompt`: The updated list of `ChatMessage` objects after rendering the templates.
-        :raises ValueError:
-            If `chat_messages` is empty or contains elements that are not instances of `ChatMessage`.
+        :param template: Optional list of ChatMessage objects to override default template
+        :param template_variables: Optional dictionary of template variables to override pipeline variables
+        :param kwargs: Pipeline variables used for rendering the prompt
+        :returns: Dictionary with rendered prompt messages
+        :raises ValueError: If template is empty or invalid
         """
         kwargs = kwargs or {}
         template_variables = template_variables or {}
@@ -208,18 +230,25 @@ class ChatPromptBuilder:
 
         processed_messages = []
         for message in template:
-            if message.is_from(ChatRole.USER) or message.is_from(ChatRole.SYSTEM):
-                self._validate_variables(set(template_variables_combined.keys()))
-                if message.text is None:
-                    raise ValueError(f"The provided ChatMessage has no text. ChatMessage: {message}")
-                compiled_template = self._env.from_string(message.text)
-                rendered_text = compiled_template.render(template_variables_combined)
-                # deep copy the message to avoid modifying the original message
-                rendered_message: ChatMessage = deepcopy(message)
-                rendered_message._content = [TextContent(text=rendered_text)]
-                processed_messages.append(rendered_message)
-            else:
+            if not message.is_from(ChatRole.USER) and not message.is_from(ChatRole.SYSTEM):
                 processed_messages.append(message)
+                continue
+
+            self._validate_variables(set(template_variables_combined.keys()))
+            if message.text is None:
+                raise ValueError(f"The provided ChatMessage has no text. ChatMessage: {message}")
+
+            rendered_message = deepcopy(message)
+            rendered_message._content = []
+
+            for content_part in message._content:
+                rendered_attrs = {
+                    field.name: self._render_value(getattr(content_part, field.name, None), template_variables_combined)
+                    for field in dataclasses.fields(content_part)
+                }
+                rendered_message._content.append(content_part.__class__(**rendered_attrs))
+
+            processed_messages.append(rendered_message)
 
         return {"prompt": processed_messages}
 

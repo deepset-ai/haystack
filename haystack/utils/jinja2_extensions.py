@@ -2,11 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import base64
 from typing import Any, List, Optional, Union
 
 from jinja2 import Environment, nodes
 from jinja2.ext import Extension
 
+from haystack.dataclasses.document import Document
 from haystack.lazy_imports import LazyImport
 
 with LazyImport(message='Run "pip install arrow>=1.3.0"') as arrow_import:
@@ -94,3 +96,37 @@ class Jinja2TimeExtension(Extension):
         )
 
         return nodes.Output([call_method], lineno=lineno)
+
+
+class Jinja2ImageExtension(Extension):
+    """
+    A Jinja2 extension to extract image data in base64 format from a Document object.
+
+    Usage in templates:
+        {{ document | get_base64_image }}
+    """
+
+    def __init__(self, environment: Environment):
+        super().__init__(environment)
+        environment.filters["get_base64_image"] = self.get_base64_image
+
+    def get_base64_image(self, document: Document) -> str:
+        """
+        Extract the image data from a Document object and return it as a base64 encoded string.
+
+        Args:
+            document: A Document object containing the image data stored in the blob field
+
+        Returns:
+            A base64 encoded string of the image data
+
+        Raises:
+            ValueError: If the Document object does not have a blob field
+        """
+        if document.blob is None:
+            raise ValueError("Document does not have a blob field")
+
+        # maybe we should add some field to Document or ByteStream to indicate the media type of data,
+        # so we can fail early if the data is not an image
+
+        return base64.b64encode(document.blob.data).decode("utf-8")
