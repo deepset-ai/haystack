@@ -10,7 +10,7 @@ from haystack import component, default_from_dict, default_to_dict
 from haystack.components.evaluators.llm_evaluator import LLMEvaluator
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.core.serialization import component_to_dict
-from haystack.utils import Secret, deserialize_chatgenerator_inplace, deserialize_secrets_inplace
+from haystack.utils import deserialize_chatgenerator_inplace
 
 # Default examples to include in the prompt if the user does not provide any examples
 _DEFAULT_EXAMPLES = [
@@ -88,16 +88,13 @@ class FaithfulnessEvaluator(LLMEvaluator):
         self,
         examples: Optional[List[Dict[str, Any]]] = None,
         progress_bar: bool = True,
-        api: Optional[str] = None,
-        api_key: Optional[Secret] = None,
-        api_params: Optional[Dict[str, Any]] = None,
         raise_on_failure: bool = True,
         chat_generator: Optional[ChatGenerator] = None,
     ):
         """
         Creates an instance of FaithfulnessEvaluator.
 
-        If no LLM is specified using the available parameters, the component will use OpenAI in JSON mode.
+        If no LLM is specified using the `chat_generator` parameter, the component will use OpenAI in JSON mode.
 
         :param examples:
             Optional few-shot examples conforming to the expected input and output format of FaithfulnessEvaluator.
@@ -118,20 +115,10 @@ class FaithfulnessEvaluator(LLMEvaluator):
             }]
         :param progress_bar:
             Whether to show a progress bar during the evaluation.
-        :param api:
-            The API to use for calling an LLM through a ChatGenerator. Supported APIs: "openai".
-            Deprecated. Use `chat_generator` to configure the LLM.
-        :param api_key:
-            The API key to be passed to a LLM provider. It may not be necessary when using a locally hosted model.
-            Deprecated. Use `chat_generator` to configure the LLM.
-        :param api_params:
-            Parameters for an OpenAI API compatible chat completions call.
-            Deprecated. Use `chat_generator` to configure the LLM.
         :param raise_on_failure:
             Whether to raise an exception if the API call fails.
         :param chat_generator:
-            a ChatGenerator instance which represents the LLM. If provided, settings in api, api_key, and api_params
-            will be ignored.
+            a ChatGenerator instance which represents the LLM.
             In order for the component to work, the LLM should be configured to return a JSON object. For example,
             when using the OpenAIChatGenerator, you should pass `{"response_format": {"type": "json_object"}}` in the
             `generation_kwargs`.
@@ -152,9 +139,6 @@ class FaithfulnessEvaluator(LLMEvaluator):
             inputs=self.inputs,
             outputs=self.outputs,
             examples=self.examples,
-            api=api,
-            api_key=api_key,
-            api_params=api_params,
             chat_generator=chat_generator,
             raise_on_failure=raise_on_failure,
             progress_bar=progress_bar,
@@ -220,7 +204,6 @@ class FaithfulnessEvaluator(LLMEvaluator):
         :returns:
             The deserialized component instance.
         """
-        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         if data["init_parameters"].get("chat_generator"):
             deserialize_chatgenerator_inplace(data["init_parameters"], key="chat_generator")
         return default_from_dict(cls, data)
