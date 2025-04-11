@@ -1,7 +1,7 @@
 [build-system]
 requires = ["hatchling>=1.8.0"]
 build-backend = "hatchling.build"
-# trigger
+
 [project]
 name = "haystack-ai"
 dynamic = ["version"]
