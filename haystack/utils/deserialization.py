@@ -5,7 +5,7 @@
 from typing import Any, Dict
 
 from haystack import DeserializationError
-from haystack.core.serialization import default_from_dict, import_class_by_name
+from haystack.core.serialization import component_from_dict, default_from_dict, import_class_by_name
 
 
 def deserialize_document_store_in_init_params_inplace(data: Dict[str, Any], key: str = "document_store"):
@@ -68,7 +68,4 @@ def deserialize_chatgenerator_inplace(data: Dict[str, Any], key: str = "chat_gen
     except ImportError as e:
         raise DeserializationError(f"Class '{serialized_chat_generator['type']}' not correctly imported") from e
 
-    if not hasattr(chat_generator_class, "from_dict"):
-        raise DeserializationError(f"Class '{chat_generator_class}' does not have a 'from_dict' method")
-
-    data[key] = chat_generator_class.from_dict(serialized_chat_generator)
+    data[key] = component_from_dict(cls=chat_generator_class, data=serialized_chat_generator, name="chat_generator")

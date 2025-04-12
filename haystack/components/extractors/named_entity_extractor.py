@@ -19,8 +19,8 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
     from transformers import Pipeline as HfPipeline
 
 with LazyImport(message="Run 'pip install spacy'") as spacy_import:
-    import spacy
-    from spacy import Language as SpacyPipeline
+    import spacy  # pylint: disable=import-error
+    from spacy import Language as SpacyPipeline  # pylint: disable=import-error
 
 
 class NamedEntityExtractorBackend(Enum):

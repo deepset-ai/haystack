@@ -221,11 +221,12 @@ jobs:
         id: files
         uses: tj-actions/changed-files@v46
         with:
-          files: |
-            **/*.py
-            pyproject.toml
-          files_ignore: |
-            test/**
+          files_yaml: |
+            python:
+              - '**/*.py'
+              - '!test/**'
+            pyproject:
+              - 'pyproject.toml'
 
       - uses: actions/setup-python@v5
         with:
@@ -250,9 +251,10 @@ jobs:
           hatch run test:types
 
       - name: Pylint
-        if: steps.files.outputs.any_changed == 'true'
+        # Running pylint on pyproject.toml causes errors, so we only run it on python files.
+        if: steps.files.outputs.python_any_changed == 'true'
         run: |
-          hatch run test:lint ${{ steps.files.outputs.all_changed_files }}
+          hatch run test:lint ${{ steps.files.outputs.python_all_changed_files }}
 
       - name: Calculate alert data
         id: calculator
