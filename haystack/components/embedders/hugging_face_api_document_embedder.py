@@ -4,7 +4,6 @@
 
 from typing import Any, Dict, List, Optional, Union
 
-from more_itertools import batched
 from tqdm import tqdm
 from tqdm.asyncio import tqdm as async_tqdm
 
@@ -291,7 +290,7 @@ class HuggingFaceAPIDocumentEmbedder:
                 logger.warning(msg)
                 normalize = None
 
-        all_embeddings = []
+        all_embeddings: List = []
         for i in async_tqdm(
             range(0, len(texts_to_embed), batch_size), disable=not self.progress_bar, desc="Calculating embeddings"
         ):
