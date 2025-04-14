@@ -288,13 +288,15 @@ class Agent:
             # 1. Call the ChatGenerator
             # Check if the chat generator supports async execution
             if getattr(self.chat_generator, "__haystack_supports_async__", False):
-                llm_messages = (await self.chat_generator.run_async(messages=messages, **generator_inputs))["replies"]
+                result = await self.chat_generator.run_async(messages=messages, **generator_inputs)
+                llm_messages = result["replies"]
             else:
                 # Fall back to synchronous run if async is not available
                 loop = asyncio.get_running_loop()
-                llm_messages = await loop.run_in_executor(
+                result = await loop.run_in_executor(
                     None, lambda: self.chat_generator.run(messages=messages, **generator_inputs)
-                )["replies"]
+                )
+                llm_messages = result["replies"]
 
             state.set("messages", llm_messages)
 
@@ -304,8 +306,7 @@ class Agent:
 
             # 3. Call the ToolInvoker
             # We only send the messages from the LLM to the tool invoker
-            # Currently, ToolInvoker doesn't have an async version, so we use the sync version
-            # Check if the ToolInvoker supports async execution
+            # Check if the ToolInvoker supports async execution. Currently, it doesn't.
             if getattr(self._tool_invoker, "__haystack_supports_async__", False):
                 tool_invoker_result = await self._tool_invoker.run_async(messages=llm_messages, state=state)
             else:
