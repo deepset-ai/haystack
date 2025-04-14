@@ -9,7 +9,7 @@ jobs:
     steps:
       - uses: actions/stale@v9
         with:
-          any-of-labels: 'proposal,community-triage'
+          any-of-labels: 'proposal,information-needed'
           stale-pr-message: 'This issue is stale because it has been open 30 days with no activity. Remove stale label or comment or this will be closed in 10 days.'
           days-before-stale: 30
           days-before-close: 10
