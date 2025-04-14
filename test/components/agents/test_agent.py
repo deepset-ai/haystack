@@ -472,6 +472,29 @@ class TestAgent:
             == "{'weather': 'mostly sunny', 'temperature': 7, 'unit': 'celsius'}"
         )
 
+    def test_agent_with_no_tools(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        generator = OpenAIChatGenerator()
+
+        # Mock messages where the exit condition appears in the second message
+        mock_messages = [ChatMessage.from_assistant("Berlin")]
+
+        agent = Agent(chat_generator=generator, tools=[], max_agent_steps=3)
+        agent.warm_up()
+
+        # Patch agent.chat_generator.run to return mock_messages
+        agent.chat_generator.run = MagicMock(return_value={"replies": mock_messages})
+
+        response = agent.run([ChatMessage.from_user("What is the capital of Germany?")])
+
+        assert isinstance(response, dict)
+        assert "messages" in response
+        assert isinstance(response["messages"], list)
+        assert len(response["messages"]) == 2
+        assert [isinstance(reply, ChatMessage) for reply in response["messages"]]
+        assert response["messages"][0].text == "What is the capital of Germany?"
+        assert response["messages"][1].text == "Berlin"
+
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
     def test_run(self, weather_tool):
