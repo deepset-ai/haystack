@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 import inspect
 from copy import deepcopy
 from typing import Any, Dict, List, Optional
@@ -13,7 +14,7 @@ from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.state import State, _schema_from_dict, _schema_to_dict, _validate_schema
 from haystack.dataclasses.state_utils import merge_lists
-from haystack.dataclasses.streaming_chunk import SyncStreamingCallbackT
+from haystack.dataclasses.streaming_chunk import StreamingCallbackT
 from haystack.tools import Tool, deserialize_tools_or_toolset_inplace
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 from haystack.utils.deserialization import deserialize_chatgenerator_inplace
@@ -63,7 +64,7 @@ class Agent:
         state_schema: Optional[Dict[str, Any]] = None,
         max_agent_steps: int = 100,
         raise_on_tool_invocation_failure: bool = False,
-        streaming_callback: Optional[SyncStreamingCallbackT] = None,
+        streaming_callback: Optional[StreamingCallbackT] = None,
     ):
         """
         Initialize the agent component.
@@ -189,7 +190,7 @@ class Agent:
     def run(
         self,
         messages: List[ChatMessage],
-        streaming_callback: Optional[SyncStreamingCallbackT] = None,
+        streaming_callback: Optional[StreamingCallbackT] = None,
         **kwargs: Dict[str, Any],
     ) -> Dict[str, Any]:
         """
@@ -230,6 +231,108 @@ class Agent:
             # 3. Call the ToolInvoker
             # We only send the messages from the LLM to the tool invoker
             tool_invoker_result = self._tool_invoker.run(messages=llm_messages, state=state)
+            tool_messages = tool_invoker_result["tool_messages"]
+            state = tool_invoker_result["state"]
+            state.set("messages", tool_messages)
+
+            # 4. Check if any LLM message's tool call name matches an exit condition
+            if self.exit_conditions != ["text"]:
+                matched_exit_conditions = set()
+                has_errors = False
+
+                for msg in llm_messages:
+                    if msg.tool_call and msg.tool_call.tool_name in self.exit_conditions:
+                        matched_exit_conditions.add(msg.tool_call.tool_name)
+
+                        # Check if any error is specifically from the tool matching the exit condition
+                        tool_errors = [
+                            tool_msg.tool_call_result.error
+                            for tool_msg in tool_messages
+                            if tool_msg.tool_call_result.origin.tool_name == msg.tool_call.tool_name
+                        ]
+                        if any(tool_errors):
+                            has_errors = True
+                            # No need to check further if we found an error
+                            break
+
+                # Only return if at least one exit condition was matched AND none had errors
+                if matched_exit_conditions and not has_errors:
+                    return {**state.data}
+
+            # 5. Fetch the combined messages and send them back to the LLM
+            messages = state.get("messages")
+            counter += 1
+
+        logger.warning(
+            "Agent exceeded maximum agent steps of {max_agent_steps}, stopping.", max_agent_steps=self.max_agent_steps
+        )
+        return {**state.data}
+
+    async def run_async(
+        self,
+        messages: List[ChatMessage],
+        streaming_callback: Optional[StreamingCallbackT] = None,
+        **kwargs: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """
+        Asynchronously process messages and execute tools until the exit condition is met.
+
+        This is the asynchronous version of the `run` method. It follows the same logic but uses
+        asynchronous operations where possible, such as calling the `run_async` method of the ChatGenerator
+        if available.
+
+        :param messages: List of chat messages to process
+        :param streaming_callback: A callback that will be invoked when a response is streamed from the LLM.
+        :param kwargs: Additional data to pass to the State schema used by the Agent.
+            The keys must match the schema defined in the Agent's `state_schema`.
+        :return: Dictionary containing messages and outputs matching the defined output types
+        """
+        if not self._is_warmed_up and hasattr(self.chat_generator, "warm_up"):
+            raise RuntimeError("The component Agent wasn't warmed up. Run 'warm_up()' before calling 'run_async()'.")
+
+        state = State(schema=self.state_schema, data=kwargs)
+
+        if self.system_prompt is not None:
+            messages = [ChatMessage.from_system(self.system_prompt)] + messages
+        state.set("messages", messages)
+
+        generator_inputs: Dict[str, Any] = {"tools": self.tools}
+
+        selected_callback = streaming_callback or self.streaming_callback
+        if selected_callback is not None:
+            generator_inputs["streaming_callback"] = selected_callback
+
+        # Repeat until the exit condition is met
+        counter = 0
+        while counter < self.max_agent_steps:
+            # 1. Call the ChatGenerator
+            # Check if the chat generator supports async execution
+            if getattr(self.chat_generator, "__haystack_supports_async__", False):
+                llm_messages = (await self.chat_generator.run_async(messages=messages, **generator_inputs))["replies"]
+            else:
+                # Fall back to synchronous run if async is not available
+                loop = asyncio.get_running_loop()
+                llm_messages = await loop.run_in_executor(
+                    None, lambda: self.chat_generator.run(messages=messages, **generator_inputs)
+                )["replies"]
+
+            state.set("messages", llm_messages)
+
+            # 2. Check if any of the LLM responses contain a tool call
+            if not any(msg.tool_call for msg in llm_messages):
+                return {**state.data}
+
+            # 3. Call the ToolInvoker
+            # We only send the messages from the LLM to the tool invoker
+            # Currently, ToolInvoker doesn't have an async version, so we use the sync version
+            # Check if the ToolInvoker supports async execution
+            if getattr(self._tool_invoker, "__haystack_supports_async__", False):
+                tool_invoker_result = await self._tool_invoker.run_async(messages=llm_messages, state=state)
+            else:
+                loop = asyncio.get_running_loop()
+                tool_invoker_result = await loop.run_in_executor(
+                    None, lambda: self._tool_invoker.run(messages=llm_messages, state=state)
+                )
             tool_messages = tool_invoker_result["tool_messages"]
             state = tool_invoker_result["state"]
             state.set("messages", tool_messages)
