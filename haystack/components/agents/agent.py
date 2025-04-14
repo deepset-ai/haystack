@@ -288,7 +288,7 @@ class Agent:
             # 1. Call the ChatGenerator
             # Check if the chat generator supports async execution
             if getattr(self.chat_generator, "__haystack_supports_async__", False):
-                result = await self.chat_generator.run_async(messages=messages, **generator_inputs)
+                result = await self.chat_generator.run_async(messages=messages, **generator_inputs)  # type: ignore[attr-defined]
                 llm_messages = result["replies"]
             else:
                 # Fall back to synchronous run if async is not available
@@ -308,7 +308,7 @@ class Agent:
             # We only send the messages from the LLM to the tool invoker
             # Check if the ToolInvoker supports async execution. Currently, it doesn't.
             if getattr(self._tool_invoker, "__haystack_supports_async__", False):
-                tool_invoker_result = await self._tool_invoker.run_async(messages=llm_messages, state=state)
+                tool_invoker_result = await self._tool_invoker.run_async(messages=llm_messages, state=state)  # type: ignore[attr-defined]
             else:
                 loop = asyncio.get_running_loop()
                 tool_invoker_result = await loop.run_in_executor(
@@ -350,7 +350,8 @@ class Agent:
                 tool_errors = [
                     tool_msg.tool_call_result.error
                     for tool_msg in tool_messages
-                    if tool_msg.tool_call_result.origin.tool_name == msg.tool_call.tool_name
+                    if tool_msg.tool_call_result is not None
+                    and tool_msg.tool_call_result.origin.tool_name == msg.tool_call.tool_name
                 ]
                 if any(tool_errors):
                     has_errors = True
@@ -358,4 +359,4 @@ class Agent:
                     break
 
         # Only return True if at least one exit condition was matched AND none had errors
-        return matched_exit_conditions and not has_errors
+        return bool(matched_exit_conditions) and not has_errors
