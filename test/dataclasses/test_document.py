@@ -185,6 +185,23 @@ def test_to_dict_with_custom_parameters_without_flattening():
     }
 
 
+def test_to_dict_field_precedence():
+    """
+    Test that Document's first-level fields take precedence over meta fields
+    when flattening the dictionary representation.
+    """
+
+    doc = Document(content="from-content", score=0.9, meta={"content": "from-meta", "score": 0.5, "source": "web"})
+
+    flat_dict = doc.to_dict(flatten=True)
+
+    # First-level fields should take precedence
+    assert flat_dict["content"] == "from-content"
+    assert flat_dict["score"] == 0.9
+    # Meta-only fields should be preserved
+    assert flat_dict["source"] == "web"
+
+
 def test_from_dict():
     assert Document.from_dict({}) == Document()
 
