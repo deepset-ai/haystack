@@ -4,9 +4,9 @@
 
 import os
 from datetime import datetime
-from typing import Iterator, Dict, Any, List
+from typing import Iterator, Dict, Any, List, Optional, Union
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, AsyncMock
 import pytest
 
 from openai import Stream
@@ -16,10 +16,13 @@ from haystack.components.agents import Agent
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.generators.chat.types import ChatGenerator
+from haystack import component
 from haystack.core.component.types import OutputSocket
 from haystack.dataclasses import ChatMessage, ToolCall
+from haystack.dataclasses.chat_message import ChatRole, TextContent
 from haystack.dataclasses.streaming_chunk import StreamingChunk
 from haystack.tools import Tool, ComponentTool
+from haystack.tools.toolset import Toolset
 from haystack.utils import serialize_callable, Secret
 from haystack.dataclasses.state_utils import merge_lists
 
@@ -101,6 +104,22 @@ class MockChatGeneratorWithoutTools(ChatGenerator):
         return cls()
 
     def run(self, messages: List[ChatMessage]) -> Dict[str, Any]:
+        return {"replies": [ChatMessage.from_assistant("Hello")]}
+
+
+class MockChatGeneratorWithoutRunAsync(ChatGenerator):
+    """A mock chat generator that implements ChatGenerator protocol but doesn't have run_async method."""
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"type": "MockChatGeneratorWithoutRunAsync", "data": {}}
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "MockChatGeneratorWithoutRunAsync":
+        return cls()
+
+    def run(
+        self, messages: List[ChatMessage], tools: Optional[Union[List[Tool], Toolset]] = None, **kwargs
+    ) -> Dict[str, Any]:
         return {"replies": [ChatMessage.from_assistant("Hello")]}
 
 
@@ -500,3 +519,70 @@ class TestAgent:
         assert response["messages"][1].tool_calls[0].arguments is not None
         assert response["messages"][2].tool_call_results[0].result is not None
         assert response["messages"][2].tool_call_results[0].origin is not None
+
+    @pytest.mark.asyncio
+    async def test_run_async_falls_back_to_run_when_chat_generator_has_no_run_async(self, weather_tool):
+        chat_generator = MockChatGeneratorWithoutRunAsync()
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
+        agent.warm_up()
+
+        chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("Hello")]})
+
+        result = await agent.run_async([ChatMessage.from_user("Hello")])
+
+        expected_messages = [
+            ChatMessage(_role=ChatRole.USER, _content=[TextContent(text="Hello")], _name=None, _meta={})
+        ]
+        chat_generator.run.assert_called_once_with(messages=expected_messages, tools=[weather_tool])
+
+        assert isinstance(result, dict)
+        assert "messages" in result
+        assert isinstance(result["messages"], list)
+        assert len(result["messages"]) == 2
+        assert [isinstance(reply, ChatMessage) for reply in result["messages"]]
+        assert "Hello" in result["messages"][1].text
+
+    @pytest.mark.asyncio
+    async def test_run_async_uses_chat_generator_run_async_when_available(self, weather_tool):
+        # Create a mock chat generator with run_async
+        # We need to use @component so that has_async_run is set
+        @component
+        class MockChatGeneratorWithRunAsync:
+            def to_dict(self) -> Dict[str, Any]:
+                return {"type": "MockChatGeneratorWithoutRunAsync", "data": {}}
+
+            @classmethod
+            def from_dict(cls, data: Dict[str, Any]) -> "MockChatGeneratorWithoutRunAsync":
+                return cls()
+
+            def run(
+                self, messages: List[ChatMessage], tools: Optional[Union[List[Tool], Toolset]] = None, **kwargs
+            ) -> Dict[str, Any]:
+                return {"replies": [ChatMessage.from_assistant("Hello")]}
+
+            async def run_async(
+                self, messages: List[ChatMessage], tools: Optional[Union[List[Tool], Toolset]] = None, **kwargs
+            ) -> Dict[str, Any]:
+                return {"replies": [ChatMessage.from_assistant("Hello from run_async")]}
+
+        chat_generator = MockChatGeneratorWithRunAsync()
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
+        agent.warm_up()
+
+        chat_generator.run_async = AsyncMock(
+            return_value={"replies": [ChatMessage.from_assistant("Hello from run_async")]}
+        )
+
+        result = await agent.run_async([ChatMessage.from_user("Hello")])
+
+        expected_messages = [
+            ChatMessage(_role=ChatRole.USER, _content=[TextContent(text="Hello")], _name=None, _meta={})
+        ]
+        chat_generator.run_async.assert_called_once_with(messages=expected_messages, tools=[weather_tool])
+
+        assert isinstance(result, dict)
+        assert "messages" in result
+        assert isinstance(result["messages"], list)
+        assert len(result["messages"]) == 2
+        assert [isinstance(reply, ChatMessage) for reply in result["messages"]]
+        assert "Hello from run_async" in result["messages"][1].text
