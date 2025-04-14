@@ -132,7 +132,7 @@ class Document(metaclass=_BackwardCompatible):
 
         if flatten:
             meta = data.pop("meta")
-            return {**data, **meta}
+            return {**meta, **data}
 
         return data
 
