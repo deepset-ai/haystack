@@ -6,7 +6,7 @@ import inspect
 from copy import deepcopy
 from typing import Any, Dict, List, Optional
 
-from haystack import component, default_from_dict, default_to_dict, logging
+from haystack import component, default_from_dict, default_to_dict, logging, tracing
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.components.tools import ToolInvoker
 from haystack.core.serialization import component_to_dict
@@ -140,6 +140,28 @@ class Agent:
                 self.chat_generator.warm_up()
             self._is_warmed_up = True
 
+    # Define the helper method for tracing component runs
+    def _run_component_with_trace(
+        self, component_name: str, instance: Any, inputs: Dict[str, Any], parent_span: Optional[tracing.Span] = None
+    ) -> Dict[str, Any]:
+        """
+        Run a component instance with tracing.
+        """
+        with tracing.tracer.trace(
+            "haystack.component.run",
+            tags={"haystack.component.name": component_name, "haystack.component.type": instance.__class__.__name__},
+            parent_span=parent_span,
+        ) as span:
+            span.set_content_tag("haystack.component.input_data", inputs)
+            try:
+                component_output = instance.run(**inputs)
+                span.set_content_tag("haystack.component.output_data", component_output)
+                return component_output
+            except Exception as e:
+                span.set_tag("haystack.component.error", True)
+                span.set_tag("haystack.component.error.message", str(e))
+                raise e
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Serialize the component to a dictionary.
@@ -205,64 +227,93 @@ class Agent:
             raise RuntimeError("The component Agent wasn't warmed up. Run 'warm_up()' before calling 'run()'.")
 
         state = State(schema=self.state_schema, data=kwargs)
+        original_messages = messages[:]
 
         if self.system_prompt is not None:
-            messages = [ChatMessage.from_system(self.system_prompt)] + messages
-        state.set("messages", messages)
+            initial_messages_with_system = [ChatMessage.from_system(self.system_prompt)] + messages
+            state.set("messages", initial_messages_with_system)
+        else:
+            initial_messages_with_system = messages
+            state.set("messages", initial_messages_with_system)
 
-        generator_inputs: Dict[str, Any] = {"tools": self.tools}
+        # Create the main agent span
+        with tracing.tracer.trace(
+            "haystack.agent.run",
+            tags={
+                "haystack.agent.input_kwargs": kwargs,
+                "haystack.agent.input_messages": original_messages,
+                "haystack.agent.max_steps": self.max_agent_steps,
+                "haystack.agent.tools_count": len(self.tools),
+                "haystack.agent.exit_conditions": self.exit_conditions,
+            },
+        ) as span:
+            current_messages = initial_messages_with_system
 
-        selected_callback = streaming_callback or self.streaming_callback
-        if selected_callback is not None:
-            generator_inputs["streaming_callback"] = selected_callback
+            generator_inputs: Dict[str, Any] = {"tools": self.tools}
 
-        # Repeat until the exit condition is met
-        counter = 0
-        while counter < self.max_agent_steps:
-            # 1. Call the ChatGenerator
-            llm_messages = self.chat_generator.run(messages=messages, **generator_inputs)["replies"]
-            state.set("messages", llm_messages)
+            selected_callback = streaming_callback or self.streaming_callback
+            if selected_callback is not None:
+                generator_inputs["streaming_callback"] = selected_callback
 
-            # 2. Check if any of the LLM responses contain a tool call
-            if not any(msg.tool_call for msg in llm_messages):
-                return {**state.data}
+            counter = 0
+            while counter < self.max_agent_steps:
+                chat_generator_inputs = {"messages": current_messages, **generator_inputs}
+                llm_response = self._run_component_with_trace(
+                    component_name="chat_generator",
+                    instance=self.chat_generator,
+                    inputs=chat_generator_inputs,
+                    parent_span=span,
+                )
+                llm_messages = llm_response["replies"]
+                state.set("messages", llm_messages)
 
-            # 3. Call the ToolInvoker
-            # We only send the messages from the LLM to the tool invoker
-            tool_invoker_result = self._tool_invoker.run(messages=llm_messages, state=state)
-            tool_messages = tool_invoker_result["tool_messages"]
-            state = tool_invoker_result["state"]
-            state.set("messages", tool_messages)
-
-            # 4. Check if any LLM message's tool call name matches an exit condition
-            if self.exit_conditions != ["text"]:
-                matched_exit_conditions = set()
-                has_errors = False
-
-                for msg in llm_messages:
-                    if msg.tool_call and msg.tool_call.tool_name in self.exit_conditions:
-                        matched_exit_conditions.add(msg.tool_call.tool_name)
-
-                        # Check if any error is specifically from the tool matching the exit condition
-                        tool_errors = [
-                            tool_msg.tool_call_result.error
-                            for tool_msg in tool_messages
-                            if tool_msg.tool_call_result.origin.tool_name == msg.tool_call.tool_name
-                        ]
-                        if any(tool_errors):
-                            has_errors = True
-                            # No need to check further if we found an error
-                            break
-
-                # Only return if at least one exit condition was matched AND none had errors
-                if matched_exit_conditions and not has_errors:
+                if not any(msg.tool_call for msg in llm_messages):
+                    span.set_content_tag("haystack.agent.final_state", state.data)
+                    span.set_tag("haystack.agent.steps_taken", counter)
                     return {**state.data}
 
-            # 5. Fetch the combined messages and send them back to the LLM
-            messages = state.get("messages")
-            counter += 1
+                tool_invoker_inputs = {"messages": llm_messages, "state": state}
+                tool_invoker_result = self._run_component_with_trace(
+                    component_name="tool_invoker",
+                    instance=self._tool_invoker,
+                    inputs=tool_invoker_inputs,
+                    parent_span=span,
+                )
+                tool_messages = tool_invoker_result["tool_messages"]
+                state = tool_invoker_result["state"]
+                state.set("messages", tool_messages)
 
-        logger.warning(
-            "Agent exceeded maximum agent steps of {max_agent_steps}, stopping.", max_agent_steps=self.max_agent_steps
-        )
-        return {**state.data}
+                if self.exit_conditions != ["text"]:
+                    matched_exit_conditions = set()
+                    has_errors = False
+
+                    for msg in llm_messages:
+                        if msg.tool_call and msg.tool_call.tool_name in self.exit_conditions:
+                            matched_exit_conditions.add(msg.tool_call.tool_name)
+
+                            tool_errors = [
+                                tool_msg.tool_call_result.error
+                                for tool_msg in tool_messages
+                                if tool_msg.tool_call_result
+                                and tool_msg.tool_call_result.origin
+                                and tool_msg.tool_call_result.origin.tool_name == msg.tool_call.tool_name
+                            ]
+                            if any(tool_errors):
+                                has_errors = True
+                                break
+
+                    if matched_exit_conditions and not has_errors:
+                        span.set_content_tag("haystack.agent.final_state", state.data)
+                        span.set_tag("haystack.agent.steps_taken", counter)
+                        return {**state.data}
+
+                current_messages = state.get("messages")
+                counter += 1
+
+            logger.warning(
+                "Agent exceeded maximum agent steps of {max_agent_steps}, stopping.",
+                max_agent_steps=self.max_agent_steps,
+            )
+            span.set_content_tag("haystack.agent.final_state", state.data)
+            span.set_tag("haystack.agent.steps_taken", counter)
+            return {**state.data}
