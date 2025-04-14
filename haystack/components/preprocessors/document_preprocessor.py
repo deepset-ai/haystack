@@ -127,23 +127,27 @@ class DocumentPreprocessor:
         pp.add_component("cleaner", cleaner)
         pp.add_component("splitter", splitter)
 
-        # Connect the cleaner output to splitter
-        pp.connect("cleaner.documents", "splitter.documents")
+        # Connect the splitter output to cleaner
+        pp.connect("splitter.documents", "cleaner.documents")
         self.pipeline = pp
 
         # Define how pipeline inputs/outputs map to sub-component inputs/outputs
         self.input_mapping = {
-            # The pipeline input "documents" feeds into "cleaner.documents"
-            "documents": ["cleaner.documents"]
+            # The pipeline input "documents" feeds into "splitter.documents"
+            "documents": ["splitter.documents"]
         }
-        # The pipeline output "documents" comes from "splitter.documents"
-        self.output_mapping = {"splitter.documents": "documents"}
+        # The pipeline output "documents" comes from "cleaner.documents"
+        self.output_mapping = {"cleaner.documents": "documents"}
 
     def to_dict(self) -> Dict[str, Any]:
         """
         Serialize this instance to a dictionary.
         """
-        data = default_to_dict(
+        splitting_function = None
+        if self.splitting_function is not None:
+            splitting_function = serialize_callable(self.splitting_function)
+
+        return default_to_dict(
             self,
             remove_empty_lines=self.remove_empty_lines,
             remove_extra_whitespaces=self.remove_extra_whitespaces,
@@ -157,16 +161,12 @@ class DocumentPreprocessor:
             split_length=self.split_length,
             split_overlap=self.split_overlap,
             split_threshold=self.split_threshold,
+            splitting_function=splitting_function,
             respect_sentence_boundary=self.respect_sentence_boundary,
             language=self.language,
             use_split_rules=self.use_split_rules,
             extend_abbreviations=self.extend_abbreviations,
         )
-
-        if self.splitting_function:
-            data["init_parameters"]["splitting_function"] = serialize_callable(self.splitting_function)
-
-        return data
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "DocumentPreprocessor":
