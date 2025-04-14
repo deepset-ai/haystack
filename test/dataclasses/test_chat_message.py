@@ -265,6 +265,16 @@ def test_from_dict_with_pre212_format_some_fields_missing():
     assert msg.meta == {}
 
 
+def test_from_dict_some_fields_missing():
+    serialized_msg = {"role": "user", "content": [{"text": "This is a message"}]}
+    msg = ChatMessage.from_dict(serialized_msg)
+
+    assert msg.role == ChatRole.USER
+    assert msg._content == [TextContent(text="This is a message")]
+    assert msg.name is None
+    assert msg.meta == {}
+
+
 def test_from_dict_missing_content_field():
     serialized_msg = {"role": "user", "name": "some_name", "meta": {"some": "info"}}
     with pytest.raises(ValueError):
