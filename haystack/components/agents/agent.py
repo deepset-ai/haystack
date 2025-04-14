@@ -128,7 +128,11 @@ class Agent:
             component.set_input_type(self, name=param, type=config["type"], default=None)
         component.set_output_types(self, **output_types)
 
-        self._tool_invoker = ToolInvoker(tools=self.tools, raise_on_failure=self.raise_on_tool_invocation_failure)
+        if self.tools:
+            self._tool_invoker = ToolInvoker(tools=self.tools, raise_on_failure=self.raise_on_tool_invocation_failure)
+        else:
+            logger.warning("No tools provided to the Agent. It will only return text responses.")
+            self._tool_invoker = None
         self._is_warmed_up = False
 
     def warm_up(self) -> None:
@@ -223,8 +227,8 @@ class Agent:
             llm_messages = self.chat_generator.run(messages=messages, **generator_inputs)["replies"]
             state.set("messages", llm_messages)
 
-            # 2. Check if any of the LLM responses contain a tool call
-            if not any(msg.tool_call for msg in llm_messages):
+            # 2. Check if any of the LLM responses contain a tool call or if the LLM is not using tools
+            if not any(msg.tool_call for msg in llm_messages) or self._tool_invoker is None:
                 return {**state.data}
 
             # 3. Call the ToolInvoker
