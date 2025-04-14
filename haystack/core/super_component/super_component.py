@@ -2,14 +2,19 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import functools
+from types import new_class
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from haystack.core.component import component
-from haystack.core.pipeline import Pipeline
+from haystack import logging
+from haystack.core.component.component import component
 from haystack.core.pipeline.async_pipeline import AsyncPipeline
+from haystack.core.pipeline.pipeline import Pipeline
 from haystack.core.pipeline.utils import parse_connect_string
 from haystack.core.serialization import default_from_dict, default_to_dict, generate_qualified_class_name
 from haystack.core.super_component.utils import _delegate_default, _is_compatible
+
+logger = logging.getLogger(__name__)
 
 
 class InvalidMappingTypeError(Exception):
@@ -25,72 +30,7 @@ class InvalidMappingValueError(Exception):
 
 
 @component
-class SuperComponent:
-    """
-    A class for creating super components that wrap around a Pipeline.
-
-    This component allows for remapping of input and output socket names between the wrapped pipeline and the
-    SuperComponent's input and output names. This is useful for creating higher-level components that abstract
-    away the details of the wrapped pipeline.
-
-    ### Usage example
-
-    ```python
-    from haystack import Pipeline, SuperComponent
-    from haystack.components.generators.chat import OpenAIChatGenerator
-    from haystack.components.builders import ChatPromptBuilder
-    from haystack.components.retrievers import InMemoryBM25Retriever
-    from haystack.dataclasses.chat_message import ChatMessage
-    from haystack.document_stores.in_memory import InMemoryDocumentStore
-    from haystack.dataclasses import Document
-
-    document_store = InMemoryDocumentStore()
-    documents = [
-        Document(content="Paris is the capital of France."),
-        Document(content="London is the capital of England."),
-    ]
-    document_store.write_documents(documents)
-
-    prompt_template = [
-        ChatMessage.from_user(
-        '''
-        According to the following documents:
-        {% for document in documents %}
-        {{document.content}}
-        {% endfor %}
-        Answer the given question: {{query}}
-        Answer:
-        '''
-        )
-    ]
-
-    prompt_builder = ChatPromptBuilder(template=prompt_template, required_variables="*")
-
-    pipeline = Pipeline()
-    pipeline.add_component("retriever", InMemoryBM25Retriever(document_store=document_store))
-    pipeline.add_component("prompt_builder", prompt_builder)
-    pipeline.add_component("llm", OpenAIChatGenerator())
-    pipeline.connect("retriever.documents", "prompt_builder.documents")
-    pipeline.connect("prompt_builder.prompt", "llm.messages")
-
-    # Create a super component with simplified input/output mapping
-    wrapper = SuperComponent(
-        pipeline=pipeline,
-        input_mapping={
-            "query": ["retriever.query", "prompt_builder.query"],
-        },
-        output_mapping={"llm.replies": "replies"}
-    )
-
-    # Run the pipeline with simplified interface
-    result = wrapper.run(query="What is the capital of France?")
-    print(result)
-    {'replies': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>,
-     _content=[TextContent(text='The capital of France is Paris.')],...)
-    ```
-
-    """
-
+class _SuperComponent:
     def __init__(
         self,
         pipeline: Union[Pipeline, AsyncPipeline],
@@ -147,32 +87,6 @@ class SuperComponent:
         if not self._warmed_up:
             self.pipeline.warm_up()
             self._warmed_up = True
-
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Serializes the SuperComponent into a dictionary.
-
-        Must be overwritten for prebuilt super components that inherit from SuperComponent.
-
-        :returns:
-            Dictionary with serialized data.
-        """
-        return self._to_super_component_dict()
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SuperComponent":
-        """
-        Deserializes the SuperComponent from a dictionary.
-
-        Must be overwritten for custom component implementations that inherit from SuperComponent.
-
-        :param data: The dictionary to deserialize from.
-        :returns:
-            The deserialized SuperComponent.
-        """
-        pipeline = Pipeline.from_dict(data["init_parameters"]["pipeline"])
-        data["init_parameters"]["pipeline"] = pipeline
-        return default_from_dict(cls, data)
 
     def run(self, **kwargs: Any) -> Dict[str, Any]:
         """
@@ -447,3 +361,161 @@ class SuperComponent:
         )
         serialized["type"] = generate_qualified_class_name(SuperComponent)
         return serialized
+
+
+@component
+class SuperComponent(_SuperComponent):
+    """
+    A class for creating super components that wrap around a Pipeline.
+
+    This component allows for remapping of input and output socket names between the wrapped pipeline and the
+    SuperComponent's input and output names. This is useful for creating higher-level components that abstract
+    away the details of the wrapped pipeline.
+
+    ### Usage example
+
+    ```python
+    from haystack import Pipeline, SuperComponent
+    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.builders import ChatPromptBuilder
+    from haystack.components.retrievers import InMemoryBM25Retriever
+    from haystack.dataclasses.chat_message import ChatMessage
+    from haystack.document_stores.in_memory import InMemoryDocumentStore
+    from haystack.dataclasses import Document
+
+    document_store = InMemoryDocumentStore()
+    documents = [
+        Document(content="Paris is the capital of France."),
+        Document(content="London is the capital of England."),
+    ]
+    document_store.write_documents(documents)
+
+    prompt_template = [
+        ChatMessage.from_user(
+        '''
+        According to the following documents:
+        {% for document in documents %}
+        {{document.content}}
+        {% endfor %}
+        Answer the given question: {{query}}
+        Answer:
+        '''
+        )
+    ]
+
+    prompt_builder = ChatPromptBuilder(template=prompt_template, required_variables="*")
+
+    pipeline = Pipeline()
+    pipeline.add_component("retriever", InMemoryBM25Retriever(document_store=document_store))
+    pipeline.add_component("prompt_builder", prompt_builder)
+    pipeline.add_component("llm", OpenAIChatGenerator())
+    pipeline.connect("retriever.documents", "prompt_builder.documents")
+    pipeline.connect("prompt_builder.prompt", "llm.messages")
+
+    # Create a super component with simplified input/output mapping
+    wrapper = SuperComponent(
+        pipeline=pipeline,
+        input_mapping={
+            "query": ["retriever.query", "prompt_builder.query"],
+        },
+        output_mapping={"llm.replies": "replies"}
+    )
+
+    # Run the pipeline with simplified interface
+    result = wrapper.run(query="What is the capital of France?")
+    print(result)
+    {'replies': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>,
+     _content=[TextContent(text='The capital of France is Paris.')],...)
+    ```
+
+    """
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serializes the SuperComponent into a dictionary.
+
+        :returns:
+            Dictionary with serialized data.
+        """
+        return self._to_super_component_dict()
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "SuperComponent":
+        """
+        Deserializes the SuperComponent from a dictionary.
+
+        :param data: The dictionary to deserialize from.
+        :returns:
+            The deserialized SuperComponent.
+        """
+        pipeline = Pipeline.from_dict(data["init_parameters"]["pipeline"])
+        data["init_parameters"]["pipeline"] = pipeline
+        return default_from_dict(cls, data)
+
+
+def super_component(cls: Any):
+    """
+    Decorator that converts a class into a SuperComponent.
+
+    This decorator:
+    1. Creates a new class that inherits from SuperComponent
+    2. Copies all methods and attributes from the original class
+    3. Adds initialization logic to properly set up the SuperComponent
+
+    The decorated class should define:
+    - pipeline: A Pipeline or AsyncPipeline instance in the __init__ method
+    - input_mapping: Dictionary mapping component inputs to pipeline inputs (optional)
+    - output_mapping: Dictionary mapping pipeline outputs to component outputs (optional)
+    """
+    logger.debug("Registering {cls} as a super_component", cls=cls)
+
+    # Store the original __init__ method
+    original_init = cls.__init__
+
+    # Create a new __init__ method that will initialize both the original class and SuperComponent
+    def init_wrapper(self, *args, **kwargs):
+        # Call the original __init__ to set up pipeline and mappings
+        original_init(self, *args, **kwargs)
+
+        # Verify required attributes
+        if not hasattr(self, "pipeline"):
+            raise ValueError(f"Class {cls.__name__} decorated with @super_component must define a 'pipeline' attribute")
+
+        # Initialize SuperComponent
+        _SuperComponent.__init__(
+            self,
+            pipeline=self.pipeline,
+            input_mapping=getattr(self, "input_mapping", None),
+            output_mapping=getattr(self, "output_mapping", None),
+        )
+
+    # Preserve original init's signature for IDEs/docs/tools
+    init_wrapper = functools.wraps(original_init)(init_wrapper)
+
+    # Function to copy namespace from the original class
+    def copy_class_namespace(namespace):
+        """Copy all attributes from the original class except special ones."""
+        for key, val in dict(cls.__dict__).items():
+            # Skip special attributes that should be recreated
+            if key in ("__dict__", "__weakref__"):
+                continue
+
+            # Override __init__ with our wrapper
+            if key == "__init__":
+                namespace["__init__"] = init_wrapper
+                continue
+
+            namespace[key] = val
+
+    # Create a new class inheriting from SuperComponent with the original methods
+    # We use (SuperComponent,) + cls.__bases__ to make the new class inherit from
+    # SuperComponent and all the original class's bases
+    new_cls = new_class(cls.__name__, (_SuperComponent,) + cls.__bases__, {}, copy_class_namespace)
+
+    # Copy other class attributes
+    new_cls.__module__ = cls.__module__
+    new_cls.__qualname__ = cls.__qualname__
+    new_cls.__doc__ = cls.__doc__
+
+    # Apply the component decorator to the new class
+    return component(new_cls)
