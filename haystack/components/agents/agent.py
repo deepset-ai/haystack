@@ -253,9 +253,7 @@ class Agent:
 
                 # 2. Check if any of the LLM responses contain a tool call
                 if not any(msg.tool_call for msg in llm_messages):
-                    span.set_content_tag("haystack.agent.output_data", state.data)
-                    span.set_tag("haystack.agent.steps_taken", counter)
-                    return state.data
+                    break
 
                 # 3. Call the ToolInvoker
                 # We only send the messages from the LLM to the tool invoker
@@ -272,17 +270,17 @@ class Agent:
 
                 # 4. Check if any LLM message's tool call name matches an exit condition
                 if self.exit_conditions != ["text"] and self._check_exit_conditions(llm_messages, tool_messages):
-                    span.set_content_tag("haystack.agent.output_data", state.data)
-                    span.set_tag("haystack.agent.steps_taken", counter)
-                    return state.data
+                    break
 
                 # 5. Fetch the combined messages and send them back to the LLM
                 messages = state.get("messages")
                 counter += 1
 
-        logger.warning(
-            "Agent exceeded maximum agent steps of {max_agent_steps}, stopping.", max_agent_steps=self.max_agent_steps
-        )
+        if counter >= self.max_agent_steps:
+            logger.warning(
+                "Agent exceeded maximum agent steps of {max_agent_steps}, stopping.",
+                max_agent_steps=self.max_agent_steps,
+            )
         span.set_content_tag("haystack.agent.output_data", state.data)
         span.set_tag("haystack.agent.steps_taken", counter)
         return state.data
@@ -337,9 +335,7 @@ class Agent:
 
                 # 2. Check if any of the LLM responses contain a tool call
                 if not any(msg.tool_call for msg in llm_messages):
-                    span.set_content_tag("haystack.agent.output_data", state.data)
-                    span.set_tag("haystack.agent.steps_taken", counter)
-                    return state.data
+                    break
 
                 # 3. Call the ToolInvoker
                 # We only send the messages from the LLM to the tool invoker
@@ -358,17 +354,17 @@ class Agent:
 
                 # 4. Check if any LLM message's tool call name matches an exit condition
                 if self.exit_conditions != ["text"] and self._check_exit_conditions(llm_messages, tool_messages):
-                    span.set_content_tag("haystack.agent.output_data", state.data)
-                    span.set_tag("haystack.agent.steps_taken", counter)
-                    return state.data
+                    break
 
                 # 5. Fetch the combined messages and send them back to the LLM
                 messages = state.get("messages")
                 counter += 1
 
-        logger.warning(
-            "Agent exceeded maximum agent steps of {max_agent_steps}, stopping.", max_agent_steps=self.max_agent_steps
-        )
+        if counter >= self.max_agent_steps:
+            logger.warning(
+                "Agent exceeded maximum agent steps of {max_agent_steps}, stopping.",
+                max_agent_steps=self.max_agent_steps,
+            )
         span.set_content_tag("haystack.agent.output_data", state.data)
         span.set_tag("haystack.agent.steps_taken", counter)
         return state.data
