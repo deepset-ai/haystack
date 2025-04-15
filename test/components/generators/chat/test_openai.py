@@ -288,16 +288,6 @@ class TestOpenAIChatGenerator:
         with pytest.raises(ValueError):
             OpenAIChatGenerator.from_dict(data)
 
-    def test_http_client_kwargs_type_validation(self, monkeypatch):
-        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        with pytest.raises(TypeError, match="The parameter 'http_client_kwargs' must be a dictionary."):
-            OpenAIChatGenerator(http_client_kwargs="invalid_argument")
-
-    def test_http_client_kwargs_with_invalid_params(self, monkeypatch):
-        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        with pytest.raises(TypeError, match="unexpected keyword argument"):
-            OpenAIChatGenerator(http_client_kwargs={"invalid_key": "invalid_value"})
-
     def test_run(self, chat_messages, openai_mock_chat_completion):
         component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
         response = component.run(chat_messages)

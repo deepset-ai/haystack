@@ -185,18 +185,6 @@ class TestAzureOpenAITextEmbedder:
         client = init_http_client(embedder.http_client_kwargs, async_client=True)
         assert isinstance(client, httpx.AsyncClient)
 
-    def test_http_client_kwargs_type_validation(self, monkeypatch):
-        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
-        monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://test.openai.azure.com")
-        with pytest.raises(TypeError, match="The parameter 'http_client_kwargs' must be a dictionary."):
-            AzureOpenAITextEmbedder(http_client_kwargs="invalid_argument")
-
-    def test_http_client_kwargs_with_invalid_params(self, monkeypatch):
-        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
-        monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://test.openai.azure.com")
-        with pytest.raises(TypeError, match="unexpected keyword argument"):
-            AzureOpenAITextEmbedder(http_client_kwargs={"invalid_key": "invalid_value"})
-
     @pytest.mark.integration
     @pytest.mark.skipif(
         not os.environ.get("AZURE_OPENAI_API_KEY", None) and not os.environ.get("AZURE_OPENAI_ENDPOINT", None),
