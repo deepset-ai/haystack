@@ -5,7 +5,7 @@
 import json
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Sequence, Union
+from typing import Any, Dict, List, Literal, Optional, Sequence, Union
 
 from haystack import logging
 
@@ -86,7 +86,18 @@ class TextContent:
     text: str
 
 
-ChatMessageContentT = Union[TextContent, ToolCall, ToolCallResult]
+@dataclass
+class ImageContent:
+    """
+    The image content of a chat message.
+    """
+
+    base64_image: str
+    mime_type: Optional[str] = None
+    detail: Optional[Literal["auto", "high", "low"]] = None
+
+
+ChatMessageContentT = Union[TextContent, ToolCall, ToolCallResult, ImageContent]
 
 
 def _deserialize_content(serialized_content: List[Dict[str, Any]]) -> List[ChatMessageContentT]:
@@ -112,6 +123,8 @@ def _deserialize_content(serialized_content: List[Dict[str, Any]]) -> List[ChatM
             error = part["tool_call_result"]["error"]
             tcr = ToolCallResult(result=result, origin=origin, error=error)
             content.append(tcr)
+        elif "image" in part:
+            content.append(ImageContent(**part["image"]))
         else:
             raise ValueError(f"Unsupported part in serialized ChatMessage: `{part}`")
 
@@ -344,6 +357,8 @@ class ChatMessage:
                 content.append({"tool_call": asdict(part)})
             elif isinstance(part, ToolCallResult):
                 content.append({"tool_call_result": asdict(part)})
+            elif isinstance(part, ImageContent):
+                content.append({"image": asdict(part)})
             else:
                 raise TypeError(f"Unsupported type in ChatMessage content: `{type(part).__name__}` for `{part}`.")
 
