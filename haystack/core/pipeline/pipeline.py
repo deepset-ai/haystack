@@ -29,8 +29,9 @@ class Pipeline(PipelineBase):
     Orchestrates component execution according to the execution graph, one after the other.
     """
 
+    @staticmethod
     def _run_component(
-        self,
+        component_name: str,
         component: Dict[str, Any],
         inputs: Dict[str, Any],
         component_visits: Dict[str, int],
@@ -39,6 +40,7 @@ class Pipeline(PipelineBase):
         """
         Runs a Component with the given inputs.
 
+        :param component_name: Name of the Component.
         :param component: Component with component metadata.
         :param inputs: Inputs for the Component.
         :param component_visits: Current state of component visits.
@@ -48,21 +50,13 @@ class Pipeline(PipelineBase):
         :return: The output of the Component.
         """
         instance: Component = component["instance"]
-        component_name = self.get_component_name(instance)
-        component_inputs = self._consume_component_inputs(
-            component_name=component_name, component=component, inputs=inputs
-        )
-
-        # We need to add missing defaults using default values from input sockets because the run signature
-        # might not provide these defaults for components with inputs defined dynamically upon component initialization
-        component_inputs = self._add_missing_input_defaults(component_inputs, component["input_sockets"])
 
         with tracing.tracer.trace(
             _COMPONENT_RUN,
             tags={
                 _COMPONENT_NAME: component_name,
                 _COMPONENT_TYPE: instance.__class__.__name__,
-                "haystack.component.input_types": {k: type(v).__name__ for k, v in component_inputs.items()},
+                "haystack.component.input_types": {k: type(v).__name__ for k, v in inputs.items()},
                 "haystack.component.input_spec": {
                     key: {
                         "type": (value.type.__name__ if isinstance(value.type, type) else str(value.type)),
@@ -82,10 +76,10 @@ class Pipeline(PipelineBase):
         ) as span:
             # We deepcopy the inputs otherwise we might lose that information
             # when we delete them in case they're sent to other Components
-            span.set_content_tag(_COMPONENT_INPUT, deepcopy(component_inputs))
+            span.set_content_tag(_COMPONENT_INPUT, deepcopy(inputs))
             logger.info("Running component {component_name}", component_name=component_name)
             try:
-                component_output = instance.run(**component_inputs)
+                component_output = instance.run(**inputs)
             except Exception as error:
                 raise PipelineRuntimeError.from_exception(component_name, instance.__class__, error) from error
             component_visits[component_name] += 1
@@ -252,7 +246,17 @@ class Pipeline(PipelineBase):
                         component_name, component_visits[component_name]
                     )
 
-                component_outputs = self._run_component(component, inputs, component_visits, parent_span=span)
+                component_inputs = self._consume_component_inputs(
+                    component_name=component_name, component=component, inputs=inputs
+                )
+                # We need to add missing defaults using default values from input sockets because the run signature
+                # might not provide these defaults for components with inputs defined dynamically upon component
+                # initialization
+                component_inputs = self._add_missing_input_defaults(component_inputs, component["input_sockets"])
+
+                component_outputs = self._run_component(
+                    component_name, component, component_inputs, component_visits, parent_span=span
+                )
 
                 # Updates global input state with component outputs and returns outputs that should go to
                 # pipeline outputs.

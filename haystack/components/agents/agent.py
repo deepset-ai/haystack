@@ -10,13 +10,7 @@ from typing import Any, Dict, List, Optional
 from haystack import component, default_from_dict, default_to_dict, logging, tracing
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.components.tools import ToolInvoker
-from haystack.core.pipeline.base import (
-    _COMPONENT_INPUT,
-    _COMPONENT_NAME,
-    _COMPONENT_OUTPUT,
-    _COMPONENT_RUN,
-    _COMPONENT_TYPE,
-)
+from haystack.core.pipeline.pipeline import Pipeline
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.state import State, _schema_from_dict, _schema_to_dict, _validate_schema
@@ -194,27 +188,6 @@ class Agent:
 
         return default_from_dict(cls, data)
 
-    def _run_component_with_trace(
-        self, component_name: str, instance: Any, inputs: Dict[str, Any], parent_span: Optional[tracing.Span] = None
-    ) -> Dict[str, Any]:
-        """
-        Run a component instance with tracing.
-        """
-        with tracing.tracer.trace(
-            _COMPONENT_RUN,
-            tags={_COMPONENT_NAME: component_name, _COMPONENT_TYPE: instance.__class__.__name__},
-            parent_span=parent_span,
-        ) as span:
-            span.set_content_tag(_COMPONENT_INPUT, deepcopy(inputs))
-            try:
-                component_output = instance.run(**inputs)
-                span.set_content_tag(_COMPONENT_OUTPUT, component_output)
-                return component_output
-            except Exception as e:
-                span.set_tag("haystack.component.error", True)
-                span.set_tag("haystack.component.error.message", str(e))
-                raise e
-
     def run(
         self,
         messages: List[ChatMessage],
@@ -233,11 +206,12 @@ class Agent:
         if not self._is_warmed_up and hasattr(self.chat_generator, "warm_up"):
             raise RuntimeError("The component Agent wasn't warmed up. Run 'warm_up()' before calling 'run()'.")
 
-        state = State(schema=self.state_schema, data=kwargs)
-        input_data = deepcopy({"messages": messages, "streaming_callback": streaming_callback, **kwargs})
-
         if self.system_prompt is not None:
             messages = [ChatMessage.from_system(self.system_prompt)] + messages
+
+        input_data = deepcopy({"messages": messages, "streaming_callback": streaming_callback, **kwargs})
+
+        state = State(schema=self.state_schema, data=kwargs)
         state.set("messages", messages)
 
         generator_inputs: Dict[str, Any] = {"tools": self.tools}
@@ -245,12 +219,13 @@ class Agent:
         if selected_callback is not None:
             generator_inputs["streaming_callback"] = selected_callback
 
+        component_visits = dict.fromkeys(["chat_generator", "tool_invoker"], 0)
+
         # Create the main agent span
         with tracing.tracer.trace(
             "haystack.agent.run",
             tags={
                 "haystack.agent.input_data": input_data,
-                "haystack.agent.system_prompt": self.system_prompt,
                 "haystack.agent.max_steps": self.max_agent_steps,
                 "haystack.agent.tools": self.tools,
                 "haystack.agent.exit_conditions": self.exit_conditions,
@@ -259,26 +234,29 @@ class Agent:
         ) as span:
             counter = 0
             while counter < self.max_agent_steps:
-                llm_messages = self._run_component_with_trace(
+                # 1. Call the ChatGenerator
+                llm_messages = Pipeline._run_component(
                     component_name="chat_generator",
-                    instance=self.chat_generator,
+                    component={"instance": self.chat_generator},
                     inputs={"messages": messages, **generator_inputs},
+                    component_visits=component_visits,
                     parent_span=span,
                 )["replies"]
                 state.set("messages", llm_messages)
 
                 # 2. Check if any of the LLM responses contain a tool call
                 if not any(msg.tool_call for msg in llm_messages):
-                    span.set_content_tag("haystack.agent.output_data", **state.data)
+                    span.set_content_tag("haystack.agent.output_data", state.data)
                     span.set_tag("haystack.agent.steps_taken", counter)
                     return {**state.data}
 
                 # 3. Call the ToolInvoker
                 # We only send the messages from the LLM to the tool invoker
-                tool_invoker_result = self._run_component_with_trace(
+                tool_invoker_result = Pipeline._run_component(
                     component_name="tool_invoker",
-                    instance=self._tool_invoker,
+                    component={"instance": self._tool_invoker},
                     inputs={"messages": llm_messages, "state": state},
+                    component_visits=component_visits,
                     parent_span=span,
                 )
                 tool_messages = tool_invoker_result["tool_messages"]
@@ -287,7 +265,7 @@ class Agent:
 
                 # 4. Check if any LLM message's tool call name matches an exit condition
                 if self.exit_conditions != ["text"] and self._check_exit_conditions(llm_messages, tool_messages):
-                    span.set_content_tag("haystack.agent.output_data", **state.data)
+                    span.set_content_tag("haystack.agent.output_data", state.data)
                     span.set_tag("haystack.agent.steps_taken", counter)
                     return {**state.data}
 
@@ -298,7 +276,7 @@ class Agent:
         logger.warning(
             "Agent exceeded maximum agent steps of {max_agent_steps}, stopping.", max_agent_steps=self.max_agent_steps
         )
-        span.set_content_tag("haystack.agent.output", **state.data)
+        span.set_content_tag("haystack.agent.output", state.data)
         span.set_tag("haystack.agent.steps_taken", counter)
         return {**state.data}
 
