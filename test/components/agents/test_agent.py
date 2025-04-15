@@ -523,6 +523,9 @@ class TestAgent:
     @pytest.mark.asyncio
     async def test_run_async_falls_back_to_run_when_chat_generator_has_no_run_async(self, weather_tool):
         chat_generator = MockChatGeneratorWithoutRunAsync()
+        chat_generator.__haystack_input__ = MagicMock(_sockets_dict={})
+        chat_generator.__haystack_output__ = MagicMock(_sockets_dict={})
+
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
         agent.warm_up()
 
