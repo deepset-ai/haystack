@@ -320,7 +320,7 @@ class AsyncPipeline(PipelineBase):
 
                 async def _runner():
                     async with ready_sem:
-                        result = await self._run_component_async(
+                        component_pipeline_outputs = await self._run_component_async(
                             component_name=component_name,
                             component=comp_dict,
                             component_inputs=component_inputs,
@@ -329,8 +329,19 @@ class AsyncPipeline(PipelineBase):
                             parent_span=parent_span,
                         )
 
+                    # Distribute outputs to downstream inputs; also prune outputs based on `include_outputs_from`
+                    pruned = self._write_component_outputs(
+                        component_name=component_name,
+                        component_outputs=component_pipeline_outputs,
+                        inputs=inputs_state,
+                        receivers=cached_receivers[component_name],
+                        include_outputs_from=include_outputs_from,
+                    )
+                    if pruned:
+                        pipeline_outputs[component_name] = pruned
+
                     scheduled_components.remove(component_name)
-                    return result
+                    return pruned
 
                 task = asyncio.create_task(_runner())
                 running_tasks[task] = component_name
