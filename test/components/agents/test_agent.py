@@ -14,8 +14,9 @@ from openai import Stream
 from openai.types.chat import ChatCompletionChunk, chat_completion_chunk
 
 from haystack.tracing.logging_tracer import LoggingTracer
-from haystack import tracing
+from haystack import Pipeline, tracing
 from haystack.components.agents import Agent
+from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.generators.chat.types import ChatGenerator
@@ -786,3 +787,61 @@ class TestAgentTracing:
         # Clean up
         tracing.tracer.is_content_tracing_enabled = False
         tracing.disable_tracing()
+
+    def test_agent_tracing_in_pipeline(self, caplog, monkeypatch, weather_tool):
+        chat_generator = MockChatGeneratorWithoutRunAsync()
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
+        agent.warm_up()
+
+        tracing.tracer.is_content_tracing_enabled = True
+        tracing.enable_tracing(LoggingTracer())
+        caplog.set_level(logging.DEBUG)
+
+        pipeline = Pipeline()
+        pipeline.add_component(
+            "prompt_builder", ChatPromptBuilder(template=[ChatMessage.from_user("Hello {{location}}")])
+        )
+        pipeline.add_component("agent", agent)
+        pipeline.connect("prompt_builder.prompt", "agent.messages")
+
+        pipeline.run(data={"prompt_builder": {"location": "Berlin"}})
+
+        assert any("Operation: haystack.pipeline.run" in record.message for record in caplog.records)
+        tags_records = [r for r in caplog.records if hasattr(r, "tag_name")]
+        expected_tag_names = [
+            "haystack.component.name",
+            "haystack.component.type",
+            "haystack.component.input_types",
+            "haystack.component.input_spec",
+            "haystack.component.output_spec",
+            "haystack.component.input",
+            "haystack.component.visits",
+            "haystack.component.output",
+            "haystack.component.name",
+            "haystack.component.type",
+            "haystack.component.input_types",
+            "haystack.component.input_spec",
+            "haystack.component.output_spec",
+            "haystack.component.input",
+            "haystack.component.visits",
+            "haystack.component.output",
+            "haystack.agent.input_data",
+            "haystack.agent.max_steps",
+            "haystack.agent.tools",
+            "haystack.agent.exit_conditions",
+            "haystack.agent.state_schema",
+            "haystack.component.name",
+            "haystack.component.type",
+            "haystack.component.input_types",
+            "haystack.component.input_spec",
+            "haystack.component.output_spec",
+            "haystack.component.input",
+            "haystack.component.visits",
+            "haystack.component.output",
+            "haystack.pipeline.input_data",
+            "haystack.pipeline.output_data",
+            "haystack.pipeline.metadata",
+            "haystack.pipeline.max_runs_per_component",
+        ]
+        for idx, record in enumerate(tags_records):
+            assert record.tag_name == expected_tag_names[idx]
