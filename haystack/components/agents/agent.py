@@ -239,8 +239,7 @@ class Agent:
         component_visits = dict.fromkeys(["chat_generator", "tool_invoker"], 0)
         with self._create_agent_span() as span:
             span.set_content_tag("haystack.agent.input", input_data)
-            counter = 0
-            while counter < self.max_agent_steps:
+            for counter in range(self.max_agent_steps):
                 # 1. Call the ChatGenerator
                 llm_messages = Pipeline._run_component(
                     component_name="chat_generator",
@@ -274,7 +273,6 @@ class Agent:
 
                 # 5. Fetch the combined messages and send them back to the LLM
                 messages = state.get("messages")
-                counter += 1
 
             if counter >= self.max_agent_steps:
                 logger.warning(
@@ -320,8 +318,7 @@ class Agent:
         component_visits = dict.fromkeys(["chat_generator", "tool_invoker"], 0)
         with self._create_agent_span() as span:
             span.set_content_tag("haystack.agent.input", input_data)
-            counter = 0
-            while counter < self.max_agent_steps:
+            for counter in range(self.max_agent_steps):
                 # 1. Call the ChatGenerator
                 result = await AsyncPipeline._run_component_async(
                     component_name="chat_generator",
@@ -359,7 +356,6 @@ class Agent:
 
                 # 5. Fetch the combined messages and send them back to the LLM
                 messages = state.get("messages")
-                counter += 1
 
             if counter >= self.max_agent_steps:
                 logger.warning(
