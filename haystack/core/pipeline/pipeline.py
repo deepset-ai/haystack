@@ -10,10 +10,8 @@ from haystack.core.component import Component
 from haystack.core.errors import PipelineRuntimeError
 from haystack.core.pipeline.base import (
     _COMPONENT_INPUT,
-    _COMPONENT_NAME,
     _COMPONENT_OUTPUT,
-    _COMPONENT_RUN,
-    _COMPONENT_TYPE,
+    _COMPONENT_VISITS,
     ComponentPriority,
     PipelineBase,
 )
@@ -51,28 +49,8 @@ class Pipeline(PipelineBase):
         """
         instance: Component = component["instance"]
 
-        with tracing.tracer.trace(
-            _COMPONENT_RUN,
-            tags={
-                _COMPONENT_NAME: component_name,
-                _COMPONENT_TYPE: instance.__class__.__name__,
-                "haystack.component.input_types": {k: type(v).__name__ for k, v in inputs.items()},
-                "haystack.component.input_spec": {
-                    key: {
-                        "type": (value.type.__name__ if isinstance(value.type, type) else str(value.type)),
-                        "senders": value.senders,
-                    }
-                    for key, value in instance.__haystack_input__._sockets_dict.items()  # type: ignore
-                },
-                "haystack.component.output_spec": {
-                    key: {
-                        "type": (value.type.__name__ if isinstance(value.type, type) else str(value.type)),
-                        "receivers": value.receivers,
-                    }
-                    for key, value in instance.__haystack_output__._sockets_dict.items()  # type: ignore
-                },
-            },
-            parent_span=parent_span,
+        with PipelineBase._create_component_span(
+            component_name=component_name, instance=instance, inputs=inputs, parent_span=parent_span
         ) as span:
             # We deepcopy the inputs otherwise we might lose that information
             # when we delete them in case they're sent to other Components
@@ -87,7 +65,7 @@ class Pipeline(PipelineBase):
             if not isinstance(component_output, Mapping):
                 raise PipelineRuntimeError.from_invalid_output(component_name, instance.__class__, component_output)
 
-            span.set_tag("haystack.component.visits", component_visits[component_name])
+            span.set_tag(_COMPONENT_VISITS, component_visits[component_name])
             span.set_content_tag(_COMPONENT_OUTPUT, component_output)
 
             return cast(Dict[Any, Any], component_output)
