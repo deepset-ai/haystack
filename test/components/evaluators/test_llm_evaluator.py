@@ -39,7 +39,6 @@ class TestLLMEvaluator:
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         with pytest.raises(ValueError, match="None of the .* environment variables are set"):
             LLMEvaluator(
-                api="openai",
                 instructions="test-instruction",
                 inputs=[("predicted_answers", List[str])],
                 outputs=["score"],
@@ -47,37 +46,6 @@ class TestLLMEvaluator:
                     {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
                 ],
             )
-
-    def test_init_with_parameters(self):
-        component = LLMEvaluator(
-            instructions="test-instruction",
-            api_key=Secret.from_token("test-api-key"),
-            api_params={"generation_kwargs": {"seed": 43}},
-            inputs=[("predicted_answers", List[str])],
-            outputs=["custom_score"],
-            api="openai",
-            examples=[
-                {
-                    "inputs": {"predicted_answers": "Damn, this is straight outta hell!!!"},
-                    "outputs": {"custom_score": 1},
-                },
-                {
-                    "inputs": {"predicted_answers": "Football is the most popular sport."},
-                    "outputs": {"custom_score": 0},
-                },
-            ],
-        )
-        assert component.examples == [
-            {"inputs": {"predicted_answers": "Damn, this is straight outta hell!!!"}, "outputs": {"custom_score": 1}},
-            {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"custom_score": 0}},
-        ]
-        assert component.instructions == "test-instruction"
-        assert component.inputs == [("predicted_answers", List[str])]
-        assert component.outputs == ["custom_score"]
-
-        assert isinstance(component._chat_generator, OpenAIChatGenerator)
-        assert component._chat_generator.client.api_key == "test-api-key"
-        assert component._chat_generator.generation_kwargs == {"response_format": {"type": "json_object"}, "seed": 43}
 
     def test_init_with_chat_generator(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -94,39 +62,6 @@ class TestLLMEvaluator:
         )
 
         assert component._chat_generator is chat_generator
-
-    def test_init_with_api_and_chat_generator(self, monkeypatch):
-        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        chat_generator = OpenAIChatGenerator(generation_kwargs={"key_from_chat_generator": "value_from_chat_generator"})
-
-        evaluator = LLMEvaluator(
-            instructions="test-instruction",
-            api="openai",
-            api_params={"generation_kwargs": {"key_from_api": "value_from_api"}},
-            chat_generator=chat_generator,
-            inputs=[("predicted_answers", List[str])],
-            outputs=["custom_score"],
-            examples=[
-                {"inputs": {"predicted_answers": "answer 1"}, "outputs": {"custom_score": 1}},
-                {"inputs": {"predicted_answers": "answer 2"}, "outputs": {"custom_score": 0}},
-            ],
-        )
-
-        assert evaluator._chat_generator is chat_generator
-        assert evaluator._chat_generator.generation_kwargs == {"key_from_chat_generator": "value_from_chat_generator"}
-
-    def test_init_fail_with_api_not_openai(self):
-        with pytest.raises(ValueError):
-            LLMEvaluator(
-                instructions="test-instruction",
-                api="unsupported_api",
-                inputs=[("predicted_answers", List[str])],
-                outputs=["custom_score"],
-                examples=[
-                    {"inputs": {"predicted_answers": "answer 1"}, "outputs": {"custom_score": 1}},
-                    {"inputs": {"predicted_answers": "answer 2"}, "outputs": {"custom_score": 0}},
-                ],
-            )
 
     def test_init_with_invalid_parameters(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -252,7 +187,6 @@ class TestLLMEvaluator:
         component = LLMEvaluator(
             instructions="test-instruction",
             inputs=[("predicted_answers", List[str])],
-            api_key=Secret.from_env_var("OPENAI_API_KEY"),
             outputs=["score"],
             examples=[
                 {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
@@ -274,18 +208,13 @@ class TestLLMEvaluator:
         }
 
     def test_to_dict_with_parameters(self, monkeypatch):
-        monkeypatch.setenv("ENV_VAR", "test-api-key")
-        chat_generator = OpenAIChatGenerator(
-            generation_kwargs={"response_format": {"type": "json_object"}, "seed": 42},
-            api_key=Secret.from_env_var("ENV_VAR"),
-        )
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        chat_generator = OpenAIChatGenerator(generation_kwargs={"response_format": {"type": "json_object"}, "seed": 42})
 
         component = LLMEvaluator(
             instructions="test-instruction",
-            api_key=Secret.from_env_var("ENV_VAR"),
             inputs=[("predicted_answers", List[str])],
             outputs=["custom_score"],
-            api="openai",
             examples=[
                 {
                     "inputs": {"predicted_answers": "Damn, this is straight outta hell!!!"},
@@ -318,35 +247,6 @@ class TestLLMEvaluator:
                 ],
             },
         }
-
-    def test_from_dict_legacy(self, monkeypatch):
-        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-
-        data = {
-            "type": "haystack.components.evaluators.llm_evaluator.LLMEvaluator",
-            "init_parameters": {
-                "api_params": {"generation_kwargs": {"response_format": {"type": "json_object"}, "seed": 42}},
-                "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
-                "api": "openai",
-                "instructions": "test-instruction",
-                "inputs": [["predicted_answers", "typing.List[str]"]],
-                "outputs": ["score"],
-                "examples": [
-                    {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
-                ],
-            },
-        }
-
-        component = LLMEvaluator.from_dict(data)
-        assert isinstance(component._chat_generator, OpenAIChatGenerator)
-        assert component._chat_generator.client.api_key == "test-api-key"
-        assert component._chat_generator.generation_kwargs == {"response_format": {"type": "json_object"}, "seed": 42}
-        assert component.instructions == "test-instruction"
-        assert component.inputs == [("predicted_answers", List[str])]
-        assert component.outputs == ["score"]
-        assert component.examples == [
-            {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
-        ]
 
     def test_from_dict(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -525,75 +425,3 @@ class TestLLMEvaluator:
         )
         with pytest.raises(ValueError):
             component.is_valid_json_and_has_expected_keys(expected=["score"], received="some_invalid_json_output")
-
-    def test_unsupported_api(self):
-        with pytest.raises(ValueError):
-            LLMEvaluator(
-                api="unsupported_api",
-                instructions="test-instruction",
-                inputs=[("predicted_answers", List[str])],
-                outputs=["score"],
-                examples=[
-                    {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
-                ],
-            )
-
-    def test_init_with_base_url(self):
-        component = LLMEvaluator(
-            instructions="test-instruction",
-            api_key=Secret.from_token("test-api-key"),
-            api_params={"api_base_url": "http://127.0.0.1:11434/v1"},
-            inputs=[("predicted_answers", List[str])],
-            outputs=["custom_score"],
-            api="openai",
-            examples=[
-                {
-                    "inputs": {"predicted_answers": "Damn, this is straight outta hell!!!"},
-                    "outputs": {"custom_score": 1},
-                },
-                {
-                    "inputs": {"predicted_answers": "Football is the most popular sport."},
-                    "outputs": {"custom_score": 0},
-                },
-            ],
-        )
-
-        assert isinstance(component._chat_generator, OpenAIChatGenerator)
-        assert component._chat_generator.client.api_key == "test-api-key"
-        assert component._chat_generator.generation_kwargs == {"response_format": {"type": "json_object"}, "seed": 42}
-        assert component._chat_generator.api_base_url == "http://127.0.0.1:11434/v1"
-
-        assert component.examples == [
-            {"inputs": {"predicted_answers": "Damn, this is straight outta hell!!!"}, "outputs": {"custom_score": 1}},
-            {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"custom_score": 0}},
-        ]
-        assert component.instructions == "test-instruction"
-        assert component.inputs == [("predicted_answers", List[str])]
-        assert component.outputs == ["custom_score"]
-
-    @pytest.mark.skipif(
-        not (os.environ.get("API_BASE_URL") and os.environ.get("MODEL_NAME")),
-        reason="Export env vars API_BASE_URL and MODEL_NAME containing the OpenAI API compatible server URL and the model name to run this test.",
-    )
-    @pytest.mark.integration
-    def test_run_with_base_url(self):
-        component = LLMEvaluator(
-            instructions="test-instruction",
-            api_key=Secret.from_token("test-api-key"),
-            api_params={"api_base_url": os.environ["API_BASE_URL"], "model": os.environ["MODEL_NAME"]},
-            inputs=[("predicted_answers", List[str])],
-            outputs=["custom_score"],
-            api="openai",
-            examples=[
-                {
-                    "inputs": {"predicted_answers": "Damn, this is straight outta hell!!!"},
-                    "outputs": {"custom_score": 1},
-                },
-                {
-                    "inputs": {"predicted_answers": "Football is the most popular sport."},
-                    "outputs": {"custom_score": 0},
-                },
-            ],
-        )
-        component.run(predicted_answers=["Damn, this is straight outta hell!!!", "Football is the most popular sport."])
-        assert component.outputs == ["custom_score"]
