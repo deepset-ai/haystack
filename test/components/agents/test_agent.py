@@ -845,3 +845,7 @@ class TestAgentTracing:
         ]
         for idx, record in enumerate(tags_records):
             assert record.tag_name == expected_tag_names[idx]
+
+        # Clean up
+        tracing.tracer.is_content_tracing_enabled = False
+        tracing.disable_tracing()
