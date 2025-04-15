@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    map nonleaf pipelines outputs to the supercomponents output.
