@@ -640,11 +640,13 @@ class TestAgentTracing:
             "haystack.component.input",
             "haystack.component.visits",
             "haystack.component.output",
-            "haystack.agent.input_data",
             "haystack.agent.max_steps",
             "haystack.agent.tools",
             "haystack.agent.exit_conditions",
             "haystack.agent.state_schema",
+            "haystack.agent.input",
+            "haystack.agent.output",
+            "haystack.agent.steps_taken",
         ]
 
         expected_tag_values = [
@@ -673,7 +675,6 @@ class TestAgentTracing:
             },
             1,
             {"replies": [ChatMessage.from_assistant(text="Hello")]},
-            {"messages": [ChatMessage.from_user(text="What's the weather in Paris?")], "streaming_callback": None},
             100,
             [
                 Tool(
@@ -692,6 +693,14 @@ class TestAgentTracing:
             ],
             ["text"],
             {"messages": {"type": List[ChatMessage], "handler": merge_lists}},
+            {"messages": [ChatMessage.from_user(text="What's the weather in Paris?")], "streaming_callback": None},
+            {
+                "messages": [
+                    ChatMessage.from_user(text="What's the weather in Paris?"),
+                    ChatMessage.from_assistant(text="Hello"),
+                ]
+            },
+            0,
         ]
         for idx, record in enumerate(tags_records):
             assert record.tag_name == expected_tag_names[idx]
@@ -727,11 +736,13 @@ class TestAgentTracing:
             "haystack.component.input",
             "haystack.component.visits",
             "haystack.component.output",
-            "haystack.agent.input_data",
             "haystack.agent.max_steps",
             "haystack.agent.tools",
             "haystack.agent.exit_conditions",
             "haystack.agent.state_schema",
+            "haystack.agent.input",
+            "haystack.agent.output",
+            "haystack.agent.steps_taken",
         ]
 
         expected_tag_values = [
@@ -760,7 +771,6 @@ class TestAgentTracing:
             },
             1,
             {"replies": [ChatMessage.from_assistant(text="Hello from run_async")]},
-            {"messages": [ChatMessage.from_user(text="What's the weather in Paris?")], "streaming_callback": None},
             100,
             [
                 Tool(
@@ -779,6 +789,14 @@ class TestAgentTracing:
             ],
             ["text"],
             {"messages": {"type": List[ChatMessage], "handler": merge_lists}},
+            {"messages": [ChatMessage.from_user(text="What's the weather in Paris?")], "streaming_callback": None},
+            {
+                "messages": [
+                    ChatMessage.from_user(text="What's the weather in Paris?"),
+                    ChatMessage.from_assistant(text="Hello from run_async"),
+                ]
+            },
+            0,
         ]
         for idx, record in enumerate(tags_records):
             assert record.tag_name == expected_tag_names[idx]
@@ -825,11 +843,13 @@ class TestAgentTracing:
             "haystack.component.input",
             "haystack.component.visits",
             "haystack.component.output",
-            "haystack.agent.input_data",
             "haystack.agent.max_steps",
             "haystack.agent.tools",
             "haystack.agent.exit_conditions",
             "haystack.agent.state_schema",
+            "haystack.agent.input",
+            "haystack.agent.output",
+            "haystack.agent.steps_taken",
             "haystack.component.name",
             "haystack.component.type",
             "haystack.component.input_types",

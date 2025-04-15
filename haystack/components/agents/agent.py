@@ -196,12 +196,11 @@ class Agent:
             generator_inputs["streaming_callback"] = selected_callback
         return generator_inputs
 
-    def _create_agent_span(self, input_data: Dict[str, Any]) -> Iterator[tracing.Span]:
+    def _create_agent_span(self) -> Iterator[tracing.Span]:
         """Create a span for the agent run."""
         return tracing.tracer.trace(
             "haystack.agent.run",
             tags={
-                "haystack.agent.input_data": input_data,
                 "haystack.agent.max_steps": self.max_agent_steps,
                 "haystack.agent.tools": self.tools,
                 "haystack.agent.exit_conditions": self.exit_conditions,
@@ -238,7 +237,8 @@ class Agent:
         generator_inputs = self._prepare_generator_inputs(streaming_callback=streaming_callback)
 
         component_visits = dict.fromkeys(["chat_generator", "tool_invoker"], 0)
-        with self._create_agent_span(input_data) as span:
+        with self._create_agent_span() as span:
+            span.set_content_tag("haystack.agent.input", input_data)
             counter = 0
             while counter < self.max_agent_steps:
                 # 1. Call the ChatGenerator
@@ -276,13 +276,13 @@ class Agent:
                 messages = state.get("messages")
                 counter += 1
 
-        if counter >= self.max_agent_steps:
-            logger.warning(
-                "Agent exceeded maximum agent steps of {max_agent_steps}, stopping.",
-                max_agent_steps=self.max_agent_steps,
-            )
-        span.set_content_tag("haystack.agent.output_data", state.data)
-        span.set_tag("haystack.agent.steps_taken", counter)
+            if counter >= self.max_agent_steps:
+                logger.warning(
+                    "Agent exceeded maximum agent steps of {max_agent_steps}, stopping.",
+                    max_agent_steps=self.max_agent_steps,
+                )
+            span.set_content_tag("haystack.agent.output", state.data)
+            span.set_tag("haystack.agent.steps_taken", counter)
         return state.data
 
     async def run_async(
@@ -318,7 +318,8 @@ class Agent:
         generator_inputs = self._prepare_generator_inputs(streaming_callback=streaming_callback)
 
         component_visits = dict.fromkeys(["chat_generator", "tool_invoker"], 0)
-        with self._create_agent_span(input_data) as span:
+        with self._create_agent_span() as span:
+            span.set_content_tag("haystack.agent.input", input_data)
             counter = 0
             while counter < self.max_agent_steps:
                 # 1. Call the ChatGenerator
@@ -360,13 +361,13 @@ class Agent:
                 messages = state.get("messages")
                 counter += 1
 
-        if counter >= self.max_agent_steps:
-            logger.warning(
-                "Agent exceeded maximum agent steps of {max_agent_steps}, stopping.",
-                max_agent_steps=self.max_agent_steps,
-            )
-        span.set_content_tag("haystack.agent.output_data", state.data)
-        span.set_tag("haystack.agent.steps_taken", counter)
+            if counter >= self.max_agent_steps:
+                logger.warning(
+                    "Agent exceeded maximum agent steps of {max_agent_steps}, stopping.",
+                    max_agent_steps=self.max_agent_steps,
+                )
+            span.set_content_tag("haystack.agent.output", state.data)
+            span.set_tag("haystack.agent.steps_taken", counter)
         return state.data
 
     def _check_exit_conditions(self, llm_messages: List[ChatMessage], tool_messages: List[ChatMessage]) -> bool:
