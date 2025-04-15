@@ -8,7 +8,15 @@ from typing import Any, Dict, Mapping, Optional, Set, cast
 from haystack import logging, tracing
 from haystack.core.component import Component
 from haystack.core.errors import PipelineRuntimeError
-from haystack.core.pipeline.base import ComponentPriority, PipelineBase
+from haystack.core.pipeline.base import (
+    _COMPONENT_INPUT,
+    _COMPONENT_NAME,
+    _COMPONENT_OUTPUT,
+    _COMPONENT_RUN,
+    _COMPONENT_TYPE,
+    ComponentPriority,
+    PipelineBase,
+)
 from haystack.telemetry import pipeline_running
 
 logger = logging.getLogger(__name__)
@@ -50,10 +58,10 @@ class Pipeline(PipelineBase):
         component_inputs = self._add_missing_input_defaults(component_inputs, component["input_sockets"])
 
         with tracing.tracer.trace(
-            "haystack.component.run",
+            _COMPONENT_RUN,
             tags={
-                "haystack.component.name": component_name,
-                "haystack.component.type": instance.__class__.__name__,
+                _COMPONENT_NAME: component_name,
+                _COMPONENT_TYPE: instance.__class__.__name__,
                 "haystack.component.input_types": {k: type(v).__name__ for k, v in component_inputs.items()},
                 "haystack.component.input_spec": {
                     key: {
@@ -74,7 +82,7 @@ class Pipeline(PipelineBase):
         ) as span:
             # We deepcopy the inputs otherwise we might lose that information
             # when we delete them in case they're sent to other Components
-            span.set_content_tag("haystack.component.input", deepcopy(component_inputs))
+            span.set_content_tag(_COMPONENT_INPUT, deepcopy(component_inputs))
             logger.info("Running component {component_name}", component_name=component_name)
             try:
                 component_output = instance.run(**component_inputs)
@@ -86,7 +94,7 @@ class Pipeline(PipelineBase):
                 raise PipelineRuntimeError.from_invalid_output(component_name, instance.__class__, component_output)
 
             span.set_tag("haystack.component.visits", component_visits[component_name])
-            span.set_content_tag("haystack.component.output", component_output)
+            span.set_content_tag(_COMPONENT_OUTPUT, component_output)
 
             return cast(Dict[Any, Any], component_output)
 

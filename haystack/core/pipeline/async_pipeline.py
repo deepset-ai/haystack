@@ -9,7 +9,15 @@ from typing import Any, AsyncIterator, Dict, List, Optional, Set
 from haystack import logging, tracing
 from haystack.core.component import Component
 from haystack.core.errors import PipelineMaxComponentRuns, PipelineRuntimeError
-from haystack.core.pipeline.base import ComponentPriority, PipelineBase
+from haystack.core.pipeline.base import (
+    _COMPONENT_INPUT,
+    _COMPONENT_NAME,
+    _COMPONENT_OUTPUT,
+    _COMPONENT_RUN,
+    _COMPONENT_TYPE,
+    ComponentPriority,
+    PipelineBase,
+)
 from haystack.telemetry import pipeline_running
 
 logger = logging.getLogger(__name__)
@@ -182,10 +190,10 @@ class AsyncPipeline(PipelineBase):
 
                 instance: Component = self.get_component(component_name)
                 with tracing.tracer.trace(
-                    "haystack.component.run",
+                    _COMPONENT_RUN,
                     tags={
-                        "haystack.component.name": component_name,
-                        "haystack.component.type": instance.__class__.__name__,
+                        _COMPONENT_NAME: component_name,
+                        _COMPONENT_TYPE: instance.__class__.__name__,
                         "haystack.component.input_types": {k: type(v).__name__ for k, v in component_inputs.items()},
                         "haystack.component.input_spec": {
                             key: {
@@ -204,7 +212,7 @@ class AsyncPipeline(PipelineBase):
                     },
                     parent_span=parent_span,
                 ) as span:
-                    span.set_content_tag("haystack.component.input", deepcopy(component_inputs))
+                    span.set_content_tag(_COMPONENT_INPUT, deepcopy(component_inputs))
                     logger.info("Running component {component_name}", component_name=component_name)
 
                     if getattr(instance, "__haystack_supports_async__", False):
@@ -224,7 +232,7 @@ class AsyncPipeline(PipelineBase):
                         raise PipelineRuntimeError.from_invalid_output(component_name, instance.__class__, outputs)
 
                     span.set_tag("haystack.component.visits", component_visits[component_name])
-                    span.set_content_tag("haystack.component.output", deepcopy(outputs))
+                    span.set_content_tag(_COMPONENT_OUTPUT, deepcopy(outputs))
 
                     # Distribute outputs to downstream inputs; also prune outputs based on `include_outputs_from`
                     pruned = self._write_component_outputs(

@@ -53,6 +53,14 @@ T = TypeVar("T", bound="PipelineBase")
 logger = logging.getLogger(__name__)
 
 
+# Constants for tracing tags
+_COMPONENT_RUN = "haystack.component.run"
+_COMPONENT_NAME = "haystack.component.name"
+_COMPONENT_TYPE = "haystack.component.type"
+_COMPONENT_INPUT = "haystack.component.input"
+_COMPONENT_OUTPUT = "haystack.component.output"
+
+
 class ComponentPriority(IntEnum):
     HIGHEST = 1
     READY = 2
