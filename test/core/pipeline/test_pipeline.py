@@ -51,6 +51,7 @@ class TestPipeline:
         inputs = {"joiner_1": {"value": [{"sender": None, "value": "test_value"}]}}
 
         outputs = pp._run_component(
+            component_name="joiner_1",
             component=pp._get_component_with_graph_metadata_and_visits("joiner_1", 0),
             inputs=inputs,
             component_visits={"joiner_1": 0, "joiner_2": 0},
@@ -77,6 +78,7 @@ class TestPipeline:
 
         with pytest.raises(PipelineRuntimeError) as exc_info:
             pp._run_component(
+                component_name="wrong",
                 component=pp._get_component_with_graph_metadata_and_visits("wrong", 0),
                 inputs=inputs,
                 component_visits={"wrong": 0},
@@ -101,6 +103,7 @@ class TestPipeline:
 
         with pytest.raises(PipelineRuntimeError) as exc_info:
             pp._run_component(
+                component_name="erroring_component",
                 component=pp._get_component_with_graph_metadata_and_visits("erroring_component", 0),
                 inputs=inputs,
                 component_visits={"erroring_component": 0},
