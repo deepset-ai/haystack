@@ -19,7 +19,6 @@ from haystack.components.agents import Agent
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.generators.chat.types import ChatGenerator
-from haystack import component
 from haystack.core.component.types import OutputSocket
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.dataclasses.chat_message import ChatRole, TextContent
@@ -687,7 +686,8 @@ class TestAgentTracing:
         tracing.tracer.is_content_tracing_enabled = False
         tracing.disable_tracing()
 
-    def test_agent_tracing_span_async_run(self, caplog, monkeypatch, weather_tool):
+    @pytest.mark.asyncio
+    async def test_agent_tracing_span_async_run(self, caplog, monkeypatch, weather_tool):
         chat_generator = MockChatGeneratorWithRunAsync()
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
 
@@ -695,7 +695,7 @@ class TestAgentTracing:
         tracing.enable_tracing(LoggingTracer())
         caplog.set_level(logging.DEBUG)
 
-        _ = agent.run([ChatMessage.from_user("What's the weather in Paris?")])
+        _ = await agent.run_async([ChatMessage.from_user("What's the weather in Paris?")])
 
         # Ensure tracing span was emitted
         assert any("Operation: haystack.component.run" in record.message for record in caplog.records)
@@ -744,7 +744,7 @@ class TestAgentTracing:
                 ],
             },
             1,
-            {"replies": [ChatMessage.from_assistant(text="Hello")]},
+            {"replies": [ChatMessage.from_assistant(text="Hello from run_async")]},
             {"messages": [ChatMessage.from_user(text="What's the weather in Paris?")], "streaming_callback": None},
             100,
             [
