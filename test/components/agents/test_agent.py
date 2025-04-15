@@ -495,6 +495,27 @@ class TestAgent:
             == "{'weather': 'mostly sunny', 'temperature': 7, 'unit': 'celsius'}"
         )
 
+    def test_exceed_max_steps(self, monkeypatch, weather_tool, caplog):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        generator = OpenAIChatGenerator()
+
+        mock_messages = [
+            ChatMessage.from_assistant("First response"),
+            ChatMessage.from_assistant(
+                tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
+            ),
+        ]
+
+        agent = Agent(chat_generator=generator, tools=[weather_tool], max_agent_steps=0)
+        agent.warm_up()
+
+        # Patch agent.chat_generator.run to return mock_messages
+        agent.chat_generator.run = MagicMock(return_value={"replies": mock_messages})
+
+        with caplog.at_level(logging.WARNING):
+            agent.run([ChatMessage.from_user("Hello")])
+            assert "Agent exceeded maximum agent steps" in caplog.text
+
     def test_exit_conditions_checked_across_all_llm_messages(self, monkeypatch, weather_tool):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
         generator = OpenAIChatGenerator()
@@ -700,7 +721,7 @@ class TestAgentTracing:
                     ChatMessage.from_assistant(text="Hello"),
                 ]
             },
-            0,
+            1,
         ]
         for idx, record in enumerate(tags_records):
             assert record.tag_name == expected_tag_names[idx]
@@ -796,7 +817,7 @@ class TestAgentTracing:
                     ChatMessage.from_assistant(text="Hello from run_async"),
                 ]
             },
-            0,
+            1,
         ]
         for idx, record in enumerate(tags_records):
             assert record.tag_name == expected_tag_names[idx]

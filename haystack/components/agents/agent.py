@@ -239,7 +239,8 @@ class Agent:
         component_visits = dict.fromkeys(["chat_generator", "tool_invoker"], 0)
         with self._create_agent_span() as span:
             span.set_content_tag("haystack.agent.input", input_data)
-            for counter in range(self.max_agent_steps):
+            counter = 0
+            while counter < self.max_agent_steps:
                 # 1. Call the ChatGenerator
                 llm_messages = Pipeline._run_component(
                     component_name="chat_generator",
@@ -252,6 +253,7 @@ class Agent:
 
                 # 2. Check if any of the LLM responses contain a tool call
                 if not any(msg.tool_call for msg in llm_messages):
+                    counter += 1
                     break
 
                 # 3. Call the ToolInvoker
@@ -269,10 +271,12 @@ class Agent:
 
                 # 4. Check if any LLM message's tool call name matches an exit condition
                 if self.exit_conditions != ["text"] and self._check_exit_conditions(llm_messages, tool_messages):
+                    counter += 1
                     break
 
                 # 5. Fetch the combined messages and send them back to the LLM
                 messages = state.get("messages")
+                counter += 1
 
             if counter >= self.max_agent_steps:
                 logger.warning(
@@ -318,7 +322,8 @@ class Agent:
         component_visits = dict.fromkeys(["chat_generator", "tool_invoker"], 0)
         with self._create_agent_span() as span:
             span.set_content_tag("haystack.agent.input", input_data)
-            for counter in range(self.max_agent_steps):
+            counter = 0
+            while counter < self.max_agent_steps:
                 # 1. Call the ChatGenerator
                 result = await AsyncPipeline._run_component_async(
                     component_name="chat_generator",
@@ -333,6 +338,7 @@ class Agent:
 
                 # 2. Check if any of the LLM responses contain a tool call
                 if not any(msg.tool_call for msg in llm_messages):
+                    counter += 1
                     break
 
                 # 3. Call the ToolInvoker
@@ -352,10 +358,12 @@ class Agent:
 
                 # 4. Check if any LLM message's tool call name matches an exit condition
                 if self.exit_conditions != ["text"] and self._check_exit_conditions(llm_messages, tool_messages):
+                    counter += 1
                     break
 
                 # 5. Fetch the combined messages and send them back to the LLM
                 messages = state.get("messages")
+                counter += 1
 
             if counter >= self.max_agent_steps:
                 logger.warning(
