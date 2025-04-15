@@ -40,26 +40,40 @@ class TestPipeline:
         for span in component_spans:
             assert span.tags["haystack.component.visits"] == 1
 
+    def test_prepare_component_inputs(self):
+        joiner_1 = BranchJoiner(type_=str)
+        joiner_2 = BranchJoiner(type_=str)
+        pp = Pipeline()
+        component_name = "joiner_1"
+        pp.add_component(component_name, joiner_1)
+        pp.add_component("joiner_2", joiner_2)
+        pp.connect(component_name, "joiner_2")
+        inputs = {"joiner_1": {"value": [{"sender": None, "value": "test_value"}]}}
+        comp_dict = pp._get_component_with_graph_metadata_and_visits(component_name, 0)
+
+        _ = pp._consume_component_inputs(component_name=component_name, component=comp_dict, inputs=inputs)
+        # We remove input in greedy variadic sockets, even if they are from the user
+        assert inputs == {"joiner_1": {}}
+
     def test__run_component_success(self):
         """Test successful component execution"""
         joiner_1 = BranchJoiner(type_=str)
         joiner_2 = BranchJoiner(type_=str)
         pp = Pipeline()
-        pp.add_component("joiner_1", joiner_1)
+        component_name = "joiner_1"
+        pp.add_component(component_name, joiner_1)
         pp.add_component("joiner_2", joiner_2)
-        pp.connect("joiner_1", "joiner_2")
-        inputs = {"joiner_1": {"value": [{"sender": None, "value": "test_value"}]}}
+        pp.connect(component_name, "joiner_2")
+        inputs = {"value": ["test_value"]}
 
         outputs = pp._run_component(
-            component_name="joiner_1",
-            component=pp._get_component_with_graph_metadata_and_visits("joiner_1", 0),
+            component_name=component_name,
+            component=pp._get_component_with_graph_metadata_and_visits(component_name, 0),
             inputs=inputs,
-            component_visits={"joiner_1": 0, "joiner_2": 0},
+            component_visits={component_name: 0, "joiner_2": 0},
         )
 
         assert outputs == {"value": "test_value"}
-        # We remove input in greedy variadic sockets, even if they are from the user
-        assert "value" not in inputs["joiner_1"]
 
     def test__run_component_fail(self):
         """Test error when component doesn't return a dictionary"""
@@ -73,8 +87,7 @@ class TestPipeline:
         wrong = WrongOutput()
         pp = Pipeline()
         pp.add_component("wrong", wrong)
-
-        inputs = {"wrong": {"value": [{"sender": None, "value": "test_value"}]}}
+        inputs = {"value": "test_value"}
 
         with pytest.raises(PipelineRuntimeError) as exc_info:
             pp._run_component(

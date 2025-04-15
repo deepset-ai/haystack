@@ -255,7 +255,11 @@ class Pipeline(PipelineBase):
                 component_inputs = self._add_missing_input_defaults(component_inputs, component["input_sockets"])
 
                 component_outputs = self._run_component(
-                    component_name, component, component_inputs, component_visits, parent_span=span
+                    component_name=component_name,
+                    component=component,
+                    inputs=component_inputs,
+                    component_visits=component_visits,
+                    parent_span=span,
                 )
 
                 # Updates global input state with component outputs and returns outputs that should go to
