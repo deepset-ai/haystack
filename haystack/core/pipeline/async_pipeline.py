@@ -32,7 +32,7 @@ class AsyncPipeline(PipelineBase):
     """
 
     @staticmethod
-    async def _run_component_async(
+    async def _run_component_async(  # pylint: disable=too-many-positional-arguments
         component_name: str,
         component: Dict[str, Any],
         component_inputs: Dict[str, Any],
