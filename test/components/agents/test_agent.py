@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import logging
 import os
 from datetime import datetime
 from typing import Iterator, Dict, Any, List, Optional, Union
@@ -12,6 +13,8 @@ import pytest
 from openai import Stream
 from openai.types.chat import ChatCompletionChunk, chat_completion_chunk
 
+from haystack.tracing.logging_tracer import LoggingTracer
+from haystack import tracing
 from haystack.components.agents import Agent
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
@@ -96,6 +99,9 @@ def openai_mock_chat_completion_chunk():
 class MockChatGeneratorWithoutTools(ChatGenerator):
     """A mock chat generator that implements ChatGenerator protocol but doesn't support tools."""
 
+    __haystack_input__ = MagicMock(_sockets_dict={})
+    __haystack_output__ = MagicMock(_sockets_dict={})
+
     def to_dict(self) -> Dict[str, Any]:
         return {"type": "MockChatGeneratorWithoutTools", "data": {}}
 
@@ -109,6 +115,9 @@ class MockChatGeneratorWithoutTools(ChatGenerator):
 
 class MockChatGeneratorWithoutRunAsync(ChatGenerator):
     """A mock chat generator that implements ChatGenerator protocol but doesn't have run_async method."""
+
+    __haystack_input__ = MagicMock(_sockets_dict={})
+    __haystack_output__ = MagicMock(_sockets_dict={})
 
     def to_dict(self) -> Dict[str, Any]:
         return {"type": "MockChatGeneratorWithoutRunAsync", "data": {}}
@@ -523,8 +532,6 @@ class TestAgent:
     @pytest.mark.asyncio
     async def test_run_async_falls_back_to_run_when_chat_generator_has_no_run_async(self, weather_tool):
         chat_generator = MockChatGeneratorWithoutRunAsync()
-        chat_generator.__haystack_input__ = MagicMock(_sockets_dict={})
-        chat_generator.__haystack_output__ = MagicMock(_sockets_dict={})
 
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
         agent.warm_up()
@@ -589,3 +596,81 @@ class TestAgent:
         assert len(result["messages"]) == 2
         assert [isinstance(reply, ChatMessage) for reply in result["messages"]]
         assert "Hello from run_async" in result["messages"][1].text
+
+
+class TestAgentTracing:
+    def test_agent_tracing_span_run(self, caplog, monkeypatch, weather_tool):
+        chat_generator = MockChatGeneratorWithoutRunAsync()
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
+
+        tracing.tracer.is_content_tracing_enabled = True
+        tracing.enable_tracing(LoggingTracer())
+        caplog.set_level(logging.DEBUG)
+
+        _ = agent.run([ChatMessage.from_user("What's the weather in Paris?")])
+
+        # Ensure tracing span was emitted
+        assert any("Operation: haystack.component.run" in record.message for record in caplog.records)
+
+        # Check specific tags
+        tags_records = [r for r in caplog.records if hasattr(r, "tag_name")]
+        tag_names = [r.tag_name for r in tags_records]
+
+        assert "haystack.component.input" in tag_names
+        assert "haystack.component.output" in tag_names
+        assert "haystack.component.name" in tag_names
+        assert "haystack.component.type" in tag_names
+        assert "haystack.component.visits" in tag_names
+
+        expected_tag_values = [
+            "chat_generator",
+            "MockChatGeneratorWithoutRunAsync",
+            {"messages": "list", "tools": "list"},
+            {},
+            {},
+            {
+                "messages": [ChatMessage.from_user(text="What's the weather in Paris?")],
+                "tools": [
+                    Tool(
+                        name="weather_tool",
+                        description="Provides weather information for a given location.",
+                        parameters={
+                            "type": "object",
+                            "properties": {"location": {"type": "string"}},
+                            "required": ["location"],
+                        },
+                        function=weather_function,
+                        outputs_to_string=None,
+                        inputs_from_state=None,
+                        outputs_to_state=None,
+                    )
+                ],
+            },
+            1,
+            {"replies": [ChatMessage.from_assistant(text="Hello")]},
+            {"messages": [ChatMessage.from_user(text="What's the weather in Paris?")], "streaming_callback": None},
+            100,
+            [
+                Tool(
+                    name="weather_tool",
+                    description="Provides weather information for a given location.",
+                    parameters={
+                        "type": "object",
+                        "properties": {"location": {"type": "string"}},
+                        "required": ["location"],
+                    },
+                    function=weather_function,
+                    outputs_to_string=None,
+                    inputs_from_state=None,
+                    outputs_to_state=None,
+                )
+            ],
+            ["text"],
+            {"messages": {"type": List[ChatMessage], "handler": merge_lists}},
+        ]
+        for idx, record in enumerate(tags_records):
+            assert record.tag_value == expected_tag_values[idx]
+
+        # Clean up
+        tracing.tracer.is_content_tracing_enabled = False
+        tracing.disable_tracing()
