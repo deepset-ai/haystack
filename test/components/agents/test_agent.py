@@ -491,15 +491,17 @@ class TestAgent:
             == "{'weather': 'mostly sunny', 'temperature': 7, 'unit': 'celsius'}"
         )
 
-    def test_agent_with_no_tools(self, monkeypatch):
+    def test_agent_with_no_tools(self, monkeypatch, caplog):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
         generator = OpenAIChatGenerator()
 
         # Mock messages where the exit condition appears in the second message
         mock_messages = [ChatMessage.from_assistant("Berlin")]
 
-        agent = Agent(chat_generator=generator, tools=[], max_agent_steps=3)
-        agent.warm_up()
+        with caplog.at_level("WARNING"):
+            agent = Agent(chat_generator=generator, tools=[], max_agent_steps=3)
+            agent.warm_up()
+            assert "No tools provided to the Agent." in caplog.text
 
         # Patch agent.chat_generator.run to return mock_messages
         agent.chat_generator.run = MagicMock(return_value={"replies": mock_messages})
