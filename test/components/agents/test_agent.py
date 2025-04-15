@@ -514,7 +514,7 @@ class TestAgent:
 
         with caplog.at_level(logging.WARNING):
             agent.run([ChatMessage.from_user("Hello")])
-            assert "Agent exceeded maximum agent steps" in caplog.text
+            assert "Agent reached maximum agent steps" in caplog.text
 
     def test_exit_conditions_checked_across_all_llm_messages(self, monkeypatch, weather_tool):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")

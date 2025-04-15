@@ -367,7 +367,7 @@ class Agent:
 
             if counter >= self.max_agent_steps:
                 logger.warning(
-                    "Agent exceeded maximum agent steps of {max_agent_steps}, stopping.",
+                    "Agent reached maximum agent steps of {max_agent_steps}, stopping.",
                     max_agent_steps=self.max_agent_steps,
                 )
             span.set_content_tag("haystack.agent.output", state.data)
