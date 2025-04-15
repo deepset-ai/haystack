@@ -141,7 +141,10 @@ class OpenAIChatGenerator:
             Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
             the schema provided in the `parameters` field of the tool definition, but this may increase latency.
         :param http_client_kwargs:
-            A dictionary of keyword arguments to configure a custom httpx.Client.
+            A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`
+            depending on the use case: [proxies](https://www.python-httpx.org/advanced/proxies),
+            [authentication](https://www.python-httpx.org/advanced/authentication) and other
+            [advanced functionalities](https://www.python-httpx.org/advanced/clients) of HTTPX.
         """
         self.api_key = api_key
         self.model = model

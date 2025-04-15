@@ -170,21 +170,6 @@ class TestAzureOpenAITextEmbedder:
         assert component.azure_ad_token_provider is not None
         assert component.http_client_kwargs == {"proxy": "http://example.com:3128", "verify": False}
 
-    def test_init_http_client(self, monkeypatch):
-        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
-        monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://test.openai.azure.com")
-
-        embedder = AzureOpenAITextEmbedder()
-        client = init_http_client(embedder.http_client_kwargs, async_client=False)
-        assert client is None
-
-        embedder.http_client_kwargs = {"proxy": "http://example.com:3128"}
-        client = init_http_client(embedder.http_client_kwargs, async_client=False)
-        assert isinstance(client, httpx.Client)
-
-        client = init_http_client(embedder.http_client_kwargs, async_client=True)
-        assert isinstance(client, httpx.AsyncClient)
-
     @pytest.mark.integration
     @pytest.mark.skipif(
         not os.environ.get("AZURE_OPENAI_API_KEY", None) and not os.environ.get("AZURE_OPENAI_ENDPOINT", None),

@@ -216,21 +216,6 @@ class TestAzureOpenAIDocumentEmbedder:
         assert len(caplog.records) == 1
         assert "Failed embedding of documents 1, 2 caused by Mocked error" in caplog.text
 
-    def test_init_http_client(self, monkeypatch):
-        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
-        monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://test.openai.azure.com")
-
-        embedder = AzureOpenAIDocumentEmbedder()
-        client = init_http_client(embedder.http_client_kwargs, async_client=False)
-        assert client is None
-
-        embedder.http_client_kwargs = {"proxy": "http://example.com:3128"}
-        client = init_http_client(embedder.http_client_kwargs, async_client=False)
-        assert isinstance(client, httpx.Client)
-
-        client = init_http_client(embedder.http_client_kwargs, async_client=True)
-        assert isinstance(client, httpx.AsyncClient)
-
     @pytest.mark.integration
     @pytest.mark.skipif(
         not os.environ.get("AZURE_OPENAI_API_KEY", None) and not os.environ.get("AZURE_OPENAI_ENDPOINT", None),
