@@ -522,6 +522,20 @@ class TestAgent:
             == "{'weather': 'mostly sunny', 'temperature': 7, 'unit': 'celsius'}"
         )
 
+    def test_run_with_system_prompt(self, weather_tool):
+        chat_generator = MockChatGeneratorWithoutRunAsync()
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool], system_prompt="This is a system prompt.")
+        agent.warm_up()
+        response = agent.run([ChatMessage.from_user("What is the weather in Berlin?")])
+        assert response["messages"][0].text == "This is a system prompt."
+
+    def test_run_not_warmed_up(self, weather_tool):
+        chat_generator = MockChatGeneratorWithoutRunAsync()
+        chat_generator.warm_up = MagicMock()
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool], system_prompt="This is a system prompt.")
+        with pytest.raises(RuntimeError, match="The component Agent wasn't warmed up."):
+            agent.run([ChatMessage.from_user("What is the weather in Berlin?")])
+
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
     def test_run(self, weather_tool):
