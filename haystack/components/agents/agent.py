@@ -140,7 +140,6 @@ class Agent:
                 self.chat_generator.warm_up()
             self._is_warmed_up = True
 
-    # Define the helper method for tracing component runs
     def _run_component_with_trace(
         self, component_name: str, instance: Any, inputs: Dict[str, Any], parent_span: Optional[tracing.Span] = None
     ) -> Dict[str, Any]:
@@ -230,11 +229,13 @@ class Agent:
         original_messages = messages[:]
 
         if self.system_prompt is not None:
-            initial_messages_with_system = [ChatMessage.from_system(self.system_prompt)] + messages
-            state.set("messages", initial_messages_with_system)
-        else:
-            initial_messages_with_system = messages
-            state.set("messages", initial_messages_with_system)
+            messages = [ChatMessage.from_system(self.system_prompt)] + messages
+        state.set("messages", messages)
+
+        generator_inputs: Dict[str, Any] = {"tools": self.tools}
+        selected_callback = streaming_callback or self.streaming_callback
+        if selected_callback is not None:
+            generator_inputs["streaming_callback"] = selected_callback
 
         # Create the main agent span
         with tracing.tracer.trace(
@@ -247,42 +248,35 @@ class Agent:
                 "haystack.agent.exit_conditions": self.exit_conditions,
             },
         ) as span:
-            current_messages = initial_messages_with_system
-
-            generator_inputs: Dict[str, Any] = {"tools": self.tools}
-
-            selected_callback = streaming_callback or self.streaming_callback
-            if selected_callback is not None:
-                generator_inputs["streaming_callback"] = selected_callback
-
             counter = 0
             while counter < self.max_agent_steps:
-                chat_generator_inputs = {"messages": current_messages, **generator_inputs}
-                llm_response = self._run_component_with_trace(
+                llm_messages = self._run_component_with_trace(
                     component_name="chat_generator",
                     instance=self.chat_generator,
-                    inputs=chat_generator_inputs,
+                    inputs={"messages": messages, **generator_inputs},
                     parent_span=span,
-                )
-                llm_messages = llm_response["replies"]
+                )["replies"]
                 state.set("messages", llm_messages)
 
+                # 2. Check if any of the LLM responses contain a tool call
                 if not any(msg.tool_call for msg in llm_messages):
                     span.set_content_tag("haystack.agent.final_state", state.data)
                     span.set_tag("haystack.agent.steps_taken", counter)
                     return {**state.data}
 
-                tool_invoker_inputs = {"messages": llm_messages, "state": state}
+                # 3. Call the ToolInvoker
+                # We only send the messages from the LLM to the tool invoker
                 tool_invoker_result = self._run_component_with_trace(
                     component_name="tool_invoker",
                     instance=self._tool_invoker,
-                    inputs=tool_invoker_inputs,
+                    inputs={"messages": llm_messages, "state": state},
                     parent_span=span,
                 )
                 tool_messages = tool_invoker_result["tool_messages"]
                 state = tool_invoker_result["state"]
                 state.set("messages", tool_messages)
 
+                # 4. Check if any LLM message's tool call name matches an exit condition
                 if self.exit_conditions != ["text"]:
                     matched_exit_conditions = set()
                     has_errors = False
@@ -302,12 +296,14 @@ class Agent:
                                 has_errors = True
                                 break
 
+                    # Only return if at least one exit condition was matched AND none had errors
                     if matched_exit_conditions and not has_errors:
                         span.set_content_tag("haystack.agent.final_state", state.data)
                         span.set_tag("haystack.agent.steps_taken", counter)
                         return {**state.data}
 
-                current_messages = state.get("messages")
+                # 5. Fetch the combined messages and send them back to the LLM
+                messages = state.get("messages")
                 counter += 1
 
             logger.warning(
