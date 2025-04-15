@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import contextlib
+import json
 from copy import deepcopy
 from typing import Any, Dict, List, Literal, Optional, Set, Union
 
@@ -10,9 +12,13 @@ from jinja2.sandbox import SandboxedEnvironment
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses.chat_message import ChatMessage, ChatRole, TextContent
-from haystack.utils import Jinja2TimeExtension
+from haystack.lazy_imports import LazyImport
+from haystack.utils.jinja2_extensions import ChatMessageExtension, Jinja2TimeExtension, for_template
 
 logger = logging.getLogger(__name__)
+
+with LazyImport() as arrow_import:
+    import arrow
 
 
 @component
@@ -100,7 +106,7 @@ class ChatPromptBuilder:
 
     def __init__(
         self,
-        template: Optional[List[ChatMessage]] = None,
+        template: Optional[Union[List[ChatMessage], str]] = None,
         required_variables: Optional[Union[List[str], Literal["*"]]] = None,
         variables: Optional[List[str]] = None,
     ):
@@ -108,7 +114,7 @@ class ChatPromptBuilder:
         Constructs a ChatPromptBuilder component.
 
         :param template:
-            A list of `ChatMessage` objects. The component looks for Jinja2 template syntax and
+            A list of `ChatMessage` objects or a string template. The component looks for Jinja2 template syntax and
             renders the prompt with the provided variables. Provide the template in either
             the `init` method` or the `run` method.
         :param required_variables:
@@ -125,22 +131,25 @@ class ChatPromptBuilder:
         self.required_variables = required_variables or []
         self.template = template
         variables = variables or []
-        try:
-            # The Jinja2TimeExtension needs an optional dependency to be installed.
-            # If it's not available we can do without it and use the ChatPromptBuilder as is.
-            self._env = SandboxedEnvironment(extensions=[Jinja2TimeExtension])
-        except ImportError:
-            self._env = SandboxedEnvironment()
+
+        self._env = SandboxedEnvironment(extensions=[ChatMessageExtension])
+        if arrow_import.is_successful():
+            self._env.add_extension(Jinja2TimeExtension)
+        self._env.filters["for_template"] = for_template
 
         if template and not variables:
-            for message in template:
-                if message.is_from(ChatRole.USER) or message.is_from(ChatRole.SYSTEM):
-                    # infer variables from template
-                    if message.text is None:
-                        raise ValueError(f"The provided ChatMessage has no text. ChatMessage: {message}")
-                    ast = self._env.parse(message.text)
-                    template_variables = meta.find_undeclared_variables(ast)
-                    variables += list(template_variables)
+            if isinstance(template, list):
+                for message in template:
+                    if message.is_from(ChatRole.USER) or message.is_from(ChatRole.SYSTEM):
+                        # infer variables from template
+                        if message.text is None:
+                            raise ValueError(f"The provided ChatMessage has no text. ChatMessage: {message}")
+                        ast = self._env.parse(message.text)
+                        template_variables = meta.find_undeclared_variables(ast)
+                        variables += list(template_variables)
+            elif isinstance(template, str):
+                ast = self._env.parse(template)
+                variables = list(meta.find_undeclared_variables(ast))
         self.variables = variables
 
         if len(self.variables) > 0 and required_variables is None:
@@ -162,7 +171,7 @@ class ChatPromptBuilder:
     @component.output_types(prompt=List[ChatMessage])
     def run(
         self,
-        template: Optional[List[ChatMessage]] = None,
+        template: Optional[Union[List[ChatMessage], str]] = None,
         template_variables: Optional[Dict[str, Any]] = None,
         **kwargs,
     ):
@@ -174,7 +183,8 @@ class ChatPromptBuilder:
         To overwrite pipeline kwargs, you can set the `template_variables` parameter.
 
         :param template:
-            An optional list of `ChatMessage` objects to overwrite ChatPromptBuilder's default template.
+            An optional list of `ChatMessage` objects or a string template to overwrite ChatPromptBuilder's default
+            template.
             If `None`, the default template provided at initialization is used.
         :param template_variables:
             An optional dictionary of template variables to overwrite the pipeline variables.
@@ -195,11 +205,12 @@ class ChatPromptBuilder:
 
         if not template:
             raise ValueError(
-                f"The {self.__class__.__name__} requires a non-empty list of ChatMessage instances. "
-                f"Please provide a valid list of ChatMessage instances to render the prompt."
+                f"The {self.__class__.__name__} requires a non-empty list of ChatMessage instances or a string"
+                f"template. Please provide a valid list of ChatMessage instances or a string template to render "
+                f"the prompt."
             )
 
-        if not all(isinstance(message, ChatMessage) for message in template):
+        if isinstance(template, list) and not all(isinstance(message, ChatMessage) for message in template):
             raise ValueError(
                 f"The {self.__class__.__name__} expects a list containing only ChatMessage instances. "
                 f"The provided list contains other types. Please ensure that all elements in the list "
@@ -207,21 +218,54 @@ class ChatPromptBuilder:
             )
 
         processed_messages = []
-        for message in template:
-            if message.is_from(ChatRole.USER) or message.is_from(ChatRole.SYSTEM):
-                self._validate_variables(set(template_variables_combined.keys()))
-                if message.text is None:
-                    raise ValueError(f"The provided ChatMessage has no text. ChatMessage: {message}")
-                compiled_template = self._env.from_string(message.text)
-                rendered_text = compiled_template.render(template_variables_combined)
-                # deep copy the message to avoid modifying the original message
-                rendered_message: ChatMessage = deepcopy(message)
-                rendered_message._content = [TextContent(text=rendered_text)]
-                processed_messages.append(rendered_message)
-            else:
-                processed_messages.append(message)
+        if isinstance(template, list):
+            for message in template:
+                if message.is_from(ChatRole.USER) or message.is_from(ChatRole.SYSTEM):
+                    self._validate_variables(set(template_variables_combined.keys()))
+                    if message.text is None:
+                        raise ValueError(f"The provided ChatMessage has no text. ChatMessage: {message}")
+                    compiled_template = self._env.from_string(message.text)
+                    rendered_text = compiled_template.render(template_variables_combined)
+                    # deep copy the message to avoid modifying the original message
+                    rendered_message: ChatMessage = deepcopy(message)
+                    rendered_message._content = [TextContent(text=rendered_text)]
+                    processed_messages.append(rendered_message)
+                else:
+                    processed_messages.append(message)
+        elif isinstance(template, str):
+            processed_messages = self._render_chat_messages_from_str_template(template, template_variables_combined)
 
         return {"prompt": processed_messages}
+
+    def _render_chat_messages_from_str_template(
+        self, template: str, template_variables: Dict[str, Any]
+    ) -> List[ChatMessage]:
+        """
+        Renders a chat message from a string template.
+
+        This must be used in conjunction with the `ChatMessageExtension` Jinja2 extension
+        and the `for_template` filter.
+        """
+        compiled_template = self._env.from_string(template)
+        rendered = compiled_template.render(template_variables)
+        messages = []
+        for line in rendered.strip().split("\n"):
+            line = line.strip()
+            if not line:
+                continue
+
+            try:
+                messages.append(ChatMessage.from_dict(json.loads(line)))
+            except Exception:
+                contextlib.suppress(Exception)
+
+        # Fallback for templates without message tags
+        if not messages:
+            content = rendered.strip()
+            if content:
+                messages.append(ChatMessage(_role=ChatRole("user"), _content=[TextContent(text=content)]))
+
+        return messages
 
     def _validate_variables(self, provided_variables: Set[str]):
         """
@@ -251,10 +295,12 @@ class ChatPromptBuilder:
         :returns:
             Serialized dictionary representation of the component.
         """
-        if self.template is not None:
+
+        template: Optional[Union[List[Dict[str, Any]], str]] = None
+        if isinstance(self.template, list):
             template = [m.to_dict() for m in self.template]
-        else:
-            template = None
+        elif isinstance(self.template, str):
+            template = self.template
 
         return default_to_dict(
             self, template=template, variables=self._variables, required_variables=self._required_variables
@@ -274,6 +320,9 @@ class ChatPromptBuilder:
         init_parameters = data["init_parameters"]
         template = init_parameters.get("template")
         if template:
-            init_parameters["template"] = [ChatMessage.from_dict(d) for d in template]
+            if isinstance(template, list):
+                init_parameters["template"] = [ChatMessage.from_dict(d) for d in template]
+            elif isinstance(template, str):
+                init_parameters["template"] = template
 
         return default_from_dict(cls, data)
