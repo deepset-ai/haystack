@@ -2,14 +2,15 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import asyncio
 import inspect
 from copy import deepcopy
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterator, List, Optional
 
-from haystack import component, default_from_dict, default_to_dict, logging
+from haystack import component, default_from_dict, default_to_dict, logging, tracing
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.components.tools import ToolInvoker
+from haystack.core.pipeline.async_pipeline import AsyncPipeline
+from haystack.core.pipeline.pipeline import Pipeline
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.state import State, _schema_from_dict, _schema_to_dict, _validate_schema
@@ -197,6 +198,26 @@ class Agent:
 
         return default_from_dict(cls, data)
 
+    def _prepare_generator_inputs(self, streaming_callback: Optional[StreamingCallbackT] = None) -> Dict[str, Any]:
+        """Prepare inputs for the chat generator."""
+        generator_inputs = {"tools": self.tools}
+        selected_callback = streaming_callback or self.streaming_callback
+        if selected_callback is not None:
+            generator_inputs["streaming_callback"] = selected_callback
+        return generator_inputs
+
+    def _create_agent_span(self) -> Iterator[tracing.Span]:
+        """Create a span for the agent run."""
+        return tracing.tracer.trace(
+            "haystack.agent.run",
+            tags={
+                "haystack.agent.max_steps": self.max_agent_steps,
+                "haystack.agent.tools": self.tools,
+                "haystack.agent.exit_conditions": self.exit_conditions,
+                "haystack.agent.state_schema": self.state_schema,
+            },
+        )
+
     def run(
         self,
         messages: List[ChatMessage],
@@ -215,48 +236,66 @@ class Agent:
         if not self._is_warmed_up and hasattr(self.chat_generator, "warm_up"):
             raise RuntimeError("The component Agent wasn't warmed up. Run 'warm_up()' before calling 'run()'.")
 
-        state = State(schema=self.state_schema, data=kwargs)
-
         if self.system_prompt is not None:
             messages = [ChatMessage.from_system(self.system_prompt)] + messages
+
+        input_data = deepcopy({"messages": messages, "streaming_callback": streaming_callback, **kwargs})
+
+        state = State(schema=self.state_schema, data=kwargs)
         state.set("messages", messages)
 
-        generator_inputs: Dict[str, Any] = {"tools": self.tools}
+        generator_inputs = self._prepare_generator_inputs(streaming_callback=streaming_callback)
 
-        selected_callback = streaming_callback or self.streaming_callback
-        if selected_callback is not None:
-            generator_inputs["streaming_callback"] = selected_callback
+        component_visits = dict.fromkeys(["chat_generator", "tool_invoker"], 0)
+        with self._create_agent_span() as span:
+            span.set_content_tag("haystack.agent.input", input_data)
+            counter = 0
+            while counter < self.max_agent_steps:
+                # 1. Call the ChatGenerator
+                llm_messages = Pipeline._run_component(
+                    component_name="chat_generator",
+                    component={"instance": self.chat_generator},
+                    inputs={"messages": messages, **generator_inputs},
+                    component_visits=component_visits,
+                    parent_span=span,
+                )["replies"]
+                state.set("messages", llm_messages)
 
-        # Repeat until the exit condition is met
-        counter = 0
-        while counter < self.max_agent_steps:
-            # 1. Call the ChatGenerator
-            llm_messages = self.chat_generator.run(messages=messages, **generator_inputs)["replies"]
-            state.set("messages", llm_messages)
+                # 2. Check if any of the LLM responses contain a tool call or if the LLM is not using tools
+                if not any(msg.tool_call for msg in llm_messages) or self._tool_invoker is None:
+                    counter += 1
+                    break
 
-            # 2. Check if any of the LLM responses contain a tool call or if the LLM is not using tools
-            if not any(msg.tool_call for msg in llm_messages) or self._tool_invoker is None:
-                return {**state.data}
+                # 3. Call the ToolInvoker
+                # We only send the messages from the LLM to the tool invoker
+                tool_invoker_result = Pipeline._run_component(
+                    component_name="tool_invoker",
+                    component={"instance": self._tool_invoker},
+                    inputs={"messages": llm_messages, "state": state},
+                    component_visits=component_visits,
+                    parent_span=span,
+                )
+                tool_messages = tool_invoker_result["tool_messages"]
+                state = tool_invoker_result["state"]
+                state.set("messages", tool_messages)
 
-            # 3. Call the ToolInvoker
-            # We only send the messages from the LLM to the tool invoker
-            tool_invoker_result = self._tool_invoker.run(messages=llm_messages, state=state)
-            tool_messages = tool_invoker_result["tool_messages"]
-            state = tool_invoker_result["state"]
-            state.set("messages", tool_messages)
+                # 4. Check if any LLM message's tool call name matches an exit condition
+                if self.exit_conditions != ["text"] and self._check_exit_conditions(llm_messages, tool_messages):
+                    counter += 1
+                    break
 
-            # 4. Check if any LLM message's tool call name matches an exit condition
-            if self.exit_conditions != ["text"] and self._check_exit_conditions(llm_messages, tool_messages):
-                return {**state.data}
+                # 5. Fetch the combined messages and send them back to the LLM
+                messages = state.get("messages")
+                counter += 1
 
-            # 5. Fetch the combined messages and send them back to the LLM
-            messages = state.get("messages")
-            counter += 1
-
-        logger.warning(
-            "Agent exceeded maximum agent steps of {max_agent_steps}, stopping.", max_agent_steps=self.max_agent_steps
-        )
-        return {**state.data}
+            if counter >= self.max_agent_steps:
+                logger.warning(
+                    "Agent reached maximum agent steps of {max_agent_steps}, stopping.",
+                    max_agent_steps=self.max_agent_steps,
+                )
+            span.set_content_tag("haystack.agent.output", state.data)
+            span.set_tag("haystack.agent.steps_taken", counter)
+        return state.data
 
     async def run_async(
         self,
@@ -280,66 +319,70 @@ class Agent:
         if not self._is_warmed_up and hasattr(self.chat_generator, "warm_up"):
             raise RuntimeError("The component Agent wasn't warmed up. Run 'warm_up()' before calling 'run_async()'.")
 
-        state = State(schema=self.state_schema, data=kwargs)
-
         if self.system_prompt is not None:
             messages = [ChatMessage.from_system(self.system_prompt)] + messages
+
+        input_data = deepcopy({"messages": messages, "streaming_callback": streaming_callback, **kwargs})
+
+        state = State(schema=self.state_schema, data=kwargs)
         state.set("messages", messages)
 
-        generator_inputs: Dict[str, Any] = {"tools": self.tools}
+        generator_inputs = self._prepare_generator_inputs(streaming_callback=streaming_callback)
 
-        selected_callback = streaming_callback or self.streaming_callback
-        if selected_callback is not None:
-            generator_inputs["streaming_callback"] = selected_callback
-
-        # Repeat until the exit condition is met
-        counter = 0
-        while counter < self.max_agent_steps:
-            # 1. Call the ChatGenerator
-            # Check if the chat generator supports async execution
-            if getattr(self.chat_generator, "__haystack_supports_async__", False):
-                result = await self.chat_generator.run_async(messages=messages, **generator_inputs)  # type: ignore[attr-defined]
-                llm_messages = result["replies"]
-            else:
-                # Fall back to synchronous run if async is not available
-                loop = asyncio.get_running_loop()
-                result = await loop.run_in_executor(
-                    None, lambda: self.chat_generator.run(messages=messages, **generator_inputs)
+        component_visits = dict.fromkeys(["chat_generator", "tool_invoker"], 0)
+        with self._create_agent_span() as span:
+            span.set_content_tag("haystack.agent.input", input_data)
+            counter = 0
+            while counter < self.max_agent_steps:
+                # 1. Call the ChatGenerator
+                result = await AsyncPipeline._run_component_async(
+                    component_name="chat_generator",
+                    component={"instance": self.chat_generator},
+                    component_inputs={"messages": messages, **generator_inputs},
+                    component_visits=component_visits,
+                    max_runs_per_component=self.max_agent_steps,
+                    parent_span=span,
                 )
                 llm_messages = result["replies"]
+                state.set("messages", llm_messages)
 
-            state.set("messages", llm_messages)
+                # 2. Check if any of the LLM responses contain a tool call or if the LLM is not using tools
+                if not any(msg.tool_call for msg in llm_messages) or self._tool_invoker is None:
+                    counter += 1
+                    break
 
-            # 2. Check if any of the LLM responses contain a tool call or if the LLM is not using tools
-            if not any(msg.tool_call for msg in llm_messages) or self._tool_invoker is None:
-                return {**state.data}
-
-            # 3. Call the ToolInvoker
-            # We only send the messages from the LLM to the tool invoker
-            # Check if the ToolInvoker supports async execution. Currently, it doesn't.
-            if getattr(self._tool_invoker, "__haystack_supports_async__", False):
-                tool_invoker_result = await self._tool_invoker.run_async(messages=llm_messages, state=state)  # type: ignore[attr-defined]
-            else:
-                loop = asyncio.get_running_loop()
-                tool_invoker_result = await loop.run_in_executor(
-                    None, lambda: self._tool_invoker.run(messages=llm_messages, state=state)
+                # 3. Call the ToolInvoker
+                # We only send the messages from the LLM to the tool invoker
+                # Check if the ToolInvoker supports async execution. Currently, it doesn't.
+                tool_invoker_result = await AsyncPipeline._run_component_async(
+                    component_name="tool_invoker",
+                    component={"instance": self._tool_invoker},
+                    component_inputs={"messages": llm_messages, "state": state},
+                    component_visits=component_visits,
+                    max_runs_per_component=self.max_agent_steps,
+                    parent_span=span,
                 )
-            tool_messages = tool_invoker_result["tool_messages"]
-            state = tool_invoker_result["state"]
-            state.set("messages", tool_messages)
+                tool_messages = tool_invoker_result["tool_messages"]
+                state = tool_invoker_result["state"]
+                state.set("messages", tool_messages)
 
-            # 4. Check if any LLM message's tool call name matches an exit condition
-            if self.exit_conditions != ["text"] and self._check_exit_conditions(llm_messages, tool_messages):
-                return {**state.data}
+                # 4. Check if any LLM message's tool call name matches an exit condition
+                if self.exit_conditions != ["text"] and self._check_exit_conditions(llm_messages, tool_messages):
+                    counter += 1
+                    break
 
-            # 5. Fetch the combined messages and send them back to the LLM
-            messages = state.get("messages")
-            counter += 1
+                # 5. Fetch the combined messages and send them back to the LLM
+                messages = state.get("messages")
+                counter += 1
 
-        logger.warning(
-            "Agent exceeded maximum agent steps of {max_agent_steps}, stopping.", max_agent_steps=self.max_agent_steps
-        )
-        return {**state.data}
+            if counter >= self.max_agent_steps:
+                logger.warning(
+                    "Agent reached maximum agent steps of {max_agent_steps}, stopping.",
+                    max_agent_steps=self.max_agent_steps,
+                )
+            span.set_content_tag("haystack.agent.output", state.data)
+            span.set_tag("haystack.agent.steps_taken", counter)
+        return state.data
 
     def _check_exit_conditions(self, llm_messages: List[ChatMessage], tool_messages: List[ChatMessage]) -> bool:
         """
