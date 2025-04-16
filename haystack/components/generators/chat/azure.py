@@ -132,14 +132,8 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         :param azure_ad_token_provider: A function that returns an Azure Active Directory token, will be invoked on
             every request.
         :param http_client_kwargs:
-            A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`
-            depending on the use case: [proxies](https://www.python-httpx.org/advanced/proxies),
-            [authentication](https://www.python-httpx.org/advanced/authentication) and other
-            [advanced functionalities](https://www.python-httpx.org/advanced/clients) of HTTPX.
-
-            You can set a proxy with basic authorization using the environment variables:
-            `HTTP_PROXY` and `HTTPS_PROXY`, `ALL_PROXY` and `NO_PROXY`,
-            for example `HTTP_PROXY=http://user:password@your-proxy.net:8080`.
+            A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
+            For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
         """
         # We intentionally do not call super().__init__ here because we only need to instantiate the client to interact
         # with the API.
