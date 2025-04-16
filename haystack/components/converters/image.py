@@ -24,7 +24,7 @@ class FileToImageContent:
     def __init__(self, detail: Optional[Literal["auto", "high", "low"]] = None):
         self.detail = detail
 
-    @component.output_types(image_content=List[ImageContent])
+    @component.output_types(image_contents=List[ImageContent])
     def run(
         self,
         sources: List[Union[str, Path, ByteStream]],
