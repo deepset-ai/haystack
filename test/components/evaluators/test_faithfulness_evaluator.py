@@ -75,10 +75,9 @@ class TestFaithfulnessEvaluator:
         with pytest.raises(ValueError, match="None of the .* environment variables are set"):
             FaithfulnessEvaluator()
 
-    def test_init_with_parameters(self):
+    def test_init_with_parameters(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = FaithfulnessEvaluator(
-            api_key=Secret.from_token("test-api-key"),
-            api="openai",
             examples=[
                 {
                     "inputs": {"predicted_answers": "Damn, this is straight outta hell!!!"},
@@ -88,7 +87,7 @@ class TestFaithfulnessEvaluator:
                     "inputs": {"predicted_answers": "Football is the most popular sport."},
                     "outputs": {"custom_score": 0},
                 },
-            ],
+            ]
         )
 
         assert component.examples == [
@@ -107,23 +106,6 @@ class TestFaithfulnessEvaluator:
 
         assert component._chat_generator is chat_generator
 
-    def test_init_with_api_and_chat_generator(self, monkeypatch):
-        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        chat_generator = OpenAIChatGenerator(generation_kwargs={"key_from_chat_generator": "value_from_chat_generator"})
-
-        component = FaithfulnessEvaluator(
-            api="openai",
-            api_params={"generation_kwargs": {"key_from_api_params": "value_from_api_params"}},
-            chat_generator=chat_generator,
-        )
-
-        assert component._chat_generator is chat_generator
-        assert component._chat_generator.generation_kwargs == {"key_from_chat_generator": "value_from_chat_generator"}
-
-    def test_init_fail_with_api_not_openai(self):
-        with pytest.raises(ValueError):
-            FaithfulnessEvaluator(api="unsupported-api")
-
     def test_to_dict_with_parameters(self, monkeypatch):
         monkeypatch.setenv("ENV_VAR", "test-api-key")
         chat_generator = OpenAIChatGenerator(
@@ -132,8 +114,7 @@ class TestFaithfulnessEvaluator:
         )
 
         component = FaithfulnessEvaluator(
-            api="openai",
-            api_key=Secret.from_env_var("ENV_VAR"),
+            chat_generator=chat_generator,
             examples=[
                 {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
             ],
@@ -153,27 +134,6 @@ class TestFaithfulnessEvaluator:
                 "raise_on_failure": False,
             },
         }
-
-    def test_from_dict_legacy(self, monkeypatch):
-        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-
-        data = {
-            "type": "haystack.components.evaluators.faithfulness.FaithfulnessEvaluator",
-            "init_parameters": {
-                "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
-                "api": "openai",
-                "examples": [
-                    {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
-                ],
-            },
-        }
-        component = FaithfulnessEvaluator.from_dict(data)
-        assert isinstance(component._chat_generator, OpenAIChatGenerator)
-        assert component._chat_generator.client.api_key == "test-api-key"
-        assert component._chat_generator.generation_kwargs == {"response_format": {"type": "json_object"}, "seed": 42}
-        assert component.examples == [
-            {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
-        ]
 
     def test_from_dict(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
