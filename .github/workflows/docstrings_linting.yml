@@ -11,7 +11,7 @@ on:
       - "**.py"
 
 env:
-  HATCH_VERSION: "1.13.0"
+  HATCH_VERSION: "1.14.1"
 
 jobs:
   docstrings-linting:
