@@ -18,7 +18,7 @@ from haystack.utils.jinja2_extensions import ChatMessageExtension, Jinja2TimeExt
 logger = logging.getLogger(__name__)
 
 with LazyImport() as arrow_import:
-    import arrow
+    import arrow  # pylint: disable=unused-import
 
 
 @component

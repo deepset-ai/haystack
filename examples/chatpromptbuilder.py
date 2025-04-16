@@ -1,5 +1,3 @@
-import base64
-
 from haystack.components.builders import ChatPromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.dataclasses.chat_message import ImageContent
@@ -24,11 +22,7 @@ builder = ChatPromptBuilder(template=template)
 
 paths = ["./test/test_files/images/apple.jpg", "./test/test_files/images/haystack-logo.png"]
 
-image_contents = []
-for path in paths:
-    with open(path, "rb") as f:
-        base64_image = base64.b64encode(f.read()).decode("utf-8")
-    image_contents.append(ImageContent(base64_image=base64_image, detail="low"))
+image_contents = [ImageContent.from_file_path(path, detail="low") for path in paths]
 
 prompt = builder.run(template_variables={"images": image_contents})["prompt"]
 

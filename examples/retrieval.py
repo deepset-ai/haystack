@@ -1,10 +1,8 @@
-import base64
 import glob
-from pathlib import Path
 
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
-from haystack.dataclasses import ByteStream, Document
+from haystack.dataclasses import Document
 from haystack.dataclasses.chat_message import ChatMessage, ImageContent
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 
@@ -26,10 +24,7 @@ doc = retriever.run(query=query, top_k=1)["documents"][0]
 
 print(f"retrieved document: {doc}")
 
-with open(doc.meta["image_path"], "rb") as f:
-    base64_image = base64.b64encode(f.read()).decode("utf-8")
-
-image_content = ImageContent(base64_image=base64_image, detail="auto")
+image_content = ImageContent.from_file_path(doc.meta["image_path"], detail="auto")
 
 message = ChatMessage.from_user(content_parts=[query, image_content])
 

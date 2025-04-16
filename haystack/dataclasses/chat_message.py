@@ -4,11 +4,13 @@
 
 import base64
 import json
+import mimetypes
 from dataclasses import asdict, dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Literal, Optional, Sequence, Union
 
 import filetype
+import requests
 
 from haystack import logging
 
@@ -126,6 +128,43 @@ class ImageContent:
         fields.append(f"meta={self.meta!r}")
         fields_str = ", ".join(fields)
         return f"{self.__class__.__name__}({fields_str})"
+
+    @classmethod
+    def from_file_path(
+        cls,
+        file_path: str,
+        mime_type: Optional[str] = None,
+        meta: Optional[Dict[str, Any]] = None,
+        detail: Optional[Literal["auto", "high", "low"]] = None,
+    ) -> "ImageContent":
+        """
+        Helper class method to create an ImageContent from a file path.
+        """
+        with open(file_path, "rb") as f:
+            return cls(
+                base64_image=base64.b64encode(f.read()).decode("utf-8"),
+                mime_type=mime_type or mimetypes.guess_type(file_path)[0],
+                meta=meta or {},
+                detail=detail,
+            )
+
+    @classmethod
+    def from_url(
+        cls,
+        url: str,
+        mime_type: Optional[str] = None,
+        meta: Optional[Dict[str, Any]] = None,
+        detail: Optional[Literal["auto", "high", "low"]] = None,
+    ) -> "ImageContent":
+        """
+        Helper class method to create an ImageContent from a URL.
+        """
+        return cls(
+            base64_image=base64.b64encode(requests.get(url, timeout=30).content).decode("utf-8"),
+            mime_type=mime_type or mimetypes.guess_type(url)[0],
+            meta=meta or {},
+            detail=detail,
+        )
 
 
 ChatMessageContentT = Union[TextContent, ToolCall, ToolCallResult, ImageContent]

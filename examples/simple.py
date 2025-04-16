@@ -1,5 +1,3 @@
-import base64
-
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.chat_message import ImageContent
@@ -7,8 +5,7 @@ from haystack.dataclasses.chat_message import ImageContent
 ### Simple python example
 
 image_path = "./test/test_files/images/apple.jpg"
-base64_image = base64.b64encode(open(image_path, "rb").read()).decode("utf-8")
-image_content = ImageContent(base64_image=base64_image, detail="low")
+image_content = ImageContent.from_file_path(image_path, detail="low")
 
 message = ChatMessage.from_user(content_parts=["Describe this image in 20 words or less.", image_content])
 

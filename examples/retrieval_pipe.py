@@ -7,16 +7,11 @@ from haystack.components.converters import OutputAdapter
 from haystack.components.converters.image import FileToImageContent
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
-from haystack.components.writers import DocumentWriter
-from haystack.dataclasses.chat_message import ChatMessage, ImageContent
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 document_store = InMemoryDocumentStore()
 
 paths = glob.glob("examples/arxiv_images/*.png")
-texts = [
-    "image from '" + image_path.split("/")[-1].replace(".png", "").replace("_", " ") + "' paper" for image_path in paths
-]
 
 docs = []
 for path in paths:
@@ -39,6 +34,7 @@ chat_template = """
 {% endmessage %}
 """
 
+# I don't like using a complex output adapter. Maybe there are other ways to do this.
 output_adapter_template = """
 {%- set paths = [] -%}
 {% for document in documents %}
