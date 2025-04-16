@@ -110,6 +110,7 @@ class TestAzureOpenAIChatGenerator:
                 "tools": None,
                 "tools_strict": False,
                 "azure_ad_token_provider": None,
+                "http_client_kwargs": None,
             },
         }
 
@@ -124,6 +125,7 @@ class TestAzureOpenAIChatGenerator:
             max_retries=10,
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
             azure_ad_token_provider=default_azure_ad_token_provider,
+            http_client_kwargs={"proxy": "http://localhost:8080"},
         )
         data = component.to_dict()
         assert data == {
@@ -143,6 +145,7 @@ class TestAzureOpenAIChatGenerator:
                 "tools_strict": False,
                 "default_headers": {},
                 "azure_ad_token_provider": "haystack.utils.azure.default_azure_ad_token_provider",
+                "http_client_kwargs": {"proxy": "http://localhost:8080"},
             },
         }
 
@@ -175,6 +178,7 @@ class TestAzureOpenAIChatGenerator:
                     }
                 ],
                 "tools_strict": False,
+                "http_client_kwargs": None,
             },
         }
 
@@ -196,6 +200,7 @@ class TestAzureOpenAIChatGenerator:
             Tool(name="name", description="description", parameters={"x": {"type": "string"}}, function=print)
         ]
         assert generator.tools_strict == False
+        assert generator.http_client_kwargs is None
 
     def test_pipeline_serialization_deserialization(self, tmp_path, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
@@ -225,6 +230,7 @@ class TestAzureOpenAIChatGenerator:
                         "tools": None,
                         "tools_strict": False,
                         "azure_ad_token_provider": None,
+                        "http_client_kwargs": None,
                     },
                 }
             },
