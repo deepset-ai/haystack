@@ -13,7 +13,7 @@ from haystack.core.component import component
 from haystack.core.errors import ComponentError, DeserializationError
 from haystack.core.pipeline import AsyncPipeline, Pipeline, PredefinedPipeline
 from haystack.core.serialization import default_from_dict, default_to_dict
-from haystack.core.super_component import SuperComponent
+from haystack.core.super_component.super_component import SuperComponent, super_component
 from haystack.dataclasses import Answer, Document, ExtractedAnswer, GeneratedAnswer
 from haystack.version import __version__
 
@@ -35,6 +35,7 @@ __all__ = [
     "Pipeline",
     "PredefinedPipeline",
     "SuperComponent",
+    "super_component",
     "component",
     "default_from_dict",
     "default_to_dict",
