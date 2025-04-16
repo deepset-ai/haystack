@@ -32,8 +32,6 @@ env:
   HF_API_TOKEN: ${{ secrets.HUGGINGFACE_API_KEY }}
   PYTHON_VERSION: "3.9"
   HATCH_VERSION: "1.14.1"
-  HATCH_PYTHON: "3.9"
-  HATCH_ENV_TYPE_VIRTUAL_PATH: "haystack_virtualenv"
 
 jobs:
   format:
@@ -163,12 +161,6 @@ jobs:
       - name: Run
         run: hatch run test:unit
 
-      - uses: actions/cache/save@v4
-        id: cache
-        with:
-          path: ${{ steps.hatch.outputs.env }}
-          key: ${{ runner.os }}-${{ github.sha }}
-
       - name: Coveralls
         # We upload only coverage for ubuntu as handling both os
         # complicates the workflow too much for little to no gain
@@ -240,12 +232,6 @@ jobs:
           pip install hatch==${{ env.HATCH_VERSION }}
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/cache/restore@v4
-        id: cache
-        with:
-          path: ${{ steps.hatch.outputs.env }}
-          key: ${{ runner.os }}-${{ github.sha }}
-
       - name: Mypy
         if: steps.files.outputs.any_changed == 'true'
         run: |
@@ -311,12 +297,6 @@ jobs:
         run: |
           pip install hatch==${{ env.HATCH_VERSION }}
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
-
-      - uses: actions/cache/restore@v4
-        id: cache
-        with:
-          path: ${{ steps.hatch.outputs.env }}
-          key: ${{ runner.os }}-${{ github.sha }}
 
       - name: List env
         run: |
