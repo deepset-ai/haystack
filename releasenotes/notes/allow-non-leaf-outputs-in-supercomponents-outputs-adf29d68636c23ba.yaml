@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    SuperComponents now support mapping nonleaf pipelines outputs to the SuperComponents output when specifying them in `output_mapping`.
