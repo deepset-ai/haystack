@@ -206,7 +206,7 @@ class Agent:
             generator_inputs["streaming_callback"] = selected_callback
         return generator_inputs
 
-    def _create_agent_span(self) -> Iterator[tracing.Span]:
+    def _create_agent_span(self) -> Any:
         """Create a span for the agent run."""
         return tracing.tracer.trace(
             "haystack.agent.run",
