@@ -18,7 +18,7 @@ on:
 env:
   PYTHON_VERSION: "3.9"
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-  HATCH_VERSION: "1.13.0"
+  HATCH_VERSION: "1.14.1"
   HF_API_TOKEN: ${{ secrets.HUGGINGFACE_API_KEY }}
 
 jobs:
