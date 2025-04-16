@@ -298,18 +298,10 @@ jobs:
           pip install hatch==${{ env.HATCH_VERSION }}
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
-      - name: List env
-        run: |
-          ls -la ${{ steps.hatch.outputs.env }}/bin
-
       - name: Install dependencies
         run: |
           sudo apt update
           sudo apt install ffmpeg  # for local Whisper tests
-
-      - name: List env after install
-        run: |
-          ls -la ${{ steps.hatch.outputs.env }}/bin
 
       - name: Run
         run: hatch run test:integration
