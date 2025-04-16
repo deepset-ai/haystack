@@ -3,12 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 import os
 
-import httpx
 import pytest
 
 from haystack.components.embedders import AzureOpenAITextEmbedder
 from haystack.utils.azure import default_azure_ad_token_provider
-from haystack.utils.http_client import init_http_client
 
 
 class TestAzureOpenAITextEmbedder:

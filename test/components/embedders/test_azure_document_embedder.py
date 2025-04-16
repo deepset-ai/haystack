@@ -7,13 +7,11 @@ from openai import APIError
 
 from haystack.utils.auth import Secret
 import pytest
-import httpx
 
 from haystack import Document
 from haystack.components.embedders import AzureOpenAIDocumentEmbedder
 from haystack.utils.azure import default_azure_ad_token_provider
 from unittest.mock import Mock, patch
-from haystack.utils.http_client import init_http_client
 
 
 class TestAzureOpenAIDocumentEmbedder:
