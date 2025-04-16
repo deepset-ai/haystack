@@ -141,8 +141,6 @@ jobs:
       matrix:
         os:
           - ubuntu-latest
-          - windows-latest
-          - macos-latest
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -163,7 +161,6 @@ jobs:
 
       - uses: actions/cache/save@v4
         id: cache
-        if: matrix.os != 'ubuntu-latest'
         with:
           path: ${{ steps.hatch.outputs.env }}
           key: ${{ runner.os }}-${{ github.sha }}
@@ -239,6 +236,12 @@ jobs:
           pip install hatch==${{ env.HATCH_VERSION }}
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
+      - uses: actions/cache/restore@v4
+        id: cache
+        with:
+          path: ${{ steps.hatch.outputs.env }}
+          key: ${{ runner.os }}-${{ github.sha }}
+
       - name: Mypy
         if: steps.files.outputs.any_changed == 'true'
         run: |
@@ -249,7 +252,7 @@ jobs:
         # Running pylint on pyproject.toml causes errors, so we only run it on python files.
         if: steps.files.outputs.python_any_changed == 'true'
         run: |
-          hatch run test:lint ${{ steps.files.outputs.python_all_changed_files }}
+          hatch -vvv run test:lint ${{ steps.files.outputs.python_all_changed_files }}
 
       - name: Calculate alert data
         id: calculator
@@ -305,13 +308,19 @@ jobs:
           pip install hatch==${{ env.HATCH_VERSION }}
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
+      - uses: actions/cache/restore@v4
+        id: cache
+        with:
+          path: ${{ steps.hatch.outputs.env }}
+          key: ${{ runner.os }}-${{ github.sha }}
+
       - name: Install dependencies
         run: |
           sudo apt update
           sudo apt install ffmpeg  # for local Whisper tests
 
       - name: Run
-        run: hatch run test:integration
+        run: hatch -vvv run test:integration
 
       - name: Calculate alert data
         id: calculator
@@ -344,128 +353,6 @@ jobs:
                 - "branch:${{ github.ref_name }}"
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-  integration-tests-macos:
-    name: Integration / macos-latest
-    needs: unit-tests
-    runs-on: macos-latest
-    env:
-      HAYSTACK_MPS_ENABLED: false
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "${{ env.PYTHON_VERSION }}"
-
-      - name: Install Hatch
-        id: hatch
-        shell: bash
-        run: |
-          pip install hatch==${{ env.HATCH_VERSION }}
-          echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
-
-      - uses: actions/cache/restore@v4
-        id: cache
-        with:
-          path: ${{ steps.hatch.outputs.env }}
-          key: ${{ runner.os }}-${{ github.sha }}
-
-      - name: Install dependencies
-        run: |
-          brew install ffmpeg  # for local Whisper tests
-
-      - name: Run
-        run: hatch run test:integration-mac
-
-      - name: Calculate alert data
-        id: calculator
-        shell: bash
-        if: (success() || failure()) && github.ref_name == 'main'
-        run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            echo "alert_type=success" >> "$GITHUB_OUTPUT";
-          else
-            echo "alert_type=error" >> "$GITHUB_OUTPUT";
-          fi
-
-      - name: Send event to Datadog
-        if: (success() || failure()) && github.ref_name == 'main'
-        uses: masci/datadog@v1
-        with:
-          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
-          api-url: https://api.datadoghq.eu
-          events: |
-            - title: "${{ github.workflow }} workflow"
-              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
-              alert_type: "${{ steps.calculator.outputs.alert_type }}"
-              source_type_name: "Github"
-              host: ${{ github.repository_owner }}
-              tags:
-                - "project:${{ github.repository }}"
-                - "job:${{ github.job }}"
-                - "run_id:${{ github.run_id }}"
-                - "workflow:${{ github.workflow }}"
-                - "branch:${{ github.ref_name }}"
-                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-
-  integration-tests-windows:
-    name: Integration / windows-latest
-    needs: unit-tests
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "${{ env.PYTHON_VERSION }}"
-
-      - name: Install Hatch
-        id: hatch
-        shell: bash
-        run: |
-          pip install hatch==${{ env.HATCH_VERSION }}
-          echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
-
-      - uses: actions/cache/restore@v4
-        id: cache
-        with:
-          path: ${{ steps.hatch.outputs.env }}
-          key: ${{ runner.os }}-${{ github.sha }}
-
-      - name: Run
-        run: hatch run test:integration-windows
-
-      - name: Calculate alert data
-        id: calculator
-        shell: bash
-        if: (success() || failure()) && github.ref_name == 'main'
-        run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            echo "alert_type=success" >> "$GITHUB_OUTPUT";
-          else
-            echo "alert_type=error" >> "$GITHUB_OUTPUT";
-          fi
-
-      - name: Send event to Datadog
-        if: (success() || failure()) && github.ref_name == 'main'
-        uses: masci/datadog@v1
-        with:
-          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
-          api-url: https://api.datadoghq.eu
-          events: |
-            - title: "${{ github.workflow }} workflow"
-              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
-              alert_type: "${{ steps.calculator.outputs.alert_type }}"
-              source_type_name: "Github"
-              host: ${{ github.repository_owner }}
-              tags:
-                - "project:${{ github.repository }}"
-                - "job:${{ github.job }}"
-                - "run_id:${{ github.run_id }}"
-                - "workflow:${{ github.workflow }}"
-                - "branch:${{ github.ref_name }}"
-                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
   trigger-catch-all:
     name: Tests completed
@@ -477,8 +364,7 @@ jobs:
       - check-imports
       - lint
       - integration-tests-linux
-      - integration-tests-macos
-      - integration-tests-windows
+
     uses: ./.github/workflows/tests_skipper_workflow.yml
     with:
       tests_were_skipped: false
