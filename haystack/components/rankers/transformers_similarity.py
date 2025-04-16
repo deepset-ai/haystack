@@ -173,6 +173,7 @@ class TransformersSimilarityRanker:
             score_threshold=self.score_threshold,
             model_kwargs=self.model_kwargs,
             tokenizer_kwargs=self.tokenizer_kwargs,
+            batch_size=self.batch_size,
         )
 
         serialize_hf_model_kwargs(serialization_dict["init_parameters"]["model_kwargs"])
