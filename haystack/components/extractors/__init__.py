@@ -8,12 +8,12 @@ from typing import TYPE_CHECKING
 from lazy_imports import LazyImporter
 
 _import_structure = {
-    "llm_metadata_extractor": ["LLMMetadataExtractor", "LLMProvider"],
+    "llm_metadata_extractor": ["LLMMetadataExtractor"],
     "named_entity_extractor": ["NamedEntityAnnotation", "NamedEntityExtractor", "NamedEntityExtractorBackend"],
 }
 
 if TYPE_CHECKING:
-    from .llm_metadata_extractor import LLMMetadataExtractor, LLMProvider
+    from .llm_metadata_extractor import LLMMetadataExtractor
     from .named_entity_extractor import NamedEntityAnnotation, NamedEntityExtractor, NamedEntityExtractorBackend
 
 else:

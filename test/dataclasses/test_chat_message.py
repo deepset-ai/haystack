@@ -226,6 +226,16 @@ def test_from_dict_with_pre29_format():
     assert msg.meta == {"some": "info"}
 
 
+def test_from_dict_with_pre29_format_some_fields_missing():
+    serialized_msg_pre_29 = {"role": "user", "content": "This is a message"}
+    msg = ChatMessage.from_dict(serialized_msg_pre_29)
+
+    assert msg.role == ChatRole.USER
+    assert msg._content == [TextContent(text="This is a message")]
+    assert msg.name is None
+    assert msg.meta == {}
+
+
 def test_from_dict_with_pre212_format():
     """
     Test that we can deserialize messages serialized with versions >=2.9.0 and <2.12.0,
@@ -243,6 +253,26 @@ def test_from_dict_with_pre212_format():
     assert msg._content == [TextContent(text="This is a message")]
     assert msg.name == "some_name"
     assert msg.meta == {"some": "info"}
+
+
+def test_from_dict_with_pre212_format_some_fields_missing():
+    serialized_msg_pre_212 = {"_role": "user", "_content": [{"text": "This is a message"}]}
+    msg = ChatMessage.from_dict(serialized_msg_pre_212)
+
+    assert msg.role == ChatRole.USER
+    assert msg._content == [TextContent(text="This is a message")]
+    assert msg.name is None
+    assert msg.meta == {}
+
+
+def test_from_dict_some_fields_missing():
+    serialized_msg = {"role": "user", "content": [{"text": "This is a message"}]}
+    msg = ChatMessage.from_dict(serialized_msg)
+
+    assert msg.role == ChatRole.USER
+    assert msg._content == [TextContent(text="This is a message")]
+    assert msg.name is None
+    assert msg.meta == {}
 
 
 def test_from_dict_missing_content_field():
