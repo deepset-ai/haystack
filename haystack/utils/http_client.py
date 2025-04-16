@@ -4,7 +4,7 @@
 
 from typing import Any, Dict, Optional
 
-from openai import DefaultAsyncHttpxClient, DefaultHttpxClient
+import httpx
 
 
 def init_http_client(http_client_kwargs: Optional[Dict[str, Any]] = None, async_client: bool = False):
@@ -17,12 +17,12 @@ def init_http_client(http_client_kwargs: Optional[Dict[str, Any]] = None, async_
         Whether to initialize an async client.
 
     :returns:
-        A default httpx client or a default async httpx client.
+        A httpx client or an async httpx client.
     """
     if not http_client_kwargs:
         return None
     if not isinstance(http_client_kwargs, dict):
         raise TypeError("The parameter 'http_client_kwargs' must be a dictionary.")
     if async_client:
-        return DefaultAsyncHttpxClient(**http_client_kwargs)
-    return DefaultHttpxClient(**http_client_kwargs)
+        return httpx.AsyncClient(**http_client_kwargs)
+    return httpx.Client(**http_client_kwargs)

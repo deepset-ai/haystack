@@ -5,12 +5,17 @@
 
 import pytest
 from haystack.utils.http_client import init_http_client
-from openai import DefaultHttpxClient, DefaultAsyncHttpxClient
+import httpx
 
 
 def test_init_http_client():
     http_client = init_http_client()
     assert http_client is None
+
+    http_client = init_http_client(http_client_kwargs={"base_url": "https://example.com"})
+    assert http_client is not None
+    assert isinstance(http_client, httpx.Client)
+    assert http_client.base_url == "https://example.com"
 
 
 def test_init_http_client_async():
@@ -19,14 +24,8 @@ def test_init_http_client_async():
 
     http_async_client = init_http_client(http_client_kwargs={"base_url": "https://example.com"}, async_client=True)
     assert http_async_client is not None
-    assert isinstance(http_async_client, DefaultAsyncHttpxClient)
+    assert isinstance(http_async_client, httpx.AsyncClient)
     assert http_async_client.base_url == "https://example.com"
-
-
-def test_init_http_client_with_params():
-    http_client = init_http_client(http_client_kwargs={"base_url": "https://example.com"})
-    assert http_client is not None
-    assert http_client.base_url == "https://example.com"
 
 
 def test_http_client_kwargs_type_validation():
