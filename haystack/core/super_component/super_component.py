@@ -129,12 +129,14 @@ class SuperComponent:
         self._original_input_mapping = input_mapping
 
         # Set output types based on pipeline and mapping
-        pipeline_outputs = self.pipeline.outputs(include_components_with_connected_outputs=True)
+        leaf_pipeline_outputs = self.pipeline.outputs()
+        all_possible_pipeline_outputs = self.pipeline.outputs(include_components_with_connected_outputs=True)
+
         resolved_output_mapping = (
-            output_mapping if output_mapping is not None else self._create_output_mapping(pipeline_outputs)
+            output_mapping if output_mapping is not None else self._create_output_mapping(leaf_pipeline_outputs)
         )
-        self._validate_output_mapping(pipeline_outputs, resolved_output_mapping)
-        output_types = self._resolve_output_types_from_mapping(pipeline_outputs, resolved_output_mapping)
+        self._validate_output_mapping(all_possible_pipeline_outputs, resolved_output_mapping)
+        output_types = self._resolve_output_types_from_mapping(all_possible_pipeline_outputs, resolved_output_mapping)
         # Set output types on the component
         component.set_output_types(self, **output_types)
         self.output_mapping: Dict[str, str] = resolved_output_mapping
