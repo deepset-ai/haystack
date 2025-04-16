@@ -13,7 +13,7 @@ on:
       - "!v1.[0-9]+.x"
 
 env:
-  HATCH_VERSION: "1.13.0"
+  HATCH_VERSION: "1.14.1"
   PYTHON_VERSION: "3.10"
 
 jobs:
