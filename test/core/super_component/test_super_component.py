@@ -5,6 +5,7 @@ from typing import List
 
 import pytest
 from haystack import Document, SuperComponent, Pipeline, AsyncPipeline, component, super_component
+from haystack.core.pipeline.base import component_to_dict, component_from_dict
 from haystack.components.builders import AnswerBuilder, PromptBuilder
 from haystack.components.generators import OpenAIGenerator
 from haystack.components.joiners import DocumentJoiner
@@ -106,6 +107,16 @@ def async_rag_pipeline(document_store):
     pipeline.connect("retriever.documents", "joiner.documents")
 
     return pipeline
+
+
+@super_component
+class CustomSuperComponent:
+    def __init__(self, var1: int, var2: str = "test"):
+        self.var1 = var1
+        self.var2 = var2
+        pipeline = Pipeline()
+        pipeline.add_component("joiner", DocumentJoiner())
+        self.pipeline = pipeline
 
 
 class TestSuperComponent:
@@ -279,28 +290,17 @@ class TestSuperComponent:
         assert custom_serialized["type"] == "test_super_component.CustomSuperComponent"
         assert custom_super_component._to_super_component_dict() == serialized
 
-    def test_subclass_serialization_decorator(self, rag_pipeline):
-        super_comp = SuperComponent(rag_pipeline)
-        serialized = super_comp.to_dict()
+    def test_custom_super_component_to_dict(self, rag_pipeline):
+        custom_super_component = CustomSuperComponent(1)
+        data = component_to_dict(custom_super_component, "custom_super_component")
+        assert data == {
+            "type": "test_super_component.CustomSuperComponent",
+            "init_parameters": {"var1": 1, "var2": "test"},
+        }
 
-        @super_component
-        class CustomSuperComponent:
-            def __init__(self, pipeline, instance_attribute="test"):
-                self.instance_attribute = instance_attribute
-                self.pipeline = pipeline
-
-            def to_dict(self):
-                return default_to_dict(
-                    self, instance_attribute=self.instance_attribute, pipeline=self.pipeline.to_dict()
-                )
-
-            @classmethod
-            def from_dict(cls, data):
-                data["init_parameters"]["pipeline"] = Pipeline.from_dict(data["init_parameters"]["pipeline"])
-                return default_from_dict(cls, data)
-
-        custom_super_component = CustomSuperComponent(rag_pipeline)
-        custom_serialized = custom_super_component.to_dict()
-
-        assert custom_serialized["type"] == "test_super_component.CustomSuperComponent"
-        assert custom_super_component._to_super_component_dict() == serialized
+    def test_custom_super_component_from_dict(self):
+        data = {"type": "test_super_component.CustomSuperComponent", "init_parameters": {"var1": 1, "var2": "test"}}
+        custom_super_component = component_from_dict(CustomSuperComponent, data, "custom_super_component")
+        assert isinstance(custom_super_component, CustomSuperComponent)
+        assert custom_super_component.var1 == 1
+        assert custom_super_component.var2 == "test"
