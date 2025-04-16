@@ -13,6 +13,7 @@ from haystack.utils import Jinja2TimeExtension
 logger = logging.getLogger(__name__)
 
 
+# better trigger
 @component
 class PromptBuilder:
     """
