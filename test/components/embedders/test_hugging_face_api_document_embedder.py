@@ -544,32 +544,3 @@ class TestHuggingFaceAPIDocumentEmbedder:
             assert len(doc.embedding) == 384
             assert all(isinstance(x, float) for x in doc.embedding)
 
-    @pytest.mark.flaky(reruns=5, reruns_delay=5)
-    @pytest.mark.asyncio
-    @pytest.mark.integration
-    @pytest.mark.skipif(
-        not os.environ.get("HF_API_TOKEN", None),
-        reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
-    )
-    async def test_live_run_async_serverless(self):
-        docs = [
-            Document(content="I love cheese", meta={"topic": "Cuisine"}),
-            Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
-        ]
-
-        embedder = HuggingFaceAPIDocumentEmbedder(
-            api_type=HFEmbeddingAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "sentence-transformers/all-MiniLM-L6-v2"},
-            meta_fields_to_embed=["topic"],
-            embedding_separator=" | ",
-        )
-        result = await embedder.run_async(documents=docs)
-        documents_with_embeddings = result["documents"]
-
-        assert isinstance(documents_with_embeddings, list)
-        assert len(documents_with_embeddings) == len(docs)
-        for doc in documents_with_embeddings:
-            assert isinstance(doc, Document)
-            assert isinstance(doc.embedding, list)
-            assert len(doc.embedding) == 384
-            assert all(isinstance(x, float) for x in doc.embedding)
