@@ -243,7 +243,7 @@ jobs:
           key: ${{ runner.os }}-${{ github.sha }}
 
       - name: Mypy
-        if: steps.files.outputs.any_changed == 'true'
+        if: steps.files.outputs.python_any_changed == 'true' || steps.files.outputs.pyproject_any_changed == 'true'
         run: |
           mkdir .mypy_cache
           hatch run test:types

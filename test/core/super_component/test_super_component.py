@@ -278,3 +278,13 @@ class TestSuperComponent:
 
         assert custom_serialized["type"] == "test_super_component.CustomSuperComponent"
         assert custom_super_component._to_super_component_dict() == serialized
+
+    def test_super_component_non_leaf_output(self, rag_pipeline):
+        # 'retriever' is not a leaf, but should now be allowed
+        output_mapping = {"retriever.documents": "retrieved_docs", "answer_builder.answers": "final_answers"}
+        wrapper = SuperComponent(pipeline=rag_pipeline, output_mapping=output_mapping)
+        wrapper.warm_up()
+        result = wrapper.run(query="What is the capital of France?")
+        assert "final_answers" in result  # leaf output
+        assert "retrieved_docs" in result  # non-leaf output
+        assert isinstance(result["retrieved_docs"][0], Document)
