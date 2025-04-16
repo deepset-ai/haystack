@@ -4,7 +4,7 @@
 
 import inspect
 from copy import deepcopy
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any, Dict, List, Optional
 
 from haystack import component, default_from_dict, default_to_dict, logging, tracing
 from haystack.components.generators.chat.types import ChatGenerator
@@ -132,6 +132,7 @@ class Agent:
             component.set_input_type(self, name=param, type=config["type"], default=None)
         component.set_output_types(self, **output_types)
 
+        self._tool_invoker = None
         if self.tools:
             self._tool_invoker = ToolInvoker(tools=self.tools, raise_on_failure=self.raise_on_tool_invocation_failure)
         else:
@@ -139,7 +140,7 @@ class Agent:
                 "No tools provided to the Agent. The Agent will behave like a ChatGenerator and only return text "
                 "responses. To enable tool usage, pass tools directly to the Agent, not to the chat_generator."
             )
-            self._tool_invoker = None
+
         self._is_warmed_up = False
 
     def warm_up(self) -> None:
@@ -199,13 +200,13 @@ class Agent:
 
     def _prepare_generator_inputs(self, streaming_callback: Optional[StreamingCallbackT] = None) -> Dict[str, Any]:
         """Prepare inputs for the chat generator."""
-        generator_inputs = {"tools": self.tools}
+        generator_inputs: Dict[str, Any] = {"tools": self.tools}
         selected_callback = streaming_callback or self.streaming_callback
         if selected_callback is not None:
             generator_inputs["streaming_callback"] = selected_callback
         return generator_inputs
 
-    def _create_agent_span(self) -> Iterator[tracing.Span]:
+    def _create_agent_span(self) -> Any:
         """Create a span for the agent run."""
         return tracing.tracer.trace(
             "haystack.agent.run",
