@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fix `ChatMessage.from_dict` to handle cases where optional fields like `name` and `meta` are missing.

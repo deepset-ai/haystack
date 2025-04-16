@@ -130,5 +130,5 @@ class TestDeserializeChatGeneratorInplace:
     def test_chat_generator_no_from_dict_method(self):
         chat_generator = ChatGeneratorWithoutFromDict()
         data = {"chat_generator": chat_generator.to_dict()}
-        with pytest.raises(DeserializationError):
-            deserialize_chatgenerator_inplace(data)
+        deserialize_chatgenerator_inplace(data)
+        assert isinstance(data["chat_generator"], ChatGeneratorWithoutFromDict)

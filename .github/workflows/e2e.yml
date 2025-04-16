@@ -18,7 +18,7 @@ on:
 env:
   PYTHON_VERSION: "3.9"
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-  HATCH_VERSION: "1.13.0"
+  HATCH_VERSION: "1.14.1"
   HF_API_TOKEN: ${{ secrets.HUGGINGFACE_API_KEY }}
 
 jobs:
@@ -36,7 +36,7 @@ jobs:
       run: pip install hatch==${{ env.HATCH_VERSION }}
 
     - name: Run tests
-      run: hatch run test:e2e
+      run: hatch run e2e:test
 
     - name: Send event to Datadog
       if: failure() && github.event_name == 'schedule'

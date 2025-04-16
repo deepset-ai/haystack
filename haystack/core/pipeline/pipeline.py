@@ -8,7 +8,13 @@ from typing import Any, Dict, Mapping, Optional, Set, cast
 from haystack import logging, tracing
 from haystack.core.component import Component
 from haystack.core.errors import PipelineRuntimeError
-from haystack.core.pipeline.base import ComponentPriority, PipelineBase
+from haystack.core.pipeline.base import (
+    _COMPONENT_INPUT,
+    _COMPONENT_OUTPUT,
+    _COMPONENT_VISITS,
+    ComponentPriority,
+    PipelineBase,
+)
 from haystack.telemetry import pipeline_running
 
 logger = logging.getLogger(__name__)
@@ -21,8 +27,9 @@ class Pipeline(PipelineBase):
     Orchestrates component execution according to the execution graph, one after the other.
     """
 
+    @staticmethod
     def _run_component(
-        self,
+        component_name: str,
         component: Dict[str, Any],
         inputs: Dict[str, Any],
         component_visits: Dict[str, int],
@@ -31,6 +38,7 @@ class Pipeline(PipelineBase):
         """
         Runs a Component with the given inputs.
 
+        :param component_name: Name of the Component.
         :param component: Component with component metadata.
         :param inputs: Inputs for the Component.
         :param component_visits: Current state of component visits.
@@ -40,44 +48,16 @@ class Pipeline(PipelineBase):
         :return: The output of the Component.
         """
         instance: Component = component["instance"]
-        component_name = self.get_component_name(instance)
-        component_inputs = self._consume_component_inputs(
-            component_name=component_name, component=component, inputs=inputs
-        )
 
-        # We need to add missing defaults using default values from input sockets because the run signature
-        # might not provide these defaults for components with inputs defined dynamically upon component initialization
-        component_inputs = self._add_missing_input_defaults(component_inputs, component["input_sockets"])
-
-        with tracing.tracer.trace(
-            "haystack.component.run",
-            tags={
-                "haystack.component.name": component_name,
-                "haystack.component.type": instance.__class__.__name__,
-                "haystack.component.input_types": {k: type(v).__name__ for k, v in component_inputs.items()},
-                "haystack.component.input_spec": {
-                    key: {
-                        "type": (value.type.__name__ if isinstance(value.type, type) else str(value.type)),
-                        "senders": value.senders,
-                    }
-                    for key, value in instance.__haystack_input__._sockets_dict.items()  # type: ignore
-                },
-                "haystack.component.output_spec": {
-                    key: {
-                        "type": (value.type.__name__ if isinstance(value.type, type) else str(value.type)),
-                        "receivers": value.receivers,
-                    }
-                    for key, value in instance.__haystack_output__._sockets_dict.items()  # type: ignore
-                },
-            },
-            parent_span=parent_span,
+        with PipelineBase._create_component_span(
+            component_name=component_name, instance=instance, inputs=inputs, parent_span=parent_span
         ) as span:
             # We deepcopy the inputs otherwise we might lose that information
             # when we delete them in case they're sent to other Components
-            span.set_content_tag("haystack.component.input", deepcopy(component_inputs))
+            span.set_content_tag(_COMPONENT_INPUT, deepcopy(inputs))
             logger.info("Running component {component_name}", component_name=component_name)
             try:
-                component_output = instance.run(**component_inputs)
+                component_output = instance.run(**inputs)
             except Exception as error:
                 raise PipelineRuntimeError.from_exception(component_name, instance.__class__, error) from error
             component_visits[component_name] += 1
@@ -85,8 +65,8 @@ class Pipeline(PipelineBase):
             if not isinstance(component_output, Mapping):
                 raise PipelineRuntimeError.from_invalid_output(component_name, instance.__class__, component_output)
 
-            span.set_tag("haystack.component.visits", component_visits[component_name])
-            span.set_content_tag("haystack.component.output", component_output)
+            span.set_tag(_COMPONENT_VISITS, component_visits[component_name])
+            span.set_content_tag(_COMPONENT_OUTPUT, component_output)
 
             return cast(Dict[Any, Any], component_output)
 
@@ -244,7 +224,21 @@ class Pipeline(PipelineBase):
                         component_name, component_visits[component_name]
                     )
 
-                component_outputs = self._run_component(component, inputs, component_visits, parent_span=span)
+                component_inputs = self._consume_component_inputs(
+                    component_name=component_name, component=component, inputs=inputs
+                )
+                # We need to add missing defaults using default values from input sockets because the run signature
+                # might not provide these defaults for components with inputs defined dynamically upon component
+                # initialization
+                component_inputs = self._add_missing_input_defaults(component_inputs, component["input_sockets"])
+
+                component_outputs = self._run_component(
+                    component_name=component_name,
+                    component=component,
+                    inputs=component_inputs,
+                    component_visits=component_visits,
+                    parent_span=span,
+                )
 
                 # Updates global input state with component outputs and returns outputs that should go to
                 # pipeline outputs.

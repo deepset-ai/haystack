@@ -9,7 +9,13 @@ from typing import Any, AsyncIterator, Dict, List, Optional, Set
 from haystack import logging, tracing
 from haystack.core.component import Component
 from haystack.core.errors import PipelineMaxComponentRuns, PipelineRuntimeError
-from haystack.core.pipeline.base import ComponentPriority, PipelineBase
+from haystack.core.pipeline.base import (
+    _COMPONENT_INPUT,
+    _COMPONENT_OUTPUT,
+    _COMPONENT_VISITS,
+    ComponentPriority,
+    PipelineBase,
+)
 from haystack.telemetry import pipeline_running
 
 logger = logging.getLogger(__name__)
@@ -22,6 +28,57 @@ class AsyncPipeline(PipelineBase):
     Manages components in a pipeline allowing for concurrent processing when the pipeline's execution graph permits.
     This enables efficient processing of components by minimizing idle time and maximizing resource utilization.
     """
+
+    @staticmethod
+    async def _run_component_async(  # pylint: disable=too-many-positional-arguments
+        component_name: str,
+        component: Dict[str, Any],
+        component_inputs: Dict[str, Any],
+        component_visits: Dict[str, int],
+        max_runs_per_component: int = 100,
+        parent_span: Optional[tracing.Span] = None,
+    ) -> Dict[str, Any]:
+        """
+        Executes a single component asynchronously.
+
+        If the component supports async execution, it is awaited directly as it will run async;
+        otherwise the component is offloaded to executor.
+
+        The method also updates the `visits` count of the component, writes outputs to `inputs_state`,
+        and returns pruned outputs that get stored in `pipeline_outputs`.
+
+        :param component_name: The name of the component.
+        :param component_inputs: Inputs for the component.
+        :returns: Outputs from the component that can be yielded from run_async_generator.
+        """
+        if component_visits[component_name] > max_runs_per_component:
+            raise PipelineMaxComponentRuns(f"Max runs for '{component_name}' reached.")
+
+        instance: Component = component["instance"]
+        with PipelineBase._create_component_span(
+            component_name=component_name, instance=instance, inputs=component_inputs, parent_span=parent_span
+        ) as span:
+            span.set_content_tag(_COMPONENT_INPUT, deepcopy(component_inputs))
+            logger.info("Running component {component_name}", component_name=component_name)
+
+            if getattr(instance, "__haystack_supports_async__", False):
+                try:
+                    outputs = await instance.run_async(**component_inputs)  # type: ignore
+                except Exception as error:
+                    raise PipelineRuntimeError.from_exception(component_name, instance.__class__, error) from error
+            else:
+                loop = asyncio.get_running_loop()
+                outputs = await loop.run_in_executor(None, lambda: instance.run(**component_inputs))
+
+            component_visits[component_name] += 1
+
+            if not isinstance(outputs, dict):
+                raise PipelineRuntimeError.from_invalid_output(component_name, instance.__class__, outputs)
+
+            span.set_tag(_COMPONENT_VISITS, component_visits[component_name])
+            span.set_content_tag(_COMPONENT_OUTPUT, deepcopy(outputs))
+
+            return outputs
 
     async def run_async_generator(  # noqa: PLR0915,C901
         self, data: Dict[str, Any], include_outputs_from: Optional[Set[str]] = None, concurrency_limit: int = 4
@@ -163,82 +220,6 @@ class AsyncPipeline(PipelineBase):
             # We define some functions here so that they have access to local runtime state
             # (inputs, tasks, scheduled components) via closures.
             # -------------------------------------------------
-            async def _run_component_async(component_name: str, component_inputs: Dict[str, Any]) -> Dict[str, Any]:
-                """
-                Executes a single component asynchronously.
-
-                If the component supports async execution, it is awaited directly as it will run async;
-                otherwise the component is offloaded to executor.
-
-                The method also updates the `visits` count of the component, writes outputs to `inputs_state`,
-                and returns pruned outputs that get stored in `pipeline_outputs`.
-
-                :param component_name: The name of the component.
-                :param component_inputs: Inputs for the component.
-                :returns: Outputs from the component that can be yielded from run_async_generator.
-                """
-                if component_visits[component_name] > self._max_runs_per_component:
-                    raise PipelineMaxComponentRuns(f"Max runs for '{component_name}' reached.")
-
-                instance: Component = self.get_component(component_name)
-                with tracing.tracer.trace(
-                    "haystack.component.run",
-                    tags={
-                        "haystack.component.name": component_name,
-                        "haystack.component.type": instance.__class__.__name__,
-                        "haystack.component.input_types": {k: type(v).__name__ for k, v in component_inputs.items()},
-                        "haystack.component.input_spec": {
-                            key: {
-                                "type": (value.type.__name__ if isinstance(value.type, type) else str(value.type)),
-                                "senders": value.senders,
-                            }
-                            for key, value in instance.__haystack_input__._sockets_dict.items()  # type: ignore
-                        },
-                        "haystack.component.output_spec": {
-                            key: {
-                                "type": (value.type.__name__ if isinstance(value.type, type) else str(value.type)),
-                                "receivers": value.receivers,
-                            }
-                            for key, value in instance.__haystack_output__._sockets_dict.items()  # type: ignore
-                        },
-                    },
-                    parent_span=parent_span,
-                ) as span:
-                    span.set_content_tag("haystack.component.input", deepcopy(component_inputs))
-                    logger.info("Running component {component_name}", component_name=component_name)
-
-                    if getattr(instance, "__haystack_supports_async__", False):
-                        try:
-                            outputs = await instance.run_async(**component_inputs)  # type: ignore
-                        except Exception as error:
-                            raise PipelineRuntimeError.from_exception(
-                                component_name, instance.__class__, error
-                            ) from error
-                    else:
-                        loop = asyncio.get_running_loop()
-                        outputs = await loop.run_in_executor(None, lambda: instance.run(**component_inputs))
-
-                    component_visits[component_name] += 1
-
-                    if not isinstance(outputs, dict):
-                        raise PipelineRuntimeError.from_invalid_output(component_name, instance.__class__, outputs)
-
-                    span.set_tag("haystack.component.visits", component_visits[component_name])
-                    span.set_content_tag("haystack.component.output", deepcopy(outputs))
-
-                    # Distribute outputs to downstream inputs; also prune outputs based on `include_outputs_from`
-                    pruned = self._write_component_outputs(
-                        component_name=component_name,
-                        component_outputs=outputs,
-                        inputs=inputs_state,
-                        receivers=cached_receivers[component_name],
-                        include_outputs_from=include_outputs_from,
-                    )
-                    if pruned:
-                        pipeline_outputs[component_name] = pruned
-
-                    return pruned
-
             async def _run_highest_in_isolation(component_name: str) -> AsyncIterator[Dict[str, Any]]:
                 """
                 Runs a component with HIGHEST priority in isolation.
@@ -271,10 +252,29 @@ class AsyncPipeline(PipelineBase):
                 )
                 component_inputs = self._consume_component_inputs(component_name, comp_dict, inputs_state)
                 component_inputs = self._add_missing_input_defaults(component_inputs, comp_dict["input_sockets"])
-                result = await _run_component_async(component_name, component_inputs)
+                component_pipeline_outputs = await self._run_component_async(
+                    component_name=component_name,
+                    component=comp_dict,
+                    component_inputs=component_inputs,
+                    component_visits=component_visits,
+                    max_runs_per_component=self._max_runs_per_component,
+                    parent_span=parent_span,
+                )
+
+                # Distribute outputs to downstream inputs; also prune outputs based on `include_outputs_from`
+                pruned = self._write_component_outputs(
+                    component_name=component_name,
+                    component_outputs=component_pipeline_outputs,
+                    inputs=inputs_state,
+                    receivers=cached_receivers[component_name],
+                    include_outputs_from=include_outputs_from,
+                )
+                if pruned:
+                    pipeline_outputs[component_name] = pruned
+
                 scheduled_components.remove(component_name)
-                if result:
-                    yield {component_name: deepcopy(result)}
+                if pruned:
+                    yield {component_name: deepcopy(pruned)}
 
             async def _schedule_task(component_name: str) -> None:
                 """
@@ -298,10 +298,28 @@ class AsyncPipeline(PipelineBase):
 
                 async def _runner():
                     async with ready_sem:
-                        result = await _run_component_async(component_name, component_inputs)
+                        component_pipeline_outputs = await self._run_component_async(
+                            component_name=component_name,
+                            component=comp_dict,
+                            component_inputs=component_inputs,
+                            component_visits=component_visits,
+                            max_runs_per_component=self._max_runs_per_component,
+                            parent_span=parent_span,
+                        )
+
+                    # Distribute outputs to downstream inputs; also prune outputs based on `include_outputs_from`
+                    pruned = self._write_component_outputs(
+                        component_name=component_name,
+                        component_outputs=component_pipeline_outputs,
+                        inputs=inputs_state,
+                        receivers=cached_receivers[component_name],
+                        include_outputs_from=include_outputs_from,
+                    )
+                    if pruned:
+                        pipeline_outputs[component_name] = pruned
 
                     scheduled_components.remove(component_name)
-                    return result
+                    return pruned
 
                 task = asyncio.create_task(_runner())
                 running_tasks[task] = component_name
