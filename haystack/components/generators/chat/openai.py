@@ -145,6 +145,10 @@ class OpenAIChatGenerator:
             depending on the use case: [proxies](https://www.python-httpx.org/advanced/proxies),
             [authentication](https://www.python-httpx.org/advanced/authentication) and other
             [advanced functionalities](https://www.python-httpx.org/advanced/clients) of HTTPX.
+
+            You can set a proxy with basic authorization using the environment variables:
+            `HTTP_PROXY` and `HTTPS_PROXY`, `ALL_PROXY` and `NO_PROXY`,
+            for example `HTTP_PROXY=http://user:password@your-proxy.net:8080`.
         """
         self.api_key = api_key
         self.model = model
