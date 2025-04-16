@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from tqdm import tqdm
 from tqdm.asyncio import tqdm as async_tqdm
@@ -236,14 +236,14 @@ class HuggingFaceAPIDocumentEmbedder:
             texts_to_embed.append(text_to_embed)
         return texts_to_embed
 
-    def _embed_batch(self, texts_to_embed: List[str], batch_size: int) -> List[List[float]]:
+    @staticmethod
+    def _adjust_api_parameters(
+        truncate: Optional[bool], normalize: Optional[bool], api_type: HFEmbeddingAPIType
+    ) -> Tuple[Optional[bool], Optional[bool]]:
         """
-        Embed a list of texts in batches.
+        Adjust the truncate and normalize parameters based on the API type.
         """
-        truncate = self.truncate
-        normalize = self.normalize
-
-        if self.api_type == HFEmbeddingAPIType.SERVERLESS_INFERENCE_API:
+        if api_type == HFEmbeddingAPIType.SERVERLESS_INFERENCE_API:
             if truncate is not None:
                 msg = "`truncate` parameter is not supported for Serverless Inference API. It will be ignored."
                 logger.warning(msg)
@@ -252,6 +252,13 @@ class HuggingFaceAPIDocumentEmbedder:
                 msg = "`normalize` parameter is not supported for Serverless Inference API. It will be ignored."
                 logger.warning(msg)
                 normalize = None
+        return truncate, normalize
+
+    def _embed_batch(self, texts_to_embed: List[str], batch_size: int) -> List[List[float]]:
+        """
+        Embed a list of texts in batches.
+        """
+        truncate, normalize = self._adjust_api_parameters(self.truncate, self.normalize, self.api_type)
 
         all_embeddings: List = []
         for i in tqdm(
@@ -277,18 +284,7 @@ class HuggingFaceAPIDocumentEmbedder:
         """
         Embed a list of texts in batches asynchronously.
         """
-        truncate = self.truncate
-        normalize = self.normalize
-
-        if self.api_type == HFEmbeddingAPIType.SERVERLESS_INFERENCE_API:
-            if truncate is not None:
-                msg = "`truncate` parameter is not supported for Serverless Inference API. It will be ignored."
-                logger.warning(msg)
-                truncate = None
-            if normalize is not None:
-                msg = "`normalize` parameter is not supported for Serverless Inference API. It will be ignored."
-                logger.warning(msg)
-                normalize = None
+        truncate, normalize = self._adjust_api_parameters(self.truncate, self.normalize, self.api_type)
 
         all_embeddings: List = []
         for i in async_tqdm(

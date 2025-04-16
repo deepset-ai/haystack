@@ -356,6 +356,19 @@ class TestHuggingFaceAPIDocumentEmbedder:
             assert len(doc.embedding) == 384
             assert all(isinstance(x, float) for x in doc.embedding)
 
+    def test_adjust_api_parameters(self):
+        truncate, normalize = HuggingFaceAPIDocumentEmbedder._adjust_api_parameters(
+            True, False, HFEmbeddingAPIType.SERVERLESS_INFERENCE_API
+        )
+        assert truncate is None
+        assert normalize is None
+
+        truncate, normalize = HuggingFaceAPIDocumentEmbedder._adjust_api_parameters(
+            True, False, HFEmbeddingAPIType.TEXT_EMBEDDINGS_INFERENCE
+        )
+        assert truncate is True
+        assert normalize is False
+
     @pytest.mark.flaky(reruns=5, reruns_delay=5)
     @pytest.mark.integration
     @pytest.mark.skipif(
@@ -543,4 +556,3 @@ class TestHuggingFaceAPIDocumentEmbedder:
             assert isinstance(doc.embedding, list)
             assert len(doc.embedding) == 384
             assert all(isinstance(x, float) for x in doc.embedding)
-
