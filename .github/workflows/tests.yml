@@ -161,6 +161,13 @@ jobs:
       - name: Run
         run: hatch run test:unit
 
+      - uses: actions/cache/save@v4
+        id: cache
+        if: matrix.os != 'ubuntu-latest'
+        with:
+          path: ${{ steps.hatch.outputs.env }}
+          key: ${{ runner.os }}-${{ github.sha }}
+
       - name: Coveralls
         # We upload only coverage for ubuntu as handling both os
         # complicates the workflow too much for little to no gain
