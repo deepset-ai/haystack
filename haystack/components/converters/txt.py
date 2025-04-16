@@ -60,7 +60,7 @@ class TextFileToDocument:
         Converts text files to documents.
 
         :param sources:
-            List of txt file paths or ByteStream objects to convert.
+            List of text file paths or ByteStream objects to convert.
         :param meta:
             Optional metadata to attach to the documents.
             This value can be a list of dictionaries or a single dictionary.
