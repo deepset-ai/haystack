@@ -318,10 +318,18 @@ jobs:
           path: ${{ steps.hatch.outputs.env }}
           key: ${{ runner.os }}-${{ github.sha }}
 
+      - name: List env
+        run: |
+          ls -la ${{ steps.hatch.outputs.env }}/bin
+
       - name: Install dependencies
         run: |
           sudo apt update
           sudo apt install ffmpeg  # for local Whisper tests
+
+      - name: List env after install
+        run: |
+          ls -la ${{ steps.hatch.outputs.env }}/bin
 
       - name: Run
         run: hatch run test:integration
