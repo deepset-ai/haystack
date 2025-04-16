@@ -15,7 +15,6 @@ with LazyImport("Run 'pip install pandas'") as pandas_import:
 logger = logging.getLogger(__name__)
 
 
-### TRIGGER
 @component
 class CSVDocumentCleaner:
     """
