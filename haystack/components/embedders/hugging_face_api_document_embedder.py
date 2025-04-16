@@ -2,9 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from tqdm import tqdm
+from tqdm.asyncio import tqdm as async_tqdm
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import Document
@@ -14,7 +15,7 @@ from haystack.utils.hf import HFEmbeddingAPIType, HFModelType, check_valid_model
 from haystack.utils.url_validation import is_valid_http_url
 
 with LazyImport(message="Run 'pip install \"huggingface_hub>=0.27.0\"'") as huggingface_hub_import:
-    from huggingface_hub import InferenceClient
+    from huggingface_hub import AsyncInferenceClient, InferenceClient
 
 logger = logging.getLogger(__name__)
 
@@ -167,6 +168,8 @@ class HuggingFaceAPIDocumentEmbedder:
             msg = f"Unknown api_type {api_type}"
             raise ValueError(msg)
 
+        client_args: Dict[str, Any] = {"model": model_or_url, "token": token.resolve_value() if token else None}
+
         self.api_type = api_type
         self.api_params = api_params
         self.token = token
@@ -178,7 +181,8 @@ class HuggingFaceAPIDocumentEmbedder:
         self.progress_bar = progress_bar
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
-        self._client = InferenceClient(model_or_url, token=token.resolve_value() if token else None)
+        self._client = InferenceClient(**client_args)
+        self._async_client = AsyncInferenceClient(**client_args)
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -232,14 +236,14 @@ class HuggingFaceAPIDocumentEmbedder:
             texts_to_embed.append(text_to_embed)
         return texts_to_embed
 
-    def _embed_batch(self, texts_to_embed: List[str], batch_size: int) -> List[List[float]]:
+    @staticmethod
+    def _adjust_api_parameters(
+        truncate: Optional[bool], normalize: Optional[bool], api_type: HFEmbeddingAPIType
+    ) -> Tuple[Optional[bool], Optional[bool]]:
         """
-        Embed a list of texts in batches.
+        Adjust the truncate and normalize parameters based on the API type.
         """
-        truncate = self.truncate
-        normalize = self.normalize
-
-        if self.api_type == HFEmbeddingAPIType.SERVERLESS_INFERENCE_API:
+        if api_type == HFEmbeddingAPIType.SERVERLESS_INFERENCE_API:
             if truncate is not None:
                 msg = "`truncate` parameter is not supported for Serverless Inference API. It will be ignored."
                 logger.warning(msg)
@@ -248,6 +252,13 @@ class HuggingFaceAPIDocumentEmbedder:
                 msg = "`normalize` parameter is not supported for Serverless Inference API. It will be ignored."
                 logger.warning(msg)
                 normalize = None
+        return truncate, normalize
+
+    def _embed_batch(self, texts_to_embed: List[str], batch_size: int) -> List[List[float]]:
+        """
+        Embed a list of texts in batches.
+        """
+        truncate, normalize = self._adjust_api_parameters(self.truncate, self.normalize, self.api_type)
 
         all_embeddings: List = []
         for i in tqdm(
@@ -256,6 +267,32 @@ class HuggingFaceAPIDocumentEmbedder:
             batch = texts_to_embed[i : i + batch_size]
 
             np_embeddings = self._client.feature_extraction(
+                # this method does not officially support list of strings, but works as expected
+                text=batch,  # type: ignore[arg-type]
+                truncate=truncate,
+                normalize=normalize,
+            )
+
+            if np_embeddings.ndim != 2 or np_embeddings.shape[0] != len(batch):
+                raise ValueError(f"Expected embedding shape ({batch_size}, embedding_dim), got {np_embeddings.shape}")
+
+            all_embeddings.extend(np_embeddings.tolist())
+
+        return all_embeddings
+
+    async def _embed_batch_async(self, texts_to_embed: List[str], batch_size: int) -> List[List[float]]:
+        """
+        Embed a list of texts in batches asynchronously.
+        """
+        truncate, normalize = self._adjust_api_parameters(self.truncate, self.normalize, self.api_type)
+
+        all_embeddings: List = []
+        for i in async_tqdm(
+            range(0, len(texts_to_embed), batch_size), disable=not self.progress_bar, desc="Calculating embeddings"
+        ):
+            batch = texts_to_embed[i : i + batch_size]
+
+            np_embeddings = await self._async_client.feature_extraction(
                 # this method does not officially support list of strings, but works as expected
                 text=batch,  # type: ignore[arg-type]
                 truncate=truncate,
@@ -290,6 +327,33 @@ class HuggingFaceAPIDocumentEmbedder:
         texts_to_embed = self._prepare_texts_to_embed(documents=documents)
 
         embeddings = self._embed_batch(texts_to_embed=texts_to_embed, batch_size=self.batch_size)
+
+        for doc, emb in zip(documents, embeddings):
+            doc.embedding = emb
+
+        return {"documents": documents}
+
+    @component.output_types(documents=List[Document])
+    async def run_async(self, documents: List[Document]):
+        """
+        Embeds a list of documents asynchronously.
+
+        :param documents:
+            Documents to embed.
+
+        :returns:
+            A dictionary with the following keys:
+            - `documents`: A list of documents with embeddings.
+        """
+        if not isinstance(documents, list) or documents and not isinstance(documents[0], Document):
+            raise TypeError(
+                "HuggingFaceAPIDocumentEmbedder expects a list of Documents as input."
+                " In case you want to embed a string, please use the HuggingFaceAPITextEmbedder."
+            )
+
+        texts_to_embed = self._prepare_texts_to_embed(documents=documents)
+
+        embeddings = await self._embed_batch_async(texts_to_embed=texts_to_embed, batch_size=self.batch_size)
 
         for doc, emb in zip(documents, embeddings):
             doc.embedding = emb
