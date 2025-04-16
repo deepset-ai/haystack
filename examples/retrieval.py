@@ -9,7 +9,6 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 docs = []
 
 for image_path in glob.glob("examples/arxiv_images/*.png"):
-    print(image_path)
     text = "image from '" + image_path.split("/")[-1].replace(".png", "").replace("_", " ") + "' paper"
     docs.append(Document(content=text, meta={"image_path": image_path}))
 
