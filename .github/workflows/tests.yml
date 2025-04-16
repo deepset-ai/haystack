@@ -163,6 +163,7 @@ jobs:
 
       - uses: actions/cache/save@v4
         id: cache
+        if: matrix.os != 'ubuntu-latest'
         with:
           path: ${{ steps.hatch.outputs.env }}
           key: ${{ runner.os }}-${{ github.sha }}
@@ -238,12 +239,6 @@ jobs:
           pip install hatch==${{ env.HATCH_VERSION }}
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/cache/restore@v4
-        id: cache
-        with:
-          path: ${{ steps.hatch.outputs.env }}
-          key: ${{ runner.os }}-${{ github.sha }}
-
       - name: Mypy
         if: steps.files.outputs.python_any_changed == 'true' || steps.files.outputs.pyproject_any_changed == 'true'
         run: |
@@ -309,12 +304,6 @@ jobs:
         run: |
           pip install hatch==${{ env.HATCH_VERSION }}
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
-
-      - uses: actions/cache/restore@v4
-        id: cache
-        with:
-          path: ${{ steps.hatch.outputs.env }}
-          key: ${{ runner.os }}-${{ github.sha }}
 
       - name: Install dependencies
         run: |
