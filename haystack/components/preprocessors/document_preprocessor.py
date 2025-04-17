@@ -64,7 +64,7 @@ class DocumentPreprocessor:
         :param unicode_normalization: Unicode normalization form to apply to the text, for example `"NFC"`.
         :param ascii_only: If `True`, converts text to ASCII only.
 
-        **Splitter Params**:
+        **Splitter Parameters**:
         :param split_by: The unit of splitting: "function", "page", "passage", "period", "word", "line", or "sentence".
         :param split_length: The maximum number of units (words, lines, pages, etc.) in each split.
         :param split_overlap: The number of overlapping units between consecutive splits.
