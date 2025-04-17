@@ -22,7 +22,7 @@ class DocumentPreprocessor:
     ```python
     from haystack import Document
     from haystack.components.preprocessors import DocumentPreprocessor
-    
+
     doc = Document(content="I love pizza!")
     preprocessor = DocumentPreprocessor()
     result = preprocessor.run(documents=[doc])
