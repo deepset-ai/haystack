@@ -82,31 +82,22 @@ class MultiFileConverter:
         # Create pipeline and add components
         pp = Pipeline()
 
-        pp.add_component("router", router)
-
-        docx = DOCXToDocument(link_format="markdown")
-        html = HTMLToDocument(
-            extraction_kwargs={"output_format": "markdown", "include_tables": True, "include_links": True}
+        pp.add_component("router", router)  # type: ignore[arg-type]
+        pp.add_component("docx", DOCXToDocument(link_format="markdown"))  # type: ignore[arg-type]
+        pp.add_component(
+            "html",
+            HTMLToDocument(  # type: ignore[arg-type]
+                extraction_kwargs={"output_format": "markdown", "include_tables": True, "include_links": True}
+            ),
         )
-        json = JSONConverter(content_key=self.json_content_key)
-        md = TextFileToDocument(encoding=self.encoding)
-        text = TextFileToDocument(encoding=self.encoding)
-        pdf = PyPDFToDocument()
-        pptx = PPTXToDocument()
-        xlsx = XLSXToDocument()
-        csv = CSVToDocument(encoding=self.encoding)
-        joiner = DocumentJoiner()
-
-        pp.add_component("docx", docx)
-        pp.add_component("html", html)
-        pp.add_component("json", json)
-        pp.add_component("md", md)
-        pp.add_component("text", text)
-        pp.add_component("pdf", pdf)
-        pp.add_component("pptx", pptx)
-        pp.add_component("xlsx", xlsx)
-        pp.add_component("joiner", joiner)
-        pp.add_component("csv", csv)
+        pp.add_component("json", JSONConverter(content_key=self.json_content_key))  # type: ignore[arg-type]
+        pp.add_component("md", TextFileToDocument(encoding=self.encoding))  # type: ignore[arg-type]
+        pp.add_component("text", TextFileToDocument(encoding=self.encoding))  # type: ignore[arg-type]
+        pp.add_component("pdf", PyPDFToDocument())  # type: ignore[arg-type]
+        pp.add_component("pptx", PPTXToDocument())  # type: ignore[arg-type]
+        pp.add_component("xlsx", XLSXToDocument())  # type: ignore[arg-type]
+        pp.add_component("joiner", DocumentJoiner())  # type: ignore[arg-type]
+        pp.add_component("csv", CSVToDocument(encoding=self.encoding))  # type: ignore[arg-type]
 
         for mime_type in ConverterMimeType:
             pp.connect(f"router.{mime_type.value}", str(mime_type).lower().rsplit(".", maxsplit=1)[-1])

@@ -124,8 +124,8 @@ class DocumentPreprocessor:
 
         # Build the Pipeline
         pp = Pipeline()
-        pp.add_component("cleaner", cleaner)
-        pp.add_component("splitter", splitter)
+        pp.add_component("cleaner", cleaner)  # type: ignore[arg-type]
+        pp.add_component("splitter", splitter)  # type: ignore[arg-type]
 
         # Connect the splitter output to cleaner
         pp.connect("splitter.documents", "cleaner.documents")
