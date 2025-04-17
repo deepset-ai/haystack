@@ -52,7 +52,7 @@ class DocumentPreprocessor:
         extend_abbreviations: bool = True,
     ) -> None:
         """
-        Initialize a DocumentPreProcessor that first cleans documents and then splits them.
+        Initialize a DocumentPreProcessor that first splits and then cleans documents.
 
         **Cleaner Params**:
         :param remove_empty_lines: If `True`, removes empty lines.
