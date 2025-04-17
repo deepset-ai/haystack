@@ -10,6 +10,7 @@ loaders:
         "json",
         "markdown",
         "msg",
+        "multi_file_converter",
         "openapi_functions",
         "output_adapter",
         "pdfminer",
