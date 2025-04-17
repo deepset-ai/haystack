@@ -1,5 +1,5 @@
 # If you change this name also do it in slow.yml and ci_metrics.yml
-name: Slow/Unstable Integration Tests
+name: Slow Integration Tests
 
 on:
   pull_request:
@@ -14,21 +14,21 @@ on:
 
 jobs:
   slow-integration-tests-linux:
-    name: Slow/Unstable Integration Tests / ubuntu-latest
+    name: Slow Tests / ubuntu-latest
     runs-on: ubuntu-latest
     steps:
       - name: Skip mandatory job
         run: echo "Skipped!"
 
   slow-integration-tests-macos:
-    name: Slow/Unstable Integration Tests / macos-latest
+    name: Slow Tests / macos-latest
     runs-on: macos-latest
     steps:
       - name: Skip mandatory job
         run: echo "Skipped!"
 
   slow-integration-tests-windows:
-    name: Slow/Unstable Integration Tests / windows-latest
+    name: Slow Tests / windows-latest
     runs-on: windows-latest
     steps:
       - name: Skip mandatory job

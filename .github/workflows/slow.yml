@@ -1,5 +1,5 @@
 # If you change this name also do it in slow_skipper.yml and ci_metrics.yml
-name: Slow/Unstable Integration Tests
+name: Slow Integration Tests
 
 on:
   push:
@@ -25,7 +25,7 @@ env:
 jobs:
 
   slow-integration-tests-linux:
-    name: Slow/Unstable Integration Tests / ubuntu-latest
+    name: Slow Tests / ubuntu-latest
     runs-on: ubuntu-latest
     services:
       tika:
@@ -86,7 +86,7 @@ jobs:
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
   slow-integration-tests-macos:
-    name: Slow/Unstable Integration Tests / macos-latest
+    name: Slow Tests / macos-latest
     runs-on: macos-latest
     env:
       HAYSTACK_MPS_ENABLED: false
@@ -144,7 +144,7 @@ jobs:
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
   slow-integration-tests-windows:
-    name: Slow/Unstable Integration Tests / windows-latest
+    name: Slow Tests / windows-latest
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
