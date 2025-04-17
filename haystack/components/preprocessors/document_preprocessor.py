@@ -31,15 +31,6 @@ class DocumentPreprocessor:
     def __init__(  # noqa: PLR0913 (too-many-arguments)
         self,
         *,
-        # --- DocumentCleaner arguments ---
-        remove_empty_lines: bool = True,
-        remove_extra_whitespaces: bool = True,
-        remove_repeated_substrings: bool = False,
-        keep_id: bool = False,
-        remove_substrings: Optional[List[str]] = None,
-        remove_regex: Optional[str] = None,
-        unicode_normalization: Optional[Literal["NFC", "NFKC", "NFD", "NFKD"]] = None,
-        ascii_only: bool = False,
         # --- DocumentSplitter arguments ---
         split_by: Literal["function", "page", "passage", "period", "word", "line", "sentence"] = "word",
         split_length: int = 250,
@@ -50,6 +41,15 @@ class DocumentPreprocessor:
         language: Language = "en",
         use_split_rules: bool = True,
         extend_abbreviations: bool = True,
+        # --- DocumentCleaner arguments ---
+        remove_empty_lines: bool = True,
+        remove_extra_whitespaces: bool = True,
+        remove_repeated_substrings: bool = False,
+        keep_id: bool = False,
+        remove_substrings: Optional[List[str]] = None,
+        remove_regex: Optional[str] = None,
+        unicode_normalization: Optional[Literal["NFC", "NFKC", "NFD", "NFKD"]] = None,
+        ascii_only: bool = False,
     ) -> None:
         """
         Initialize a DocumentPreProcessor that first splits and then cleans documents.
@@ -99,17 +99,6 @@ class DocumentPreprocessor:
         self.extend_abbreviations = extend_abbreviations
 
         # Instantiate sub-components
-        cleaner = DocumentCleaner(
-            remove_empty_lines=self.remove_empty_lines,
-            remove_extra_whitespaces=self.remove_extra_whitespaces,
-            remove_repeated_substrings=self.remove_repeated_substrings,
-            keep_id=self.keep_id,
-            remove_substrings=self.remove_substrings,
-            remove_regex=self.remove_regex,
-            unicode_normalization=self.unicode_normalization,
-            ascii_only=self.ascii_only,
-        )
-
         splitter = DocumentSplitter(
             split_by=self.split_by,
             split_length=self.split_length,
@@ -122,13 +111,24 @@ class DocumentPreprocessor:
             extend_abbreviations=self.extend_abbreviations,
         )
 
+        cleaner = DocumentCleaner(
+            remove_empty_lines=self.remove_empty_lines,
+            remove_extra_whitespaces=self.remove_extra_whitespaces,
+            remove_repeated_substrings=self.remove_repeated_substrings,
+            keep_id=self.keep_id,
+            remove_substrings=self.remove_substrings,
+            remove_regex=self.remove_regex,
+            unicode_normalization=self.unicode_normalization,
+            ascii_only=self.ascii_only,
+        )
+
         # Build the Pipeline
         pp = Pipeline()
 
         # We use type ignore here to avoid type checking errors
         # This is due to how the run method within the Component protocol is defined
-        pp.add_component("cleaner", cleaner)  # type: ignore[arg-type]
         pp.add_component("splitter", splitter)  # type: ignore[arg-type]
+        pp.add_component("cleaner", cleaner)  # type: ignore[arg-type]
 
         # Connect the splitter output to cleaner
         pp.connect("splitter.documents", "cleaner.documents")
