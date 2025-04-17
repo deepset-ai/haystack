@@ -1,12 +1,5 @@
-# If you change this name also do it in ci_metrics.yml
+# If you change this name also do it in slow_skipper.yml and ci_metrics.yml
 name: Slow Integration Tests
-
-# This workflow is not required to merge a PR for the following reasons:
-# - The tests involved are unstable and rely on external services, which can lead to prolonged failures
-#   (sometimes lasting an entire day).
-# - The workflow uses a hardcoded list of paths that would need to be duplicated elsewhere
-#   (specifically in the skipper workflow).
-# We may revisit this decision in the future.
 
 on:
   workflow_dispatch: # Activate this workflow manually
