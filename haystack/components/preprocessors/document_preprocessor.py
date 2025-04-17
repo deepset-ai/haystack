@@ -62,7 +62,7 @@ class DocumentPreprocessor:
         :param remove_substrings: A list of strings to remove from the document content.
         :param remove_regex: A regex pattern whose matches will be removed from the document content.
         :param unicode_normalization: Unicode normalization form to apply to the text, for example `"NFC"`.
-        :param ascii_only: If `True`, convert text to ASCII only.
+        :param ascii_only: If `True`, converts text to ASCII only.
 
         **Splitter Params**:
         :param split_by: The unit of splitting: "function", "page", "passage", "period", "word", "line", or "sentence".
