@@ -11,6 +11,7 @@ from haystack.dataclasses.chat_message import ChatMessage
 logger = logging.getLogger(__name__)
 
 
+# TRIGGER
 @component
 class AnswerBuilder:
     """
