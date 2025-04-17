@@ -84,21 +84,29 @@ class MultiFileConverter:
 
         pp.add_component("router", router)
 
-        pp.add_component("docx", DOCXToDocument(link_format="markdown"))
-        pp.add_component(
-            "html",
-            HTMLToDocument(
-                extraction_kwargs={"output_format": "markdown", "include_tables": True, "include_links": True}
-            ),
+        docx = DOCXToDocument(link_format="markdown")
+        html = HTMLToDocument(
+            extraction_kwargs={"output_format": "markdown", "include_tables": True, "include_links": True}
         )
-        pp.add_component("json", JSONConverter(content_key=self.json_content_key))
-        pp.add_component("md", TextFileToDocument(encoding=self.encoding))
-        pp.add_component("text", TextFileToDocument(encoding=self.encoding))
-        pp.add_component("pdf", PyPDFToDocument())
-        pp.add_component("pptx", PPTXToDocument())
-        pp.add_component("xlsx", XLSXToDocument())
-        pp.add_component("joiner", DocumentJoiner())
-        pp.add_component("csv", CSVToDocument(encoding=self.encoding))
+        json = JSONConverter(content_key=self.json_content_key)
+        md = TextFileToDocument(encoding=self.encoding)
+        text = TextFileToDocument(encoding=self.encoding)
+        pdf = PyPDFToDocument()
+        pptx = PPTXToDocument()
+        xlsx = XLSXToDocument()
+        csv = CSVToDocument(encoding=self.encoding)
+        joiner = DocumentJoiner()
+
+        pp.add_component("docx", docx)
+        pp.add_component("html", html)
+        pp.add_component("json", json)
+        pp.add_component("md", md)
+        pp.add_component("text", text)
+        pp.add_component("pdf", pdf)
+        pp.add_component("pptx", pptx)
+        pp.add_component("xlsx", xlsx)
+        pp.add_component("joiner", joiner)
+        pp.add_component("csv", csv)
 
         for mime_type in ConverterMimeType:
             pp.connect(f"router.{mime_type.value}", str(mime_type).lower().rsplit(".", maxsplit=1)[-1])
