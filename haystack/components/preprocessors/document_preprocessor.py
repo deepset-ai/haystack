@@ -13,7 +13,7 @@ from haystack.utils import deserialize_callable, serialize_callable
 @super_component
 class DocumentPreprocessor:
     """
-    A SuperComponent that cleans documents and then splits them.
+    A SuperComponent that first splits and then cleans documents.
 
     This component composes a DocumentSplitter followed by a DocumentCleaner in a single pipeline.
     It takes a list of documents as input and returns a processed list of documents.
