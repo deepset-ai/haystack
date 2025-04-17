@@ -15,7 +15,7 @@ class DocumentPreprocessor:
     """
     A SuperComponent that first splits and then cleans documents.
 
-    This component composes a DocumentSplitter followed by a DocumentCleaner in a single pipeline.
+    This component consists of a DocumentSplitter followed by a DocumentCleaner in a single pipeline.
     It takes a list of documents as input and returns a processed list of documents.
 
     Usage:
