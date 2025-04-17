@@ -10,7 +10,6 @@ from haystack.components.converters import (
     DOCXToDocument,
     HTMLToDocument,
     JSONConverter,
-    MarkdownToDocument,
     PPTXToDocument,
     PyPDFToDocument,
     TextFileToDocument,
@@ -102,7 +101,7 @@ class MultiFileConverter:
         pp.add_component("csv", CSVToDocument(encoding=self.encoding))
 
         for mime_type in ConverterMimeType:
-            pp.connect(f"router.{mime_type.value}", str(mime_type).lower().split(".")[-1])
+            pp.connect(f"router.{mime_type.value}", str(mime_type).lower().rsplit(".", maxsplit=1)[-1])
 
         pp.connect("docx.documents", "joiner.documents")
         pp.connect("html.documents", "joiner.documents")
