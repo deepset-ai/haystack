@@ -61,7 +61,7 @@ class MultiFileConverter:
         Initialize the MultiFileConverter.
 
         :param encoding: The encoding to use when reading files.
-        :param json_content_key: The key to use as content-field in a document when converting json-files.
+        :param json_content_key: The key to use in a content field in a document when converting JSON files.
         """
         self.encoding = encoding
         self.json_content_key = json_content_key
