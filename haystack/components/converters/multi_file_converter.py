@@ -82,6 +82,8 @@ class MultiFileConverter:
         # Create pipeline and add components
         pp = Pipeline()
 
+        # We use type ignore here to avoid type checking errors
+        # This is due to how the run method within the Component protocol is defined
         pp.add_component("router", router)  # type: ignore[arg-type]
         pp.add_component("docx", DOCXToDocument(link_format="markdown"))  # type: ignore[arg-type]
         pp.add_component(
