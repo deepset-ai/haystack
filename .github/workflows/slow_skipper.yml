@@ -45,4 +45,5 @@ jobs:
     steps:
       - name: Mark tests as completed
         run: |
+          echo "$needs.check_if_changed.outputs"
           echo "Slow Integration Tests skipped!"
