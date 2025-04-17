@@ -5,6 +5,7 @@ loaders:
       "csv_document_cleaner",
       "csv_document_splitter",
       "document_cleaner",
+      "document_preprocessor",
       "document_splitter",
       "hierarchical_document_splitter",
       "recursive_splitter",
