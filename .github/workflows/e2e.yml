@@ -10,7 +10,6 @@ on:
       - opened
       - reopened
       - synchronize
-      - ready_for_review
     paths:
       - "e2e/**/*.py"
       - ".github/workflows/e2e.yml"

@@ -11,6 +11,7 @@ _import_structure = {
     "csv_document_cleaner": ["CSVDocumentCleaner"],
     "csv_document_splitter": ["CSVDocumentSplitter"],
     "document_cleaner": ["DocumentCleaner"],
+    "document_preprocessor": ["DocumentPreprocessor"],
     "document_splitter": ["DocumentSplitter"],
     "hierarchical_document_splitter": ["HierarchicalDocumentSplitter"],
     "recursive_splitter": ["RecursiveDocumentSplitter"],
@@ -21,6 +22,7 @@ if TYPE_CHECKING:
     from .csv_document_cleaner import CSVDocumentCleaner
     from .csv_document_splitter import CSVDocumentSplitter
     from .document_cleaner import DocumentCleaner
+    from .document_preprocessor import DocumentPreprocessor
     from .document_splitter import DocumentSplitter
     from .hierarchical_document_splitter import HierarchicalDocumentSplitter
     from .recursive_splitter import RecursiveDocumentSplitter
