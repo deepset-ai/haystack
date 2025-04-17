@@ -285,11 +285,7 @@ jobs:
     name: Integration / ubuntu-latest
     needs: unit-tests
     runs-on: ubuntu-latest
-    services:
-      tika:
-        image: apache/tika:2.9.0.0
-        ports:
-          - 9998:9998
+
     steps:
       - uses: actions/checkout@v4
 
@@ -368,7 +364,7 @@ jobs:
 
 
       - name: Run
-        run: hatch run test:integration-only-fast-mac
+        run: hatch run test:integration-only-fast
 
       - name: Calculate alert data
         id: calculator
@@ -426,7 +422,7 @@ jobs:
           key: ${{ runner.os }}-${{ github.sha }}
 
       - name: Run
-        run: hatch run test:integration-only-fast-windows
+        run: hatch run test:integration-only-fast
 
       - name: Calculate alert data
         id: calculator

@@ -153,16 +153,8 @@ dependencies = [
 [tool.hatch.envs.test.scripts]
 unit = 'pytest --cov-report xml:coverage.xml --cov="haystack" -m "not integration" {args:test}'
 integration = 'pytest --maxfail=5 -m "integration" {args:test}'
-integration-mac = 'pytest --maxfail=5 -m "integration" -k "not tika" {args:test}'
-integration-windows = 'pytest --maxfail=5 -m "integration" -k "not tika" {args:test}'
-
 integration-only-fast = 'pytest --maxfail=5 -m "integration and not slow" {args:test}'
-integration-only-fast-mac = 'pytest --maxfail=5 -m "integration and not slow" -k "not tika" {args:test}'
-integration-only-fast-windows = 'pytest --maxfail=5 -m "integration and not slow" -k "not tika" {args:test}'
-
 integration-only-slow = 'pytest --maxfail=5 -m "integration and slow" {args:test}'
-integration-only-slow-mac = 'pytest --maxfail=5 -m "integration and slow" -k "not tika" {args:test}'
-integration-only-slow-windows = 'pytest --maxfail=5 -m "integration and slow" -k "not tika" {args:test}'
 
 types = "mypy --install-types --non-interactive --cache-dir=.mypy_cache/ {args:haystack}"
 lint = "pylint -ry -j 0 {args:haystack}"

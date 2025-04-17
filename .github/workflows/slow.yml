@@ -2,6 +2,9 @@
 name: Slow Integration Tests
 
 on:
+  workflow_dispatch: # Activate this workflow manually
+  schedule:
+    - cron: "0 0 * * *"
   push:
     branches:
       # release branches have the form v1.9.x
@@ -14,6 +17,8 @@ on:
     paths:
       # Keep the list in sync with the paths defined in the `slow_skipper.yml` workflow
       - "haystack/components/audio/whisper_local.py"
+      - "haystack/components/converters/tika.py"
+      - "test/components/converters/test_tika_doc_converter.py"
       - "test/components/audio/test_whisper_local.py"
 
 env:
@@ -110,7 +115,7 @@ jobs:
           brew install ffmpeg  # for local Whisper tests
 
       - name: Run
-        run: hatch run test:integration-only-slow-mac
+        run: hatch run test:integration-only-slow
 
       - name: Calculate alert data
         id: calculator
@@ -162,7 +167,7 @@ jobs:
 
 
       - name: Run
-        run: hatch run test:integration-only-slow-windows
+        run: hatch run test:integration-only-slow
 
       - name: Calculate alert data
         id: calculator
