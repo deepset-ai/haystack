@@ -15,7 +15,7 @@ class DocumentPreprocessor:
     """
     A SuperComponent that cleans documents and then splits them.
 
-    This component composes a DocumentCleaner followed by a DocumentSplitter in a single pipeline.
+    This component composes a DocumentSplitter followed by a DocumentCleaner in a single pipeline.
     It takes a list of documents as input and returns a processed list of documents.
 
     Usage:
@@ -144,7 +144,10 @@ class DocumentPreprocessor:
 
     def to_dict(self) -> Dict[str, Any]:
         """
-        Serialize this instance to a dictionary.
+        Serialize SuperComponent to a dictionary.
+
+        :return:
+            Dictionary with serialized data.
         """
         splitting_function = None
         if self.splitting_function is not None:
@@ -174,7 +177,12 @@ class DocumentPreprocessor:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "DocumentPreprocessor":
         """
-        Load this instance from a dictionary.
+        Deserializes the SuperComponent from a dictionary.
+
+        :param data:
+            Dictionary to deserialize from.
+        :returns:
+            Deserialized SuperComponent.
         """
         if "splitting_function" in data["init_parameters"]:
             data["init_parameters"]["splitting_function"] = deserialize_callable(

@@ -56,9 +56,7 @@ class MultiFileConverter:
     ```
     """
 
-    def __init__(  # noqa: PLR0915
-        self, encoding: str = "utf-8", json_content_key: str = "content"
-    ) -> None:
+    def __init__(self, encoding: str = "utf-8", json_content_key: str = "content") -> None:
         """
         Initialize the MultiFileConverter.
 
