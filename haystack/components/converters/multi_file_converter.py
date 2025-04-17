@@ -47,7 +47,7 @@ class MultiFileConverter:
     - PPTX
     - XLSX
 
-    Usage:
+    Usage example:
     ```
     from haystack.super_components.converters import MultiFileConverter
 
