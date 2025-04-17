@@ -54,7 +54,7 @@ class DocumentPreprocessor:
         """
         Initialize a DocumentPreProcessor that first splits and then cleans documents.
 
-        **Cleaner Params**:
+        **Cleaner Parameters**:
         :param remove_empty_lines: If `True`, removes empty lines.
         :param remove_extra_whitespaces: If `True`, removes extra whitespaces.
         :param remove_repeated_substrings: If `True`, removes repeated substrings like headers/footers across pages.
