@@ -71,17 +71,7 @@ class MultiFileConverter:
 
         # initialize components
         router = FileTypeRouter(
-            mime_types=[
-                ConverterMimeType.CSV.value,
-                ConverterMimeType.DOCX.value,
-                ConverterMimeType.HTML.value,
-                ConverterMimeType.JSON.value,
-                ConverterMimeType.MD.value,
-                ConverterMimeType.TEXT.value,
-                ConverterMimeType.PDF.value,
-                ConverterMimeType.PPTX.value,
-                ConverterMimeType.XLSX.value,
-            ],
+            mime_types=[mime_type.value for mime_type in ConverterMimeType],
             # Ensure common extensions are registered. Tests on Windows fail otherwise.
             additional_mimetypes={
                 "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
@@ -90,49 +80,35 @@ class MultiFileConverter:
             },
         )
 
-        csv = CSVToDocument(encoding=self.encoding)
-        docx = DOCXToDocument()
-        html = HTMLToDocument()
-        json = JSONConverter(content_key=self.json_content_key)
-        md = MarkdownToDocument()
-        txt = TextFileToDocument(encoding=self.encoding)
-        pdf = PyPDFToDocument()
-        pptx = PPTXToDocument()
-        xlsx = XLSXToDocument()
-
-        joiner = DocumentJoiner()
-
         # Create pipeline and add components
         pp = Pipeline()
 
         pp.add_component("router", router)
 
-        pp.add_component("docx", docx)
-        pp.add_component("html", html)
-        pp.add_component("json", json)
-        pp.add_component("md", md)
-        pp.add_component("txt", txt)
-        pp.add_component("pdf", pdf)
-        pp.add_component("pptx", pptx)
-        pp.add_component("xlsx", xlsx)
-        pp.add_component("joiner", joiner)
-        pp.add_component("csv", csv)
+        pp.add_component("docx", DOCXToDocument(link_format="markdown"))
+        pp.add_component(
+            "html",
+            HTMLToDocument(
+                extraction_kwargs={"output_format": "markdown", "include_tables": True, "include_links": True}
+            ),
+        )
+        pp.add_component("json", JSONConverter(content_key=self.json_content_key))
+        pp.add_component("md", TextFileToDocument(encoding=self.encoding))
+        pp.add_component("text", TextFileToDocument(encoding=self.encoding))
+        pp.add_component("pdf", PyPDFToDocument())
+        pp.add_component("pptx", PPTXToDocument())
+        pp.add_component("xlsx", XLSXToDocument())
+        pp.add_component("joiner", DocumentJoiner())
+        pp.add_component("csv", CSVToDocument(encoding=self.encoding))
 
-        pp.connect(f"router.{ConverterMimeType.CSV.value}", "csv")
-        pp.connect(f"router.{ConverterMimeType.DOCX.value}", "docx")
-        pp.connect(f"router.{ConverterMimeType.HTML.value}", "html")
-        pp.connect(f"router.{ConverterMimeType.JSON.value}", "json")
-        pp.connect(f"router.{ConverterMimeType.MD.value}", "md")
-        pp.connect(f"router.{ConverterMimeType.TEXT.value}", "txt")
-        pp.connect(f"router.{ConverterMimeType.PDF.value}", "pdf")
-        pp.connect(f"router.{ConverterMimeType.PPTX.value}", "pptx")
-        pp.connect(f"router.{ConverterMimeType.XLSX.value}", "xlsx")
+        for mime_type in ConverterMimeType:
+            pp.connect(f"router.{mime_type.value}", str(mime_type).lower().split(".")[-1])
 
         pp.connect("docx.documents", "joiner.documents")
         pp.connect("html.documents", "joiner.documents")
         pp.connect("json.documents", "joiner.documents")
         pp.connect("md.documents", "joiner.documents")
-        pp.connect("txt.documents", "joiner.documents")
+        pp.connect("text.documents", "joiner.documents")
         pp.connect("pdf.documents", "joiner.documents")
         pp.connect("pptx.documents", "joiner.documents")
 
