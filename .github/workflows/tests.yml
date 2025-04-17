@@ -31,7 +31,7 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   HF_API_TOKEN: ${{ secrets.HUGGINGFACE_API_KEY }}
   PYTHON_VERSION: "3.9"
-  HATCH_VERSION: "1.13.0"
+  HATCH_VERSION: "1.14.1"
 
 jobs:
   format:
@@ -163,6 +163,7 @@ jobs:
 
       - uses: actions/cache/save@v4
         id: cache
+        if: matrix.os != 'ubuntu-latest'
         with:
           path: ${{ steps.hatch.outputs.env }}
           key: ${{ runner.os }}-${{ github.sha }}
@@ -238,14 +239,8 @@ jobs:
           pip install hatch==${{ env.HATCH_VERSION }}
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/cache/restore@v4
-        id: cache
-        with:
-          path: ${{ steps.hatch.outputs.env }}
-          key: ${{ runner.os }}-${{ github.sha }}
-
       - name: Mypy
-        if: steps.files.outputs.any_changed == 'true'
+        if: steps.files.outputs.python_any_changed == 'true' || steps.files.outputs.pyproject_any_changed == 'true'
         run: |
           mkdir .mypy_cache
           hatch run test:types
@@ -309,12 +304,6 @@ jobs:
         run: |
           pip install hatch==${{ env.HATCH_VERSION }}
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
-
-      - uses: actions/cache/restore@v4
-        id: cache
-        with:
-          path: ${{ steps.hatch.outputs.env }}
-          key: ${{ runner.os }}-${{ github.sha }}
 
       - name: Install dependencies
         run: |

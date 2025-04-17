@@ -30,6 +30,7 @@ from haystack.tools import (
     serialize_tools_or_toolset,
 )
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
+from haystack.utils.http_client import init_http_client
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +90,7 @@ class OpenAIChatGenerator:
         max_retries: Optional[int] = None,
         tools: Optional[Union[List[Tool], Toolset]] = None,
         tools_strict: bool = False,
+        http_client_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
         Creates an instance of OpenAIChatGenerator. Unless specified otherwise in `model`, uses OpenAI's gpt-4o-mini
@@ -138,6 +140,9 @@ class OpenAIChatGenerator:
         :param tools_strict:
             Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
             the schema provided in the `parameters` field of the tool definition, but this may increase latency.
+        :param http_client_kwargs:
+            A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
+            For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
         """
         self.api_key = api_key
         self.model = model
@@ -149,7 +154,7 @@ class OpenAIChatGenerator:
         self.max_retries = max_retries
         self.tools = tools  # Store tools as-is, whether it's a list or a Toolset
         self.tools_strict = tools_strict
-
+        self.http_client_kwargs = http_client_kwargs
         # Check for duplicate tool names
         _check_duplicate_tool_names(list(self.tools or []))
 
@@ -158,7 +163,7 @@ class OpenAIChatGenerator:
         if max_retries is None:
             max_retries = int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
 
-        client_args: Dict[str, Any] = {
+        client_kwargs: Dict[str, Any] = {
             "api_key": api_key.resolve_value(),
             "organization": organization,
             "base_url": api_base_url,
@@ -166,8 +171,10 @@ class OpenAIChatGenerator:
             "max_retries": max_retries,
         }
 
-        self.client = OpenAI(**client_args)
-        self.async_client = AsyncOpenAI(**client_args)
+        self.client = OpenAI(http_client=init_http_client(self.http_client_kwargs, async_client=False), **client_kwargs)
+        self.async_client = AsyncOpenAI(
+            http_client=init_http_client(self.http_client_kwargs, async_client=True), **client_kwargs
+        )
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -195,6 +202,7 @@ class OpenAIChatGenerator:
             max_retries=self.max_retries,
             tools=serialize_tools_or_toolset(self.tools),
             tools_strict=self.tools_strict,
+            http_client_kwargs=self.http_client_kwargs,
         )
 
     @classmethod

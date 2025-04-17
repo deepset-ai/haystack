@@ -7,7 +7,6 @@ from openai import APIError
 
 from haystack.utils.auth import Secret
 import pytest
-import httpx
 
 from haystack import Document
 from haystack.components.embedders import AzureOpenAIDocumentEmbedder
@@ -214,33 +213,6 @@ class TestAzureOpenAIDocumentEmbedder:
 
         assert len(caplog.records) == 1
         assert "Failed embedding of documents 1, 2 caused by Mocked error" in caplog.text
-
-    def test_init_http_client(self, monkeypatch):
-        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
-        monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://test.openai.azure.com")
-
-        embedder = AzureOpenAIDocumentEmbedder()
-        client = embedder._init_http_client()
-        assert client is None
-
-        embedder.http_client_kwargs = {"proxy": "http://example.com:3128"}
-        client = embedder._init_http_client(async_client=False)
-        assert isinstance(client, httpx.Client)
-
-        client = embedder._init_http_client(async_client=True)
-        assert isinstance(client, httpx.AsyncClient)
-
-    def test_http_client_kwargs_type_validation(self, monkeypatch):
-        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
-        monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://test.openai.azure.com")
-        with pytest.raises(TypeError, match="The parameter 'http_client_kwargs' must be a dictionary."):
-            AzureOpenAIDocumentEmbedder(http_client_kwargs="invalid_argument")
-
-    def test_http_client_kwargs_with_invalid_params(self, monkeypatch):
-        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
-        monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://test.openai.azure.com")
-        with pytest.raises(TypeError, match="unexpected keyword argument"):
-            AzureOpenAIDocumentEmbedder(http_client_kwargs={"invalid_key": "invalid_value"})
 
     @pytest.mark.integration
     @pytest.mark.skipif(

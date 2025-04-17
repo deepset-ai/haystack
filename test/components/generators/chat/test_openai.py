@@ -101,6 +101,7 @@ class TestOpenAIChatGenerator:
         assert component.client.max_retries == 5
         assert component.tools is None
         assert not component.tools_strict
+        assert component.http_client_kwargs is None
 
     def test_init_fail_wo_api_key(self, monkeypatch):
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
@@ -129,6 +130,7 @@ class TestOpenAIChatGenerator:
             max_retries=1,
             tools=[tool],
             tools_strict=True,
+            http_client_kwargs={"proxy": "http://example.com:8080", "verify": False},
         )
         assert component.client.api_key == "test-api-key"
         assert component.model == "gpt-4o-mini"
@@ -138,6 +140,7 @@ class TestOpenAIChatGenerator:
         assert component.client.max_retries == 1
         assert component.tools == [tool]
         assert component.tools_strict
+        assert component.http_client_kwargs == {"proxy": "http://example.com:8080", "verify": False}
 
     def test_init_with_parameters_and_env_vars(self, monkeypatch):
         monkeypatch.setenv("OPENAI_TIMEOUT", "100")
@@ -173,6 +176,7 @@ class TestOpenAIChatGenerator:
                 "tools_strict": False,
                 "max_retries": None,
                 "timeout": None,
+                "http_client_kwargs": None,
             },
         }
 
@@ -190,6 +194,7 @@ class TestOpenAIChatGenerator:
             tools_strict=True,
             max_retries=10,
             timeout=100.0,
+            http_client_kwargs={"proxy": "http://example.com:8080", "verify": False},
         )
         data = component.to_dict()
 
@@ -219,6 +224,7 @@ class TestOpenAIChatGenerator:
                     }
                 ],
                 "tools_strict": True,
+                "http_client_kwargs": {"proxy": "http://example.com:8080", "verify": False},
             },
         }
 
@@ -246,6 +252,7 @@ class TestOpenAIChatGenerator:
                     }
                 ],
                 "tools_strict": True,
+                "http_client_kwargs": {"proxy": "http://example.com:8080", "verify": False},
             },
         }
         component = OpenAIChatGenerator.from_dict(data)
@@ -262,6 +269,7 @@ class TestOpenAIChatGenerator:
         assert component.tools_strict
         assert component.client.timeout == 100.0
         assert component.client.max_retries == 10
+        assert component.http_client_kwargs == {"proxy": "http://example.com:8080", "verify": False}
 
     def test_from_dict_fail_wo_env_var(self, monkeypatch):
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
