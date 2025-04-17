@@ -54,16 +54,6 @@ class DocumentPreprocessor:
         """
         Initialize a DocumentPreProcessor that first splits and then cleans documents.
 
-        **Cleaner Parameters**:
-        :param remove_empty_lines: If `True`, removes empty lines.
-        :param remove_extra_whitespaces: If `True`, removes extra whitespaces.
-        :param remove_repeated_substrings: If `True`, removes repeated substrings like headers/footers across pages.
-        :param keep_id: If `True`, keeps the original document IDs.
-        :param remove_substrings: A list of strings to remove from the document content.
-        :param remove_regex: A regex pattern whose matches will be removed from the document content.
-        :param unicode_normalization: Unicode normalization form to apply to the text, for example `"NFC"`.
-        :param ascii_only: If `True`, converts text to ASCII only.
-
         **Splitter Parameters**:
         :param split_by: The unit of splitting: "function", "page", "passage", "period", "word", "line", or "sentence".
         :param split_length: The maximum number of units (words, lines, pages, and so on) in each split.
@@ -77,6 +67,16 @@ class DocumentPreprocessor:
         :param use_split_rules: Whether to apply additional splitting heuristics for the sentence splitter.
         :param extend_abbreviations: Whether to extend the sentence splitter with curated abbreviations for certain
             languages.
+
+        **Cleaner Parameters**:
+        :param remove_empty_lines: If `True`, removes empty lines.
+        :param remove_extra_whitespaces: If `True`, removes extra whitespaces.
+        :param remove_repeated_substrings: If `True`, removes repeated substrings like headers/footers across pages.
+        :param keep_id: If `True`, keeps the original document IDs.
+        :param remove_substrings: A list of strings to remove from the document content.
+        :param remove_regex: A regex pattern whose matches will be removed from the document content.
+        :param unicode_normalization: Unicode normalization form to apply to the text, for example `"NFC"`.
+        :param ascii_only: If `True`, converts text to ASCII only.
         """
         # Store arguments for serialization
         self.remove_empty_lines = remove_empty_lines
