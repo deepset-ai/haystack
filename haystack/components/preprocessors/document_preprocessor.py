@@ -18,7 +18,7 @@ class DocumentPreprocessor:
     This component consists of a DocumentSplitter followed by a DocumentCleaner in a single pipeline.
     It takes a list of documents as input and returns a processed list of documents.
 
-    Usage:
+    Usage example:
     ```python
     from haystack import Document
     doc = Document(content="I love pizza!")
