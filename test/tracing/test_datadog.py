@@ -7,6 +7,7 @@ from typing import List, Dict
 
 from ddtrace.trace import Span as ddSpan
 from ddtrace.trace import Tracer as ddTracer
+from ddtrace._trace.processor import SpanAggregator
 import pytest
 from _pytest.capture import CaptureFixture
 from _pytest.monkeypatch import MonkeyPatch
@@ -17,7 +18,7 @@ from haystack.tracing.datadog import DatadogTracer
 @pytest.fixture()
 def datadog_tracer(monkeypatch: MonkeyPatch) -> ddTracer:
     # For the purpose of the tests we want to use the log writer
-    monkeypatch.setattr(ddTracer, ddTracer._use_log_writer.__name__, lambda *_: True)
+    monkeypatch.setattr(SpanAggregator, SpanAggregator._use_log_writer.__name__, lambda *_: True)
 
     tracer = ddTracer()
 
