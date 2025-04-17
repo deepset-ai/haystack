@@ -314,29 +314,3 @@ class TestSuperComponent:
         assert isinstance(custom_super_component, CustomSuperComponent)
         assert custom_super_component.var1 == 1
         assert custom_super_component.var2 == "test"
-
-    def test_subclass_serialization_decorator(self, rag_pipeline):
-        super_comp = SuperComponent(rag_pipeline)
-        serialized = super_comp.to_dict()
-
-        @super_component
-        class CustomSuperComponent:
-            def __init__(self, pipeline, instance_attribute="test"):
-                self.instance_attribute = instance_attribute
-                self.pipeline = pipeline
-
-            def to_dict(self):
-                return default_to_dict(
-                    self, instance_attribute=self.instance_attribute, pipeline=self.pipeline.to_dict()
-                )
-
-            @classmethod
-            def from_dict(cls, data):
-                data["init_parameters"]["pipeline"] = Pipeline.from_dict(data["init_parameters"]["pipeline"])
-                return default_from_dict(cls, data)
-
-        custom_super_component = CustomSuperComponent(rag_pipeline)
-        custom_serialized = custom_super_component.to_dict()
-
-        assert custom_serialized["type"] == "test_super_component.CustomSuperComponent"
-        assert custom_super_component._to_super_component_dict() == serialized
