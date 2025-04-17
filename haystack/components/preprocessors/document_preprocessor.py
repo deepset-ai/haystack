@@ -61,7 +61,7 @@ class DocumentPreprocessor:
         :param keep_id: If `True`, keeps the original document IDs.
         :param remove_substrings: A list of strings to remove from the document content.
         :param remove_regex: A regex pattern whose matches will be removed from the document content.
-        :param unicode_normalization: Unicode normalization form to apply to the text, e.g. `"NFC"`.
+        :param unicode_normalization: Unicode normalization form to apply to the text, for example `"NFC"`.
         :param ascii_only: If `True`, convert text to ASCII only.
 
         **Splitter Params**:
