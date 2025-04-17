@@ -5,7 +5,7 @@ on:
     workflows:
       - "end-to-end"
       - "Tests"
-      - "Slow/Unstable Integration Tests"
+      - "Slow Integration Tests"
     types:
       - completed
   pull_request:
