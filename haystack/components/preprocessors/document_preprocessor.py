@@ -66,7 +66,7 @@ class DocumentPreprocessor:
 
         **Splitter Parameters**:
         :param split_by: The unit of splitting: "function", "page", "passage", "period", "word", "line", or "sentence".
-        :param split_length: The maximum number of units (words, lines, pages, etc.) in each split.
+        :param split_length: The maximum number of units (words, lines, pages, and so on) in each split.
         :param split_overlap: The number of overlapping units between consecutive splits.
         :param split_threshold: The minimum number of units per split. If a split is smaller than this, it's merged
             with the previous split.
