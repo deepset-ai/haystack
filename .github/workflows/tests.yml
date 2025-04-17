@@ -304,13 +304,9 @@ jobs:
           pip install hatch==${{ env.HATCH_VERSION }}
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
-      - name: Install dependencies
-        run: |
-          sudo apt update
-          sudo apt install ffmpeg  # for local Whisper tests
 
       - name: Run
-        run: hatch run test:integration
+        run: hatch run test:integration-only-fast
 
       - name: Calculate alert data
         id: calculator
@@ -370,12 +366,9 @@ jobs:
           path: ${{ steps.hatch.outputs.env }}
           key: ${{ runner.os }}-${{ github.sha }}
 
-      - name: Install dependencies
-        run: |
-          brew install ffmpeg  # for local Whisper tests
 
       - name: Run
-        run: hatch run test:integration-mac
+        run: hatch run test:integration-only-fast-mac
 
       - name: Calculate alert data
         id: calculator
@@ -433,7 +426,7 @@ jobs:
           key: ${{ runner.os }}-${{ github.sha }}
 
       - name: Run
-        run: hatch run test:integration-windows
+        run: hatch run test:integration-only-fast-windows
 
       - name: Calculate alert data
         id: calculator
