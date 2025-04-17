@@ -57,7 +57,7 @@ class DocumentPreprocessor:
         **Cleaner Params**:
         :param remove_empty_lines: If `True`, removes empty lines.
         :param remove_extra_whitespaces: If `True`, removes extra whitespaces.
-        :param remove_repeated_substrings: If `True`, remove repeated substrings like headers/footers across pages.
+        :param remove_repeated_substrings: If `True`, removes repeated substrings like headers/footers across pages.
         :param keep_id: If `True`, keeps the original document IDs.
         :param remove_substrings: A list of strings to remove from the document content.
         :param remove_regex: A regex pattern whose matches will be removed from the document content.
