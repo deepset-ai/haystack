@@ -199,3 +199,19 @@ jobs:
                 - "workflow:${{ github.workflow }}"
                 - "branch:${{ github.ref_name }}"
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+  trigger-catch-all:
+    name: Slow Integration Tests completed
+    runs-on: ubuntu-latest
+    # This job will be executed only after all the other tests
+    # are successful.
+    # This way we'll be able to mark only this test as required
+    # and skip it accordingly.
+    needs:
+      - slow-integration-tests-linux
+      - slow-integration-tests-macos
+      - slow-integration-tests-windows
+    steps:
+      - name: Mark tests as completed
+        run: |
+          echo "Slow Integration Tests completed!"
