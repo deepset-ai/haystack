@@ -21,9 +21,11 @@ class DocumentPreprocessor:
     Usage example:
     ```python
     from haystack import Document
+    from haystack.components.preprocessors import DocumentPreprocessor
+    
     doc = Document(content="I love pizza!")
-    preprocessor = DocumentPreProcessor()
-    results = preprocessor.run(documents=[doc])
+    preprocessor = DocumentPreprocessor()
+    result = preprocessor.run(documents=[doc])
     print(result["documents"])
     ```
     """
