@@ -2,10 +2,15 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import base64
 import json
+import mimetypes
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Sequence, Union
+from typing import Any, Dict, List, Literal, Optional, Sequence, Union
+
+import filetype
+import requests
 
 from haystack import logging
 
@@ -86,7 +91,83 @@ class TextContent:
     text: str
 
 
-ChatMessageContentT = Union[TextContent, ToolCall, ToolCallResult]
+@dataclass
+class ImageContent:
+    """
+    The image content of a chat message.
+    """
+
+    base64_image: str
+    mime_type: Optional[str] = None
+    detail: Optional[Literal["auto", "high", "low"]] = None
+    meta: Dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self):
+        # mime_type is an important information, so we try to guess it if not provided
+        if not self.mime_type:
+            try:
+                # Attempt to decode the string as base64
+                decoded_image = base64.b64decode(self.base64_image)
+
+                guess = filetype.guess(decoded_image)
+                if guess:
+                    self.mime_type = guess.mime
+            except:
+                pass
+
+    def __repr__(self) -> str:
+        """
+        Return a string representation of the ImageContent, truncating the base64_image to 100 bytes.
+        """
+        fields = []
+
+        truncated_data = self.base64_image[:100] + "..." if len(self.base64_image) > 100 else self.base64_image
+        fields.append(f"base64_image={truncated_data!r}")
+        fields.append(f"mime_type={self.mime_type!r}")
+        fields.append(f"detail={self.detail!r}")
+        fields.append(f"meta={self.meta!r}")
+        fields_str = ", ".join(fields)
+        return f"{self.__class__.__name__}({fields_str})"
+
+    @classmethod
+    def from_file_path(
+        cls,
+        file_path: str,
+        mime_type: Optional[str] = None,
+        meta: Optional[Dict[str, Any]] = None,
+        detail: Optional[Literal["auto", "high", "low"]] = None,
+    ) -> "ImageContent":
+        """
+        Helper class method to create an ImageContent from a file path.
+        """
+        with open(file_path, "rb") as f:
+            return cls(
+                base64_image=base64.b64encode(f.read()).decode("utf-8"),
+                mime_type=mime_type or mimetypes.guess_type(file_path)[0],
+                meta=meta or {},
+                detail=detail,
+            )
+
+    @classmethod
+    def from_url(
+        cls,
+        url: str,
+        mime_type: Optional[str] = None,
+        meta: Optional[Dict[str, Any]] = None,
+        detail: Optional[Literal["auto", "high", "low"]] = None,
+    ) -> "ImageContent":
+        """
+        Helper class method to create an ImageContent from a URL.
+        """
+        return cls(
+            base64_image=base64.b64encode(requests.get(url, timeout=30).content).decode("utf-8"),
+            mime_type=mime_type or mimetypes.guess_type(url)[0],
+            meta=meta or {},
+            detail=detail,
+        )
+
+
+ChatMessageContentT = Union[TextContent, ToolCall, ToolCallResult, ImageContent]
 
 
 def _deserialize_content(serialized_content: List[Dict[str, Any]]) -> List[ChatMessageContentT]:
@@ -112,6 +193,8 @@ def _deserialize_content(serialized_content: List[Dict[str, Any]]) -> List[ChatM
             error = part["tool_call_result"]["error"]
             tcr = ToolCallResult(result=result, origin=origin, error=error)
             content.append(tcr)
+        elif "image" in part:
+            content.append(ImageContent(**part["image"]))
         else:
             raise ValueError(f"Unsupported part in serialized ChatMessage: `{part}`")
 
@@ -257,16 +340,36 @@ class ChatMessage:
         return self._role == role
 
     @classmethod
-    def from_user(cls, text: str, meta: Optional[Dict[str, Any]] = None, name: Optional[str] = None) -> "ChatMessage":
+    def from_user(
+        cls,
+        text: Optional[str] = None,
+        meta: Optional[Dict[str, Any]] = None,
+        name: Optional[str] = None,
+        *,
+        content_parts: Optional[Sequence[Union[TextContent, str, ImageContent]]] = None,
+    ) -> "ChatMessage":
         """
         Create a message from the user.
 
-        :param text: The text content of the message.
+        :param text: The text content of the message. Specify this or content_parts.
         :param meta: Additional metadata associated with the message.
         :param name: An optional name for the participant. This field is only supported by OpenAI.
+        :param content_parts: A list of content parts to include in the message. Specify this or text.
         :returns: A new ChatMessage instance.
         """
-        return cls(_role=ChatRole.USER, _content=[TextContent(text=text)], _meta=meta or {}, _name=name)
+        if not text and not content_parts:
+            raise ValueError("Either text or content_parts must be provided.")
+        if text and content_parts:
+            raise ValueError("Only one of text or content_parts can be provided.")
+
+        content: Sequence[Union[TextContent, ImageContent]] = []
+
+        if text is not None:
+            content = [TextContent(text=text)]
+        elif content_parts is not None:
+            content = [TextContent(el) if isinstance(el, str) else el for el in content_parts]
+
+        return cls(_role=ChatRole.USER, _content=content, _meta=meta or {}, _name=name)
 
     @classmethod
     def from_system(cls, text: str, meta: Optional[Dict[str, Any]] = None, name: Optional[str] = None) -> "ChatMessage":
@@ -344,6 +447,8 @@ class ChatMessage:
                 content.append({"tool_call": asdict(part)})
             elif isinstance(part, ToolCallResult):
                 content.append({"tool_call_result": asdict(part)})
+            elif isinstance(part, ImageContent):
+                content.append({"image": asdict(part)})
             else:
                 raise TypeError(f"Unsupported type in ChatMessage content: `{type(part).__name__}` for `{part}`.")
 
@@ -408,6 +513,29 @@ class ChatMessage:
         # Add name field if present
         if self._name is not None:
             openai_msg["name"] = self._name
+
+        if openai_msg["role"] == "user":
+            if len(self._content) == 1:
+                if isinstance(self._content[0], TextContent):
+                    openai_msg["content"] = self._content[0].text
+                    return openai_msg
+                raise ValueError("The user message must contain a `TextContent`.")
+
+            # list-like content
+            content = []
+            for part in self._content:
+                if isinstance(part, TextContent):
+                    content.append({"type": "text", "text": part.text})
+                elif isinstance(part, ImageContent):
+                    image_item: Dict[str, Any] = {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:{part.mime_type or 'image/jpeg'};base64,{part.base64_image}"},
+                    }
+                    if part.detail:
+                        image_item["image_url"]["detail"] = part.detail
+                    content.append(image_item)
+            openai_msg["content"] = content
+            return openai_msg
 
         if tool_call_results:
             result = tool_call_results[0]
