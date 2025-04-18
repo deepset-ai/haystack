@@ -4,7 +4,7 @@
 from unittest.mock import patch
 
 import pytest
-
+import sys
 from haystack.dataclasses import ByteStream
 from haystack.components.converters.tika import TikaDocumentConverter
 
@@ -54,6 +54,8 @@ class TestTikaDocumentConverter:
             assert "Could not read nonexistent.pdf. Skipping it." in caplog.text
 
     @pytest.mark.integration
+    @pytest.mark.slow
+    @pytest.mark.skipif(sys.platform != "linux", reason="Tika Docker container can only run on Ubuntu GitHub runners")
     def test_run_with_txt_files(self, test_files_path):
         component = TikaDocumentConverter()
         output = component.run(sources=[test_files_path / "txt" / "doc_1.txt", test_files_path / "txt" / "doc_2.txt"])
@@ -63,6 +65,8 @@ class TestTikaDocumentConverter:
         assert "This is a test line.\n123 456 789\n987 654 321" in documents[1].content
 
     @pytest.mark.integration
+    @pytest.mark.slow
+    @pytest.mark.skipif(sys.platform != "linux", reason="Tika Docker container can only run on Ubuntu GitHub runners")
     def test_run_with_pdf_file(self, test_files_path):
         component = TikaDocumentConverter()
         output = component.run(
@@ -85,6 +89,8 @@ class TestTikaDocumentConverter:
         assert documents[1].content.count("\f") == 3  # 4 pages
 
     @pytest.mark.integration
+    @pytest.mark.slow
+    @pytest.mark.skipif(sys.platform != "linux", reason="Tika Docker container can only run on Ubuntu GitHub runners")
     def test_run_with_docx_file(self, test_files_path):
         component = TikaDocumentConverter()
         output = component.run(sources=[test_files_path / "docx" / "sample_docx.docx"])
