@@ -374,7 +374,7 @@ class LLMEvaluator:
         if not all(output in parsed_output for output in expected):
             if self.raise_on_failure:
                 raise ValueError(
-                    f"Expected response from LLM evaluator to be JSON with keys {expected}, got {{received}}."
+                    f"Expected response from LLM evaluator to be JSON with keys {expected}, got {received}."
                 )
             logger.warning(
                 "Expected response from LLM evaluator to be JSON with keys {expected}, got {received}.",
