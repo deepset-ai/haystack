@@ -82,6 +82,7 @@ class TestAzureOpenAIGenerator:
                 "system_prompt": None,
                 "timeout": 30.0,
                 "max_retries": 5,
+                "http_client_kwargs": None,
                 "generation_kwargs": {},
                 "default_headers": {},
                 "azure_ad_token_provider": None,
@@ -97,6 +98,7 @@ class TestAzureOpenAIGenerator:
             streaming_callback=print_streaming_chunk,
             timeout=3.5,
             max_retries=10,
+            http_client_kwargs={"proxy": "http://localhost:8080"},
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
             azure_ad_token_provider=default_azure_ad_token_provider,
         )
@@ -115,6 +117,7 @@ class TestAzureOpenAIGenerator:
                 "system_prompt": None,
                 "timeout": 3.5,
                 "max_retries": 10,
+                "http_client_kwargs": {"proxy": "http://localhost:8080"},
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
                 "default_headers": {},
                 "azure_ad_token_provider": "haystack.utils.azure.default_azure_ad_token_provider",
@@ -136,6 +139,7 @@ class TestAzureOpenAIGenerator:
                 "system_prompt": None,
                 "timeout": 30.0,
                 "max_retries": 5,
+                "http_client_kwargs": None,
                 "generation_kwargs": {},
                 "default_headers": {},
                 "azure_ad_token_provider": None,
@@ -151,6 +155,7 @@ class TestAzureOpenAIGenerator:
         assert component.organization is None
         assert component.system_prompt is None
         assert component.timeout == 30.0
+        assert component.http_client_kwargs is None
         assert component.generation_kwargs == {}
         assert component.default_headers == {}
         assert component.azure_ad_token_provider is None

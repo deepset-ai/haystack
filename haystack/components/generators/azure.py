@@ -11,6 +11,7 @@ from haystack import component, default_from_dict, default_to_dict
 from haystack.components.generators import OpenAIGenerator
 from haystack.dataclasses import StreamingChunk
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
+from haystack.utils.http_client import init_http_client
 
 
 @component
@@ -66,6 +67,7 @@ class AzureOpenAIGenerator(OpenAIGenerator):
         system_prompt: Optional[str] = None,
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
+        http_client_kwargs: Optional[Dict[str, Any]] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
         default_headers: Optional[Dict[str, str]] = None,
         *,
@@ -90,6 +92,9 @@ class AzureOpenAIGenerator(OpenAIGenerator):
             `OPENAI_TIMEOUT` environment variable or set to 30.
         :param max_retries: Maximum retries to establish contact with AzureOpenAI if it returns an internal error.
             If not set, it is inferred from the `OPENAI_MAX_RETRIES` environment variable or set to 5.
+        :param http_client_kwargs:
+            A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
+            For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
         :param generation_kwargs: Other parameters to use for the model, sent directly to
             the OpenAI endpoint. See [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat) for
             more details.
@@ -141,6 +146,7 @@ class AzureOpenAIGenerator(OpenAIGenerator):
         self.model: str = azure_deployment or "gpt-4o-mini"
         self.timeout = timeout if timeout is not None else float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
         self.max_retries = max_retries if max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
+        self.http_client_kwargs = http_client_kwargs
         self.default_headers = default_headers or {}
         self.azure_ad_token_provider = azure_ad_token_provider
 
@@ -154,6 +160,7 @@ class AzureOpenAIGenerator(OpenAIGenerator):
             organization=organization,
             timeout=self.timeout,
             max_retries=self.max_retries,
+            http_client=init_http_client(self.http_client_kwargs, async_client=False),
             default_headers=self.default_headers,
         )
 
@@ -181,6 +188,7 @@ class AzureOpenAIGenerator(OpenAIGenerator):
             azure_ad_token=self.azure_ad_token.to_dict() if self.azure_ad_token is not None else None,
             timeout=self.timeout,
             max_retries=self.max_retries,
+            http_client_kwargs=self.http_client_kwargs,
             default_headers=self.default_headers,
             azure_ad_token_provider=azure_ad_token_provider_name,
         )

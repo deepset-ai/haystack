@@ -68,6 +68,7 @@ class TestRemoteWhisperTranscriber:
                 "model": "whisper-1",
                 "api_base_url": None,
                 "organization": None,
+                "http_client_kwargs": None,
                 "response_format": "json",
             },
         }
@@ -79,6 +80,7 @@ class TestRemoteWhisperTranscriber:
             model="whisper-1",
             organization="test-org",
             api_base_url="test_api_url",
+            http_client_kwargs={"proxy": "http://localhost:8080"},
             language="en",
             prompt="test-prompt",
             response_format="json",
@@ -92,6 +94,7 @@ class TestRemoteWhisperTranscriber:
                 "model": "whisper-1",
                 "organization": "test-org",
                 "api_base_url": "test_api_url",
+                "http_client_kwargs": {"proxy": "http://localhost:8080"},
                 "language": "en",
                 "prompt": "test-prompt",
                 "response_format": "json",
@@ -108,6 +111,7 @@ class TestRemoteWhisperTranscriber:
                 "model": "whisper-1",
                 "api_base_url": "https://api.openai.com/v1",
                 "organization": None,
+                "http_client_kwargs": None,
                 "response_format": "json",
             },
         }
@@ -118,6 +122,7 @@ class TestRemoteWhisperTranscriber:
         assert transcriber.organization is None
         assert transcriber.api_base_url == "https://api.openai.com/v1"
         assert transcriber.whisper_params == {"response_format": "json"}
+        assert transcriber.http_client_kwargs is None
 
     def test_from_dict_with_custom_init_parameters(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test_api_key")
