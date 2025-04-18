@@ -12,6 +12,7 @@ from tqdm.asyncio import tqdm as async_tqdm
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.utils import Secret, deserialize_secrets_inplace
+from haystack.utils.http_client import init_http_client
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +54,7 @@ class OpenAIDocumentEmbedder:
         embedding_separator: str = "\n",
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
+        http_client_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
         Creates an OpenAIDocumentEmbedder component.
@@ -95,6 +97,9 @@ class OpenAIDocumentEmbedder:
         :param max_retries:
             Maximum number of retries to contact OpenAI after an internal error.
             If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or 5 retries.
+        :param http_client_kwargs:
+            A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
+            For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
         """
         self.api_key = api_key
         self.model = model
@@ -107,13 +112,14 @@ class OpenAIDocumentEmbedder:
         self.progress_bar = progress_bar
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
+        self.http_client_kwargs = http_client_kwargs
 
         if timeout is None:
             timeout = float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
         if max_retries is None:
             max_retries = int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
 
-        client_args: Dict[str, Any] = {
+        client_kwargs: Dict[str, Any] = {
             "api_key": api_key.resolve_value(),
             "organization": organization,
             "base_url": api_base_url,
@@ -121,8 +127,10 @@ class OpenAIDocumentEmbedder:
             "max_retries": max_retries,
         }
 
-        self.client = OpenAI(**client_args)
-        self.async_client = AsyncOpenAI(**client_args)
+        self.client = OpenAI(http_client=init_http_client(self.http_client_kwargs, async_client=False), **client_kwargs)
+        self.async_client = AsyncOpenAI(
+            http_client=init_http_client(self.http_client_kwargs, async_client=True), **client_kwargs
+        )
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -150,6 +158,7 @@ class OpenAIDocumentEmbedder:
             meta_fields_to_embed=self.meta_fields_to_embed,
             embedding_separator=self.embedding_separator,
             api_key=self.api_key.to_dict(),
+            http_client_kwargs=self.http_client_kwargs,
         )
 
     @classmethod
