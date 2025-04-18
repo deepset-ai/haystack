@@ -58,13 +58,13 @@ class TestLoggingTracer:
             span.set_tag("key", {"a": 1, "b": [2, 3, 4]})
 
         assert "Operation: test" in caplog.text
-        assert "key={'a': 1, 'b': [2, 3, 4]}" in caplog.text
+        assert 'key={"a": 1, "b": [2, 3, 4]}' in caplog.text
         assert len(caplog.records) == 2
 
         # structured logging
         assert caplog.records[0].operation_name == "test"
         assert caplog.records[1].tag_name == "key"
-        assert caplog.records[1].tag_value == {"a": 1, "b": [2, 3, 4]}
+        assert caplog.records[1].tag_value == '{"a": 1, "b": [2, 3, 4]}'
 
     def test_apply_color_strings(self, caplog) -> None:
         tracer = LoggingTracer(tags_color_strings={"key": "color_string"})
@@ -119,12 +119,12 @@ class TestLoggingTracer:
         input_tag_value = [
             record.tag_value for record in tags_records if record.tag_name == "haystack.component.input"
         ][0]
-        assert input_tag_value == {"word": "world"}
+        assert input_tag_value == '{"word": "world"}'
 
         output_tag_value = [
             record.tag_value for record in tags_records if record.tag_name == "haystack.component.output"
         ][0]
-        assert output_tag_value == {"output": "Hello, world!"}
+        assert output_tag_value == '{"output": "Hello, world!"}'
 
         tracing.tracer.is_content_tracing_enabled = False
         tracing.disable_tracing()
