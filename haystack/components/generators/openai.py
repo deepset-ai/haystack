@@ -12,6 +12,7 @@ from openai.types.chat import ChatCompletion, ChatCompletionChunk
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import ChatMessage, StreamingChunk
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
+from haystack.utils.http_client import init_http_client
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +61,7 @@ class OpenAIGenerator:
         generation_kwargs: Optional[Dict[str, Any]] = None,
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
+        http_client_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
         Creates an instance of OpenAIGenerator. Unless specified otherwise in `model`, uses OpenAI's gpt-4o-mini
@@ -100,7 +102,9 @@ class OpenAIGenerator:
         :param max_retries:
             Maximum retries to establish contact with OpenAI if it returns an internal error, if not set it is inferred
             from the `OPENAI_MAX_RETRIES` environment variable or set to 5.
-
+        :param http_client_kwargs:
+            A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
+            For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
         """
         self.api_key = api_key
         self.model = model
@@ -110,6 +114,7 @@ class OpenAIGenerator:
 
         self.api_base_url = api_base_url
         self.organization = organization
+        self.http_client_kwargs = http_client_kwargs
 
         if timeout is None:
             timeout = float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
@@ -122,6 +127,7 @@ class OpenAIGenerator:
             base_url=api_base_url,
             timeout=timeout,
             max_retries=max_retries,
+            http_client=init_http_client(self.http_client_kwargs, async_client=False),
         )
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
@@ -147,6 +153,7 @@ class OpenAIGenerator:
             generation_kwargs=self.generation_kwargs,
             system_prompt=self.system_prompt,
             api_key=self.api_key.to_dict(),
+            http_client_kwargs=self.http_client_kwargs,
         )
 
     @classmethod
