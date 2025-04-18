@@ -11,6 +11,7 @@ from openai import OpenAI
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import ByteStream
 from haystack.utils import Secret, deserialize_secrets_inplace
+from haystack.utils.http_client import init_http_client
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +42,7 @@ class RemoteWhisperTranscriber:
         model: str = "whisper-1",
         api_base_url: Optional[str] = None,
         organization: Optional[str] = None,
+        http_client_kwargs: Optional[Dict[str, Any]] = None,
         **kwargs,
     ):
         """
@@ -58,6 +60,9 @@ class RemoteWhisperTranscriber:
         :param api_base:
             An optional URL to use as the API base. For details, see the
             OpenAI [documentation](https://platform.openai.com/docs/api-reference/audio).
+        :param http_client_kwargs:
+            A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
+            For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
         :param kwargs:
             Other optional parameters for the model. These are sent directly to the OpenAI
             endpoint. See OpenAI [documentation](https://platform.openai.com/docs/api-reference/audio) for more details.
@@ -82,6 +87,7 @@ class RemoteWhisperTranscriber:
         self.model = model
         self.api_base_url = api_base_url
         self.api_key = api_key
+        self.http_client_kwargs = http_client_kwargs
 
         # Only response_format = "json" is supported
         whisper_params = kwargs
@@ -92,7 +98,12 @@ class RemoteWhisperTranscriber:
             )
         whisper_params["response_format"] = "json"
         self.whisper_params = whisper_params
-        self.client = OpenAI(api_key=api_key.resolve_value(), organization=organization, base_url=api_base_url)
+        self.client = OpenAI(
+            api_key=api_key.resolve_value(),
+            organization=organization,
+            base_url=api_base_url,
+            http_client=init_http_client(self.http_client_kwargs, async_client=False),
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -107,6 +118,7 @@ class RemoteWhisperTranscriber:
             model=self.model,
             organization=self.organization,
             api_base_url=self.api_base_url,
+            http_client_kwargs=self.http_client_kwargs,
             **self.whisper_params,
         )
 
