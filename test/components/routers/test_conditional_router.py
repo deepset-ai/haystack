@@ -574,3 +574,34 @@ class TestRouter:
         assert new_router.routes == router.routes
         assert new_router.routes[0]["output_type"] is str
         assert new_router.routes[0]["output_type"] is original_output_type
+
+    def test_multiple_outputs_per_route(self):
+        """Test that router handles multiple outputs per route correctly"""
+        routes = [
+            {
+                "condition": "{{streams|length >= 2}}",
+                "output": ["{{streams}}", "{{query}}"],
+                "output_type": [List[int], str],
+                "output_name": ["streams", "query"],
+            }
+        ]
+        router = ConditionalRouter(routes)
+
+        # Test with valid input
+        result = router.run(streams=[1, 2, 3], query="test")
+        assert result == {"streams": [1, 2, 3], "query": "test"}
+
+    def test_multiple_outputs_validation(self):
+        """Test validation of routes with multiple outputs"""
+        # Test mismatched lengths
+        with pytest.raises(ValueError, match="must have same length"):
+            ConditionalRouter(
+                [
+                    {
+                        "condition": "{{streams|length >= 2}}",
+                        "output": ["{{streams}}", "{{query}}"],
+                        "output_type": [List[int]],
+                        "output_name": ["streams"],
+                    }
+                ]
+            )
