@@ -462,3 +462,35 @@ def test_apply_custom_chat_templating_on_chat_message():
         formatted_messages, chat_template=anthropic_template, tokenize=False
     )
     assert tokenized_messages == "You are good assistant\nHuman: I have a question\nAssistant:"
+
+
+def test_chatmessage_with_openai_usage_serialization():
+    """Test that ChatMessage properly handles OpenAI usage data during serialization."""
+    openai_usage = {
+        "prompt_tokens": 20,
+        "completion_tokens": 30,
+        "total_tokens": 50,
+        # These fields would normally be complex objects that cause serialization issues
+        "completion_tokens_details": {"type": "not_serializable_object"},
+        "prompt_tokens_details": {"type": "another_not_serializable_object"},
+    }
+
+    message = ChatMessage.from_assistant(text="Test response", meta={"usage": openai_usage})
+
+    serialized = message.to_dict()
+
+    assert "usage" in serialized["meta"]
+    assert "prompt_tokens" in serialized["meta"]["usage"]
+    assert "completion_tokens" in serialized["meta"]["usage"]
+    assert "total_tokens" in serialized["meta"]["usage"]
+
+    assert "completion_tokens_details" not in serialized["meta"]["usage"]
+    assert "prompt_tokens_details" not in serialized["meta"]["usage"]
+
+    json_str = json.dumps(serialized)
+    assert isinstance(json_str, str)
+
+    deserialized = ChatMessage.from_dict(serialized)
+    assert deserialized.meta["usage"]["prompt_tokens"] == 20
+    assert deserialized.meta["usage"]["completion_tokens"] == 30
+    assert deserialized.meta["usage"]["total_tokens"] == 50
