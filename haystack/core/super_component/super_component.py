@@ -210,16 +210,20 @@ class _SuperComponent:
                         aggregated_inputs[wrapper_input_name]["default"] = _delegate_default
                     continue
 
-                if not _is_compatible(existing_socket_info["type"], socket_info["type"]):
+                is_compatible, common_type = _is_compatible(existing_socket_info["type"], socket_info["type"])
+
+                if not is_compatible:
                     raise InvalidMappingTypeError(
                         f"Type conflict for input '{socket_name}' from component '{comp_name}'. "
                         f"Existing type: {existing_socket_info['type']}, new type: {socket_info['type']}."
                     )
 
+                # Use the common type for the aggregated input
+                aggregated_inputs[wrapper_input_name]["type"] = common_type
+
                 # If any socket requires mandatory inputs then the aggregated input is also considered mandatory.
                 # So we use the type of the mandatory input and remove the default value if it exists.
                 if socket_info["is_mandatory"]:
-                    aggregated_inputs[wrapper_input_name]["type"] = socket_info["type"]
                     aggregated_inputs[wrapper_input_name].pop("default", None)
 
         return aggregated_inputs
