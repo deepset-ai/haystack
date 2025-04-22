@@ -214,7 +214,7 @@ class Agent:
                 "haystack.agent.max_steps": self.max_agent_steps,
                 "haystack.agent.tools": self.tools,
                 "haystack.agent.exit_conditions": self.exit_conditions,
-                "haystack.agent.state_schema": self.state_schema,
+                "haystack.agent.state_schema": _schema_to_dict(self.state_schema),
             },
         )
 
