@@ -94,19 +94,8 @@ jobs:
         - name: Run tests
           run: hatch run test:integration-only-slow
 
-        - name: Calculate alert data
-          id: calculator
-          shell: bash
-          if: (success() || failure()) && github.ref_name == 'main'
-          run: |
-            if [ "${{ job.status }}" = "success" ]; then
-              echo "alert_type=success" >> "$GITHUB_OUTPUT";
-            else
-              echo "alert_type=error" >> "$GITHUB_OUTPUT";
-            fi
-
-        - name: Send event to Datadog
-          if: (success() || failure()) && github.ref_name == 'main'
+        - name: Send event to Datadog for nightly failures
+          # if: failure() && github.event_name == 'schedule'
           uses: masci/datadog@v1
           with:
             api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
@@ -114,7 +103,7 @@ jobs:
             events: |
               - title: "${{ github.workflow }} workflow"
                 text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
-                alert_type: "${{ steps.calculator.outputs.alert_type }}"
+                alert_type: "error"
                 source_type_name: "Github"
                 host: ${{ github.repository_owner }}
                 tags:
