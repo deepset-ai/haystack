@@ -8,6 +8,7 @@ from typing import Any, Dict, Iterator, Optional
 
 from haystack import logging
 from haystack.tracing import Span, Tracer
+from haystack.tracing.utils import coerce_tag_value
 
 logger = logging.getLogger(__name__)
 
@@ -75,8 +76,9 @@ class LoggingTracer(Tracer):
             logger.debug("Operation: {operation_name}", operation_name=operation_name)
             for tag_name, tag_value in tags.items():
                 color_string = self.tags_color_strings.get(tag_name, "")
+                coerced_value = coerce_tag_value(tag_value)
                 logger.debug(
-                    color_string + "{tag_name}={tag_value}" + RESET_COLOR, tag_name=tag_name, tag_value=tag_value
+                    color_string + "{tag_name}={tag_value}" + RESET_COLOR, tag_name=tag_name, tag_value=coerced_value
                 )
 
     def current_span(self) -> Optional[Span]:
