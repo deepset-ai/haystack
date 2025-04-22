@@ -817,59 +817,18 @@ class TestAgentTracing:
         expected_tag_values = [
             "chat_generator",
             "MockChatGeneratorWithoutRunAsync",
-            {"messages": "list", "tools": "list"},
-            {},
-            {},
-            {
-                "messages": [ChatMessage.from_user(text="What's the weather in Paris?")],
-                "tools": [
-                    Tool(
-                        name="weather_tool",
-                        description="Provides weather information for a given location.",
-                        parameters={
-                            "type": "object",
-                            "properties": {"location": {"type": "string"}},
-                            "required": ["location"],
-                        },
-                        function=weather_function,
-                        outputs_to_string=None,
-                        inputs_from_state=None,
-                        outputs_to_state=None,
-                    )
-                ],
-            },
+            '{"messages": "list", "tools": "list"}',
+            "{}",
+            "{}",
+            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]}',
             1,
-            {"replies": [ChatMessage.from_assistant(text="Hello")]},
+            '{"replies": [{"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello"}]}]}',
             100,
-            [
-                Tool(
-                    name="weather_tool",
-                    description="Provides weather information for a given location.",
-                    parameters={
-                        "type": "object",
-                        "properties": {"location": {"type": "string"}},
-                        "required": ["location"],
-                    },
-                    function=weather_function,
-                    outputs_to_string=None,
-                    inputs_from_state=None,
-                    outputs_to_state=None,
-                )
-            ],
-            ["text"],
-            {
-                "messages": {
-                    "type": "typing.List[haystack.dataclasses.chat_message.ChatMessage]",
-                    "handler": "haystack.dataclasses.state_utils.merge_lists",
-                }
-            },
-            {"messages": [ChatMessage.from_user(text="What's the weather in Paris?")], "streaming_callback": None},
-            {
-                "messages": [
-                    ChatMessage.from_user(text="What's the weather in Paris?"),
-                    ChatMessage.from_assistant(text="Hello"),
-                ]
-            },
+            '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]',
+            '["text"]',
+            '{"messages": {"type": "typing.List[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.dataclasses.state_utils.merge_lists"}}',
+            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null}',
+            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}, {"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello"}]}]}',
             1,
         ]
         for idx, record in enumerate(tags_records):
@@ -918,59 +877,18 @@ class TestAgentTracing:
         expected_tag_values = [
             "chat_generator",
             "MockChatGeneratorWithRunAsync",
-            {"messages": "list", "tools": "list"},
-            {},
-            {},
-            {
-                "messages": [ChatMessage.from_user(text="What's the weather in Paris?")],
-                "tools": [
-                    Tool(
-                        name="weather_tool",
-                        description="Provides weather information for a given location.",
-                        parameters={
-                            "type": "object",
-                            "properties": {"location": {"type": "string"}},
-                            "required": ["location"],
-                        },
-                        function=weather_function,
-                        outputs_to_string=None,
-                        inputs_from_state=None,
-                        outputs_to_state=None,
-                    )
-                ],
-            },
+            '{"messages": "list", "tools": "list"}',
+            "{}",
+            "{}",
+            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]}',
             1,
-            {"replies": [ChatMessage.from_assistant(text="Hello from run_async")]},
+            '{"replies": [{"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello from run_async"}]}]}',
             100,
-            [
-                Tool(
-                    name="weather_tool",
-                    description="Provides weather information for a given location.",
-                    parameters={
-                        "type": "object",
-                        "properties": {"location": {"type": "string"}},
-                        "required": ["location"],
-                    },
-                    function=weather_function,
-                    outputs_to_string=None,
-                    inputs_from_state=None,
-                    outputs_to_state=None,
-                )
-            ],
-            ["text"],
-            {
-                "messages": {
-                    "type": "typing.List[haystack.dataclasses.chat_message.ChatMessage]",
-                    "handler": "haystack.dataclasses.state_utils.merge_lists",
-                }
-            },
-            {"messages": [ChatMessage.from_user(text="What's the weather in Paris?")], "streaming_callback": None},
-            {
-                "messages": [
-                    ChatMessage.from_user(text="What's the weather in Paris?"),
-                    ChatMessage.from_assistant(text="Hello from run_async"),
-                ]
-            },
+            '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]',
+            '["text"]',
+            '{"messages": {"type": "typing.List[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.dataclasses.state_utils.merge_lists"}}',
+            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null}',
+            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}, {"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello from run_async"}]}]}',
             1,
         ]
         for idx, record in enumerate(tags_records):
