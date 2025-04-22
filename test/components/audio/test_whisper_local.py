@@ -206,8 +206,6 @@ class TestLocalWhisperTranscriber:
         # meta.audio_file should contain the temp path where we dumped the audio bytes
         assert docs[2].meta["audio_file"]
 
-        assert False
-
     @pytest.mark.integration
     @pytest.mark.slow
     @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="ffmpeg not installed on Windows CI")
