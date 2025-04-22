@@ -9,6 +9,7 @@ env:
   HF_API_TOKEN: ${{ secrets.HUGGINGFACE_API_KEY }}
   PYTHON_VERSION: "3.9"
   HATCH_VERSION: "1.14.1"
+  HAYSTACK_MPS_ENABLED: false
 
 on:
   workflow_dispatch: # Activate this workflow manually
@@ -65,8 +66,7 @@ jobs:
               install_cmd: "sudo apt update && sudo apt install ffmpeg"
             - os: macos-latest
               install_cmd: "brew install ffmpeg"
-              env:
-                HAYSTACK_MPS_ENABLED: false
+
             - os: windows-latest
               install_cmd: "echo 'No additional dependencies needed'"
 
@@ -94,7 +94,6 @@ jobs:
 
         - name: Run tests
           run: hatch run test:integration-only-slow
-          env: ${{ matrix.env }}
 
         - name: Calculate alert data
           id: calculator
