@@ -15,6 +15,7 @@ _import_structure = {
     "json": ["JSONConverter"],
     "markdown": ["MarkdownToDocument"],
     "msg": ["MSGToDocument"],
+    "multi_file_converter": ["MultiFileConverter"],
     "openapi_functions": ["OpenAPIServiceToFunctions"],
     "output_adapter": ["OutputAdapter"],
     "pdfminer": ["PDFMinerToDocument"],
@@ -33,6 +34,7 @@ if TYPE_CHECKING:
     from .json import JSONConverter
     from .markdown import MarkdownToDocument
     from .msg import MSGToDocument
+    from .multi_file_converter import MultiFileConverter
     from .openapi_functions import OpenAPIServiceToFunctions
     from .output_adapter import OutputAdapter
     from .pdfminer import PDFMinerToDocument
