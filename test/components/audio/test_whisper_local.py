@@ -17,8 +17,6 @@ from haystack.utils.device import ComponentDevice, Device
 
 SAMPLES_PATH = Path(__file__).parent.parent.parent / "test_files"
 
-# TRIGGER
-
 
 class TestLocalWhisperTranscriber:
     def test_init(self):
@@ -207,6 +205,8 @@ class TestLocalWhisperTranscriber:
         assert docs[2].content.strip().lower() == "answer."
         # meta.audio_file should contain the temp path where we dumped the audio bytes
         assert docs[2].meta["audio_file"]
+
+        assert False
 
     @pytest.mark.integration
     @pytest.mark.slow
