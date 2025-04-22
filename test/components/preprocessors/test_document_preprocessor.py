@@ -45,22 +45,29 @@ class TestDocumentPreprocessor:
         assert splitter.language == "en"
 
     def test_from_dict(self) -> None:
-        preprocessor = DocumentPreprocessor.from_dict(
-            {
-                "init_parameters": {
-                    "remove_empty_lines": True,
-                    "remove_extra_whitespaces": True,
-                    "remove_repeated_substrings": False,
-                    "keep_id": True,
-                    "split_by": "word",
-                    "split_length": 3,
-                    "split_overlap": 1,
-                    "respect_sentence_boundary": False,
-                    "language": "en",
-                },
-                "type": "haystack.components.preprocessors.document_preprocessor.DocumentPreprocessor",
-            }
-        )
+        data = {
+            "init_parameters": {
+                "remove_empty_lines": True,
+                "remove_extra_whitespaces": True,
+                "remove_repeated_substrings": False,
+                "keep_id": True,
+                "remove_substrings": None,
+                "remove_regex": None,
+                "unicode_normalization": None,
+                "ascii_only": False,
+                "split_by": "word",
+                "split_length": 3,
+                "split_overlap": 1,
+                "split_threshold": 0,
+                "splitting_function": None,
+                "respect_sentence_boundary": False,
+                "language": "en",
+                "use_split_rules": True,
+                "extend_abbreviations": True,
+            },
+            "type": "haystack.components.preprocessors.document_preprocessor.DocumentPreprocessor",
+        }
+        preprocessor = DocumentPreprocessor.from_dict(data)
         assert isinstance(preprocessor, DocumentPreprocessor)
 
     def test_to_dict(self, preprocessor: DocumentPreprocessor) -> None:

@@ -740,7 +740,12 @@ class TestAgentTracing:
                 )
             ],
             ["text"],
-            {"messages": {"type": List[ChatMessage], "handler": merge_lists}},
+            {
+                "messages": {
+                    "type": "typing.List[haystack.dataclasses.chat_message.ChatMessage]",
+                    "handler": "haystack.dataclasses.state_utils.merge_lists",
+                }
+            },
             {"messages": [ChatMessage.from_user(text="What's the weather in Paris?")], "streaming_callback": None},
             {
                 "messages": [
@@ -836,7 +841,12 @@ class TestAgentTracing:
                 )
             ],
             ["text"],
-            {"messages": {"type": List[ChatMessage], "handler": merge_lists}},
+            {
+                "messages": {
+                    "type": "typing.List[haystack.dataclasses.chat_message.ChatMessage]",
+                    "handler": "haystack.dataclasses.state_utils.merge_lists",
+                }
+            },
             {"messages": [ChatMessage.from_user(text="What's the weather in Paris?")], "streaming_callback": None},
             {
                 "messages": [
