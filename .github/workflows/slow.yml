@@ -1,4 +1,4 @@
-# If you change this name also do it in slow_skipper.yml and ci_metrics.yml
+# If you change this name also do it in ci_metrics.yml
 name: Slow Integration Tests
 
 env:
@@ -36,7 +36,7 @@ jobs:
         id: changes
         uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
         with:
-          # keep the list in sync with the paths defined in the `tests.yml` workflow and above in this file
+          # this list contains the paths of python files that trigger the slow integration tests, if changed
           filters: |
             code_changes:
               - "haystack/components/audio/whisper_local.py"
@@ -223,12 +223,9 @@ jobs:
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
   trigger-catch-all:
+    # This job will be always executed, and will succeed if other jobs succeed or are skipped.
     name: Slow Integration Tests completed
     runs-on: ubuntu-latest
-    # This job will be executed only after all the other tests
-    # are successful.
-    # This way we'll be able to mark only this test as required
-    # and skip it accordingly.
     if: ${{ always() }}
     needs:
       - slow-integration-tests-linux
