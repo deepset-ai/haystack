@@ -1,14 +1,14 @@
 # If you change this name also do it in ci_metrics.yml
 name: Slow Integration Tests
 
-# This workflow always runs to satisfy Branch Protection rules.
-# The tests will run when:
+# The workflow will always run, but the actual tests will only execute when:
 # - The workflow is triggered manually
 # - The workflow is scheduled
 # - The PR has the "run-slow-tests" label
 # - The push is to a release branch
-# - There are changes to relevant files
-# If tests are skipped, the "Slow Integration Tests completed" job (required by Branch Protection rules) succeeds.
+# - There are changes to relevant files.
+# Note: If no conditions are met, the workflow will complete successfully without running tests
+# to satisfy Branch Protection rules.
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -41,7 +41,7 @@ jobs:
     permissions:
       pull-requests: read
     outputs:
-      code_changes: ${{ steps.changes.outputs.code_changes }}
+      changes: ${{ steps.changes.outputs.changes }}
     steps:
       - uses: actions/checkout@v4
       - name: Check for changed code
@@ -50,7 +50,7 @@ jobs:
         with:
           # List of Python files that trigger slow integration tests when modified
           filters: |
-            code_changes:
+            changes:
               - "haystack/components/audio/whisper_local.py"
               - "haystack/components/converters/tika.py"
               - "test/components/converters/test_tika_doc_converter.py"
@@ -66,7 +66,7 @@ jobs:
       github.event_name == 'schedule' ||
       (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'run-slow-tests')) ||
       (github.event_name == 'push' && github.ref == 'refs/heads/v[0-9].*[0-9].x') ||
-      (needs.check-if-changed.outputs.code_changes == 'true')
+      (needs.check-if-changed.outputs.changes == 'true')
 
     strategy:
       matrix:
