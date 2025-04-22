@@ -95,7 +95,7 @@ jobs:
           run: hatch run test:integration-only-slow
 
         - name: Send event to Datadog for nightly failures
-          # if: failure() && github.event_name == 'schedule'
+          if: failure() && github.event_name == 'schedule'
           uses: masci/datadog@v1
           with:
             api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
