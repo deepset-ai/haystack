@@ -275,6 +275,9 @@ addopts = "--strict-markers"
 markers = [
   "unit: unit tests",
   "integration: integration tests",
+
+  # integration tests that are slow (e.g. model inference on CPU), unstable (e.g. call unstable external services)
+  # or require special setup (e.g. installing system dependencies, running Docker containers)
   "slow: slow/unstable integration tests",
 ]
 log_cli = true
