@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Agent now supports a List of Tools or a Toolset as input.

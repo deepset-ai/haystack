@@ -35,7 +35,7 @@ class OpenAPIConnector:
     )
     response = connector.run(
         operation_id="search",
-        parameters={"q": "Who was Nikola Tesla?"}
+        arguments={"q": "Who was Nikola Tesla?"}
     )
     ```
     Note:
@@ -91,7 +91,7 @@ class OpenAPIConnector:
         Invokes a REST endpoint specified in the OpenAPI specification.
 
         :param operation_id: The operationId from the OpenAPI spec to invoke
-        :param parameters: Optional parameters for the endpoint (query, path, or body parameters)
+        :param arguments: Optional parameters for the endpoint (query, path, or body parameters)
         :return: Dictionary containing the service response
         """
         payload = {"name": operation_id, "arguments": arguments or {}}

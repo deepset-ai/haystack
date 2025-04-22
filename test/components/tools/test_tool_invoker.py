@@ -9,7 +9,7 @@ from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.tools.tool_invoker import ToolInvoker, ToolNotFoundException, StringConversionError
 from haystack.dataclasses import ChatMessage, ToolCall, ToolCallResult, ChatRole
 from haystack.dataclasses.state import State
-from haystack.tools import ComponentTool, Tool
+from haystack.tools import ComponentTool, Tool, Toolset
 from haystack.tools.errors import ToolInvocationError
 
 
@@ -54,6 +54,34 @@ def faulty_tool():
     )
 
 
+def add_function(num1: int, num2: int):
+    return num1 + num2
+
+
+@pytest.fixture
+def tool_set():
+    return Toolset(
+        tools=[
+            Tool(
+                name="weather_tool",
+                description="Provides weather information for a given location.",
+                parameters=weather_parameters,
+                function=weather_function,
+            ),
+            Tool(
+                name="addition_tool",
+                description="A tool that adds two numbers.",
+                parameters={
+                    "type": "object",
+                    "properties": {"num1": {"type": "integer"}, "num2": {"type": "integer"}},
+                    "required": ["num1", "num2"],
+                },
+                function=add_function,
+            ),
+        ]
+    )
+
+
 @pytest.fixture
 def invoker(weather_tool):
     return ToolInvoker(tools=[weather_tool], raise_on_failure=True, convert_result_to_json_string=False)
@@ -72,6 +100,11 @@ class TestToolInvoker:
         assert invoker._tools_with_names == {"weather_tool": weather_tool}
         assert invoker.raise_on_failure
         assert not invoker.convert_result_to_json_string
+
+    def test_init_with_toolset(self, tool_set):
+        tool_invoker = ToolInvoker(tools=tool_set)
+        assert tool_invoker.tools == tool_set
+        assert tool_invoker._tools_with_names == {"weather_tool": tool_set.tools[0], "addition_tool": tool_set.tools[1]}
 
     def test_init_fails_wo_tools(self):
         with pytest.raises(ValueError):
@@ -146,6 +179,26 @@ class TestToolInvoker:
 
         assert isinstance(tool_call_result, ToolCallResult)
         assert tool_call_result.result == str({"weather": "mostly sunny", "temperature": 7, "unit": "celsius"})
+        assert tool_call_result.origin == tool_call
+        assert not tool_call_result.error
+
+    def test_run_with_toolset(self, tool_set):
+        tool_invoker = ToolInvoker(tools=tool_set, raise_on_failure=True, convert_result_to_json_string=False)
+        tool_call = ToolCall(tool_name="addition_tool", arguments={"num1": 5, "num2": 3})
+        message = ChatMessage.from_assistant(tool_calls=[tool_call])
+
+        result = tool_invoker.run(messages=[message])
+        assert "tool_messages" in result
+        assert len(result["tool_messages"]) == 1
+
+        tool_message = result["tool_messages"][0]
+        assert isinstance(tool_message, ChatMessage)
+        assert tool_message.is_from(ChatRole.TOOL)
+        assert tool_message.tool_call_results
+
+        tool_call_result = tool_message.tool_call_result
+        assert isinstance(tool_call_result, ToolCallResult)
+        assert tool_call_result.result == str(8)
         assert tool_call_result.origin == tool_call
         assert not tool_call_result.error
 
