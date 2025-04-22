@@ -17,6 +17,8 @@ from haystack.utils.device import ComponentDevice, Device
 
 SAMPLES_PATH = Path(__file__).parent.parent.parent / "test_files"
 
+# TRIGGER
+
 
 class TestLocalWhisperTranscriber:
     def test_init(self):
