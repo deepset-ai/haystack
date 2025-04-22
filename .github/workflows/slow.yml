@@ -51,199 +51,95 @@ jobs:
               - "test/components/converters/test_tika_doc_converter.py"
               - "test/components/audio/test_whisper_local.py"
 
-  slow-integration-tests-linux:
-    name: Slow Tests / ubuntu-latest
-    runs-on: ubuntu-latest
-    needs: check-if-changed
-    if: needs.check-if-changed.outputs.code_changes == 'true'
+  slow-integration-tests:
+      name: Slow Tests / ${{ matrix.os }}
+      runs-on: ${{ matrix.os }}
+      needs: check-if-changed
+      if: needs.check-if-changed.outputs.code_changes == 'true'
 
-    services:
-      tika:
-        image: apache/tika:2.9.0.0
-        ports:
-          - 9998:9998
+      strategy:
+        matrix:
+          os: [ubuntu-latest, macos-latest, windows-latest]
+          include:
+            - os: ubuntu-latest
+              install_cmd: "sudo apt update && sudo apt install ffmpeg"
+              services:
+                tika:
+                  image: apache/tika:2.9.0.0
+                  ports:
+                    - 9998:9998
+            - os: macos-latest
+              install_cmd: "brew install ffmpeg"
+              env:
+                HAYSTACK_MPS_ENABLED: false
+            - os: windows-latest
+              install_cmd: "echo 'No additional dependencies needed'"
 
-    steps:
-      - uses: actions/checkout@v4
+      services: ${{ matrix.services }}
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "${{ env.PYTHON_VERSION }}"
+      steps:
+        - uses: actions/checkout@v4
 
-      - name: Install Hatch
-        id: hatch
-        shell: bash
-        run: |
-          pip install hatch==${{ env.HATCH_VERSION }}
+        - uses: actions/setup-python@v5
+          with:
+            python-version: "${{ env.PYTHON_VERSION }}"
 
-      - name: Install dependencies
-        run: |
-          sudo apt update
-          sudo apt install ffmpeg  # for local Whisper tests
+        - name: Install Hatch
+          id: hatch
+          shell: bash
+          run: |
+            pip install hatch==${{ env.HATCH_VERSION }}
 
-      - name: Run
-        run: hatch run test:integration-only-slow
+        - name: Install dependencies
+          shell: bash
+          run: ${{ matrix.install_cmd }}
 
-      - name: Calculate alert data
-        id: calculator
-        shell: bash
-        if: (success() || failure()) && github.ref_name == 'main'
-        run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            echo "alert_type=success" >> "$GITHUB_OUTPUT";
-          else
-            echo "alert_type=error" >> "$GITHUB_OUTPUT";
-          fi
+        - name: Run tests
+          run: hatch run test:integration-only-slow
+          env: ${{ matrix.env }}
 
-      - name: Send event to Datadog
-        if: (success() || failure()) && github.ref_name == 'main'
-        uses: masci/datadog@v1
-        with:
-          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
-          api-url: https://api.datadoghq.eu
-          events: |
-            - title: "${{ github.workflow }} workflow"
-              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
-              alert_type: "${{ steps.calculator.outputs.alert_type }}"
-              source_type_name: "Github"
-              host: ${{ github.repository_owner }}
-              tags:
-                - "project:${{ github.repository }}"
-                - "job:${{ github.job }}"
-                - "run_id:${{ github.run_id }}"
-                - "workflow:${{ github.workflow }}"
-                - "branch:${{ github.ref_name }}"
-                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        - name: Calculate alert data
+          id: calculator
+          shell: bash
+          if: (success() || failure()) && github.ref_name == 'main'
+          run: |
+            if [ "${{ job.status }}" = "success" ]; then
+              echo "alert_type=success" >> "$GITHUB_OUTPUT";
+            else
+              echo "alert_type=error" >> "$GITHUB_OUTPUT";
+            fi
 
-  slow-integration-tests-macos:
-    name: Slow Tests / macos-latest
-    runs-on: macos-latest
-    env:
-      HAYSTACK_MPS_ENABLED: false
-    needs: check-if-changed
-    if: needs.check-if-changed.outputs.code_changes == 'true'
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "${{ env.PYTHON_VERSION }}"
-
-      - name: Install Hatch
-        id: hatch
-        shell: bash
-        run: |
-          pip install hatch==${{ env.HATCH_VERSION }}
-
-      - name: Install dependencies
-        run: |
-          brew install ffmpeg  # for local Whisper tests
-
-      - name: Run
-        run: hatch run test:integration-only-slow
-
-      - name: Calculate alert data
-        id: calculator
-        shell: bash
-        if: (success() || failure()) && github.ref_name == 'main'
-        run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            echo "alert_type=success" >> "$GITHUB_OUTPUT";
-          else
-            echo "alert_type=error" >> "$GITHUB_OUTPUT";
-          fi
-
-      - name: Send event to Datadog
-        if: (success() || failure()) && github.ref_name == 'main'
-        uses: masci/datadog@v1
-        with:
-          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
-          api-url: https://api.datadoghq.eu
-          events: |
-            - title: "${{ github.workflow }} workflow"
-              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
-              alert_type: "${{ steps.calculator.outputs.alert_type }}"
-              source_type_name: "Github"
-              host: ${{ github.repository_owner }}
-              tags:
-                - "project:${{ github.repository }}"
-                - "job:${{ github.job }}"
-                - "run_id:${{ github.run_id }}"
-                - "workflow:${{ github.workflow }}"
-                - "branch:${{ github.ref_name }}"
-                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-
-  slow-integration-tests-windows:
-    name: Slow Tests / windows-latest
-    runs-on: windows-latest
-    needs: check-if-changed
-    if: needs.check-if-changed.outputs.code_changes == 'true'
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "${{ env.PYTHON_VERSION }}"
-
-      - name: Install Hatch
-        id: hatch
-        shell: bash
-        run: |
-          pip install hatch==${{ env.HATCH_VERSION }}
-
-
-      - name: Run
-        run: hatch run test:integration-only-slow
-
-      - name: Calculate alert data
-        id: calculator
-        shell: bash
-        if: (success() || failure()) && github.ref_name == 'main'
-        run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            echo "alert_type=success" >> "$GITHUB_OUTPUT";
-          else
-            echo "alert_type=error" >> "$GITHUB_OUTPUT";
-          fi
-
-      - name: Send event to Datadog
-        if: (success() || failure()) && github.ref_name == 'main'
-        uses: masci/datadog@v1
-        with:
-          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
-          api-url: https://api.datadoghq.eu
-          events: |
-            - title: "${{ github.workflow }} workflow"
-              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
-              alert_type: "${{ steps.calculator.outputs.alert_type }}"
-              source_type_name: "Github"
-              host: ${{ github.repository_owner }}
-              tags:
-                - "project:${{ github.repository }}"
-                - "job:${{ github.job }}"
-                - "run_id:${{ github.run_id }}"
-                - "workflow:${{ github.workflow }}"
-                - "branch:${{ github.ref_name }}"
-                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        - name: Send event to Datadog
+          if: (success() || failure()) && github.ref_name == 'main'
+          uses: masci/datadog@v1
+          with:
+            api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
+            api-url: https://api.datadoghq.eu
+            events: |
+              - title: "${{ github.workflow }} workflow"
+                text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
+                alert_type: "${{ steps.calculator.outputs.alert_type }}"
+                source_type_name: "Github"
+                host: ${{ github.repository_owner }}
+                tags:
+                  - "project:${{ github.repository }}"
+                  - "job:${{ github.job }}"
+                  - "run_id:${{ github.run_id }}"
+                  - "workflow:${{ github.workflow }}"
+                  - "branch:${{ github.ref_name }}"
+                  - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
   slow-integration-tests-completed:
     # This job always runs and succeeds if all tests succeed or are skipped. It is required by Branch Protection rules.
     name: Slow Integration Tests completed
     runs-on: ubuntu-latest
     if: ${{ always() }}
-    needs:
-      - slow-integration-tests-linux
-      - slow-integration-tests-macos
-      - slow-integration-tests-windows
+    needs: slow-integration-tests
 
     steps:
     - name: Mark tests as completed
       run: |
-        if [ "${{ needs.slow-integration-tests-linux.result }}" = "failure" ] || \
-           [ "${{ needs.slow-integration-tests-macos.result }}" = "failure" ] || \
-           [ "${{ needs.slow-integration-tests-windows.result }}" = "failure" ]; then
+        if [ "${{ needs.slow-integration-tests.result }}" = "failure" ]; then
           echo "Slow Integration Tests failed!"
           exit 1
         else
