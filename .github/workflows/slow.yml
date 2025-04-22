@@ -30,6 +30,8 @@ on:
       - opened
       - reopened
       - synchronize
+      - labeled
+      - unlabeled
 
 jobs:
   check-if-changed:
