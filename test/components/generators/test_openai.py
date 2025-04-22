@@ -63,6 +63,7 @@ class TestOpenAIGenerator:
                 "system_prompt": None,
                 "api_base_url": None,
                 "organization": None,
+                "http_client_kwargs": None,
                 "generation_kwargs": {},
             },
         }
@@ -75,6 +76,7 @@ class TestOpenAIGenerator:
             streaming_callback=print_streaming_chunk,
             api_base_url="test-base-url",
             organization="org-1234567",
+            http_client_kwargs={"proxy": "http://localhost:8080"},
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
         )
         data = component.to_dict()
@@ -86,6 +88,7 @@ class TestOpenAIGenerator:
                 "system_prompt": None,
                 "api_base_url": "test-base-url",
                 "organization": "org-1234567",
+                "http_client_kwargs": {"proxy": "http://localhost:8080"},
                 "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
             },
@@ -101,6 +104,7 @@ class TestOpenAIGenerator:
                 "system_prompt": None,
                 "organization": None,
                 "api_base_url": "test-base-url",
+                "http_client_kwargs": None,
                 "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
             },
@@ -111,6 +115,7 @@ class TestOpenAIGenerator:
         assert component.api_base_url == "test-base-url"
         assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
         assert component.api_key == Secret.from_env_var("OPENAI_API_KEY")
+        assert component.http_client_kwargs is None
 
     def test_from_dict_fail_wo_env_var(self, monkeypatch):
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)

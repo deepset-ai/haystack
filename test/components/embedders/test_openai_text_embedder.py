@@ -83,6 +83,7 @@ class TestOpenAITextEmbedder:
                 "dimensions": None,
                 "model": "text-embedding-ada-002",
                 "organization": None,
+                "http_client_kwargs": None,
                 "prefix": "",
                 "suffix": "",
             },
@@ -97,6 +98,7 @@ class TestOpenAITextEmbedder:
             organization="fake-organization",
             prefix="prefix",
             suffix="suffix",
+            http_client_kwargs={"proxy": "http://localhost:8080"},
         )
         data = component.to_dict()
         assert data == {
@@ -107,6 +109,7 @@ class TestOpenAITextEmbedder:
                 "model": "model",
                 "dimensions": None,
                 "organization": "fake-organization",
+                "http_client_kwargs": {"proxy": "http://localhost:8080"},
                 "prefix": "prefix",
                 "suffix": "suffix",
             },
@@ -121,6 +124,7 @@ class TestOpenAITextEmbedder:
                 "model": "text-embedding-ada-002",
                 "api_base_url": "https://my-custom-base-url.com",
                 "organization": "fake-organization",
+                "http_client_kwargs": None,
                 "prefix": "prefix",
                 "suffix": "suffix",
             },
@@ -130,6 +134,7 @@ class TestOpenAITextEmbedder:
         assert component.model == "text-embedding-ada-002"
         assert component.api_base_url == "https://my-custom-base-url.com"
         assert component.organization == "fake-organization"
+        assert component.http_client_kwargs is None
         assert component.prefix == "prefix"
         assert component.suffix == "suffix"
 
