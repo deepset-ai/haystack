@@ -380,7 +380,7 @@ class ConditionalRouter:
             output_names = route["output_name"] if isinstance(route["output_name"], list) else [route["output_name"]]
 
             # Check lengths match
-            if not (len(outputs) == len(output_types) == len(output_names)):
+            if not len(outputs) == len(output_types) == len(output_names):
                 raise ValueError(f"Route output, output_type and output_name must have same length: {route}")
 
             # Validate templates
