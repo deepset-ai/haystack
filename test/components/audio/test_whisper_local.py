@@ -15,8 +15,6 @@ from haystack.components.audio import LocalWhisperTranscriber
 from haystack.utils.device import ComponentDevice, Device
 
 
-# TRIGGER
-
 SAMPLES_PATH = Path(__file__).parent.parent.parent / "test_files"
 
 
