@@ -68,6 +68,7 @@ class Agent:
         max_agent_steps: int = 100,
         raise_on_tool_invocation_failure: bool = False,
         streaming_callback: Optional[StreamingCallbackT] = None,
+        stream_tool_result: bool = False,
     ):
         """
         Initialize the agent component.
@@ -84,6 +85,7 @@ class Agent:
         :param raise_on_tool_invocation_failure: Should the agent raise an exception when a tool invocation fails?
             If set to False, the exception will be turned into a chat message and passed to the LLM.
         :param streaming_callback: A callback that will be invoked when a response is streamed from the LLM.
+        :param stream_tool_result: If True, the tool result will be streamed to the streaming callback.
         :raises TypeError: If the chat_generator does not support tools parameter in its run method.
         """
         # Check if chat_generator supports tools parameter
@@ -132,9 +134,17 @@ class Agent:
             component.set_input_type(self, name=param, type=config["type"], default=None)
         component.set_output_types(self, **output_types)
 
+        if stream_tool_result and self.streaming_callback:
+            self.streaming_callback_tool = self.streaming_callback
+        else:
+            self.streaming_callback_tool = None
         self._tool_invoker = None
         if self.tools:
-            self._tool_invoker = ToolInvoker(tools=self.tools, raise_on_failure=self.raise_on_tool_invocation_failure)
+            self._tool_invoker = ToolInvoker(
+                tools=self.tools,
+                raise_on_failure=self.raise_on_tool_invocation_failure,
+                streaming_callback=self.streaming_callback_tool,
+            )
         else:
             logger.warning(
                 "No tools provided to the Agent. The Agent will behave like a ChatGenerator and only return text "
