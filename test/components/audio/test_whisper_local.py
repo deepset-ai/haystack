@@ -191,7 +191,7 @@ class TestLocalWhisperTranscriber:
             ]
         )
         docs = output["documents"]
-        assert len(docs) == 89
+        assert len(docs) == 3
 
         assert all(word in docs[0].content.strip().lower() for word in {"content", "the", "document"}), (
             f"Expected words not found in: {docs[0].content.strip().lower()}"
