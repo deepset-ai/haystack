@@ -189,15 +189,17 @@ class ToolInvoker:
 
         # Convert Toolset to list for internal use
         if isinstance(tools, Toolset):
-            tools = list(tools)
+            converted_tools = list(tools)
+        else:
+            converted_tools = tools
 
-        _check_duplicate_tool_names(tools)
-        tool_names = [tool.name for tool in tools]
+        _check_duplicate_tool_names(converted_tools)
+        tool_names = [tool.name for tool in converted_tools]
         duplicates = {name for name in tool_names if tool_names.count(name) > 1}
         if duplicates:
             raise ValueError(f"Duplicate tool names found: {duplicates}")
 
-        self._tools_with_names = dict(zip(tool_names, tools))
+        self._tools_with_names = dict(zip(tool_names, converted_tools))
         self.raise_on_failure = raise_on_failure
         self.convert_result_to_json_string = convert_result_to_json_string
 
