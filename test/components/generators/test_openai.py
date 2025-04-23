@@ -308,12 +308,8 @@ class TestOpenAIGenerator:
     )
     @pytest.mark.integration
     def test_run_with_system_prompt(self):
-        generator = OpenAIGenerator(
-            model="gpt-4o-mini",
-            system_prompt="Answer in Italian, regardless of the language in which the question is asked.",
-        )
+        generator = OpenAIGenerator(model="gpt-4o-mini", system_prompt="Answer in Italian using only one word.")
         result = generator.run("What's the capital of Italy?")
-        print(result["replies"])
         assert "roma" in result["replies"][0].lower()
 
     @pytest.mark.skipif(
