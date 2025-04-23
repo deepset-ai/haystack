@@ -15,7 +15,7 @@ from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.state import State, _schema_from_dict, _schema_to_dict, _validate_schema
 from haystack.dataclasses.state_utils import merge_lists
-from haystack.dataclasses.streaming_chunk import StreamingCallbackT, StreamingChunk
+from haystack.dataclasses.streaming_chunk import StreamingCallbackT, StreamingChunk, select_streaming_callback
 from haystack.tools import Tool, deserialize_tools_or_toolset_inplace
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 from haystack.utils.deserialization import deserialize_chatgenerator_inplace
@@ -228,16 +228,6 @@ class Agent:
         """
         Stream information about a tool call.
 
-        This method creates a StreamingChunk with information about the tool call and passes it
-        to the streaming callback. The StreamingChunk has the following structure:
-
-        - content: A human-readable string describing the tool call (e.g., "Tool Call: weather_tool(city=Berlin)")
-        - meta:
-            - type: "tool_call" - Indicates this is a tool call event
-            - tool_name: The name of the tool being called
-            - arguments: The arguments passed to the tool as a dictionary
-            - id: The tool call ID if available
-
         :param message: The message containing the tool call
         :param streaming_callback: The callback to use for streaming
         """
@@ -291,7 +281,9 @@ class Agent:
         state.set("messages", messages)
 
         generator_inputs = self._prepare_generator_inputs(streaming_callback=streaming_callback)
-        streaming_callback = streaming_callback if streaming_callback else self.streaming_callback
+        streaming_callback = select_streaming_callback(
+            init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=False
+        )
 
         component_visits = dict.fromkeys(["chat_generator", "tool_invoker"], 0)
         with self._create_agent_span() as span:

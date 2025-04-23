@@ -4,7 +4,7 @@
 
 import inspect
 import json
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.core.component.sockets import Sockets
@@ -160,7 +160,7 @@ class ToolInvoker:
         tools: Union[List[Tool], Toolset],
         raise_on_failure: bool = True,
         convert_result_to_json_string: bool = False,
-        streaming_callback: Optional[Callable] = None,
+        streaming_callback: Optional[StreamingCallbackT] = None,
     ):
         """
         Initialize the ToolInvoker component.
