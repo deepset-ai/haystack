@@ -176,6 +176,7 @@ class TestLocalWhisperTranscriber:
         assert results == [expected]
 
     @pytest.mark.integration
+    @pytest.mark.slow
     @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="ffmpeg not installed on Windows CI")
     def test_whisper_local_transcriber(self, test_files_path):
         comp = LocalWhisperTranscriber(model="tiny", whisper_params={"language": "english"})
@@ -206,6 +207,7 @@ class TestLocalWhisperTranscriber:
         assert docs[2].meta["audio_file"]
 
     @pytest.mark.integration
+    @pytest.mark.slow
     @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="ffmpeg not installed on Windows CI")
     def test_whisper_local_transcriber_pipeline_and_url_source(self):
         pipe = Pipeline()

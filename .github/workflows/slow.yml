@@ -1,0 +1,144 @@
+# If you change this name also do it in ci_metrics.yml
+name: Slow Integration Tests
+
+# The workflow will always run, but the actual tests will only execute when:
+# - The workflow is triggered manually
+# - The workflow is scheduled
+# - The PR has the "run-slow-tests" label
+# - The push is to a release branch
+# - There are changes to relevant files.
+# Note: If no conditions are met, the workflow will complete successfully without running tests
+# to satisfy Branch Protection rules.
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  HF_API_TOKEN: ${{ secrets.HUGGINGFACE_API_KEY }}
+  PYTHON_VERSION: "3.9"
+  HATCH_VERSION: "1.14.1"
+  HAYSTACK_MPS_ENABLED: false
+
+on:
+  workflow_dispatch: # Activate this workflow manually
+  schedule:
+    - cron: "0 0 * * *"
+  push:
+    branches:
+      # release branches have the form v1.9.x
+      - "v[0-9].*[0-9].x"
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - labeled
+      - unlabeled
+
+jobs:
+  check-if-changed:
+  # This job checks if the relevant files have been changed.
+  # We check for changes in the check-if-changed job instead of using paths/paths-ignore at workflow level.
+  # This ensures the "Slow Integration Tests completed" job always runs, which is required by Branch Protection rules.
+    name: Check if changed
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      changes: ${{ steps.changes.outputs.changes }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for changed code
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          # List of Python files that trigger slow integration tests when modified
+          filters: |
+            changes:
+              - "haystack/components/audio/whisper_local.py"
+              - "haystack/components/converters/tika.py"
+              - "test/components/converters/test_tika_doc_converter.py"
+              - "test/components/audio/test_whisper_local.py"
+
+  slow-integration-tests:
+    name: Slow Tests / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    needs: check-if-changed
+    # Run tests if: manual trigger, scheduled, PR has label, release branch, or relevant files changed
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule' ||
+      (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'run-slow-tests')) ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/v[0-9].*[0-9].x') ||
+      (needs.check-if-changed.outputs.changes == 'true')
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            install_cmd: "sudo apt update && sudo apt install ffmpeg"
+          - os: macos-latest
+            install_cmd: "brew install ffmpeg"
+          - os: windows-latest
+            install_cmd: "echo 'No additional dependencies needed'"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "${{ env.PYTHON_VERSION }}"
+
+      - name: Install Hatch
+        id: hatch
+        shell: bash
+        run: |
+          pip install hatch==${{ env.HATCH_VERSION }}
+
+      - name: Run Tika
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          docker run -d -p 9998:9998 apache/tika:2.9.0.0
+
+      - name: Install Whisper dependencies
+        shell: bash
+        run: ${{ matrix.install_cmd }}
+
+      - name: Run tests
+        run: hatch run test:integration-only-slow
+
+      - name: Send event to Datadog for nightly failures
+        if: failure() && github.event_name == 'schedule'
+        uses: masci/datadog@v1
+        with:
+          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
+          api-url: https://api.datadoghq.eu
+          events: |
+            - title: "${{ github.workflow }} workflow"
+              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
+              alert_type: "error"
+              source_type_name: "Github"
+              host: ${{ github.repository_owner }}
+              tags:
+                - "project:${{ github.repository }}"
+                - "job:${{ github.job }}"
+                - "run_id:${{ github.run_id }}"
+                - "workflow:${{ github.workflow }}"
+                - "branch:${{ github.ref_name }}"
+                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+  slow-integration-tests-completed:
+    # This job always runs and succeeds if all tests succeed or are skipped. It is required by Branch Protection rules.
+    name: Slow Integration Tests completed
+    runs-on: ubuntu-latest
+    if: ${{ always() }}
+    needs: slow-integration-tests
+
+    steps:
+    - name: Mark tests as completed
+      run: |
+        if [ "${{ needs.slow-integration-tests.result }}" = "failure" ]; then
+          echo "Slow Integration Tests failed!"
+          exit 1
+        else
+          echo "Slow Integration Tests completed!"
+        fi
