@@ -244,10 +244,13 @@ class Agent:
             return
 
         # Create a chunk with tool call information
-        tool_call_info = f"Tool Call: {message.tool_call.tool_name} "
+        tool_call_info = f"Tool Call: {message.tool_call.tool_name} "  # Note the space after tool name
         if message.tool_call.arguments:
+            # Pre-format arguments string for better readability
             args_str = ", ".join(f"{k}={v}" for k, v in message.tool_call.arguments.items())
-            tool_call_info += f"({args_str}) \n"
+            tool_call_info += f"({args_str})\n"  # Note the newline at the end
+        else:
+            tool_call_info += "\n"  # Always add newline for consistency
 
         chunk = StreamingChunk(
             content=tool_call_info,

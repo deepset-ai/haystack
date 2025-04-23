@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Agents can now emit `tool_call` information when a tool is invoked.
+    Introduced a new parameter, `stream_tool_result`: if set to True, the tool result is emitted via the provided `streaming_callback` once the tool execution completes. Tool results are delivered as `StreamingChunk` objects and are not streamed incrementally.

@@ -24,6 +24,7 @@ from haystack.core.component.types import OutputSocket
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.dataclasses.chat_message import ChatRole, TextContent
 from haystack.dataclasses.streaming_chunk import StreamingChunk
+
 from haystack.tools import Tool, ComponentTool
 from haystack.tools.toolset import Toolset
 from haystack.utils import serialize_callable, Secret
@@ -660,6 +661,29 @@ class TestAgent:
         assert len(result["messages"]) == 2
         assert [isinstance(reply, ChatMessage) for reply in result["messages"]]
         assert "Hello from run_async" in result["messages"][1].text
+
+    def test_agent_streaming_with_tool_call(self, weather_tool):
+        chat_generator = OpenAIChatGenerator()
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
+        agent.warm_up()
+        streaming_callback_called = False
+
+        # Mock the _emit_tool_call_info method
+        agent._emit_tool_call_info = MagicMock()
+
+        def streaming_callback(chunk: StreamingChunk) -> None:
+            nonlocal streaming_callback_called
+            streaming_callback_called = True
+
+        result = agent.run(
+            [ChatMessage.from_user("What's the weather in Paris?")], streaming_callback=streaming_callback
+        )
+
+        assert result is not None
+        assert result["messages"] is not None
+        assert streaming_callback_called
+
+        agent._emit_tool_call_info.assert_called_once()
 
 
 class TestAgentTracing:
