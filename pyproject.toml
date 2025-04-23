@@ -91,7 +91,7 @@ dependencies = [
                                                # EvaluationRunResult, XLSXToDocument, and pipeline tests
 
   "transformers[torch,sentencepiece]>=4.51.1,<4.52", # ExtractiveReader, TransformersSimilarityRanker, LocalWhisperTranscriber, HFGenerators...
-  "huggingface_hub>=0.27.0",                   # Hugging Face API Generators and Embedders
+  "huggingface_hub[hf_xet]>=0.30.0",           # Hugging Face API Generators and Embedders. hf_xet speeds up models downloads.
   "sentence-transformers>=3.0.0",              # SentenceTransformersTextEmbedder and SentenceTransformersDocumentEmbedder
   "langdetect",                                # TextLanguageRouter and DocumentLanguageClassifier
   "openai-whisper>=20231106",                  # LocalWhisperTranscriber
