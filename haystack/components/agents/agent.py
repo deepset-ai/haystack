@@ -85,7 +85,11 @@ class Agent:
         :param raise_on_tool_invocation_failure: Should the agent raise an exception when a tool invocation fails?
             If set to False, the exception will be turned into a chat message and passed to the LLM.
         :param streaming_callback: A callback that will be invoked when a response is streamed from the LLM.
-        :param stream_tool_result: If True, the tool result will be streamed to the streaming callback.
+            If stream_tool_result is set to True, this callback will also be triggered to emit tool
+            results when a tool is called.
+        :param stream_tool_result: If set to True, the tool result will be emitted via the streaming callback.
+            Note that the result is only emitted once it becomes available — it is not
+            streamed incrementally in real time.
         :raises TypeError: If the chat_generator does not support tools parameter in its run method.
         """
         # Check if chat_generator supports tools parameter
@@ -224,9 +228,14 @@ class Agent:
             },
         )
 
-    def _stream_tool_call(self, message: ChatMessage, streaming_callback: Optional[StreamingCallbackT] = None) -> None:
+    def _emit_tool_call_info(
+        self, message: ChatMessage, streaming_callback: Optional[StreamingCallbackT] = None
+    ) -> None:
         """
-        Stream information about a tool call.
+        Emit information about a tool call.
+
+        A StreamingChunk containing tool name and
+        arguments is created and passed to the streaming callback.
 
         :param message: The message containing the tool call
         :param streaming_callback: The callback to use for streaming
@@ -235,12 +244,11 @@ class Agent:
             return
 
         # Create a chunk with tool call information
-        tool_call_info = f"Tool Call: {message.tool_call.tool_name}"
+        tool_call_info = f"Tool Call: {message.tool_call.tool_name} "
         if message.tool_call.arguments:
             args_str = ", ".join(f"{k}={v}" for k, v in message.tool_call.arguments.items())
-            tool_call_info += f"({args_str})"
+            tool_call_info += f"({args_str}) \n"
 
-        print("streaming tool call")
         chunk = StreamingChunk(
             content=tool_call_info,
             meta={
@@ -305,10 +313,10 @@ class Agent:
                     counter += 1
                     break
 
-                # Stream tool calls if streaming is enabled
+                # Emit information about tool calls
                 for msg in llm_messages:
                     if msg.tool_call:
-                        self._stream_tool_call(msg, streaming_callback=streaming_callback)
+                        self._emit_tool_call_info(msg, streaming_callback=streaming_callback)
 
                 # 3. Call the ToolInvoker
                 # We only send the messages from the LLM to the tool invoker
@@ -394,6 +402,11 @@ class Agent:
                 if not any(msg.tool_call for msg in llm_messages) or self._tool_invoker is None:
                     counter += 1
                     break
+
+                # Emit information about tool calls
+                for msg in llm_messages:
+                    if msg.tool_call:
+                        self._emit_tool_call_info(msg, streaming_callback=streaming_callback)
 
                 # 3. Call the ToolInvoker
                 # We only send the messages from the LLM to the tool invoker

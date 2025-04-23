@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional, Union
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.core.component.sockets import Sockets
 from haystack.dataclasses import ChatMessage, State, ToolCall
-from haystack.dataclasses.streaming_chunk import StreamingCallbackT, StreamingChunk
+from haystack.dataclasses.streaming_chunk import StreamingCallbackT, StreamingChunk, select_streaming_callback
 from haystack.tools import (
     ComponentTool,
     Tool,
@@ -176,7 +176,7 @@ class ToolInvoker:
             If True, the tool invocation result will be converted to a string using `json.dumps`.
             If False, the tool invocation result will be converted to a string using `str`.
         :param streaming_callback:
-            A callback function that will be called with the tool result.
+            A callback function that will be called to emit tool results.
         :raises ValueError:
             If no tools are provided or if duplicate tool names are found.
         """
@@ -361,13 +361,19 @@ class ToolInvoker:
             state.set(state_key, output_value, handler_override=handler)
 
     @component.output_types(tool_messages=List[ChatMessage], state=State)
-    def run(self, messages: List[ChatMessage], state: Optional[State] = None) -> Dict[str, Any]:
+    def run(
+        self,
+        messages: List[ChatMessage],
+        state: Optional[State] = None,
+        streaming_callback: Optional[StreamingCallbackT] = None,
+    ) -> Dict[str, Any]:
         """
         Processes ChatMessage objects containing tool calls and invokes the corresponding tools, if available.
 
         :param messages:
             A list of ChatMessage objects.
         :param state: The runtime state that should be used by the tools.
+        :param streaming_callback: A callback function that will be called to emit tool results.
         :returns:
             A dictionary with the key `tool_messages` containing a list of ChatMessage objects with tool role.
             Each ChatMessage objects wraps the result of a tool invocation.
@@ -386,6 +392,9 @@ class ToolInvoker:
 
         # Only keep messages with tool calls
         messages_with_tool_calls = [message for message in messages if message.tool_calls]
+        streaming_callback = select_streaming_callback(
+            init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=False
+        )
 
         tool_messages = []
         for message in messages_with_tool_calls:
@@ -409,8 +418,13 @@ class ToolInvoker:
                 # 2) Invoke the tool
                 try:
                     tool_result = tool_to_invoke.invoke(**final_args)
-                    if self.streaming_callback is not None:
-                        self._stream_tool_result(result=tool_result, tool_call=tool_call, tool_to_invoke=tool_to_invoke)
+                    if streaming_callback is not None:
+                        self._stream_tool_result(
+                            result=tool_result,
+                            tool_call=tool_call,
+                            tool_to_invoke=tool_to_invoke,
+                            streaming_callback=streaming_callback,
+                        )
 
                 except ToolInvocationError as e:
                     error_message = self._handle_error(e)
@@ -442,9 +456,14 @@ class ToolInvoker:
 
         return {"tool_messages": tool_messages, "state": state}
 
-    def _stream_tool_result(self, result: Any, tool_call: ToolCall, tool_to_invoke: Tool) -> None:
+    def _stream_tool_result(
+        self, result: Any, tool_call: ToolCall, tool_to_invoke: Tool, streaming_callback: StreamingCallbackT
+    ) -> None:
         """
         Streams the tool result to the streaming callback.
+
+        Note that the result is passed to callback as a `StreamingChunk` object once the
+        result becomes available — it is not streamed incrementally in real time.
         """
         chunk = StreamingChunk(
             content=result,
@@ -455,7 +474,7 @@ class ToolInvoker:
             },
         )
 
-        self.streaming_callback(chunk)
+        streaming_callback(chunk)
 
     def to_dict(self) -> Dict[str, Any]:
         """
