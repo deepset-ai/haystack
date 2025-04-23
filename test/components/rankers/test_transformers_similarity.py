@@ -336,6 +336,7 @@ class TestSimilarityRanker:
         assert ranker.device == ComponentDevice.from_multiple(DeviceMap.from_hf({"layer_1": 1, "classifier": "cpu"}))
 
     @pytest.mark.integration
+    @pytest.mark.slow
     @pytest.mark.parametrize(
         "query,docs_before_texts,expected_first_text,scores",
         [
@@ -378,6 +379,7 @@ class TestSimilarityRanker:
         assert docs_after[2].score == pytest.approx(sorted_scores[2], abs=1e-6)
 
     @pytest.mark.integration
+    @pytest.mark.slow
     @pytest.mark.parametrize(
         "query,docs_before_texts,expected_first_text,scores",
         [
@@ -421,6 +423,7 @@ class TestSimilarityRanker:
 
     #  Returns an empty list if no documents are provided
     @pytest.mark.integration
+    @pytest.mark.slow
     def test_returns_empty_list_if_no_documents_are_provided(self):
         sampler = TransformersSimilarityRanker()
         sampler.warm_up()
@@ -428,13 +431,13 @@ class TestSimilarityRanker:
         assert not output["documents"]
 
     #  Raises ComponentError if model is not warmed up
-    @pytest.mark.integration
     def test_raises_component_error_if_model_not_warmed_up(self):
         sampler = TransformersSimilarityRanker()
         with pytest.raises(RuntimeError):
             sampler.run(query="query", documents=[Document(content="document")])
 
     @pytest.mark.integration
+    @pytest.mark.slow
     @pytest.mark.parametrize(
         "query,docs_before_texts,expected_first_text",
         [
@@ -460,6 +463,7 @@ class TestSimilarityRanker:
         assert [doc.score for doc in docs_after] == sorted_scores
 
     @pytest.mark.integration
+    @pytest.mark.slow
     def test_run_single_document(self):
         """
         Test if the component runs with a single document.
