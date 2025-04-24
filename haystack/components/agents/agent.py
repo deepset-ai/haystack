@@ -4,7 +4,7 @@
 
 import inspect
 from copy import deepcopy
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging, tracing
 from haystack.components.generators.chat.types import ChatGenerator
@@ -15,8 +15,8 @@ from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.state import State, _schema_from_dict, _schema_to_dict, _validate_schema
 from haystack.dataclasses.state_utils import merge_lists
-from haystack.dataclasses.streaming_chunk import StreamingCallbackT, select_streaming_callback
-from haystack.tools import Tool, deserialize_tools_or_toolset_inplace
+from haystack.dataclasses.streaming_chunk import StreamingCallbackT, StreamingChunk, select_streaming_callback
+from haystack.tools import Tool, Toolset, deserialize_tools_or_toolset_inplace, serialize_tools_or_toolset
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 from haystack.utils.deserialization import deserialize_chatgenerator_inplace
 
@@ -61,7 +61,7 @@ class Agent:
         self,
         *,
         chat_generator: ChatGenerator,
-        tools: Optional[List[Tool]] = None,
+        tools: Optional[Union[List[Tool], Toolset]] = None,
         system_prompt: Optional[str] = None,
         exit_conditions: Optional[List[str]] = None,
         state_schema: Optional[Dict[str, Any]] = None,
@@ -74,7 +74,7 @@ class Agent:
         Initialize the agent component.
 
         :param chat_generator: An instance of the chat generator that your agent should use. It must support tools.
-        :param tools: List of Tool objects available to the agent
+        :param tools: List of Tool objects or a Toolset that the agent can use.
         :param system_prompt: System prompt for the agent.
         :param exit_conditions: List of conditions that will cause the agent to return.
             Can include "text" if the agent should return when it generates a message without tool calls,
@@ -176,7 +176,7 @@ class Agent:
         return default_to_dict(
             self,
             chat_generator=component_to_dict(obj=self.chat_generator, name="chat_generator"),
-            tools=[t.to_dict() for t in self.tools],
+            tools=serialize_tools_or_toolset(self.tools),
             system_prompt=self.system_prompt,
             exit_conditions=self.exit_conditions,
             # We serialize the original state schema, not the resolved one to reflect the original user input
