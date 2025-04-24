@@ -364,6 +364,40 @@ class TestOpenAIChatGenerator:
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
         assert "Hello" in response["replies"][0].text  # see openai_mock_chat_completion_chunk
 
+    def test_run_with_wrapped_stream_simulation(self, chat_messages, openai_mock_stream):
+        streaming_callback_called = False
+
+        def streaming_callback(chunk: StreamingChunk) -> None:
+            nonlocal streaming_callback_called
+            streaming_callback_called = True
+            assert isinstance(chunk, StreamingChunk)
+
+        chunk = ChatCompletionChunk(
+            id="id",
+            model="gpt-4",
+            object="chat.completion.chunk",
+            choices=[chat_completion_chunk.Choice(index=0, delta=chat_completion_chunk.ChoiceDelta(content="Hello"))],
+            created=int(datetime.now().timestamp()),
+        )
+
+        # Here we wrap the OpenAI stream in a MagicMock
+        # This is to simulate the behavior of some tools like Weave (https://github.com/wandb/weave)
+        # which wrap the OpenAI stream in their own stream
+        wrapped_openai_stream = MagicMock()
+        wrapped_openai_stream.__iter__.return_value = iter([chunk])
+
+        component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
+
+        with patch.object(
+            component.client.chat.completions, "create", return_value=wrapped_openai_stream
+        ) as mock_create:
+            response = component.run(chat_messages, streaming_callback=streaming_callback)
+
+            mock_create.assert_called_once()
+            assert streaming_callback_called
+            assert "replies" in response
+            assert "Hello" in response["replies"][0].text
+
     def test_check_abnormal_completions(self, caplog):
         caplog.set_level(logging.INFO)
         component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))

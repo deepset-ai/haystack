@@ -4,10 +4,11 @@
 import logging
 import os
 from typing import List
-
+from datetime import datetime
 import pytest
 from openai import OpenAIError
-from unittest.mock import MagicMock
+from openai.types.chat import ChatCompletionChunk, chat_completion_chunk
+from unittest.mock import MagicMock, patch
 
 from haystack.components.generators import OpenAIGenerator
 from haystack.components.generators.utils import print_streaming_chunk
@@ -313,17 +314,41 @@ class TestOpenAIGenerator:
         assert callback.counter > 1
         assert "Paris" in callback.responses
 
-    def test_run_with_wrong_model(self, monkeypatch):
-        # Mock the OpenAI client to raise an error when an invalid model is used
-        mock_client = MagicMock()
-        mock_client.chat.completions.create.side_effect = OpenAIError("Invalid model name")
+    def test_run_with_wrapped_stream_simulation(self, openai_mock_stream):
+        streaming_callback_called = False
 
-        # Create the generator with a wrong model name
-        generator = OpenAIGenerator(api_key=Secret.from_token("test-api-key"), model="something-obviously-wrong")
+        def streaming_callback(chunk: StreamingChunk) -> None:
+            nonlocal streaming_callback_called
+            streaming_callback_called = True
+            assert isinstance(chunk, StreamingChunk)
 
-        # Replace the real client with our mock
-        generator.client = mock_client
+        chunk = ChatCompletionChunk(
+            id="id",
+            model="gpt-4",
+            object="chat.completion.chunk",
+            choices=[
+                chat_completion_chunk.Choice(
+                    index=0, delta=chat_completion_chunk.ChoiceDelta(content="Hello"), finish_reason="stop"
+                )
+            ],
+            created=int(datetime.now().timestamp()),
+        )
 
-        # Test that the error is raised
-        with pytest.raises(OpenAIError):
-            generator.run("Whatever")
+        # Here we wrap the OpenAI stream in a MagicMock
+        # This is to simulate the behavior of some tools like Weave (https://github.com/wandb/weave)
+        # which wrap the OpenAI stream in their own stream
+        wrapped_openai_stream = MagicMock()
+        wrapped_openai_stream.__iter__.return_value = iter([chunk])
+
+        component = OpenAIGenerator(api_key=Secret.from_token("test-api-key"))
+
+        with patch.object(
+            component.client.chat.completions, "create", return_value=wrapped_openai_stream
+        ) as mock_create:
+            response = component.run(prompt="test prompt", streaming_callback=streaming_callback)
+
+            mock_create.assert_called_once()
+            assert streaming_callback_called
+            assert "replies" in response
+            assert "Hello" in response["replies"][0]
+            assert response["meta"][0]["finish_reason"] == "stop"

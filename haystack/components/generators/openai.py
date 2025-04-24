@@ -224,22 +224,25 @@ class OpenAIGenerator:
         )
 
         completions: List[ChatMessage] = []
-        if isinstance(completion, Stream):
+        if streaming_callback is not None:
             num_responses = generation_kwargs.pop("n", 1)
             if num_responses > 1:
                 raise ValueError("Cannot stream multiple responses, please set n=1.")
             chunks: List[StreamingChunk] = []
-            completion_chunk: Optional[ChatCompletionChunk] = None
+            last_chunk: Optional[ChatCompletionChunk] = None
 
-            # pylint: disable=not-an-iterable
-            for completion_chunk in completion:
-                if completion_chunk.choices and streaming_callback:
-                    chunk_delta: StreamingChunk = self._build_chunk(completion_chunk)
-                    chunks.append(chunk_delta)
-                    streaming_callback(chunk_delta)  # invoke callback with the chunk_delta
-            # Makes type checkers happy
-            assert completion_chunk is not None
-            completions = [self._create_message_from_chunks(completion_chunk, chunks)]
+            for chunk in completion:
+                if isinstance(chunk, ChatCompletionChunk):
+                    last_chunk = chunk
+
+                    if chunk.choices:
+                        chunk_delta: StreamingChunk = self._build_chunk(chunk)
+                        chunks.append(chunk_delta)
+                        streaming_callback(chunk_delta)
+
+            assert last_chunk is not None
+
+            completions = [self._create_message_from_chunks(last_chunk, chunks)]
         elif isinstance(completion, ChatCompletion):
             completions = [self._build_message(completion, choice) for choice in completion.choices]
 
