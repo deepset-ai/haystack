@@ -127,9 +127,14 @@ class DALLEImageGenerator:
         response = self.client.images.generate(
             model=self.model, prompt=prompt, size=size, quality=quality, response_format=response_format, n=1
         )
-        image: Image = response.data[0]
-        image_str = image.url or image.b64_json or ""
-        return {"images": [image_str], "revised_prompt": image.revised_prompt or ""}
+        if response.data is not None:
+            image: Image = response.data[0]
+            image_str = image.url or image.b64_json or ""
+            revised_prompt = image.revised_prompt or ""
+        else:
+            image_str = ""
+            revised_prompt = ""
+        return {"images": [image_str], "revised_prompt": revised_prompt}
 
     def to_dict(self) -> Dict[str, Any]:
         """
