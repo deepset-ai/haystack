@@ -374,10 +374,10 @@ We formally define three scopes for tests in Haystack with different requirement
 
 To keep the CI stable and reasonably fast, we run certain tests in a separate workflow.
 
-We use `@pytest.mark.slow` for tests that that clearly meet one or more of the following conditions:
-- Unstable (e.g. call unstable external services)
-- Slow (e.g. model inference on CPU)
-- Require special setup (e.g. installing system dependencies, running Docker containers).
+We use `@pytest.mark.slow` for tests that clearly meet one or more of the following conditions:
+- Unstable (such as call unstable external services)
+- Slow (such as model inference on CPU)
+- Require special setup (such as installing system dependencies, running Docker containers).
 
 ⚠️ The main goal of this separation is to keep the regular integration tests fast and **stable**.
 
@@ -392,11 +392,11 @@ The workflow always runs, but the tests only execute when:
 - There are changes to relevant files (as listed in the [workflow file](.github/workflows/slow.yml)).
   **Important**: If you mark a test but do not include both the test file and the file to be tested in the list, the test won't run automatically.
 - The workflow is scheduled (runs nightly).
-- The workflow is triggered manually (via the "Run workflow" button on [this page](https://github.com/deepset-ai/haystack/actions/workflows/slow.yml)).
+- The workflow is triggered manually (with the "Run workflow" button on [this page](https://github.com/deepset-ai/haystack/actions/workflows/slow.yml)).
 - The PR has the "run-slow-tests" label (you can use this label to trigger the tests even if no relevant files are changed).
 - The push is to a release branch.
 
-If none of the above conditions are met, the workflow completes successfully without running tests, to satisfy Branch Protection rules.
+If none of the above conditions are met, the workflow completes successfully without running tests to satisfy Branch Protection rules.
 
 *Hatch commands for running Integration Tests*:
 - `hatch run test:integration` runs all integrations tests (fast + slow).
