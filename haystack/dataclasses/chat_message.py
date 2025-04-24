@@ -331,13 +331,10 @@ class ChatMessage:
         :returns:
             Serialized version of the object.
         """
+
         serialized: Dict[str, Any] = {}
         serialized["role"] = self._role.value
-
-        # Handle meta serialization
-        meta_serialized = self._sanitize_for_serialization(self._meta)
-        serialized["meta"] = meta_serialized
-
+        serialized["meta"] = self._meta
         serialized["name"] = self._name
         content: List[Dict[str, Any]] = []
         for part in self._content:
@@ -352,33 +349,6 @@ class ChatMessage:
 
         serialized["content"] = content
         return serialized
-
-    def _sanitize_for_serialization(self, obj: Any) -> Any:
-        """
-        Sanitizes objects for serialization by removing or transforming non-serializable data.
-
-        :param obj: The object to sanitize
-        :returns: A serializable version of the object
-        """
-        if isinstance(obj, dict):
-            sanitized = {}
-            for key, value in obj.items():
-                # Handle specific known problematic fields from OpenAI
-                if key == "usage" and isinstance(value, dict):
-                    usage_copy = value.copy()
-                    # Remove known non-serializable fields
-                    usage_copy.pop("completion_tokens_details", None)
-                    usage_copy.pop("prompt_tokens_details", None)
-                    sanitized[key] = usage_copy
-                else:
-                    # Recursively sanitize other dict values
-                    sanitized[key] = self._sanitize_for_serialization(value)
-            return sanitized
-        elif isinstance(obj, list):
-            return [self._sanitize_for_serialization(item) for item in obj]
-        else:
-            # For basic types, return as is
-            return obj
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ChatMessage":

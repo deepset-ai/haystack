@@ -1,4 +1,0 @@
----
-features:
-  - |
-    Add sanitization for Meta field during serialization at the data class level.
