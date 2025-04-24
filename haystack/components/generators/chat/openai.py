@@ -521,7 +521,7 @@ class OpenAIChatGenerator:
             "index": 0,
             "finish_reason": finish_reason,
             "completion_start_time": chunks[0].meta.get("received_at"),  # first chunk received
-            "usage": dict(last_chunk.usage or {}),  # last chunk has the final usage data if available
+            "usage": self._serialize_usage(last_chunk.usage),  # last chunk has the final usage data if available
         }
 
         return ChatMessage.from_assistant(text=text or None, tool_calls=tool_calls, meta=meta)
@@ -559,7 +559,7 @@ class OpenAIChatGenerator:
                 "model": completion.model,
                 "index": choice.index,
                 "finish_reason": choice.finish_reason,
-                "usage": dict(completion.usage or {}),
+                "usage": self._serialize_usage(completion.usage),
             }
         )
         return chat_message
@@ -593,3 +593,16 @@ class OpenAIChatGenerator:
             }
         )
         return chunk_message
+
+    def _serialize_usage(self, usage):
+        """Convert OpenAI usage object to serializable dict recursively"""
+        if hasattr(usage, "model_dump"):
+            return usage.model_dump()
+        elif hasattr(usage, "__dict__"):
+            return {k: self._serialize_usage(v) for k, v in usage.__dict__.items() if not k.startswith("_")}
+        elif isinstance(usage, dict):
+            return {k: self._serialize_usage(v) for k, v in usage.items()}
+        elif isinstance(usage, list):
+            return [self._serialize_usage(item) for item in usage]
+        else:
+            return usage

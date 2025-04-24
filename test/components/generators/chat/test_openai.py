@@ -993,3 +993,44 @@ class TestOpenAIChatGenerator:
         assert tool_call.tool_name == "weather"
         assert tool_call.arguments == {"city": "Paris"}
         assert message.meta["finish_reason"] == "tool_calls"
+
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_run_with_include_usage_serializes_nested_objects(self):
+        class Callback:
+            def __init__(self):
+                self.responses = ""
+                self.counter = 0
+
+            def __call__(self, chunk: StreamingChunk) -> None:
+                self.counter += 1
+                self.responses += chunk.content if chunk.content else ""
+
+        callback = Callback()
+
+        component = OpenAIChatGenerator(
+            streaming_callback=callback, generation_kwargs={"stream_options": {"include_usage": True}}
+        )
+        results = component.run([ChatMessage.from_user("What's the capital of France?")])
+
+        assert "replies" in results
+        assert len(results["replies"]) == 1
+        message = results["replies"][0]
+        assert "_meta" in message.__dict__
+
+        metadata = message.meta
+        assert "usage" in metadata
+        usage = metadata["usage"]
+        assert isinstance(usage, dict)
+        assert "completion_tokens" in usage
+        assert "prompt_tokens" in usage
+        assert "total_tokens" in usage
+        assert "completion_tokens_details" in usage
+        assert isinstance(usage["completion_tokens_details"], dict)
+        assert "accepted_prediction_tokens" in usage["completion_tokens_details"]
+        assert "prompt_tokens_details" in usage
+        assert isinstance(usage["prompt_tokens_details"], dict)
+        assert "audio_tokens" in usage["prompt_tokens_details"]
