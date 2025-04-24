@@ -11,10 +11,17 @@ class TestTypeCompatibility:
 
     def test_basic_types(self):
         """Test compatibility of basic Python types."""
-        assert _is_compatible(str, str)
-        assert _is_compatible(int, int)
-        assert not _is_compatible(str, int)
-        assert not _is_compatible(float, int)
+        is_compat, common = _is_compatible(str, str)
+        assert is_compat and common == str
+
+        is_compat, common = _is_compatible(int, int)
+        assert is_compat and common == int
+
+        is_compat, common = _is_compatible(str, int)
+        assert not is_compat and common is None
+
+        is_compat, common = _is_compatible(float, int)
+        assert not is_compat and common is None
 
     def test_any_type(self):
         """Test Any type compatibility."""
@@ -26,12 +33,24 @@ class TestTypeCompatibility:
 
     def test_union_types(self):
         """Test Union type compatibility."""
-        assert _is_compatible(int, Union[int, str])
-        assert _is_compatible(Union[int, str], int)
-        assert _is_compatible(Union[int, str], Union[str, int])
-        assert _is_compatible(str, Union[int, str])
-        assert not _is_compatible(bool, Union[int, str])
-        assert not _is_compatible(float, Union[int, str])
+        is_compat, common = _is_compatible(int, Union[int, str])
+        assert is_compat and common == int
+
+        is_compat, common = _is_compatible(Union[int, str], int)
+        assert is_compat and common == int
+
+        is_compat, common = _is_compatible(Union[int, str], Union[str, int])
+        assert is_compat
+        assert common == Union[int, str] or common == Union[str, int]
+
+        is_compat, common = _is_compatible(str, Union[int, str])
+        assert is_compat and common == str
+
+        is_compat, common = _is_compatible(bool, Union[int, str])
+        assert not is_compat and common is None
+
+        is_compat, common = _is_compatible(float, Union[int, str])
+        assert not is_compat and common is None
 
     def test_variadic_type_compatibility(self):
         """Test compatibility with Variadic and GreedyVariadic types."""
@@ -71,12 +90,21 @@ class TestTypeCompatibility:
         target_type = List[List[int]]
 
         # With unwrap_nested=True
-        assert _is_compatible(complex_type, target_type)
-        assert _is_compatible(target_type, complex_type)
+        is_compat, common = _is_compatible(complex_type, target_type)
+        assert is_compat
+        # Handle both typing.List and built-in list notation
+        assert common == List[List[int]] or common == list[list[int]]
+
+        is_compat, common = _is_compatible(target_type, complex_type)
+        assert is_compat
+        assert common == List[List[int]] or common == list[list[int]]
 
         # With unwrap_nested=False
-        assert not _is_compatible(complex_type, target_type, unwrap_nested=False)
-        assert not _is_compatible(target_type, complex_type, unwrap_nested=False)
+        is_compat, common = _is_compatible(complex_type, target_type, unwrap_nested=False)
+        assert not is_compat and common is None
+
+        is_compat, common = _is_compatible(target_type, complex_type, unwrap_nested=False)
+        assert not is_compat and common is None
 
     def test_mixed_variadic_types(self):
         """Test mixing Variadic and GreedyVariadic with other type constructs."""
