@@ -231,15 +231,17 @@ class OpenAIGenerator:
             chunks: List[StreamingChunk] = []
             last_chunk: Optional[ChatCompletionChunk] = None
 
-            # pylint: disable=not-an-iterable
-            for chunk_item in completion:
-                if isinstance(chunk_item, ChatCompletionChunk) and chunk_item.choices:
-                    last_chunk = chunk_item
-                    chunk_delta: StreamingChunk = self._build_chunk(last_chunk)
-                    chunks.append(chunk_delta)
-                    streaming_callback(chunk_delta)  # invoke callback with the chunk_delta
-            # Makes type checkers happy
+            for chunk in completion:
+                if isinstance(chunk, ChatCompletionChunk):
+                    last_chunk = chunk
+
+                    if chunk.choices:
+                        chunk_delta: StreamingChunk = self._build_chunk(chunk)
+                        chunks.append(chunk_delta)
+                        streaming_callback(chunk_delta)
+
             assert last_chunk is not None
+
             completions = [self._create_message_from_chunks(last_chunk, chunks)]
         elif isinstance(completion, ChatCompletion):
             completions = [self._build_message(completion, choice) for choice in completion.choices]
