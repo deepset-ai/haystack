@@ -371,8 +371,8 @@ class ComponentTool(Tool):
         cls = python_type if isinstance(python_type, type) else python_type.__class__
         for field in fields(cls):
             field_description = f"Field '{field.name}' of '{cls.__name__}'."
-            if isinstance(schema["properties"], dict):
-                schema["properties"][field.name] = self._create_property_schema(field.type, field_description)
+            field_schema = self._create_property_schema(field.type, field_description)
+            schema["properties"][field.name] = field_schema
         return schema
 
     @staticmethod
@@ -384,8 +384,43 @@ class ComponentTool(Tool):
         :param description: The description of the type.
         :returns: A dictionary representing the basic type schema.
         """
-        type_mapping = {str: "string", int: "integer", float: "number", bool: "boolean", dict: "object"}
-        return {"type": type_mapping.get(python_type, "string"), "description": description}
+        type_mapping = {str: "string", int: "integer", float: "number", bool: "boolean"}
+        schema = {"type": type_mapping.get(python_type, "string"), "description": description}
+        return schema
+
+    def _create_union_schema(self, types: tuple, description: str) -> Dict[str, Any]:
+        """
+        Creates a schema for a Union type.
+
+        :param types: The types in the Union.
+        :param description: The description of the Union.
+        :returns: A dictionary representing the Union schema.
+        """
+        schemas = []
+        for arg_type in types:
+            if arg_type is not type(None):
+                # Special case: dict or list of dicts
+                if arg_type is dict or (get_origin(arg_type) is dict):
+                    arg_schema = {"type": "object", "additionalProperties": True}
+                elif get_origin(arg_type) is list:
+                    item_type = get_args(arg_type)[0] if get_args(arg_type) else Any
+                    if item_type is dict or (get_origin(item_type) is dict):
+                        items_schema = {"type": "object", "additionalProperties": True}
+                    else:
+                        items_schema = self._create_property_schema(item_type, "")
+                        items_schema.pop("description", None)
+                    arg_schema = {"type": "array", "items": items_schema}
+                else:
+                    arg_schema = self._create_property_schema(arg_type, "")
+                    arg_schema.pop("description", None)
+                schemas.append(arg_schema)
+
+        if len(schemas) == 1:
+            schema = schemas[0]
+            schema["description"] = description
+        else:
+            schema = {"oneOf": schemas, "description": description}
+        return schema
 
     def _create_property_schema(self, python_type: Any, description: str, default: Any = None) -> Dict[str, Any]:
         """
@@ -403,32 +438,39 @@ class ComponentTool(Tool):
             python_type = non_none_types[0] if non_none_types else str
 
         origin = get_origin(python_type)
-        if origin is list:
-            schema = self._create_list_schema(get_args(python_type)[0] if get_args(python_type) else Any, description)
+        args = get_args(python_type)
+
+        # Handle Dict[str, Any] as a special case for meta fields
+        if origin is dict and args and args[0] is str and args[1] is Any:
+            if description and "meta" in description.lower():
+                schema = {"type": "string", "description": description}
+            else:
+                schema = {"type": "object", "description": description, "additionalProperties": True}
+        # Handle other dict types
+        elif python_type is dict or (origin is dict):
+            schema = {"type": "object", "description": description, "additionalProperties": True}
+        # Handle list
+        elif origin is list:
+            item_type = args[0] if args else Any
+            # Special case: list of dicts
+            if item_type is dict or (get_origin(item_type) is dict):
+                items_schema = {"type": "object", "additionalProperties": True}
+            else:
+                items_schema = self._create_property_schema(item_type, "")
+                items_schema.pop("description", None)
+            schema = {"type": "array", "description": description, "items": items_schema}
+        # Handle dataclass
         elif is_dataclass(python_type):
             schema = self._create_dataclass_schema(python_type, description)
+        # Handle Pydantic v2 models (unsupported)
         elif hasattr(python_type, "model_validate"):
             raise SchemaGenerationError(
                 f"Pydantic models (e.g. {python_type.__name__}) are not supported as input types for "
                 f"component's run method."
             )
-        elif python_type is dict or (origin is dict):
-            schema = {"type": "object", "description": description, "additionalProperties": True}
+        # Handle Union (including Optional)
         elif origin is Union:
-            types = get_args(python_type)
-            schemas = []
-
-            for arg_type in types:
-                if arg_type is not type(None):
-                    arg_schema = self._create_property_schema(arg_type, "")
-                    arg_schema.pop("description", None)
-                    schemas.append(arg_schema)
-
-            if len(schemas) == 1:
-                schema = schemas[0]
-                schema["description"] = description
-            else:
-                schema = {"oneOf": schemas, "description": description}
+            schema = self._create_union_schema(args, description)
         else:
             schema = self._create_basic_type_schema(python_type, description)
 
