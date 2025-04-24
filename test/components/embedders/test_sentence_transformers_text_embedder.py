@@ -267,6 +267,7 @@ class TestSentenceTransformersTextEmbedder:
             embedder.run(text=list_integers_input)
 
     @pytest.mark.integration
+    @pytest.mark.slow
     def test_run_trunc(self, monkeypatch):
         """
         sentence-transformers/paraphrase-albert-small-v2 maps sentences & paragraphs to a 768 dimensional dense vector space
@@ -289,6 +290,7 @@ class TestSentenceTransformersTextEmbedder:
         assert len(embedding_trunc) == 128
 
     @pytest.mark.integration
+    @pytest.mark.slow
     def test_run_quantization(self):
         """
         sentence-transformers/paraphrase-albert-small-v2 maps sentences & paragraphs to a 768 dimensional dense vector space
