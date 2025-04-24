@@ -15,7 +15,7 @@ from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.state import State, _schema_from_dict, _schema_to_dict, _validate_schema
 from haystack.dataclasses.state_utils import merge_lists
-from haystack.dataclasses.streaming_chunk import StreamingCallbackT, StreamingChunk, select_streaming_callback
+from haystack.dataclasses.streaming_chunk import StreamingCallbackT, select_streaming_callback
 from haystack.tools import Tool, deserialize_tools_or_toolset_inplace
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 from haystack.utils.deserialization import deserialize_chatgenerator_inplace
@@ -228,43 +228,6 @@ class Agent:
             },
         )
 
-    def _emit_tool_call_info(
-        self, message: ChatMessage, streaming_callback: Optional[StreamingCallbackT] = None
-    ) -> None:
-        """
-        Emit information about a tool call.
-
-        A StreamingChunk containing tool name and
-        arguments is created and passed to the streaming callback.
-
-        :param message: The message containing the tool call
-        :param streaming_callback: The callback to use for streaming
-        """
-        if streaming_callback is None or message.tool_call is None:
-            return
-
-        # Create a chunk with tool call information
-        tool_call_info = f"Tool Call: {message.tool_call.tool_name} "  # Note the space after tool name
-        if message.tool_call.arguments:
-            # Pre-format arguments string for better readability
-            args_str = ", ".join(f"{k}={v}" for k, v in message.tool_call.arguments.items())
-            tool_call_info += f"({args_str})\n"  # Note the newline at the end
-        else:
-            tool_call_info += "\n"  # Always add newline for consistency
-
-        chunk = StreamingChunk(
-            content=tool_call_info,
-            meta={
-                "type": "tool_call",
-                "tool_name": message.tool_call.tool_name,
-                "arguments": message.tool_call.arguments,
-                "id": message.tool_call.id,
-            },
-        )
-
-        # Call the streaming callback
-        streaming_callback(chunk)
-
     def run(
         self,
         messages: List[ChatMessage],
@@ -315,11 +278,6 @@ class Agent:
                 if not any(msg.tool_call for msg in llm_messages) or self._tool_invoker is None:
                     counter += 1
                     break
-
-                # Emit information about tool calls
-                for msg in llm_messages:
-                    if msg.tool_call:
-                        self._emit_tool_call_info(msg, streaming_callback=streaming_callback)
 
                 # 3. Call the ToolInvoker
                 # We only send the messages from the LLM to the tool invoker
@@ -405,11 +363,6 @@ class Agent:
                 if not any(msg.tool_call for msg in llm_messages) or self._tool_invoker is None:
                     counter += 1
                     break
-
-                # Emit information about tool calls
-                for msg in llm_messages:
-                    if msg.tool_call:
-                        self._emit_tool_call_info(msg, streaming_callback=streaming_callback)
 
                 # 3. Call the ToolInvoker
                 # We only send the messages from the LLM to the tool invoker

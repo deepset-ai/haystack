@@ -4,6 +4,7 @@
 
 import inspect
 import json
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
@@ -468,9 +469,8 @@ class ToolInvoker:
         chunk = StreamingChunk(
             content=result,
             meta={
-                "type": "tool_result",
-                "result": result,
-                "origin": {"tool_name": tool_to_invoke.name, "arguments": tool_call.arguments, "id": tool_call.id},
+                "tool_calls": {"tool_name": tool_to_invoke.name, "arguments": tool_call.arguments, "id": tool_call.id},
+                "received_at": datetime.now().isoformat(),
             },
         )
 
