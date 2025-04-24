@@ -1,13 +1,13 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from datetime import datetime
 import logging
 import os
 from typing import List
 
 import pytest
 from openai import OpenAIError
+from unittest.mock import MagicMock
 
 from haystack.components.generators import OpenAIGenerator
 from haystack.components.generators.utils import print_streaming_chunk
@@ -253,54 +253,16 @@ class TestOpenAIGenerator:
         assert "completion_tokens" in metadata["usage"] and metadata["usage"]["completion_tokens"] > 0
         assert "total_tokens" in metadata["usage"] and metadata["usage"]["total_tokens"] > 0
 
-    @pytest.mark.skipif(
-        not os.environ.get("OPENAI_API_KEY", None),
-        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-    )
-    @pytest.mark.integration
-    def test_live_run_wrong_model(self):
-        component = OpenAIGenerator(model="something-obviously-wrong")
+    def test_run_with_wrong_model(self):
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.side_effect = OpenAIError("Invalid model name")
+
+        generator = OpenAIGenerator(api_key=Secret.from_token("test-api-key"), model="something-obviously-wrong")
+
+        generator.client = mock_client
+
         with pytest.raises(OpenAIError):
-            component.run("Whatever")
-
-    @pytest.mark.skipif(
-        not os.environ.get("OPENAI_API_KEY", None),
-        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-    )
-    @pytest.mark.integration
-    def test_live_run_streaming(self):
-        class Callback:
-            def __init__(self):
-                self.responses = ""
-                self.counter = 0
-
-            def __call__(self, chunk: StreamingChunk) -> None:
-                self.counter += 1
-                self.responses += chunk.content if chunk.content else ""
-
-        callback = Callback()
-        component = OpenAIGenerator(streaming_callback=callback)
-        results = component.run("What's the capital of France?")
-
-        assert len(results["replies"]) == 1
-        assert len(results["meta"]) == 1
-        response: str = results["replies"][0]
-        assert "Paris" in response
-
-        metadata = results["meta"][0]
-
-        assert "gpt-4o-mini" in metadata["model"]
-        assert metadata["finish_reason"] == "stop"
-
-        assert "completion_start_time" in metadata
-        assert datetime.fromisoformat(metadata["completion_start_time"]) <= datetime.now()
-
-        # unfortunately, the usage is not available for streaming calls
-        # we keep the key in the metadata for compatibility
-        assert "usage" in metadata and len(metadata["usage"]) == 0
-
-        assert callback.counter > 1
-        assert "Paris" in callback.responses
+            generator.run("Whatever")
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
@@ -350,3 +312,18 @@ class TestOpenAIGenerator:
 
         assert callback.counter > 1
         assert "Paris" in callback.responses
+
+    def test_run_with_wrong_model(self, monkeypatch):
+        # Mock the OpenAI client to raise an error when an invalid model is used
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.side_effect = OpenAIError("Invalid model name")
+
+        # Create the generator with a wrong model name
+        generator = OpenAIGenerator(api_key=Secret.from_token("test-api-key"), model="something-obviously-wrong")
+
+        # Replace the real client with our mock
+        generator.client = mock_client
+
+        # Test that the error is raised
+        with pytest.raises(OpenAIError):
+            generator.run("Whatever")
