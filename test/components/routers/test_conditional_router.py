@@ -583,13 +583,23 @@ class TestRouter:
                 "output": ["{{streams}}", "{{query}}"],
                 "output_type": [List[int], str],
                 "output_name": ["streams", "query"],
-            }
+            },
+            {
+                "condition": "{{streams|length < 2}}",
+                "output": ["{{streams}}", "{{custom_error_message}}"],
+                "output_type": [List[int], str],
+                "output_name": ["streams", "custom_error_message"],
+            },
         ]
         router = ConditionalRouter(routes)
 
-        # Test with valid input
-        result = router.run(streams=[1, 2, 3], query="test")
-        assert result == {"streams": [1, 2, 3], "query": "test"}
+        # Test with sufficient input streams
+        result = router.run(streams=[1, 2, 3], query="test_1", custom_error_message="Not enough streams")
+        assert result == {"streams": [1, 2, 3], "query": "test_1"}
+
+        # Test with insufficient input streams
+        result = router.run(streams=[1], query="test_2", custom_error_message="Not enough streams")
+        assert result == {"streams": [1], "custom_error_message": "Not enough streams"}
 
     def test_multiple_outputs_validation(self):
         """Test validation of routes with multiple outputs"""
