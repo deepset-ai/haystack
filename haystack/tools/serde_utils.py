@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import warnings
 from typing import TYPE_CHECKING, Any, Dict, List, Union
 
 from haystack.core.errors import DeserializationError
