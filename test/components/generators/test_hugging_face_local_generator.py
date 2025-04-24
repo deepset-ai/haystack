@@ -454,6 +454,7 @@ class TestHuggingFaceLocalGenerator:
         assert criteria(generated_text_ids, scores=None) is True
 
     @pytest.mark.integration
+    @pytest.mark.slow
     def test_hf_pipeline_runs_with_our_criteria(self, monkeypatch):
         """Test that creating our own StopWordsCriteria and passing it to a Huggingface pipeline works."""
         monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
@@ -467,6 +468,7 @@ class TestHuggingFaceLocalGenerator:
 
     @pytest.mark.integration
     @pytest.mark.flaky(reruns=3, reruns_delay=10)
+    @pytest.mark.slow
     def test_live_run(self, monkeypatch):
         monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
         llm = HuggingFaceLocalGenerator(model="Qwen/Qwen2.5-0.5B-Instruct", generation_kwargs={"max_new_tokens": 50})

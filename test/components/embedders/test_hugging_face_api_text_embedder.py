@@ -215,6 +215,7 @@ class TestHuggingFaceAPITextEmbedder:
 
     @pytest.mark.flaky(reruns=5, reruns_delay=5)
     @pytest.mark.integration
+    @pytest.mark.slow
     @pytest.mark.skipif(
         not os.environ.get("HF_API_TOKEN", None),
         reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
@@ -238,6 +239,7 @@ class TestHuggingFaceAPITextEmbedderAsync:
 
     @pytest.mark.integration
     @pytest.mark.asyncio
+    @pytest.mark.slow
     @pytest.mark.skipif(os.environ.get("HF_API_TOKEN", "") == "", reason="HF_API_TOKEN is not set")
     async def test_run_async_with_real_api(self):
         """
@@ -289,6 +291,7 @@ class TestHuggingFaceAPITextEmbedderAsync:
 
     @pytest.mark.integration
     @pytest.mark.asyncio
+    @pytest.mark.slow
     @pytest.mark.skipif(os.environ.get("HF_API_TOKEN", "") == "", reason="HF_API_TOKEN is not set")
     async def test_run_async_concurrent_requests(self):
         """

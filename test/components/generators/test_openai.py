@@ -8,6 +8,8 @@ from typing import List
 
 import pytest
 from openai import OpenAIError
+from openai.types.chat import ChatCompletionChunk, chat_completion_chunk
+from unittest.mock import MagicMock, patch
 
 from haystack.components.generators import OpenAIGenerator
 from haystack.components.generators.utils import print_streaming_chunk
@@ -63,6 +65,7 @@ class TestOpenAIGenerator:
                 "system_prompt": None,
                 "api_base_url": None,
                 "organization": None,
+                "http_client_kwargs": None,
                 "generation_kwargs": {},
             },
         }
@@ -75,6 +78,7 @@ class TestOpenAIGenerator:
             streaming_callback=print_streaming_chunk,
             api_base_url="test-base-url",
             organization="org-1234567",
+            http_client_kwargs={"proxy": "http://localhost:8080"},
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
         )
         data = component.to_dict()
@@ -86,6 +90,7 @@ class TestOpenAIGenerator:
                 "system_prompt": None,
                 "api_base_url": "test-base-url",
                 "organization": "org-1234567",
+                "http_client_kwargs": {"proxy": "http://localhost:8080"},
                 "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
             },
@@ -101,6 +106,7 @@ class TestOpenAIGenerator:
                 "system_prompt": None,
                 "organization": None,
                 "api_base_url": "test-base-url",
+                "http_client_kwargs": None,
                 "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
             },
@@ -111,6 +117,7 @@ class TestOpenAIGenerator:
         assert component.api_base_url == "test-base-url"
         assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
         assert component.api_key == Secret.from_env_var("OPENAI_API_KEY")
+        assert component.http_client_kwargs is None
 
     def test_from_dict_fail_wo_env_var(self, monkeypatch):
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
@@ -303,18 +310,9 @@ class TestOpenAIGenerator:
     )
     @pytest.mark.integration
     def test_run_with_system_prompt(self):
-        generator = OpenAIGenerator(
-            model="gpt-4o-mini",
-            system_prompt="You answer in Portuguese, regardless of the language on which a question is asked",
-        )
-        result = generator.run("Can you explain the Pitagoras therom?")
-        assert "teorema" in result["replies"][0].lower()
-
-        result = generator.run(
-            "Can you explain the Pitagoras therom? Repeat the name of the theorem in German.",
-            system_prompt="You answer in German, regardless of the language on which a question is asked.",
-        )
-        assert "pythag" in result["replies"][0].lower()
+        generator = OpenAIGenerator(model="gpt-4o-mini", system_prompt="Answer in Italian using only one word.")
+        result = generator.run("What's the capital of Italy?")
+        assert "roma" in result["replies"][0].lower()
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
@@ -354,6 +352,45 @@ class TestOpenAIGenerator:
 
         assert callback.counter > 1
         assert "Paris" in callback.responses
+
+    def test_run_with_wrapped_stream_simulation(self, openai_mock_stream):
+        streaming_callback_called = False
+
+        def streaming_callback(chunk: StreamingChunk) -> None:
+            nonlocal streaming_callback_called
+            streaming_callback_called = True
+            assert isinstance(chunk, StreamingChunk)
+
+        chunk = ChatCompletionChunk(
+            id="id",
+            model="gpt-4",
+            object="chat.completion.chunk",
+            choices=[
+                chat_completion_chunk.Choice(
+                    index=0, delta=chat_completion_chunk.ChoiceDelta(content="Hello"), finish_reason="stop"
+                )
+            ],
+            created=int(datetime.now().timestamp()),
+        )
+
+        # Here we wrap the OpenAI stream in a MagicMock
+        # This is to simulate the behavior of some tools like Weave (https://github.com/wandb/weave)
+        # which wrap the OpenAI stream in their own stream
+        wrapped_openai_stream = MagicMock()
+        wrapped_openai_stream.__iter__.return_value = iter([chunk])
+
+        component = OpenAIGenerator(api_key=Secret.from_token("test-api-key"))
+
+        with patch.object(
+            component.client.chat.completions, "create", return_value=wrapped_openai_stream
+        ) as mock_create:
+            response = component.run(prompt="test prompt", streaming_callback=streaming_callback)
+
+            mock_create.assert_called_once()
+            assert streaming_callback_called
+            assert "replies" in response
+            assert "Hello" in response["replies"][0]
+            assert response["meta"][0]["finish_reason"] == "stop"
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),

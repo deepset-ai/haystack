@@ -577,6 +577,7 @@ class TestSentenceTransformersDiversityRanker:
         assert Pipeline.loads(pipe_serialized) == pipe
 
     @pytest.mark.integration
+    @pytest.mark.slow
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
     def test_run(self, similarity, monkeypatch):
         """
@@ -605,6 +606,7 @@ class TestSentenceTransformersDiversityRanker:
         assert ranked_order == expected_order
 
     @pytest.mark.integration
+    @pytest.mark.slow
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
     def test_run_real_world_use_case(self, similarity, monkeypatch):
         monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
@@ -678,6 +680,7 @@ class TestSentenceTransformersDiversityRanker:
         assert result_content == expected_content
 
     @pytest.mark.integration
+    @pytest.mark.slow
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
     def test_run_with_maximum_margin_relevance_strategy(self, similarity, monkeypatch):
         monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811

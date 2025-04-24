@@ -10,6 +10,7 @@ from openai.types.image import Image
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.utils import Secret, deserialize_secrets_inplace
+from haystack.utils.http_client import init_http_client
 
 
 @component
@@ -41,6 +42,7 @@ class DALLEImageGenerator:
         organization: Optional[str] = None,
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
+        http_client_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
         Creates an instance of DALLEImageGenerator. Unless specified otherwise in `model`, uses OpenAI's dall-e-3.
@@ -60,6 +62,9 @@ class DALLEImageGenerator:
         :param max_retries:
             Maximum retries to establish contact with OpenAI if it returns an internal error. If not set, it is inferred
             from the `OPENAI_MAX_RETRIES` environment variable or set to 5.
+        :param http_client_kwargs:
+            A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
+            For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
         """
         self.model = model
         self.quality = quality
@@ -71,6 +76,7 @@ class DALLEImageGenerator:
 
         self.timeout = timeout if timeout is not None else float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
         self.max_retries = max_retries if max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
+        self.http_client_kwargs = http_client_kwargs
 
         self.client: Optional[OpenAI] = None
 
@@ -85,6 +91,7 @@ class DALLEImageGenerator:
                 base_url=self.api_base_url,
                 timeout=self.timeout,
                 max_retries=self.max_retries,
+                http_client=init_http_client(self.http_client_kwargs, async_client=False),
             )
 
     @component.output_types(images=List[str], revised_prompt=str)
@@ -120,9 +127,14 @@ class DALLEImageGenerator:
         response = self.client.images.generate(
             model=self.model, prompt=prompt, size=size, quality=quality, response_format=response_format, n=1
         )
-        image: Image = response.data[0]
-        image_str = image.url or image.b64_json or ""
-        return {"images": [image_str], "revised_prompt": image.revised_prompt or ""}
+        if response.data is not None:
+            image: Image = response.data[0]
+            image_str = image.url or image.b64_json or ""
+            revised_prompt = image.revised_prompt or ""
+        else:
+            image_str = ""
+            revised_prompt = ""
+        return {"images": [image_str], "revised_prompt": revised_prompt}
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -140,6 +152,7 @@ class DALLEImageGenerator:
             api_key=self.api_key.to_dict(),
             api_base_url=self.api_base_url,
             organization=self.organization,
+            http_client_kwargs=self.http_client_kwargs,
         )
 
     @classmethod

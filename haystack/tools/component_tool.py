@@ -435,7 +435,7 @@ class ComponentTool(Tool):
             try:
                 # Try to deep copy the attribute
                 setattr(result, key, deepcopy(value, memo))
-            except TypeError:
+            except (TypeError, NotImplementedError):
                 # Fall back to using the original attribute for components that use Jinja2-templates
                 logger.debug(
                     "deepcopy of ComponentTool {tool_name} failed. Using original attribute '{attribute}' instead.",

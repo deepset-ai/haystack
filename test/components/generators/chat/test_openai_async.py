@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, patch, MagicMock
 
 from openai import AsyncOpenAI, OpenAIError
 import pytest
@@ -365,3 +365,42 @@ class TestOpenAIChatGeneratorAsync:
         assert tool_call.tool_name == "weather"
         assert tool_call.arguments == {"city": "Paris"}
         assert message.meta["finish_reason"] == "tool_calls"
+
+    @pytest.mark.asyncio
+    async def test_run_with_wrapped_stream_simulation_async(self, chat_messages, openai_mock_stream_async):
+        streaming_callback_called = False
+
+        async def streaming_callback(chunk: StreamingChunk) -> None:
+            nonlocal streaming_callback_called
+            streaming_callback_called = True
+            assert isinstance(chunk, StreamingChunk)
+
+        chunk = ChatCompletionChunk(
+            id="id",
+            model="gpt-4",
+            object="chat.completion.chunk",
+            choices=[chat_completion_chunk.Choice(index=0, delta=chat_completion_chunk.ChoiceDelta(content="Hello"))],
+            created=int(datetime.now().timestamp()),
+        )
+
+        # Here we wrap the OpenAI async stream in an AsyncMock
+        # This is to simulate the behavior of some tools like Weave (https://github.com/wandb/weave)
+        # which wrap the OpenAI async stream in their own stream
+        wrapped_openai_async_stream = AsyncMock()
+        wrapped_openai_async_stream.__aiter__.return_value = iter([chunk])
+
+        component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
+
+        # Patch the async client's create method
+        with patch.object(
+            component.async_client.chat.completions,
+            "create",
+            return_value=wrapped_openai_async_stream,
+            new_callable=AsyncMock,
+        ) as mock_create:
+            response = await component.run_async(chat_messages, streaming_callback=streaming_callback)
+
+            mock_create.assert_called_once()
+            assert streaming_callback_called
+            assert "replies" in response
+            assert "Hello" in response["replies"][0].text

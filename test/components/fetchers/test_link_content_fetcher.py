@@ -123,7 +123,7 @@ class TestLinkContentFetcher:
     def test_run_bad_status_code(self):
         """Test behavior when a request results in an error status code"""
         empty_byte_stream = b""
-        fetcher = LinkContentFetcher(raise_on_failure=False)
+        fetcher = LinkContentFetcher(raise_on_failure=False, retry_attempts=0)
         mock_response = Mock(status_code=403)
         mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
             "403 Client Error", request=Mock(), response=mock_response
@@ -304,12 +304,12 @@ class TestLinkContentFetcherAsync:
             mock_get.return_value = mock_response
 
             # With raise_on_failure=False
-            fetcher = LinkContentFetcher(raise_on_failure=False)
+            fetcher = LinkContentFetcher(raise_on_failure=False, retry_attempts=0)
             streams = (await fetcher.run_async(urls=["https://www.example.com"]))["streams"]
             assert len(streams) == 1  # Returns an empty stream
 
             # With raise_on_failure=True
-            fetcher = LinkContentFetcher(raise_on_failure=True)
+            fetcher = LinkContentFetcher(raise_on_failure=True, retry_attempts=0)
             with pytest.raises(httpx.HTTPStatusError):
                 await fetcher.run_async(urls=["https://www.example.com"])
 
