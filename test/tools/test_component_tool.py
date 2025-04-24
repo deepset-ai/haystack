@@ -6,7 +6,7 @@ import json
 import os
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Dict, List, Union, Optional, Any
 
 import pytest
 
@@ -120,6 +120,26 @@ class DocumentProcessor:
         :returns: Dictionary containing the concatenated document contents
         """
         return {"concatenated": "\n".join(doc.content for doc in documents[:top_k])}
+
+
+@component
+class ComplexTypeProcessor:
+    """A component that processes complex types."""
+
+    @component.output_types(result=str)
+    def run(
+        self, meta: Union[Dict[str, Any], List[Dict[str, Any]]] = None, extraction_kwargs: Dict[str, Any] = None
+    ) -> Dict[str, str]:
+        """
+        Processes complex types like dictionaries and unions.
+
+        :param meta: Optional metadata to attach, can be a dictionary or list of dictionaries
+        :param extraction_kwargs: Optional dictionary containing keyword arguments to customize the extraction process
+        :return: A dictionary with the result
+        """
+        meta_str = str(meta) if meta else "No metadata"
+        kwargs_str = str(extraction_kwargs) if extraction_kwargs else "No kwargs"
+        return {"result": f"Meta: {meta_str}, Kwargs: {kwargs_str}"}
 
 
 def output_handler(old, new):
@@ -334,6 +354,39 @@ class TestToolComponent:
 
         with pytest.raises(ValueError):
             ComponentTool(component=not_a_component, name="invalid_tool", description="This should fail")
+
+    def test_from_component_with_complex_types(self):
+        component = ComplexTypeProcessor()
+
+        tool = ComponentTool(component=component)
+
+        # Check the parameter schema
+        assert "meta" in tool.parameters["properties"]
+        assert "extraction_kwargs" in tool.parameters["properties"]
+
+        # Meta should be oneOf with both object and array options
+        meta_schema = tool.parameters["properties"]["meta"]
+        assert meta_schema["description"].startswith("Optional metadata")
+        assert "oneOf" in meta_schema
+
+        # extraction_kwargs should be an object
+        kwargs_schema = tool.parameters["properties"]["extraction_kwargs"]
+        assert kwargs_schema["type"] == "object"
+        assert "additionalProperties" in kwargs_schema
+        assert kwargs_schema["additionalProperties"] is True
+
+        # Test tool invocation with dict
+        result = tool.invoke(meta={"source": "web"}, extraction_kwargs={"timeframe": "last month"})
+        assert isinstance(result, dict)
+        assert "result" in result
+        assert "Meta: {'source': 'web'}" in result["result"]
+        assert "Kwargs: {'timeframe': 'last month'}" in result["result"]
+
+        # Test tool invocation with list of dicts
+        result = tool.invoke(meta=[{"id": 1}, {"id": 2}])
+        assert isinstance(result, dict)
+        assert "result" in result
+        assert "Meta: [{'id': 1}, {'id': 2}]" in result["result"]
 
 
 ## Integration tests

@@ -412,6 +412,23 @@ class ComponentTool(Tool):
                 f"Pydantic models (e.g. {python_type.__name__}) are not supported as input types for "
                 f"component's run method."
             )
+        elif python_type is dict or (origin is dict):
+            schema = {"type": "object", "description": description, "additionalProperties": True}
+        elif origin is Union:
+            types = get_args(python_type)
+            schemas = []
+
+            for arg_type in types:
+                if arg_type is not type(None):
+                    arg_schema = self._create_property_schema(arg_type, "")
+                    arg_schema.pop("description", None)
+                    schemas.append(arg_schema)
+
+            if len(schemas) == 1:
+                schema = schemas[0]
+                schema["description"] = description
+            else:
+                schema = {"oneOf": schemas, "description": description}
         else:
             schema = self._create_basic_type_schema(python_type, description)
 
