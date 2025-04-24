@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import warnings
 from dataclasses import asdict, dataclass
 from typing import Any, Callable, Dict, List, Optional
 
@@ -10,7 +11,7 @@ from jsonschema.exceptions import SchemaError
 
 from haystack.core.serialization import generate_qualified_class_name
 from haystack.tools.errors import ToolInvocationError
-from haystack.tools.serde_utils import deserialize_tools_inplace  # noqa: F401
+from haystack.tools.serde_utils import deserialize_tools_or_toolset_inplace
 from haystack.utils import deserialize_callable, serialize_callable
 
 
@@ -174,3 +175,22 @@ def _check_duplicate_tool_names(tools: Optional[List[Tool]]) -> None:
     duplicate_tool_names = {name for name in tool_names if tool_names.count(name) > 1}
     if duplicate_tool_names:
         raise ValueError(f"Duplicate tool names found: {duplicate_tool_names}")
+
+
+def deserialize_tools_inplace(data: Dict[str, Any], key: str = "tools"):
+    """
+    Deserialize a list of Tools or a Toolset in a dictionary inplace.
+
+    Deprecated in favor of `deserialize_tools_or_toolset_inplace`. It will be removed in Haystack 2.14.0.
+
+    :param data:
+        The dictionary with the serialized data.
+    :param key:
+        The key in the dictionary where the list of Tools or Toolset is stored.
+    """
+    warnings.warn(
+        "`deserialize_tools_inplace` is deprecated and will be removed in Haystack 2.14.0. "
+        "Use `deserialize_tools_or_toolset_inplace` instead.",
+        DeprecationWarning,
+    )
+    deserialize_tools_or_toolset_inplace(data, key)
