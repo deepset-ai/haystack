@@ -128,7 +128,7 @@ class ComplexTypeProcessor:
 
     @component.output_types(result=str)
     def run(
-        self, meta: Union[Dict[str, Any], List[Dict[str, Any]]] = None, extraction_kwargs: Dict[str, Any] = None
+        self, meta: Union[Dict[str, Any], List[Dict[str, Any]]] = None, extraction_kwargs: Optional[Dict[str, Any]] = None
     ) -> Dict[str, str]:
         """
         Processes complex types like dictionaries and unions.
