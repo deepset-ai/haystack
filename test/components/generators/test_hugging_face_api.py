@@ -291,6 +291,7 @@ class TestHuggingFaceAPIGenerator:
 
     @pytest.mark.flaky(reruns=5, reruns_delay=5)
     @pytest.mark.integration
+    @pytest.mark.slow
     @pytest.mark.skipif(
         not os.environ.get("HF_API_TOKEN", None),
         reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
@@ -322,6 +323,7 @@ class TestHuggingFaceAPIGenerator:
 
     @pytest.mark.flaky(reruns=5, reruns_delay=5)
     @pytest.mark.integration
+    @pytest.mark.slow
     @pytest.mark.skipif(
         not os.environ.get("HF_API_TOKEN", None),
         reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
