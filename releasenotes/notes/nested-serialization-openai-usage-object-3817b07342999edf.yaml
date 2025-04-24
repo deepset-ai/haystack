@@ -1,4 +1,5 @@
 ---
 features:
   - |
-    Add serialization for OpenAI usage object.
+    Implement JSON-safe serialization for OpenAI usage data by converting 
+    token counts and details (like CompletionTokensDetails and PromptTokensDetails) into plain dictionaries.
