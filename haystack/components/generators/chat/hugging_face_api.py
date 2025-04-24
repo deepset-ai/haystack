@@ -387,6 +387,34 @@ class HuggingFaceAPIChatGenerator:
 
         return {"replies": [message]}
 
+    @staticmethod
+    def _convert_hfapi_tool_call(hfapi_tc) -> Optional[ToolCall]:
+        """
+        Convert a HuggingFace API tool call to a Haystack ToolCall.
+
+        If the arguments cannot be parsed as JSON, returns None.
+
+        :param hfapi_tc: The HuggingFace API tool call to convert
+        :returns: A ToolCall object if successful, None if arguments are invalid
+
+        """
+        arguments = hfapi_tc.function.arguments
+        if isinstance(arguments, str):
+            try:
+                arguments = json.loads(arguments)
+            except json.JSONDecodeError:
+                logger.warning(
+                    "HuggingFace API returned a malformed JSON string for tool call arguments. This tool call "
+                    "will be skipped. To ensure valid JSON generation, verify the model's function calling "
+                    "capabilities. Tool call ID: {_id}, Tool name: {_name}, Arguments: {_arguments}",
+                    _id=hfapi_tc.id,
+                    _name=hfapi_tc.function.name,
+                    _arguments=arguments,
+                )
+                return None
+
+        return ToolCall(tool_name=hfapi_tc.function.name, arguments=arguments, id=hfapi_tc.id)
+
     def _run_non_streaming(
         self,
         messages: List[Dict[str, str]],
@@ -410,22 +438,8 @@ class HuggingFaceAPIChatGenerator:
 
         if hfapi_tool_calls := choice.message.tool_calls:
             for hfapi_tc in hfapi_tool_calls:
-                arguments = hfapi_tc.function.arguments
-                if isinstance(arguments, str):
-                    try:
-                        arguments = json.loads(arguments)
-                    except json.JSONDecodeError:
-                        logger.warning(
-                            "HuggingFace API returned a malformed JSON string for tool call arguments. "
-                            "The raw string will be wrapped in a 'raw_arguments' field. "
-                            "Tool name: %s, Arguments: %s",
-                            hfapi_tc.function.name,
-                            arguments,
-                        )
-                        arguments = {"raw_arguments": arguments}
-
-                tool_call = ToolCall(tool_name=hfapi_tc.function.name, arguments=arguments, id=hfapi_tc.id)
-                tool_calls.append(tool_call)
+                if tool_call := self._convert_hfapi_tool_call(hfapi_tc):
+                    tool_calls.append(tool_call)
 
         meta: Dict[str, Any] = {
             "model": self._client.model,
@@ -505,22 +519,8 @@ class HuggingFaceAPIChatGenerator:
 
         if hfapi_tool_calls := choice.message.tool_calls:
             for hfapi_tc in hfapi_tool_calls:
-                arguments = hfapi_tc.function.arguments
-                if isinstance(arguments, str):
-                    try:
-                        arguments = json.loads(arguments)
-                    except json.JSONDecodeError:
-                        logger.warning(
-                            "HuggingFace API returned a malformed JSON string for tool call arguments. "
-                            "The raw string will be wrapped in a 'raw_arguments' field. "
-                            "Tool name: %s, Arguments: %s",
-                            hfapi_tc.function.name,
-                            arguments,
-                        )
-                        arguments = {"raw_arguments": arguments}
-
-                tool_call = ToolCall(tool_name=hfapi_tc.function.name, arguments=arguments, id=hfapi_tc.id)
-                tool_calls.append(tool_call)
+                if tool_call := self._convert_hfapi_tool_call(hfapi_tc):
+                    tool_calls.append(tool_call)
 
         meta: Dict[str, Any] = {
             "model": self._async_client.model,

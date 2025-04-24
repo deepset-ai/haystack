@@ -53,10 +53,6 @@ class ToolCall:
     :param id: The ID of the Tool call.
     :param tool_name: The name of the Tool to call.
     :param arguments: The arguments to call the Tool with.
-                     In most cases, this should be a dictionary. However, some LLM APIs might return
-                     a JSON string instead. In those cases, the consumer of this class needs to handle
-                     the conversion appropriately (e.g., in HuggingFaceAPIChatGenerator we convert
-                     string arguments to dict before creating a ToolCall).
     """
 
     tool_name: str
