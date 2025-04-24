@@ -104,6 +104,7 @@ class TestSASEvaluator:
             evaluator.run(ground_truth_answers=ground_truths, predicted_answers=predictions)
 
     @pytest.mark.integration
+    @pytest.mark.slow
     def test_run_with_matching_predictions(self, monkeypatch):
         monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
         evaluator = SASEvaluator()
@@ -125,6 +126,7 @@ class TestSASEvaluator:
         assert result["individual_scores"] == pytest.approx([1.0, 1.0, 1.0])
 
     @pytest.mark.integration
+    @pytest.mark.slow
     def test_run_with_single_prediction(self, monkeypatch):
         monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
         evaluator = SASEvaluator()
@@ -139,6 +141,7 @@ class TestSASEvaluator:
         assert result["individual_scores"] == pytest.approx([0.689089], abs=1e-5)
 
     @pytest.mark.integration
+    @pytest.mark.slow
     def test_run_with_mismatched_predictions(self, monkeypatch):
         monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
         evaluator = SASEvaluator()
@@ -159,6 +162,7 @@ class TestSASEvaluator:
         assert result["individual_scores"] == pytest.approx([0.689089, 0.870389, 0.908679], abs=1e-5)
 
     @pytest.mark.integration
+    @pytest.mark.slow
     def test_run_with_bi_encoder_model(self, monkeypatch):
         monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
         evaluator = SASEvaluator(model="sentence-transformers/all-mpnet-base-v2")
@@ -179,6 +183,7 @@ class TestSASEvaluator:
         assert result["individual_scores"] == pytest.approx([1.0, 1.0, 1.0])
 
     @pytest.mark.integration
+    @pytest.mark.slow
     def test_run_with_cross_encoder_model(self, monkeypatch):
         monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
         evaluator = SASEvaluator(model="cross-encoder/ms-marco-MiniLM-L-6-v2")

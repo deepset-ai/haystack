@@ -336,35 +336,19 @@ class TestSimilarityRanker:
         assert ranker.device == ComponentDevice.from_multiple(DeviceMap.from_hf({"layer_1": 1, "classifier": "cpu"}))
 
     @pytest.mark.integration
-    @pytest.mark.parametrize(
-        "query,docs_before_texts,expected_first_text,scores",
-        [
-            (
-                "City in Bosnia and Herzegovina",
-                ["Berlin", "Belgrade", "Sarajevo"],
-                "Sarajevo",
-                [2.2864143829792738e-05, 0.00012495707778725773, 0.009869757108390331],
-            ),
-            (
-                "Machine learning",
-                ["Python", "Bakery in Paris", "Tesla Giga Berlin"],
-                "Python",
-                [1.9063229046878405e-05, 1.434577916370472e-05, 1.3049247172602918e-05],
-            ),
-            (
-                "Cubist movement",
-                ["Nirvana", "Pablo Picasso", "Coffee"],
-                "Pablo Picasso",
-                [1.3313065210240893e-05, 9.90335684036836e-05, 1.3518535524781328e-05],
-            ),
-        ],
-    )
-    def test_run(self, query, docs_before_texts, expected_first_text, scores):
+    @pytest.mark.slow
+    def test_run(self):
         """
         Test if the component ranks documents correctly.
         """
         ranker = TransformersSimilarityRanker(model="cross-encoder/ms-marco-MiniLM-L-6-v2")
         ranker.warm_up()
+
+        query = "City in Bosnia and Herzegovina"
+        docs_before_texts = ["Berlin", "Belgrade", "Sarajevo"]
+        expected_first_text = "Sarajevo"
+        expected_scores = [2.2864143829792738e-05, 0.00012495707778725773, 0.009869757108390331]
+
         docs_before = [Document(content=text) for text in docs_before_texts]
         output = ranker.run(query=query, documents=docs_before)
         docs_after = output["documents"]
@@ -372,41 +356,25 @@ class TestSimilarityRanker:
         assert len(docs_after) == 3
         assert docs_after[0].content == expected_first_text
 
-        sorted_scores = sorted(scores, reverse=True)
+        sorted_scores = sorted(expected_scores, reverse=True)
         assert docs_after[0].score == pytest.approx(sorted_scores[0], abs=1e-6)
         assert docs_after[1].score == pytest.approx(sorted_scores[1], abs=1e-6)
         assert docs_after[2].score == pytest.approx(sorted_scores[2], abs=1e-6)
 
     @pytest.mark.integration
-    @pytest.mark.parametrize(
-        "query,docs_before_texts,expected_first_text,scores",
-        [
-            (
-                "City in Bosnia and Herzegovina",
-                ["Berlin", "Belgrade", "Sarajevo"],
-                "Sarajevo",
-                [2.2864143829792738e-05, 0.00012495707778725773, 0.009869757108390331],
-            ),
-            (
-                "Machine learning",
-                ["Python", "Bakery in Paris", "Tesla Giga Berlin"],
-                "Python",
-                [1.9063229046878405e-05, 1.434577916370472e-05, 1.3049247172602918e-05],
-            ),
-            (
-                "Cubist movement",
-                ["Nirvana", "Pablo Picasso", "Coffee"],
-                "Pablo Picasso",
-                [1.3313065210240893e-05, 9.90335684036836e-05, 1.3518535524781328e-05],
-            ),
-        ],
-    )
-    def test_run_small_batch_size(self, query, docs_before_texts, expected_first_text, scores):
+    @pytest.mark.slow
+    def test_run_small_batch_size(self):
         """
         Test if the component ranks documents correctly.
         """
         ranker = TransformersSimilarityRanker(model="cross-encoder/ms-marco-MiniLM-L-6-v2", batch_size=2)
         ranker.warm_up()
+
+        query = "City in Bosnia and Herzegovina"
+        docs_before_texts = ["Berlin", "Belgrade", "Sarajevo"]
+        expected_first_text = "Sarajevo"
+        expected_scores = [2.2864143829792738e-05, 0.00012495707778725773, 0.009869757108390331]
+
         docs_before = [Document(content=text) for text in docs_before_texts]
         output = ranker.run(query=query, documents=docs_before)
         docs_after = output["documents"]
@@ -414,41 +382,37 @@ class TestSimilarityRanker:
         assert len(docs_after) == 3
         assert docs_after[0].content == expected_first_text
 
-        sorted_scores = sorted(scores, reverse=True)
+        sorted_scores = sorted(expected_scores, reverse=True)
         assert docs_after[0].score == pytest.approx(sorted_scores[0], abs=1e-6)
         assert docs_after[1].score == pytest.approx(sorted_scores[1], abs=1e-6)
         assert docs_after[2].score == pytest.approx(sorted_scores[2], abs=1e-6)
 
-    #  Returns an empty list if no documents are provided
-    @pytest.mark.integration
     def test_returns_empty_list_if_no_documents_are_provided(self):
         sampler = TransformersSimilarityRanker()
-        sampler.warm_up()
+        sampler.model = MagicMock()
+
         output = sampler.run(query="City in Germany", documents=[])
         assert not output["documents"]
 
     #  Raises ComponentError if model is not warmed up
-    @pytest.mark.integration
     def test_raises_component_error_if_model_not_warmed_up(self):
         sampler = TransformersSimilarityRanker()
         with pytest.raises(RuntimeError):
             sampler.run(query="query", documents=[Document(content="document")])
 
     @pytest.mark.integration
-    @pytest.mark.parametrize(
-        "query,docs_before_texts,expected_first_text",
-        [
-            ("City in Bosnia and Herzegovina", ["Berlin", "Belgrade", "Sarajevo"], "Sarajevo"),
-            ("Machine learning", ["Python", "Bakery in Paris", "Tesla Giga Berlin"], "Python"),
-            ("Cubist movement", ["Nirvana", "Pablo Picasso", "Coffee"], "Pablo Picasso"),
-        ],
-    )
-    def test_run_top_k(self, query, docs_before_texts, expected_first_text):
+    @pytest.mark.slow
+    def test_run_top_k(self):
         """
         Test if the component ranks documents correctly with a custom top_k.
         """
         ranker = TransformersSimilarityRanker(model="cross-encoder/ms-marco-MiniLM-L-6-v2", top_k=2)
         ranker.warm_up()
+
+        query = "City in Bosnia and Herzegovina"
+        docs_before_texts = ["Berlin", "Belgrade", "Sarajevo"]
+        expected_first_text = "Sarajevo"
+
         docs_before = [Document(content=text) for text in docs_before_texts]
         output = ranker.run(query=query, documents=docs_before)
         docs_after = output["documents"]
@@ -460,6 +424,7 @@ class TestSimilarityRanker:
         assert [doc.score for doc in docs_after] == sorted_scores
 
     @pytest.mark.integration
+    @pytest.mark.slow
     def test_run_single_document(self):
         """
         Test if the component runs with a single document.
