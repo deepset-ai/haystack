@@ -38,6 +38,7 @@ and smooth out the experience for all involved. The community looks forward to y
     - [Unit test](#unit-test)
     - [Integration test](#integration-test)
     - [End to End (e2e) test](#end-to-end-e2e-test)
+    - [Slow/unstable integration tests (for maintainers)](#slowunstable-integration-tests-for-maintainers)
   - [Contributor Licence Agreement (CLA)](#contributor-licence-agreement-cla)
 
 ## Code of Conduct
@@ -368,6 +369,39 @@ We formally define three scopes for tests in Haystack with different requirement
 - Runs outside the development cycle (nightly or on demand)
 - Might not be possible to run locally due to system and hardware requirements
 - **Goal: being confident in releasing Haystack**
+
+### Slow/unstable Integration Tests (for maintainers)
+
+To keep the CI stable and reasonably fast, we run certain tests in a separate workflow.
+
+We use `@pytest.mark.slow` for tests that clearly meet one or more of the following conditions:
+- Unstable (such as call unstable external services)
+- Slow (such as model inference on CPU)
+- Require special setup (such as installing system dependencies, running Docker containers).
+
+⚠️ The main goal of this separation is to keep the regular integration tests fast and **stable**.
+
+We should try to avoid including too many modules in the Slow Integration Tests workflow: doing so may reduce its effectiveness.
+
+#### How does it work?
+
+These tests are executed by the [Slow Integration Tests workflow](.github/workflows/slow.yml).
+
+The workflow always runs, but the tests only execute when:
+
+- There are changes to relevant files (as listed in the [workflow file](.github/workflows/slow.yml)).
+  **Important**: If you mark a test but do not include both the test file and the file to be tested in the list, the test won't run automatically.
+- The workflow is scheduled (runs nightly).
+- The workflow is triggered manually (with the "Run workflow" button on [this page](https://github.com/deepset-ai/haystack/actions/workflows/slow.yml)).
+- The PR has the "run-slow-tests" label (you can use this label to trigger the tests even if no relevant files are changed).
+- The push is to a release branch.
+
+If none of the above conditions are met, the workflow completes successfully without running tests to satisfy Branch Protection rules.
+
+*Hatch commands for running Integration Tests*:
+- `hatch run test:integration` runs all integrations tests (fast + slow).
+- `hatch run test:integration-only-fast` skips the slow tests.
+- `hatch run test:integration-only-slow` runs only slow tests.
 
 ## Contributor Licence Agreement (CLA)
 

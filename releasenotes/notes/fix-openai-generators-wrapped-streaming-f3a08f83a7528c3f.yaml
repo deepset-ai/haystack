@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fix an issue where OpenAIChatGenerator and OpenAIGenerator were not properly handling wrapped streaming responses from tools like Weave.

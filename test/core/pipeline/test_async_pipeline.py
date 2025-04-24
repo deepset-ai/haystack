@@ -7,7 +7,7 @@ def test_async_pipeline_reentrance(waiting_component, spying_tracer):
     pp = AsyncPipeline()
     pp.add_component("wait", waiting_component())
 
-    run_data = [{"wait_for": 1}, {"wait_for": 2}]
+    run_data = [{"wait_for": 0.001}, {"wait_for": 0.002}]
 
     async def run_all():
         # Create concurrent tasks for each pipeline run

@@ -31,6 +31,7 @@ class TestDALLEImageGenerator:
         assert component.organization is None
         assert pytest.approx(component.timeout) == 30.0
         assert component.max_retries is 5
+        assert component.http_client_kwargs is None
 
     def test_init_with_params(self, monkeypatch):
         component = DALLEImageGenerator(
@@ -82,6 +83,7 @@ class TestDALLEImageGenerator:
                 "api_key": {"type": "env_var", "env_vars": ["OPENAI_API_KEY"], "strict": True},
                 "api_base_url": None,
                 "organization": None,
+                "http_client_kwargs": None,
             },
         }
 
@@ -96,6 +98,7 @@ class TestDALLEImageGenerator:
             organization="test-org",
             timeout=60,
             max_retries=10,
+            http_client_kwargs={"proxy": "http://localhost:8080"},
         )
         data = generator.to_dict()
         assert data == {
@@ -108,6 +111,7 @@ class TestDALLEImageGenerator:
                 "api_key": {"type": "env_var", "env_vars": ["EXAMPLE_API_KEY"], "strict": True},
                 "api_base_url": "https://api.openai.com",
                 "organization": "test-org",
+                "http_client_kwargs": {"proxy": "http://localhost:8080"},
             },
         }
 
@@ -122,6 +126,7 @@ class TestDALLEImageGenerator:
                 "api_key": {"type": "env_var", "env_vars": ["OPENAI_API_KEY"], "strict": True},
                 "api_base_url": None,
                 "organization": None,
+                "http_client_kwargs": None,
             },
         }
         generator = DALLEImageGenerator.from_dict(data)
@@ -130,6 +135,7 @@ class TestDALLEImageGenerator:
         assert generator.size == "1024x1024"
         assert generator.response_format == "url"
         assert generator.api_key.to_dict() == {"type": "env_var", "env_vars": ["OPENAI_API_KEY"], "strict": True}
+        assert generator.http_client_kwargs is None
 
     def test_from_dict_default_params(self):
         data = {"type": "haystack.components.generators.openai_dalle.DALLEImageGenerator", "init_parameters": {}}
@@ -143,6 +149,7 @@ class TestDALLEImageGenerator:
         assert generator.organization is None
         assert pytest.approx(generator.timeout) == 30.0
         assert generator.max_retries == 5
+        assert generator.http_client_kwargs is None
 
     def test_run(self, mock_image_response):
         generator = DALLEImageGenerator(api_key=Secret.from_token("test-api-key"))

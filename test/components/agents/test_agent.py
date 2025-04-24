@@ -239,6 +239,62 @@ class TestAgent:
             },
         }
 
+    def test_to_dict_with_toolset(self, monkeypatch, weather_tool):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        toolset = Toolset(tools=[weather_tool])
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset)
+        serialized_agent = agent.to_dict()
+        assert serialized_agent == {
+            "type": "haystack.components.agents.agent.Agent",
+            "init_parameters": {
+                "chat_generator": {
+                    "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
+                    "init_parameters": {
+                        "model": "gpt-4o-mini",
+                        "streaming_callback": None,
+                        "api_base_url": None,
+                        "organization": None,
+                        "generation_kwargs": {},
+                        "api_key": {"type": "env_var", "env_vars": ["OPENAI_API_KEY"], "strict": True},
+                        "timeout": None,
+                        "max_retries": None,
+                        "tools": None,
+                        "tools_strict": False,
+                        "http_client_kwargs": None,
+                    },
+                },
+                "tools": {
+                    "type": "haystack.tools.toolset.Toolset",
+                    "data": {
+                        "tools": [
+                            {
+                                "type": "haystack.tools.tool.Tool",
+                                "data": {
+                                    "name": "weather_tool",
+                                    "description": "Provides weather information for a given location.",
+                                    "parameters": {
+                                        "type": "object",
+                                        "properties": {"location": {"type": "string"}},
+                                        "required": ["location"],
+                                    },
+                                    "function": "test_agent.weather_function",
+                                    "outputs_to_string": None,
+                                    "inputs_from_state": None,
+                                    "outputs_to_state": None,
+                                },
+                            }
+                        ]
+                    },
+                },
+                "system_prompt": None,
+                "exit_conditions": ["text"],
+                "state_schema": {},
+                "max_agent_steps": 100,
+                "raise_on_tool_invocation_failure": False,
+                "streaming_callback": None,
+            },
+        }
+
     def test_from_dict(self, weather_tool, component_tool, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
         data = {
@@ -317,6 +373,67 @@ class TestAgent:
             "foo": {"type": str},
             "messages": {"handler": merge_lists, "type": List[ChatMessage]},
         }
+
+    def test_from_dict_with_toolset(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        data = {
+            "type": "haystack.components.agents.agent.Agent",
+            "init_parameters": {
+                "chat_generator": {
+                    "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
+                    "init_parameters": {
+                        "model": "gpt-4o-mini",
+                        "streaming_callback": None,
+                        "api_base_url": None,
+                        "organization": None,
+                        "generation_kwargs": {},
+                        "api_key": {"type": "env_var", "env_vars": ["OPENAI_API_KEY"], "strict": True},
+                        "timeout": None,
+                        "max_retries": None,
+                        "tools": None,
+                        "tools_strict": False,
+                        "http_client_kwargs": None,
+                    },
+                },
+                "tools": {
+                    "type": "haystack.tools.toolset.Toolset",
+                    "data": {
+                        "tools": [
+                            {
+                                "type": "haystack.tools.tool.Tool",
+                                "data": {
+                                    "name": "weather_tool",
+                                    "description": "Provides weather information for a given location.",
+                                    "parameters": {
+                                        "type": "object",
+                                        "properties": {"location": {"type": "string"}},
+                                        "required": ["location"],
+                                    },
+                                    "function": "test_agent.weather_function",
+                                    "outputs_to_string": None,
+                                    "inputs_from_state": None,
+                                    "outputs_to_state": None,
+                                },
+                            }
+                        ]
+                    },
+                },
+                "system_prompt": None,
+                "exit_conditions": ["text"],
+                "state_schema": {},
+                "max_agent_steps": 100,
+                "raise_on_tool_invocation_failure": False,
+                "streaming_callback": None,
+            },
+        }
+        agent = Agent.from_dict(data)
+        assert isinstance(agent, Agent)
+        assert isinstance(agent.chat_generator, OpenAIChatGenerator)
+        assert agent.chat_generator.model == "gpt-4o-mini"
+        assert agent.chat_generator.api_key == Secret.from_env_var("OPENAI_API_KEY")
+        assert isinstance(agent.tools, Toolset)
+        assert agent.tools[0].function is weather_function
+        assert agent.exit_conditions == ["text"]
 
     def test_serde(self, weather_tool, component_tool, monkeypatch):
         monkeypatch.setenv("FAKE_OPENAI_KEY", "fake-key")
@@ -700,54 +817,18 @@ class TestAgentTracing:
         expected_tag_values = [
             "chat_generator",
             "MockChatGeneratorWithoutRunAsync",
-            {"messages": "list", "tools": "list"},
-            {},
-            {},
-            {
-                "messages": [ChatMessage.from_user(text="What's the weather in Paris?")],
-                "tools": [
-                    Tool(
-                        name="weather_tool",
-                        description="Provides weather information for a given location.",
-                        parameters={
-                            "type": "object",
-                            "properties": {"location": {"type": "string"}},
-                            "required": ["location"],
-                        },
-                        function=weather_function,
-                        outputs_to_string=None,
-                        inputs_from_state=None,
-                        outputs_to_state=None,
-                    )
-                ],
-            },
+            '{"messages": "list", "tools": "list"}',
+            "{}",
+            "{}",
+            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]}',
             1,
-            {"replies": [ChatMessage.from_assistant(text="Hello")]},
+            '{"replies": [{"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello"}]}]}',
             100,
-            [
-                Tool(
-                    name="weather_tool",
-                    description="Provides weather information for a given location.",
-                    parameters={
-                        "type": "object",
-                        "properties": {"location": {"type": "string"}},
-                        "required": ["location"],
-                    },
-                    function=weather_function,
-                    outputs_to_string=None,
-                    inputs_from_state=None,
-                    outputs_to_state=None,
-                )
-            ],
-            ["text"],
-            {"messages": {"type": List[ChatMessage], "handler": merge_lists}},
-            {"messages": [ChatMessage.from_user(text="What's the weather in Paris?")], "streaming_callback": None},
-            {
-                "messages": [
-                    ChatMessage.from_user(text="What's the weather in Paris?"),
-                    ChatMessage.from_assistant(text="Hello"),
-                ]
-            },
+            '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]',
+            '["text"]',
+            '{"messages": {"type": "typing.List[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.dataclasses.state_utils.merge_lists"}}',
+            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null}',
+            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}, {"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello"}]}]}',
             1,
         ]
         for idx, record in enumerate(tags_records):
@@ -796,54 +877,18 @@ class TestAgentTracing:
         expected_tag_values = [
             "chat_generator",
             "MockChatGeneratorWithRunAsync",
-            {"messages": "list", "tools": "list"},
-            {},
-            {},
-            {
-                "messages": [ChatMessage.from_user(text="What's the weather in Paris?")],
-                "tools": [
-                    Tool(
-                        name="weather_tool",
-                        description="Provides weather information for a given location.",
-                        parameters={
-                            "type": "object",
-                            "properties": {"location": {"type": "string"}},
-                            "required": ["location"],
-                        },
-                        function=weather_function,
-                        outputs_to_string=None,
-                        inputs_from_state=None,
-                        outputs_to_state=None,
-                    )
-                ],
-            },
+            '{"messages": "list", "tools": "list"}',
+            "{}",
+            "{}",
+            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]}',
             1,
-            {"replies": [ChatMessage.from_assistant(text="Hello from run_async")]},
+            '{"replies": [{"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello from run_async"}]}]}',
             100,
-            [
-                Tool(
-                    name="weather_tool",
-                    description="Provides weather information for a given location.",
-                    parameters={
-                        "type": "object",
-                        "properties": {"location": {"type": "string"}},
-                        "required": ["location"],
-                    },
-                    function=weather_function,
-                    outputs_to_string=None,
-                    inputs_from_state=None,
-                    outputs_to_state=None,
-                )
-            ],
-            ["text"],
-            {"messages": {"type": List[ChatMessage], "handler": merge_lists}},
-            {"messages": [ChatMessage.from_user(text="What's the weather in Paris?")], "streaming_callback": None},
-            {
-                "messages": [
-                    ChatMessage.from_user(text="What's the weather in Paris?"),
-                    ChatMessage.from_assistant(text="Hello from run_async"),
-                ]
-            },
+            '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]',
+            '["text"]',
+            '{"messages": {"type": "typing.List[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.dataclasses.state_utils.merge_lists"}}',
+            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null}',
+            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}, {"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello from run_async"}]}]}',
             1,
         ]
         for idx, record in enumerate(tags_records):

@@ -186,9 +186,7 @@ class DocumentPreprocessor:
         :returns:
             Deserialized SuperComponent.
         """
-        if "splitting_function" in data["init_parameters"]:
-            data["init_parameters"]["splitting_function"] = deserialize_callable(
-                data["init_parameters"]["splitting_function"]
-            )
-
+        splitting_function = data["init_parameters"].get("splitting_function", None)
+        if splitting_function:
+            data["init_parameters"]["splitting_function"] = deserialize_callable(splitting_function)
         return default_from_dict(cls, data)

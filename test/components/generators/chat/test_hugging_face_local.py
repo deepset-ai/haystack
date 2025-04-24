@@ -345,6 +345,7 @@ class TestHuggingFaceLocalChatGenerator:
         mock_convert.assert_any_call(messages[1])
 
     @pytest.mark.integration
+    @pytest.mark.slow
     @pytest.mark.flaky(reruns=3, reruns_delay=10)
     def test_live_run(self, monkeypatch):
         monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
