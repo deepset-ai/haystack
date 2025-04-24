@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Add serialization for OpenAI usage object.
