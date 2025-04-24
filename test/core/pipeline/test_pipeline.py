@@ -23,7 +23,7 @@ class TestPipeline:
         pp = Pipeline()
         pp.add_component("wait", waiting_component())
 
-        run_data = [{"wait_for": 1}, {"wait_for": 2}]
+        run_data = [{"wait_for": 0.001}, {"wait_for": 0.002}]
 
         # Use ThreadPoolExecutor to run pipeline calls in parallel
         with ThreadPoolExecutor(max_workers=len(run_data)) as executor:

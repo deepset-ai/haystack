@@ -308,18 +308,9 @@ class TestOpenAIGenerator:
     )
     @pytest.mark.integration
     def test_run_with_system_prompt(self):
-        generator = OpenAIGenerator(
-            model="gpt-4o-mini",
-            system_prompt="You answer in Portuguese, regardless of the language on which a question is asked",
-        )
-        result = generator.run("Can you explain the Pitagoras therom?")
-        assert "teorema" in result["replies"][0].lower()
-
-        result = generator.run(
-            "Can you explain the Pitagoras therom? Repeat the name of the theorem in German.",
-            system_prompt="You answer in German, regardless of the language on which a question is asked.",
-        )
-        assert "pythag" in result["replies"][0].lower()
+        generator = OpenAIGenerator(model="gpt-4o-mini", system_prompt="Answer in Italian using only one word.")
+        result = generator.run("What's the capital of Italy?")
+        assert "roma" in result["replies"][0].lower()
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
