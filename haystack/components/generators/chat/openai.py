@@ -274,10 +274,7 @@ class OpenAIChatGenerator:
             **api_args
         )
 
-        is_streaming = isinstance(chat_completion, Stream)
-        assert is_streaming or streaming_callback is None
-
-        if is_streaming:
+        if streaming_callback is not None:
             completions = self._handle_stream_response(
                 chat_completion,  # type: ignore
                 streaming_callback,  # type: ignore
@@ -353,10 +350,7 @@ class OpenAIChatGenerator:
             AsyncStream[ChatCompletionChunk], ChatCompletion
         ] = await self.async_client.chat.completions.create(**api_args)
 
-        is_streaming = isinstance(chat_completion, AsyncStream)
-        assert is_streaming or streaming_callback is None
-
-        if is_streaming:
+        if streaming_callback is not None:
             completions = await self._handle_async_stream_response(
                 chat_completion,  # type: ignore
                 streaming_callback,  # type: ignore
