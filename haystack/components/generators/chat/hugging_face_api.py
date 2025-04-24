@@ -388,7 +388,7 @@ class HuggingFaceAPIChatGenerator:
         return {"replies": [message]}
 
     @staticmethod
-    def _convert_hfapi_tool_call(hfapi_tc) -> Optional[ToolCall]:
+    def _convert_hfapi_tool_call(hfapi_tc: "ChatCompletionOutputToolCall") -> Optional[ToolCall]:
         """
         Convert a HuggingFace API tool call to a Haystack ToolCall.
 
