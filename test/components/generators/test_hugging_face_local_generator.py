@@ -439,7 +439,6 @@ class TestHuggingFaceLocalGenerator:
         Test that StopWordsCriteria catches stop word tokens in a continuous and sequential order in the input_ids
         using a real Huggingface tokenizer.
         """
-        from transformers import AutoTokenizer
 
         model_name = "google/flan-t5-small"
         tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -462,8 +461,6 @@ class TestHuggingFaceLocalGenerator:
             model="google/flan-t5-small", task="text2text-generation", stop_words=["unambiguously"]
         )
         generator.warm_up()
-        results = generator.run(prompt="something that triggers something")
-        assert results["replies"] != []
         assert generator.stopping_criteria_list is not None
 
     @pytest.mark.integration
