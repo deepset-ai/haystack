@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import json
+import logging
 from datetime import datetime
 from typing import Any, AsyncIterable, Dict, Iterable, List, Optional, Union
 
@@ -19,6 +21,8 @@ from haystack.tools import (
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 from haystack.utils.hf import HFGenerationAPIType, HFModelType, check_valid_model, convert_message_to_hf_format
 from haystack.utils.url_validation import is_valid_http_url
+
+logger = logging.getLogger(__name__)
 
 with LazyImport(message="Run 'pip install \"huggingface_hub[inference]>=0.27.0\"'") as huggingface_hub_import:
     from huggingface_hub import (
@@ -407,9 +411,21 @@ class HuggingFaceAPIChatGenerator:
 
         if hfapi_tool_calls := choice.message.tool_calls:
             for hfapi_tc in hfapi_tool_calls:
-                tool_call = ToolCall(
-                    tool_name=hfapi_tc.function.name, arguments=hfapi_tc.function.arguments, id=hfapi_tc.id
-                )
+                arguments = hfapi_tc.function.arguments
+                if isinstance(arguments, str):
+                    try:
+                        arguments = json.loads(arguments)
+                    except json.JSONDecodeError:
+                        logger.warning(
+                            "HuggingFace API returned a malformed JSON string for tool call arguments. "
+                            "The raw string will be wrapped in a 'raw_arguments' field. "
+                            "Tool name: %s, Arguments: %s",
+                            hfapi_tc.function.name,
+                            arguments,
+                        )
+                        arguments = {"raw_arguments": arguments}
+
+                tool_call = ToolCall(tool_name=hfapi_tc.function.name, arguments=arguments, id=hfapi_tc.id)
                 tool_calls.append(tool_call)
 
         meta: Dict[str, Any] = {
@@ -490,9 +506,21 @@ class HuggingFaceAPIChatGenerator:
 
         if hfapi_tool_calls := choice.message.tool_calls:
             for hfapi_tc in hfapi_tool_calls:
-                tool_call = ToolCall(
-                    tool_name=hfapi_tc.function.name, arguments=hfapi_tc.function.arguments, id=hfapi_tc.id
-                )
+                arguments = hfapi_tc.function.arguments
+                if isinstance(arguments, str):
+                    try:
+                        arguments = json.loads(arguments)
+                    except json.JSONDecodeError:
+                        logger.warning(
+                            "HuggingFace API returned a malformed JSON string for tool call arguments. "
+                            "The raw string will be wrapped in a 'raw_arguments' field. "
+                            "Tool name: %s, Arguments: %s",
+                            hfapi_tc.function.name,
+                            arguments,
+                        )
+                        arguments = {"raw_arguments": arguments}
+
+                tool_call = ToolCall(tool_name=hfapi_tc.function.name, arguments=arguments, id=hfapi_tc.id)
                 tool_calls.append(tool_call)
 
         meta: Dict[str, Any] = {
