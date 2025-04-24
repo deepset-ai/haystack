@@ -42,6 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read
+    # Specifying outputs is not needed to make the job work, but only to comply with actionlint
     outputs:
       changes: ${{ steps.changes.outputs.changes }}
     steps:
@@ -54,9 +55,38 @@ jobs:
           filters: |
             changes:
               - "haystack/components/audio/whisper_local.py"
+              - "haystack/components/classifiers/zero_shot_document_classifier.py"
               - "haystack/components/converters/tika.py"
-              - "test/components/converters/test_tika_doc_converter.py"
+              - "haystack/components/embedders/hugging_face_api_document_embedder.py"
+              - "haystack/components/embedders/hugging_face_api_text_embedder.py"
+              - "haystack/components/embedders/sentence_transformers_text_embedder.py"
+              - "haystack/components/evaluators/sas_evaluator.py"
+              - "haystack/components/generators/chat/hugging_face_api.py"
+              - "haystack/components/generators/chat/hugging_face_local.py"
+              - "haystack/components/generators/hugging_face_api.py"
+              - "haystack/components/generators/hugging_face_local_generator.py"
+              - "haystack/components/rankers/sentence_transformers_diversity.py"
+              - "haystack/components/rankers/transformers_similarity.py"
+              - "haystack/components/readers/extractive.py"
+              - "haystack/components/routers/transformers_text_router.py"
+              - "haystack/components/routers/zero_shot_text_router.py"
+
               - "test/components/audio/test_whisper_local.py"
+              - "test/components/classifiers/test_zero_shot_document_classifier.py"
+              - "test/components/converters/test_tika_doc_converter.py"
+              - "test/components/embedders/test_hugging_face_api_document_embedder.py"
+              - "test/components/embedders/test_hugging_face_api_text_embedder.py"
+              - "test/components/embedders/test_sentence_transformers_text_embedder.py"
+              - "test/components/evaluators/test_sas_evaluator.py"
+              - "test/components/generators/chat/test_hugging_face_api.py"
+              - "test/components/generators/chat/test_hugging_face_local.py"
+              - "test/components/generators/test_hugging_face_api.py"
+              - "test/components/generators/test_hugging_face_local_generator.py"
+              - "test/components/rankers/test_sentence_transformers_diversity.py"
+              - "test/components/rankers/test_transformers_similarity.py"
+              - "test/components/readers/test_extractive.py"
+              - "test/components/routers/test_transformers_text_router.py"
+              - "test/components/routers/test_zero_shot_text_router.py"
 
   slow-integration-tests:
     name: Slow Tests / ${{ matrix.os }}

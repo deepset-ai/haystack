@@ -574,6 +574,7 @@ class TestHuggingFaceAPIChatGenerator:
         }
 
     @pytest.mark.integration
+    @pytest.mark.slow
     @pytest.mark.skipif(
         not os.environ.get("HF_API_TOKEN", None),
         reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
@@ -602,6 +603,7 @@ class TestHuggingFaceAPIChatGenerator:
         assert "completion_tokens" in response["replies"][0].meta["usage"]
 
     @pytest.mark.integration
+    @pytest.mark.slow
     @pytest.mark.skipif(
         not os.environ.get("HF_API_TOKEN", None),
         reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
@@ -635,6 +637,7 @@ class TestHuggingFaceAPIChatGenerator:
         assert "completion_tokens" in response_meta["usage"]
 
     @pytest.mark.integration
+    @pytest.mark.slow
     @pytest.mark.skipif(
         not os.environ.get("HF_API_TOKEN", None),
         reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
@@ -829,6 +832,7 @@ class TestHuggingFaceAPIChatGenerator:
         }
 
     @pytest.mark.integration
+    @pytest.mark.slow
     @pytest.mark.skipif(
         not os.environ.get("HF_API_TOKEN", None),
         reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
