@@ -42,6 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read
+    # Specifying outputs is not needed to make the job work, but only to comply with actionlint
     outputs:
       changes: ${{ steps.changes.outputs.changes }}
     steps:
