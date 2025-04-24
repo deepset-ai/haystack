@@ -10,6 +10,7 @@ from jsonschema.exceptions import SchemaError
 
 from haystack.core.serialization import generate_qualified_class_name
 from haystack.tools.errors import ToolInvocationError
+from haystack.tools.serde_utils import deserialize_tools_inplace  # noqa: F401
 from haystack.utils import deserialize_callable, serialize_callable
 
 
