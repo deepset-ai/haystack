@@ -295,7 +295,7 @@ D,$54.35,$6345.,
         with patch("azure.ai.formrecognizer.DocumentAnalysisClient.begin_analyze_document") as azure_mock:
             azure_mock.return_value = mock_poller("azure_sample_pdf_1.json")
             component = AzureOCRDocumentConverter(
-                endpoint=os.environ["CORE_AZURE_CS_ENDPOINT"],
+                endpoint=os.environ.get("CORE_AZURE_CS_ENDPOINT", None),
                 api_key=Secret.from_env_var("CORE_AZURE_CS_API_KEY"),
                 store_full_path=False,
             )
