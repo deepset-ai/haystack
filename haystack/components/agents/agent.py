@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging, tracing
 from haystack.components.generators.chat.types import ChatGenerator
+from haystack.components.generators.utils import _emit_tool_call_info
 from haystack.components.tools import ToolInvoker
 from haystack.core.pipeline.async_pipeline import AsyncPipeline
 from haystack.core.pipeline.pipeline import Pipeline
@@ -15,7 +16,7 @@ from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.state import State, _schema_from_dict, _schema_to_dict, _validate_schema
 from haystack.dataclasses.state_utils import merge_lists
-from haystack.dataclasses.streaming_chunk import StreamingCallbackT, StreamingChunk, select_streaming_callback
+from haystack.dataclasses.streaming_chunk import StreamingCallbackT, select_streaming_callback
 from haystack.tools import Tool, Toolset, deserialize_tools_or_toolset_inplace, serialize_tools_or_toolset
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 from haystack.utils.deserialization import deserialize_chatgenerator_inplace
@@ -279,6 +280,11 @@ class Agent:
                     counter += 1
                     break
 
+                # Emit information about tool calls
+                for msg in llm_messages:
+                    if msg.tool_call:
+                        _emit_tool_call_info(msg)
+
                 # 3. Call the ToolInvoker
                 # We only send the messages from the LLM to the tool invoker
                 tool_invoker_result = Pipeline._run_component(
@@ -363,6 +369,11 @@ class Agent:
                 if not any(msg.tool_call for msg in llm_messages) or self._tool_invoker is None:
                     counter += 1
                     break
+
+                # Emit information about tool calls
+                for msg in llm_messages:
+                    if msg.tool_call:
+                        _emit_tool_call_info(msg)
 
                 # 3. Call the ToolInvoker
                 # We only send the messages from the LLM to the tool invoker

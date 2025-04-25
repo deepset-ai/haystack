@@ -13,6 +13,7 @@ from openai.types.chat.chat_completion import Choice
 from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
 
 from haystack import component, default_from_dict, default_to_dict, logging
+from haystack.components.generators.utils import _emit_tool_call_info
 from haystack.dataclasses import (
     AsyncStreamingCallbackT,
     ChatMessage,
@@ -282,6 +283,7 @@ class OpenAIChatGenerator:
                 chat_completion,  # type: ignore
                 streaming_callback,  # type: ignore
             )
+
         else:
             assert isinstance(chat_completion, ChatCompletion), "Unexpected response type for non-streaming request."
             completions = [
@@ -293,6 +295,10 @@ class OpenAIChatGenerator:
         for message in completions:
             self._check_finish_reason(message.meta)
 
+        # Emit information about tool calls
+        for msg in completions:
+            if msg.tool_call:
+                _emit_tool_call_info(msg)
         return {"replies": completions}
 
     @component.output_types(replies=List[ChatMessage])
@@ -361,6 +367,10 @@ class OpenAIChatGenerator:
                 chat_completion,  # type: ignore
                 streaming_callback,  # type: ignore
             )
+            # Emit information about tool calls
+            for msg in messages:
+                if msg.tool_call:
+                    _emit_tool_call_info(msg)
         else:
             assert isinstance(chat_completion, ChatCompletion), "Unexpected response type for non-streaming request."
             completions = [

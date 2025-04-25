@@ -29,6 +29,7 @@ from haystack.tools import Tool, ComponentTool
 from haystack.tools.toolset import Toolset
 from haystack.utils import serialize_callable, Secret
 from haystack.dataclasses.state_utils import merge_lists
+from haystack.components.generators.utils import _emit_tool_call_info
 
 
 def streaming_callback_for_serde(chunk: StreamingChunk):
@@ -785,9 +786,6 @@ class TestAgent:
         agent.warm_up()
         streaming_callback_called = False
 
-        # Mock the _emit_tool_call_info method
-        agent._emit_tool_call_info = MagicMock()
-
         def streaming_callback(chunk: StreamingChunk) -> None:
             nonlocal streaming_callback_called
             streaming_callback_called = True
@@ -800,7 +798,7 @@ class TestAgent:
         assert result["messages"] is not None
         assert streaming_callback_called
 
-        agent._emit_tool_call_info.assert_called_once()
+        _emit_tool_call_info.assert_called_once()
 
 
 class TestAgentTracing:
