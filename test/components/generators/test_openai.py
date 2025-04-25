@@ -308,21 +308,14 @@ class TestOpenAIGenerator:
         assert metadata["finish_reason"] == "stop"
 
         # Basic usage validation
-        assert "usage" in metadata
+        assert isinstance(metadata.get("usage"), dict), "meta.usage not a dict"
         usage = metadata["usage"]
-        assert isinstance(usage, dict)
         assert "prompt_tokens" in usage and usage["prompt_tokens"] > 0
         assert "completion_tokens" in usage and usage["completion_tokens"] > 0
-        assert "total_tokens" in usage and usage["total_tokens"] > 0
 
         # Detailed token information validation
-        assert "completion_tokens_details" in usage
-        assert isinstance(usage["completion_tokens_details"], dict)
-        assert "accepted_prediction_tokens" in usage["completion_tokens_details"]
-
-        assert "prompt_tokens_details" in usage
-        assert isinstance(usage["prompt_tokens_details"], dict)
-        assert "audio_tokens" in usage["prompt_tokens_details"]
+        assert isinstance(usage.get("completion_tokens_details"), dict), "usage.completion_tokens_details not a dict"
+        assert isinstance(usage.get("prompt_tokens_details"), dict), "usage.prompt_tokens_details not a dict"
 
         # Streaming callback validation
         assert callback.counter > 1

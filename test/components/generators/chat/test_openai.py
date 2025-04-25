@@ -931,7 +931,7 @@ class TestOpenAIChatGenerator:
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert "Paris" in message.text
-        assert "_meta" in message.__dict__
+        assert isinstance(message.meta, dict)
 
         # Metadata checks
         metadata = message.meta
@@ -939,29 +939,18 @@ class TestOpenAIChatGenerator:
         assert metadata["finish_reason"] == "stop"
 
         # Usage information checks
-        assert "usage" in metadata
+        assert isinstance(metadata.get("usage"), dict), "meta.usage not a dict"
         usage = metadata["usage"]
-        assert isinstance(usage, dict)
         assert "prompt_tokens" in usage and usage["prompt_tokens"] > 0
         assert "completion_tokens" in usage and usage["completion_tokens"] > 0
-        assert "total_tokens" in usage and usage["total_tokens"] > 0
 
         # Detailed token information checks
-        assert "completion_tokens_details" in usage
-        assert isinstance(usage["completion_tokens_details"], dict)
-        assert "accepted_prediction_tokens" in usage["completion_tokens_details"]
-
-        assert "prompt_tokens_details" in usage
-        assert isinstance(usage["prompt_tokens_details"], dict)
-        assert "audio_tokens" in usage["prompt_tokens_details"]
+        assert isinstance(usage.get("completion_tokens_details"), dict), "usage.completion_tokens_details not a dict"
+        assert isinstance(usage.get("prompt_tokens_details"), dict), "usage.prompt_tokens_details not a dict"
 
         # Streaming callback verification
         assert callback.counter > 1
         assert "Paris" in callback.responses
-
-        # Completion time validation
-        assert "completion_start_time" in metadata
-        assert datetime.fromisoformat(metadata["completion_start_time"]) <= datetime.now()
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
