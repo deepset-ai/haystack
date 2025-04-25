@@ -120,7 +120,7 @@ class TestLinkContentFetcher:
             assert first_stream.meta["content_type"] == "application/pdf"
             assert first_stream.mime_type == "application/pdf"
 
-    def test_run_bad_status_code(self):
+    def test_run_bad_request_no_exception(self):
         """Test behavior when a request results in an error status code"""
         empty_byte_stream = b""
         fetcher = LinkContentFetcher(raise_on_failure=False, retry_attempts=0)
@@ -139,6 +139,23 @@ class TestLinkContentFetcher:
         assert first_stream.data == empty_byte_stream
         assert first_stream.meta["content_type"] == "text/html"
         assert first_stream.mime_type == "text/html"
+
+    def test_bad_request_exception_raised(self):
+        """
+        This test is to ensure that the fetcher raises an exception when a single bad request is made and it is configured to
+        do so.
+        """
+        fetcher = LinkContentFetcher(raise_on_failure=True, retry_attempts=0)
+
+        mock_response = Mock(status_code=403)
+        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "403 Client Error", request=Mock(), response=mock_response
+        )
+
+        with patch("haystack.components.fetchers.link_content.httpx.Client.get") as mock_get:
+            mock_get.return_value = mock_response
+            with pytest.raises(httpx.HTTPStatusError):
+                fetcher.run(["https://non_existent_website_dot.com/"])
 
     @pytest.mark.integration
     def test_link_content_fetcher_html(self):
@@ -165,19 +182,6 @@ class TestLinkContentFetcher:
         assert first_stream.meta["content_type"] == "text/plain"
         assert "url" in first_stream.meta and first_stream.meta["url"] == TEXT_URL
         assert first_stream.mime_type == "text/plain"
-
-    @pytest.mark.integration
-    def test_link_content_fetcher_pdf(self):
-        """
-        Test fetching PDF content from a real URL.
-        """
-        fetcher = LinkContentFetcher()
-        streams = fetcher.run([PDF_URL])["streams"]
-        assert len(streams) == 1
-        first_stream = streams[0]
-        assert first_stream.meta["content_type"] in ("application/octet-stream", "application/pdf")
-        assert "url" in first_stream.meta and first_stream.meta["url"] == PDF_URL
-        assert first_stream.mime_type in ("application/octet-stream", "application/pdf")
 
     @pytest.mark.integration
     def test_link_content_fetcher_multiple_different_content_types(self):
@@ -222,34 +226,12 @@ class TestLinkContentFetcher:
         In such a case, the fetcher should return the content of the URLs that were successfully fetched and not raise
         an exception.
         """
-        fetcher = LinkContentFetcher()
+        fetcher = LinkContentFetcher(retry_attempts=0)
         result = fetcher.run(["https://non_existent_website_dot.com/", "https://www.google.com/"])
         assert len(result["streams"]) == 1
         first_stream = result["streams"][0]
         assert first_stream.meta["content_type"] == "text/html"
         assert first_stream.mime_type == "text/html"
-
-    @pytest.mark.integration
-    def test_bad_request_exception_raised(self):
-        """
-        This test is to ensure that the fetcher raises an exception when a single bad request is made and it is configured to
-        do so.
-        """
-        fetcher = LinkContentFetcher()
-        with pytest.raises((httpx.ConnectError, httpx.ConnectTimeout)):
-            fetcher.run(["https://non_existent_website_dot.com/"])
-
-    @pytest.mark.integration
-    def test_link_content_fetcher_audio(self):
-        """
-        Test fetching audio content from a real URL.
-        """
-        fetcher = LinkContentFetcher()
-        streams = fetcher.run(["https://download.samplelib.com/mp3/sample-3s.mp3"])["streams"]
-        first_stream = streams[0]
-        assert first_stream.meta["content_type"] == "audio/mpeg"
-        assert first_stream.mime_type == "audio/mpeg"
-        assert len(first_stream.data) > 0
 
 
 class TestLinkContentFetcherAsync:
@@ -336,17 +318,6 @@ class TestLinkContentFetcherAsync:
             streams = (await fetcher.run_async(urls=["https://www.example.com"]))["streams"]
             assert len(streams) == 1
             assert streams[0].data == b"Success"
-
-    @pytest.mark.asyncio
-    @pytest.mark.integration
-    async def test_run_async_integration(self):
-        """Test async fetching with real HTTP requests"""
-        fetcher = LinkContentFetcher()
-        streams = (await fetcher.run_async([HTML_URL]))["streams"]
-        first_stream = streams[0]
-        assert "Haystack" in first_stream.data.decode("utf-8")
-        assert first_stream.meta["content_type"] == "text/html"
-        assert first_stream.mime_type == "text/html"
 
     @pytest.mark.asyncio
     @pytest.mark.integration

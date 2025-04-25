@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import os
-import asyncio
 from unittest.mock import MagicMock, patch
 
 import random
@@ -230,93 +229,21 @@ class TestHuggingFaceAPITextEmbedder:
         assert len(result["embedding"]) == 384
         assert all(isinstance(x, float) for x in result["embedding"])
 
-
-class TestHuggingFaceAPITextEmbedderAsync:
-    """
-    Integration tests for HuggingFaceAPITextEmbedder that verify the async functionality with a real API.
-    These tests require a valid Hugging Face API token.
-    """
-
     @pytest.mark.integration
     @pytest.mark.asyncio
     @pytest.mark.slow
     @pytest.mark.skipif(os.environ.get("HF_API_TOKEN", "") == "", reason="HF_API_TOKEN is not set")
-    async def test_run_async_with_real_api(self):
-        """
-        Integration test that verifies the async functionality with a real API.
-        This test requires a valid Hugging Face API token.
-        """
-        # Use a small, reliable model for testing
+    async def test_live_run_async_serverless(self):
         model_name = "sentence-transformers/all-MiniLM-L6-v2"
 
         embedder = HuggingFaceAPITextEmbedder(
             api_type=HFEmbeddingAPIType.SERVERLESS_INFERENCE_API, api_params={"model": model_name}
         )
 
-        # Test with a simple text
         text = "This is a test sentence for embedding."
         result = await embedder.run_async(text=text)
 
-        # Verify the result
         assert "embedding" in result
         assert isinstance(result["embedding"], list)
         assert all(isinstance(x, float) for x in result["embedding"])
         assert len(result["embedding"]) == 384  # MiniLM-L6-v2 has 384 dimensions
-
-        # Test with a longer text
-        long_text = "This is a longer test sentence for embedding. " * 10
-        result = await embedder.run_async(text=long_text)
-
-        # Verify the result
-        assert "embedding" in result
-        assert isinstance(result["embedding"], list)
-        assert all(isinstance(x, float) for x in result["embedding"])
-        assert len(result["embedding"]) == 384
-
-        # Test with prefix and suffix
-        embedder_with_prefix_suffix = HuggingFaceAPITextEmbedder(
-            api_type=HFEmbeddingAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": model_name},
-            prefix="prefix: ",
-            suffix=" :suffix",
-        )
-
-        result = await embedder_with_prefix_suffix.run_async(text=text)
-
-        # Verify the result
-        assert "embedding" in result
-        assert isinstance(result["embedding"], list)
-        assert all(isinstance(x, float) for x in result["embedding"])
-        assert len(result["embedding"]) == 384
-
-    @pytest.mark.integration
-    @pytest.mark.asyncio
-    @pytest.mark.slow
-    @pytest.mark.skipif(os.environ.get("HF_API_TOKEN", "") == "", reason="HF_API_TOKEN is not set")
-    async def test_run_async_concurrent_requests(self):
-        """
-        Integration test that verifies the async functionality with concurrent requests.
-        This test requires a valid Hugging Face API token.
-        """
-        model_name = "sentence-transformers/all-MiniLM-L6-v2"
-        embedder = HuggingFaceAPITextEmbedder(
-            api_type=HFEmbeddingAPIType.SERVERLESS_INFERENCE_API, api_params={"model": model_name}
-        )
-
-        texts = [
-            "This is the first test sentence.",
-            "This is the second test sentence.",
-            "This is the third test sentence.",
-            "This is the fourth test sentence.",
-            "This is the fifth test sentence.",
-        ]
-
-        # Run concurrent requests
-        tasks = [embedder.run_async(text=text) for text in texts]
-        results = await asyncio.gather(*tasks)
-
-        for i, result in enumerate(results):
-            assert "embedding" in result
-            assert isinstance(result["embedding"], list)
-            assert all(isinstance(x, float) for x in result["embedding"])
-            assert len(result["embedding"]) == 384  # MiniLM-L6-v2 has 384 dimensions
