@@ -293,16 +293,17 @@ class TestOpenAIChatGeneratorAsync:
         assert "gpt-4o" in message.meta["model"]
         assert message.meta["finish_reason"] == "stop"
 
-    @pytest.mark.skipif(
-        not os.environ.get("OPENAI_API_KEY", None),
-        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-    )
-    @pytest.mark.integration
     @pytest.mark.asyncio
-    async def test_live_run_wrong_model_async(self, chat_messages):
-        component = OpenAIChatGenerator(model="something-obviously-wrong")
+    async def test_run_with_wrong_model_async(self):
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.side_effect = OpenAIError("Invalid model name")
+
+        generator = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"), model="something-obviously-wrong")
+
+        generator.client = mock_client
+
         with pytest.raises(OpenAIError):
-            await component.run_async(chat_messages)
+            await generator.run_async([ChatMessage.from_user("irrelevant")])
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
