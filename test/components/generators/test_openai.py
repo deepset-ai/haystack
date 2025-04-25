@@ -296,21 +296,35 @@ class TestOpenAIGenerator:
         )
         results = component.run("What's the capital of France?")
 
+        # Basic response validation
         assert len(results["replies"]) == 1
         assert len(results["meta"]) == 1
         response: str = results["replies"][0]
         assert "Paris" in response
 
+        # Metadata validation
         metadata = results["meta"][0]
-
         assert "gpt-4o-mini" in metadata["model"]
         assert metadata["finish_reason"] == "stop"
 
+        # Basic usage validation
         assert "usage" in metadata
-        assert "prompt_tokens" in metadata["usage"] and metadata["usage"]["prompt_tokens"] > 0
-        assert "completion_tokens" in metadata["usage"] and metadata["usage"]["completion_tokens"] > 0
-        assert "total_tokens" in metadata["usage"] and metadata["usage"]["total_tokens"] > 0
+        usage = metadata["usage"]
+        assert isinstance(usage, dict)
+        assert "prompt_tokens" in usage and usage["prompt_tokens"] > 0
+        assert "completion_tokens" in usage and usage["completion_tokens"] > 0
+        assert "total_tokens" in usage and usage["total_tokens"] > 0
 
+        # Detailed token information validation
+        assert "completion_tokens_details" in usage
+        assert isinstance(usage["completion_tokens_details"], dict)
+        assert "accepted_prediction_tokens" in usage["completion_tokens_details"]
+
+        assert "prompt_tokens_details" in usage
+        assert isinstance(usage["prompt_tokens_details"], dict)
+        assert "audio_tokens" in usage["prompt_tokens_details"]
+
+        # Streaming callback validation
         assert callback.counter > 1
         assert "Paris" in callback.responses
 
@@ -352,41 +366,3 @@ class TestOpenAIGenerator:
             assert "replies" in response
             assert "Hello" in response["replies"][0]
             assert response["meta"][0]["finish_reason"] == "stop"
-
-    @pytest.mark.skipif(
-        not os.environ.get("OPENAI_API_KEY", None),
-        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-    )
-    @pytest.mark.integration
-    def test_run_with_include_usage_serializes_nested_objects(self):
-        class Callback:
-            def __init__(self):
-                self.responses = ""
-                self.counter = 0
-
-            def __call__(self, chunk: StreamingChunk) -> None:
-                self.counter += 1
-                self.responses += chunk.content if chunk.content else ""
-
-        callback = Callback()
-
-        component = OpenAIGenerator(
-            streaming_callback=callback, generation_kwargs={"stream_options": {"include_usage": True}}
-        )
-        results = component.run("What's the token usage?")
-
-        assert "meta" in results
-        assert len(results["meta"]) == 1
-        metadata = results["meta"][0]
-        assert "usage" in metadata
-        usage = metadata["usage"]
-        assert isinstance(usage, dict)
-        assert "completion_tokens" in usage
-        assert "prompt_tokens" in usage
-        assert "total_tokens" in usage
-        assert "completion_tokens_details" in usage
-        assert isinstance(usage["completion_tokens_details"], dict)
-        assert "accepted_prediction_tokens" in usage["completion_tokens_details"]
-        assert "prompt_tokens_details" in usage
-        assert isinstance(usage["prompt_tokens_details"], dict)
-        assert "audio_tokens" in usage["prompt_tokens_details"]

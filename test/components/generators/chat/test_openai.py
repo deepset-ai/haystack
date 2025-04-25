@@ -926,24 +926,42 @@ class TestOpenAIChatGenerator:
         )
         results = component.run([ChatMessage.from_user("What's the capital of France?")])
 
+        # Basic response checks
+        assert "replies" in results
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert "Paris" in message.text
+        assert "_meta" in message.__dict__
 
-        assert "gpt-4o" in message.meta["model"]
-        assert message.meta["finish_reason"] == "stop"
+        # Metadata checks
+        metadata = message.meta
+        assert "gpt-4o" in metadata["model"]
+        assert metadata["finish_reason"] == "stop"
 
+        # Usage information checks
+        assert "usage" in metadata
+        usage = metadata["usage"]
+        assert isinstance(usage, dict)
+        assert "prompt_tokens" in usage and usage["prompt_tokens"] > 0
+        assert "completion_tokens" in usage and usage["completion_tokens"] > 0
+        assert "total_tokens" in usage and usage["total_tokens"] > 0
+
+        # Detailed token information checks
+        assert "completion_tokens_details" in usage
+        assert isinstance(usage["completion_tokens_details"], dict)
+        assert "accepted_prediction_tokens" in usage["completion_tokens_details"]
+
+        assert "prompt_tokens_details" in usage
+        assert isinstance(usage["prompt_tokens_details"], dict)
+        assert "audio_tokens" in usage["prompt_tokens_details"]
+
+        # Streaming callback verification
         assert callback.counter > 1
         assert "Paris" in callback.responses
 
-        # check that the completion_start_time is set and valid ISO format
-        assert "completion_start_time" in message.meta
-        assert datetime.fromisoformat(message.meta["completion_start_time"]) <= datetime.now()
-
-        assert isinstance(message.meta["usage"], dict)
-        assert message.meta["usage"]["prompt_tokens"] > 0
-        assert message.meta["usage"]["completion_tokens"] > 0
-        assert message.meta["usage"]["total_tokens"] > 0
+        # Completion time validation
+        assert "completion_start_time" in metadata
+        assert datetime.fromisoformat(metadata["completion_start_time"]) <= datetime.now()
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
@@ -1007,44 +1025,3 @@ class TestOpenAIChatGenerator:
         assert tool_call.tool_name == "weather"
         assert tool_call.arguments == {"city": "Paris"}
         assert message.meta["finish_reason"] == "tool_calls"
-
-    @pytest.mark.skipif(
-        not os.environ.get("OPENAI_API_KEY", None),
-        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-    )
-    @pytest.mark.integration
-    def test_run_with_include_usage_serializes_nested_objects(self):
-        class Callback:
-            def __init__(self):
-                self.responses = ""
-                self.counter = 0
-
-            def __call__(self, chunk: StreamingChunk) -> None:
-                self.counter += 1
-                self.responses += chunk.content if chunk.content else ""
-
-        callback = Callback()
-
-        component = OpenAIChatGenerator(
-            streaming_callback=callback, generation_kwargs={"stream_options": {"include_usage": True}}
-        )
-        results = component.run([ChatMessage.from_user("What's the capital of France?")])
-
-        assert "replies" in results
-        assert len(results["replies"]) == 1
-        message = results["replies"][0]
-        assert "_meta" in message.__dict__
-
-        metadata = message.meta
-        assert "usage" in metadata
-        usage = metadata["usage"]
-        assert isinstance(usage, dict)
-        assert "completion_tokens" in usage
-        assert "prompt_tokens" in usage
-        assert "total_tokens" in usage
-        assert "completion_tokens_details" in usage
-        assert isinstance(usage["completion_tokens_details"], dict)
-        assert "accepted_prediction_tokens" in usage["completion_tokens_details"]
-        assert "prompt_tokens_details" in usage
-        assert isinstance(usage["prompt_tokens_details"], dict)
-        assert "audio_tokens" in usage["prompt_tokens_details"]
