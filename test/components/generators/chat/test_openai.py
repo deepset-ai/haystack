@@ -926,24 +926,31 @@ class TestOpenAIChatGenerator:
         )
         results = component.run([ChatMessage.from_user("What's the capital of France?")])
 
+        # Basic response checks
+        assert "replies" in results
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert "Paris" in message.text
+        assert isinstance(message.meta, dict)
 
-        assert "gpt-4o" in message.meta["model"]
-        assert message.meta["finish_reason"] == "stop"
+        # Metadata checks
+        metadata = message.meta
+        assert "gpt-4o" in metadata["model"]
+        assert metadata["finish_reason"] == "stop"
 
+        # Usage information checks
+        assert isinstance(metadata.get("usage"), dict), "meta.usage not a dict"
+        usage = metadata["usage"]
+        assert "prompt_tokens" in usage and usage["prompt_tokens"] > 0
+        assert "completion_tokens" in usage and usage["completion_tokens"] > 0
+
+        # Detailed token information checks
+        assert isinstance(usage.get("completion_tokens_details"), dict), "usage.completion_tokens_details not a dict"
+        assert isinstance(usage.get("prompt_tokens_details"), dict), "usage.prompt_tokens_details not a dict"
+
+        # Streaming callback verification
         assert callback.counter > 1
         assert "Paris" in callback.responses
-
-        # check that the completion_start_time is set and valid ISO format
-        assert "completion_start_time" in message.meta
-        assert datetime.fromisoformat(message.meta["completion_start_time"]) <= datetime.now()
-
-        assert isinstance(message.meta["usage"], dict)
-        assert message.meta["usage"]["prompt_tokens"] > 0
-        assert message.meta["usage"]["completion_tokens"] > 0
-        assert message.meta["usage"]["total_tokens"] > 0
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),

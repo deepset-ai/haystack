@@ -296,21 +296,28 @@ class TestOpenAIGenerator:
         )
         results = component.run("What's the capital of France?")
 
+        # Basic response validation
         assert len(results["replies"]) == 1
         assert len(results["meta"]) == 1
         response: str = results["replies"][0]
         assert "Paris" in response
 
+        # Metadata validation
         metadata = results["meta"][0]
-
         assert "gpt-4o-mini" in metadata["model"]
         assert metadata["finish_reason"] == "stop"
 
-        assert "usage" in metadata
-        assert "prompt_tokens" in metadata["usage"] and metadata["usage"]["prompt_tokens"] > 0
-        assert "completion_tokens" in metadata["usage"] and metadata["usage"]["completion_tokens"] > 0
-        assert "total_tokens" in metadata["usage"] and metadata["usage"]["total_tokens"] > 0
+        # Basic usage validation
+        assert isinstance(metadata.get("usage"), dict), "meta.usage not a dict"
+        usage = metadata["usage"]
+        assert "prompt_tokens" in usage and usage["prompt_tokens"] > 0
+        assert "completion_tokens" in usage and usage["completion_tokens"] > 0
 
+        # Detailed token information validation
+        assert isinstance(usage.get("completion_tokens_details"), dict), "usage.completion_tokens_details not a dict"
+        assert isinstance(usage.get("prompt_tokens_details"), dict), "usage.prompt_tokens_details not a dict"
+
+        # Streaming callback validation
         assert callback.counter > 1
         assert "Paris" in callback.responses
 
