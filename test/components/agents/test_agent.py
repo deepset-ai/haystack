@@ -29,7 +29,6 @@ from haystack.tools import Tool, ComponentTool
 from haystack.tools.toolset import Toolset
 from haystack.utils import serialize_callable, Secret
 from haystack.dataclasses.state_utils import merge_lists
-from haystack.components.generators.utils import _emit_tool_call_info
 
 
 def streaming_callback_for_serde(chunk: StreamingChunk):
@@ -780,7 +779,8 @@ class TestAgent:
         assert [isinstance(reply, ChatMessage) for reply in result["messages"]]
         assert "Hello from run_async" in result["messages"][1].text
 
-    def test_agent_streaming_with_tool_call(self, weather_tool):
+    @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
+    def test_agent_streaming_with_tool_call(self, monkeypatch, weather_tool):
         chat_generator = OpenAIChatGenerator()
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
         agent.warm_up()
@@ -790,15 +790,16 @@ class TestAgent:
             nonlocal streaming_callback_called
             streaming_callback_called = True
 
-        result = agent.run(
-            [ChatMessage.from_user("What's the weather in Paris?")], streaming_callback=streaming_callback
-        )
+        with patch("haystack.components.generators.chat.openai._emit_tool_call_info") as mock_emit:
+            result = agent.run(
+                [ChatMessage.from_user("What's the weather in Paris?")], streaming_callback=streaming_callback
+            )
 
-        assert result is not None
-        assert result["messages"] is not None
-        assert streaming_callback_called
+            assert result is not None
+            assert result["messages"] is not None
+            assert streaming_callback_called
 
-        _emit_tool_call_info.assert_called_once()
+            mock_emit.assert_called_once()
 
 
 class TestAgentTracing:

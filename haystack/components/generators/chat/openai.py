@@ -296,9 +296,10 @@ class OpenAIChatGenerator:
             self._check_finish_reason(message.meta)
 
         # Emit information about tool calls
-        for msg in completions:
-            if msg.tool_call:
-                _emit_tool_call_info(msg)
+        if streaming_callback is not None:
+            for msg in completions:
+                if msg.tool_call:
+                    _emit_tool_call_info(msg)
         return {"replies": completions}
 
     @component.output_types(replies=List[ChatMessage])
@@ -367,10 +368,7 @@ class OpenAIChatGenerator:
                 chat_completion,  # type: ignore
                 streaming_callback,  # type: ignore
             )
-            # Emit information about tool calls
-            for msg in messages:
-                if msg.tool_call:
-                    _emit_tool_call_info(msg)
+
         else:
             assert isinstance(chat_completion, ChatCompletion), "Unexpected response type for non-streaming request."
             completions = [
@@ -381,6 +379,12 @@ class OpenAIChatGenerator:
         # before returning, do post-processing of the completions
         for message in completions:
             self._check_finish_reason(message.meta)
+
+        # Emit information about tool calls
+        if streaming_callback is not None:
+            for msg in completions:
+                if msg.tool_call:
+                    _emit_tool_call_info(msg)
 
         return {"replies": completions}
 

@@ -2,9 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Optional
-
-from haystack.dataclasses import ChatMessage, StreamingCallbackT, StreamingChunk
+from haystack.dataclasses import ChatMessage, StreamingChunk
 
 
 def print_streaming_chunk(chunk: StreamingChunk) -> None:
@@ -26,12 +24,12 @@ def _emit_tool_call_info(message: ChatMessage) -> None:
         return
 
     # Create a chunk with tool call information
-    tool_call_info = f"Tool Call: {message.tool_call.tool_name} "  # Note the space after tool name
+    tool_call_info = f"Tool Call: {message.tool_call.tool_name} "
     if message.tool_call.arguments:
-        # Pre-format arguments string for better readability
+        # Pre-format arguments string
         args_str = ", ".join(f"{k}={v}" for k, v in message.tool_call.arguments.items())
-        tool_call_info += f"({args_str})\n"  # Note the newline at the end
+        tool_call_info += f"({args_str})\n"
     else:
-        tool_call_info += "\n"  # Always add newline for consistency
-
+        tool_call_info += "\n"
+    print("CHECKING TOOL CALL INFO")
     print(tool_call_info, flush=True, end="")
