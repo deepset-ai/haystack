@@ -211,9 +211,8 @@ class Agent:
     def _prepare_generator_inputs(self, streaming_callback: Optional[StreamingCallbackT] = None) -> Dict[str, Any]:
         """Prepare inputs for the chat generator."""
         generator_inputs: Dict[str, Any] = {"tools": self.tools}
-        selected_callback = streaming_callback or self.streaming_callback
-        if selected_callback is not None:
-            generator_inputs["streaming_callback"] = selected_callback
+        if streaming_callback is not None:
+            generator_inputs["streaming_callback"] = streaming_callback
         return generator_inputs
 
     def _create_agent_span(self) -> Any:
@@ -249,15 +248,16 @@ class Agent:
         if self.system_prompt is not None:
             messages = [ChatMessage.from_system(self.system_prompt)] + messages
 
+        streaming_callback = select_streaming_callback(
+            init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=False
+        )
+
         input_data = deepcopy({"messages": messages, "streaming_callback": streaming_callback, **kwargs})
 
         state = State(schema=self.state_schema, data=kwargs)
         state.set("messages", messages)
 
         generator_inputs = self._prepare_generator_inputs(streaming_callback=streaming_callback)
-        streaming_callback = select_streaming_callback(
-            init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=False
-        )
 
         component_visits = dict.fromkeys(["chat_generator", "tool_invoker"], 0)
         with self._create_agent_span() as span:
@@ -334,6 +334,10 @@ class Agent:
 
         if self.system_prompt is not None:
             messages = [ChatMessage.from_system(self.system_prompt)] + messages
+
+        streaming_callback = select_streaming_callback(
+            init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=False
+        )
 
         input_data = deepcopy({"messages": messages, "streaming_callback": streaming_callback, **kwargs})
 
