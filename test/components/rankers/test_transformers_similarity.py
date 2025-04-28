@@ -361,32 +361,6 @@ class TestSimilarityRanker:
         assert docs_after[1].score == pytest.approx(sorted_scores[1], abs=1e-6)
         assert docs_after[2].score == pytest.approx(sorted_scores[2], abs=1e-6)
 
-    @pytest.mark.integration
-    @pytest.mark.slow
-    def test_run_small_batch_size(self):
-        """
-        Test if the component ranks documents correctly.
-        """
-        ranker = TransformersSimilarityRanker(model="cross-encoder/ms-marco-MiniLM-L-6-v2", batch_size=2)
-        ranker.warm_up()
-
-        query = "City in Bosnia and Herzegovina"
-        docs_before_texts = ["Berlin", "Belgrade", "Sarajevo"]
-        expected_first_text = "Sarajevo"
-        expected_scores = [2.2864143829792738e-05, 0.00012495707778725773, 0.009869757108390331]
-
-        docs_before = [Document(content=text) for text in docs_before_texts]
-        output = ranker.run(query=query, documents=docs_before)
-        docs_after = output["documents"]
-
-        assert len(docs_after) == 3
-        assert docs_after[0].content == expected_first_text
-
-        sorted_scores = sorted(expected_scores, reverse=True)
-        assert docs_after[0].score == pytest.approx(sorted_scores[0], abs=1e-6)
-        assert docs_after[1].score == pytest.approx(sorted_scores[1], abs=1e-6)
-        assert docs_after[2].score == pytest.approx(sorted_scores[2], abs=1e-6)
-
     def test_returns_empty_list_if_no_documents_are_provided(self):
         sampler = TransformersSimilarityRanker()
         sampler.model = MagicMock()

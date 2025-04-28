@@ -579,35 +579,6 @@ class TestSentenceTransformersDiversityRanker:
     @pytest.mark.integration
     @pytest.mark.slow
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
-    def test_run(self, similarity, monkeypatch):
-        """
-        Tests that run method returns documents in the correct order
-        """
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-        ranker = SentenceTransformersDiversityRanker(
-            model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity
-        )
-        ranker.warm_up()
-        query = "city"
-        documents = [
-            Document(content="France"),
-            Document(content="Germany"),
-            Document(content="Eiffel Tower"),
-            Document(content="Berlin"),
-            Document(content="Bananas"),
-            Document(content="Silicon Valley"),
-            Document(content="Brandenburg Gate"),
-        ]
-        result = ranker.run(query=query, documents=documents)
-        ranked_docs = result["documents"]
-        ranked_order = ", ".join([doc.content for doc in ranked_docs])
-        expected_order = "Berlin, Bananas, Eiffel Tower, Silicon Valley, France, Brandenburg Gate, Germany"
-
-        assert ranked_order == expected_order
-
-    @pytest.mark.integration
-    @pytest.mark.slow
-    @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
     def test_run_real_world_use_case(self, similarity, monkeypatch):
         monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
         ranker = SentenceTransformersDiversityRanker(

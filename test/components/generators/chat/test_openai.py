@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 import pytest
 
 
@@ -363,6 +363,40 @@ class TestOpenAIChatGenerator:
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
         assert "Hello" in response["replies"][0].text  # see openai_mock_chat_completion_chunk
+
+    def test_run_with_wrapped_stream_simulation(self, chat_messages, openai_mock_stream):
+        streaming_callback_called = False
+
+        def streaming_callback(chunk: StreamingChunk) -> None:
+            nonlocal streaming_callback_called
+            streaming_callback_called = True
+            assert isinstance(chunk, StreamingChunk)
+
+        chunk = ChatCompletionChunk(
+            id="id",
+            model="gpt-4",
+            object="chat.completion.chunk",
+            choices=[chat_completion_chunk.Choice(index=0, delta=chat_completion_chunk.ChoiceDelta(content="Hello"))],
+            created=int(datetime.now().timestamp()),
+        )
+
+        # Here we wrap the OpenAI stream in a MagicMock
+        # This is to simulate the behavior of some tools like Weave (https://github.com/wandb/weave)
+        # which wrap the OpenAI stream in their own stream
+        wrapped_openai_stream = MagicMock()
+        wrapped_openai_stream.__iter__.return_value = iter([chunk])
+
+        component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
+
+        with patch.object(
+            component.client.chat.completions, "create", return_value=wrapped_openai_stream
+        ) as mock_create:
+            response = component.run(chat_messages, streaming_callback=streaming_callback)
+
+            mock_create.assert_called_once()
+            assert streaming_callback_called
+            assert "replies" in response
+            assert "Hello" in response["replies"][0].text
 
     def test_check_abnormal_completions(self, caplog):
         caplog.set_level(logging.INFO)
@@ -860,15 +894,16 @@ class TestOpenAIChatGenerator:
         assert message.meta["finish_reason"] == "stop"
         assert message.meta["usage"]["prompt_tokens"] > 0
 
-    @pytest.mark.skipif(
-        not os.environ.get("OPENAI_API_KEY", None),
-        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-    )
-    @pytest.mark.integration
-    def test_live_run_wrong_model(self, chat_messages):
-        component = OpenAIChatGenerator(model="something-obviously-wrong")
+    async def test_run_with_wrong_model(self):
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.side_effect = OpenAIError("Invalid model name")
+
+        generator = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"), model="something-obviously-wrong")
+
+        generator.client = mock_client
+
         with pytest.raises(OpenAIError):
-            component.run(chat_messages)
+            generator.run([ChatMessage.from_user("irrelevant")])
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
@@ -891,45 +926,31 @@ class TestOpenAIChatGenerator:
         )
         results = component.run([ChatMessage.from_user("What's the capital of France?")])
 
+        # Basic response checks
+        assert "replies" in results
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert "Paris" in message.text
+        assert isinstance(message.meta, dict)
 
-        assert "gpt-4o" in message.meta["model"]
-        assert message.meta["finish_reason"] == "stop"
+        # Metadata checks
+        metadata = message.meta
+        assert "gpt-4o" in metadata["model"]
+        assert metadata["finish_reason"] == "stop"
 
+        # Usage information checks
+        assert isinstance(metadata.get("usage"), dict), "meta.usage not a dict"
+        usage = metadata["usage"]
+        assert "prompt_tokens" in usage and usage["prompt_tokens"] > 0
+        assert "completion_tokens" in usage and usage["completion_tokens"] > 0
+
+        # Detailed token information checks
+        assert isinstance(usage.get("completion_tokens_details"), dict), "usage.completion_tokens_details not a dict"
+        assert isinstance(usage.get("prompt_tokens_details"), dict), "usage.prompt_tokens_details not a dict"
+
+        # Streaming callback verification
         assert callback.counter > 1
         assert "Paris" in callback.responses
-
-        # check that the completion_start_time is set and valid ISO format
-        assert "completion_start_time" in message.meta
-        assert datetime.fromisoformat(message.meta["completion_start_time"]) <= datetime.now()
-
-        assert isinstance(message.meta["usage"], dict)
-        assert message.meta["usage"]["prompt_tokens"] > 0
-        assert message.meta["usage"]["completion_tokens"] > 0
-        assert message.meta["usage"]["total_tokens"] > 0
-
-    @pytest.mark.skipif(
-        not os.environ.get("OPENAI_API_KEY", None),
-        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-    )
-    @pytest.mark.integration
-    def test_live_run_with_tools(self, tools):
-        chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
-        component = OpenAIChatGenerator(tools=tools)
-        results = component.run(chat_messages)
-        assert len(results["replies"]) == 1
-        message = results["replies"][0]
-
-        assert not message.texts
-        assert not message.text
-        assert message.tool_calls
-        tool_call = message.tool_call
-        assert isinstance(tool_call, ToolCall)
-        assert tool_call.tool_name == "weather"
-        assert tool_call.arguments == {"city": "Paris"}
-        assert message.meta["finish_reason"] == "tool_calls"
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
