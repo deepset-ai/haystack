@@ -35,46 +35,49 @@ with LazyImport(message="Run 'pip install \"huggingface_hub[inference]>=0.27.0\"
     )
 
 
-def _convert_hfapi_tool_call(hfapi_tc: "ChatCompletionOutputToolCall") -> Optional[ToolCall]:
+def _convert_hfapi_tool_calls(hfapi_tool_calls: Optional[List["ChatCompletionOutputToolCall"]]) -> List[ToolCall]:
     """
-    Convert a HuggingFace API tool call to a Haystack ToolCall.
+    Convert HuggingFace API tool calls to a list of Haystack ToolCall.
 
-    If `arguments` is a string and cannot be parsed as JSON, returns None.
-
-    :param hfapi_tc: The HuggingFace API tool call to convert.
-    :returns: A ToolCall object or None.
+    :param hfapi_tool_calls: The HuggingFace API tool calls to convert.
+    :returns: A list of ToolCall objects.
 
     """
-    hf_arguments = hfapi_tc.function.arguments
+    if not hfapi_tool_calls:
+        return []
 
-    arguments = None
+    tool_calls = []
 
-    if isinstance(hf_arguments, dict):
-        arguments = hf_arguments
-    elif isinstance(hf_arguments, str):
-        try:
-            arguments = json.loads(hf_arguments)
-        except json.JSONDecodeError:
+    for hfapi_tc in hfapi_tool_calls:
+        hf_arguments = hfapi_tc.function.arguments
+
+        arguments = None
+        if isinstance(hf_arguments, dict):
+            arguments = hf_arguments
+        elif isinstance(hf_arguments, str):
+            try:
+                arguments = json.loads(hf_arguments)
+            except json.JSONDecodeError:
+                logger.warning(
+                    "HuggingFace API returned a malformed JSON string for tool call arguments. This tool call "
+                    "will be skipped. Tool call ID: {_id}, Tool name: {_name}, Arguments: {_arguments}",
+                    _id=hfapi_tc.id,
+                    _name=hfapi_tc.function.name,
+                    _arguments=hf_arguments,
+                )
+        else:
             logger.warning(
-                "HuggingFace API returned a malformed JSON string for tool call arguments. This tool call "
-                "will be skipped. Tool call ID: {_id}, Tool name: {_name}, Arguments: {_arguments}",
+                "HuggingFace API returned tool call arguments of type {_type}. Valid types are dict and str. This tool "
+                "call will be skipped. Tool call ID: {_id}, Tool name: {_name}, Arguments: {_arguments}",
                 _id=hfapi_tc.id,
                 _name=hfapi_tc.function.name,
                 _arguments=hf_arguments,
             )
-    else:
-        logger.warning(
-            "HuggingFace API returned tool call arguments of type {_type}. Valid types are dict and str. This tool "
-            "call will be skipped. Tool call ID: {_id}, Tool name: {_name}, Arguments: {_arguments}",
-            _id=hfapi_tc.id,
-            _name=hfapi_tc.function.name,
-            _type=type(hf_arguments),
-        )
 
-    if arguments is None:
-        return None
+        if arguments:
+            tool_calls.append(ToolCall(tool_name=hfapi_tc.function.name, arguments=arguments, id=hfapi_tc.id))
 
-    return ToolCall(tool_name=hfapi_tc.function.name, arguments=arguments, id=hfapi_tc.id)
+    return tool_calls
 
 
 @component
@@ -449,12 +452,8 @@ class HuggingFaceAPIChatGenerator:
         choice = api_chat_output.choices[0]
 
         text = choice.message.content
-        tool_calls = []
 
-        if hfapi_tool_calls := choice.message.tool_calls:
-            for hfapi_tc in hfapi_tool_calls:
-                if tool_call := _convert_hfapi_tool_call(hfapi_tc):
-                    tool_calls.append(tool_call)
+        tool_calls = _convert_hfapi_tool_calls(choice.message.tool_calls)
 
         meta: Dict[str, Any] = {
             "model": self._client.model,
@@ -530,12 +529,8 @@ class HuggingFaceAPIChatGenerator:
         choice = api_chat_output.choices[0]
 
         text = choice.message.content
-        tool_calls = []
 
-        if hfapi_tool_calls := choice.message.tool_calls:
-            for hfapi_tc in hfapi_tool_calls:
-                if tool_call := _convert_hfapi_tool_call(hfapi_tc):
-                    tool_calls.append(tool_call)
+        tool_calls = _convert_hfapi_tool_calls(choice.message.tool_calls)
 
         meta: Dict[str, Any] = {
             "model": self._async_client.model,

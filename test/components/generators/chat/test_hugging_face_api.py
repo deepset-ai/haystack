@@ -23,7 +23,7 @@ from huggingface_hub import (
 )
 from huggingface_hub.utils import RepositoryNotFoundError
 
-from haystack.components.generators.chat.hugging_face_api import HuggingFaceAPIChatGenerator, _convert_hfapi_tool_call
+from haystack.components.generators.chat.hugging_face_api import HuggingFaceAPIChatGenerator, _convert_hfapi_tool_calls
 from haystack.tools import Tool
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.tools.toolset import Toolset
@@ -573,53 +573,72 @@ class TestHuggingFaceAPIChatGenerator:
             "usage": {"completion_tokens": 30, "prompt_tokens": 426},
         }
 
-    def test_convert_hfapi_tool_call_dict_arguments(self):
-        hfapi_tc = ChatCompletionOutputToolCall(
-            function=ChatCompletionOutputFunctionDefinition(
-                arguments={"city": "Paris"}, name="weather", description=None
-            ),
-            id="0",
-            type="function",
-        )
-        tool_call = _convert_hfapi_tool_call(hfapi_tc)
-        assert tool_call.tool_name == "weather"
-        assert tool_call.arguments == {"city": "Paris"}
-        assert tool_call.id == "0"
+    def test_convert_hfapi_tool_calls_empty(self):
+        hfapi_tool_calls = None
+        tool_calls = _convert_hfapi_tool_calls(hfapi_tool_calls)
+        assert len(tool_calls) == 0
 
-    def test_convert_hfapi_tool_call_str_arguments(self):
-        hfapi_tc = ChatCompletionOutputToolCall(
-            function=ChatCompletionOutputFunctionDefinition(
-                arguments='{"city": "Paris"}', name="weather", description=None
-            ),
-            id="0",
-            type="function",
-        )
-        tool_call = _convert_hfapi_tool_call(hfapi_tc)
-        assert tool_call.tool_name == "weather"
-        assert tool_call.arguments == {"city": "Paris"}
-        assert tool_call.id == "0"
+        hfapi_tool_calls = []
+        tool_calls = _convert_hfapi_tool_calls(hfapi_tool_calls)
+        assert len(tool_calls) == 0
 
-    def test_convert_hfapi_tool_call_invalid_str_arguments(self):
-        hfapi_tc = ChatCompletionOutputToolCall(
-            function=ChatCompletionOutputFunctionDefinition(
-                arguments="not a valid JSON string", name="weather", description=None
-            ),
-            id="0",
-            type="function",
-        )
-        tool_call = _convert_hfapi_tool_call(hfapi_tc)
-        assert tool_call is None
+    def test_convert_hfapi_tool_calls_dict_arguments(self):
+        hfapi_tool_calls = [
+            ChatCompletionOutputToolCall(
+                function=ChatCompletionOutputFunctionDefinition(
+                    arguments={"city": "Paris"}, name="weather", description=None
+                ),
+                id="0",
+                type="function",
+            )
+        ]
+        tool_calls = _convert_hfapi_tool_calls(hfapi_tool_calls)
+        assert len(tool_calls) == 1
+        assert tool_calls[0].tool_name == "weather"
+        assert tool_calls[0].arguments == {"city": "Paris"}
+        assert tool_calls[0].id == "0"
 
-    def test_convert_hfapi_tool_call_invalid_type_arguments(self):
-        hfapi_tc = ChatCompletionOutputToolCall(
-            function=ChatCompletionOutputFunctionDefinition(
-                arguments=["this", "is", "a", "list"], name="weather", description=None
-            ),
-            id="0",
-            type="function",
-        )
-        tool_call = _convert_hfapi_tool_call(hfapi_tc)
-        assert tool_call is None
+    def test_convert_hfapi_tool_calls_str_arguments(self):
+        hfapi_tool_calls = [
+            ChatCompletionOutputToolCall(
+                function=ChatCompletionOutputFunctionDefinition(
+                    arguments='{"city": "Paris"}', name="weather", description=None
+                ),
+                id="0",
+                type="function",
+            )
+        ]
+        tool_calls = _convert_hfapi_tool_calls(hfapi_tool_calls)
+        assert len(tool_calls) == 1
+        assert tool_calls[0].tool_name == "weather"
+        assert tool_calls[0].arguments == {"city": "Paris"}
+        assert tool_calls[0].id == "0"
+
+    def test_convert_hfapi_tool_calls_invalid_str_arguments(self):
+        hfapi_tool_calls = [
+            ChatCompletionOutputToolCall(
+                function=ChatCompletionOutputFunctionDefinition(
+                    arguments="not a valid JSON string", name="weather", description=None
+                ),
+                id="0",
+                type="function",
+            )
+        ]
+        tool_calls = _convert_hfapi_tool_calls(hfapi_tool_calls)
+        assert len(tool_calls) == 0
+
+    def test_convert_hfapi_tool_calls_invalid_type_arguments(self):
+        hfapi_tool_calls = [
+            ChatCompletionOutputToolCall(
+                function=ChatCompletionOutputFunctionDefinition(
+                    arguments=["this", "is", "a", "list"], name="weather", description=None
+                ),
+                id="0",
+                type="function",
+            )
+        ]
+        tool_calls = _convert_hfapi_tool_calls(hfapi_tool_calls)
+        assert len(tool_calls) == 0
 
     @pytest.mark.integration
     @pytest.mark.slow
