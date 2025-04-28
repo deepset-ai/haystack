@@ -4,7 +4,7 @@
 
 from openai.types.chat.chat_completion_chunk import ChoiceDeltaToolCall
 
-from haystack.dataclasses import ChatMessage, StreamingChunk
+from haystack.dataclasses import StreamingChunk
 
 
 def print_streaming_chunk(chunk: StreamingChunk) -> None:
@@ -15,8 +15,8 @@ def print_streaming_chunk(chunk: StreamingChunk) -> None:
     """
     if chunk.meta.get("tool_calls"):
         for tool_call in chunk.meta["tool_calls"]:
-            if isinstance(tool_call, ChoiceDeltaToolCall):
-                # pick the name if available, otherwise the arguments
+            if isinstance(tool_call, ChoiceDeltaToolCall) and tool_call.function:
+                # pick the name of the function, otherwise the arguments
                 output = tool_call.function.name or tool_call.function.arguments
                 if output:
                     print(output, flush=True, end="")
