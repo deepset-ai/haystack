@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from openai.types.chat.chat_completion_chunk import ChoiceDeltaToolCall
+
 from haystack.dataclasses import ChatMessage, StreamingChunk
 
 
@@ -11,25 +13,12 @@ def print_streaming_chunk(chunk: StreamingChunk) -> None:
 
     Prints the tokens of the first completion to stdout as soon as they are received
     """
+    if chunk.meta.get("tool_calls"):
+        for tool_call in chunk.meta["tool_calls"]:
+            if isinstance(tool_call, ChoiceDeltaToolCall):
+                if tool_call.function.name:
+                    print(tool_call.function.name, flush=True, end="")
+                elif tool_call.function.arguments:
+                    print(tool_call.function.arguments, flush=True, end="")
+
     print(chunk.content, flush=True, end="")
-
-
-def _emit_tool_call_info(message: ChatMessage) -> None:
-    """
-    Emit information about a tool call including the tool name and arguments.
-
-    :param message: The message containing the tool call
-    """
-    if message.tool_call is None:
-        return
-
-    # Create a chunk with tool call information
-    tool_call_info = f"Tool Call: {message.tool_call.tool_name} "
-    if message.tool_call.arguments:
-        # Pre-format arguments string
-        args_str = ", ".join(f"{k}={v}" for k, v in message.tool_call.arguments.items())
-        tool_call_info += f"({args_str})\n"
-    else:
-        tool_call_info += "\n"
-    print("CHECKING TOOL CALL INFO")
-    print(tool_call_info, flush=True, end="")

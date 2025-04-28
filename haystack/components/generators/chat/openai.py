@@ -13,7 +13,6 @@ from openai.types.chat.chat_completion import Choice
 from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.components.generators.utils import _emit_tool_call_info
 from haystack.dataclasses import (
     AsyncStreamingCallbackT,
     ChatMessage,
@@ -295,11 +294,6 @@ class OpenAIChatGenerator:
         for message in completions:
             self._check_finish_reason(message.meta)
 
-        # Emit information about tool calls
-        if streaming_callback is not None:
-            for msg in completions:
-                if msg.tool_call:
-                    _emit_tool_call_info(msg)
         return {"replies": completions}
 
     @component.output_types(replies=List[ChatMessage])
@@ -379,12 +373,6 @@ class OpenAIChatGenerator:
         # before returning, do post-processing of the completions
         for message in completions:
             self._check_finish_reason(message.meta)
-
-        # Emit information about tool calls
-        if streaming_callback is not None:
-            for msg in completions:
-                if msg.tool_call:
-                    _emit_tool_call_info(msg)
 
         return {"replies": completions}
 
