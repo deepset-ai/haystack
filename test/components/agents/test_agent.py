@@ -790,16 +790,13 @@ class TestAgent:
             nonlocal streaming_callback_called
             streaming_callback_called = True
 
-        with patch("haystack.components.generators.chat.openai._emit_tool_call_info") as mock_emit:
-            result = agent.run(
-                [ChatMessage.from_user("What's the weather in Paris?")], streaming_callback=streaming_callback
-            )
+        result = agent.run(
+            [ChatMessage.from_user("What's the weather in Paris?")], streaming_callback=streaming_callback
+        )
 
-            assert result is not None
-            assert result["messages"] is not None
-            assert streaming_callback_called
-
-            mock_emit.assert_called_once()
+        assert result is not None
+        assert result["messages"] is not None
+        assert streaming_callback_called
 
 
 class TestAgentTracing:
