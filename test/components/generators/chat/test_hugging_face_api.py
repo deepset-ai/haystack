@@ -23,7 +23,7 @@ from huggingface_hub import (
 )
 from huggingface_hub.utils import RepositoryNotFoundError
 
-from haystack.components.generators.chat.hugging_face_api import HuggingFaceAPIChatGenerator
+from haystack.components.generators.chat.hugging_face_api import HuggingFaceAPIChatGenerator, _convert_hfapi_tool_call
 from haystack.tools import Tool
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.tools.toolset import Toolset
@@ -573,6 +573,54 @@ class TestHuggingFaceAPIChatGenerator:
             "usage": {"completion_tokens": 30, "prompt_tokens": 426},
         }
 
+    def test_convert_hfapi_tool_call_dict_arguments(self):
+        hfapi_tc = ChatCompletionOutputToolCall(
+            function=ChatCompletionOutputFunctionDefinition(
+                arguments={"city": "Paris"}, name="weather", description=None
+            ),
+            id="0",
+            type="function",
+        )
+        tool_call = _convert_hfapi_tool_call(hfapi_tc)
+        assert tool_call.tool_name == "weather"
+        assert tool_call.arguments == {"city": "Paris"}
+        assert tool_call.id == "0"
+
+    def test_convert_hfapi_tool_call_str_arguments(self):
+        hfapi_tc = ChatCompletionOutputToolCall(
+            function=ChatCompletionOutputFunctionDefinition(
+                arguments='{"city": "Paris"}', name="weather", description=None
+            ),
+            id="0",
+            type="function",
+        )
+        tool_call = _convert_hfapi_tool_call(hfapi_tc)
+        assert tool_call.tool_name == "weather"
+        assert tool_call.arguments == {"city": "Paris"}
+        assert tool_call.id == "0"
+
+    def test_convert_hfapi_tool_call_invalid_str_arguments(self):
+        hfapi_tc = ChatCompletionOutputToolCall(
+            function=ChatCompletionOutputFunctionDefinition(
+                arguments="not a valid JSON string", name="weather", description=None
+            ),
+            id="0",
+            type="function",
+        )
+        tool_call = _convert_hfapi_tool_call(hfapi_tc)
+        assert tool_call is None
+
+    def test_convert_hfapi_tool_call_invalid_type_arguments(self):
+        hfapi_tc = ChatCompletionOutputToolCall(
+            function=ChatCompletionOutputFunctionDefinition(
+                arguments=["this", "is", "a", "list"], name="weather", description=None
+            ),
+            id="0",
+            type="function",
+        )
+        tool_call = _convert_hfapi_tool_call(hfapi_tc)
+        assert tool_call is None
+
     @pytest.mark.integration
     @pytest.mark.slow
     @pytest.mark.skipif(
@@ -641,9 +689,6 @@ class TestHuggingFaceAPIChatGenerator:
     @pytest.mark.skipif(
         not os.environ.get("HF_API_TOKEN", None),
         reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
-    )
-    @pytest.mark.xfail(
-        reason="The Hugging Face API can be unstable and this test may fail intermittently", strict=False
     )
     def test_live_run_with_tools(self, tools):
         """
