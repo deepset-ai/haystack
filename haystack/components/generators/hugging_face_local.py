@@ -110,6 +110,8 @@ class HuggingFaceLocalGenerator:
             token=token,
         )
 
+        # TRIGGER
+
         # if not specified, set return_full_text to False for text-generation
         # only generated text is returned (excluding prompt)
         task = huggingface_pipeline_kwargs["task"]
