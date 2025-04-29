@@ -229,6 +229,7 @@ class Agent:
 
         :param messages: List of chat messages to process
         :param streaming_callback: A callback that will be invoked when a response is streamed from the LLM.
+            The same callback can be configured to emit tool results when a tool is called.
         :param kwargs: Additional data to pass to the State schema used by the Agent.
             The keys must match the schema defined in the Agent's `state_schema`.
         :return: Dictionary containing messages and outputs matching the defined output types
@@ -316,6 +317,7 @@ class Agent:
 
         :param messages: List of chat messages to process
         :param streaming_callback: A callback that will be invoked when a response is streamed from the LLM.
+            The same callback can be configured to emit tool results when a tool is called.
         :param kwargs: Additional data to pass to the State schema used by the Agent.
             The keys must match the schema defined in the Agent's `state_schema`.
         :return: Dictionary containing messages and outputs matching the defined output types

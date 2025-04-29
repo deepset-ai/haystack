@@ -453,26 +453,15 @@ class ToolInvoker:
                         result=tool_result, tool_call=tool_call, tool_to_invoke=tool_to_invoke
                     )
                 )
-
-        if streaming_callback is not None:
-            chunk = self._prepare_stream_tool_result(
-                result=tool_result, tool_call=tool_call, tool_to_invoke=tool_to_invoke
-            )
-            streaming_callback(chunk)
+                if streaming_callback is not None:
+                    streaming_callback(
+                        StreamingChunk(
+                            content="",
+                            meta={"tool_result": tool_result, "tool_call": tool_call, "tool_to_invoke": tool_to_invoke},
+                        )
+                    )
 
         return {"tool_messages": tool_messages, "state": state}
-
-    def _prepare_stream_tool_result(self, result: Any, tool_call: ToolCall, tool_to_invoke: Tool) -> StreamingChunk:
-        """
-        Prepares a StreamingChunk object for the tool result.
-        """
-        return StreamingChunk(
-            content=result,
-            meta={
-                "tool_calls": {"tool_name": tool_to_invoke.name, "arguments": tool_call.arguments, "id": tool_call.id},
-                "received_at": datetime.now().isoformat(),
-            },
-        )
 
     def to_dict(self) -> Dict[str, Any]:
         """
