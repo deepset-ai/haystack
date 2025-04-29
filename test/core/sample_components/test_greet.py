@@ -1,10 +1,10 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+
 import logging
 
 from haystack.testing.sample_components import Greet
-from haystack.core.serialization import component_to_dict, component_from_dict
 
 
 def test_greet_message(caplog):

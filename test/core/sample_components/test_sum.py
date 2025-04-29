@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from haystack.testing.sample_components import Sum
-from haystack.core.serialization import component_to_dict, component_from_dict
 
 
 def test_sum_receives_no_values():
