@@ -64,30 +64,25 @@ def test_valid_signatures():
 
 
 def test_different_param_names():
-    with pytest.raises(ComponentError) as exc_info:
+    with pytest.raises(ComponentError, match="name mismatch"):
         DifferentParamNameComponent()
-    assert "name mismatch:" in str(exc_info.value)
 
 
 def test_different_param_types():
-    with pytest.raises(ComponentError) as exc_info:
+    with pytest.raises(ComponentError, match="type mismatch"):
         DifferentParamTypeComponent()
-    assert "type mismatch" in str(exc_info.value)
 
 
 def test_different_default_values():
-    with pytest.raises(ComponentError) as exc_info:
+    with pytest.raises(ComponentError, match="default value mismatch"):
         DifferentDefaultValueComponent()
-    assert "default value mismatch" in str(exc_info.value)
 
 
 def test_different_param_kinds():
-    with pytest.raises(ComponentError) as exc_info:
+    with pytest.raises(ComponentError, match="kind \(POSITIONAL, KEYWORD, etc\.\) mismatch: "):
         DifferentParamKindComponent()
-    assert "kind (POSITIONAL, KEYWORD, etc.)" in str(exc_info.value)
 
 
 def test_different_param_count():
-    with pytest.raises(ComponentError) as exc_info:
+    with pytest.raises(ComponentError, match="Different number of parameters"):
         DifferentParamCountComponent()
-    assert "Different number of parameters" in str(exc_info.value)

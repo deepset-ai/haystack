@@ -256,7 +256,7 @@ class ComponentMeta(type):
             async_run_sig = inner(async_run, async_run_sockets)
 
             if async_run_sockets != run_sockets or run_sig != async_run_sig:
-                sig_diff = _compare_method_signatures(run_sig, async_run_sig)
+                sig_diff = _compare_run_methods_signatures(run_sig, async_run_sig)
                 raise ComponentError(
                     f"Parameters of 'run' and 'run_async' methods must be the same.\nDifferences found:\n{sig_diff}"
                 )
@@ -329,7 +329,7 @@ def _component_run_has_kwargs(component_cls: Type) -> bool:
         )
 
 
-def _compare_method_signatures(run_sig: inspect.Signature, async_run_sig: inspect.Signature) -> str:
+def _compare_run_methods_signatures(run_sig: inspect.Signature, async_run_sig: inspect.Signature) -> str:
     """
     Builds a detailed error message with the differences between the signatures of the run and run_async methods.
 
