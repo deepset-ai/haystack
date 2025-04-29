@@ -68,7 +68,6 @@ class Agent:
         max_agent_steps: int = 100,
         raise_on_tool_invocation_failure: bool = False,
         streaming_callback: Optional[StreamingCallbackT] = None,
-        stream_tool_result: bool = False,
     ):
         """
         Initialize the agent component.
@@ -85,11 +84,7 @@ class Agent:
         :param raise_on_tool_invocation_failure: Should the agent raise an exception when a tool invocation fails?
             If set to False, the exception will be turned into a chat message and passed to the LLM.
         :param streaming_callback: A callback that will be invoked when a response is streamed from the LLM.
-            If stream_tool_result is set to True, this callback will also be triggered to emit tool
-            results when a tool is called.
-        :param stream_tool_result: If set to True, the tool result will be emitted via the streaming callback.
-            Note that the result is only emitted once it becomes available — it is not
-            streamed incrementally in real time.
+            The same callback can be configured to emit tool results when a tool is called.
         :raises TypeError: If the chat_generator does not support tools parameter in its run method.
         """
         # Check if chat_generator supports tools parameter
@@ -140,11 +135,7 @@ class Agent:
 
         self._tool_invoker = None
         if self.tools:
-            self._tool_invoker = ToolInvoker(
-                tools=self.tools,
-                raise_on_failure=self.raise_on_tool_invocation_failure,
-                streaming_callback=self.streaming_callback if stream_tool_result else None,
-            )
+            self._tool_invoker = ToolInvoker(tools=self.tools, raise_on_failure=self.raise_on_tool_invocation_failure)
         else:
             logger.warning(
                 "No tools provided to the Agent. The Agent will behave like a ChatGenerator and only return text "
@@ -284,7 +275,7 @@ class Agent:
                 tool_invoker_result = Pipeline._run_component(
                     component_name="tool_invoker",
                     component={"instance": self._tool_invoker},
-                    inputs={"messages": llm_messages, "state": state},
+                    inputs={"messages": llm_messages, "state": state, "streaming_callback": streaming_callback},
                     component_visits=component_visits,
                     parent_span=span,
                 )
@@ -336,7 +327,7 @@ class Agent:
             messages = [ChatMessage.from_system(self.system_prompt)] + messages
 
         streaming_callback = select_streaming_callback(
-            init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=False
+            init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=True
         )
 
         input_data = deepcopy({"messages": messages, "streaming_callback": streaming_callback, **kwargs})
@@ -374,7 +365,11 @@ class Agent:
                 tool_invoker_result = await AsyncPipeline._run_component_async(
                     component_name="tool_invoker",
                     component={"instance": self._tool_invoker},
-                    component_inputs={"messages": llm_messages, "state": state},
+                    component_inputs={
+                        "messages": llm_messages,
+                        "state": state,
+                        "streaming_callback": streaming_callback,
+                    },
                     component_visits=component_visits,
                     max_runs_per_component=self.max_agent_steps,
                     parent_span=span,

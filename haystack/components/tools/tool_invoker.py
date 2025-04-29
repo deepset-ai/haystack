@@ -178,6 +178,8 @@ class ToolInvoker:
             If False, the tool invocation result will be converted to a string using `str`.
         :param streaming_callback:
             A callback function that will be called to emit tool results.
+            Note that the result is only emitted once it becomes available — it is not
+            streamed incrementally in real time.
         :raises ValueError:
             If no tools are provided or if duplicate tool names are found.
         """
@@ -377,6 +379,8 @@ class ToolInvoker:
             A list of ChatMessage objects.
         :param state: The runtime state that should be used by the tools.
         :param streaming_callback: A callback function that will be called to emit tool results.
+            Note that the result is only emitted once it becomes available — it is not
+            streamed incrementally in real time.
         :returns:
             A dictionary with the key `tool_messages` containing a list of ChatMessage objects with tool role.
             Each ChatMessage objects wraps the result of a tool invocation.
@@ -421,13 +425,6 @@ class ToolInvoker:
                 # 2) Invoke the tool
                 try:
                     tool_result = tool_to_invoke.invoke(**final_args)
-                    if streaming_callback is not None:
-                        self._stream_tool_result(
-                            result=tool_result,
-                            tool_call=tool_call,
-                            tool_to_invoke=tool_to_invoke,
-                            streaming_callback=streaming_callback,
-                        )
 
                 except ToolInvocationError as e:
                     error_message = self._handle_error(e)
@@ -457,26 +454,25 @@ class ToolInvoker:
                     )
                 )
 
+        if streaming_callback is not None:
+            chunk = self._prepare_stream_tool_result(
+                result=tool_result, tool_call=tool_call, tool_to_invoke=tool_to_invoke
+            )
+            streaming_callback(chunk)
+
         return {"tool_messages": tool_messages, "state": state}
 
-    def _stream_tool_result(
-        self, result: Any, tool_call: ToolCall, tool_to_invoke: Tool, streaming_callback: StreamingCallbackT
-    ) -> None:
+    def _prepare_stream_tool_result(self, result: Any, tool_call: ToolCall, tool_to_invoke: Tool) -> StreamingChunk:
         """
-        Streams the tool result to the streaming callback.
-
-        Note that the result is passed to callback as a `StreamingChunk` object once the
-        result becomes available — it is not streamed incrementally in real time.
+        Prepares a StreamingChunk object for the tool result.
         """
-        chunk = StreamingChunk(
+        return StreamingChunk(
             content=result,
             meta={
                 "tool_calls": {"tool_name": tool_to_invoke.name, "arguments": tool_call.arguments, "id": tool_call.id},
                 "received_at": datetime.now().isoformat(),
             },
         )
-
-        streaming_callback(chunk)
 
     def to_dict(self) -> Dict[str, Any]:
         """
