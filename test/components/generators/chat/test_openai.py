@@ -894,7 +894,7 @@ class TestOpenAIChatGenerator:
         assert message.meta["finish_reason"] == "stop"
         assert message.meta["usage"]["prompt_tokens"] > 0
 
-    async def test_run_with_wrong_model(self):
+    def test_run_with_wrong_model(self):
         mock_client = MagicMock()
         mock_client.chat.completions.create.side_effect = OpenAIError("Invalid model name")
 
