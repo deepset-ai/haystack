@@ -336,7 +336,6 @@ class RecursiveDocumentSplitter:
                             chunks.extend(fall_back_chunks)
                         else:
                             chunks.extend(self._chunk_text(split_text))
-                        current_length += self._chunk_length(split_text)
 
                     else:
                         current_chunk.append(split_text)
