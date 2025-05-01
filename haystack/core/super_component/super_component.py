@@ -3,9 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import functools
+from pathlib import Path
 from types import new_class
 from typing import Any, Dict, List, Optional, Tuple, Union
-from pathlib import Path
 
 from haystack import logging
 from haystack.core.component.component import component
@@ -460,7 +460,7 @@ class SuperComponent(_SuperComponent):
         data["init_parameters"]["pipeline"] = pipeline
         return default_from_dict(cls, data)
 
-    def show(self, server_url: str = "https://mermaid.ink", params: Optional[dict] = None, timeout: int = 30) -> str:
+    def show(self, server_url: str = "https://mermaid.ink", params: Optional[dict] = None, timeout: int = 30) -> None:
         """
         Display an image representing this SuperComponent's underlying pipeline in a Jupyter notebook.
 
@@ -492,9 +492,11 @@ class SuperComponent(_SuperComponent):
         :raises PipelineDrawingError:
             If the function is called outside of a Jupyter notebook or if there is an issue with rendering.
         """
-        return self.pipeline.show(server_url=server_url, params=params, timeout=timeout)
+        self.pipeline.show(server_url=server_url, params=params, timeout=timeout)
 
-    def draw(self, path: Path, server_url: str = "https://mermaid.ink", params: Optional[dict] = None, timeout: int = 30) -> None:
+    def draw(
+        self, path: Path, server_url: str = "https://mermaid.ink", params: Optional[dict] = None, timeout: int = 30
+    ) -> None:
         """
         Save an image representing this SuperComponent's underlying pipeline to the specified file path.
 
