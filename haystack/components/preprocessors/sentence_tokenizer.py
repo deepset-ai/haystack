@@ -40,7 +40,7 @@ ISO639_TO_NLTK = {
     "ml": "malayalam",
 }
 
-QUOTE_SPANS_RE = re.compile(r"\W(\"+|\'+).*?\1")
+QUOTE_SPANS_RE = re.compile(r'\W"[^"\n]*"|\'[^\']*\'')
 
 if nltk_imports.is_successful():
 
