@@ -3,6 +3,7 @@ from unittest.mock import patch
 from pathlib import Path
 
 from haystack.components.preprocessors.sentence_tokenizer import SentenceSplitter
+from haystack.components.preprocessors.sentence_tokenizer import QUOTE_SPANS_RE
 
 from pytest import LogCaptureFixture
 
@@ -68,8 +69,6 @@ def test_read_abbreviations_missing_file(caplog: LogCaptureFixture):
 
 
 def test_quote_spans_regex():
-    from haystack.components.preprocessors.sentence_tokenizer import QUOTE_SPANS_RE
-
     # double quotes
     text1 = 'He said "Hello world" and left.'
     matches1 = list(QUOTE_SPANS_RE.finditer(text1))
