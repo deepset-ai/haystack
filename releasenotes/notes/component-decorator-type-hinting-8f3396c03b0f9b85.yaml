@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Added type hints to the `component` decorator. This improves support for Pyright/Pylance, enabling IDEs
+    like VSCode to show docstrings for components.
