@@ -93,6 +93,8 @@ SyncRunReturnT = TypeVar("SyncRunReturnT", bound=Dict[str, Any])
 AsyncRunReturnT = TypeVar("AsyncRunReturnT", bound=Coroutine[Any, Any, Dict[str, Any]])
 RunReturnT = Union[SyncRunReturnT, AsyncRunReturnT]
 
+T = TypeVar("T")
+
 
 @dataclass
 class PreInitHookPayload:
@@ -532,7 +534,7 @@ class _Component:
 
         return output_types_decorator
 
-    def _component(self, cls: Any):
+    def _component(self, cls: Type[T]) -> Type[T]:
         """
         Decorator validating the structure of the component and registering it in the components registry.
         """
@@ -557,10 +559,7 @@ class _Component:
         # Recreate the decorated component class so it uses our metaclass.
         # We must explicitly redefine the type of the class to make sure language servers
         # and type checkers understand that the class is of the correct type.
-        # mypy doesn't like that we do this though so we explicitly ignore the type check.
-        new_cls: cls.__name__ = new_class(
-            cls.__name__, cls.__bases__, {"metaclass": ComponentMeta}, copy_class_namespace
-        )  # type: ignore[no-redef]
+        new_cls: Type[T] = new_class(cls.__name__, cls.__bases__, {"metaclass": ComponentMeta}, copy_class_namespace)
 
         # Save the component in the class registry (for deserialization)
         class_path = f"{new_cls.__module__}.{new_cls.__name__}"
@@ -577,7 +576,11 @@ class _Component:
         logger.debug("Registered Component {component}", component=new_cls)
 
         # Override the __repr__ method with a default one
-        new_cls.__repr__ = _component_repr
+        # mypy is not happy that:
+        # 1) we are assigning a method to a class
+        # 2) _component_repr has a different type (Callable[[Component], str]) than the expected
+        # __repr__ method (Callable[[object], str])
+        new_cls.__repr__ = _component_repr  # type: ignore[assignment]
 
         return new_cls
 
