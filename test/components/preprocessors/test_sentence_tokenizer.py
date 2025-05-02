@@ -104,7 +104,7 @@ def test_quote_spans_regex():
 def test_split_sentences_performance() -> None:
     # make sure our regex is not vulnerable to Regex Denial of Service (ReDoS)
     # https://owasp.org/www-community/attacks/Regular_expression_Denial_of_Service_-_ReDoS
-    # this is a very long string, roughly 500 MB, but it should not take more than 2 seconds to process
+    # this is a very long string, roughly 50 MB, but it should not take more than 2 seconds to process
     splitter = SentenceSplitter()
     text = " " + '"' * 20 + "A" * 50000000 + "B"
     start = time.time()
