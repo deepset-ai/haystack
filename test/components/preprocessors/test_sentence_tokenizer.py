@@ -1,3 +1,4 @@
+import time
 import pytest
 from unittest.mock import patch
 from pathlib import Path
@@ -98,3 +99,16 @@ def test_quote_spans_regex():
     text5 = "This text has no quotes."
     matches5 = list(QUOTE_SPANS_RE.finditer(text5))
     assert len(matches5) == 0
+
+
+def test_split_sentences_performance() -> None:
+    # make sure our regex is not vulnerable to Regex Denial of Service (ReDoS)
+    # https://owasp.org/www-community/attacks/Regular_expression_Denial_of_Service_-_ReDoS
+    # this is a very long string, roughly 500 MB, but it should not take more than 5 seconds to process
+    splitter = SentenceSplitter()
+    text = " " + '"' * 20 + "A" * 500000000 + "B"
+    start = time.time()
+    _ = splitter.split_sentences(text)
+    end = time.time()
+
+    assert end - start < 5, f"Execution time exceeded 5 seconds: {end - start:.2f} seconds"
