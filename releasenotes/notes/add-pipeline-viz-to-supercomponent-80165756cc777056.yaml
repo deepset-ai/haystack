@@ -1,5 +1,5 @@
 ---
 highlights: >
-  Adding visualization capabilities to SuperComponent via the following methods:
+  Adding visualization capabilities to the `SuperComponent` via the following methods:
   - `show()` displays pipeline diagrams in Jupyter notebooks.
   - `draw()` saves pipeline diagrams as images to specified file paths.
