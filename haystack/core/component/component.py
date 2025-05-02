@@ -88,12 +88,12 @@ from .types import InputSocket, OutputSocket, _empty
 
 logger = logging.getLogger(__name__)
 
-ClassT = TypeVar("ClassT")  # , bound=type)
-
 RunParamsT = ParamSpec("RunParamsT")
 SyncRunReturnT = TypeVar("SyncRunReturnT", bound=Dict[str, Any])
 AsyncRunReturnT = TypeVar("AsyncRunReturnT", bound=Coroutine[Any, Any, Dict[str, Any]])
 RunReturnT = Union[SyncRunReturnT, AsyncRunReturnT]
+
+T = TypeVar("T")
 
 
 @dataclass
@@ -534,7 +534,7 @@ class _Component:
 
         return output_types_decorator
 
-    def _component(self, cls: Type[ClassT]) -> Type[ClassT]:
+    def _component(self, cls: Type[T]) -> Type[T]:
         """
         Decorator validating the structure of the component and registering it in the components registry.
         """
@@ -559,9 +559,7 @@ class _Component:
         # Recreate the decorated component class so it uses our metaclass.
         # We must explicitly redefine the type of the class to make sure language servers
         # and type checkers understand that the class is of the correct type.
-        new_cls: Type[ClassT] = new_class(
-            cls.__name__, cls.__bases__, {"metaclass": ComponentMeta}, copy_class_namespace
-        )
+        new_cls: Type[T] = new_class(cls.__name__, cls.__bases__, {"metaclass": ComponentMeta}, copy_class_namespace)
 
         # Save the component in the class registry (for deserialization)
         class_path = f"{new_cls.__module__}.{new_cls.__name__}"
