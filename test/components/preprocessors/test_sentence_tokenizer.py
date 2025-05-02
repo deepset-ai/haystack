@@ -65,3 +65,38 @@ def test_read_abbreviations_missing_file(caplog: LogCaptureFixture):
         result = SentenceSplitter._read_abbreviations("pt")
         assert result == []
         assert "No abbreviations file found for pt. Using default abbreviations." in caplog.text
+
+
+def test_quote_spans_regex():
+    """Test the QUOTE_SPANS_RE regex pattern for detecting quoted text spans."""
+    from haystack.components.preprocessors.sentence_tokenizer import QUOTE_SPANS_RE
+
+    # Test cases with double quotes
+    text1 = 'He said "Hello world" and left.'
+    matches1 = list(QUOTE_SPANS_RE.finditer(text1))
+    assert len(matches1) == 1
+    assert matches1[0].group() == '"Hello world"'
+
+    # Test cases with single quotes
+    text2 = "She replied 'Goodbye world' and smiled."
+    matches2 = list(QUOTE_SPANS_RE.finditer(text2))
+    assert len(matches2) == 1
+    assert matches2[0].group() == "'Goodbye world'"
+
+    # Test case with multiple quotes
+    text3 = 'First "quote" and second "quote" in same text.'
+    matches3 = list(QUOTE_SPANS_RE.finditer(text3))
+    assert len(matches3) == 2
+    assert matches3[0].group() == '"quote"'
+    assert matches3[1].group() == '"quote"'
+
+    # Test case with quotes containing newlines
+    text4 = 'Text with "quote\nspanning\nmultiple\nlines"'
+    matches4 = list(QUOTE_SPANS_RE.finditer(text4))
+    assert len(matches4) == 1
+    assert matches4[0].group() == '"quote\nspanning\nmultiple\nlines"'
+
+    # Test case with no quotes
+    text5 = "This text has no quotes."
+    matches5 = list(QUOTE_SPANS_RE.finditer(text5))
+    assert len(matches5) == 0
