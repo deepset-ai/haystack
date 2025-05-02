@@ -88,6 +88,8 @@ from .types import InputSocket, OutputSocket, _empty
 
 logger = logging.getLogger(__name__)
 
+ClassT = TypeVar("ClassT", bound=type)
+
 RunParamsT = ParamSpec("RunParamsT")
 SyncRunReturnT = TypeVar("SyncRunReturnT", bound=Dict[str, Any])
 AsyncRunReturnT = TypeVar("AsyncRunReturnT", bound=Coroutine[Any, Any, Dict[str, Any]])
@@ -532,7 +534,7 @@ class _Component:
 
         return output_types_decorator
 
-    def _component(self, cls: Any):
+    def _component(self, cls: Type[ClassT]) -> Type[ClassT]:
         """
         Decorator validating the structure of the component and registering it in the components registry.
         """
@@ -558,7 +560,7 @@ class _Component:
         # We must explicitly redefine the type of the class to make sure language servers
         # and type checkers understand that the class is of the correct type.
         # mypy doesn't like that we do this though so we explicitly ignore the type check.
-        new_cls: cls.__name__ = new_class(
+        new_cls: Type[ClassT] = new_class(
             cls.__name__, cls.__bases__, {"metaclass": ComponentMeta}, copy_class_namespace
         )  # type: ignore[no-redef]
 
