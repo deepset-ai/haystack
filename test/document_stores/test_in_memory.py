@@ -409,7 +409,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
     # Test async/await methods and concurrency
 
     @pytest.mark.asyncio
-    async def test_write_documents(self, document_store: InMemoryDocumentStore):
+    async def test_write_documents_async(self, document_store: InMemoryDocumentStore):
         docs = [Document(id="1")]
         assert await document_store.write_documents_async(docs) == 1
         with pytest.raises(DuplicateDocumentError):
@@ -443,7 +443,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         assert await document_store.count_documents_async() == 0
 
     @pytest.mark.asyncio
-    async def test_bm25_retrieval(self, document_store: InMemoryDocumentStore):
+    async def test_bm25_retrieval_async(self, document_store: InMemoryDocumentStore):
         # Tests if the bm25_retrieval method returns the correct document based on the input query.
         docs = [Document(content="Hello world"), Document(content="Haystack supports multiple languages")]
         await document_store.write_documents_async(docs)
@@ -452,7 +452,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         assert results[0].content == "Haystack supports multiple languages"
 
     @pytest.mark.asyncio
-    async def test_embedding_retrieval(self):
+    async def test_embedding_retrieval_async(self):
         docstore = InMemoryDocumentStore(embedding_similarity_function="cosine")
         # Tests if the embedding retrieval method returns the correct document based on the input query embedding.
         docs = [

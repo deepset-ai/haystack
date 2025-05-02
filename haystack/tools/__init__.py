@@ -6,9 +6,9 @@
 
 # ruff: noqa: I001 (ignore import order as we need to import Tool before ComponentTool)
 from .from_function import create_tool_from_function, tool
-from .tool import Tool, _check_duplicate_tool_names
+from .tool import Tool, _check_duplicate_tool_names, deserialize_tools_inplace
 from .component_tool import ComponentTool
-from .serde_utils import deserialize_tools_or_toolset_inplace, serialize_tools_or_toolset, deserialize_tools_inplace
+from .serde_utils import deserialize_tools_or_toolset_inplace, serialize_tools_or_toolset
 from .toolset import Toolset
 
 __all__ = [
