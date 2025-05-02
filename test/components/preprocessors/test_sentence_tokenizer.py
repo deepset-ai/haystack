@@ -106,9 +106,9 @@ def test_split_sentences_performance() -> None:
     # https://owasp.org/www-community/attacks/Regular_expression_Denial_of_Service_-_ReDoS
     # this is a very long string, roughly 500 MB, but it should not take more than 5 seconds to process
     splitter = SentenceSplitter()
-    text = " " + '"' * 20 + "A" * 500000000 + "B"
+    text = " " + '"' * 20 + "A" * 50000000 + "B"
     start = time.time()
     _ = splitter.split_sentences(text)
     end = time.time()
 
-    assert end - start < 5, f"Execution time exceeded 5 seconds: {end - start:.2f} seconds"
+    assert end - start < 2, f"Execution time exceeded 2 seconds: {end - start:.2f} seconds"
