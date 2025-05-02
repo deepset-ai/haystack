@@ -279,7 +279,6 @@ class ToolInvoker:
             except StringConversionError as conversion_error:
                 # If _handle_error re-raises, this properly preserves the chain
                 raise conversion_error from e
-
         return ChatMessage.from_tool(tool_result=tool_result_str, error=error, origin=tool_call)
 
     @staticmethod
@@ -452,12 +451,10 @@ class ToolInvoker:
                         result=tool_result, tool_call=tool_call, tool_to_invoke=tool_to_invoke
                     )
                 )
+
                 if streaming_callback is not None:
                     streaming_callback(
-                        StreamingChunk(
-                            content="",
-                            meta={"tool_result": tool_result, "tool_call": tool_call, "tool_to_invoke": tool_to_invoke},
-                        )
+                        StreamingChunk(content="", meta={"tool_result": tool_result, "tool_call": tool_call})
                     )
 
         return {"tool_messages": tool_messages, "state": state}
