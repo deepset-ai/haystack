@@ -1,0 +1,5 @@
+---
+
+fixes:
+  - |
+     A bug in the `RecursiveDocumentSplitter` was fixed for the case where a `split_text` is longer than the `split_length` and recursive chunking is triggered.

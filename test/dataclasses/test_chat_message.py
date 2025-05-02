@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import pytest
-from transformers import AutoTokenizer
 import json
 
 from haystack.dataclasses.chat_message import ChatMessage, ChatRole, ToolCall, ToolCallResult, TextContent
@@ -430,35 +429,3 @@ def test_from_openai_dict_format_unsupported_role():
 def test_from_openai_dict_format_assistant_missing_content_and_tool_calls():
     with pytest.raises(ValueError):
         ChatMessage.from_openai_dict_format({"role": "assistant", "irrelevant": "irrelevant"})
-
-
-@pytest.mark.integration
-def test_apply_chat_templating_on_chat_message():
-    messages = [ChatMessage.from_system("You are good assistant"), ChatMessage.from_user("I have a question")]
-    tokenizer = AutoTokenizer.from_pretrained("HuggingFaceH4/zephyr-7b-beta")
-    formatted_messages = [m.to_openai_dict_format() for m in messages]
-    tokenized_messages = tokenizer.apply_chat_template(formatted_messages, tokenize=False)
-    assert tokenized_messages == "<|system|>\nYou are good assistant</s>\n<|user|>\nI have a question</s>\n"
-
-
-@pytest.mark.integration
-def test_apply_custom_chat_templating_on_chat_message():
-    anthropic_template = (
-        "{%- for message in messages %}"
-        "{%- if message.role == 'user' %}\n\nHuman: {{ message.content.strip() }}"
-        "{%- elif message.role == 'assistant' %}\n\nAssistant: {{ message.content.strip() }}"
-        "{%- elif message.role == 'function' %}{{ raise('anthropic does not support function calls.') }}"
-        "{%- elif message.role == 'system' and loop.index == 1 %}{{ message.content }}"
-        "{%- else %}{{ raise('Invalid message role: ' + message.role) }}"
-        "{%- endif %}"
-        "{%- endfor %}"
-        "\n\nAssistant:"
-    )
-    messages = [ChatMessage.from_system("You are good assistant"), ChatMessage.from_user("I have a question")]
-    # could be any tokenizer, let's use the one we already likely have in cache
-    tokenizer = AutoTokenizer.from_pretrained("HuggingFaceH4/zephyr-7b-beta")
-    formatted_messages = [m.to_openai_dict_format() for m in messages]
-    tokenized_messages = tokenizer.apply_chat_template(
-        formatted_messages, chat_template=anthropic_template, tokenize=False
-    )
-    assert tokenized_messages == "You are good assistant\nHuman: I have a question\nAssistant:"

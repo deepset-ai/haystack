@@ -1,10 +1,10 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+
 import pytest
 
 from haystack.core.component.sockets import InputSocket, Sockets
-from haystack.core.pipeline import Pipeline
 from haystack.testing.factory import component_class
 
 

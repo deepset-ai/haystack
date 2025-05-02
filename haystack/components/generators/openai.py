@@ -224,22 +224,25 @@ class OpenAIGenerator:
         )
 
         completions: List[ChatMessage] = []
-        if isinstance(completion, Stream):
+        if streaming_callback is not None:
             num_responses = generation_kwargs.pop("n", 1)
             if num_responses > 1:
                 raise ValueError("Cannot stream multiple responses, please set n=1.")
             chunks: List[StreamingChunk] = []
-            completion_chunk: Optional[ChatCompletionChunk] = None
+            last_chunk: Optional[ChatCompletionChunk] = None
 
-            # pylint: disable=not-an-iterable
-            for completion_chunk in completion:
-                if completion_chunk.choices and streaming_callback:
-                    chunk_delta: StreamingChunk = self._build_chunk(completion_chunk)
-                    chunks.append(chunk_delta)
-                    streaming_callback(chunk_delta)  # invoke callback with the chunk_delta
-            # Makes type checkers happy
-            assert completion_chunk is not None
-            completions = [self._create_message_from_chunks(completion_chunk, chunks)]
+            for chunk in completion:
+                if isinstance(chunk, ChatCompletionChunk):
+                    last_chunk = chunk
+
+                    if chunk.choices:
+                        chunk_delta: StreamingChunk = self._build_chunk(chunk)
+                        chunks.append(chunk_delta)
+                        streaming_callback(chunk_delta)
+
+            assert last_chunk is not None
+
+            completions = [self._create_message_from_chunks(last_chunk, chunks)]
         elif isinstance(completion, ChatCompletion):
             completions = [self._build_message(completion, choice) for choice in completion.choices]
 
@@ -249,9 +252,21 @@ class OpenAIGenerator:
 
         return {"replies": [message.text for message in completions], "meta": [message.meta for message in completions]}
 
-    @staticmethod
+    def _serialize_usage(self, usage):
+        """Convert OpenAI usage object to serializable dict recursively"""
+        if hasattr(usage, "model_dump"):
+            return usage.model_dump()
+        elif hasattr(usage, "__dict__"):
+            return {k: self._serialize_usage(v) for k, v in usage.__dict__.items() if not k.startswith("_")}
+        elif isinstance(usage, dict):
+            return {k: self._serialize_usage(v) for k, v in usage.items()}
+        elif isinstance(usage, list):
+            return [self._serialize_usage(item) for item in usage]
+        else:
+            return usage
+
     def _create_message_from_chunks(
-        completion_chunk: ChatCompletionChunk, streamed_chunks: List[StreamingChunk]
+        self, completion_chunk: ChatCompletionChunk, streamed_chunks: List[StreamingChunk]
     ) -> ChatMessage:
         """
         Creates a single ChatMessage from the streamed chunks. Some data is retrieved from the completion chunk.
@@ -264,13 +279,12 @@ class OpenAIGenerator:
                 "index": 0,
                 "finish_reason": finish_reason,
                 "completion_start_time": streamed_chunks[0].meta.get("received_at"),  # first chunk received
-                "usage": dict(completion_chunk.usage or {}),
+                "usage": self._serialize_usage(completion_chunk.usage),
             }
         )
         return complete_response
 
-    @staticmethod
-    def _build_message(completion: Any, choice: Any) -> ChatMessage:
+    def _build_message(self, completion: Any, choice: Any) -> ChatMessage:
         """
         Converts the response from the OpenAI API to a ChatMessage.
 
@@ -289,7 +303,7 @@ class OpenAIGenerator:
                 "model": completion.model,
                 "index": choice.index,
                 "finish_reason": choice.finish_reason,
-                "usage": dict(completion.usage),
+                "usage": self._serialize_usage(completion.usage),
             }
         )
         return chat_message
