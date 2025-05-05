@@ -279,6 +279,7 @@ class OpenAIChatGenerator:
                 chat_completion,  # type: ignore
                 streaming_callback,  # type: ignore
             )
+
         else:
             assert isinstance(chat_completion, ChatCompletion), "Unexpected response type for non-streaming request."
             completions = [
@@ -355,6 +356,7 @@ class OpenAIChatGenerator:
                 chat_completion,  # type: ignore
                 streaming_callback,  # type: ignore
             )
+
         else:
             assert isinstance(chat_completion, ChatCompletion), "Unexpected response type for non-streaming request."
             completions = [
