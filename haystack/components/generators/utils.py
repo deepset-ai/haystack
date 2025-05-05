@@ -9,10 +9,18 @@ from haystack.dataclasses import StreamingChunk
 
 def print_streaming_chunk(chunk: StreamingChunk) -> None:
     """
-    Default callback function for streaming responses.
+    Callback function to handle and display streaming output chunks.
 
-    Prints the tokens of the first completion to stdout as soon as they are received.
-    Also prints the tool calls in the meta data of the chunk.
+    This function processes a `StreamingChunk` object by:
+    - Printing tool call metadata (if any), including function names and arguments, as they arrive.
+    - Printing tool call results when available.
+    - Printing the main content (e.g., text tokens) of the chunk as it is received.
+
+    The function outputs data directly to stdout and flushes output buffers to ensure immediate display during
+    streaming.
+
+    :param chunk: A chunk of streaming data containing content and optional metadata, such as tool calls and
+        tool results.
     """
     if chunk.meta.get("tool_calls"):
         for tool_call in chunk.meta["tool_calls"]:
