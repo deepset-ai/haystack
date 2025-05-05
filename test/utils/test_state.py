@@ -1,9 +1,8 @@
 import pytest
 from typing import List, Dict
 
-from haystack.dataclasses import ChatMessage
-from haystack.dataclasses.state import State, _validate_schema, _schema_to_dict, _schema_from_dict
-from haystack.dataclasses.state_utils import merge_lists, replace_values
+from haystack.dataclasses import ChatMessage, Document
+from haystack.utils.state import State, _validate_schema, _schema_to_dict, _schema_from_dict
 
 
 @pytest.fixture
@@ -195,10 +194,16 @@ def test_state_mutability():
 
 
 def test_state_to_dict():
-    schema = {"numbers": {"type": int}, "dict_of_lists": {"type": dict}}
-    state = State(schema)
-    state_dict = state.to_dict()
+    # we test dict, a python type and a haystack dataclass
+    state_schema = {"numbers": {"type": int}, "messages": {"type": List[ChatMessage]}, "dict_of_lists": {"type": dict}}
 
+    data = {
+        "numbers": 1,
+        "messages": [ChatMessage.from_user(text="Hello, world!")],
+        "dict_of_lists": {"numbers": [1, 2, 3]},
+    }
+    state = State(state_schema, data)
+    state_dict = state.to_dict()
     assert state_dict["schema"] == {
         "numbers": {"type": "int", "handler": "haystack.dataclasses.state_utils.replace_values"},
         "messages": {
@@ -207,4 +212,48 @@ def test_state_to_dict():
         },
         "dict_of_lists": {"type": "dict", "handler": "haystack.dataclasses.state_utils.replace_values"},
     }
-    assert state_dict["data"] == {}
+    assert state_dict["data"] == {
+        "numbers": 1,
+        "messages": [
+            {"role": "user", "meta": {}, "name": None, "content": [{"text": "Hello, world!"}], "_type": "ChatMessage"}
+        ],
+        "dict_of_lists": {"numbers": [1, 2, 3]},
+    }
+
+
+def test_state_from_dict():
+    state_dict = {
+        "schema": {
+            "numbers": {"type": "int", "handler": "haystack.dataclasses.state_utils.replace_values"},
+            "messages": {
+                "type": "typing.List[haystack.dataclasses.chat_message.ChatMessage]",
+                "handler": "haystack.dataclasses.state_utils.merge_lists",
+            },
+            "dict_of_lists": {"type": "dict", "handler": "haystack.dataclasses.state_utils.replace_values"},
+        },
+        "data": {
+            "numbers": 1,
+            "messages": [
+                {
+                    "role": "user",
+                    "meta": {},
+                    "name": None,
+                    "content": [{"text": "Hello, world!"}],
+                    "_type": "ChatMessage",
+                }
+            ],
+            "dict_of_lists": {"numbers": [1, 2, 3]},
+        },
+    }
+    state = State.from_dict(state_dict)
+    # Check types are correctly converted
+    assert state.schema["numbers"]["type"] == int
+    assert state.schema["dict_of_lists"]["type"] == dict
+    # Check handlers are functions, not comparing exact functions as they might be different references
+    assert callable(state.schema["numbers"]["handler"])
+    assert callable(state.schema["messages"]["handler"])
+    assert callable(state.schema["dict_of_lists"]["handler"])
+    # Check data is correct
+    assert state.data["numbers"] == 1
+    assert state.data["messages"] == [ChatMessage.from_user(text="Hello, world!")]
+    assert state.data["dict_of_lists"] == {"numbers": [1, 2, 3]}
