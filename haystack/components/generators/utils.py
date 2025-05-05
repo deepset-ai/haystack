@@ -26,9 +26,12 @@ def print_streaming_chunk(chunk: StreamingChunk) -> None:
     if chunk.meta.get("tool_calls"):
         for tool_call in chunk.meta["tool_calls"]:
             if isinstance(tool_call, ChoiceDeltaToolCall) and tool_call.function:
+                # print the tool name
                 if tool_call.function.name and not tool_call.function.arguments:
-                    print(f"[TOOL CALL - {tool_call.function.name}] ", flush=True, end="")
+                    print("[TOOL CALL]\n", flush=True, end="")
+                    print(f"Tool: {tool_call.function.name} ", flush=True, end="")
 
+                # print the tool arguments
                 if tool_call.function.arguments:
                     if tool_call.function.arguments.startswith("{"):
                         print("\nArguments: ", flush=True, end="")
