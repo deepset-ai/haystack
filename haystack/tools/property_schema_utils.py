@@ -79,11 +79,8 @@ def _create_union_schema(types: tuple, description: str) -> Dict[str, Any]:
                 arg_schema = {"type": "object", "additionalProperties": True}
             elif get_origin(arg_type) is list:
                 item_type = get_args(arg_type)[0] if get_args(arg_type) else Any
-                if item_type is dict or (get_origin(item_type) is dict):
-                    items_schema = {"type": "object", "additionalProperties": True}
-                else:
-                    items_schema = _create_property_schema(item_type, "")
-                    items_schema.pop("description", None)
+                items_schema = _create_property_schema(item_type, description)
+                items_schema.pop("description", None)
                 arg_schema = {"type": "array", "items": items_schema}
             else:
                 arg_schema = _create_property_schema(arg_type, "")
