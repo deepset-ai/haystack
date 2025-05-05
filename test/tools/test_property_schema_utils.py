@@ -1,7 +1,60 @@
 import pytest
-from typing import Any, Dict, List, Union, Optional
+from typing import Any, Dict, List, Optional, Set, Union
 
+from haystack.dataclasses import ByteStream, ChatMessage, Document
 from haystack.tools.property_schema_utils import _create_property_schema
+
+
+BYTE_STREAM_SCHEMA = {
+    "type": "object",
+    "description": "A byte stream",
+    "properties": {
+        "data": {"type": "string", "description": "Field 'data' of 'ByteStream'."},
+        "meta": {"type": "object", "description": "Field 'meta' of 'ByteStream'.", "additionalProperties": True},
+        "mime_type": {"type": "string", "description": "Field 'mime_type' of 'ByteStream'."},
+    },
+}
+
+DOCUMENT_SCHEMA = {
+    "type": "object",
+    "description": "A document",
+    "properties": {
+        "id": {"type": "string", "description": "Field 'id' of 'Document'."},
+        "content": {"type": "string", "description": "Field 'content' of 'Document'."},
+        "blob": {
+            "type": "object",
+            "description": "Field 'blob' of 'Document'.",
+            "properties": {
+                "data": {"type": "string", "description": "Field 'data' of 'ByteStream'."},
+                "meta": {
+                    "type": "object",
+                    "description": "Field 'meta' of 'ByteStream'.",
+                    "additionalProperties": True,
+                },
+                "mime_type": {"type": "string", "description": "Field 'mime_type' of 'ByteStream'."},
+            },
+        },
+        "meta": {"type": "object", "description": "Field 'meta' of 'Document'.", "additionalProperties": True},
+        "score": {"type": "number", "description": "Field 'score' of 'Document'."},
+        "embedding": {"type": "array", "description": "Field 'embedding' of 'Document'.", "items": {"type": "number"}},
+        "sparse_embedding": {
+            "type": "object",
+            "description": "Field 'sparse_embedding' of 'Document'.",
+            "properties": {
+                "indices": {
+                    "type": "array",
+                    "description": "Field 'indices' of 'SparseEmbedding'.",
+                    "items": {"type": "integer"},
+                },
+                "values": {
+                    "type": "array",
+                    "description": "Field 'values' of 'SparseEmbedding'.",
+                    "items": {"type": "number"},
+                },
+            },
+        },
+    },
+}
 
 
 @pytest.mark.parametrize(
@@ -82,6 +135,36 @@ def test_create_property_schema_list_of_types(python_type, description, expected
     "python_type, description, expected_schema",
     [
         (
+            Set[str],
+            "A set of strings",
+            {"type": "array", "description": "A set of strings", "items": {"type": "string"}},
+        ),
+        (
+            Set[int],
+            "A set of integers",
+            {"type": "array", "description": "A set of integers", "items": {"type": "integer"}},
+        ),
+        (
+            Set[float],
+            "A set of floats",
+            {"type": "array", "description": "A set of floats", "items": {"type": "number"}},
+        ),
+        (
+            Set[bool],
+            "A set of booleans",
+            {"type": "array", "description": "A set of booleans", "items": {"type": "boolean"}},
+        ),
+    ],
+)
+def test_create_property_schema_set_of_types(python_type, description, expected_schema):
+    schema = _create_property_schema(python_type, description)
+    # assert schema == expected_schema
+
+
+@pytest.mark.parametrize(
+    "python_type, description, expected_schema",
+    [
+        (
             Union[str, int],
             "A union of string and integer",
             {"description": "A union of string and integer", "oneOf": [{"type": "string"}, {"type": "integer"}]},
@@ -104,6 +187,56 @@ def test_create_property_schema_union_type(python_type, description, expected_sc
 @pytest.mark.parametrize(
     "python_type, description, expected_schema",
     [
+        (ByteStream, "A byte stream", BYTE_STREAM_SCHEMA),
+        (Document, "A document", DOCUMENT_SCHEMA),
+        (
+            ChatMessage,
+            "A chat message",
+            {
+                "type": "object",
+                "description": "A chat message",
+                "properties": {
+                    "_role": {"type": "string", "description": "Field '_role' of 'ChatMessage'."},
+                    "_content": {"type": "string", "description": "Field '_content' of 'ChatMessage'."},
+                    "_name": {"type": "string", "description": "Field '_name' of 'ChatMessage'."},
+                    "_meta": {
+                        "type": "object",
+                        "description": "Field '_meta' of 'ChatMessage'.",
+                        "additionalProperties": True,
+                    },
+                },
+            },
+        ),
+    ],
+)
+def test_create_property_schema_haystack_dataclasses(python_type, description, expected_schema):
+    """
+    Test the _create_property_schema function with haystack dataclasses.
+    """
+    schema = _create_property_schema(python_type, description)
+    assert schema == expected_schema
+
+
+# Optional[Set[str]]
+# Optional[Dict[str, Any]]
+# Dict[str, Any]
+# Union[List[str], str]
+# List[Any]
+# List[Document]
+# List[List[Document]]
+# List[ChatMessage]
+# Optional[Union[List[Tool], Toolset]]
+# Optional[Callable[[StreamingChunk], None]]
+# Optional[Literal["standard", "hd"]]
+# Optional[List[ChatMessage]]
+# Optional[DuplicatePolicy]
+# Union[List[str], List[ChatMessage]]
+# List[Union[str, Path, ByteStream]]
+# Optional[Union[Dict[str, Any], List[Dict[str, Any]]]]
+# Optional[List[Union[str, int]]]
+@pytest.mark.parametrize(
+    "python_type, description, expected_schema",
+    [
         (
             Union[Dict[str, Any], List[Dict[str, Any]]],
             "Often found as the runtime param `meta` in our components",
@@ -123,3 +256,8 @@ def test_create_property_schema_complex_types(python_type, description, expected
     """
     schema = _create_property_schema(python_type, description)
     assert schema == expected_schema
+
+
+# TODO Should we support our Joiners. I.e. support our Variadic type?
+# Variadic[str]
+# Variadic[List[str]]

@@ -6,7 +6,7 @@ import json
 import os
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Dict, List, Union, Optional, Any
+from typing import Dict, List
 
 import pytest
 
@@ -130,6 +130,8 @@ def output_handler(old, new):
     return old + new
 
 
+# TODO Add test for Builder components that have dynamic input types
+#      Does create_parameters schema work in these cases?
 # Unit tests
 class TestComponentTool:
     def test_from_component_basic(self):
