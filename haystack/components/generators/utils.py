@@ -22,6 +22,7 @@ def print_streaming_chunk(chunk: StreamingChunk) -> None:
     :param chunk: A chunk of streaming data containing content and optional metadata, such as tool calls and
         tool results.
     """
+    # Print tool call metadata if available (from ChatGenerator)
     if chunk.meta.get("tool_calls"):
         for tool_call in chunk.meta["tool_calls"]:
             if isinstance(tool_call, ChoiceDeltaToolCall) and tool_call.function:
@@ -35,8 +36,10 @@ def print_streaming_chunk(chunk: StreamingChunk) -> None:
                     if tool_call.function.arguments.endswith("}"):
                         print("\n\n", flush=True, end="")
 
+    # Print tool call results if available (from ToolInvoker)
     if chunk.meta.get("tool_result"):
         print(f"[TOOL RESULT]\n{chunk.meta['tool_result']}\n\n", flush=True, end="")
 
+    # Print the main content of the chunk (from ChatGenerator)
     if chunk.content:
         print(chunk.content, flush=True, end="")
