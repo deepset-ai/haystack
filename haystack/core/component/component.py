@@ -165,7 +165,9 @@ class Component(Protocol):
     # arguments. Even defining here a method with `**kwargs` doesn't work as the
     # expected signature must be identical.
     # This makes most Language Servers and type checkers happy and shows less errors.
-    run: Callable[..., Dict[str, Any]]
+    # run: Callable[..., Dict[str, Any]]
+    def run(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:  # pylint: disable=missing-function-docstring # noqa: D102
+        ...
 
 
 class ComponentMeta(type):
