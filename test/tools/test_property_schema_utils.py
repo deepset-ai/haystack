@@ -1,5 +1,5 @@
 import pytest
-from typing import Any, Dict, List, Optional, Set, Union
+from typing import Any, Dict, List, Optional, Union
 
 from haystack.dataclasses import ByteStream, ChatMessage, Document
 from haystack.tools.property_schema_utils import _create_property_schema
@@ -189,36 +189,6 @@ def test_create_property_schema_list_of_types(python_type, description, expected
     "python_type, description, expected_schema",
     [
         (
-            Set[str],
-            "A set of strings",
-            {"type": "array", "description": "A set of strings", "items": {"type": "string"}},
-        ),
-        (
-            Set[int],
-            "A set of integers",
-            {"type": "array", "description": "A set of integers", "items": {"type": "integer"}},
-        ),
-        (
-            Set[float],
-            "A set of floats",
-            {"type": "array", "description": "A set of floats", "items": {"type": "number"}},
-        ),
-        (
-            Set[bool],
-            "A set of booleans",
-            {"type": "array", "description": "A set of booleans", "items": {"type": "boolean"}},
-        ),
-    ],
-)
-def test_create_property_schema_set_of_types(python_type, description, expected_schema):
-    schema = _create_property_schema(python_type, description)
-    # assert schema == expected_schema
-
-
-@pytest.mark.parametrize(
-    "python_type, description, expected_schema",
-    [
-        (
             Union[str, int],
             "A union of string and integer",
             {"description": "A union of string and integer", "oneOf": [{"type": "string"}, {"type": "integer"}]},
@@ -292,19 +262,6 @@ def test_create_property_schema_haystack_dataclasses(python_type, description, e
     assert schema == expected_schema
 
 
-# Optional[Set[str]]
-# Optional[Dict[str, Any]]
-# Dict[str, Any]
-# Union[List[str], str]
-# List[Any]
-# Optional[Union[List[Tool], Toolset]]
-# Optional[Callable[[StreamingChunk], None]]
-# Optional[Literal["standard", "hd"]]
-# Optional[DuplicatePolicy]
-# Union[List[str], List[ChatMessage]]
-# List[Union[str, Path, ByteStream]]
-# Optional[Union[Dict[str, Any], List[Dict[str, Any]]]]
-# Optional[List[Union[str, int]]]
 @pytest.mark.parametrize(
     "python_type, description, expected_schema",
     [
