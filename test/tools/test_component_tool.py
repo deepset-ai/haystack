@@ -264,49 +264,64 @@ class TestComponentTool:
                         "type": "object",
                         "properties": {
                             "id": {"type": "string", "description": "Field 'id' of 'Document'."},
-                            "content": {"type": "string", "description": "Field 'content' of 'Document'."},
+                            "content": {
+                                "oneOf": [{"type": "string"}, {"type": "null"}],
+                                "description": "Field 'content' of 'Document'.",
+                            },
                             "blob": {
-                                "type": "object",
-                                "description": "Field 'blob' of 'Document'.",
-                                "properties": {
-                                    "data": {"type": "string", "description": "Field 'data' of 'ByteStream'."},
-                                    "meta": {
+                                "oneOf": [
+                                    {
                                         "type": "object",
-                                        "description": "Field 'meta' of 'ByteStream'.",
-                                        "additionalProperties": True,
+                                        "properties": {
+                                            "data": {"type": "string", "description": "Field 'data' of 'ByteStream'."},
+                                            "meta": {
+                                                "type": "object",
+                                                "description": "Field 'meta' of 'ByteStream'.",
+                                                "additionalProperties": True,
+                                            },
+                                            "mime_type": {
+                                                "oneOf": [{"type": "string"}, {"type": "null"}],
+                                                "description": "Field 'mime_type' of 'ByteStream'.",
+                                            },
+                                        },
                                     },
-                                    "mime_type": {
-                                        "type": "string",
-                                        "description": "Field 'mime_type' of 'ByteStream'.",
-                                    },
-                                },
+                                    {"type": "null"},
+                                ],
+                                "description": "Field 'blob' of 'Document'.",
                             },
                             "meta": {
                                 "type": "object",
                                 "description": "Field 'meta' of 'Document'.",
                                 "additionalProperties": True,
                             },
-                            "score": {"type": "number", "description": "Field 'score' of 'Document'."},
+                            "score": {
+                                "oneOf": [{"type": "number"}, {"type": "null"}],
+                                "description": "Field 'score' of 'Document'.",
+                            },
                             "embedding": {
-                                "type": "array",
+                                "oneOf": [{"type": "array", "items": {"type": "number"}}, {"type": "null"}],
                                 "description": "Field 'embedding' of 'Document'.",
-                                "items": {"type": "number"},
                             },
                             "sparse_embedding": {
-                                "type": "object",
+                                "oneOf": [
+                                    {
+                                        "type": "object",
+                                        "properties": {
+                                            "indices": {
+                                                "type": "array",
+                                                "description": "Field 'indices' of 'SparseEmbedding'.",
+                                                "items": {"type": "integer"},
+                                            },
+                                            "values": {
+                                                "type": "array",
+                                                "description": "Field 'values' of 'SparseEmbedding'.",
+                                                "items": {"type": "number"},
+                                            },
+                                        },
+                                    },
+                                    {"type": "null"},
+                                ],
                                 "description": "Field 'sparse_embedding' of 'Document'.",
-                                "properties": {
-                                    "indices": {
-                                        "type": "array",
-                                        "description": "Field 'indices' of 'SparseEmbedding'.",
-                                        "items": {"type": "integer"},
-                                    },
-                                    "values": {
-                                        "type": "array",
-                                        "description": "Field 'values' of 'SparseEmbedding'.",
-                                        "items": {"type": "number"},
-                                    },
-                                },
                             },
                         },
                     },
