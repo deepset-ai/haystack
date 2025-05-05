@@ -81,9 +81,7 @@ CHAT_MESSAGE_SCHEMA = {
         (int, {"type": "integer", "description": ""}),
         (float, {"type": "number", "description": ""}),
         (bool, {"type": "boolean", "description": ""}),
-        # TODO Check if LLM providers can handle this schema
         (list, {"type": "array", "description": ""}),
-        # TODO Check if LLM providers can handle this schema (e.g. additionalProperties and or empty object)
         (dict, {"type": "object", "description": "", "additionalProperties": True}),
     ],
 )
@@ -98,22 +96,42 @@ def test_create_property_schema_bare_types(python_type, expected_schema):
 @pytest.mark.parametrize(
     "python_type, description, expected_schema",
     [
-        (Optional[str], "An optional string", {"type": "string", "description": "An optional string"}),
-        (Optional[int], "An optional integer", {"type": "integer", "description": "An optional integer"}),
-        (Optional[float], "An optional float", {"type": "number", "description": "An optional float"}),
-        (Optional[bool], "An optional boolean", {"type": "boolean", "description": "An optional boolean"}),
-        (Optional[list], "An optional list", {"type": "array", "description": "An optional list"}),
+        (
+            Optional[str],
+            "An optional string",
+            {"oneOf": [{"type": "string"}, {"type": "null"}], "description": "An optional string"},
+        ),
+        (
+            Optional[int],
+            "An optional integer",
+            {"oneOf": [{"type": "integer"}, {"type": "null"}], "description": "An optional integer"},
+        ),
+        (
+            Optional[float],
+            "An optional float",
+            {"oneOf": [{"type": "number"}, {"type": "null"}], "description": "An optional float"},
+        ),
+        (
+            Optional[bool],
+            "An optional boolean",
+            {"oneOf": [{"type": "boolean"}, {"type": "null"}], "description": "An optional boolean"},
+        ),
+        (
+            Optional[list],
+            "An optional list",
+            {"oneOf": [{"type": "array"}, {"type": "null"}], "description": "An optional list"},
+        ),
         (
             Optional[dict],
             "An optional dict",
-            {"type": "object", "description": "An optional dict", "additionalProperties": True},
+            {
+                "oneOf": [{"type": "object", "additionalProperties": True}, {"type": "null"}],
+                "description": "An optional dict",
+            },
         ),
     ],
 )
 def test_create_property_schema_optional_types(python_type, description, expected_schema):
-    """
-    Should produce the same schema as the bare type because the optional type is handled through the required field.
-    """
     schema = _create_property_schema(python_type, description)
     assert schema == expected_schema
 

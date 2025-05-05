@@ -42,17 +42,25 @@ def _create_basic_type_schema(python_type: Any, description: str) -> Dict[str, U
     :param description: The description of the type.
     :returns: A dictionary representing the basic type schema.
     """
-    # Special case for dict
-    if python_type is dict:
-        return {"type": "object", "description": description, "additionalProperties": True}
-
-    type_mapping = {str: "string", int: "integer", float: "number", bool: "boolean", list: "array", dict: "object"}
+    type_mapping = {
+        str: "string",
+        int: "integer",
+        float: "number",
+        bool: "boolean",
+        list: "array",
+        dict: "object",
+        type(None): "null",
+    }
     resolved_type_mapping = type_mapping.get(python_type)
     if resolved_type_mapping is None:
-        # TODO Add warning?
         # If the type is not found in the mapping, default to "string"
         resolved_type_mapping = "string"
-    return {"type": resolved_type_mapping, "description": description}
+
+    schema = {"type": resolved_type_mapping, "description": description}
+    if schema["type"] == "object":
+        # If the type is an object, set additionalProperties to True
+        schema["additionalProperties"] = True
+    return schema
 
 
 def _create_union_schema(types: tuple, description: str) -> Dict[str, Any]:
@@ -100,22 +108,10 @@ def _create_property_schema(python_type: Any, description: str, default: Any = N
     :returns: A dictionary representing the property schema.
     :raises SchemaGenerationError: If schema generation fails, e.g., for unsupported types like Pydantic v2 models
     """
-    # Checks if the type is a Union with NoneType (i.e., Optional).
-    nullable = False
-    origin = get_origin(python_type)
-    if origin is Union:
-        nullable = type(None) in get_args(python_type)
-    # TODO Why does this only trigger when using Optional?
-    if nullable:
-        non_none_types = [t for t in get_args(python_type) if not isinstance(t, type(None))]
-        # TODO This isn't great b/c this means we ignore the other types in the Union
-        python_type = non_none_types[0] if non_none_types else str
-
     origin = get_origin(python_type)
     args = get_args(python_type)
 
-    # Handle other dict types
-    # TODO Should handle if Dict has args? --> should also make it recursive
+    # Handle dict type. Not possible to use args info here because we don't know the name of the key.
     if origin is dict:
         schema = {"type": "object", "description": description, "additionalProperties": True}
     # Handle list
