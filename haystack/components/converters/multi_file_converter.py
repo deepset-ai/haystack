@@ -82,22 +82,22 @@ class MultiFileConverter:
 
         # We use type ignore here to avoid type checking errors
         # This is due to how the run method within the Component protocol is defined
-        pp.add_component("router", router)  # type: ignore[arg-type]
-        pp.add_component("docx", DOCXToDocument(link_format="markdown"))  # type: ignore[arg-type]
+        pp.add_component("router", router)
+        pp.add_component("docx", DOCXToDocument(link_format="markdown"))
         pp.add_component(
             "html",
-            HTMLToDocument(  # type: ignore[arg-type]
+            HTMLToDocument(
                 extraction_kwargs={"output_format": "markdown", "include_tables": True, "include_links": True}
             ),
         )
-        pp.add_component("json", JSONConverter(content_key=self.json_content_key))  # type: ignore[arg-type]
-        pp.add_component("md", TextFileToDocument(encoding=self.encoding))  # type: ignore[arg-type]
-        pp.add_component("text", TextFileToDocument(encoding=self.encoding))  # type: ignore[arg-type]
-        pp.add_component("pdf", PyPDFToDocument())  # type: ignore[arg-type]
-        pp.add_component("pptx", PPTXToDocument())  # type: ignore[arg-type]
-        pp.add_component("xlsx", XLSXToDocument())  # type: ignore[arg-type]
-        pp.add_component("joiner", DocumentJoiner())  # type: ignore[arg-type]
-        pp.add_component("csv", CSVToDocument(encoding=self.encoding))  # type: ignore[arg-type]
+        pp.add_component("json", JSONConverter(content_key=self.json_content_key))
+        pp.add_component("md", TextFileToDocument(encoding=self.encoding))
+        pp.add_component("text", TextFileToDocument(encoding=self.encoding))
+        pp.add_component("pdf", PyPDFToDocument())
+        pp.add_component("pptx", PPTXToDocument())
+        pp.add_component("xlsx", XLSXToDocument())
+        pp.add_component("joiner", DocumentJoiner())
+        pp.add_component("csv", CSVToDocument(encoding=self.encoding))
 
         for mime_type in ConverterMimeType:
             pp.connect(f"router.{mime_type.value}", str(mime_type).lower().rsplit(".", maxsplit=1)[-1])

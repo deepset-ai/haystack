@@ -76,7 +76,7 @@ from contextvars import ContextVar
 from copy import deepcopy
 from dataclasses import dataclass
 from types import new_class
-from typing import Any, Dict, Optional, Protocol, Type, TypeVar, Union, runtime_checkable
+from typing import Any, Dict, Mapping, Optional, Protocol, Type, TypeVar, Union, runtime_checkable
 
 from typing_extensions import ParamSpec
 
@@ -165,7 +165,8 @@ class Component(Protocol):
     # arguments. Even defining here a method with `**kwargs` doesn't work as the
     # expected signature must be identical.
     # This makes most Language Servers and type checkers happy and shows less errors.
-    run: Callable[..., Dict[str, Any]]
+    @property
+    def run(self) -> Callable[..., Dict[str, Any]]: ...  # pylint: disable=missing-function-docstring # noqa: D102
 
 
 class ComponentMeta(type):
