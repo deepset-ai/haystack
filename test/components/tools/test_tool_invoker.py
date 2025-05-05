@@ -11,6 +11,7 @@ from haystack.dataclasses import ChatMessage, ToolCall, ToolCallResult, ChatRole
 from haystack.dataclasses.state import State
 from haystack.tools import ComponentTool, Tool, Toolset
 from haystack.tools.errors import ToolInvocationError
+from haystack.dataclasses import StreamingChunk
 
 
 def weather_function(location):
@@ -162,13 +163,22 @@ class TestToolInvoker:
         args = ToolInvoker._inject_state_args(tool=weather_tool, llm_args={"location": "Paris"}, state=state)
         assert args == {"location": "Paris"}
 
-    def test_run(self, invoker):
+    def test_run_with_streaming_callback(self, invoker):
+        streaming_callback_called = False
+
+        def streaming_callback(chunk: StreamingChunk) -> None:
+            nonlocal streaming_callback_called
+            streaming_callback_called = True
+
         tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
         message = ChatMessage.from_assistant(tool_calls=[tool_call])
 
-        result = invoker.run(messages=[message])
+        result = invoker.run(messages=[message], streaming_callback=streaming_callback)
         assert "tool_messages" in result
         assert len(result["tool_messages"]) == 1
+
+        # check we called the streaming callback
+        assert streaming_callback_called
 
         tool_message = result["tool_messages"][0]
         assert isinstance(tool_message, ChatMessage)
