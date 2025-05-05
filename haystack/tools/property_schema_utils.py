@@ -25,7 +25,7 @@ def _create_dataclass_schema(python_type: Any, description: str) -> Dict[str, An
     :param description: The description of the dataclass.
     :returns: A dictionary representing the dataclass schema.
     """
-    schema = {"type": "object", "description": description, "properties": {}}
+    schema: Dict[str, Any] = {"type": "object", "description": description, "properties": {}}
     cls = python_type if isinstance(python_type, type) else python_type.__class__
     for field in fields(cls):
         field_description = f"Field '{field.name}' of '{cls.__name__}'."
@@ -56,7 +56,7 @@ def _create_basic_type_schema(python_type: Any, description: str) -> Dict[str, U
         # If the type is not found in the mapping, default to "string"
         resolved_type_mapping = "string"
 
-    schema = {"type": resolved_type_mapping, "description": description}
+    schema: Dict[str, Union[str, bool]] = {"type": resolved_type_mapping, "description": description}
     if schema["type"] == "object":
         # If the type is an object, set additionalProperties to True
         schema["additionalProperties"] = True
@@ -97,6 +97,7 @@ def _create_property_schema(python_type: Any, description: str, default: Any = N
     """
     origin = get_origin(python_type)
     args = get_args(python_type)
+    schema: Dict[str, Any]
 
     # Handle dict type. Not possible to use args info here because we don't know the name of the key.
     if origin is dict:
