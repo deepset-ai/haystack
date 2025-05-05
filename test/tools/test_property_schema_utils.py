@@ -265,12 +265,22 @@ def test_create_property_schema_union_type(python_type, description, expected_sc
         (
             Optional[List[ChatMessage]],
             "An optional list of chat messages",
-            remove_item(CHAT_MESSAGE_SCHEMA, "description"),
+            {
+                "oneOf": [
+                    {"type": "array", "items": remove_item(CHAT_MESSAGE_SCHEMA, "description")},
+                    {"type": "null"},
+                ],
+                "description": "An optional list of chat messages",
+            },
         ),
         (
             List[List[Document]],
             "A list of lists of documents",
-            {"type": "array", "items": {"type": "array", "items": remove_item(DOCUMENT_SCHEMA, "description")}},
+            {
+                "type": "array",
+                "items": {"type": "array", "items": remove_item(DOCUMENT_SCHEMA, "description")},
+                "description": "A list of lists of documents",
+            },
         ),
     ],
 )
