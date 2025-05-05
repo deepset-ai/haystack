@@ -5,6 +5,12 @@ from haystack.dataclasses import ByteStream, ChatMessage, Document
 from haystack.tools.property_schema_utils import _create_property_schema
 
 
+def remove_item(d, key):
+    new_d = d.copy()
+    new_d.pop(key, None)
+    return new_d
+
+
 BYTE_STREAM_SCHEMA = {
     "type": "object",
     "description": "A byte stream",
@@ -53,6 +59,17 @@ DOCUMENT_SCHEMA = {
                 },
             },
         },
+    },
+}
+
+CHAT_MESSAGE_SCHEMA = {
+    "type": "object",
+    "description": "A chat message",
+    "properties": {
+        "_role": {"type": "string", "description": "Field '_role' of 'ChatMessage'."},
+        "_content": {"type": "string", "description": "Field '_content' of 'ChatMessage'."},
+        "_name": {"type": "string", "description": "Field '_name' of 'ChatMessage'."},
+        "_meta": {"type": "object", "description": "Field '_meta' of 'ChatMessage'.", "additionalProperties": True},
     },
 }
 
@@ -158,7 +175,7 @@ def test_create_property_schema_list_of_types(python_type, description, expected
 )
 def test_create_property_schema_set_of_types(python_type, description, expected_schema):
     schema = _create_property_schema(python_type, description)
-    # assert schema == expected_schema
+    assert schema == expected_schema
 
 
 @pytest.mark.parametrize(
@@ -189,23 +206,34 @@ def test_create_property_schema_union_type(python_type, description, expected_sc
     [
         (ByteStream, "A byte stream", BYTE_STREAM_SCHEMA),
         (Document, "A document", DOCUMENT_SCHEMA),
+        (ChatMessage, "A chat message", CHAT_MESSAGE_SCHEMA),
         (
-            ChatMessage,
-            "A chat message",
+            List[Document],
+            "A list of documents",
             {
-                "type": "object",
-                "description": "A chat message",
-                "properties": {
-                    "_role": {"type": "string", "description": "Field '_role' of 'ChatMessage'."},
-                    "_content": {"type": "string", "description": "Field '_content' of 'ChatMessage'."},
-                    "_name": {"type": "string", "description": "Field '_name' of 'ChatMessage'."},
-                    "_meta": {
-                        "type": "object",
-                        "description": "Field '_meta' of 'ChatMessage'.",
-                        "additionalProperties": True,
-                    },
-                },
+                "type": "array",
+                "description": "A list of documents",
+                "items": remove_item(DOCUMENT_SCHEMA, "description"),
             },
+        ),
+        (
+            List[ChatMessage],
+            "A list of chat messages",
+            {
+                "type": "array",
+                "description": "A list of chat messages",
+                "items": remove_item(CHAT_MESSAGE_SCHEMA, "description"),
+            },
+        ),
+        (
+            Optional[List[ChatMessage]],
+            "An optional list of chat messages",
+            remove_item(CHAT_MESSAGE_SCHEMA, "description"),
+        ),
+        (
+            List[List[Document]],
+            "A list of lists of documents",
+            {"type": "array", "items": {"type": "array", "items": remove_item(DOCUMENT_SCHEMA, "description")}},
         ),
     ],
 )
@@ -222,13 +250,9 @@ def test_create_property_schema_haystack_dataclasses(python_type, description, e
 # Dict[str, Any]
 # Union[List[str], str]
 # List[Any]
-# List[Document]
-# List[List[Document]]
-# List[ChatMessage]
 # Optional[Union[List[Tool], Toolset]]
 # Optional[Callable[[StreamingChunk], None]]
 # Optional[Literal["standard", "hd"]]
-# Optional[List[ChatMessage]]
 # Optional[DuplicatePolicy]
 # Union[List[str], List[ChatMessage]]
 # List[Union[str, Path, ByteStream]]
@@ -256,8 +280,3 @@ def test_create_property_schema_complex_types(python_type, description, expected
     """
     schema = _create_property_schema(python_type, description)
     assert schema == expected_schema
-
-
-# TODO Should we support our Joiners. I.e. support our Variadic type?
-# Variadic[str]
-# Variadic[List[str]]
