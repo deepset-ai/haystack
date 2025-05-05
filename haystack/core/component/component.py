@@ -160,12 +160,27 @@ class Component(Protocol):
         isinstance(MyComponent, Component)
     """
 
-    # This is the most reliable way to define the protocol for the `run` method.
-    # Defining a method doesn't work as different Components will have different
-    # arguments. Even defining here a method with `**kwargs` doesn't work as the
-    # expected signature must be identical.
-    # This makes most Language Servers and type checkers happy and shows less errors.
-    # run: Callable[..., Dict[str, Any]]
+    # The following expression defines a run method compatible with any input signature.
+    # Its type is equivalent to Callable[..., Dict[str, Any]].
+    # See https://typing.python.org/en/latest/spec/callables.html#meaning-of-in-callable.
+    #
+    # Using `run: Callable[..., Dict[str, Any]]` directly leads to type errors: the protocol would expect a settable
+    # attribute `run`, while the actual implementation is a read-only method.
+    # For example:
+    # from haystack import Pipeline, component
+    # @component
+    # class MyComponent:
+    #     @component.output_types(out=str)
+    #     def run(self):
+    #         return {"out": "Hello, world!"}
+    # pipeline = Pipeline()
+    # pipeline.add_component("my_component", MyComponent())
+    #
+    # mypy raises:
+    # error: Argument 2 to "add_component" of "PipelineBase" has incompatible type "MyComponent"; expected "Component"
+    # [arg-type]
+    # note: Protocol member Component.run expected settable variable, got read-only attribute
+
     def run(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:  # pylint: disable=missing-function-docstring # noqa: D102
         ...
 

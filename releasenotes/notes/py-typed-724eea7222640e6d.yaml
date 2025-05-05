@@ -1,0 +1,9 @@
+---
+upgrade:
+  - |
+    We've added a `py.typed` file to Haystack to enable type information to be used by downstream projects, in line
+    with PEP 561. This means Haystack's type hints will now be visible to type checkers in projects that depend on it.
+    Haystack is primarily type checked using mypy (not pyright) and, despite our efforts, some type information can
+    be incomplete or unreliable.
+    If you use static type checking in your own project, you may notice some changes: previously, Haystack's types were
+    effectively treated as `Any`, but now actual type information will be available and enforced.
