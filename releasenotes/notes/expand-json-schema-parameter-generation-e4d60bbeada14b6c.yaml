@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Upgraded the automatic parameter JSON schema specification for ComponentTool.
+    Added support for Union type, dict types like Dict[str, Any], and allowing null to be an option when using Optional[someType].

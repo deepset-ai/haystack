@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from copy import copy, deepcopy
-from dataclasses import fields, is_dataclass
 from inspect import getdoc
 from typing import Any, Callable, Dict, Optional, Union, get_args, get_origin
 
@@ -20,6 +19,7 @@ from haystack.core.serialization import (
 from haystack.lazy_imports import LazyImport
 from haystack.tools import Tool
 from haystack.tools.errors import SchemaGenerationError
+from haystack.tools.property_schema_utils import _create_property_schema
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 
 with LazyImport(message="Run 'pip install docstring-parser'") as docstring_parser_import:
@@ -288,7 +288,7 @@ class ComponentTool(Tool):
             description = param_descriptions.get(input_name, f"Input '{input_name}' for the component.")
 
             try:
-                property_schema = self._create_property_schema(input_type, description)
+                property_schema = _create_property_schema(input_type, description)
             except Exception as e:
                 raise SchemaGenerationError(
                     f"Error processing input '{input_name}': {e}. "
@@ -333,92 +333,6 @@ class ComponentTool(Tool):
                 )
             param_descriptions[param.arg_name] = param.description.strip() if param.description else ""
         return param_descriptions
-
-    @staticmethod
-    def _is_nullable_type(python_type: Any) -> bool:
-        """
-        Checks if the type is a Union with NoneType (i.e., Optional).
-
-        :param python_type: The Python type to check.
-        :returns: True if the type is a Union with NoneType, False otherwise.
-        """
-        origin = get_origin(python_type)
-        if origin is Union:
-            return type(None) in get_args(python_type)
-        return False
-
-    def _create_list_schema(self, item_type: Any, description: str) -> Dict[str, Any]:
-        """
-        Creates a schema for a list type.
-
-        :param item_type: The type of items in the list.
-        :param description: The description of the list.
-        :returns: A dictionary representing the list schema.
-        """
-        items_schema = self._create_property_schema(item_type, "")
-        items_schema.pop("description", None)
-        return {"type": "array", "description": description, "items": items_schema}
-
-    def _create_dataclass_schema(self, python_type: Any, description: str) -> Dict[str, Any]:
-        """
-        Creates a schema for a dataclass.
-
-        :param python_type: The dataclass type.
-        :param description: The description of the dataclass.
-        :returns: A dictionary representing the dataclass schema.
-        """
-        schema = {"type": "object", "description": description, "properties": {}}
-        cls = python_type if isinstance(python_type, type) else python_type.__class__
-        for field in fields(cls):
-            field_description = f"Field '{field.name}' of '{cls.__name__}'."
-            if isinstance(schema["properties"], dict):
-                schema["properties"][field.name] = self._create_property_schema(field.type, field_description)
-        return schema
-
-    @staticmethod
-    def _create_basic_type_schema(python_type: Any, description: str) -> Dict[str, Any]:
-        """
-        Creates a schema for a basic Python type.
-
-        :param python_type: The Python type.
-        :param description: The description of the type.
-        :returns: A dictionary representing the basic type schema.
-        """
-        type_mapping = {str: "string", int: "integer", float: "number", bool: "boolean", dict: "object"}
-        return {"type": type_mapping.get(python_type, "string"), "description": description}
-
-    def _create_property_schema(self, python_type: Any, description: str, default: Any = None) -> Dict[str, Any]:
-        """
-        Creates a property schema for a given Python type, recursively if necessary.
-
-        :param python_type: The Python type to create a property schema for.
-        :param description: The description of the property.
-        :param default: The default value of the property.
-        :returns: A dictionary representing the property schema.
-        :raises SchemaGenerationError: If schema generation fails, e.g., for unsupported types like Pydantic v2 models
-        """
-        nullable = self._is_nullable_type(python_type)
-        if nullable:
-            non_none_types = [t for t in get_args(python_type) if t is not type(None)]
-            python_type = non_none_types[0] if non_none_types else str
-
-        origin = get_origin(python_type)
-        if origin is list:
-            schema = self._create_list_schema(get_args(python_type)[0] if get_args(python_type) else Any, description)
-        elif is_dataclass(python_type):
-            schema = self._create_dataclass_schema(python_type, description)
-        elif hasattr(python_type, "model_validate"):
-            raise SchemaGenerationError(
-                f"Pydantic models (e.g. {python_type.__name__}) are not supported as input types for "
-                f"component's run method."
-            )
-        else:
-            schema = self._create_basic_type_schema(python_type, description)
-
-        if default is not None:
-            schema["default"] = default
-
-        return schema
 
     def __deepcopy__(self, memo: Dict[Any, Any]) -> "ComponentTool":
         # Jinja2 templates throw an Exception when we deepcopy them (see https://github.com/pallets/jinja/issues/758)
