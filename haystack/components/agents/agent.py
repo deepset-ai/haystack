@@ -367,11 +367,7 @@ class Agent:
                 tool_invoker_result = await AsyncPipeline._run_component_async(
                     component_name="tool_invoker",
                     component={"instance": self._tool_invoker},
-                    component_inputs={
-                        "messages": llm_messages,
-                        "state": state,
-                        "streaming_callback": streaming_callback,
-                    },
+                    component_inputs={"messages": llm_messages, "state": state},
                     component_visits=component_visits,
                     max_runs_per_component=self.max_agent_steps,
                     parent_span=span,
