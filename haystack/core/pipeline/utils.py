@@ -34,22 +34,21 @@ def deepcopy_with_fallback(obj: Any, max_depth: Optional[int] = 100) -> Any:
         next_depth = None if max_depth is None else max_depth - 1
         if isinstance(obj, dict):
             logger.info(
-                "Standard deepcopy failed for object of type '{obj_type}'. Error: {error}. Attempting item-wise copy.",
+                "Deepcopy failed for object of type '{obj_type}'. Error: {error}. Attempting item-wise copy.",
                 obj_type=type(obj).__name__,
                 error=e,
             )
             return {key: deepcopy_with_fallback(value, next_depth) for key, value in obj.items()}
         elif isinstance(obj, (list, tuple, set)):
             logger.info(
-                "Standard deepcopy failed for object of type '{obj_type}'. Error: {error}. Attempting item-wise copy.",
+                "Deepcopy failed for object of type '{obj_type}'. Error: {error}. Attempting item-wise copy.",
                 obj_type=type(obj).__name__,
                 error=e,
             )
             return type(obj)(deepcopy_with_fallback(item, next_depth) for item in obj)
 
         logger.info(
-            "Standard deepcopy failed for object of type '{obj_type}'. Error: {error}. "
-            "Returning original object instead.",
+            "Deepcopy failed for object of type '{obj_type}'. Error: {error}. Returning original object instead.",
             obj_type=type(obj).__name__,
             error=e,
         )

@@ -197,7 +197,7 @@ class TestDeepcopyWithFallback:
         original = {"tools": tool}
         with caplog.at_level(logging.INFO):
             copy = deepcopy_with_fallback(original)
-            assert "Standard deepcopy failed for object of type" not in caplog.text
+            assert "Deepcopy failed for object of type" not in caplog.text
         # This should be a true copy
         copy["tools"].name = "copied_tool"
         assert copy["tools"] != original["tools"]
