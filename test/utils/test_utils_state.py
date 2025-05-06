@@ -1,5 +1,6 @@
 import pytest
 from typing import List, Dict
+from dataclasses import dataclass
 
 from haystack.dataclasses import ChatMessage
 from haystack.utils.state import (
@@ -324,7 +325,7 @@ def test_schema_to_dict(basic_schema):
 
 def test_schema_to_dict_with_handlers(complex_schema):
     expected_dict = {
-        "numbers": {"type": "list", "handler": "test_state.numbers_handler"},
+        "numbers": {"type": "list", "handler": "test_utils_state.numbers_handler"},
         "metadata": {"type": "dict"},
         "name": {"type": "str"},
     }
@@ -340,7 +341,7 @@ def test_schema_from_dict(basic_schema):
 
 def test_schema_from_dict_with_handlers(complex_schema):
     schema_dict = {
-        "numbers": {"type": "list", "handler": "test_state.numbers_handler"},
+        "numbers": {"type": "list", "handler": "test_utils_state.numbers_handler"},
         "metadata": {"type": "dict"},
         "name": {"type": "str"},
     }
@@ -369,12 +370,12 @@ def test_state_to_dict():
     state = State(state_schema, data)
     state_dict = state.to_dict()
     assert state_dict["schema"] == {
-        "numbers": {"type": "int", "handler": "haystack.dataclasses.state_utils.replace_values"},
+        "numbers": {"type": "int", "handler": "haystack.utils.state_utils.replace_values"},
         "messages": {
             "type": "typing.List[haystack.dataclasses.chat_message.ChatMessage]",
-            "handler": "haystack.dataclasses.state_utils.merge_lists",
+            "handler": "haystack.utils.state_utils.merge_lists",
         },
-        "dict_of_lists": {"type": "dict", "handler": "haystack.dataclasses.state_utils.replace_values"},
+        "dict_of_lists": {"type": "dict", "handler": "haystack.utils.state_utils.replace_values"},
     }
     assert state_dict["data"] == {
         "numbers": 1,
@@ -388,12 +389,12 @@ def test_state_to_dict():
 def test_state_from_dict():
     state_dict = {
         "schema": {
-            "numbers": {"type": "int", "handler": "haystack.dataclasses.state_utils.replace_values"},
+            "numbers": {"type": "int", "handler": "haystack.utils.state_utils.replace_values"},
             "messages": {
                 "type": "typing.List[haystack.dataclasses.chat_message.ChatMessage]",
-                "handler": "haystack.dataclasses.state_utils.merge_lists",
+                "handler": "haystack.utils.state_utils.merge_lists",
             },
-            "dict_of_lists": {"type": "dict", "handler": "haystack.dataclasses.state_utils.replace_values"},
+            "dict_of_lists": {"type": "dict", "handler": "haystack.utils.state_utils.replace_values"},
         },
         "data": {
             "numbers": 1,
