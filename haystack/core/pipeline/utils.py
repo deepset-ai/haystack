@@ -12,7 +12,7 @@ from haystack import logging
 logger = logging.getLogger(__name__)
 
 
-def deepcopy_with_fallback(obj: Any, max_depth: Optional[int] = 2) -> Any:
+def deepcopy_with_fallback(obj: Any, max_depth: Optional[int] = 3) -> Any:
     """
     Attempts to create a deep copy of the given object with a safe fallback mechanism.
 
