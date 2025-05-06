@@ -2,8 +2,9 @@ import pytest
 from typing import List, Dict
 
 from haystack.dataclasses import ChatMessage
-from haystack.dataclasses.state import State, _validate_schema, _schema_to_dict, _schema_from_dict
-from haystack.dataclasses.state_utils import merge_lists, replace_values
+from haystack.dataclasses.state import State
+from haystack.utils.state import _validate_schema, _schema_to_dict, _schema_from_dict
+from haystack.dataclasses.state_utils import merge_lists
 
 
 @pytest.fixture
@@ -107,12 +108,7 @@ def test_state_has(basic_schema):
 def test_state_empty_schema():
     state = State({})
     assert state.data == {}
-
-    # Instead of comparing the entire schema directly, check structure separately
-    assert "messages" in state.schema
-    assert state.schema["messages"]["type"] == List[ChatMessage]
-    assert callable(state.schema["messages"]["handler"])
-
+    assert state.schema == {"messages": {"type": List[ChatMessage], "handler": merge_lists}}
     with pytest.raises(ValueError, match="Key 'any_key' not found in schema"):
         state.set("any_key", "value")
 
@@ -192,19 +188,3 @@ def test_state_mutability():
     my_list.append(3)
 
     assert state.get("my_list") == [1, 2]
-
-
-def test_state_to_dict():
-    schema = {"numbers": {"type": int}, "dict_of_lists": {"type": dict}}
-    state = State(schema)
-    state_dict = state.to_dict()
-
-    assert state_dict["schema"] == {
-        "numbers": {"type": "int", "handler": "haystack.dataclasses.state_utils.replace_values"},
-        "messages": {
-            "type": "typing.List[haystack.dataclasses.chat_message.ChatMessage]",
-            "handler": "haystack.dataclasses.state_utils.merge_lists",
-        },
-        "dict_of_lists": {"type": "dict", "handler": "haystack.dataclasses.state_utils.replace_values"},
-    }
-    assert state_dict["data"] == {}
