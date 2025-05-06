@@ -5,7 +5,13 @@
 import logging
 import pytest
 
+from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.core.pipeline.utils import parse_connect_string, FIFOPriorityQueue, deepcopy_with_fallback
+from haystack.tools import ComponentTool, Tool
+
+
+def get_weather_report(city: str) -> str:
+    return f"Weather report for {city}: 20°C, sunny"
 
 
 def test_parse_connection():
@@ -178,14 +184,6 @@ def test_queue_ordering_parametrized(empty_queue, items):
         assert empty_queue.pop() == (priority, item)
 
 
-from haystack.tools import ComponentTool, Tool
-from haystack.components.builders.prompt_builder import PromptBuilder
-
-
-def get_weather_report(city: str) -> str:
-    return f"Weather report for {city}: 20°C, sunny"
-
-
 class TestDeepcopyWithFallback:
     def test_deepcopy_with_fallback_copyable(self, caplog):
         tool = Tool(
@@ -198,7 +196,8 @@ class TestDeepcopyWithFallback:
         with caplog.at_level(logging.INFO):
             copy = deepcopy_with_fallback(original)
             assert "Deepcopy failed for object of type" not in caplog.text
-        # This should be a true copy
+        assert copy["tools"] == original["tools"]
+        # This should be a true copy so changing the name in the copy should not affect the original
         copy["tools"].name = "copied_tool"
         assert copy["tools"] != original["tools"]
 
@@ -210,7 +209,8 @@ class TestDeepcopyWithFallback:
         with caplog.at_level(logging.INFO):
             copy = deepcopy_with_fallback(original)
             assert "Deepcopy failed for object of type 'ComponentTool'" in caplog.text
-        # Not a true copy but a shallow copy
+        assert copy["tools"] == original["tools"]
+        # Not a true copy but a shallow copy so changing the name in the copy should also affect the original
         copy["tools"].name = "copied_tool"
         assert copy["tools"] == original["tools"]
 
@@ -228,10 +228,12 @@ class TestDeepcopyWithFallback:
         with caplog.at_level(logging.INFO):
             copy = deepcopy_with_fallback(original)
             assert "Deepcopy failed for object of type 'ComponentTool'" in caplog.text
-        # First tool should be a true copy
+        assert copy["tools"][0] == original["tools"][0]
+        # First tool should be a true copy so changing the name in the copy should not affect the original
         copy["tools"][0].name = "copied_tool1"
         assert copy["tools"][0] != original["tools"][0]
-        # second should be a shallow copy
+        assert copy["tools"][1] == original["tools"][1]
+        # second should be a shallow copy so changing the name in the copy should also affect the original
         copy["tools"][1].name = "copied_tool2"
         assert copy["tools"][1] == original["tools"][1]
 
@@ -249,9 +251,11 @@ class TestDeepcopyWithFallback:
         with caplog.at_level(logging.INFO):
             copy = deepcopy_with_fallback(original)
             assert "Deepcopy failed for object of type 'ComponentTool'" in caplog.text
-        # First tool should be a true copy
+        assert copy["tools"][0] == original["tools"][0]
+        # First tool should be a true copy so changing the name in the copy should not affect the original
         copy["tools"][0].name = "copied_tool1"
         assert copy["tools"][0] != original["tools"][0]
-        # second should be a shallow copy
+        assert copy["tools"][1] == original["tools"][1]
+        # second should be a shallow copy so changing the name in the copy should also affect the original
         copy["tools"][1].name = "copied_tool2"
         assert copy["tools"][1] == original["tools"][1]
