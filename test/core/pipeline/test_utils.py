@@ -2,9 +2,16 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import logging
 import pytest
 
-from haystack.core.pipeline.utils import parse_connect_string, FIFOPriorityQueue
+from haystack.components.builders.prompt_builder import PromptBuilder
+from haystack.core.pipeline.utils import parse_connect_string, FIFOPriorityQueue, deepcopy_with_fallback
+from haystack.tools import ComponentTool, Tool
+
+
+def get_weather_report(city: str) -> str:
+    return f"Weather report for {city}: 20°C, sunny"
 
 
 def test_parse_connection():
@@ -175,3 +182,80 @@ def test_queue_ordering_parametrized(empty_queue, items):
     sorted_items = sorted(items, key=lambda x: (x[0], items.index(x)))
     for priority, item in sorted_items:
         assert empty_queue.pop() == (priority, item)
+
+
+class TestDeepcopyWithFallback:
+    def test_deepcopy_with_fallback_copyable(self, caplog):
+        tool = Tool(
+            name="weather",
+            description="Get weather report",
+            parameters={"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]},
+            function=get_weather_report,
+        )
+        original = {"tools": tool}
+        with caplog.at_level(logging.INFO):
+            copy = deepcopy_with_fallback(original)
+            assert "Deepcopy failed for object of type" not in caplog.text
+        assert copy["tools"] == original["tools"]
+        # This should be a true copy so changing the name in the copy should not affect the original
+        copy["tools"].name = "copied_tool"
+        assert copy["tools"] != original["tools"]
+
+    def test_deepcopy_with_fallback_not_copyable(self, caplog):
+        problematic_tool = ComponentTool(
+            name="problematic_tool", description="This is a problematic tool.", component=PromptBuilder("{{query}}")
+        )
+        original = {"tools": problematic_tool}
+        with caplog.at_level(logging.INFO):
+            copy = deepcopy_with_fallback(original)
+            assert "Deepcopy failed for object of type 'ComponentTool'" in caplog.text
+        assert copy["tools"] == original["tools"]
+        # Not a true copy but a shallow copy so changing the name in the copy should also affect the original
+        copy["tools"].name = "copied_tool"
+        assert copy["tools"] == original["tools"]
+
+    def test_deepcopy_with_fallback_mixed_copyable_list(self, caplog):
+        tool1 = Tool(
+            name="tool1",
+            description="Get weather report",
+            parameters={"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]},
+            function=get_weather_report,
+        )
+        tool2 = ComponentTool(
+            name="problematic_tool", description="This is a problematic tool.", component=PromptBuilder("{{query}}")
+        )
+        original = {"tools": [tool1, tool2]}
+        with caplog.at_level(logging.INFO):
+            copy = deepcopy_with_fallback(original)
+            assert "Deepcopy failed for object of type 'ComponentTool'" in caplog.text
+        assert copy["tools"][0] == original["tools"][0]
+        # First tool should be a true copy so changing the name in the copy should not affect the original
+        copy["tools"][0].name = "copied_tool1"
+        assert copy["tools"][0] != original["tools"][0]
+        assert copy["tools"][1] == original["tools"][1]
+        # second should be a shallow copy so changing the name in the copy should also affect the original
+        copy["tools"][1].name = "copied_tool2"
+        assert copy["tools"][1] == original["tools"][1]
+
+    def test_deepcopy_with_fallback_mixed_copyable_tuple(self, caplog):
+        tool1 = Tool(
+            name="tool1",
+            description="Get weather report",
+            parameters={"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]},
+            function=get_weather_report,
+        )
+        tool2 = ComponentTool(
+            name="problematic_tool", description="This is a problematic tool.", component=PromptBuilder("{{query}}")
+        )
+        original = {"tools": (tool1, tool2)}
+        with caplog.at_level(logging.INFO):
+            copy = deepcopy_with_fallback(original)
+            assert "Deepcopy failed for object of type 'ComponentTool'" in caplog.text
+        assert copy["tools"][0] == original["tools"][0]
+        # First tool should be a true copy so changing the name in the copy should not affect the original
+        copy["tools"][0].name = "copied_tool1"
+        assert copy["tools"][0] != original["tools"][0]
+        assert copy["tools"][1] == original["tools"][1]
+        # second should be a shallow copy so changing the name in the copy should also affect the original
+        copy["tools"][1].name = "copied_tool2"
+        assert copy["tools"][1] == original["tools"][1]

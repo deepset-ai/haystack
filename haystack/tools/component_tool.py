@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from copy import copy, deepcopy
 from dataclasses import fields, is_dataclass
 from inspect import getdoc
 from typing import Any, Callable, Dict, Optional, Union, get_args, get_origin
@@ -419,29 +418,3 @@ class ComponentTool(Tool):
             schema["default"] = default
 
         return schema
-
-    def __deepcopy__(self, memo: Dict[Any, Any]) -> "ComponentTool":
-        # Jinja2 templates throw an Exception when we deepcopy them (see https://github.com/pallets/jinja/issues/758)
-        # When we use a ComponentTool in a pipeline at runtime, we deepcopy the tool
-        # We overwrite ComponentTool.__deepcopy__ to fix this until a more comprehensive fix is merged.
-        # We track the issue here: https://github.com/deepset-ai/haystack/issues/9011
-        result = copy(self)
-
-        # Add the object to the memo dictionary to handle circular references
-        memo[id(self)] = result
-
-        # Deep copy all attributes with exception handling
-        for key, value in self.__dict__.items():
-            try:
-                # Try to deep copy the attribute
-                setattr(result, key, deepcopy(value, memo))
-            except (TypeError, NotImplementedError):
-                # Fall back to using the original attribute for components that use Jinja2-templates
-                logger.debug(
-                    "deepcopy of ComponentTool {tool_name} failed. Using original attribute '{attribute}' instead.",
-                    tool_name=self.name,
-                    attribute=key,
-                )
-                setattr(result, key, getattr(self, key))
-
-        return result
