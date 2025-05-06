@@ -10,7 +10,6 @@ from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.core.component.sockets import Sockets
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT, StreamingChunk, select_streaming_callback
-
 from haystack.tools import (
     ComponentTool,
     Tool,
