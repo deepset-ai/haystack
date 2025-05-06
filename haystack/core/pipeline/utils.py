@@ -12,26 +12,36 @@ from haystack import logging
 logger = logging.getLogger(__name__)
 
 
-def deepcopy_with_fallback(obj: Any) -> Any:
+def deepcopy_with_fallback(obj: Any, max_depth: Optional[int] = 2) -> Any:
     """
-    Attempts to create a deep copy of the given object.
+    Attempts to create a deep copy of the given object with a safe fallback mechanism.
 
-    If the deep copy operation fails (e.g., due to unsupported object types),
-    the original object is returned instead. This provides a safe fallback mechanism
-    in scenarios where deepcopying may not be guaranteed to succeed.
+    If the object is a dictionary, each value is copied individually using this function recursively.
+    If an individual item fails to be copied, the original value is used as a fallback.
+    A maximum recursion depth is enforced to avoid deep or cyclic structures from causing issues.
 
     :param obj: The object to attempt to deep copy.
+    :param max_depth: The maximum depth to recurse during deep copying. If 0, returns the object as-is.
     :return: A deep copy of the object if successful; otherwise, the original object.
     """
-    # TODO We should try to be a bit more sophisticated here and iterate over the items of the object
-    #      to deepcopy only the values that are deepcopiable. This would allow us to deep copy more objects
-    #      and avoid the need to return the entire original object.
+    if max_depth is not None and max_depth <= 0:
+        return obj
+
     try:
         return deepcopy(obj)
     except Exception as e:
-        # We log at INFO level to avoid cluttering logs with deep copy errors
+        # If the deepcopy fails we try to deepcopy each individual value if the object is a dictionary
+        next_depth = None if max_depth is None else max_depth - 1
+        if isinstance(obj, dict):
+            logger.info(
+                "Standard deepcopy failed for object of type '{obj_type}'. Error: {error}. Attempting item-wise copy.",
+                obj_type=type(obj).__name__,
+                error=e,
+            )
+            return {key: deepcopy_with_fallback(value, next_depth) for key, value in obj.items()}
+
         logger.info(
-            "Deep copy failed for object of type '{obj_type}'. Error: {error}. Returning original object instead.",
+            "Deepcopy failed for object of type '{obj_type}'. Error: {error}. Returning original object instead.",
             obj_type=type(obj).__name__,
             error=e,
         )
