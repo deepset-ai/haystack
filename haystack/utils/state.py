@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import json
 from copy import deepcopy
 from typing import Any, Callable, Dict, List, Optional
 

@@ -90,6 +90,7 @@ def serialize_value(value: Any) -> Any:
     return value
 
 
+# pylint: disable=too-many-return-statements
 def deserialize_value(value: Any) -> Any:
     """
     Deserializes a value from its serialized representation.
