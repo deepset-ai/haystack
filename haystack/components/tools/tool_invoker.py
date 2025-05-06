@@ -9,6 +9,8 @@ from typing import Any, Dict, List, Optional, Union
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.core.component.sockets import Sockets
 from haystack.dataclasses import ChatMessage, ToolCall
+from haystack.dataclasses.streaming_chunk import StreamingCallbackT, StreamingChunk, select_streaming_callback
+
 from haystack.tools import (
     ComponentTool,
     Tool,
@@ -160,6 +162,7 @@ class ToolInvoker:
         tools: Union[List[Tool], Toolset],
         raise_on_failure: bool = True,
         convert_result_to_json_string: bool = False,
+        streaming_callback: Optional[StreamingCallbackT] = None,
     ):
         """
         Initialize the ToolInvoker component.
@@ -174,6 +177,10 @@ class ToolInvoker:
         :param convert_result_to_json_string:
             If True, the tool invocation result will be converted to a string using `json.dumps`.
             If False, the tool invocation result will be converted to a string using `str`.
+        :param streaming_callback:
+            A callback function that will be called to emit tool results.
+            Note that the result is only emitted once it becomes available — it is not
+            streamed incrementally in real time.
         :raises ValueError:
             If no tools are provided or if duplicate tool names are found.
         """
@@ -182,6 +189,7 @@ class ToolInvoker:
 
         # could be a Toolset instance or a list of Tools
         self.tools = tools
+        self.streaming_callback = streaming_callback
 
         # Convert Toolset to list for internal use
         if isinstance(tools, Toolset):
@@ -273,7 +281,6 @@ class ToolInvoker:
             except StringConversionError as conversion_error:
                 # If _handle_error re-raises, this properly preserves the chain
                 raise conversion_error from e
-
         return ChatMessage.from_tool(tool_result=tool_result_str, error=error, origin=tool_call)
 
     @staticmethod
@@ -359,13 +366,21 @@ class ToolInvoker:
             state.set(state_key, output_value, handler_override=handler)
 
     @component.output_types(tool_messages=List[ChatMessage], state=State)
-    def run(self, messages: List[ChatMessage], state: Optional[State] = None) -> Dict[str, Any]:
+    def run(
+        self,
+        messages: List[ChatMessage],
+        state: Optional[State] = None,
+        streaming_callback: Optional[StreamingCallbackT] = None,
+    ) -> Dict[str, Any]:
         """
         Processes ChatMessage objects containing tool calls and invokes the corresponding tools, if available.
 
         :param messages:
             A list of ChatMessage objects.
         :param state: The runtime state that should be used by the tools.
+        :param streaming_callback: A callback function that will be called to emit tool results.
+            Note that the result is only emitted once it becomes available — it is not
+            streamed incrementally in real time.
         :returns:
             A dictionary with the key `tool_messages` containing a list of ChatMessage objects with tool role.
             Each ChatMessage objects wraps the result of a tool invocation.
@@ -384,6 +399,9 @@ class ToolInvoker:
 
         # Only keep messages with tool calls
         messages_with_tool_calls = [message for message in messages if message.tool_calls]
+        streaming_callback = select_streaming_callback(
+            init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=False
+        )
 
         tool_messages = []
         for message in messages_with_tool_calls:
@@ -407,6 +425,7 @@ class ToolInvoker:
                 # 2) Invoke the tool
                 try:
                     tool_result = tool_to_invoke.invoke(**final_args)
+
                 except ToolInvocationError as e:
                     error_message = self._handle_error(e)
                     tool_messages.append(ChatMessage.from_tool(tool_result=error_message, origin=tool_call, error=True))
@@ -434,6 +453,11 @@ class ToolInvoker:
                         result=tool_result, tool_call=tool_call, tool_to_invoke=tool_to_invoke
                     )
                 )
+
+                if streaming_callback is not None:
+                    streaming_callback(
+                        StreamingChunk(content="", meta={"tool_result": tool_result, "tool_call": tool_call})
+                    )
 
         return {"tool_messages": tool_messages, "state": state}
 
