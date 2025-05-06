@@ -3,8 +3,56 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import heapq
+from copy import deepcopy
 from itertools import count
 from typing import Any, List, Optional, Tuple
+
+from haystack import logging
+
+logger = logging.getLogger(__name__)
+
+
+def deepcopy_with_fallback(obj: Any, max_depth: Optional[int] = 100) -> Any:
+    """
+    Attempts to create a deep copy of the given object with a safe fallback mechanism.
+
+    If the object is a dictionary, each value is copied individually using this function recursively.
+    If an individual item fails to be copied, the original value is used as a fallback.
+    A maximum recursion depth is enforced to avoid deep or cyclic structures from causing issues.
+
+    :param obj: The object to attempt to deep copy.
+    :param max_depth: The maximum depth to recurse during deep copying. If 0, returns the object as-is.
+    :return: A deep copy of the object if successful; otherwise, the original object.
+    """
+    if max_depth is not None and max_depth <= 0:
+        return obj
+
+    try:
+        return deepcopy(obj)
+    except Exception as e:
+        # If the deepcopy fails we try to deepcopy each individual value if the object is a dictionary
+        next_depth = None if max_depth is None else max_depth - 1
+        if isinstance(obj, dict):
+            logger.info(
+                "Deepcopy failed for object of type '{obj_type}'. Error: {error}. Attempting item-wise copy.",
+                obj_type=type(obj).__name__,
+                error=e,
+            )
+            return {key: deepcopy_with_fallback(value, next_depth) for key, value in obj.items()}
+        elif isinstance(obj, (list, tuple, set)):
+            logger.info(
+                "Deepcopy failed for object of type '{obj_type}'. Error: {error}. Attempting item-wise copy.",
+                obj_type=type(obj).__name__,
+                error=e,
+            )
+            return type(obj)(deepcopy_with_fallback(item, next_depth) for item in obj)
+
+        logger.info(
+            "Deepcopy failed for object of type '{obj_type}'. Error: {error}. Returning original object instead.",
+            obj_type=type(obj).__name__,
+            error=e,
+        )
+        return obj
 
 
 def parse_connect_string(connection: str) -> Tuple[str, Optional[str]]:
