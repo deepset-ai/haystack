@@ -12,7 +12,7 @@ from haystack import logging
 logger = logging.getLogger(__name__)
 
 
-def deepcopy_with_fallback(obj: Any, max_depth: Optional[int] = 3) -> Any:
+def deepcopy_with_fallback(obj: Any, max_depth: Optional[int] = 100) -> Any:
     """
     Attempts to create a deep copy of the given object with a safe fallback mechanism.
 
@@ -39,9 +39,17 @@ def deepcopy_with_fallback(obj: Any, max_depth: Optional[int] = 3) -> Any:
                 error=e,
             )
             return {key: deepcopy_with_fallback(value, next_depth) for key, value in obj.items()}
+        elif isinstance(obj, (list, tuple, set)):
+            logger.info(
+                "Standard deepcopy failed for object of type '{obj_type}'. Error: {error}. Attempting item-wise copy.",
+                obj_type=type(obj).__name__,
+                error=e,
+            )
+            return type(obj)(deepcopy_with_fallback(item, next_depth) for item in obj)
 
         logger.info(
-            "Deepcopy failed for object of type '{obj_type}'. Error: {error}. Returning original object instead.",
+            "Standard deepcopy failed for object of type '{obj_type}'. Error: {error}. "
+            "Returning original object instead.",
             obj_type=type(obj).__name__,
             error=e,
         )
