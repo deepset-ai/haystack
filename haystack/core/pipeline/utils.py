@@ -3,8 +3,39 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import heapq
+from copy import deepcopy
 from itertools import count
 from typing import Any, List, Optional, Tuple
+
+from haystack import logging
+
+logger = logging.getLogger(__name__)
+
+
+def deepcopy_with_fallback(obj: Any) -> Any:
+    """
+    Attempts to create a deep copy of the given object.
+
+    If the deep copy operation fails (e.g., due to unsupported object types),
+    the original object is returned instead. This provides a safe fallback mechanism
+    in scenarios where deepcopying may not be guaranteed to succeed.
+
+    :param obj: The object to attempt to deep copy.
+    :return: A deep copy of the object if successful; otherwise, the original object.
+    """
+    # TODO We should try to be a bit more sophisticated here and iterate over the items of the object
+    #      to deepcopy only the values that are deepcopiable. This would allow us to deep copy more objects
+    #      and avoid the need to return the entire original object.
+    try:
+        return deepcopy(obj)
+    except Exception as e:
+        # We log at INFO level to avoid cluttering logs with deep copy errors
+        logger.info(
+            "Deep copy failed for object of type '{obj_type}'. Error: {error}. Returning original object instead.",
+            obj_type=type(obj).__name__,
+            error=e,
+        )
+        return obj
 
 
 def parse_connect_string(connection: str) -> Tuple[str, Optional[str]]:
