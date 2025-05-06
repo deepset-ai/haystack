@@ -15,7 +15,7 @@ from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.state import State, _schema_from_dict, _schema_to_dict, _validate_schema
 from haystack.dataclasses.state_utils import merge_lists
-from haystack.dataclasses.streaming_chunk import StreamingCallbackT
+from haystack.dataclasses.streaming_chunk import StreamingCallbackT, select_streaming_callback
 from haystack.tools import Tool, Toolset, deserialize_tools_or_toolset_inplace, serialize_tools_or_toolset
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 from haystack.utils.deserialization import deserialize_chatgenerator_inplace
@@ -84,6 +84,7 @@ class Agent:
         :param raise_on_tool_invocation_failure: Should the agent raise an exception when a tool invocation fails?
             If set to False, the exception will be turned into a chat message and passed to the LLM.
         :param streaming_callback: A callback that will be invoked when a response is streamed from the LLM.
+            The same callback can be configured to emit tool results when a tool is called.
         :raises TypeError: If the chat_generator does not support tools parameter in its run method.
         """
         # Check if chat_generator supports tools parameter
@@ -201,9 +202,8 @@ class Agent:
     def _prepare_generator_inputs(self, streaming_callback: Optional[StreamingCallbackT] = None) -> Dict[str, Any]:
         """Prepare inputs for the chat generator."""
         generator_inputs: Dict[str, Any] = {"tools": self.tools}
-        selected_callback = streaming_callback or self.streaming_callback
-        if selected_callback is not None:
-            generator_inputs["streaming_callback"] = selected_callback
+        if streaming_callback is not None:
+            generator_inputs["streaming_callback"] = streaming_callback
         return generator_inputs
 
     def _create_agent_span(self) -> Any:
@@ -229,6 +229,7 @@ class Agent:
 
         :param messages: List of chat messages to process
         :param streaming_callback: A callback that will be invoked when a response is streamed from the LLM.
+            The same callback can be configured to emit tool results when a tool is called.
         :param kwargs: Additional data to pass to the State schema used by the Agent.
             The keys must match the schema defined in the Agent's `state_schema`.
         :return: Dictionary containing messages and outputs matching the defined output types
@@ -238,6 +239,10 @@ class Agent:
 
         if self.system_prompt is not None:
             messages = [ChatMessage.from_system(self.system_prompt)] + messages
+
+        streaming_callback = select_streaming_callback(
+            init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=False
+        )
 
         input_data = deepcopy({"messages": messages, "streaming_callback": streaming_callback, **kwargs})
 
@@ -271,7 +276,7 @@ class Agent:
                 tool_invoker_result = Pipeline._run_component(
                     component_name="tool_invoker",
                     component={"instance": self._tool_invoker},
-                    inputs={"messages": llm_messages, "state": state},
+                    inputs={"messages": llm_messages, "state": state, "streaming_callback": streaming_callback},
                     component_visits=component_visits,
                     parent_span=span,
                 )
@@ -312,6 +317,7 @@ class Agent:
 
         :param messages: List of chat messages to process
         :param streaming_callback: A callback that will be invoked when a response is streamed from the LLM.
+            The same callback can be configured to emit tool results when a tool is called.
         :param kwargs: Additional data to pass to the State schema used by the Agent.
             The keys must match the schema defined in the Agent's `state_schema`.
         :return: Dictionary containing messages and outputs matching the defined output types
@@ -321,6 +327,10 @@ class Agent:
 
         if self.system_prompt is not None:
             messages = [ChatMessage.from_system(self.system_prompt)] + messages
+
+        streaming_callback = select_streaming_callback(
+            init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=True
+        )
 
         input_data = deepcopy({"messages": messages, "streaming_callback": streaming_callback, **kwargs})
 
