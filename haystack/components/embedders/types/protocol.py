@@ -6,6 +6,9 @@ from typing import Any, Dict, Protocol, TypeVar
 
 T = TypeVar("T", bound="TextEmbedder")
 
+# See https://github.com/pylint-dev/pylint/issues/9319.
+# pylint: disable=unnecessary-ellipsis
+
 
 class TextEmbedder(Protocol):
     """
@@ -25,5 +28,3 @@ class TextEmbedder(Protocol):
             A dictionary containing the embedding and metadata.
         """
         ...
-
-    # small test class
