@@ -80,6 +80,26 @@ def _convert_hfapi_tool_calls(hfapi_tool_calls: Optional[List["ChatCompletionOut
     return tool_calls
 
 
+def _convert_tools_to_hfapi_tools(
+    tools: Optional[Union[List[Tool], Toolset]],
+) -> Optional[List["ChatCompletionInputTool"]]:
+    if not tools:
+        return None
+
+    # huggingface_hub<0.31.0 uses "arguments", huggingface_hub>=0.31.0 uses "parameters"
+    parameters_name = "arguments" if hasattr(ChatCompletionInputFunctionDefinition, "arguments") else "parameters"
+
+    hf_tools = []
+    for tool in tools:
+        hf_tools_args = {"name": tool.name, "description": tool.description, parameters_name: tool.parameters}
+
+        hf_tools.append(
+            ChatCompletionInputTool(function=ChatCompletionInputFunctionDefinition(**hf_tools_args), type="function")
+        )
+
+    return hf_tools
+
+
 @component
 class HuggingFaceAPIChatGenerator:
     """
@@ -313,19 +333,11 @@ class HuggingFaceAPIChatGenerator:
         if streaming_callback:
             return self._run_streaming(formatted_messages, generation_kwargs, streaming_callback)
 
-        hf_tools = None
-        if tools:
-            if isinstance(tools, Toolset):
-                tools = list(tools)
-            hf_tools = [
-                ChatCompletionInputTool(
-                    function=ChatCompletionInputFunctionDefinition(
-                        name=tool.name, description=tool.description, arguments=tool.parameters
-                    ),
-                    type="function",
-                )
-                for tool in tools
-            ]
+        if tools and isinstance(tools, Toolset):
+            tools = list(tools)
+
+        hf_tools = _convert_tools_to_hfapi_tools(tools)
+
         return self._run_non_streaming(formatted_messages, generation_kwargs, hf_tools)
 
     @component.output_types(replies=List[ChatMessage])
@@ -373,19 +385,11 @@ class HuggingFaceAPIChatGenerator:
         if streaming_callback:
             return await self._run_streaming_async(formatted_messages, generation_kwargs, streaming_callback)
 
-        hf_tools = None
-        if tools:
-            if isinstance(tools, Toolset):
-                tools = list(tools)
-            hf_tools = [
-                ChatCompletionInputTool(
-                    function=ChatCompletionInputFunctionDefinition(
-                        name=tool.name, description=tool.description, arguments=tool.parameters
-                    ),
-                    type="function",
-                )
-                for tool in tools
-            ]
+        if tools and isinstance(tools, Toolset):
+            tools = list(tools)
+
+        hf_tools = _convert_tools_to_hfapi_tools(tools)
+
         return await self._run_non_streaming_async(formatted_messages, generation_kwargs, hf_tools)
 
     def _run_streaming(
