@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, List, Protocol, TypeVar
+from typing import Any, Dict, Protocol, TypeVar
 
 T = TypeVar("T", bound="TextEmbedder")
 
