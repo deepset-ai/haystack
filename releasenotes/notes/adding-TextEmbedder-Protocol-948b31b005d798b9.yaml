@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    We now have a Protocol for TextEmbedder. One impact is that now we can build custom components or SuperComponents that are not tied to a specific text embedder.
