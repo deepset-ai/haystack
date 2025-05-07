@@ -26,22 +26,4 @@ class TextEmbedder(Protocol):
         """
         ...
 
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Convert the component to a dictionary representation.
-
-        :returns:
-            A dictionary representation of the component.
-        """
-        ...
-
-    def from_dict(self, data: Dict[str, Any]) -> T:
-        """
-        Create a component instance from a dictionary representation.
-
-        :param data:
-            A dictionary representation of the component.
-        :returns:
-            An instance of the component.
-        """
-        ...
+    # small test class
