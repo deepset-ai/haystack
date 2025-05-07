@@ -10,6 +10,7 @@ from haystack import Pipeline
 from haystack.dataclasses import StreamingChunk
 from haystack.utils.auth import Secret
 from haystack.utils.hf import HFGenerationAPIType
+
 from huggingface_hub import (
     ChatCompletionOutput,
     ChatCompletionOutputComplete,
@@ -21,9 +22,14 @@ from huggingface_hub import (
     ChatCompletionStreamOutputChoice,
     ChatCompletionStreamOutputDelta,
 )
-from huggingface_hub.utils import RepositoryNotFoundError
+from huggingface_hub.errors import RepositoryNotFoundError
 
-from haystack.components.generators.chat.hugging_face_api import HuggingFaceAPIChatGenerator, _convert_hfapi_tool_calls
+from haystack.components.generators.chat.hugging_face_api import (
+    HuggingFaceAPIChatGenerator,
+    _convert_hfapi_tool_calls,
+    _convert_tools_to_hfapi_tools,
+)
+
 from haystack.tools import Tool
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.tools.toolset import Toolset
@@ -976,3 +982,41 @@ class TestHuggingFaceAPIChatGenerator:
             },
         }
         assert data["init_parameters"]["tools"] == expected_tools_data
+
+    def test_convert_tools_to_hfapi_tools(self):
+        assert _convert_tools_to_hfapi_tools(None) is None
+        assert _convert_tools_to_hfapi_tools([]) is None
+
+        tool = Tool(
+            name="weather",
+            description="useful to determine the weather in a given location",
+            parameters={"city": {"type": "string"}},
+            function=get_weather,
+        )
+        hf_tools = _convert_tools_to_hfapi_tools([tool])
+        assert len(hf_tools) == 1
+        assert hf_tools[0].type == "function"
+        assert hf_tools[0].function.name == "weather"
+        assert hf_tools[0].function.description == "useful to determine the weather in a given location"
+        assert hf_tools[0].function.parameters == {"city": {"type": "string"}}
+
+    def test_convert_tools_to_hfapi_tools_legacy(self):
+        # this satisfies the check hasattr(ChatCompletionInputFunctionDefinition, "arguments")
+        mock_class = MagicMock()
+
+        with patch(
+            "haystack.components.generators.chat.hugging_face_api.ChatCompletionInputFunctionDefinition", mock_class
+        ):
+            tool = Tool(
+                name="weather",
+                description="useful to determine the weather in a given location",
+                parameters={"city": {"type": "string"}},
+                function=get_weather,
+            )
+            _convert_tools_to_hfapi_tools([tool])
+
+        mock_class.assert_called_once_with(
+            name="weather",
+            arguments={"city": {"type": "string"}},
+            description="useful to determine the weather in a given location",
+        )
