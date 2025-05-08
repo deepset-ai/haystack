@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import inspect
-from copy import deepcopy
 from typing import Any, Dict, List, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging, tracing
@@ -11,6 +10,7 @@ from haystack.components.generators.chat.types import ChatGenerator
 from haystack.components.tools import ToolInvoker
 from haystack.core.pipeline.async_pipeline import AsyncPipeline
 from haystack.core.pipeline.pipeline import Pipeline
+from haystack.core.pipeline.utils import _deepcopy_with_exceptions
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.state import State, _schema_from_dict, _schema_to_dict, _validate_schema
@@ -111,7 +111,7 @@ class Agent:
         self._state_schema = state_schema or {}
 
         # Initialize state schema
-        resolved_state_schema = deepcopy(self._state_schema)
+        resolved_state_schema = _deepcopy_with_exceptions(self._state_schema)
         if resolved_state_schema.get("messages") is None:
             resolved_state_schema["messages"] = {"type": List[ChatMessage], "handler": merge_lists}
         self.state_schema = resolved_state_schema
@@ -244,8 +244,6 @@ class Agent:
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=False
         )
 
-        input_data = deepcopy({"messages": messages, "streaming_callback": streaming_callback, **kwargs})
-
         state = State(schema=self.state_schema, data=kwargs)
         state.set("messages", messages)
 
@@ -253,7 +251,10 @@ class Agent:
 
         component_visits = dict.fromkeys(["chat_generator", "tool_invoker"], 0)
         with self._create_agent_span() as span:
-            span.set_content_tag("haystack.agent.input", input_data)
+            span.set_content_tag(
+                "haystack.agent.input",
+                _deepcopy_with_exceptions({"messages": messages, "streaming_callback": streaming_callback, **kwargs}),
+            )
             counter = 0
             while counter < self.max_agent_steps:
                 # 1. Call the ChatGenerator
@@ -332,8 +333,6 @@ class Agent:
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=True
         )
 
-        input_data = deepcopy({"messages": messages, "streaming_callback": streaming_callback, **kwargs})
-
         state = State(schema=self.state_schema, data=kwargs)
         state.set("messages", messages)
 
@@ -341,7 +340,10 @@ class Agent:
 
         component_visits = dict.fromkeys(["chat_generator", "tool_invoker"], 0)
         with self._create_agent_span() as span:
-            span.set_content_tag("haystack.agent.input", input_data)
+            span.set_content_tag(
+                "haystack.agent.input",
+                _deepcopy_with_exceptions({"messages": messages, "streaming_callback": streaming_callback, **kwargs}),
+            )
             counter = 0
             while counter < self.max_agent_steps:
                 # 1. Call the ChatGenerator
