@@ -244,8 +244,6 @@ class Agent:
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=False
         )
 
-        input_data = deepcopy_with_fallback({"messages": messages, "streaming_callback": streaming_callback, **kwargs})
-
         state = State(schema=self.state_schema, data=kwargs)
         state.set("messages", messages)
 
@@ -253,7 +251,10 @@ class Agent:
 
         component_visits = dict.fromkeys(["chat_generator", "tool_invoker"], 0)
         with self._create_agent_span() as span:
-            span.set_content_tag("haystack.agent.input", input_data)
+            span.set_content_tag(
+                "haystack.agent.input",
+                deepcopy_with_fallback({"messages": messages, "streaming_callback": streaming_callback, **kwargs}),
+            )
             counter = 0
             while counter < self.max_agent_steps:
                 # 1. Call the ChatGenerator
@@ -332,8 +333,6 @@ class Agent:
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=True
         )
 
-        input_data = deepcopy_with_fallback({"messages": messages, "streaming_callback": streaming_callback, **kwargs})
-
         state = State(schema=self.state_schema, data=kwargs)
         state.set("messages", messages)
 
@@ -341,7 +340,10 @@ class Agent:
 
         component_visits = dict.fromkeys(["chat_generator", "tool_invoker"], 0)
         with self._create_agent_span() as span:
-            span.set_content_tag("haystack.agent.input", input_data)
+            span.set_content_tag(
+                "haystack.agent.input",
+                deepcopy_with_fallback({"messages": messages, "streaming_callback": streaming_callback, **kwargs}),
+            )
             counter = 0
             while counter < self.max_agent_steps:
                 # 1. Call the ChatGenerator
