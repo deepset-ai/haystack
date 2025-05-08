@@ -1,0 +1,7 @@
+---
+enhancements:
+  - |
+    Updated pipeline execution logic to use a new utility method `deepcopy_with_fallback`,
+    which skips deep-copying of `Component`, `Tool`, and `Toolset` instances when used as
+    runtime parameters. This prevents errors and unintended behavior caused by trying to
+    deepcopy objects that contain non-copyable attributes (e.g. Jinja2 templates, clients).
