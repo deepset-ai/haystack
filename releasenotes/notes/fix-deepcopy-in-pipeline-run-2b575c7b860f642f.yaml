@@ -1,6 +1,0 @@
----
-fixes:
-  - |
-    Introduced `deepcopy_with_fallback` to improve robustness in the `Pipeline.run` method.
-    Previously, standard `deepcopy` was used on inputs and outputs to avoid unintended side effects from shared mutable data structures, as these values are accessed in multiple parts of the pipeline. However, certain Python objects cannot be deepcopied, which could lead to runtime errors.
-    The new `deepcopy_with_fallback` function attempts to deep copy an object and safely falls back to the original object if copying fails. This ensures pipeline execution remains stable while maintaining the protective behavior against shared-state modification.
