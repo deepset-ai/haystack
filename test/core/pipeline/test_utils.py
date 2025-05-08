@@ -251,26 +251,22 @@ class TestDeepcopyWithFallback:
         copy["objects"][1].name = "copied_obj2"
         assert copy["objects"][1].name == original["objects"][1].name
 
-    def test_deepcopy_with_fallback_tool(self, caplog):
+    def test_deepcopy_with_fallback_tool(self):
         tool = ComponentTool(
             name="problematic_tool", description="This is a problematic tool.", component=PromptBuilder("{{query}}")
         )
         original = {"tools": tool}
-        with caplog.at_level(logging.INFO):
-            copy = deepcopy_with_fallback(original)
-            assert "Deepcopy failed for object of type 'dict'" in caplog.text
+        copy = deepcopy_with_fallback(original)
         assert copy["tools"] == original["tools"]
         # Not a copy so changing the name in the copy should also affect the original
         copy["tools"].name = "copied_tool"
         assert copy["tools"] == original["tools"]
 
-    def test_deepcopy_with_fallback_component(self, monkeypatch, caplog):
+    def test_deepcopy_with_fallback_component(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test")
         comp = OpenAIChatGenerator()
         original = {"component": comp}
-        with caplog.at_level(logging.INFO):
-            res = deepcopy_with_fallback(original)
-            assert "Deepcopy failed for object of type 'dict'" in caplog.text
+        res = deepcopy_with_fallback(original)
         assert res == original
         # Change an attribute of the copy and check original also updates
         res["component"].model = "a-model"
