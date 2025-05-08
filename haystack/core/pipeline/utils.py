@@ -5,7 +5,7 @@
 import heapq
 from copy import deepcopy
 from itertools import count
-from typing import Any, List, Optional, Tuple, TypeVar, cast
+from typing import Any, List, Optional, Tuple
 
 from haystack import logging
 from haystack.core.component import Component
@@ -13,10 +13,8 @@ from haystack.tools import Tool, Toolset
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar("T")
 
-
-def _deepcopy_with_exceptions(obj: T) -> T:
+def _deepcopy_with_exceptions(obj: Any) -> Any:
     """
     Attempts to perform a deep copy of the given object.
 
@@ -31,15 +29,15 @@ def _deepcopy_with_exceptions(obj: T) -> T:
         A deep-copied version of the object, or the original object if deepcopying fails.
     """
     if isinstance(obj, (list, tuple, set)):
-        return cast(T, type(obj)(_deepcopy_with_exceptions(v) for v in obj))
+        return type(obj)(_deepcopy_with_exceptions(v) for v in obj)
 
     if isinstance(obj, dict):
-        return cast(T, {k: _deepcopy_with_exceptions(v) for k, v in obj.items()})
+        return {k: _deepcopy_with_exceptions(v) for k, v in obj.items()}
 
     # Components and Tools often contain objects that we do not want to deepcopy or are not deepcopyable
     # (e.g. models, clients, etc.). In this case we return the object as-is.
     if isinstance(obj, (Component, Tool, Toolset)):
-        return cast(T, obj)
+        return obj
 
     try:
         return deepcopy(obj)
