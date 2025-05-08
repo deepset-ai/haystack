@@ -19,7 +19,7 @@ from haystack.components.builders import PromptBuilder
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.tools import ToolInvoker
 from haystack.components.websearch.serper_dev import SerperDevWebSearch
-from haystack.core.pipeline.utils import deepcopy_with_fallback
+from haystack.core.pipeline.utils import _deepcopy_with_exceptions
 from haystack.dataclasses import ChatMessage, ChatRole, Document
 from haystack.tools import ComponentTool
 from haystack.utils.auth import Secret
@@ -644,14 +644,10 @@ class TestToolComponentInPipelineWithOpenAI:
             ComponentTool(component=component)
 
     def test_deepcopy_with_jinja_based_component(self):
-        # Jinja2 templates throw an Exception when we deepcopy them (see https://github.com/pallets/jinja/issues/758)
-        # When we use a ComponentTool in a pipeline at runtime, we deepcopy the tool
-        # We overwrite ComponentTool.__deepcopy__ to fix this in experimental until a more comprehensive fix is merged.
-        # We track the issue here: https://github.com/deepset-ai/haystack/issues/9011
         builder = PromptBuilder("{{query}}")
         tool = ComponentTool(component=builder)
         result = tool.function(query="Hello")
-        tool_copy = deepcopy_with_fallback(tool)
+        tool_copy = _deepcopy_with_exceptions(tool)
         result_from_copy = tool_copy.function(query="Hello")
         assert "prompt" in result_from_copy
         assert result_from_copy["prompt"] == result["prompt"]
