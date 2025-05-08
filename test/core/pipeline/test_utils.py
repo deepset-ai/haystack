@@ -185,81 +185,82 @@ def test_queue_ordering_parametrized(empty_queue, items):
         assert empty_queue.pop() == (priority, item)
 
 
+class Copyable:
+    def __init__(self, name="copyable"):
+        self.name = name
+
+
+class NotCopyable:
+    def __init__(self, name="not_copyable"):
+        self.name = name
+
+    def __deepcopy__(self, memo):
+        raise TypeError("This object cannot be deepcopied.")
+
+
 class TestDeepcopyWithFallback:
     def test_deepcopy_with_fallback_copyable(self, caplog):
-        tool = Tool(
-            name="weather",
-            description="Get weather report",
-            parameters={"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]},
-            function=get_weather_report,
-        )
-        original = {"tools": tool}
+        original = {"class": Copyable()}
         with caplog.at_level(logging.INFO):
             copy = deepcopy_with_fallback(original)
             assert "Deepcopy failed for object of type" not in caplog.text
-        assert copy["tools"] == original["tools"]
+        assert copy["class"].name == original["class"].name
         # This should be a true copy so changing the name in the copy should not affect the original
-        copy["tools"].name = "copied_tool"
-        assert copy["tools"] != original["tools"]
+        copy["class"].name = "copied_class"
+        assert copy["class"] != original["class"]
 
-    def test_deepcopy_with_fallback_not_copyable(self, caplog):
-        problematic_tool = ComponentTool(
-            name="problematic_tool", description="This is a problematic tool.", component=PromptBuilder("{{query}}")
-        )
-        original = {"tools": problematic_tool}
+    def test_deepcopy_with_fallback_not_copyable_error(self, caplog):
+        original = {"class": NotCopyable()}
         with caplog.at_level(logging.INFO):
             copy = deepcopy_with_fallback(original)
-            assert "Deepcopy failed for object of type 'ComponentTool'" in caplog.text
-        assert copy["tools"] == original["tools"]
-        # Not a true copy but a shallow copy so changing the name in the copy should also affect the original
-        copy["tools"].name = "copied_tool"
-        assert copy["tools"] == original["tools"]
+            assert "Deepcopy failed for object of type 'NotCopyable'" in caplog.text
+        assert copy["class"].name == original["class"].name
+        # Not copy so changing the name in the copy should also affect the original
+        copy["class"].name = "copied_class"
+        assert copy["class"].name == original["class"].name
 
     def test_deepcopy_with_fallback_mixed_copyable_list(self, caplog):
-        tool1 = Tool(
-            name="tool1",
-            description="Get weather report",
-            parameters={"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]},
-            function=get_weather_report,
-        )
-        tool2 = ComponentTool(
-            name="problematic_tool", description="This is a problematic tool.", component=PromptBuilder("{{query}}")
-        )
-        original = {"tools": [tool1, tool2]}
+        obj1 = Copyable()
+        obj2 = NotCopyable()
+        original = {"objects": [obj1, obj2]}
         with caplog.at_level(logging.INFO):
             copy = deepcopy_with_fallback(original)
-            assert "Deepcopy failed for object of type 'ComponentTool'" in caplog.text
-        assert copy["tools"][0] == original["tools"][0]
-        # First tool should be a true copy so changing the name in the copy should not affect the original
-        copy["tools"][0].name = "copied_tool1"
-        assert copy["tools"][0] != original["tools"][0]
-        assert copy["tools"][1] == original["tools"][1]
-        # second should be a shallow copy so changing the name in the copy should also affect the original
-        copy["tools"][1].name = "copied_tool2"
-        assert copy["tools"][1] == original["tools"][1]
+            assert "Deepcopy failed for object of type 'NotCopyable'" in caplog.text
+        assert copy["objects"][0].name == original["objects"][0].name
+        # First object should be a true copy so changing the name in the copy should not affect the original
+        copy["objects"][0].name = "copied_obj1"
+        assert copy["objects"][0].name != original["objects"][0].name
+        assert copy["objects"][1].name == original["objects"][1].name
+        # second not be a copy so changing the name in the copy should also affect the original
+        copy["objects"][1].name = "copied_obj2"
+        assert copy["objects"][1].name == original["objects"][1].name
 
     def test_deepcopy_with_fallback_mixed_copyable_tuple(self, caplog):
-        tool1 = Tool(
-            name="tool1",
-            description="Get weather report",
-            parameters={"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]},
-            function=get_weather_report,
-        )
-        tool2 = ComponentTool(
-            name="problematic_tool", description="This is a problematic tool.", component=PromptBuilder("{{query}}")
-        )
-        original = {"tools": (tool1, tool2)}
+        obj1 = Copyable()
+        obj2 = NotCopyable()
+        original = {"objects": (obj1, obj2)}
         with caplog.at_level(logging.INFO):
             copy = deepcopy_with_fallback(original)
-            assert "Deepcopy failed for object of type 'ComponentTool'" in caplog.text
-        assert copy["tools"][0] == original["tools"][0]
-        # First tool should be a true copy so changing the name in the copy should not affect the original
-        copy["tools"][0].name = "copied_tool1"
-        assert copy["tools"][0] != original["tools"][0]
-        assert copy["tools"][1] == original["tools"][1]
-        # second should be a shallow copy so changing the name in the copy should also affect the original
-        copy["tools"][1].name = "copied_tool2"
-        assert copy["tools"][1] == original["tools"][1]
+            assert "Deepcopy failed for object of type 'NotCopyable'" in caplog.text
+        assert copy["objects"][0].name == original["objects"][0].name
+        # First object should be a true copy so changing the name in the copy should not affect the original
+        copy["objects"][0].name = "copied_obj1"
+        assert copy["objects"][0].name != original["objects"][0].name
+        assert copy["objects"][1].name == original["objects"][1].name
+        # second not be a copy so changing the name in the copy should also affect the original
+        copy["objects"][1].name = "copied_obj2"
+        assert copy["objects"][1].name == original["objects"][1].name
+
+    def test_deepcopy_with_fallback_tool(self):
+        tool = ComponentTool(
+            name="problematic_tool", description="This is a problematic tool.", component=PromptBuilder("{{query}}")
+        )
+        original = {"tools": tool}
+        copy = deepcopy_with_fallback(original)
+        assert copy["tools"] == original["tools"]
+        # Not a copy so changing the name in the copy should also affect the original
+        copy["tools"].name = "copied_tool"
+        assert copy["tools"] == original["tools"]
 
     def test_deepcopy_with_fallback_component(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test")

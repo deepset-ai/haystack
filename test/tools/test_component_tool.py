@@ -644,10 +644,6 @@ class TestToolComponentInPipelineWithOpenAI:
             ComponentTool(component=component)
 
     def test_deepcopy_with_jinja_based_component(self):
-        # Jinja2 templates throw an Exception when we deepcopy them (see https://github.com/pallets/jinja/issues/758)
-        # When we use a ComponentTool in a pipeline at runtime, we deepcopy the tool
-        # We overwrite ComponentTool.__deepcopy__ to fix this in experimental until a more comprehensive fix is merged.
-        # We track the issue here: https://github.com/deepset-ai/haystack/issues/9011
         builder = PromptBuilder("{{query}}")
         tool = ComponentTool(component=builder)
         result = tool.function(query="Hello")
