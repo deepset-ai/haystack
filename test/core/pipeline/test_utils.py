@@ -7,7 +7,7 @@ import pytest
 
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
-from haystack.core.pipeline.utils import parse_connect_string, FIFOPriorityQueue, deepcopy_with_fallback
+from haystack.core.pipeline.utils import parse_connect_string, FIFOPriorityQueue, _deepcopy_with_exceptions
 from haystack.tools import ComponentTool, Tool
 
 
@@ -202,72 +202,48 @@ class TestDeepcopyWithFallback:
     def test_deepcopy_with_fallback_copyable(self, caplog):
         original = {"class": Copyable()}
         with caplog.at_level(logging.INFO):
-            copy = deepcopy_with_fallback(original)
+            copy = _deepcopy_with_exceptions(original)
             assert "Deepcopy failed for object of type" not in caplog.text
-        assert copy["class"].name == original["class"].name
-        # This should be a true copy so changing the name in the copy should not affect the original
-        copy["class"].name = "copied_class"
-        assert copy["class"] != original["class"]
+        assert copy["class"] is not original["class"]
 
     def test_deepcopy_with_fallback_not_copyable_error(self, caplog):
         original = {"class": NotCopyable()}
         with caplog.at_level(logging.INFO):
-            copy = deepcopy_with_fallback(original)
+            copy = _deepcopy_with_exceptions(original)
             assert "Deepcopy failed for object of type 'NotCopyable'" in caplog.text
-        assert copy["class"].name == original["class"].name
-        # Not copy so changing the name in the copy should also affect the original
-        copy["class"].name = "copied_class"
-        assert copy["class"].name == original["class"].name
+        assert copy["class"] is original["class"]
 
     def test_deepcopy_with_fallback_mixed_copyable_list(self, caplog):
         obj1 = Copyable()
         obj2 = NotCopyable()
         original = {"objects": [obj1, obj2]}
         with caplog.at_level(logging.INFO):
-            copy = deepcopy_with_fallback(original)
+            copy = _deepcopy_with_exceptions(original)
             assert "Deepcopy failed for object of type 'NotCopyable'" in caplog.text
-        assert copy["objects"][0].name == original["objects"][0].name
-        # First object should be a true copy so changing the name in the copy should not affect the original
-        copy["objects"][0].name = "copied_obj1"
-        assert copy["objects"][0].name != original["objects"][0].name
-        assert copy["objects"][1].name == original["objects"][1].name
-        # second not be a copy so changing the name in the copy should also affect the original
-        copy["objects"][1].name = "copied_obj2"
-        assert copy["objects"][1].name == original["objects"][1].name
+        assert copy["objects"][0] is not original["objects"][0]
+        assert copy["objects"][1] is original["objects"][1]
 
     def test_deepcopy_with_fallback_mixed_copyable_tuple(self, caplog):
         obj1 = Copyable()
         obj2 = NotCopyable()
         original = {"objects": (obj1, obj2)}
         with caplog.at_level(logging.INFO):
-            copy = deepcopy_with_fallback(original)
+            copy = _deepcopy_with_exceptions(original)
             assert "Deepcopy failed for object of type 'NotCopyable'" in caplog.text
-        assert copy["objects"][0].name == original["objects"][0].name
-        # First object should be a true copy so changing the name in the copy should not affect the original
-        copy["objects"][0].name = "copied_obj1"
-        assert copy["objects"][0].name != original["objects"][0].name
-        assert copy["objects"][1].name == original["objects"][1].name
-        # second not be a copy so changing the name in the copy should also affect the original
-        copy["objects"][1].name = "copied_obj2"
-        assert copy["objects"][1].name == original["objects"][1].name
+        assert copy["objects"][0] is not original["objects"][0]
+        assert copy["objects"][1] is original["objects"][1]
 
     def test_deepcopy_with_fallback_tool(self):
         tool = ComponentTool(
             name="problematic_tool", description="This is a problematic tool.", component=PromptBuilder("{{query}}")
         )
         original = {"tools": tool}
-        copy = deepcopy_with_fallback(original)
-        assert copy["tools"] == original["tools"]
-        # Not a copy so changing the name in the copy should also affect the original
-        copy["tools"].name = "copied_tool"
-        assert copy["tools"] == original["tools"]
+        copy = _deepcopy_with_exceptions(original)
+        assert copy["tools"] is original["tools"]
 
     def test_deepcopy_with_fallback_component(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test")
         comp = OpenAIChatGenerator()
         original = {"component": comp}
-        res = deepcopy_with_fallback(original)
-        assert res == original
-        # Change an attribute of the copy and check original also updates
-        res["component"].model = "a-model"
-        assert res["component"].model == original["component"].model
+        res = _deepcopy_with_exceptions(original)
+        assert res["component"] is original["component"]
