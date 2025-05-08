@@ -28,20 +28,14 @@ def deepcopy_with_fallback(obj: Any) -> Any:
     :returns:
         A deep-copied version of the object, or the original object if deepcopying fails.
     """
-    if isinstance(obj, list):
-        return [deepcopy_with_fallback(v) for v in obj]
-
-    if isinstance(obj, tuple):
-        return tuple(deepcopy_with_fallback(v) for v in obj)
-
-    if isinstance(obj, set):
-        return {deepcopy_with_fallback(v) for v in obj}
+    if isinstance(obj, (list, tuple, set)):
+        return type(obj)(deepcopy_with_fallback(v) for v in obj)
 
     if isinstance(obj, dict):
         return {k: deepcopy_with_fallback(v) for k, v in obj.items()}
 
     # Components and Tools often contain objects that we do not want to deepcopy or are not deepcopyable
-    # (e.g. pytorch models, clients, etc.). In this case we return the object as-is.
+    # (e.g. models, clients, etc.). In this case we return the object as-is.
     if isinstance(obj, (Component, Tool, Toolset)):
         return obj
 
