@@ -1,7 +1,7 @@
 ---
 enhancements:
   - |
-    Updated pipeline execution logic to use a new utility method `deepcopy_with_fallback`,
-    which skips deep-copying of `Component`, `Tool`, and `Toolset` instances when used as
-    runtime parameters. This prevents errors and unintended behavior caused by trying to
-    deepcopy objects that contain non-copyable attributes (e.g. Jinja2 templates, clients).
+    Updated pipeline execution logic to use a new utility method `_deepcopy_with_exceptions`, attempts to deep copy an object and safely falls back to the original object if copying fails.
+    Additionally `_deepcopy_with_exceptions` skips deep-copying of `Component`, `Tool`, and `Toolset` instances when used as runtime parameters.
+    This prevents errors and unintended behavior caused by trying to deepcopy objects that contain non-copyable attributes (e.g. Jinja2 templates, clients).
+    Previously, standard `deepcopy` was used on inputs and outputs which occasionally lead to errors since certain Python objects cannot be deepcopied.
