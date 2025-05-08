@@ -6,6 +6,7 @@ import logging
 import pytest
 
 from haystack.components.builders.prompt_builder import PromptBuilder
+from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.core.pipeline.utils import parse_connect_string, FIFOPriorityQueue, deepcopy_with_fallback
 from haystack.tools import ComponentTool, Tool
 
@@ -259,3 +260,12 @@ class TestDeepcopyWithFallback:
         # second should be a shallow copy so changing the name in the copy should also affect the original
         copy["tools"][1].name = "copied_tool2"
         assert copy["tools"][1] == original["tools"][1]
+
+    def test_deepcopy_with_fallback_component(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test")
+        comp = OpenAIChatGenerator()
+        res = deepcopy_with_fallback(comp)
+        assert res == comp
+        # Change an attribute of the copy and check original also updates
+        res.model = "a-model"
+        assert res.model == comp.model

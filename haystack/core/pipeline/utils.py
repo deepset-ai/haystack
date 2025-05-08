@@ -8,6 +8,7 @@ from itertools import count
 from typing import Any, List, Optional, Tuple
 
 from haystack import logging
+from haystack.core.component import Component
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,11 @@ def deepcopy_with_fallback(obj: Any, max_depth: Optional[int] = 100) -> Any:
     :param max_depth: The maximum depth to recurse during deep copying. If 0, returns the object as-is.
     :return: A deep copy of the object if successful; otherwise, the original object.
     """
+    # Components often contain objects that we do not want to deepcopy or are not deepcopyable
+    # (e.g. models, clients, etc.). In this case we return the object as-is.
+    if isinstance(obj, Component):
+        return obj
+
     if max_depth is not None and max_depth <= 0:
         return obj
 
