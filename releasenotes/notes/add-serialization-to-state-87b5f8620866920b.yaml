@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    Introduced `serialize_value` and `deserialize_value` utility methods for consistent value (de)serialization across modules.
+    Added serialization and deserialization capabilities to the `State` class, and relocated it to the `utils` module for better cohesion.
+
+deprecations:
+  - |
+    Deprecated the `State` class in the `dataclasses` module. Users are encouraged to transition to the new version of `State` now located in the `utils` module. A deprecation warning has been added to guide this migration.

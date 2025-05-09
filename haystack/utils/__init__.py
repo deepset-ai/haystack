@@ -10,6 +10,7 @@ from lazy_imports import LazyImporter
 _import_structure = {
     "auth": ["Secret", "deserialize_secrets_inplace"],
     "azure": ["default_azure_ad_token_provider"],
+    "base_serialization": ["deserialize_value", "serialize_value"],
     "callable_serialization": ["deserialize_callable", "serialize_callable"],
     "device": ["ComponentDevice", "Device", "DeviceMap", "DeviceType"],
     "deserialization": ["deserialize_document_store_in_init_params_inplace", "deserialize_chatgenerator_inplace"],
@@ -18,12 +19,14 @@ _import_structure = {
     "jupyter": ["is_in_jupyter"],
     "misc": ["expit", "expand_page_range"],
     "requests_utils": ["request_with_retry"],
+    "state": ["State"],
     "type_serialization": ["deserialize_type", "serialize_type"],
 }
 
 if TYPE_CHECKING:
     from .auth import Secret, deserialize_secrets_inplace
     from .azure import default_azure_ad_token_provider
+    from .base_serialization import deserialize_value, serialize_value
     from .callable_serialization import deserialize_callable, serialize_callable
     from .deserialization import deserialize_chatgenerator_inplace, deserialize_document_store_in_init_params_inplace
     from .device import ComponentDevice, Device, DeviceMap, DeviceType
@@ -32,7 +35,7 @@ if TYPE_CHECKING:
     from .jupyter import is_in_jupyter
     from .misc import expand_page_range, expit
     from .requests_utils import request_with_retry
+    from .state import State
     from .type_serialization import deserialize_type, serialize_type
-
 else:
     sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)
