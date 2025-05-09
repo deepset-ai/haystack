@@ -25,18 +25,23 @@ def print_streaming_chunk(chunk: StreamingChunk) -> None:
     # Print tool call metadata if available (from ChatGenerator)
     if chunk.meta.get("tool_calls"):
         for tool_call in chunk.meta["tool_calls"]:
-            if isinstance(tool_call, ChoiceDeltaToolCall) and tool_call.function:
+            if isinstance(tool_call, ChoiceDeltaToolCall):
+                tool_call_dict = tool_call.to_dict()
+            else:
+                tool_call_dict = tool_call
+
+            if tool_call_dict.get("function"):
                 # print the tool name
-                if tool_call.function.name and not tool_call.function.arguments:
+                if tool_call_dict["function"].get("name") and not tool_call_dict["function"].get("arguments"):
                     print("[TOOL CALL]\n", flush=True, end="")
-                    print(f"Tool: {tool_call.function.name} ", flush=True, end="")
+                    print(f"Tool: {tool_call_dict['function']['name']} ", flush=True, end="")
 
                 # print the tool arguments
-                if tool_call.function.arguments:
-                    if tool_call.function.arguments.startswith("{"):
+                if tool_call_dict["function"].get("arguments"):
+                    if tool_call_dict["function"]["arguments"].startswith("{"):
                         print("\nArguments: ", flush=True, end="")
-                    print(tool_call.function.arguments, flush=True, end="")
-                    if tool_call.function.arguments.endswith("}"):
+                    print(tool_call_dict["function"]["arguments"], flush=True, end="")
+                    if tool_call_dict["function"]["arguments"].endswith("}"):
                         print("\n\n", flush=True, end="")
 
     # Print tool call results if available (from ToolInvoker)
