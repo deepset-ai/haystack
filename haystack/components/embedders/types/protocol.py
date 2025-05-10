@@ -25,6 +25,8 @@ class TextEmbedder(Protocol):
         :param text:
             The input text to be embedded.
         :returns:
-            A dictionary containing the embedding and metadata.
+            A dictionary containing the keys:
+                - 'embedding', which is expected to be a List[float] representing the embedding.
+                - any optional keys such as 'metadata'.
         """
         ...
