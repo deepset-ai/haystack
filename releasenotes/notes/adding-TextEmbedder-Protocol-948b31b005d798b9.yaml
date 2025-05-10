@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    We now have a Protocol for TextEmbedder. The protocol makes it easier to create custom components or SuperComponents
+    that expect any TextEmbedder as init parameter.
