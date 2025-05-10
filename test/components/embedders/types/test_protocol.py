@@ -1,5 +1,5 @@
 import inspect
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from haystack.components.embedders.types.protocol import TextEmbedder
 
@@ -42,30 +42,3 @@ def test_protocol_optional_parameters():
     assert result1["metadata"]["param_a"] == "default"
     assert result2["metadata"]["param_a"] == "custom_a"
     assert result2["metadata"]["param_b"] == "custom_b"
-
-
-"""
-# Let's also add one or two InvalidTextEmbedder examples that don't have text as an input parameter, or don't have a key "embedding" in the output, or don't have a List[float] as value of the "embedding" key in the output.
-class InvalidTextEmbedder:
-    def run(self, text: str) -> Dict[str, Any]:
-
-        # Invalid implementation that does not return the expected keys.
-
-        return {"invalid_key": [0.1, 0.2, 0.3]}  # missing 'embedding' key
-
-class InvalidTextEmbedder2:
-    def run(self, text: str) -> Dict[str, Any]:
-
-        # Invalid implementation that does not return the expected type for 'embedding'.
-
-        return {"embedding": "not_a_list"}  # 'embedding' should be a List[float]
-
-def test_invalid_protocol_implementation():
-    embedder: TextEmbedder = InvalidTextEmbedder()  # should not raise any type errors
-
-    result = embedder.run("test text")
-    assert isinstance(result, dict)
-    assert "embedding" not in result  # should not have 'embedding' key
-    assert "invalid_key" in result
-    assert isinstance(result["invalid_key"], list)  # 'invalid_key' is a list, but not the expected one
-"""
