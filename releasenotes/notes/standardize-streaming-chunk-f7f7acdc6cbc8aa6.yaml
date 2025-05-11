@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Extend the StreamingChunk dataclass to include standard fields for tool_calls, finish_reason and usage, to improve consistency across Chat Generator integrations.

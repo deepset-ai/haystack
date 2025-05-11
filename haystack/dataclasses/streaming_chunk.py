@@ -3,9 +3,56 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable, Dict, Optional, Union
+from enum import Enum
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Union
 
 from haystack.utils.asynchronous import is_callable_async_compatible
+
+
+class FinishReason(str, Enum):
+    """
+    Represents finish reasons for streaming chunks.
+    """
+
+    STOP = "stop"
+    LENGTH = "length"
+    CONTENT_FILTER = "content_filter"
+    TOOL_CALLS = "tool_calls"
+    TOOL_USE = "tool_use"
+    ERROR = "error"
+
+
+@dataclass
+class ToolCall:
+    """
+    Represents a tool call request from the model.
+    """
+
+    id: str
+    type: str
+    function: Dict[str, Any]
+
+
+@dataclass
+class ToolResult:
+    """
+    Represents a result from a tool call.
+    """
+
+    tool_call_id: str
+    name: str
+    content: str
+
+
+@dataclass
+class Usage:
+    """
+    Represents token usage information.
+    """
+
+    prompt_tokens: Optional[int] = None
+    completion_tokens: Optional[int] = None
+    total_tokens: Optional[int] = None
 
 
 @dataclass
@@ -17,10 +64,18 @@ class StreamingChunk:
 
     :param content: The content of the message chunk as a string.
     :param meta: A dictionary containing metadata related to the message chunk.
+    :param tool_calls: List of tool calls requested by the model.
+    :param tool_results: List of results from tool calls.
+    :param finish_reason: The reason why the model finished generating.
+    :param usage: Token usage information.
     """
 
     content: str
     meta: Dict[str, Any] = field(default_factory=dict, hash=False)
+    tool_calls: Optional[List[ToolCall]] = None
+    tool_results: Optional[List[ToolResult]] = None
+    finish_reason: Optional[FinishReason] = None
+    usage: Optional[Usage] = None
 
 
 SyncStreamingCallbackT = Callable[[StreamingChunk], None]
