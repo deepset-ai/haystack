@@ -23,31 +23,47 @@ class FinishReason(str, Enum):
 
 
 @dataclass
-class ToolCall:
+class StreamingToolCall:
     """
     Represents a tool call request from the model.
+
+    :param id: The ID of the tool call.
+    :param tool_name: The name of the tool to call.
+    :param arguments: The arguments to call the tool with.
+    :param type: The type of the tool call (e.g., "function").
     """
 
     id: str
-    type: str
-    function: Dict[str, Any]
+    tool_name: str
+    arguments: Dict[str, Any]
+    type: str = "function"  # noqa: A003
 
 
 @dataclass
 class ToolResult:
     """
     Represents a result from a tool call.
+
+    :param tool_call_id: The ID of the tool call that produced this result.
+    :param name: The name of the tool that was called.
+    :param content: The result of the tool call.
+    :param error: Whether the tool call resulted in an error.
     """
 
     tool_call_id: str
     name: str
     content: str
+    error: bool = False
 
 
 @dataclass
 class Usage:
     """
     Represents token usage information.
+
+    :param prompt_tokens: Number of tokens in the prompt.
+    :param completion_tokens: Number of tokens in the completion.
+    :param total_tokens: Total number of tokens used.
     """
 
     prompt_tokens: Optional[int] = None
@@ -72,7 +88,7 @@ class StreamingChunk:
 
     content: str
     meta: Dict[str, Any] = field(default_factory=dict, hash=False)
-    tool_calls: Optional[List[ToolCall]] = None
+    tool_calls: Optional[List[StreamingToolCall]] = None
     tool_results: Optional[List[ToolResult]] = None
     finish_reason: Optional[FinishReason] = None
     usage: Optional[Usage] = None
