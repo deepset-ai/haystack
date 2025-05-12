@@ -13,6 +13,14 @@ def test_init_with_unknown_mode_string():
         DocumentRecallEvaluator(mode="unknown_mode")
 
 
+def test_init_with_string_mode():
+    evaluator = DocumentRecallEvaluator(mode="single_hit")
+    assert evaluator.mode == RecallMode.SINGLE_HIT
+
+    evaluator = DocumentRecallEvaluator(mode="multi_hit")
+    assert evaluator.mode == RecallMode.MULTI_HIT
+
+
 class TestDocumentRecallEvaluatorSingleHit:
     @pytest.fixture
     def evaluator(self):
@@ -186,3 +194,144 @@ class TestDocumentRecallEvaluatorMultiHit:
         }
         new_evaluator = default_from_dict(DocumentRecallEvaluator, data)
         assert new_evaluator.mode == RecallMode.MULTI_HIT
+
+
+class TestDocumentRecallEvaluatorEmptyDocuments:
+    @pytest.fixture
+    def evaluator_single_hit(self):
+        return DocumentRecallEvaluator(mode=RecallMode.SINGLE_HIT)
+
+    @pytest.fixture
+    def evaluator_multi_hit(self):
+        return DocumentRecallEvaluator(mode=RecallMode.MULTI_HIT)
+
+    def test_run_with_empty_ground_truth(self, evaluator_single_hit, evaluator_multi_hit):
+        result_single = evaluator_single_hit.run(
+            ground_truth_documents=[[]], retrieved_documents=[[Document(content="Berlin")]]
+        )
+        assert result_single == {"individual_scores": [0.0], "score": 0.0}
+
+        result_multi = evaluator_multi_hit.run(
+            ground_truth_documents=[[]], retrieved_documents=[[Document(content="Berlin")]]
+        )
+        assert result_multi == {"individual_scores": [0.0], "score": 0.0}
+
+    def test_run_with_empty_retrieved(self, evaluator_single_hit, evaluator_multi_hit):
+        result_single = evaluator_single_hit.run(
+            ground_truth_documents=[[Document(content="Berlin")]], retrieved_documents=[[]]
+        )
+        assert result_single == {"individual_scores": [0.0], "score": 0.0}
+
+        result_multi = evaluator_multi_hit.run(
+            ground_truth_documents=[[Document(content="Berlin")]], retrieved_documents=[[]]
+        )
+        assert result_multi == {"individual_scores": [0.0], "score": 0.0}
+
+    def test_run_with_empty_strings(self, evaluator_single_hit, evaluator_multi_hit):
+        result_single = evaluator_single_hit.run(
+            ground_truth_documents=[[Document(content="")]], retrieved_documents=[[Document(content="Berlin")]]
+        )
+        assert result_single == {"individual_scores": [0.0], "score": 0.0}
+
+        result_multi = evaluator_multi_hit.run(
+            ground_truth_documents=[[Document(content="")]], retrieved_documents=[[Document(content="Berlin")]]
+        )
+        assert result_multi == {"individual_scores": [0.0], "score": 0.0}
+
+    def test_run_with_all_empty_strings(self, evaluator_single_hit, evaluator_multi_hit):
+        result_single = evaluator_single_hit.run(
+            ground_truth_documents=[[Document(content=""), Document(content="")]],
+            retrieved_documents=[[Document(content=""), Document(content="")]],
+        )
+        assert result_single == {"individual_scores": [0.0], "score": 0.0}
+
+        result_multi = evaluator_multi_hit.run(
+            ground_truth_documents=[[Document(content=""), Document(content="")]],
+            retrieved_documents=[[Document(content=""), Document(content="")]],
+        )
+        assert result_multi == {"individual_scores": [0.0], "score": 0.0}
+
+    def test_run_with_multiple_empty_ground_truth(self, evaluator_single_hit, evaluator_multi_hit):
+        result_single = evaluator_single_hit.run(
+            ground_truth_documents=[[], [], []],
+            retrieved_documents=[
+                [Document(content="Berlin")],
+                [Document(content="Paris")],
+                [Document(content="London")],
+            ],
+        )
+        assert result_single == {"individual_scores": [0.0, 0.0, 0.0], "score": 0.0}
+
+        result_multi = evaluator_multi_hit.run(
+            ground_truth_documents=[[], [], []],
+            retrieved_documents=[
+                [Document(content="Berlin")],
+                [Document(content="Paris")],
+                [Document(content="London")],
+            ],
+        )
+        assert result_multi == {"individual_scores": [0.0, 0.0, 0.0], "score": 0.0}
+
+    def test_run_with_mixed_empty_ground_truth(self, evaluator_single_hit, evaluator_multi_hit):
+        result_single = evaluator_single_hit.run(
+            ground_truth_documents=[[], [Document(content="Paris")], []],
+            retrieved_documents=[
+                [Document(content="Berlin")],
+                [Document(content="Paris")],
+                [Document(content="London")],
+            ],
+        )
+        assert result_single == {"individual_scores": [0.0, 1.0, 0.0], "score": 0.3333333333333333}
+
+        result_multi = evaluator_multi_hit.run(
+            ground_truth_documents=[[], [Document(content="Paris")], []],
+            retrieved_documents=[
+                [Document(content="Berlin")],
+                [Document(content="Paris")],
+                [Document(content="London")],
+            ],
+        )
+        assert result_multi == {"individual_scores": [0.0, 1.0, 0.0], "score": 0.3333333333333333}
+
+    def test_run_with_empty_ground_truth_and_empty_retrieved(self, evaluator_single_hit, evaluator_multi_hit):
+        result_single = evaluator_single_hit.run(ground_truth_documents=[[], []], retrieved_documents=[[], []])
+        assert result_single == {"individual_scores": [0.0, 0.0], "score": 0.0}
+
+        result_multi = evaluator_multi_hit.run(ground_truth_documents=[[], []], retrieved_documents=[[], []])
+        assert result_multi == {"individual_scores": [0.0, 0.0], "score": 0.0}
+
+
+class TestDocumentRecallEvaluatorComplexScenarios:
+    @pytest.fixture
+    def evaluator_multi_hit(self):
+        return DocumentRecallEvaluator(mode=RecallMode.MULTI_HIT)
+
+    def test_run_with_duplicate_ground_truth(self, evaluator_multi_hit):
+        result = evaluator_multi_hit.run(
+            ground_truth_documents=[[Document(content="Berlin"), Document(content="Berlin")]],
+            retrieved_documents=[[Document(content="Berlin")]],
+        )
+        assert result == {"individual_scores": [1.0], "score": 1.0}
+
+    def test_run_with_duplicate_retrieved(self, evaluator_multi_hit):
+        result = evaluator_multi_hit.run(
+            ground_truth_documents=[[Document(content="Berlin")]],
+            retrieved_documents=[[Document(content="Berlin"), Document(content="Berlin")]],
+        )
+        assert result == {"individual_scores": [1.0], "score": 1.0}
+
+    def test_run_with_mixed_case_content(self, evaluator_multi_hit):
+        result = evaluator_multi_hit.run(
+            ground_truth_documents=[[Document(content="Berlin"), Document(content="PARIS")]],
+            retrieved_documents=[[Document(content="BERLIN"), Document(content="Paris")]],
+        )
+        assert result == {"individual_scores": [0.0], "score": 0.0}
+
+    def test_run_with_partial_overlap(self, evaluator_multi_hit):
+        result = evaluator_multi_hit.run(
+            ground_truth_documents=[
+                [Document(content="Berlin"), Document(content="Paris"), Document(content="London")]
+            ],
+            retrieved_documents=[[Document(content="Berlin"), Document(content="Paris")]],
+        )
+        assert result == {"individual_scores": [0.6666666666666666], "score": 0.6666666666666666}
