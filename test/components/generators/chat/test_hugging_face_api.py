@@ -21,6 +21,7 @@ from huggingface_hub import (
     ChatCompletionStreamOutput,
     ChatCompletionStreamOutputChoice,
     ChatCompletionStreamOutputDelta,
+    ChatCompletionInputStreamOptions,
 )
 from huggingface_hub.errors import RepositoryNotFoundError
 
@@ -438,7 +439,12 @@ class TestHuggingFaceAPIChatGenerator:
 
         # check kwargs passed to text_generation
         _, kwargs = mock_chat_completion.call_args
-        assert kwargs == {"stop": [], "stream": True, "max_tokens": 512}
+        assert kwargs == {
+            "stop": [],
+            "stream": True,
+            "max_tokens": 512,
+            "stream_options": ChatCompletionInputStreamOptions(include_usage=True),
+        }
 
         # Assert that the streaming callback was called twice
         assert streaming_call_count == 2
@@ -502,7 +508,12 @@ class TestHuggingFaceAPIChatGenerator:
 
         # check kwargs passed to text_generation
         _, kwargs = mock_chat_completion.call_args
-        assert kwargs == {"stop": [], "stream": True, "max_tokens": 512}
+        assert kwargs == {
+            "stop": [],
+            "stream": True,
+            "max_tokens": 512,
+            "stream_options": ChatCompletionInputStreamOptions(include_usage=True),
+        }
 
         # Assert that the streaming callback was called twice
         assert streaming_call_count == 2
@@ -845,7 +856,12 @@ class TestHuggingFaceAPIChatGenerator:
 
         # check kwargs passed to chat_completion
         _, kwargs = mock_chat_completion_async.call_args
-        assert kwargs == {"stop": [], "stream": True, "max_tokens": 512}
+        assert kwargs == {
+            "stop": [],
+            "stream": True,
+            "max_tokens": 512,
+            "stream_options": ChatCompletionInputStreamOptions(include_usage=True),
+        }
 
         # Assert that the streaming callback was called twice
         assert streaming_call_count == 2
