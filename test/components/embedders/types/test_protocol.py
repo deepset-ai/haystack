@@ -1,15 +1,22 @@
 import inspect
-from typing import Any, Dict, List
+from typing import Any, Dict
 
+import pytest
+
+from haystack import component
 from haystack.components.embedders.types.protocol import TextEmbedder
 
 
+@component
 class MockTextEmbedder:
     def run(self, text: str, param_a: str = "default", param_b: str = "another_default") -> Dict[str, Any]:
-        """
-        Mock implementation that returns a simple embedding and metadata.
-        """
         return {"embedding": [0.1, 0.2, 0.3], "metadata": {"text": text, "param_a": param_a, "param_b": param_b}}
+
+
+@component
+class MockInvalidTextEmbedder:
+    def run(self, something_else: float) -> dict[str, bool]:
+        return {"result": True}
 
 
 def test_protocol_implementation():
@@ -24,7 +31,6 @@ def test_protocol_implementation():
     result = embedder.run("test text")
     assert isinstance(result, dict)
     assert "embedding" in result
-    assert "metadata" in result
     assert isinstance(result["embedding"], list)
     assert all(isinstance(x, float) for x in result["embedding"])
     assert isinstance(result["metadata"], dict)
@@ -42,3 +48,13 @@ def test_protocol_optional_parameters():
     assert result1["metadata"]["param_a"] == "default"
     assert result2["metadata"]["param_a"] == "custom_a"
     assert result2["metadata"]["param_b"] == "custom_b"
+
+
+def test_protocol_invalid_implementation():
+    run_signature = inspect.signature(MockInvalidTextEmbedder.run)
+
+    with pytest.raises(AssertionError):
+        assert "text" in run_signature.parameters and run_signature.parameters["text"].annotation == str
+
+    with pytest.raises(AssertionError):
+        assert run_signature.return_annotation == Dict[str, Any]
