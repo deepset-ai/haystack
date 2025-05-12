@@ -3,9 +3,18 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import fields, is_dataclass
-from typing import Any, Dict, Union, get_args, get_origin
+from inspect import getdoc
+from typing import Any, Callable, Dict, Union, get_args, get_origin
 
+from haystack import logging
+from haystack.lazy_imports import LazyImport
 from haystack.tools.errors import SchemaGenerationError
+
+with LazyImport(message="Run 'pip install docstring-parser'") as docstring_parser_import:
+    from docstring_parser import parse
+
+
+logger = logging.getLogger(__name__)
 
 
 def _create_list_schema(item_type: Any, description: str) -> Dict[str, Any]:
@@ -29,10 +38,11 @@ def _create_dataclass_schema(python_type: Any, description: str) -> Dict[str, An
     :param description: The description of the dataclass.
     :returns: A dictionary representing the dataclass schema.
     """
+    param_descriptions = _get_param_descriptions(python_type)
     schema: Dict[str, Any] = {"type": "object", "description": description, "properties": {}}
     cls = python_type if isinstance(python_type, type) else python_type.__class__
     for field in fields(cls):
-        field_description = f"Field '{field.name}' of '{cls.__name__}'."
+        field_description = param_descriptions.get(field.name, f"Field '{field.name}' of '{cls.__name__}'.")
         field_schema = _create_property_schema(field.type, field_description)
         schema["properties"][field.name] = field_schema
     return schema
@@ -128,3 +138,28 @@ def _create_property_schema(python_type: Any, description: str, default: Any = N
         schema["default"] = default
 
     return schema
+
+
+def _get_param_descriptions(method: Callable) -> Dict[str, str]:
+    """
+    Extracts parameter descriptions from the method's docstring using docstring_parser.
+
+    :param method: The method to extract parameter descriptions from.
+    :returns: A dictionary mapping parameter names to their descriptions.
+    """
+    docstring = getdoc(method)
+    if not docstring:
+        return {}
+
+    docstring_parser_import.check()
+    parsed_doc = parse(docstring)
+    param_descriptions = {}
+    for param in parsed_doc.params:
+        if not param.description:
+            logger.warning(
+                "Missing description for parameter '%s'. Please add a description in the component's "
+                "run() method docstring using the format ':param %%s: <description>'. "
+                "This description helps the LLM understand how to use this parameter." % param.arg_name
+            )
+        param_descriptions[param.arg_name] = param.description.strip() if param.description else ""
+    return param_descriptions

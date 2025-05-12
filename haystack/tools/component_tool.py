@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from inspect import getdoc
 from typing import Any, Callable, Dict, Optional, Union, get_args, get_origin
 
 from pydantic import TypeAdapter
@@ -15,15 +14,10 @@ from haystack.core.serialization import (
     generate_qualified_class_name,
     import_class_by_name,
 )
-from haystack.lazy_imports import LazyImport
 from haystack.tools import Tool
 from haystack.tools.errors import SchemaGenerationError
-from haystack.tools.property_schema_utils import _create_property_schema
+from haystack.tools.property_schema_utils import _create_property_schema, _get_param_descriptions
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
-
-with LazyImport(message="Run 'pip install docstring-parser'") as docstring_parser_import:
-    from docstring_parser import parse
-
 
 logger = logging.getLogger(__name__)
 
@@ -278,7 +272,7 @@ class ComponentTool(Tool):
         properties = {}
         required = []
 
-        param_descriptions = self._get_param_descriptions(component.run)
+        param_descriptions = _get_param_descriptions(component.run)
 
         for input_name, socket in component.__haystack_input__._sockets_dict.items():  # type: ignore[attr-defined]
             if inputs_from_state is not None and input_name in inputs_from_state:
@@ -307,28 +301,3 @@ class ComponentTool(Tool):
             parameters_schema["required"] = required
 
         return parameters_schema
-
-    @staticmethod
-    def _get_param_descriptions(method: Callable) -> Dict[str, str]:
-        """
-        Extracts parameter descriptions from the method's docstring using docstring_parser.
-
-        :param method: The method to extract parameter descriptions from.
-        :returns: A dictionary mapping parameter names to their descriptions.
-        """
-        docstring = getdoc(method)
-        if not docstring:
-            return {}
-
-        docstring_parser_import.check()
-        parsed_doc = parse(docstring)
-        param_descriptions = {}
-        for param in parsed_doc.params:
-            if not param.description:
-                logger.warning(
-                    "Missing description for parameter '%s'. Please add a description in the component's "
-                    "run() method docstring using the format ':param %%s: <description>'. "
-                    "This description helps the LLM understand how to use this parameter." % param.arg_name
-                )
-            param_descriptions[param.arg_name] = param.description.strip() if param.description else ""
-        return param_descriptions

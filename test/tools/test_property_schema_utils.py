@@ -32,8 +32,14 @@ DOCUMENT_SCHEMA = {
     "type": "object",
     "description": "A document",
     "properties": {
-        "id": {"type": "string", "description": "Field 'id' of 'Document'."},
-        "content": {"oneOf": [{"type": "string"}, {"type": "null"}], "description": "Field 'content' of 'Document'."},
+        "id": {
+            "type": "string",
+            "description": "Unique identifier for the document. When not set, it's generated based on the Document fields' values.",
+        },
+        "content": {
+            "oneOf": [{"type": "string"}, {"type": "null"}],
+            "description": "Text of the document, if the document contains text.",
+        },
         "blob": {
             "oneOf": [
                 {
@@ -53,13 +59,20 @@ DOCUMENT_SCHEMA = {
                 },
                 {"type": "null"},
             ],
-            "description": "Field 'blob' of 'Document'.",
+            "description": "Binary data associated with the document, if the document has any binary data associated with it.",
         },
-        "meta": {"type": "object", "description": "Field 'meta' of 'Document'.", "additionalProperties": True},
-        "score": {"oneOf": [{"type": "number"}, {"type": "null"}], "description": "Field 'score' of 'Document'."},
+        "meta": {
+            "type": "object",
+            "description": "Additional custom metadata for the document. Must be JSON-serializable.",
+            "additionalProperties": True,
+        },
+        "score": {
+            "oneOf": [{"type": "number"}, {"type": "null"}],
+            "description": "Score of the document. Used for ranking, usually assigned by retrievers.",
+        },
         "embedding": {
             "oneOf": [{"type": "array", "items": {"type": "number"}}, {"type": "null"}],
-            "description": "Field 'embedding' of 'Document'.",
+            "description": "dense vector representation of the document.",
         },
         "sparse_embedding": {
             "oneOf": [
@@ -68,19 +81,19 @@ DOCUMENT_SCHEMA = {
                     "properties": {
                         "indices": {
                             "type": "array",
-                            "description": "Field 'indices' of 'SparseEmbedding'.",
+                            "description": "List of indices of non-zero elements in the embedding.",
                             "items": {"type": "integer"},
                         },
                         "values": {
                             "type": "array",
-                            "description": "Field 'values' of 'SparseEmbedding'.",
+                            "description": "List of values of non-zero elements in the embedding.",
                             "items": {"type": "number"},
                         },
                     },
                 },
                 {"type": "null"},
             ],
-            "description": "Field 'sparse_embedding' of 'Document'.",
+            "description": "sparse vector representation of the document.",
         },
     },
 }
@@ -245,6 +258,17 @@ def test_create_property_schema_union_type(python_type, description, expected_sc
                     {"type": "null"},
                 ],
                 "description": "An optional list of chat messages",
+            },
+        ),
+        (
+            Union[List[ChatMessage], List[Dict[str, Any]]],
+            "A union of list of chat messages and list of dicts",
+            {
+                "oneOf": [
+                    {"type": "array", "items": remove_item(CHAT_MESSAGE_SCHEMA, "description")},
+                    {"type": "array", "items": {"type": "object", "additionalProperties": True}},
+                ],
+                "description": "A union of list of chat messages and list of dicts",
             },
         ),
         (
