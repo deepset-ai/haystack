@@ -4,7 +4,7 @@
 
 import json
 from datetime import datetime
-from typing import Any, AsyncIterable, Dict, Iterable, List, Optional, Union
+from typing import Any, AsyncIterable, Dict, Iterable, List, Literal, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall, select_streaming_callback
@@ -217,6 +217,7 @@ class HuggingFaceAPIChatGenerator:
         if isinstance(api_type, str):
             api_type = HFGenerationAPIType.from_str(api_type)
 
+        provider: Union[None, Literal["auto"]] = None
         if api_type == HFGenerationAPIType.SERVERLESS_INFERENCE_API:
             model = api_params.get("model")
             if model is None:
@@ -225,6 +226,7 @@ class HuggingFaceAPIChatGenerator:
                 )
             check_valid_model(model, HFModelType.GENERATION, token)
             model_or_url = model
+            provider = "auto"
         elif api_type in [HFGenerationAPIType.INFERENCE_ENDPOINTS, HFGenerationAPIType.TEXT_GENERATION_INFERENCE]:
             url = api_params.get("url")
             if url is None:
@@ -255,8 +257,10 @@ class HuggingFaceAPIChatGenerator:
         self.token = token
         self.generation_kwargs = generation_kwargs
         self.streaming_callback = streaming_callback
-        self._client = InferenceClient(model_or_url, token=token.resolve_value() if token else None)
-        self._async_client = AsyncInferenceClient(model_or_url, token=token.resolve_value() if token else None)
+        self._client = InferenceClient(model_or_url, token=token.resolve_value() if token else None, provider=provider)
+        self._async_client = AsyncInferenceClient(
+            model_or_url, token=token.resolve_value() if token else None, provider=provider
+        )
         self.tools = tools
 
     def to_dict(self) -> Dict[str, Any]:
