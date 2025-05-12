@@ -714,9 +714,9 @@ class TestHuggingFaceAPIChatGenerator:
         assert datetime.fromisoformat(response_meta["completion_start_time"]) <= datetime.now()
         assert "usage" in response_meta
         assert "prompt_tokens" in response_meta["usage"]
-        assert response_meta["usage"]["prompt_tokens"] == 0
+        assert response_meta["usage"]["prompt_tokens"] > 0
         assert "completion_tokens" in response_meta["usage"]
-        assert response_meta["usage"]["completion_tokens"] == 0
+        assert response_meta["usage"]["completion_tokens"] > 0
         assert response_meta["model"] == "microsoft/Phi-3.5-mini-instruct"
         assert response_meta["finish_reason"] is not None
 
