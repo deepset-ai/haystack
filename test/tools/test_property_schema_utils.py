@@ -3,9 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import pytest
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Sequence, Union
 
-from haystack.dataclasses import ByteStream, ChatMessage, Document
+from haystack.dataclasses import ByteStream, ChatMessage, Document, TextContent, ToolCall, ToolCallResult
 from haystack.tools.property_schema_utils import _create_property_schema
 
 
@@ -95,6 +95,48 @@ DOCUMENT_SCHEMA = {
             ],
             "description": "sparse vector representation of the document.",
         },
+    },
+}
+
+TEXT_CONTENT_SCHEMA = {
+    "type": "object",
+    "description": "A text content",
+    "properties": {"text": {"type": "string", "description": "The text content of the message."}},
+}
+
+TOOL_CALL_SCHEMA = {
+    "type": "object",
+    "description": "A tool call",
+    "properties": {
+        "tool_name": {"type": "string", "description": "The name of the Tool to call."},
+        "arguments": {
+            "type": "object",
+            "description": "The arguments to call the Tool with.",
+            "additionalProperties": True,
+        },
+        "id": {"oneOf": [{"type": "string"}, {"type": "null"}], "description": "The ID of the Tool call."},
+    },
+}
+
+TOOL_CALL_RESULT_SCHEMA = {
+    "type": "object",
+    "description": "A tool call result",
+    "properties": {
+        "result": {"type": "string", "description": "The result of the Tool invocation."},
+        "origin": {
+            "type": "object",
+            "description": "The Tool call that produced this result.",
+            "properties": {
+                "tool_name": {"type": "string", "description": "The name of the Tool to call."},
+                "arguments": {
+                    "type": "object",
+                    "description": "The arguments to call the Tool with.",
+                    "additionalProperties": True,
+                },
+                "id": {"oneOf": [{"type": "string"}, {"type": "null"}], "description": "The ID of the Tool call."},
+            },
+        },
+        "error": {"type": "boolean", "description": "Whether the Tool invocation resulted in an error."},
     },
 }
 
@@ -230,6 +272,9 @@ def test_create_property_schema_union_type(python_type, description, expected_sc
     [
         (ByteStream, "A byte stream", BYTE_STREAM_SCHEMA),
         (Document, "A document", DOCUMENT_SCHEMA),
+        (TextContent, "A text content", TEXT_CONTENT_SCHEMA),
+        (ToolCall, "A tool call", TOOL_CALL_SCHEMA),
+        (ToolCallResult, "A tool call result", TOOL_CALL_RESULT_SCHEMA),
         (ChatMessage, "A chat message", CHAT_MESSAGE_SCHEMA),
         (
             List[Document],
@@ -280,6 +325,25 @@ def test_create_property_schema_union_type(python_type, description, expected_sc
                 "description": "A list of lists of documents",
             },
         ),
+        # (
+        #     Sequence[Union[TextContent, ToolCall, ToolCallResult]],
+        #     "A sequence of text content, tool calls, or tool call results",
+        #     {
+        #         "type": "array",
+        #         "description": "A sequence of text content, tool calls, or tool call results",
+        #         "items": {
+        #             # TODO Double check when using oneOf if we can also include the description
+        #             "oneOf": [
+        #                 # TextContent schema
+        #                 remove_item(TEXT_CONTENT_SCHEMA, "description"),
+        #                 # ToolCall schema
+        #                 remove_item(TOOL_CALL_SCHEMA, "description"),
+        #                 # ToolCallResult schema
+        #                 remove_item(TOOL_CALL_RESULT_SCHEMA, "description"),
+        #             ]
+        #         },
+        #     },
+        # ),
     ],
 )
 def test_create_property_schema_haystack_dataclasses(python_type, description, expected_schema):

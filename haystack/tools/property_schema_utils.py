@@ -39,6 +39,7 @@ def _create_dataclass_schema(python_type: Any, description: str) -> Dict[str, An
     :returns: A dictionary representing the dataclass schema.
     """
     param_descriptions = _get_param_descriptions(python_type)
+    # TODO make description optional so we can pull from the dataclass
     schema: Dict[str, Any] = {"type": "object", "description": description, "properties": {}}
     cls = python_type if isinstance(python_type, type) else python_type.__class__
     for field in fields(cls):
