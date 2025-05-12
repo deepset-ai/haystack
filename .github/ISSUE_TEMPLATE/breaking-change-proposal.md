@@ -13,7 +13,6 @@ Briefly explain how the change is breaking and why it is needed.
 
 ## Checklist
 
-```[tasklist]
 ### Tasks
 - [ ] The changes are merged in the `main` branch (Code + Docstrings)
 - [ ] Release notes have documented the breaking change
@@ -24,4 +23,3 @@ Briefly explain how the change is breaking and why it is needed.
 - [ ] Tutorials on https://github.com/deepset-ai/haystack-tutorials were updated (if needed)
 - [ ] Articles on https://github.com/deepset-ai/haystack-home/tree/main/content were updated (if needed)
 - [ ] Integration tile on https://github.com/deepset-ai/haystack-integrations was updated (if needed)
-```
