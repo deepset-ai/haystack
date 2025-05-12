@@ -3,8 +3,51 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import heapq
+from copy import deepcopy
 from itertools import count
 from typing import Any, List, Optional, Tuple
+
+from haystack import logging
+from haystack.core.component import Component
+from haystack.tools import Tool, Toolset
+
+logger = logging.getLogger(__name__)
+
+
+def _deepcopy_with_exceptions(obj: Any) -> Any:
+    """
+    Attempts to perform a deep copy of the given object.
+
+    This function recursively handles common container types (lists, tuples, sets, and dicts) to ensure deep copies
+    of nested structures. For specific object types that are known to be problematic for deepcopying-such as
+    instances of `Component`, `Tool`, or `Toolset` - the original object is returned as-is.
+    If `deepcopy` fails for any other reason, the original object is returned and a log message is recorded.
+
+    :param obj: The object to be deep-copied.
+
+    :returns:
+        A deep-copied version of the object, or the original object if deepcopying fails.
+    """
+    if isinstance(obj, (list, tuple, set)):
+        return type(obj)(_deepcopy_with_exceptions(v) for v in obj)
+
+    if isinstance(obj, dict):
+        return {k: _deepcopy_with_exceptions(v) for k, v in obj.items()}
+
+    # Components and Tools often contain objects that we do not want to deepcopy or are not deepcopyable
+    # (e.g. models, clients, etc.). In this case we return the object as-is.
+    if isinstance(obj, (Component, Tool, Toolset)):
+        return obj
+
+    try:
+        return deepcopy(obj)
+    except Exception as e:
+        logger.info(
+            "Deepcopy failed for object of type '{obj_type}'. Error: {error}. Returning original object instead.",
+            obj_type=type(obj).__name__,
+            error=e,
+        )
+        return obj
 
 
 def parse_connect_string(connection: str) -> Tuple[str, Optional[str]]:

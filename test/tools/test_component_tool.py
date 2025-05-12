@@ -2,19 +2,24 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from unittest.mock import patch
+
 import json
 import os
-from copy import deepcopy
 from dataclasses import dataclass
 from typing import Dict, List
 
 import pytest
+
+from openai.types.chat import ChatCompletion, ChatCompletionMessage
+from openai.types.chat.chat_completion import Choice
 
 from haystack import Pipeline, component
 from haystack.components.builders import PromptBuilder
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.tools import ToolInvoker
 from haystack.components.websearch.serper_dev import SerperDevWebSearch
+from haystack.core.pipeline.utils import _deepcopy_with_exceptions
 from haystack.dataclasses import ChatMessage, ChatRole, Document
 from haystack.tools import ComponentTool
 from haystack.utils.auth import Secret
@@ -647,19 +652,36 @@ class TestToolComponentInPipelineWithOpenAI:
             ComponentTool(component=comp)
 
     def test_deepcopy_with_jinja_based_component(self):
-        # Jinja2 templates throw an Exception when we deepcopy them (see https://github.com/pallets/jinja/issues/758)
-        # When we use a ComponentTool in a pipeline at runtime, we deepcopy the tool
-        # We overwrite ComponentTool.__deepcopy__ to fix this in experimental until a more comprehensive fix is merged.
-        # We track the issue here: https://github.com/deepset-ai/haystack/issues/9011
-
         builder = PromptBuilder("{{query}}")
-
         tool = ComponentTool(component=builder)
         result = tool.function(query="Hello")
-
-        tool_copy = deepcopy(tool)
-
+        tool_copy = _deepcopy_with_exceptions(tool)
         result_from_copy = tool_copy.function(query="Hello")
-
         assert "prompt" in result_from_copy
         assert result_from_copy["prompt"] == result["prompt"]
+
+    def test_jinja_based_component_tool_in_pipeline(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+
+        with patch("openai.resources.chat.completions.Completions.create") as mock_create:
+            mock_create.return_value = ChatCompletion(
+                id="test",
+                model="gpt-4o-mini",
+                object="chat.completion",
+                choices=[
+                    Choice(
+                        finish_reason="length",
+                        index=0,
+                        message=ChatCompletionMessage(role="assistant", content="A response from the model"),
+                    )
+                ],
+                created=1234567890,
+            )
+
+            builder = PromptBuilder("{{query}}")
+            tool = ComponentTool(component=builder)
+            pipeline = Pipeline()
+            pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini"))
+            result = pipeline.run({"llm": {"messages": [ChatMessage.from_user(text="Hello")], "tools": [tool]}})
+
+        assert result["llm"]["replies"][0].text == "A response from the model"

@@ -4,7 +4,6 @@
 
 import itertools
 from collections import defaultdict
-from copy import deepcopy
 from datetime import datetime
 from enum import IntEnum
 from pathlib import Path
@@ -33,7 +32,7 @@ from haystack.core.pipeline.component_checks import (
     is_any_greedy_socket_ready,
     is_socket_lazy_variadic,
 )
-from haystack.core.pipeline.utils import FIFOPriorityQueue, parse_connect_string
+from haystack.core.pipeline.utils import FIFOPriorityQueue, _deepcopy_with_exceptions, parse_connect_string
 from haystack.core.serialization import DeserializationCallbacks, component_from_dict, component_to_dict
 from haystack.core.type_utils import _type_name, _types_are_compatible
 from haystack.marshal import Marshaller, YamlMarshaller
@@ -176,7 +175,7 @@ class PipelineBase:
         :returns:
             Deserialized component.
         """
-        data_copy = deepcopy(data)  # to prevent modification of original data
+        data_copy = _deepcopy_with_exceptions(data)  # to prevent modification of original data
         metadata = data_copy.get("metadata", {})
         max_runs_per_component = data_copy.get("max_runs_per_component", 100)
         connection_type_validation = data_copy.get("connection_type_validation", True)
@@ -895,7 +894,7 @@ class PipelineBase:
         # deepcopying the inputs prevents the Pipeline run logic from being altered unexpectedly
         # when the same input reference is passed to multiple components.
         for component_name, component_inputs in data.items():
-            data[component_name] = {k: deepcopy(v) for k, v in component_inputs.items()}
+            data[component_name] = {k: _deepcopy_with_exceptions(v) for k, v in component_inputs.items()}
 
         return data
 

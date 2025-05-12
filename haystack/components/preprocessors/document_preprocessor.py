@@ -127,10 +127,8 @@ class DocumentPreprocessor:
         # Build the Pipeline
         pp = Pipeline()
 
-        # We use type ignore here to avoid type checking errors
-        # This is due to how the run method within the Component protocol is defined
-        pp.add_component("splitter", splitter)  # type: ignore[arg-type]
-        pp.add_component("cleaner", cleaner)  # type: ignore[arg-type]
+        pp.add_component("splitter", splitter)
+        pp.add_component("cleaner", cleaner)
 
         # Connect the splitter output to cleaner
         pp.connect("splitter.documents", "cleaner.documents")
