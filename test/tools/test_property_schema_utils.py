@@ -145,7 +145,17 @@ CHAT_MESSAGE_SCHEMA = {
     "description": "A chat message",
     "properties": {
         "_role": {"type": "string", "description": "Field '_role' of 'ChatMessage'."},
-        "_content": {"type": "string", "description": "Field '_content' of 'ChatMessage'."},
+        "_content": {
+            "type": "array",
+            "description": "Field '_content' of 'ChatMessage'.",
+            "items": {
+                "oneOf": [
+                    remove_item(TEXT_CONTENT_SCHEMA, "description"),
+                    remove_item(TOOL_CALL_SCHEMA, "description"),
+                    remove_item(TOOL_CALL_RESULT_SCHEMA, "description"),
+                ]
+            },
+        },
         "_name": {"oneOf": [{"type": "string"}, {"type": "null"}], "description": "Field '_name' of 'ChatMessage'."},
         "_meta": {"type": "object", "description": "Field '_meta' of 'ChatMessage'.", "additionalProperties": True},
     },
@@ -257,6 +267,24 @@ def test_create_property_schema_list_of_types(python_type, description, expected
             "A union of string and float",
             {"description": "A union of string and float", "oneOf": [{"type": "string"}, {"type": "number"}]},
         ),
+        (
+            List[Union[str, float]],
+            "A list of strings and floats",
+            {
+                "description": "A list of strings and floats",
+                "type": "array",
+                "items": {"oneOf": [{"type": "string"}, {"type": "number"}]},
+            },
+        ),
+        (
+            Sequence[Union[str, float]],
+            "A sequence of strings and floats",
+            {
+                "description": "A sequence of strings and floats",
+                "type": "array",
+                "items": {"oneOf": [{"type": "string"}, {"type": "number"}]},
+            },
+        ),
     ],
 )
 def test_create_property_schema_union_type(python_type, description, expected_schema):
@@ -325,25 +353,21 @@ def test_create_property_schema_union_type(python_type, description, expected_sc
                 "description": "A list of lists of documents",
             },
         ),
-        # (
-        #     Sequence[Union[TextContent, ToolCall, ToolCallResult]],
-        #     "A sequence of text content, tool calls, or tool call results",
-        #     {
-        #         "type": "array",
-        #         "description": "A sequence of text content, tool calls, or tool call results",
-        #         "items": {
-        #             # TODO Double check when using oneOf if we can also include the description
-        #             "oneOf": [
-        #                 # TextContent schema
-        #                 remove_item(TEXT_CONTENT_SCHEMA, "description"),
-        #                 # ToolCall schema
-        #                 remove_item(TOOL_CALL_SCHEMA, "description"),
-        #                 # ToolCallResult schema
-        #                 remove_item(TOOL_CALL_RESULT_SCHEMA, "description"),
-        #             ]
-        #         },
-        #     },
-        # ),
+        (
+            Sequence[Union[TextContent, ToolCall, ToolCallResult]],
+            "A sequence of text content, tool calls, or tool call results",
+            {
+                "type": "array",
+                "description": "A sequence of text content, tool calls, or tool call results",
+                "items": {
+                    "oneOf": [
+                        remove_item(TEXT_CONTENT_SCHEMA, "description"),
+                        remove_item(TOOL_CALL_SCHEMA, "description"),
+                        remove_item(TOOL_CALL_RESULT_SCHEMA, "description"),
+                    ]
+                },
+            },
+        ),
     ],
 )
 def test_create_property_schema_haystack_dataclasses(python_type, description, expected_schema):

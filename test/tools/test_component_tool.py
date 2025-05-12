@@ -24,6 +24,8 @@ from haystack.dataclasses import ChatMessage, ChatRole, Document
 from haystack.tools import ComponentTool
 from haystack.utils.auth import Secret
 
+from test.tools.test_property_schema_utils import remove_item, DOCUMENT_SCHEMA
+
 
 # Component and Model Definitions
 
@@ -265,71 +267,7 @@ class TestComponentTool:
                 "documents": {
                     "type": "array",
                     "description": "List of Documents whose content will be concatenated",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "id": {"type": "string", "description": "Field 'id' of 'Document'."},
-                            "content": {
-                                "oneOf": [{"type": "string"}, {"type": "null"}],
-                                "description": "Field 'content' of 'Document'.",
-                            },
-                            "blob": {
-                                "oneOf": [
-                                    {
-                                        "type": "object",
-                                        "properties": {
-                                            "data": {"type": "string", "description": "Field 'data' of 'ByteStream'."},
-                                            "meta": {
-                                                "type": "object",
-                                                "description": "Field 'meta' of 'ByteStream'.",
-                                                "additionalProperties": True,
-                                            },
-                                            "mime_type": {
-                                                "oneOf": [{"type": "string"}, {"type": "null"}],
-                                                "description": "Field 'mime_type' of 'ByteStream'.",
-                                            },
-                                        },
-                                    },
-                                    {"type": "null"},
-                                ],
-                                "description": "Field 'blob' of 'Document'.",
-                            },
-                            "meta": {
-                                "type": "object",
-                                "description": "Field 'meta' of 'Document'.",
-                                "additionalProperties": True,
-                            },
-                            "score": {
-                                "oneOf": [{"type": "number"}, {"type": "null"}],
-                                "description": "Field 'score' of 'Document'.",
-                            },
-                            "embedding": {
-                                "oneOf": [{"type": "array", "items": {"type": "number"}}, {"type": "null"}],
-                                "description": "Field 'embedding' of 'Document'.",
-                            },
-                            "sparse_embedding": {
-                                "oneOf": [
-                                    {
-                                        "type": "object",
-                                        "properties": {
-                                            "indices": {
-                                                "type": "array",
-                                                "description": "Field 'indices' of 'SparseEmbedding'.",
-                                                "items": {"type": "integer"},
-                                            },
-                                            "values": {
-                                                "type": "array",
-                                                "description": "Field 'values' of 'SparseEmbedding'.",
-                                                "items": {"type": "number"},
-                                            },
-                                        },
-                                    },
-                                    {"type": "null"},
-                                ],
-                                "description": "Field 'sparse_embedding' of 'Document'.",
-                            },
-                        },
-                    },
+                    "items": remove_item(DOCUMENT_SCHEMA, "description"),
                 },
                 "top_k": {"type": "integer", "description": "The number of top documents to concatenate"},
             },

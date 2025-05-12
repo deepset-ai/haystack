@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-
+import collections
 from dataclasses import fields, is_dataclass
 from inspect import getdoc
 from typing import Any, Callable, Dict, Union, get_args, get_origin
@@ -89,6 +89,7 @@ def _create_union_schema(types: tuple, description: str) -> Dict[str, Any]:
     schemas = []
     for arg_type in types:
         arg_schema = _create_property_schema(arg_type, "")
+        # TODO Double check when using oneOf if we can also include the description
         arg_schema.pop("description", None)
         schemas.append(arg_schema)
 
@@ -118,7 +119,7 @@ def _create_property_schema(python_type: Any, description: str, default: Any = N
     if origin is dict:
         schema = {"type": "object", "description": description, "additionalProperties": True}
     # Handle list
-    elif origin is list:
+    elif origin is list or origin is collections.abc.Sequence:
         schema = _create_list_schema(get_args(python_type)[0] if get_args(python_type) else Any, description)
     # Handle Union (including Optional)
     elif origin is Union:
