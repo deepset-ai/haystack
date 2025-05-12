@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    In the HuggingFaceAPIChatGenerator request additional streaming chunk that contains usage data.
+    Process usage streaming chunk to add usage meta data to the returned ChatMessage.
