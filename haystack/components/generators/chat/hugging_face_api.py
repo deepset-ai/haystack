@@ -401,6 +401,7 @@ class HuggingFaceAPIChatGenerator:
 
         generated_text = ""
         first_chunk_time = None
+        meta: Dict[str, Any] = {}
 
         for chunk in api_output:
             # n is unused, so the API always returns only one choice
@@ -412,8 +413,6 @@ class HuggingFaceAPIChatGenerator:
             generated_text += text
 
             finish_reason = choice.finish_reason
-
-            meta: Dict[str, Any] = {}
             if finish_reason:
                 meta["finish_reason"] = finish_reason
 
@@ -426,7 +425,6 @@ class HuggingFaceAPIChatGenerator:
         meta.update(
             {
                 "model": self._client.model,
-                "finish_reason": finish_reason,
                 "index": 0,
                 "usage": {"prompt_tokens": 0, "completion_tokens": 0},  # not available in streaming
                 "completion_start_time": first_chunk_time,
@@ -434,7 +432,6 @@ class HuggingFaceAPIChatGenerator:
         )
 
         message = ChatMessage.from_assistant(text=generated_text, meta=meta)
-
         return {"replies": [message]}
 
     def _run_non_streaming(
@@ -485,6 +482,7 @@ class HuggingFaceAPIChatGenerator:
 
         generated_text = ""
         first_chunk_time = None
+        meta: Dict[str, Any] = {}
 
         async for chunk in api_output:
             choice = chunk.choices[0]
@@ -493,8 +491,6 @@ class HuggingFaceAPIChatGenerator:
             generated_text += text
 
             finish_reason = choice.finish_reason
-
-            meta: Dict[str, Any] = {}
             if finish_reason:
                 meta["finish_reason"] = finish_reason
 
@@ -507,7 +503,6 @@ class HuggingFaceAPIChatGenerator:
         meta.update(
             {
                 "model": self._async_client.model,
-                "finish_reason": finish_reason,
                 "index": 0,
                 "usage": {"prompt_tokens": 0, "completion_tokens": 0},
                 "completion_start_time": first_chunk_time,
