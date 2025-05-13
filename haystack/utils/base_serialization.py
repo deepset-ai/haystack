@@ -72,12 +72,13 @@ def serialize_value(value: Any) -> Any:
 
     if hasattr(value, "to_dict") and callable(getattr(value, "to_dict")):
         serialized_value = value.to_dict()
-        serialized_value["_type"] = value.__class__.__name__
+        print(f"SERIALIZING: {value.__class__}")
+        serialized_value["_type"] = value.__class__
         return serialized_value
 
     # this is a hack to serialize inputs that don't have a to_dict
     elif hasattr(value, "__dict__"):
-        return {"_type": value.__class__.__name__, "attributes": value.__dict__}
+        return {"_type": value.__class__, "attributes": value.__dict__}
 
     # recursively serialize all inputs in a dict
     elif isinstance(value, dict):
@@ -122,22 +123,12 @@ def deserialize_value(value: Any) -> Any:
         if all(isinstance(i, dict) for i in value):
             return [deserialize_value(i) for i in value]
 
-    # Define the mapping of types to their deserialization functions
-    _type_deserializers = {
-        "Answer": Answer.from_dict,
-        "ChatMessage": ChatMessage.from_dict,
-        "Document": Document.from_dict,
-        "ExtractedAnswer": ExtractedAnswer.from_dict,
-        "GeneratedAnswer": GeneratedAnswer.from_dict,
-        "SparseEmbedding": SparseEmbedding.from_dict,
-    }
-
     # check if the dictionary has a "_type" key and if it's a known type
     if isinstance(value, dict):
         if "_type" in value:
-            type_name = value.pop("_type")
-            if type_name in _type_deserializers:
-                return _type_deserializers[type_name](value)
+            type_class = value.pop("_type")
+            if hasattr(type_class, "from_dict"):
+                return type_class.from_dict(value)
 
         # If not a known type, recursively deserialize each item in the dictionary
         return {k: deserialize_value(v) for k, v in value.items()}
