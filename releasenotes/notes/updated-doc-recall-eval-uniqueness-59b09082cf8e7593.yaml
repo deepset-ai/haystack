@@ -1,5 +1,5 @@
 ---
 enhancements:
   - |
-    The `DocumentRecallEvaluator` was updated. Now, when in `MULTI_HIT` mode, the division is over the unique documents instead of the total number of documents.
+    The `DocumentRecallEvaluator` was updated. Now, when in `MULTI_HIT` mode, the division is over the unique ground truth documents instead of the total number of ground truth documents.
     We also added checks for emptiness. If any of the `retrieved_documents` or `unique_truths` is empty or only contains documents with an empty string, we return 0.0 and log a warning.
