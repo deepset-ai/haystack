@@ -430,7 +430,7 @@ class OpenAIChatGenerator:
 
         if isinstance(obj, list):
             new_items = []
-            for index, item in enumerate(obj):
+            for item in obj:
                 # If type = object and doesn't have required variables it needs to be removed
                 if self._is_type_object(item) and "required" not in item:
                     continue
