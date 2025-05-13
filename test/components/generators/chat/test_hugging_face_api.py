@@ -3,10 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 from datetime import datetime
 import os
+from typing import Any, Dict, Optional
 from unittest.mock import MagicMock, Mock, AsyncMock, patch
 
 import pytest
-from haystack import Pipeline
+from haystack import component, Pipeline
 from haystack.dataclasses import StreamingChunk
 from haystack.utils.auth import Secret
 from haystack.utils.hf import HFGenerationAPIType
@@ -30,7 +31,7 @@ from haystack.components.generators.chat.hugging_face_api import (
     _convert_tools_to_hfapi_tools,
 )
 
-from haystack.tools import Tool
+from haystack.tools import ComponentTool, Tool
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.tools.toolset import Toolset
 
@@ -43,22 +44,59 @@ def chat_messages():
     ]
 
 
-def get_weather(city: str) -> str:
-    """Get weather information for a city."""
-    return f"Weather info for {city}"
+def get_weather(city: str) -> Dict[str, Any]:
+    weather_info = {
+        "Berlin": {"weather": "mostly sunny", "temperature": 7, "unit": "celsius"},
+        "Paris": {"weather": "mostly cloudy", "temperature": 8, "unit": "celsius"},
+        "Rome": {"weather": "sunny", "temperature": 14, "unit": "celsius"},
+    }
+    return weather_info.get(city, {"weather": "unknown", "temperature": 0, "unit": "celsius"})
+
+
+@component
+class Adder:
+    # We purposely add meta to test how OpenAI handles "additionalProperties"
+    @component.output_types(answer=int, meta=Dict[str, Any])
+    def run(self, a: int, b: int, meta: Optional[Dict[str, Any]] = None) -> Dict[str, int]:
+        """
+        Adds two numbers together and returns the result.
+
+        :param a: The first number to add.
+        :param b: The second number to add.
+        :param meta: Optional metadata to include in the response.
+        """
+        if meta is None:
+            meta = {}
+        return {"answer": a + b, "meta": meta}
 
 
 @pytest.fixture
 def tools():
-    tool_parameters = {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}
-    tool = Tool(
+    weather_tool = Tool(
         name="weather",
         description="useful to determine the weather in a given location",
-        parameters=tool_parameters,
+        parameters={"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]},
         function=get_weather,
     )
-
-    return [tool]
+    # We add a tool that has a more complex parameter signature
+    addition_tool = ComponentTool(
+        component=Adder(),
+        name="addition",
+        description="useful to add two numbers",
+        parameters={
+            "type": "object",
+            "properties": {
+                "a": {"type": "integer", "description": "The first number to add."},
+                "b": {"type": "integer", "description": "The second number to add."},
+                "meta": {
+                    "oneOf": [{"type": "object", "additionalProperties": True}, {"type": "null"}],
+                    "description": "Optional metadata to include in the response.",
+                },
+            },
+            "required": ["a", "b"],
+        },
+    )
+    return [weather_tool, addition_tool]
 
 
 @pytest.fixture
@@ -956,7 +994,7 @@ class TestHuggingFaceAPIChatGenerator:
 
     def test_to_dict_with_toolset(self, mock_check_valid_model, tools):
         """Test that the HuggingFaceAPIChatGenerator can be serialized to a dictionary with a Toolset."""
-        toolset = Toolset(tools)
+        toolset = Toolset(tools[:1])
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API, api_params={"model": "irrelevant"}, tools=toolset
         )
