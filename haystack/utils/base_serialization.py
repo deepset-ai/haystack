@@ -6,7 +6,6 @@ from typing import Any, Dict
 
 from haystack.core.errors import DeserializationError, SerializationError
 from haystack.core.serialization import generate_qualified_class_name, import_class_by_name
-from haystack.dataclasses import Answer, ChatMessage, Document, ExtractedAnswer, GeneratedAnswer, SparseEmbedding
 
 
 def serialize_class_instance(obj: Any) -> Dict[str, Any]:
@@ -123,12 +122,11 @@ def deserialize_value(value: Any) -> Any:
         if all(isinstance(i, dict) for i in value):
             return [deserialize_value(i) for i in value]
 
-    # check if the dictionary has a "_type" key and if it's a known type
-    if isinstance(value, dict):
-        if "_type" in value:
-            type_class = value.pop("_type")
-            if hasattr(type_class, "from_dict"):
-                return type_class.from_dict(value)
+    # check if the dictionary has a "_type" key and the class type has a "from_dict" method
+    if isinstance(value, dict) and "_type" in value:
+        class_type = value.pop("_type")
+        if hasattr(class_type, "from_dict"):
+            return class_type.from_dict(value)
 
         # If not a known type, recursively deserialize each item in the dictionary
         return {k: deserialize_value(v) for k, v in value.items()}
