@@ -5,7 +5,8 @@
 import re
 import pytest
 
-from haystack.tools import Tool, _check_duplicate_tool_names
+from haystack.tools import Tool
+from haystack.tools.tool import _check_duplicate_tool_names
 from haystack.tools.errors import ToolInvocationError
 
 

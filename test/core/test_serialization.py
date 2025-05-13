@@ -17,6 +17,9 @@ from haystack.core.serialization import (
     import_class_by_name,
     component_to_dict,
 )
+from haystack.utils import Secret
+from haystack.tools import Tool, Toolset
+from haystack.dataclasses.streaming_chunk import StreamingChunk, StreamingCallbackT
 
 
 def test_default_component_to_dict():
@@ -44,6 +47,97 @@ def test_default_component_from_dict():
     )
     assert isinstance(comp, MyComponent)
     assert comp.some_param == 10
+
+
+def test_to_dict_with_secret():
+    MyComponent = factory.component_class("MyComponent")
+    comp = MyComponent()
+    secret = Secret.from_env_var("TEST_SECRET")
+    res = default_to_dict(comp, api_key=secret)
+    assert res == {
+        "type": "haystack.testing.factory.MyComponent",
+        "init_parameters": {"api_key": {"env_var": "TEST_SECRET", "strict": True}},
+    }
+
+
+def test_from_dict_with_secret():
+    def custom_init(self, api_key):
+        self.api_key = api_key
+
+    extra_fields = {"__init__": custom_init}
+    MyComponent = factory.component_class("MyComponent", extra_fields=extra_fields)
+    data = {
+        "type": "haystack.testing.factory.MyComponent",
+        "init_parameters": {"api_key": {"env_var": "TEST_SECRET", "strict": True}},
+    }
+    comp = default_from_dict(MyComponent, data)
+    assert isinstance(comp, MyComponent)
+    assert isinstance(comp.api_key, Secret)
+    assert comp.api_key.env_var == "TEST_SECRET"
+
+
+def test_to_dict_with_tools():
+    MyComponent = factory.component_class("MyComponent")
+    comp = MyComponent()
+    tool = Tool(name="test_tool", description="A test tool", function=lambda x: x)
+    tools = [tool]
+    res = default_to_dict(comp, tools=tools)
+    assert res == {
+        "type": "haystack.testing.factory.MyComponent",
+        "init_parameters": {
+            "tools": [{"name": "test_tool", "description": "A test tool", "function": "test_serialization.<lambda>"}]
+        },
+    }
+
+
+def test_from_dict_with_tools():
+    def custom_init(self, tools):
+        self.tools = tools
+
+    extra_fields = {"__init__": custom_init}
+    MyComponent = factory.component_class("MyComponent", extra_fields=extra_fields)
+    data = {
+        "type": "haystack.testing.factory.MyComponent",
+        "init_parameters": {
+            "tools": [{"name": "test_tool", "description": "A test tool", "function": "test_serialization.<lambda>"}]
+        },
+    }
+    comp = default_from_dict(MyComponent, data)
+    assert isinstance(comp, MyComponent)
+    assert isinstance(comp.tools, list)
+    assert len(comp.tools) == 1
+    assert isinstance(comp.tools[0], Tool)
+    assert comp.tools[0].name == "test_tool"
+
+
+def test_to_dict_with_streaming_callback():
+    MyComponent = factory.component_class("MyComponent")
+    comp = MyComponent()
+
+    def streaming_callback(chunk: StreamingChunk) -> None:
+        pass
+
+    res = default_to_dict(comp, streaming_callback=streaming_callback)
+    assert res == {
+        "type": "haystack.testing.factory.MyComponent",
+        "init_parameters": {"streaming_callback": "test_serialization.streaming_callback"},
+    }
+
+
+def test_from_dict_with_streaming_callback():
+    def custom_init(self, streaming_callback):
+        self.streaming_callback = streaming_callback
+
+    extra_fields = {"__init__": custom_init}
+    MyComponent = factory.component_class("MyComponent", extra_fields=extra_fields)
+    data = {
+        "type": "haystack.testing.factory.MyComponent",
+        "init_parameters": {"streaming_callback": "test_serialization.streaming_callback"},
+    }
+    comp = default_from_dict(MyComponent, data)
+    assert isinstance(comp, MyComponent)
+    assert callable(comp.streaming_callback)
+    assert comp.streaming_callback.__name__ == "streaming_callback"
 
 
 def test_default_component_from_dict_without_type():

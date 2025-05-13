@@ -573,6 +573,44 @@ class _Component:
                     continue
                 namespace[key] = val
 
+            # Check if to_dict and from_dict are defined in any parent class
+            has_parent_to_dict = any(hasattr(base, "to_dict") for base in cls.__bases__ if base != object)
+            has_parent_from_dict = any(hasattr(base, "from_dict") for base in cls.__bases__ if base != object)
+
+            # Add default to_dict and from_dict methods only if they don't exist in the class or any parent
+            if "to_dict" not in namespace and not has_parent_to_dict:
+
+                def to_dict(self) -> Dict[str, Any]:
+                    """
+                    Serializes the component to a dictionary.
+
+                    :returns:
+                        Dictionary with serialized data.
+                    """
+                    from haystack.core.serialization import component_to_dict
+
+                    return component_to_dict(self, type(self).__name__)
+
+                namespace["to_dict"] = to_dict
+
+            if "from_dict" not in namespace and not has_parent_from_dict:
+
+                @classmethod
+                def from_dict(cls, data: Dict[str, Any]) -> Any:
+                    """
+                    Deserializes the component from a dictionary.
+
+                    :param data:
+                        The dictionary to deserialize from.
+                    :returns:
+                        The deserialized component.
+                    """
+                    from haystack.core.serialization import component_from_dict
+
+                    return component_from_dict(cls, data, cls.__name__)
+
+                namespace["from_dict"] = from_dict
+
         # Recreate the decorated component class so it uses our metaclass.
         # We must explicitly redefine the type of the class to make sure language servers
         # and type checkers understand that the class is of the correct type.

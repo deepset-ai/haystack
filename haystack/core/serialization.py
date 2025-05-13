@@ -5,12 +5,14 @@
 import inspect
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, Optional, Type
+from typing import Any, Dict, Iterable, Optional, Type, Union
 
 from haystack import logging
 from haystack.core.component.component import _hook_component_init
 from haystack.core.errors import DeserializationError, SerializationError
+from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 from haystack.utils.type_serialization import thread_safe_import
+from haystack.tools.serde_utils import serialize_tools_or_toolset, deserialize_tools_or_toolset_inplace
 
 logger = logging.getLogger(__name__)
 
@@ -51,13 +53,19 @@ def component_to_dict(obj: Any, name: str) -> Dict[str, Any]:
         If the values of the init parameters can't be determined.
         If a non-basic Python type is used in the serialized data.
     """
-    if hasattr(obj, "to_dict"):
-        data = obj.to_dict()
-    else:
+    # Get the to_dict method from the instance
+    to_dict_method = getattr(obj, "to_dict", None)
+
+    # If there's no to_dict method or if we're being called from the default to_dict method
+    if (
+        to_dict_method is None
+        or to_dict_method.__name__ == "<lambda>"
+        or getattr(to_dict_method, "__module__", None) == "haystack.core.component.component"
+    ):
         init_parameters = {}
         for param_name, param in inspect.signature(obj.__init__).parameters.items():
             # Ignore `args` and `kwargs`, used by the default constructor
-            if param_name in ("args", "kwargs"):
+            if param_name in ("args", "kwargs", "self"):
                 continue
             try:
                 # This only works if the Component constructor assigns the init
@@ -77,6 +85,8 @@ def component_to_dict(obj: Any, name: str) -> Dict[str, Any]:
             init_parameters[param_name] = param_value
 
         data = default_to_dict(obj, **init_parameters)
+    else:
+        data = to_dict_method()
 
     _validate_component_to_dict_output(obj, name, data)
     return data
@@ -157,16 +167,53 @@ def component_from_dict(
         callbacks.component_pre_init(name, component_cls, init_params)
 
     def do_from_dict():
-        if hasattr(cls, "from_dict"):
-            return cls.from_dict(data)
+        # Get the from_dict method from the class
+        from_dict_method = getattr(cls, "from_dict", None)
 
-        return default_from_dict(cls, data)
+        # If there's no from_dict method or if we're being called from the default from_dict method
+        if (
+            from_dict_method is None
+            or getattr(from_dict_method, "__module__", None) == "haystack.core.component.component"
+        ):
+            return default_from_dict(cls, data)
+        return from_dict_method(data)
 
     if callbacks is None or callbacks.component_pre_init is None:
         return do_from_dict()
 
     with _hook_component_init(component_pre_init_callback):
         return do_from_dict()
+
+
+def _is_list_of_tools(annotation: Any) -> bool:
+    """Check if the annotation is a List[Tool]."""
+    from haystack.tools import Tool  # Import here to avoid circular dependency
+
+    if not hasattr(annotation, "__origin__"):
+        return False
+    if annotation.__origin__ is not list:
+        return False
+    if len(annotation.__args__) != 1:
+        return False
+    return annotation.__args__[0] is Tool
+
+
+def _is_union_with_tools(annotation: Any) -> bool:
+    """Check if the annotation is a Union containing List[Tool] or Toolset."""
+    from haystack.tools import Toolset  # Import here to avoid circular dependency
+
+    if not hasattr(annotation, "__origin__"):
+        return False
+    if annotation.__origin__ is not Union:
+        return False
+
+    # Check for List[Tool] in Union args
+    for arg in annotation.__args__:
+        if hasattr(arg, "__origin__") and _is_list_of_tools(arg):
+            return True
+
+    # Check for Toolset in Union args
+    return Toolset in annotation.__args__
 
 
 def default_to_dict(obj: Any, **init_parameters) -> Dict[str, Any]:
@@ -178,6 +225,11 @@ def default_to_dict(obj: Any, **init_parameters) -> Dict[str, Any]:
     They must be defined explicitly as they'll be used when creating a new
     instance of `obj` with `from_dict`. Omitting them might cause deserialisation
     errors or unexpected behaviours later, when calling `from_dict`.
+
+    Special handling for:
+    - Secret objects: calls to_dict() on them
+    - Union[List[Tool], Toolset]: calls serialize_tools_or_toolset
+    - StreamingCallbackT: calls serialize_callable
 
     An example usage:
 
@@ -207,7 +259,25 @@ def default_to_dict(obj: Any, **init_parameters) -> Dict[str, Any]:
     :returns:
         A dictionary representation of the instance.
     """
-    return {"type": generate_qualified_class_name(type(obj)), "init_parameters": init_parameters}
+    # Handle special types in init_parameters
+    processed_params = {}
+    for key, value in init_parameters.items():
+        if isinstance(value, Secret):
+            processed_params[key] = value.to_dict()
+        elif value is not None:
+            from haystack.tools import Tool, Toolset  # Import here to avoid circular dependency
+
+            if (isinstance(value, list) and all(isinstance(t, Tool) for t in value)) or isinstance(value, Toolset):
+                processed_params[key] = serialize_tools_or_toolset(value)
+            elif callable(value) and hasattr(value, "__annotations__") and "return" in value.__annotations__:
+                # Check if it's a streaming callback by looking at its return type annotation
+                processed_params[key] = serialize_callable(value)
+            else:
+                processed_params[key] = value
+        else:
+            processed_params[key] = value
+
+    return {"type": generate_qualified_class_name(type(obj)), "init_parameters": processed_params}
 
 
 def default_from_dict(cls: Type[object], data: Dict[str, Any]) -> Any:
@@ -222,6 +292,11 @@ def default_from_dict(cls: Type[object], data: Dict[str, Any]) -> Any:
     If `data` contains an `init_parameters` field it will be used as parameters to create
     a new instance of `cls`.
 
+    Special handling for:
+    - Secret objects: calls deserialize_secrets_inplace
+    - Union[List[Tool], Toolset]: calls deserialize_tools_or_toolset_inplace
+    - StreamingCallbackT: calls deserialize_callable
+
     :param cls:
         The class to be used for deserialization.
     :param data:
@@ -232,11 +307,39 @@ def default_from_dict(cls: Type[object], data: Dict[str, Any]) -> Any:
     :raises DeserializationError:
         If the `type` field in `data` is missing or it doesn't match the type of `cls`.
     """
+
     init_params = data.get("init_parameters", {})
     if "type" not in data:
         raise DeserializationError("Missing 'type' in serialization data")
     if data["type"] != generate_qualified_class_name(cls):
         raise DeserializationError(f"Class '{data['type']}' can't be deserialized as '{cls.__name__}'")
+
+    # Find which init parameters are of type Secret
+    secret_params = []
+    tool_params = []
+    for param_name, param in inspect.signature(cls.__init__).parameters.items():
+        if param.annotation == Secret or (
+            hasattr(param.annotation, "__origin__")
+            and param.annotation.__origin__ is Optional
+            and param.annotation.__args__[0] == Secret
+        ):  # pylint: disable=too-many-boolean-expressions
+            secret_params.append(param_name)
+        elif hasattr(param.annotation, "__origin__") and (
+            _is_list_of_tools(param.annotation) or _is_union_with_tools(param.annotation)
+        ):
+            tool_params.append(param_name)
+
+    # Handle special types in init_parameters
+    deserialize_secrets_inplace(init_params, keys=secret_params)
+
+    for tool_param in tool_params:
+        deserialize_tools_or_toolset_inplace(init_params, key=tool_param)
+
+    # Handle streaming callbacks
+    for key, value in init_params.items():
+        if isinstance(value, str) and key == "streaming_callback":
+            init_params[key] = deserialize_callable(value)
+
     return cls(**init_params)
 
 

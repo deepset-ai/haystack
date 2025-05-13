@@ -12,7 +12,7 @@ from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletio
 from openai.types.chat.chat_completion import Choice
 from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
 
-from haystack import component, default_from_dict, default_to_dict, logging
+from haystack import component, logging
 from haystack.dataclasses import (
     AsyncStreamingCallbackT,
     ChatMessage,
@@ -22,14 +22,9 @@ from haystack.dataclasses import (
     ToolCall,
     select_streaming_callback,
 )
-from haystack.tools import (
-    Tool,
-    Toolset,
-    _check_duplicate_tool_names,
-    deserialize_tools_or_toolset_inplace,
-    serialize_tools_or_toolset,
-)
-from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
+from haystack.tools import Tool, Toolset
+from haystack.tools.tool import _check_duplicate_tool_names
+from haystack.utils import Secret
 from haystack.utils.http_client import init_http_client
 
 logger = logging.getLogger(__name__)
@@ -181,46 +176,6 @@ class OpenAIChatGenerator:
         Data that is sent to Posthog for usage analytics.
         """
         return {"model": self.model}
-
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Serialize this component to a dictionary.
-
-        :returns:
-            The serialized component as a dictionary.
-        """
-        callback_name = serialize_callable(self.streaming_callback) if self.streaming_callback else None
-        return default_to_dict(
-            self,
-            model=self.model,
-            streaming_callback=callback_name,
-            api_base_url=self.api_base_url,
-            organization=self.organization,
-            generation_kwargs=self.generation_kwargs,
-            api_key=self.api_key.to_dict(),
-            timeout=self.timeout,
-            max_retries=self.max_retries,
-            tools=serialize_tools_or_toolset(self.tools),
-            tools_strict=self.tools_strict,
-            http_client_kwargs=self.http_client_kwargs,
-        )
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "OpenAIChatGenerator":
-        """
-        Deserialize this component from a dictionary.
-
-        :param data: The dictionary representation of this component.
-        :returns:
-            The deserialized component instance.
-        """
-        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
-        deserialize_tools_or_toolset_inplace(data["init_parameters"], key="tools")
-        init_params = data.get("init_parameters", {})
-        serialized_callback_handler = init_params.get("streaming_callback")
-        if serialized_callback_handler:
-            data["init_parameters"]["streaming_callback"] = deserialize_callable(serialized_callback_handler)
-        return default_from_dict(cls, data)
 
     @component.output_types(replies=List[ChatMessage])
     def run(

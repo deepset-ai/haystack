@@ -225,10 +225,7 @@ class Toolset:
         lead to issues where outdated or incorrect Tool configurations are loaded, potentially causing errors or
         unexpected behavior.
         """
-        return {
-            "type": generate_qualified_class_name(type(self)),
-            "data": {"tools": [tool.to_dict() for tool in self.tools]},
-        }
+        return {"type": generate_qualified_class_name(type(self)), "data": [tool.to_dict() for tool in self.tools]}
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "Toolset":
@@ -238,8 +235,7 @@ class Toolset:
         :param data: Dictionary representation of the Toolset
         :returns: A new Toolset instance
         """
-        inner_data = data["data"]
-        tools_data = inner_data.get("tools", [])
+        tools_data = data["data"]
 
         tools = []
         for tool_data in tools_data:
