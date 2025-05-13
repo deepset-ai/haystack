@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import collections
-from dataclasses import fields, is_dataclass
+from dataclasses import MISSING, fields, is_dataclass
 from inspect import getdoc
 from typing import Any, Callable, Dict, Union, get_args, get_origin
 
@@ -39,14 +39,19 @@ def _create_dataclass_schema(python_type: Any, description: str) -> Dict[str, An
     :param description: The description of the dataclass.
     :returns: A dictionary representing the dataclass schema.
     """
+    required_fields = []
     param_descriptions = _get_param_descriptions(python_type)
-    # TODO make description optional so we can pull from the dataclass
     schema: Dict[str, Any] = {"type": "object", "description": description, "properties": {}}
     cls = python_type if isinstance(python_type, type) else python_type.__class__
     for field in fields(cls):
+        is_required = field.default is MISSING and field.default_factory is MISSING
+        if is_required:
+            required_fields.append(field.name)
         field_description = param_descriptions.get(field.name, f"Field '{field.name}' of '{cls.__name__}'.")
         field_schema = _create_property_schema(field.type, field_description)
         schema["properties"][field.name] = field_schema
+    if required_fields:
+        schema["required"] = sorted(required_fields)
     return schema
 
 

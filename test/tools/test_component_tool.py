@@ -241,8 +241,10 @@ class TestComponentTool:
                                 "street": {"type": "string", "description": "Field 'street' of 'Address'."},
                                 "city": {"type": "string", "description": "Field 'city' of 'Address'."},
                             },
+                            "required": ["city", "street"],
                         },
                     },
+                    "required": ["address", "name"],
                 }
             },
             "required": ["person"],

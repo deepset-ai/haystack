@@ -26,6 +26,7 @@ BYTE_STREAM_SCHEMA = {
             "description": "Field 'mime_type' of 'ByteStream'.",
         },
     },
+    "required": ["data"],
 }
 
 DOCUMENT_SCHEMA = {
@@ -56,6 +57,7 @@ DOCUMENT_SCHEMA = {
                             "description": "Field 'mime_type' of 'ByteStream'.",
                         },
                     },
+                    "required": ["data"],
                 },
                 {"type": "null"},
             ],
@@ -90,6 +92,7 @@ DOCUMENT_SCHEMA = {
                             "items": {"type": "number"},
                         },
                     },
+                    "required": ["indices", "values"],
                 },
                 {"type": "null"},
             ],
@@ -102,6 +105,7 @@ TEXT_CONTENT_SCHEMA = {
     "type": "object",
     "description": "A text content",
     "properties": {"text": {"type": "string", "description": "The text content of the message."}},
+    "required": ["text"],
 }
 
 TOOL_CALL_SCHEMA = {
@@ -116,6 +120,7 @@ TOOL_CALL_SCHEMA = {
         },
         "id": {"oneOf": [{"type": "string"}, {"type": "null"}], "description": "The ID of the Tool call."},
     },
+    "required": ["arguments", "tool_name"],
 }
 
 TOOL_CALL_RESULT_SCHEMA = {
@@ -135,9 +140,11 @@ TOOL_CALL_RESULT_SCHEMA = {
                 },
                 "id": {"oneOf": [{"type": "string"}, {"type": "null"}], "description": "The ID of the Tool call."},
             },
+            "required": ["arguments", "tool_name"],
         },
         "error": {"type": "boolean", "description": "Whether the Tool invocation resulted in an error."},
     },
+    "required": ["error", "origin", "result"],
 }
 
 CHAT_MESSAGE_SCHEMA = {
@@ -159,6 +166,7 @@ CHAT_MESSAGE_SCHEMA = {
         "_name": {"oneOf": [{"type": "string"}, {"type": "null"}], "description": "Field '_name' of 'ChatMessage'."},
         "_meta": {"type": "object", "description": "Field '_meta' of 'ChatMessage'.", "additionalProperties": True},
     },
+    "required": ["_content", "_role"],
 }
 
 
