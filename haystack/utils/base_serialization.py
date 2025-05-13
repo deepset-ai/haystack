@@ -71,7 +71,6 @@ def serialize_value(value: Any) -> Any:
 
     if hasattr(value, "to_dict") and callable(getattr(value, "to_dict")):
         serialized_value = value.to_dict()
-        print(f"SERIALIZING: {value.__class__}")
         serialized_value["_type"] = value.__class__
         return serialized_value
 
@@ -123,10 +122,12 @@ def deserialize_value(value: Any) -> Any:
             return [deserialize_value(i) for i in value]
 
     # check if the dictionary has a "_type" key and the class type has a "from_dict" method
-    if isinstance(value, dict) and "_type" in value:
-        class_type = value.pop("_type")
-        if hasattr(class_type, "from_dict"):
-            return class_type.from_dict(value)
+    if isinstance(value, dict):
+        if "_type" in value:
+            print(f"DESERIALIZING: {value}")
+            class_type = value.pop("_type")
+            if hasattr(class_type, "from_dict"):
+                return class_type.from_dict(value)
 
         # If not a known type, recursively deserialize each item in the dictionary
         return {k: deserialize_value(v) for k, v in value.items()}
