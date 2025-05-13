@@ -381,7 +381,7 @@ class OpenAIChatGenerator:
         """
         return isinstance(obj, dict) and "type" in obj and obj["type"] == "object"
 
-    def _strictify(self, obj: Union[dict, list]) -> Union[dict, list]:
+    def _strictify(self, obj: Any) -> Any:
         """
         Updates the tool specification object to follow OpenAI's strict schema.
 
