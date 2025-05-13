@@ -5,8 +5,9 @@
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterator, List, Union
 
-from haystack.core.serialization import generate_qualified_class_name, import_class_by_name
+from haystack.core.serialization import generate_qualified_class_name
 from haystack.tools.tool import Tool, _check_duplicate_tool_names
+from haystack.utils.importing import import_class_by_name
 
 
 @dataclass

@@ -11,7 +11,6 @@ from haystack import logging
 from haystack.core.component.component import _hook_component_init
 from haystack.core.errors import DeserializationError, SerializationError
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
-from haystack.utils.type_serialization import thread_safe_import
 from haystack.tools.serde_utils import serialize_tools_or_toolset, deserialize_tools_or_toolset_inplace
 
 logger = logging.getLogger(__name__)
@@ -260,7 +259,7 @@ def default_to_dict(obj: Any, **init_parameters) -> Dict[str, Any]:
         A dictionary representation of the instance.
     """
     # Handle special types in init_parameters
-    processed_params = {}
+    processed_params: Dict[str, Any] = {}
     for key, value in init_parameters.items():
         if isinstance(value, Secret):
             processed_params[key] = value.to_dict()
@@ -268,10 +267,11 @@ def default_to_dict(obj: Any, **init_parameters) -> Dict[str, Any]:
             from haystack.tools import Tool, Toolset  # Import here to avoid circular dependency
 
             if (isinstance(value, list) and all(isinstance(t, Tool) for t in value)) or isinstance(value, Toolset):
-                processed_params[key] = serialize_tools_or_toolset(value)
+                # serialize_tools_or_toolset can return Dict[str, Any] | List[Dict[str, Any]] | None
+                processed_params[key] = serialize_tools_or_toolset(value)  # type: ignore
             elif callable(value) and hasattr(value, "__annotations__") and "return" in value.__annotations__:
                 # Check if it's a streaming callback by looking at its return type annotation
-                processed_params[key] = serialize_callable(value)
+                processed_params[key] = serialize_callable(value)  # type: ignore
             else:
                 processed_params[key] = value
         else:
@@ -330,7 +330,12 @@ def default_from_dict(cls: Type[object], data: Dict[str, Any]) -> Any:
             tool_params.append(param_name)
 
     # Handle special types in init_parameters
-    deserialize_secrets_inplace(init_params, keys=secret_params)
+    # Only deserialize secrets that aren't already Secret instances
+    secret_params_to_deserialize = [
+        param for param in secret_params if param in init_params and not isinstance(init_params[param], Secret)
+    ]
+    if secret_params_to_deserialize:
+        deserialize_secrets_inplace(init_params, keys=secret_params_to_deserialize)
 
     for tool_param in tool_params:
         deserialize_tools_or_toolset_inplace(init_params, key=tool_param)
@@ -341,27 +346,3 @@ def default_from_dict(cls: Type[object], data: Dict[str, Any]) -> Any:
             init_params[key] = deserialize_callable(value)
 
     return cls(**init_params)
-
-
-def import_class_by_name(fully_qualified_name: str) -> Type[object]:
-    """
-    Utility function to import (load) a class object based on its fully qualified class name.
-
-    This function dynamically imports a class based on its string name.
-    It splits the name into module path and class name, imports the module,
-    and returns the class object.
-
-    :param fully_qualified_name: the fully qualified class name as a string
-    :returns: the class object.
-    :raises ImportError: If the class cannot be imported or found.
-    """
-    try:
-        module_path, class_name = fully_qualified_name.rsplit(".", 1)
-        logger.debug(
-            "Attempting to import class '{cls_name}' from module '{md_path}'", cls_name=class_name, md_path=module_path
-        )
-        module = thread_safe_import(module_path)
-        return getattr(module, class_name)
-    except (ImportError, AttributeError) as error:
-        logger.error("Failed to import class '{full_name}'", full_name=fully_qualified_name)
-        raise ImportError(f"Could not import class '{fully_qualified_name}'") from error

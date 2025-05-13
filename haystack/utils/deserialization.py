@@ -4,8 +4,9 @@
 
 from typing import Any, Dict
 
-from haystack import DeserializationError
-from haystack.core.serialization import component_from_dict, default_from_dict, import_class_by_name
+from haystack.core.errors import DeserializationError
+from haystack.core.serialization import component_from_dict, default_from_dict
+from haystack.utils.importing import import_class_by_name
 
 
 def deserialize_document_store_in_init_params_inplace(data: Dict[str, Any], key: str = "document_store"):

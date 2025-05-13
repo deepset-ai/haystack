@@ -14,12 +14,12 @@ from haystack.core.serialization import (
     default_to_dict,
     default_from_dict,
     generate_qualified_class_name,
-    import_class_by_name,
     component_to_dict,
 )
 from haystack.utils import Secret
-from haystack.tools import Tool, Toolset
-from haystack.dataclasses.streaming_chunk import StreamingChunk, StreamingCallbackT
+from haystack.tools import Tool
+from haystack.dataclasses.streaming_chunk import StreamingChunk
+from haystack.utils.importing import import_class_by_name
 
 
 def test_default_component_to_dict():

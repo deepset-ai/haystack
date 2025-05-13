@@ -10,16 +10,12 @@ from pydantic import TypeAdapter
 
 from haystack import logging
 from haystack.core.component import Component
-from haystack.core.serialization import (
-    component_from_dict,
-    component_to_dict,
-    generate_qualified_class_name,
-    import_class_by_name,
-)
+from haystack.core.serialization import component_from_dict, component_to_dict, generate_qualified_class_name
 from haystack.lazy_imports import LazyImport
 from haystack.tools import Tool
 from haystack.tools.errors import SchemaGenerationError
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
+from haystack.utils.importing import import_class_by_name
 
 with LazyImport(message="Run 'pip install docstring-parser'") as docstring_parser_import:
     from docstring_parser import parse

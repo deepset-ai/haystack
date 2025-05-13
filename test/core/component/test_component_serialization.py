@@ -171,6 +171,12 @@ def test_serialization_with_tools():
     assert len(new_comp.tools) == 1
     assert isinstance(new_comp.tools[0], Tool)
     assert new_comp.tools[0].name == "test_tool"
+    assert new_comp.tools[0].description == "A test tool"
+    assert new_comp.tools[0].parameters == {
+        "type": "object",
+        "properties": {"x": {"type": "string"}},
+        "required": ["x"],
+    }
 
 
 def test_serialization_with_toolset():
@@ -214,6 +220,12 @@ def test_serialization_with_toolset():
     assert new_comp.tools["type"] == "haystack.tools.toolset.Toolset"
     assert len(new_comp.tools["data"]) == 1
     assert new_comp.tools["data"][0]["data"]["name"] == "test_tool"
+    assert new_comp.tools["data"][0]["data"]["description"] == "A test tool"
+    assert new_comp.tools["data"][0]["data"]["parameters"] == {
+        "type": "object",
+        "properties": {"x": {"type": "string"}},
+        "required": ["x"],
+    }
 
 
 def test_serialization_with_secrets(monkeypatch):

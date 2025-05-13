@@ -5,7 +5,8 @@
 from typing import Any, Dict
 
 from haystack.core.errors import DeserializationError, SerializationError
-from haystack.core.serialization import generate_qualified_class_name, import_class_by_name
+from haystack.core.serialization import generate_qualified_class_name
+from haystack.utils.importing import import_class_by_name
 
 
 def serialize_class_instance(obj: Any) -> Dict[str, Any]:

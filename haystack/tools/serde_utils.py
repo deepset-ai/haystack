@@ -5,7 +5,7 @@
 from typing import TYPE_CHECKING, Any, Dict, List, Union
 
 from haystack.core.errors import DeserializationError
-from haystack.core.serialization import import_class_by_name
+from haystack.utils.importing import import_class_by_name
 
 if TYPE_CHECKING:
     from haystack.tools.tool import Tool
