@@ -381,13 +381,22 @@ class OpenAIChatGenerator:
         """
         return isinstance(obj, dict) and "type" in obj and obj["type"] == "object"
 
-    def _recursive_updates(self, obj: Union[dict, list]) -> Union[dict, list]:
+    def _strictify(self, obj: Union[dict, list]) -> Union[dict, list]:
         """
-        Recursively iterate update obj to follow OpenAI's strict schema.
+        Updates the tool specification object to follow OpenAI's strict schema.
+
+        OpenAI's strict schema is equivalent to their Structured Output schema.
+        More information on Structured Output can be found
+        (here)[https://platform.openai.com/docs/guides/structured-outputs/supported-schemas?api-mode=responses].
+
+        The supported schemas for Structured Outputs can be found
+        (here)[https://platform.openai.com/docs/guides/structured-outputs/supported-schemas?api-mode=responses#supported-schemas]
 
         This function:
-        - Sets "additionalProperties" to False in all type = object sections of the tool specification.
-        - Converts "oneOf" to "anyOf" in the parameters section of the tool specification.
+        - Sets "additionalProperties" to False in all type = object sections of the tool specification, which is a
+          requirement for OpenAI's strict schema.
+        - Converts "oneOf" to "anyOf" in the parameters section of the tool specification since OpenAI's strict schema
+          only supports "anyOf".
         - Removes all non-required fields since all property fields must be required. For ease, we opt to remove all
           variables that are not required.
         """
@@ -404,9 +413,7 @@ class OpenAIChatGenerator:
                         # If type = object and has required variables, we need to remove all non-required variables
                         # from the properties
                         copy_obj[key]["properties"] = {
-                            k: self._recursive_updates(v)
-                            for k, v in value["properties"].items()
-                            if k in value["required"]
+                            k: self._strictify(v) for k, v in value["properties"].items() if k in value["required"]
                         }
                     # Always add and set additionalProperties to False for type = object
                     copy_obj[key]["additionalProperties"] = False
@@ -414,11 +421,11 @@ class OpenAIChatGenerator:
 
                 # oneOf to anyOf updates
                 if key == "oneOf":
-                    copy_obj["anyOf"] = self._recursive_updates(value)
+                    copy_obj["anyOf"] = self._strictify(value)
                     del copy_obj["oneOf"]
                     continue
 
-                copy_obj[key] = self._recursive_updates(value)
+                copy_obj[key] = self._strictify(value)
             return copy_obj
 
         if isinstance(obj, list):
@@ -427,26 +434,10 @@ class OpenAIChatGenerator:
                 # If type = object and doesn't have required variables it needs to be removed
                 if self._is_type_object(item) and "required" not in item:
                     continue
-                new_items.append(self._recursive_updates(item))
+                new_items.append(self._strictify(item))
             return new_items
 
         return obj
-
-    def _make_tool_spec_follow_strict_schema(self, tool_spec: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Updates the tool specification to follow OpenAI's strict schema.
-
-        OpenAI's strict schema is equivalent to their Structured Output schema.
-        More information on Structured Output can be found
-        (here)[https://platform.openai.com/docs/guides/structured-outputs/supported-schemas?api-mode=responses].
-
-        The supported schemas for Structured Outputs can be found
-        (here)[https://platform.openai.com/docs/guides/structured-outputs/supported-schemas?api-mode=responses#supported-schemas]
-
-        This function:
-        - Sets the "strict" flag to True in the tool specification.
-        """
-        return {**self._recursive_updates(deepcopy(tool_spec)), **{"strict": True}}
 
     def _prepare_api_call(  # noqa: PLR0913
         self,
@@ -475,7 +466,7 @@ class OpenAIChatGenerator:
             for t in tools:
                 function_spec = {**t.tool_spec}
                 if tools_strict:
-                    function_spec = self._make_tool_spec_follow_strict_schema(function_spec)
+                    function_spec = {**self._strictify(deepcopy(function_spec)), **{"strict": True}}
                 tool_definitions.append({"type": "function", "function": function_spec})
             openai_tools = {"tools": tool_definitions}
 
