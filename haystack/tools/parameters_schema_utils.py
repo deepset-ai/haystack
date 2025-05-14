@@ -25,7 +25,9 @@ def _get_param_descriptions(method: Callable) -> Tuple[str, Dict[str, str]]:
     Extracts parameter descriptions from the method's docstring using docstring_parser.
 
     :param method: The method to extract parameter descriptions from.
-    :returns: A dictionary mapping parameter names to their descriptions.
+    :returns:
+        A tuple including the short description of the method and a dictionary mapping parameter names to their
+        descriptions.
     """
     docstring = getdoc(method)
     if not docstring:
