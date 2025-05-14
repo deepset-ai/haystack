@@ -13,6 +13,14 @@ def test_init_with_unknown_mode_string():
         DocumentRecallEvaluator(mode="unknown_mode")
 
 
+def test_init_with_string_mode():
+    evaluator = DocumentRecallEvaluator(mode="single_hit")
+    assert evaluator.mode == RecallMode.SINGLE_HIT
+
+    evaluator = DocumentRecallEvaluator(mode="multi_hit")
+    assert evaluator.mode == RecallMode.MULTI_HIT
+
+
 class TestDocumentRecallEvaluatorSingleHit:
     @pytest.fixture
     def evaluator(self):
@@ -186,3 +194,27 @@ class TestDocumentRecallEvaluatorMultiHit:
         }
         new_evaluator = default_from_dict(DocumentRecallEvaluator, data)
         assert new_evaluator.mode == RecallMode.MULTI_HIT
+
+    def test_empty_ground_truth_documents(self, evaluator):
+        ground_truth_documents = [[]]
+        retrieved_documents = [[Document(content="test")]]
+        score = evaluator.run(ground_truth_documents, retrieved_documents)
+        assert score == {"individual_scores": [0.0], "score": 0.0}
+
+    def test_empty_retrieved_documents(self, evaluator):
+        ground_truth_documents = [[Document(content="test")]]
+        retrieved_documents = [[]]
+        score = evaluator.run(ground_truth_documents, retrieved_documents)
+        assert score == {"individual_scores": [0.0], "score": 0.0}
+
+    def test_empty_string_ground_truth_documents(self, evaluator):
+        ground_truth_documents = [[Document(content="")]]
+        retrieved_documents = [[Document(content="test")]]
+        score = evaluator.run(ground_truth_documents, retrieved_documents)
+        assert score == {"individual_scores": [0.0], "score": 0.0}
+
+    def test_empty_string_retrieved_documents(self, evaluator):
+        ground_truth_documents = [[Document(content="test")]]
+        retrieved_documents = [[Document(content="")]]
+        score = evaluator.run(ground_truth_documents, retrieved_documents)
+        assert score == {"individual_scores": [0.0], "score": 0.0}
