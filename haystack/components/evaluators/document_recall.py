@@ -100,7 +100,7 @@ class DocumentRecallEvaluator:
         retrieved_ground_truths = unique_truths.intersection(unique_retrievals)
 
         if not unique_truths or unique_truths == {""}:
-            logger.warning("Ground truth documents are empty or only contain empty strings. Score will be set to 0")
+            logger.warning("There are no ground truth documents or all of them have an empty string as content. Score will be set to 0.")
             return 0.0
 
         if not unique_retrievals or unique_retrievals == {""}:
