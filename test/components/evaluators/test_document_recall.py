@@ -206,3 +206,15 @@ class TestDocumentRecallEvaluatorMultiHit:
         retrieved_documents = [[]]
         score = evaluator.run(ground_truth_documents, retrieved_documents)
         assert score == {"individual_scores": [0.0], "score": 0.0}
+
+    def test_empty_string_ground_truth_documents(self, evaluator):
+        ground_truth_documents = [[Document(content="")]]
+        retrieved_documents = [[Document(content="test")]]
+        score = evaluator.run(ground_truth_documents, retrieved_documents)
+        assert score == {"individual_scores": [0.0], "score": 0.0}
+
+    def test_empty_string_retrieved_documents(self, evaluator):
+        ground_truth_documents = [[Document(content="test")]]
+        retrieved_documents = [[Document(content="")]]
+        score = evaluator.run(ground_truth_documents, retrieved_documents)
+        assert score == {"individual_scores": [0.0], "score": 0.0}
