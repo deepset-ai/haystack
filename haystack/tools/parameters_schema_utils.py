@@ -31,7 +31,7 @@ def _get_param_descriptions(method: Callable) -> Tuple[str, Dict[str, str]]:
     """
     docstring = getdoc(method)
     if not docstring:
-        return {}
+        return "", {}
 
     docstring_parser_import.check()
     parsed_doc = parse(docstring)
