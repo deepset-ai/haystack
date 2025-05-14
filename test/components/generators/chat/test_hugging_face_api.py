@@ -3,11 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 from datetime import datetime
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 from unittest.mock import MagicMock, Mock, AsyncMock, patch
 
 import pytest
-from haystack import component, Pipeline
+from haystack import Pipeline
 from haystack.dataclasses import StreamingChunk
 from haystack.utils.auth import Secret
 from haystack.utils.hf import HFGenerationAPIType
@@ -31,7 +31,7 @@ from haystack.components.generators.chat.hugging_face_api import (
     _convert_tools_to_hfapi_tools,
 )
 
-from haystack.tools import ComponentTool, Tool
+from haystack.tools import Tool
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.tools.toolset import Toolset
 
@@ -53,23 +53,6 @@ def get_weather(city: str) -> Dict[str, Any]:
     return weather_info.get(city, {"weather": "unknown", "temperature": 0, "unit": "celsius"})
 
 
-@component
-class MessageExtractor:
-    @component.output_types(messages=List[str], meta=Dict[str, Any])
-    def run(self, messages: List[ChatMessage], meta: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """
-        Extracts the text content of ChatMessage objects
-
-        :param messages: List of Haystack ChatMessage objects
-        :param meta: Optional metadata to include in the response.
-        :returns:
-            A dictionary with keys "messages" and "meta".
-        """
-        if meta is None:
-            meta = {}
-        return {"messages": [m.text for m in messages], "meta": meta}
-
-
 @pytest.fixture
 def tools():
     weather_tool = Tool(
@@ -78,13 +61,7 @@ def tools():
         parameters={"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]},
         function=get_weather,
     )
-    # We add a tool that has a more complex parameter signature
-    message_extractor_tool = ComponentTool(
-        component=MessageExtractor(),
-        name="message_extractor",
-        description="Useful for returning the text content of ChatMessage objects",
-    )
-    return [weather_tool, message_extractor_tool]
+    return [weather_tool]
 
 
 @pytest.fixture
