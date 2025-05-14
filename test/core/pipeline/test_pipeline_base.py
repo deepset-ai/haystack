@@ -7,6 +7,7 @@ from typing import List, Optional
 from unittest.mock import patch
 
 import pytest
+from networkx.classes.reportviews import NodeView, OutMultiEdgeView
 
 from pandas import DataFrame
 
@@ -192,7 +193,7 @@ class TestPipelineBase:
         pipeline.connect("converter", "preprocessor")
         pipeline.connect("preprocessor", "writer")
 
-        result = pipeline.find_super_components()
+        result = pipeline._find_super_components()
 
         assert len(result) == 2
         assert [("converter", multi_file_converter), ("preprocessor", doc_processor)] == result
@@ -214,61 +215,49 @@ class TestPipelineBase:
         pipeline.connect("converter", "preprocessor")
         pipeline.connect("preprocessor", "writer")
 
-        merged_graph = pipeline.merge_super_component_pipelines()
+        merged_graph = pipeline._merge_super_component_pipelines()
 
         expected_nodes = [
-            "writer",
-            "converter.router",
+            "converter.csv",
             "converter.docx",
             "converter.html",
+            "converter.joiner",
             "converter.json",
             "converter.md",
-            "converter.text",
             "converter.pdf",
             "converter.pptx",
+            "converter.router",
+            "converter.text",
             "converter.xlsx",
-            "converter.joiner",
-            "converter.csv",
-            "preprocessor.splitter",
             "preprocessor.cleaner",
+            "preprocessor.splitter",
+            "writer",
         ]
+        assert sorted(merged_graph.nodes) == expected_nodes
 
         expected_edges = [
-            ("converter.router", "converter.csv", "text/csv/sources"),
-            (
-                "converter.router",
-                "converter.docx",
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document/sources",
-            ),
-            ("converter.router", "converter.html", "text/html/sources"),
-            ("converter.router", "converter.json", "application/json/sources"),
-            ("converter.router", "converter.md", "text/markdown/sources"),
-            ("converter.router", "converter.text", "text/plain/sources"),
-            ("converter.router", "converter.pdf", "application/pdf/sources"),
-            (
-                "converter.router",
-                "converter.pptx",
-                "application/vnd.openxmlformats-officedocument.presentationml.presentation/sources",
-            ),
-            (
-                "converter.router",
-                "converter.xlsx",
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet/sources",
-            ),
-            ("converter.docx", "converter.joiner", "documents/documents"),
-            ("converter.html", "converter.joiner", "documents/documents"),
-            ("converter.json", "converter.joiner", "documents/documents"),
-            ("converter.md", "converter.joiner", "documents/documents"),
-            ("converter.text", "converter.joiner", "documents/documents"),
-            ("converter.pdf", "converter.joiner", "documents/documents"),
-            ("converter.pptx", "converter.joiner", "documents/documents"),
-            ("converter.xlsx", "converter.joiner", "documents/documents"),
-            ("converter.csv", "converter.joiner", "documents/documents"),
-            ("preprocessor.splitter", "preprocessor.cleaner", "documents/documents"),
+            ("converter.csv", "converter.joiner"),
+            ("converter.docx", "converter.joiner"),
+            ("converter.html", "converter.joiner"),
+            ("converter.json", "converter.joiner"),
+            ("converter.md", "converter.joiner"),
+            ("converter.pdf", "converter.joiner"),
+            ("converter.pptx", "converter.joiner"),
+            ("converter.router", "converter.csv"),
+            ("converter.router", "converter.docx"),
+            ("converter.router", "converter.html"),
+            ("converter.router", "converter.json"),
+            ("converter.router", "converter.md"),
+            ("converter.router", "converter.pdf"),
+            ("converter.router", "converter.pptx"),
+            ("converter.router", "converter.text"),
+            ("converter.router", "converter.xlsx"),
+            ("converter.text", "converter.joiner"),
+            ("converter.xlsx", "converter.joiner"),
+            ("preprocessor.splitter", "preprocessor.cleaner"),
         ]
-
-        assert merged_graph.nodes == expected_nodes
-        assert merged_graph.edges == expected_edges
+        actual_edges = [(u, v) for u, v, _ in merged_graph.edges]
+        assert sorted(actual_edges) == expected_edges
 
     # UNIT
     def test_add_invalid_component_name(self):

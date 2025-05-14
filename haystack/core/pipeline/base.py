@@ -688,8 +688,9 @@ class PipelineBase:
             info on how to set up your own Mermaid server.
 
         :param super_component_expansion:
-            If True, the diagram will show the internal structure of super-components. Otherwise, only the
-            super-component itself will be displayed.
+            If set to True and the pipeline contains SuperComponents the diagram will show the internal structure of
+            super-components as if they were components part of the pipeline instead of a "black-box".
+            Otherwise, only the super-component itself will be displayed.
 
         :param params:
             Dictionary of customization parameters to modify the output. Refer to Mermaid documentation for more details
@@ -714,14 +715,14 @@ class PipelineBase:
         if is_in_jupyter():
             from IPython.display import Image, display  # type: ignore
 
-            graph = self.merge_super_component_pipelines() if super_component_expansion else self.graph
+            graph = self._merge_super_component_pipelines() if super_component_expansion else self.graph
             image_data = _to_mermaid_image(graph, server_url=server_url, params=params, timeout=timeout)
             display(Image(image_data))
         else:
             msg = "This method is only supported in Jupyter notebooks. Use Pipeline.draw() to save an image locally."
             raise PipelineDrawingError(msg)
 
-    def draw(
+    def draw(  # pylint: disable=too-many-positional-arguments
         self,
         path: Path,
         server_url: str = "https://mermaid.ink",
@@ -743,9 +744,9 @@ class PipelineBase:
             info on how to set up your own Mermaid server.
 
         :param super_component_expansion:
-            If True, the diagram will show the internal structure of super-components. Otherwise, only the
-            super-component itself will be displayed.
-
+            If set to True and the pipeline contains SuperComponents the diagram will show the internal structure of
+            super-components as if they were components part of the pipeline instead of a "black-box".
+            Otherwise, only the super-component itself will be displayed.
 
         :param params:
             Dictionary of customization parameters to modify the output. Refer to Mermaid documentation for more details
@@ -769,7 +770,7 @@ class PipelineBase:
         """
         # Before drawing we edit a bit the graph, to avoid modifying the original that is
         # used for running the pipeline we copy it.
-        graph = self.merge_super_component_pipelines() if super_component_expansion else self.graph
+        graph = self._merge_super_component_pipelines() if super_component_expansion else self.graph
         image_data = _to_mermaid_image(graph, server_url=server_url, params=params, timeout=timeout)
         Path(path).write_bytes(image_data)
 
@@ -1263,7 +1264,7 @@ class PipelineBase:
         if candidate is not None and candidate[0] == ComponentPriority.BLOCKED:
             raise PipelineComponentsBlockedError()
 
-    def find_super_components(self) -> list[tuple[str, Component]]:
+    def _find_super_components(self) -> list[tuple[str, Component]]:
         """
         Find all SuperComponents.
 
@@ -1278,7 +1279,7 @@ class PipelineBase:
                 super_components.append((comp_name, comp))
         return super_components
 
-    def merge_super_component_pipelines(self) -> "networkx.MultiDiGraph":
+    def _merge_super_component_pipelines(self) -> "networkx.MultiDiGraph":
         """
         Merge the internal pipelines of SuperComponents into the main pipeline graph structure.
 
@@ -1291,7 +1292,7 @@ class PipelineBase:
 
         merged_graph = self.graph.copy()
 
-        for super_name, super_component in self.find_super_components():
+        for super_name, super_component in self._find_super_components():
             internal_pipeline = super_component.pipeline  # type: ignore
 
             # Create a mapping of internal component names to prefixed names
