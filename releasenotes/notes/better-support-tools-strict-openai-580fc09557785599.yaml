@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    Added _strictify function to enforce OpenAI's strict schema for tool specifications.
+    This update affects the OpenAIChatGenerator component when tools_strict=True is enabled.
+    The function ensures compatibility by setting additionalProperties to False, converting oneOf to anyOf, and removing all non-required fields as required by OpenAI's Structured Output schema.
