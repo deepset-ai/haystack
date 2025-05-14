@@ -1273,7 +1273,7 @@ class PipelineBase:
 
         super_components = []
         for comp_name, comp in self.walk():
-            # a SuperComponent has a "pipeline" attribute which is a Pipeline instance
+            # a SuperComponent has a "pipeline" attribute which itself a Pipeline instance
             if hasattr(comp, "pipeline") and isinstance(comp.pipeline, self.__class__):
                 super_components.append((comp_name, comp))
         return super_components
@@ -1292,7 +1292,7 @@ class PipelineBase:
         merged_graph = self.graph.copy()
 
         for super_name, super_component in self.find_super_components():
-            internal_pipeline = super_component.pipeline
+            internal_pipeline = super_component.pipeline  # type: ignore
 
             # Create a mapping of internal component names to prefixed names
             name_mapping = {
