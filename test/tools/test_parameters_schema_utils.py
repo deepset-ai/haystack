@@ -7,7 +7,7 @@ from typing import List
 
 from haystack.dataclasses import ByteStream, ChatMessage, Document, TextContent, ToolCall, ToolCallResult
 from pydantic import Field
-from haystack.tools.property_schema_utils import _resolve_type, _create_parameters_schema
+from haystack.tools.parameters_schema_utils import _resolve_type, _create_parameters_schema
 
 
 BYTE_STREAM_SCHEMA = {
@@ -16,11 +16,13 @@ BYTE_STREAM_SCHEMA = {
         "data": {"type": "string", "description": "The binary data stored in Bytestream.", "format": "binary"},
         "meta": {
             "type": "object",
+            "default": {},
             "description": "Additional metadata to be stored with the ByteStream.",
             "additionalProperties": True,
         },
         "mime_type": {
             "anyOf": [{"type": "string"}, {"type": "null"}],
+            "default": None,
             "description": "The mime type of the binary data.",
         },
     },
@@ -50,30 +52,37 @@ DOCUMENT_SCHEMA = {
         "id": {
             "type": "string",
             "description": "Unique identifier for the document. When not set, it's generated based on the Document fields' values.",
+            "default": "",
         },
         "content": {
             "anyOf": [{"type": "string"}, {"type": "null"}],
+            "default": None,
             "description": "Text of the document, if the document contains text.",
         },
         "blob": {
             "anyOf": [{"$ref": "#/$defs/ByteStream"}, {"type": "null"}],
+            "default": None,
             "description": "Binary data associated with the document, if the document has any binary data associated with it.",
         },
         "meta": {
             "type": "object",
             "description": "Additional custom metadata for the document. Must be JSON-serializable.",
+            "default": {},
             "additionalProperties": True,
         },
         "score": {
             "anyOf": [{"type": "number"}, {"type": "null"}],
+            "default": None,
             "description": "Score of the document. Used for ranking, usually assigned by retrievers.",
         },
         "embedding": {
             "anyOf": [{"type": "array", "items": {"type": "number"}}, {"type": "null"}],
+            "default": None,
             "description": "dense vector representation of the document.",
         },
         "sparse_embedding": {
             "anyOf": [{"$ref": "#/$defs/SparseEmbedding"}, {"type": "null"}],
+            "default": None,
             "description": "sparse vector representation of the document.",
         },
     },
@@ -94,7 +103,11 @@ TOOL_CALL_SCHEMA = {
             "description": "The arguments to call the Tool with.",
             "additionalProperties": True,
         },
-        "id": {"anyOf": [{"type": "string"}, {"type": "null"}], "description": "The ID of the Tool call."},
+        "id": {
+            "anyOf": [{"type": "string"}, {"type": "null"}],
+            "default": None,
+            "description": "The ID of the Tool call.",
+        },
     },
     "required": ["tool_name", "arguments"],
 }
@@ -118,10 +131,10 @@ CHAT_ROLE_SCHEMA = {
 CHAT_MESSAGE_SCHEMA = {
     "type": "object",
     "properties": {
-        "role": {"$ref": "#/$defs/ChatRole", "description": "Field '_role' of 'ChatMessage'."},
+        "role": {"$ref": "#/$defs/ChatRole", "description": "Field 'role' of 'ChatMessage'."},
         "content": {
             "type": "array",
-            "description": "Field '_content' of 'ChatMessage'.",
+            "description": "Field 'content' of 'ChatMessage'.",
             "items": {
                 "anyOf": [
                     {"$ref": "#/$defs/TextContent"},
@@ -130,8 +143,17 @@ CHAT_MESSAGE_SCHEMA = {
                 ]
             },
         },
-        "name": {"anyOf": [{"type": "string"}, {"type": "null"}], "description": "Field '_name' of 'ChatMessage'."},
-        "meta": {"type": "object", "description": "Field '_meta' of 'ChatMessage'.", "additionalProperties": True},
+        "name": {
+            "anyOf": [{"type": "string"}, {"type": "null"}],
+            "default": None,
+            "description": "Field 'name' of 'ChatMessage'.",
+        },
+        "meta": {
+            "type": "object",
+            "description": "Field 'meta' of 'ChatMessage'.",
+            "default": {},
+            "additionalProperties": True,
+        },
     },
     "required": ["role", "content"],
 }

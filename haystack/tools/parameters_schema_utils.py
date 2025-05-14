@@ -5,7 +5,7 @@
 import collections
 from dataclasses import MISSING, fields, is_dataclass
 from inspect import getdoc
-from typing import Any, Callable, Dict, List, Optional, Sequence, Union, get_args, get_origin
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union, get_args, get_origin
 
 from pydantic import Field, create_model
 
@@ -22,7 +22,7 @@ with LazyImport(message="Run 'pip install docstring-parser'") as docstring_parse
 logger = logging.getLogger(__name__)
 
 
-def _get_param_descriptions(method: Callable) -> Dict[str, str]:
+def _get_param_descriptions(method: Callable) -> Tuple[str, Dict[str, str]]:
     """
     Extracts parameter descriptions from the method's docstring using docstring_parser.
 
@@ -44,24 +44,26 @@ def _get_param_descriptions(method: Callable) -> Dict[str, str]:
                 "This description helps the LLM understand how to use this parameter." % param.arg_name
             )
         param_descriptions[param.arg_name] = param.description.strip() if param.description else ""
-    return param_descriptions
+    return parsed_doc.short_description or "", param_descriptions
 
 
 def _dataclass_to_pydantic_model(dc_type: Any) -> Any:
-    param_descriptions = _get_param_descriptions(dc_type)
+    _, param_descriptions = _get_param_descriptions(dc_type)
     cls = dc_type if isinstance(dc_type, type) else dc_type.__class__
 
     field_defs: Dict[str, Any] = {}
     for field in fields(dc_type):
         f_type = field.type if isinstance(field.type, str) else _resolve_type(field.type)
-        description = param_descriptions.get(field.name, f"Field '{field.name}' of '{cls.__name__}'.")
         default = field.default if field.default is not MISSING else ...
         default = field.default_factory() if callable(field.default_factory) else default
+
         # Special handling for ChatMessage since pydantic doesn't allow for field names with leading underscores
         field_name = field.name
         if dc_type is ChatMessage and field_name.startswith("_"):
             # We remove the underscore since ChatMessage.from_dict does allow for field names without the underscore
             field_name = field_name[1:]
+
+        description = param_descriptions.get(field_name, f"Field '{field_name}' of '{cls.__name__}'.")
         field_defs[field_name] = (f_type, Field(default, description=description))
 
     model = create_model(cls.__name__, **field_defs)

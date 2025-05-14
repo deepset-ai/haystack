@@ -24,7 +24,7 @@ from haystack.dataclasses import ChatMessage, ChatRole, Document
 from haystack.tools import ComponentTool
 from haystack.utils.auth import Secret
 
-from test.tools.test_property_schema_utils import remove_item, DOCUMENT_SCHEMA
+from test.tools.test_parameters_schema_utils import BYTE_STREAM_SCHEMA, DOCUMENT_SCHEMA, SPARSE_EMBEDDING_SCHEMA
 
 
 # Component and Model Definitions
@@ -148,6 +148,7 @@ class TestComponentTool:
         assert tool.description == "A simple component that generates text."
         assert tool.parameters == {
             "type": "object",
+            "description": "A simple component that generates text.",
             "properties": {"text": {"type": "string", "description": "user's name"}},
             "required": ["text"],
         }
@@ -166,7 +167,11 @@ class TestComponentTool:
         tool = ComponentTool(component=SimpleComponent(), inputs_from_state={"text": "text"})
         assert tool.inputs_from_state == {"text": "text"}
         # Inputs should be excluded from schema generation
-        assert tool.parameters == {"type": "object", "properties": {}}
+        assert tool.parameters == {
+            "type": "object",
+            "properties": {},
+            "description": "A simple component that generates text.",
+        }
 
     def test_from_component_with_outputs(self):
         tool = ComponentTool(component=SimpleComponent(), outputs_to_state={"replies": {"source": "reply"}})
@@ -175,18 +180,19 @@ class TestComponentTool:
     def test_from_component_with_dataclass(self):
         tool = ComponentTool(component=UserGreeter())
         assert tool.parameters == {
-            "type": "object",
-            "properties": {
-                "user": {
-                    "type": "object",
-                    "description": "The User object to process.",
+            "$defs": {
+                "User": {
                     "properties": {
-                        "name": {"type": "string", "description": "Field 'name' of 'User'."},
-                        "age": {"type": "integer", "description": "Field 'age' of 'User'."},
+                        "name": {"description": "Field 'name' of 'User'.", "type": "string", "default": "Anonymous"},
+                        "age": {"description": "Field 'age' of 'User'.", "type": "integer", "default": 0},
                     },
+                    "type": "object",
                 }
             },
+            "description": "A simple component that processes a User.",
+            "properties": {"user": {"$ref": "#/$defs/User", "description": "The User object to process."}},
             "required": ["user"],
+            "type": "object",
         }
 
         assert tool.name == "user_greeter"
@@ -205,6 +211,7 @@ class TestComponentTool:
 
         assert tool.parameters == {
             "type": "object",
+            "description": "Concatenates a list of strings into a single string.",
             "properties": {
                 "texts": {
                     "type": "array",
@@ -227,27 +234,28 @@ class TestComponentTool:
         )
 
         assert tool.parameters == {
-            "type": "object",
-            "properties": {
-                "person": {
-                    "type": "object",
-                    "description": "The Person to process.",
+            "$defs": {
+                "Address": {
                     "properties": {
-                        "name": {"type": "string", "description": "Field 'name' of 'Person'."},
-                        "address": {
-                            "type": "object",
-                            "description": "Field 'address' of 'Person'.",
-                            "properties": {
-                                "street": {"type": "string", "description": "Field 'street' of 'Address'."},
-                                "city": {"type": "string", "description": "Field 'city' of 'Address'."},
-                            },
-                            "required": ["city", "street"],
-                        },
+                        "street": {"description": "Field 'street' of 'Address'.", "type": "string"},
+                        "city": {"description": "Field 'city' of 'Address'.", "type": "string"},
                     },
-                    "required": ["address", "name"],
-                }
+                    "required": ["street", "city"],
+                    "type": "object",
+                },
+                "Person": {
+                    "properties": {
+                        "name": {"description": "Field 'name' of 'Person'.", "type": "string"},
+                        "address": {"$ref": "#/$defs/Address", "description": "Field 'address' of 'Person'."},
+                    },
+                    "required": ["name", "address"],
+                    "type": "object",
+                },
             },
+            "description": "Creates information about the person.",
+            "properties": {"person": {"$ref": "#/$defs/Person", "description": "The Person to process."}},
             "required": ["person"],
+            "type": "object",
         }
 
         # Test tool invocation
@@ -264,16 +272,22 @@ class TestComponentTool:
         )
 
         assert tool.parameters == {
-            "type": "object",
+            "$defs": {
+                "ByteStream": BYTE_STREAM_SCHEMA,
+                "Document": DOCUMENT_SCHEMA,
+                "SparseEmbedding": SPARSE_EMBEDDING_SCHEMA,
+            },
+            "description": "Concatenates the content of multiple documents with newlines.",
             "properties": {
                 "documents": {
-                    "type": "array",
                     "description": "List of Documents whose content will be concatenated",
-                    "items": remove_item(DOCUMENT_SCHEMA, "description"),
+                    "items": {"$ref": "#/$defs/Document"},
+                    "type": "array",
                 },
-                "top_k": {"type": "integer", "description": "The number of top documents to concatenate"},
+                "top_k": {"description": "The number of top documents to concatenate", "type": "integer", "default": 5},
             },
             "required": ["documents"],
+            "type": "object",
         }
 
         # Test tool invocation

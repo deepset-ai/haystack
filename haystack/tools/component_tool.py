@@ -15,7 +15,7 @@ from haystack.core.serialization import (
     import_class_by_name,
 )
 from haystack.tools import Tool
-from haystack.tools.property_schema_utils import _create_parameters_schema, _get_param_descriptions, _resolve_type
+from haystack.tools.parameters_schema_utils import _create_parameters_schema, _get_param_descriptions, _resolve_type
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 
 logger = logging.getLogger(__name__)
@@ -268,7 +268,7 @@ class ComponentTool(Tool):
         :raises SchemaGenerationError: If schema generation fails
         :returns: OpenAI tools schema for the component's run method parameters.
         """
-        param_descriptions = _get_param_descriptions(component.run)
+        component_run_description, param_descriptions = _get_param_descriptions(component.run)
 
         # collect fields (types and defaults) and descriptions from function parameters
         fields: Dict[str, Any] = {}
@@ -285,4 +285,4 @@ class ComponentTool(Tool):
             resolved_type = _resolve_type(input_type)
             fields[input_name] = (resolved_type, Field(default=default, description=description))
 
-        return _create_parameters_schema(component.run.__name__, component.run.__doc__, fields)
+        return _create_parameters_schema(component.run.__name__, component_run_description, fields)
