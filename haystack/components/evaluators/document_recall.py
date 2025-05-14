@@ -104,7 +104,7 @@ class DocumentRecallEvaluator:
             return 0.0
 
         if not unique_retrievals or unique_retrievals == {""}:
-            logger.warning("Retrieved documents are empty or only contain empty strings. Score will be set to 0")
+            logger.warning("There are no retrieved documents or all of them have an empty string as content. Score will be set to 0.")
             return 0.0
 
         return len(retrieved_ground_truths) / len(unique_truths)
