@@ -1266,10 +1266,10 @@ class PipelineBase:
 
     def _find_super_components(self) -> list[tuple[str, Component]]:
         """
-        Find all SuperComponents.
+        Find all SuperComponents in the pipeline.
 
         :returns:
-            List of tuples containing (component_name, component_instance) for each SuperComponent
+            List of tuples containing (component_name, component_instance) representing a SuperComponent.
         """
 
         super_components = []
@@ -1284,31 +1284,67 @@ class PipelineBase:
         Merge the internal pipelines of SuperComponents into the main pipeline graph structure.
 
         This creates a new networkx.MultiDiGraph containing all the components from both the main pipeline
-        and all the internal SuperComponents' pipelines.
+        and all the internal SuperComponents' pipelines. The SuperComponents are removed and their internal
+        components are connected to corresponding input and output sockets of the main pipeline.
 
         :returns:
-            A networkx.MultiDiGraph with the merged structure of the main pipeline and all super components.
+            A networkx.MultiDiGraph with the expanded structure of the main pipeline and all it's SuperComponents
         """
-
         merged_graph = self.graph.copy()
 
         for super_name, super_component in self._find_super_components():
             internal_pipeline = super_component.pipeline  # type: ignore
-
-            # Create a mapping of internal component names to prefixed names
-            name_mapping = {
-                internal_name: f"{super_name}.{internal_name}" for internal_name in internal_pipeline.graph.nodes()
-            }
-
-            # new graph with renamed nodes
             internal_graph = internal_pipeline.graph.copy()
-            internal_graph = networkx.relabel_nodes(internal_graph, name_mapping)
 
-            # merge the super component internal graph into the main graph
+            # edges connected to the super component
+            incoming_edges = list(merged_graph.in_edges(super_name, data=True))
+            outgoing_edges = list(merged_graph.out_edges(super_name, data=True))
+
+            # merge the SuperComponent graph into the main graph
             merged_graph = networkx.compose(merged_graph, internal_graph)
 
-            # remove the super component node since it's expanded
+            # we remove the super component node since it's components are now part of the main graph
             merged_graph.remove_node(super_name)
+
+            # get the entry and exit points of the SuperComponent internal pipeline
+            entry_points = [n for n in internal_graph.nodes() if internal_graph.in_degree(n) == 0]
+            exit_points = [n for n in internal_graph.nodes() if internal_graph.out_degree(n) == 0]
+
+            # connect the incoming edges to entry points
+            for sender, _, edge_data in incoming_edges:
+                sender_socket = edge_data["from_socket"]
+                for entry_point in entry_points:
+                    # find a matching input socket in the entry point
+                    entry_point_sockets = internal_graph.nodes[entry_point]["input_sockets"]
+                    for socket_name, socket in entry_point_sockets.items():
+                        if _types_are_compatible(sender_socket.type, socket.type, self._connection_type_validation):
+                            merged_graph.add_edge(
+                                sender,
+                                entry_point,
+                                key=f"{sender_socket.name}/{socket_name}",
+                                conn_type=_type_name(sender_socket.type),
+                                from_socket=sender_socket,
+                                to_socket=socket,
+                                mandatory=socket.is_mandatory,
+                            )
+
+            # connect outgoing edges from exit points
+            for _, receiver, edge_data in outgoing_edges:
+                receiver_socket = edge_data["to_socket"]
+                for exit_point in exit_points:
+                    # find a matching output socket in the exit point
+                    exit_point_sockets = internal_graph.nodes[exit_point]["output_sockets"]
+                    for socket_name, socket in exit_point_sockets.items():
+                        if _types_are_compatible(socket.type, receiver_socket.type, self._connection_type_validation):
+                            merged_graph.add_edge(
+                                exit_point,
+                                receiver,
+                                key=f"{socket_name}/{receiver_socket.name}",
+                                conn_type=_type_name(socket.type),
+                                from_socket=socket,
+                                to_socket=receiver_socket,
+                                mandatory=receiver_socket.is_mandatory,
+                            )
 
         return merged_graph
 
