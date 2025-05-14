@@ -103,7 +103,7 @@ class DocumentRecallEvaluator:
             logger.warning("Ground truth documents are empty or only contain empty strings. Score will be set to 0")
             return 0.0
 
-        if not unique_retrievals or all(p.content == "" for p in retrieved_documents):
+        if not unique_retrievals or unique_retrievals == {""}:
             logger.warning("Retrieved documents are empty or only contain empty strings. Score will be set to 0")
             return 0.0
 
