@@ -6,8 +6,9 @@ import pytest
 from typing import List
 
 from haystack.dataclasses import ByteStream, ChatMessage, Document, TextContent, ToolCall, ToolCallResult
-from pydantic import Field
-from haystack.tools.parameters_schema_utils import _resolve_type, _create_parameters_schema
+from pydantic import Field, create_model
+from haystack.tools.parameters_schema_utils import _resolve_type
+from haystack.tools.from_function import _remove_title_from_schema
 
 
 BYTE_STREAM_SCHEMA = {
@@ -224,10 +225,12 @@ CHAT_MESSAGE_SCHEMA = {
         ),
     ],
 )
-def test_create_property_schema_haystack_dataclasses(python_type, description, expected_schema, expected_defs_schema):
+def test_create_parameters_schema_haystack_dataclasses(python_type, description, expected_schema, expected_defs_schema):
     resolved_type = _resolve_type(python_type)
     fields = {"input_name": (resolved_type, Field(default=..., description=description))}
-    parameters_schema = _create_parameters_schema("run", "A test function", fields)
+    model = create_model("run", __doc__="A test function", **fields)
+    parameters_schema = model.model_json_schema()
+    _remove_title_from_schema(parameters_schema)
 
     defs_schema = parameters_schema["$defs"]
     assert defs_schema == expected_defs_schema

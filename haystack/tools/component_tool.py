@@ -4,7 +4,7 @@
 
 from typing import Any, Callable, Dict, Optional, Union, get_args, get_origin
 
-from pydantic import Field, TypeAdapter
+from pydantic import Field, TypeAdapter, create_model
 
 from haystack import logging
 from haystack.core.component import Component
@@ -15,7 +15,9 @@ from haystack.core.serialization import (
     import_class_by_name,
 )
 from haystack.tools import Tool
-from haystack.tools.parameters_schema_utils import _create_parameters_schema, _get_param_descriptions, _resolve_type
+from haystack.tools.errors import SchemaGenerationError
+from haystack.tools.from_function import _remove_title_from_schema
+from haystack.tools.parameters_schema_utils import _get_param_descriptions, _resolve_type
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 
 logger = logging.getLogger(__name__)
@@ -285,4 +287,17 @@ class ComponentTool(Tool):
             resolved_type = _resolve_type(input_type)
             fields[input_name] = (resolved_type, Field(default=default, description=description))
 
-        return _create_parameters_schema(component.run.__name__, component_run_description, fields)
+        try:
+            model = create_model(component.run.__name__, __doc__=component_run_description, **fields)
+            parameters_schema = model.model_json_schema()
+        except Exception as e:
+            raise SchemaGenerationError(
+                f"Failed to create JSON schema for the run method of Component '{component.__class__.__name__}'"
+            ) from e
+
+        # we don't want to include title keywords in the schema, as they contain redundant information
+        # there is no programmatic way to prevent Pydantic from adding them, so we remove them later
+        # see https://github.com/pydantic/pydantic/discussions/8504
+        _remove_title_from_schema(parameters_schema)
+
+        return parameters_schema
