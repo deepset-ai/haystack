@@ -1,4 +1,4 @@
-- Title: LLM SUpport in Haystack 2.0
+- Title: LLM Support in Haystack 2.0
 - Decision driver: @ZanSara
 - Start Date: 2023-08-10
 - Proposal PR: #5540
@@ -86,7 +86,7 @@ We leave the discussion about History/Memory to a separate proposal, as it conce
 
 In Haystack 1.x, `PromptNode` uses `InvocationLayer` to query different LLMs under a unified API. In that design, users do not need to know which invocation layer is used for the model they select, as `PromptNode` takes responsibility of selecting it.
 
-Such invocation layers can be ported to 2.0 as standalone components. In this way we will have one component for each LLM backed that we support.
+Such invocation layers can be ported to 2.0 as standalone components. In this way we will have one component for each LLM backend that we support.
 
 Each component should be named after the class of models it supports, plus a `Generator` suffix. For example we should have `GPT4Generator`, `HuggingFaceLocalGenerator`, `CohereGenerator`, etc.
 
@@ -140,7 +140,7 @@ In version 2.x we're going to do the same and have all generator components acce
 
 ### How many clients we will have?
 
-Basing on the list of current invocation layers in Haystack 1.x, the list might look like:
+Based on the list of current invocation layers in Haystack 1.x, the list might look like:
 
 1. `ClaudeGenerator`
 2. `ChatGPTGenerator`, supporting GPT4 as well

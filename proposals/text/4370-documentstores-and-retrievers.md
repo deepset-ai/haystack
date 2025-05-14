@@ -220,7 +220,7 @@ Note how `MemoryRetriever` is making use of methods that are not specified in th
 
 We will need to migrate all `DocumentStore`s and heavily cut their API. Although it is going to be a massive undertaking, this process will allow us to drop less used `DocumentStore` backends and focus on the most important ones. It will also highly reduce the code we have to maintain.
 
-We will also need to re-implement the ehtire Retrieval stack. We believe a lot of code could be reused, but we will focus on leveraging each document store facilities a lot more, and that will require almost complete rewriters. The upside is that the resulting code should be several times shorter, so the maintenance burden should be limited.
+We will also need to re-implement the entire Retrieval stack. We believe a lot of code could be reused, but we will focus on leveraging each document store facilities a lot more, and that will require almost complete rewriters. The upside is that the resulting code should be several times shorter, so the maintenance burden should be limited.
 
 # Alternatives
 
