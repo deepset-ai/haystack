@@ -4,7 +4,7 @@
 
 from typing import Any, Callable, Dict, Optional, Union, get_args, get_origin
 
-from pydantic import TypeAdapter
+from pydantic import Field, TypeAdapter
 
 from haystack import logging
 from haystack.core.component import Component
@@ -15,8 +15,7 @@ from haystack.core.serialization import (
     import_class_by_name,
 )
 from haystack.tools import Tool
-from haystack.tools.errors import SchemaGenerationError
-from haystack.tools.property_schema_utils import _create_property_schema, _get_param_descriptions
+from haystack.tools.property_schema_utils import _create_parameters_schema, _get_param_descriptions, _resolve_type
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 
 logger = logging.getLogger(__name__)
@@ -269,10 +268,10 @@ class ComponentTool(Tool):
         :raises SchemaGenerationError: If schema generation fails
         :returns: OpenAI tools schema for the component's run method parameters.
         """
-        properties = {}
-        required = []
-
         param_descriptions = _get_param_descriptions(component.run)
+
+        # collect fields (types and defaults) and descriptions from function parameters
+        fields: Dict[str, Any] = {}
 
         for input_name, socket in component.__haystack_input__._sockets_dict.items():  # type: ignore[attr-defined]
             if inputs_from_state is not None and input_name in inputs_from_state:
@@ -280,24 +279,10 @@ class ComponentTool(Tool):
             input_type = socket.type
             description = param_descriptions.get(input_name, f"Input '{input_name}' for the component.")
 
-            try:
-                property_schema = _create_property_schema(input_type, description)
-            except Exception as e:
-                raise SchemaGenerationError(
-                    f"Error processing input '{input_name}': {e}. "
-                    f"Schema generation supports basic types (str, int, float, bool, dict), dataclasses, "
-                    f"and lists of these types as input types for component's run method."
-                ) from e
+            # if the parameter has not a default value, Pydantic requires an Ellipsis (...)
+            # to explicitly indicate that the parameter is required
+            default = ... if socket.is_mandatory else socket.default_value
+            resolved_type = _resolve_type(input_type)
+            fields[input_name] = (resolved_type, Field(default=default, description=description))
 
-            properties[input_name] = property_schema
-
-            # Use socket.is_mandatory to check if the input is required
-            if socket.is_mandatory:
-                required.append(input_name)
-
-        parameters_schema = {"type": "object", "properties": properties}
-
-        if required:
-            parameters_schema["required"] = required
-
-        return parameters_schema
+        return _create_parameters_schema(component.run.__name__, component.run.__doc__, fields)

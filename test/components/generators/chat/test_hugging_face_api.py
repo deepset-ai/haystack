@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from datetime import datetime
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from unittest.mock import MagicMock, Mock, AsyncMock, patch
 
 import pytest
@@ -54,20 +54,20 @@ def get_weather(city: str) -> Dict[str, Any]:
 
 
 @component
-class Adder:
-    # We purposely add meta to test how OpenAI handles "additionalProperties"
-    @component.output_types(answer=int, meta=Dict[str, Any])
-    def run(self, a: int, b: int, meta: Optional[Dict[str, Any]] = None) -> Dict[str, int]:
+class MessageExtractor:
+    @component.output_types(messages=List[str], meta=Dict[str, Any])
+    def run(self, messages: List[ChatMessage], meta: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
-        Adds two numbers together and returns the result.
+        Extracts the text content of ChatMessage objects
 
-        :param a: The first number to add.
-        :param b: The second number to add.
+        :param messages: List of Haystack ChatMessage objects
         :param meta: Optional metadata to include in the response.
+        :returns:
+            A dictionary with keys "messages" and "meta".
         """
         if meta is None:
             meta = {}
-        return {"answer": a + b, "meta": meta}
+        return {"messages": [m.text for m in messages], "meta": meta}
 
 
 @pytest.fixture
@@ -79,24 +79,12 @@ def tools():
         function=get_weather,
     )
     # We add a tool that has a more complex parameter signature
-    addition_tool = ComponentTool(
-        component=Adder(),
-        name="addition",
-        description="useful to add two numbers",
-        parameters={
-            "type": "object",
-            "properties": {
-                "a": {"type": "integer", "description": "The first number to add."},
-                "b": {"type": "integer", "description": "The second number to add."},
-                "meta": {
-                    "oneOf": [{"type": "object", "additionalProperties": True}, {"type": "null"}],
-                    "description": "Optional metadata to include in the response.",
-                },
-            },
-            "required": ["a", "b"],
-        },
+    message_extractor_tool = ComponentTool(
+        component=MessageExtractor(),
+        name="message_extractor",
+        description="Useful for returning the text content of ChatMessage objects",
     )
-    return [weather_tool, addition_tool]
+    return [weather_tool, message_extractor_tool]
 
 
 @pytest.fixture

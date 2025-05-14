@@ -5,147 +5,21 @@
 import collections
 from dataclasses import MISSING, fields, is_dataclass
 from inspect import getdoc
-from typing import Any, Callable, Dict, Union, get_args, get_origin
+from typing import Any, Callable, Dict, List, Optional, Sequence, Union, get_args, get_origin
+
+from pydantic import Field, create_model
 
 from haystack import logging
+from haystack.dataclasses import ChatMessage
 from haystack.lazy_imports import LazyImport
 from haystack.tools.errors import SchemaGenerationError
+from haystack.tools.from_function import _remove_title_from_schema
 
 with LazyImport(message="Run 'pip install docstring-parser'") as docstring_parser_import:
     from docstring_parser import parse
 
 
 logger = logging.getLogger(__name__)
-
-
-def _create_list_schema(item_type: Any, description: str) -> Dict[str, Any]:
-    """
-    Creates a schema for a list type.
-
-    :param item_type: The type of items in the list.
-    :param description: The description of the list.
-    :returns: A dictionary representing the list schema.
-    """
-    items_schema = _create_property_schema(item_type, "")
-    items_schema.pop("description", None)
-    return {"type": "array", "description": description, "items": items_schema}
-
-
-def _create_dataclass_schema(python_type: Any, description: str) -> Dict[str, Any]:
-    """
-    Creates a schema for a dataclass.
-
-    :param python_type: The dataclass type.
-    :param description: The description of the dataclass.
-    :returns: A dictionary representing the dataclass schema.
-    """
-    required_fields = []
-    param_descriptions = _get_param_descriptions(python_type)
-    schema: Dict[str, Any] = {"type": "object", "description": description, "properties": {}}
-    cls = python_type if isinstance(python_type, type) else python_type.__class__
-    for field in fields(cls):
-        is_required = field.default is MISSING and field.default_factory is MISSING
-        if is_required:
-            required_fields.append(field.name)
-        field_description = param_descriptions.get(field.name, f"Field '{field.name}' of '{cls.__name__}'.")
-        field_schema = _create_property_schema(field.type, field_description)
-        schema["properties"][field.name] = field_schema
-    if required_fields:
-        schema["required"] = sorted(required_fields)
-    return schema
-
-
-def _create_basic_type_schema(python_type: Any, description: str) -> Dict[str, Union[str, bool]]:
-    """
-    Creates a schema for a basic Python type.
-
-    :param python_type: The Python type.
-    :param description: The description of the type.
-    :returns: A dictionary representing the basic type schema.
-    """
-    type_mapping = {
-        str: "string",
-        int: "integer",
-        float: "number",
-        bool: "boolean",
-        list: "array",
-        dict: "object",
-        type(None): "null",
-    }
-    resolved_type_mapping = type_mapping.get(python_type)
-    if resolved_type_mapping is None:
-        # If the type is not found in the mapping, default to "string"
-        resolved_type_mapping = "string"
-
-    schema: Dict[str, Union[str, bool]] = {"type": resolved_type_mapping, "description": description}
-    if schema["type"] == "object":
-        # If the type is an object, set additionalProperties to True
-        schema["additionalProperties"] = True
-    return schema
-
-
-def _create_union_schema(types: tuple, description: str) -> Dict[str, Any]:
-    """
-    Creates a schema for a Union type.
-
-    :param types: The types in the Union.
-    :param description: The description of the Union.
-    :returns: A dictionary representing the Union schema.
-    """
-    schemas = []
-    for arg_type in types:
-        arg_schema = _create_property_schema(arg_type, "")
-        # TODO Double check when using oneOf if we can also include the description
-        arg_schema.pop("description", None)
-        schemas.append(arg_schema)
-
-    if len(schemas) == 1:
-        schema = schemas[0]
-        schema["description"] = description
-    else:
-        schema = {"oneOf": schemas, "description": description}
-    return schema
-
-
-def _create_property_schema(python_type: Any, description: str, default: Any = None) -> Dict[str, Any]:
-    """
-    Creates a property schema for a given Python type, recursively if necessary.
-
-    :param python_type: The Python type to create a property schema for.
-    :param description: The description of the property.
-    :param default: The default value of the property.
-    :returns: A dictionary representing the property schema.
-    :raises SchemaGenerationError: If schema generation fails, e.g., for unsupported types like Pydantic v2 models
-    """
-    origin = get_origin(python_type)
-    args = get_args(python_type)
-    schema: Dict[str, Any]
-
-    # Handle dict type. Not possible to use args info here because we don't know the name of the key.
-    if origin is dict:
-        schema = {"type": "object", "description": description, "additionalProperties": True}
-    # Handle list
-    elif origin is list or origin is collections.abc.Sequence:
-        schema = _create_list_schema(get_args(python_type)[0] if get_args(python_type) else Any, description)
-    # Handle Union (including Optional)
-    elif origin is Union:
-        schema = _create_union_schema(args, description)
-    # Handle dataclass
-    elif is_dataclass(python_type):
-        schema = _create_dataclass_schema(python_type, description)
-    # Handle Pydantic v2 models (unsupported)
-    elif hasattr(python_type, "model_validate"):
-        raise SchemaGenerationError(
-            f"Pydantic models (e.g. {python_type.__name__}) are not supported as input types for "
-            f"component's run method."
-        )
-    else:
-        schema = _create_basic_type_schema(python_type, description)
-
-    if default is not None:
-        schema["default"] = default
-
-    return schema
 
 
 def _get_param_descriptions(method: Callable) -> Dict[str, str]:
@@ -171,3 +45,61 @@ def _get_param_descriptions(method: Callable) -> Dict[str, str]:
             )
         param_descriptions[param.arg_name] = param.description.strip() if param.description else ""
     return param_descriptions
+
+
+def _dataclass_to_pydantic_model(dc_type: Any) -> Any:
+    param_descriptions = _get_param_descriptions(dc_type)
+    cls = dc_type if isinstance(dc_type, type) else dc_type.__class__
+
+    field_defs: Dict[str, Any] = {}
+    for field in fields(dc_type):
+        f_type = field.type if isinstance(field.type, str) else _resolve_type(field.type)
+        description = param_descriptions.get(field.name, f"Field '{field.name}' of '{cls.__name__}'.")
+        default = field.default if field.default is not MISSING else ...
+        default = field.default_factory() if callable(field.default_factory) else default
+        # Special handling for ChatMessage since pydantic doesn't allow for field names with leading underscores
+        field_name = field.name
+        if dc_type is ChatMessage and field_name.startswith("_"):
+            # We remove the underscore since ChatMessage.from_dict does allow for field names without the underscore
+            field_name = field_name[1:]
+        field_defs[field_name] = (f_type, Field(default, description=description))
+
+    model = create_model(cls.__name__, **field_defs)
+    return model
+
+
+def _resolve_type(_type: Any) -> Any:
+    if is_dataclass(_type):
+        return _dataclass_to_pydantic_model(_type)
+
+    origin = get_origin(_type)
+    args = get_args(_type)
+
+    if origin is list:
+        return List[_resolve_type(args[0]) if args else Any]  # type: ignore
+
+    if origin is collections.abc.Sequence:
+        return Sequence[_resolve_type(args[0]) if args else Any]  # type: ignore
+
+    if origin is Union:
+        return Union[tuple(_resolve_type(a) for a in args)]  # type: ignore
+
+    if origin is dict:
+        return Dict[args[0] if args else Any, _resolve_type(args[1]) if args else Any]  # type: ignore
+
+    return _type
+
+
+def _create_parameters_schema(function_name: str, description: Optional[str], field_definitions: Any):
+    try:
+        model = create_model(function_name, __doc__=description, **field_definitions)
+        parameters_schema = model.model_json_schema()
+    except Exception as e:
+        raise SchemaGenerationError(f"Failed to create JSON schema for function '{function_name}'") from e
+
+    # we don't want to include title keywords in the schema, as they contain redundant information
+    # there is no programmatic way to prevent Pydantic from adding them, so we remove them later
+    # see https://github.com/pydantic/pydantic/discussions/8504
+    _remove_title_from_schema(parameters_schema)
+
+    return parameters_schema
