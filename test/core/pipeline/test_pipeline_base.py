@@ -175,6 +175,101 @@ class TestPipelineBase:
         pipe.draw(path=image_path)
         assert image_path.read_bytes() == mock_to_mermaid_image.return_value
 
+    def test_find_super_components(self):
+        from haystack import Pipeline
+        from haystack.components.converters import MultiFileConverter
+        from haystack.components.preprocessors import DocumentPreprocessor
+        from haystack.components.writers import DocumentWriter
+        from haystack.document_stores.in_memory import InMemoryDocumentStore
+
+        multi_file_converter = MultiFileConverter()
+        doc_processor = DocumentPreprocessor()
+
+        pipeline = Pipeline()
+        pipeline.add_component("converter", multi_file_converter)
+        pipeline.add_component("preprocessor", doc_processor)
+        pipeline.add_component("writer", DocumentWriter(document_store=InMemoryDocumentStore()))
+        pipeline.connect("converter", "preprocessor")
+        pipeline.connect("preprocessor", "writer")
+
+        result = pipeline.find_super_components()
+
+        assert len(result) == 2
+        assert [("converter", multi_file_converter), ("preprocessor", doc_processor)] == result
+
+    def test_merge_super_component_pipelines(self):
+        from haystack import Pipeline
+        from haystack.components.converters import MultiFileConverter
+        from haystack.components.preprocessors import DocumentPreprocessor
+        from haystack.components.writers import DocumentWriter
+        from haystack.document_stores.in_memory import InMemoryDocumentStore
+
+        multi_file_converter = MultiFileConverter()
+        doc_processor = DocumentPreprocessor()
+
+        pipeline = Pipeline()
+        pipeline.add_component("converter", multi_file_converter)
+        pipeline.add_component("preprocessor", doc_processor)
+        pipeline.add_component("writer", DocumentWriter(document_store=InMemoryDocumentStore()))
+        pipeline.connect("converter", "preprocessor")
+        pipeline.connect("preprocessor", "writer")
+
+        merged_graph = pipeline.merge_super_component_pipelines()
+
+        expected_nodes = [
+            "writer",
+            "converter.router",
+            "converter.docx",
+            "converter.html",
+            "converter.json",
+            "converter.md",
+            "converter.text",
+            "converter.pdf",
+            "converter.pptx",
+            "converter.xlsx",
+            "converter.joiner",
+            "converter.csv",
+            "preprocessor.splitter",
+            "preprocessor.cleaner",
+        ]
+
+        expected_edges = [
+            ("converter.router", "converter.csv", "text/csv/sources"),
+            (
+                "converter.router",
+                "converter.docx",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document/sources",
+            ),
+            ("converter.router", "converter.html", "text/html/sources"),
+            ("converter.router", "converter.json", "application/json/sources"),
+            ("converter.router", "converter.md", "text/markdown/sources"),
+            ("converter.router", "converter.text", "text/plain/sources"),
+            ("converter.router", "converter.pdf", "application/pdf/sources"),
+            (
+                "converter.router",
+                "converter.pptx",
+                "application/vnd.openxmlformats-officedocument.presentationml.presentation/sources",
+            ),
+            (
+                "converter.router",
+                "converter.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet/sources",
+            ),
+            ("converter.docx", "converter.joiner", "documents/documents"),
+            ("converter.html", "converter.joiner", "documents/documents"),
+            ("converter.json", "converter.joiner", "documents/documents"),
+            ("converter.md", "converter.joiner", "documents/documents"),
+            ("converter.text", "converter.joiner", "documents/documents"),
+            ("converter.pdf", "converter.joiner", "documents/documents"),
+            ("converter.pptx", "converter.joiner", "documents/documents"),
+            ("converter.xlsx", "converter.joiner", "documents/documents"),
+            ("converter.csv", "converter.joiner", "documents/documents"),
+            ("preprocessor.splitter", "preprocessor.cleaner", "documents/documents"),
+        ]
+
+        assert merged_graph.nodes == expected_nodes
+        assert merged_graph.edges == expected_edges
+
     # UNIT
     def test_add_invalid_component_name(self):
         pipe = PipelineBase()
