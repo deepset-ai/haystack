@@ -577,7 +577,7 @@ class OpenAIChatGenerator:
         # we stream the content of the chunk if it's not a tool or function call
         choice: ChunkChoice = chunk.choices[0]
         content = choice.delta.content or ""
-        chunk_message = StreamingChunk(content)
+        chunk_message = StreamingChunk(content=content)
         # but save the tool calls and function call in the meta if they are present
         # and then connect the chunks in the _convert_streaming_chunks_to_chat_message method
         chunk_message.meta.update(

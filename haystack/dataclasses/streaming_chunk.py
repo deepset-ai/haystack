@@ -5,6 +5,7 @@
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable, Dict, Optional, Union
 
+from haystack.dataclasses.chat_message import ToolCallDelta, ToolCallResult
 from haystack.utils.asynchronous import is_callable_async_compatible
 
 
@@ -16,11 +17,19 @@ class StreamingChunk:
     This structure facilitates the handling and processing of streamed data in a systematic manner.
 
     :param content: The content of the message chunk as a string.
+    :param tool_call: An optional ToolCallDelta object representing a tool call associated with the message chunk.
+    :param tool_call_result: An optional ToolCallResult object representing the result of a tool call.
+    :param start: A boolean indicating whether this chunk marks the start of a message.
+    :param end: A boolean indicating whether this chunk marks the end of a message.
     :param meta: A dictionary containing metadata related to the message chunk.
     """
 
     content: str
     meta: Dict[str, Any] = field(default_factory=dict, hash=False)
+    tool_call: Optional[ToolCallDelta] = None
+    tool_call_result: Optional[ToolCallResult] = None
+    start: Optional[bool] = None
+    end: Optional[bool] = None
 
 
 SyncStreamingCallbackT = Callable[[StreamingChunk], None]

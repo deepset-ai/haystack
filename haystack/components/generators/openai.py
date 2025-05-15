@@ -320,7 +320,7 @@ class OpenAIGenerator:
         """
         choice = chunk.choices[0]
         content = choice.delta.content or ""
-        chunk_message = StreamingChunk(content)
+        chunk_message = StreamingChunk(content=content)
         chunk_message.meta.update(
             {
                 "model": chunk.model,
