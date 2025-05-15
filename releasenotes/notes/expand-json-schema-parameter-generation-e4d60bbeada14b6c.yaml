@@ -1,5 +1,5 @@
 ---
 enhancements:
   - |
-    Upgraded the automatic parameter JSON schema specification for ComponentTool.
-    Added support for Union type, dict types like Dict[str, Any], and allowing null to be an option when using Optional[someType].
+    Refactored JSON Schema generation for ComponentTool parameters using Pydantic’s model_json_schema, enabling expanded type support (e.g. Union, Enum, Dict, etc.).
+    We also convert dataclasses to Pydantic models before calling model_json_schema to preserve docstring descriptions of the parameters in the schema.
