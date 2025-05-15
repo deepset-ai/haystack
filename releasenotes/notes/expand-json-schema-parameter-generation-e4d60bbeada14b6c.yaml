@@ -3,3 +3,4 @@ enhancements:
   - |
     Refactored JSON Schema generation for ComponentTool parameters using Pydantic’s model_json_schema, enabling expanded type support (e.g. Union, Enum, Dict, etc.).
     We also convert dataclasses to Pydantic models before calling model_json_schema to preserve docstring descriptions of the parameters in the schema.
+    This means dataclasses like ChatMessage, Document, etc. now have correctly defined JSON schemas.
