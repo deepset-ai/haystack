@@ -80,6 +80,7 @@ def test_serialize_value():
         "user_id": "123",
         "dict_of_lists": {"numbers": [1, 2, 3]},
         "documents": [Document(content="Hello, world!")],
+        "list_of_dicts": [{"numbers": [1, 2, 3]}],
     }
 
     result = serialize_value(data)
@@ -107,6 +108,7 @@ def test_serialize_value():
                 "_type": "haystack.dataclasses.document.Document",
             }
         ],
+        "list_of_dicts": [{"numbers": [1, 2, 3]}],
     }
 
 

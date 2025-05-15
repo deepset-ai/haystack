@@ -84,8 +84,8 @@ def serialize_value(value: Any) -> Any:
         return {k: serialize_value(v) for k, v in value.items()}
 
     # recursively serialize all inputs in lists or tuples
-    elif isinstance(value, list):
-        return [serialize_value(item) for item in value]
+    elif isinstance(value, (list, tuple, set)):
+        return type(value)(serialize_value(item) for item in value)
 
     return value
 
@@ -110,18 +110,6 @@ def deserialize_value(value: Any) -> Any:
     if not value or isinstance(value, (str, int, float, bool)):
         return value
 
-    # list of primitive types are returned as is
-    if isinstance(value, list) and all(isinstance(i, (str, int, float, bool)) for i in value):
-        return value
-
-    if isinstance(value, list):
-        # list of lists are called recursively
-        if all(isinstance(i, list) for i in value):
-            return [deserialize_value(i) for i in value]
-        # list of dicts are called recursively
-        if all(isinstance(i, dict) for i in value):
-            return [deserialize_value(i) for i in value]
-
     # check if the dictionary has a "_type" key and the class type has a "from_dict" method
     if isinstance(value, dict):
         if "_type" in value:
@@ -131,5 +119,8 @@ def deserialize_value(value: Any) -> Any:
 
         # If not a known type, recursively deserialize each item in the dictionary
         return {k: deserialize_value(v) for k, v in value.items()}
+
+    if isinstance(value, (list, tuple, set)):
+        return type(value)(deserialize_value(i) for i in value)
 
     return value
