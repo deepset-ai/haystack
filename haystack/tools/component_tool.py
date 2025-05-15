@@ -2,11 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from dataclasses import fields, is_dataclass
-from inspect import getdoc
 from typing import Any, Callable, Dict, Optional, Union, get_args, get_origin
 
-from pydantic import TypeAdapter
+from pydantic import Field, TypeAdapter, create_model
 
 from haystack import logging
 from haystack.core.component import Component
@@ -16,14 +14,11 @@ from haystack.core.serialization import (
     generate_qualified_class_name,
     import_class_by_name,
 )
-from haystack.lazy_imports import LazyImport
 from haystack.tools import Tool
 from haystack.tools.errors import SchemaGenerationError
+from haystack.tools.from_function import _remove_title_from_schema
+from haystack.tools.parameters_schema_utils import _get_param_descriptions, _resolve_type
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
-
-with LazyImport(message="Run 'pip install docstring-parser'") as docstring_parser_import:
-    from docstring_parser import parse
-
 
 logger = logging.getLogger(__name__)
 
@@ -275,10 +270,10 @@ class ComponentTool(Tool):
         :raises SchemaGenerationError: If schema generation fails
         :returns: OpenAI tools schema for the component's run method parameters.
         """
-        properties = {}
-        required = []
+        component_run_description, param_descriptions = _get_param_descriptions(component.run)
 
-        param_descriptions = self._get_param_descriptions(component.run)
+        # collect fields (types and defaults) and descriptions from function parameters
+        fields: Dict[str, Any] = {}
 
         for input_name, socket in component.__haystack_input__._sockets_dict.items():  # type: ignore[attr-defined]
             if inputs_from_state is not None and input_name in inputs_from_state:
@@ -286,135 +281,23 @@ class ComponentTool(Tool):
             input_type = socket.type
             description = param_descriptions.get(input_name, f"Input '{input_name}' for the component.")
 
-            try:
-                property_schema = self._create_property_schema(input_type, description)
-            except Exception as e:
-                raise SchemaGenerationError(
-                    f"Error processing input '{input_name}': {e}. "
-                    f"Schema generation supports basic types (str, int, float, bool, dict), dataclasses, "
-                    f"and lists of these types as input types for component's run method."
-                ) from e
+            # if the parameter has not a default value, Pydantic requires an Ellipsis (...)
+            # to explicitly indicate that the parameter is required
+            default = ... if socket.is_mandatory else socket.default_value
+            resolved_type = _resolve_type(input_type)
+            fields[input_name] = (resolved_type, Field(default=default, description=description))
 
-            properties[input_name] = property_schema
+        try:
+            model = create_model(component.run.__name__, __doc__=component_run_description, **fields)
+            parameters_schema = model.model_json_schema()
+        except Exception as e:
+            raise SchemaGenerationError(
+                f"Failed to create JSON schema for the run method of Component '{component.__class__.__name__}'"
+            ) from e
 
-            # Use socket.is_mandatory to check if the input is required
-            if socket.is_mandatory:
-                required.append(input_name)
-
-        parameters_schema = {"type": "object", "properties": properties}
-
-        if required:
-            parameters_schema["required"] = required
+        # we don't want to include title keywords in the schema, as they contain redundant information
+        # there is no programmatic way to prevent Pydantic from adding them, so we remove them later
+        # see https://github.com/pydantic/pydantic/discussions/8504
+        _remove_title_from_schema(parameters_schema)
 
         return parameters_schema
-
-    @staticmethod
-    def _get_param_descriptions(method: Callable) -> Dict[str, str]:
-        """
-        Extracts parameter descriptions from the method's docstring using docstring_parser.
-
-        :param method: The method to extract parameter descriptions from.
-        :returns: A dictionary mapping parameter names to their descriptions.
-        """
-        docstring = getdoc(method)
-        if not docstring:
-            return {}
-
-        docstring_parser_import.check()
-        parsed_doc = parse(docstring)
-        param_descriptions = {}
-        for param in parsed_doc.params:
-            if not param.description:
-                logger.warning(
-                    "Missing description for parameter '%s'. Please add a description in the component's "
-                    "run() method docstring using the format ':param %%s: <description>'. "
-                    "This description helps the LLM understand how to use this parameter." % param.arg_name
-                )
-            param_descriptions[param.arg_name] = param.description.strip() if param.description else ""
-        return param_descriptions
-
-    @staticmethod
-    def _is_nullable_type(python_type: Any) -> bool:
-        """
-        Checks if the type is a Union with NoneType (i.e., Optional).
-
-        :param python_type: The Python type to check.
-        :returns: True if the type is a Union with NoneType, False otherwise.
-        """
-        origin = get_origin(python_type)
-        if origin is Union:
-            return type(None) in get_args(python_type)
-        return False
-
-    def _create_list_schema(self, item_type: Any, description: str) -> Dict[str, Any]:
-        """
-        Creates a schema for a list type.
-
-        :param item_type: The type of items in the list.
-        :param description: The description of the list.
-        :returns: A dictionary representing the list schema.
-        """
-        items_schema = self._create_property_schema(item_type, "")
-        items_schema.pop("description", None)
-        return {"type": "array", "description": description, "items": items_schema}
-
-    def _create_dataclass_schema(self, python_type: Any, description: str) -> Dict[str, Any]:
-        """
-        Creates a schema for a dataclass.
-
-        :param python_type: The dataclass type.
-        :param description: The description of the dataclass.
-        :returns: A dictionary representing the dataclass schema.
-        """
-        schema = {"type": "object", "description": description, "properties": {}}
-        cls = python_type if isinstance(python_type, type) else python_type.__class__
-        for field in fields(cls):
-            field_description = f"Field '{field.name}' of '{cls.__name__}'."
-            if isinstance(schema["properties"], dict):
-                schema["properties"][field.name] = self._create_property_schema(field.type, field_description)
-        return schema
-
-    @staticmethod
-    def _create_basic_type_schema(python_type: Any, description: str) -> Dict[str, Any]:
-        """
-        Creates a schema for a basic Python type.
-
-        :param python_type: The Python type.
-        :param description: The description of the type.
-        :returns: A dictionary representing the basic type schema.
-        """
-        type_mapping = {str: "string", int: "integer", float: "number", bool: "boolean", dict: "object"}
-        return {"type": type_mapping.get(python_type, "string"), "description": description}
-
-    def _create_property_schema(self, python_type: Any, description: str, default: Any = None) -> Dict[str, Any]:
-        """
-        Creates a property schema for a given Python type, recursively if necessary.
-
-        :param python_type: The Python type to create a property schema for.
-        :param description: The description of the property.
-        :param default: The default value of the property.
-        :returns: A dictionary representing the property schema.
-        :raises SchemaGenerationError: If schema generation fails, e.g., for unsupported types like Pydantic v2 models
-        """
-        nullable = self._is_nullable_type(python_type)
-        if nullable:
-            non_none_types = [t for t in get_args(python_type) if t is not type(None)]
-            python_type = non_none_types[0] if non_none_types else str
-
-        origin = get_origin(python_type)
-        if origin is list:
-            schema = self._create_list_schema(get_args(python_type)[0] if get_args(python_type) else Any, description)
-        elif is_dataclass(python_type):
-            schema = self._create_dataclass_schema(python_type, description)
-        elif hasattr(python_type, "model_validate"):
-            raise SchemaGenerationError(
-                f"Pydantic models (e.g. {python_type.__name__}) are not supported as input types for "
-                f"component's run method."
-            )
-        else:
-            schema = self._create_basic_type_schema(python_type, description)
-
-        if default is not None:
-            schema["default"] = default
-
-        return schema
