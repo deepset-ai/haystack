@@ -86,7 +86,13 @@ def test_serialize_value():
     assert result == {
         "numbers": 1,
         "messages": [
-            {"role": "user", "meta": {}, "name": None, "content": [{"text": "Hello, world!"}], "_type": ChatMessage}
+            {
+                "role": "user",
+                "meta": {},
+                "name": None,
+                "content": [{"text": "Hello, world!"}],
+                "_type": "haystack.dataclasses.chat_message.ChatMessage",
+            }
         ],
         "user_id": "123",
         "dict_of_lists": {"numbers": [1, 2, 3]},
@@ -98,7 +104,7 @@ def test_serialize_value():
                 "score": None,
                 "embedding": None,
                 "sparse_embedding": None,
-                "_type": Document,
+                "_type": "haystack.dataclasses.document.Document",
             }
         ],
     }
@@ -108,7 +114,13 @@ def test_deserialize_value():
     serialized__data = {
         "numbers": 1,
         "messages": [
-            {"role": "user", "meta": {}, "name": None, "content": [{"text": "Hello, world!"}], "_type": ChatMessage}
+            {
+                "role": "user",
+                "meta": {},
+                "name": None,
+                "content": [{"text": "Hello, world!"}],
+                "_type": "haystack.dataclasses.ChatMessage",
+            }
         ],
         "user_id": "123",
         "dict_of_lists": {"numbers": [1, 2, 3]},
@@ -120,7 +132,7 @@ def test_deserialize_value():
                 "score": None,
                 "embedding": None,
                 "sparse_embedding": None,
-                "_type": Document,
+                "_type": "haystack.dataclasses.Document",
             }
         ],
     }
@@ -139,11 +151,17 @@ def test_serialize_value_with_custom_class_type():
     custom_type = CustomClass()
     data = {"numbers": 1, "custom_type": custom_type}
     result = serialize_value(data)
-    assert result == {"numbers": 1, "custom_type": {"key": "value", "more": False, "_type": CustomClass}}
+    assert result == {
+        "numbers": 1,
+        "custom_type": {"key": "value", "more": False, "_type": "test_base_serialization.CustomClass"},
+    }
 
 
 def test_deserialize_value_with_custom_class_type():
-    serialized_data = {"numbers": 1, "custom_type": {"key": "value", "more": False, "_type": CustomClass}}
+    serialized_data = {
+        "numbers": 1,
+        "custom_type": {"key": "value", "more": False, "_type": "test_base_serialization.CustomClass"},
+    }
     result = deserialize_value(serialized_data)
     assert result["numbers"] == 1
     assert isinstance(result["custom_type"], CustomClass)

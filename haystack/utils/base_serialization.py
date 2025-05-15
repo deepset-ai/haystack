@@ -71,7 +71,8 @@ def serialize_value(value: Any) -> Any:
 
     if hasattr(value, "to_dict") and callable(getattr(value, "to_dict")):
         serialized_value = value.to_dict()
-        serialized_value["_type"] = value.__class__
+        serialized_value["_type"] = generate_qualified_class_name(type(value))
+
         return serialized_value
 
     # this is a hack to serialize inputs that don't have a to_dict
@@ -124,10 +125,9 @@ def deserialize_value(value: Any) -> Any:
     # check if the dictionary has a "_type" key and the class type has a "from_dict" method
     if isinstance(value, dict):
         if "_type" in value:
-            print(f"DESERIALIZING: {value}")
-            class_type = value.pop("_type")
-            if hasattr(class_type, "from_dict"):
-                return class_type.from_dict(value)
+            obj_class = import_class_by_name(value.pop("_type"))
+            if hasattr(obj_class, "from_dict"):
+                return obj_class.from_dict(value)
 
         # If not a known type, recursively deserialize each item in the dictionary
         return {k: deserialize_value(v) for k, v in value.items()}

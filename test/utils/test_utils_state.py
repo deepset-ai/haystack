@@ -380,7 +380,13 @@ def test_state_to_dict():
     assert state_dict["data"] == {
         "numbers": 1,
         "messages": [
-            {"role": "user", "meta": {}, "name": None, "content": [{"text": "Hello, world!"}], "_type": ChatMessage}
+            {
+                "role": "user",
+                "meta": {},
+                "name": None,
+                "content": [{"text": "Hello, world!"}],
+                "_type": "haystack.dataclasses.chat_message.ChatMessage",
+            }
         ],
         "dict_of_lists": {"numbers": [1, 2, 3]},
     }
@@ -399,7 +405,13 @@ def test_state_from_dict():
         "data": {
             "numbers": 1,
             "messages": [
-                {"role": "user", "meta": {}, "name": None, "content": [{"text": "Hello, world!"}], "_type": ChatMessage}
+                {
+                    "role": "user",
+                    "meta": {},
+                    "name": None,
+                    "content": [{"text": "Hello, world!"}],
+                    "_type": "haystack.dataclasses.chat_message.ChatMessage",
+                }
             ],
             "dict_of_lists": {"numbers": [1, 2, 3]},
         },
