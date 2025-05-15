@@ -7,7 +7,14 @@ from datetime import datetime
 from typing import Any, AsyncIterable, Dict, Iterable, List, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall, select_streaming_callback
+from haystack.dataclasses import (
+    AsyncStreamingCallbackT,
+    ChatMessage,
+    StreamingChunk,
+    SyncStreamingCallbackT,
+    ToolCall,
+    select_streaming_callback,
+)
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT
 from haystack.lazy_imports import LazyImport
 from haystack.tools import (
@@ -295,7 +302,7 @@ class HuggingFaceAPIChatGenerator:
         messages: List[ChatMessage],
         generation_kwargs: Optional[Dict[str, Any]] = None,
         tools: Optional[Union[List[Tool], Toolset]] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None,
+        streaming_callback: Optional[SyncStreamingCallbackT] = None,
     ):
         """
         Invoke the text generation inference based on the provided messages and generation parameters.
@@ -346,7 +353,7 @@ class HuggingFaceAPIChatGenerator:
         messages: List[ChatMessage],
         generation_kwargs: Optional[Dict[str, Any]] = None,
         tools: Optional[Union[List[Tool], Toolset]] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None,
+        streaming_callback: Optional[AsyncStreamingCallbackT] = None,
     ):
         """
         Asynchronously invokes the text generation inference based on the provided messages and generation parameters.
@@ -474,7 +481,10 @@ class HuggingFaceAPIChatGenerator:
         return {"replies": [message]}
 
     async def _run_streaming_async(
-        self, messages: List[Dict[str, str]], generation_kwargs: Dict[str, Any], streaming_callback: StreamingCallbackT
+        self,
+        messages: List[Dict[str, str]],
+        generation_kwargs: Dict[str, Any],
+        streaming_callback: AsyncStreamingCallbackT,
     ):
         api_output: AsyncIterable[ChatCompletionStreamOutput] = await self._async_client.chat_completion(
             messages, stream=True, **generation_kwargs

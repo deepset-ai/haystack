@@ -9,7 +9,12 @@ from typing import Any, Dict, List, Optional, Union
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.core.component.sockets import Sockets
 from haystack.dataclasses import ChatMessage, State, ToolCall
-from haystack.dataclasses.streaming_chunk import StreamingCallbackT, StreamingChunk, select_streaming_callback
+from haystack.dataclasses.streaming_chunk import (
+    StreamingCallbackT,
+    StreamingChunk,
+    SyncStreamingCallbackT,
+    select_streaming_callback,
+)
 from haystack.tools import (
     ComponentTool,
     Tool,
@@ -368,7 +373,7 @@ class ToolInvoker:
         self,
         messages: List[ChatMessage],
         state: Optional[State] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None,
+        streaming_callback: Optional[SyncStreamingCallbackT] = None,
     ) -> Dict[str, Any]:
         """
         Processes ChatMessage objects containing tool calls and invokes the corresponding tools, if available.
