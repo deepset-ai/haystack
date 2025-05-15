@@ -7,7 +7,6 @@ from typing import List, Optional
 from unittest.mock import patch
 
 import pytest
-from networkx.classes.reportviews import NodeView, OutMultiEdgeView
 
 from pandas import DataFrame
 
@@ -177,6 +176,9 @@ class TestPipelineBase:
         assert image_path.read_bytes() == mock_to_mermaid_image.return_value
 
     def test_find_super_components(self):
+        """
+        Test that the pipeline can find super components in it's pipeline.
+        """
         from haystack import Pipeline
         from haystack.components.converters import MultiFileConverter
         from haystack.components.preprocessors import DocumentPreprocessor

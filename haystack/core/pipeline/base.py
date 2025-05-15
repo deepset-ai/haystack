@@ -1275,6 +1275,7 @@ class PipelineBase:
         super_components = []
         for comp_name, comp in self.walk():
             # a SuperComponent has a "pipeline" attribute which itself a Pipeline instance
+            # we don't test against SuperComponent because doing so always lead to circular imports
             if hasattr(comp, "pipeline") and isinstance(comp.pipeline, self.__class__):
                 super_components.append((comp_name, comp))
         return super_components
@@ -1300,10 +1301,9 @@ class PipelineBase:
             incoming_edges = list(merged_graph.in_edges(super_name, data=True))
             outgoing_edges = list(merged_graph.out_edges(super_name, data=True))
 
-            # merge the SuperComponent graph into the main graph
+            # merge the SuperComponent graph into the main graph and remove the super component node
+            # since its components are now part of the main graph
             merged_graph = networkx.compose(merged_graph, internal_graph)
-
-            # we remove the super component node since it's components are now part of the main graph
             merged_graph.remove_node(super_name)
 
             # get the entry and exit points of the SuperComponent internal pipeline
