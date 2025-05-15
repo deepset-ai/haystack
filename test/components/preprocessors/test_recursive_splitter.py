@@ -426,7 +426,7 @@ def test_run_separator_exists_but_split_length_too_small_fall_back_to_character_
     result = splitter.run(documents=[doc])
     assert len(result["documents"]) == 10
     for doc in result["documents"]:
-        if re.escape(doc.content) not in ["\ "]:
+        if re.escape(doc.content) not in ["\\ "]:
             assert len(doc.content) == 2
 
 
@@ -944,3 +944,45 @@ def test_run_without_warm_up_raises_error():
     result = splitter_no_warmup.run(docs)
     assert len(result["documents"]) == 1
     assert result["documents"][0].content == "text"
+
+
+def test_run_complex_text_with_multiple_separators():
+    """
+    Test that RecursiveDocumentSplitter correctly handles complex text with multiple separators and chunks that exceed
+    the split_length.
+    """
+    # Create a complex text with multiple separators and chunks of different sizes
+    long_text = (
+        "A" * 150
+        + "\n\n"  # triggers first-level split on \n\n
+        + "B" * 100
+        + "\n"
+        + "B" * 105
+        + "\n\n"  # this chunk exceeds split_length and goes through recursion
+        + "C" * 100
+        + "\n\n"  # short chunk1
+        + "D" * 50  # short chunk2
+    )
+
+    doc = Document(content=long_text)
+    splitter = RecursiveDocumentSplitter(
+        split_length=200, split_overlap=0, split_unit="char", separators=["\n\n", "\n", " "]
+    )
+    splitter.warm_up()
+    result = splitter.run([doc])
+    chunks = result["documents"]
+
+    assert len(chunks) == 4
+
+    assert len(chunks[0].content) == 152
+    assert chunks[0].content.startswith("A")
+
+    assert len(chunks[1].content) == 101
+    assert chunks[1].content.startswith("B")
+
+    assert len(chunks[2].content) == 107
+    assert chunks[2].content.startswith("B")
+
+    assert len(chunks[3].content) == 152
+    assert chunks[3].content.startswith("C")
+    assert chunks[3].content.endswith("D" * 50)

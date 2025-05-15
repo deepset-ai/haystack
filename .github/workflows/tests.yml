@@ -162,7 +162,7 @@ jobs:
 
       - uses: actions/cache/save@v4
         id: cache
-        if: matrix.os != 'ubuntu-latest'
+        if: matrix.os == 'macos-latest'
         with:
           path: ${{ steps.hatch.outputs.env }}
           key: ${{ runner.os }}-${{ github.sha }}
@@ -414,12 +414,6 @@ jobs:
         run: |
           pip install hatch==${{ env.HATCH_VERSION }}
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
-
-      - uses: actions/cache/restore@v4
-        id: cache
-        with:
-          path: ${{ steps.hatch.outputs.env }}
-          key: ${{ runner.os }}-${{ github.sha }}
 
       - name: Run
         run: hatch run test:integration-only-fast

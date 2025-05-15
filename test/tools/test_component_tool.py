@@ -2,24 +2,32 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from unittest.mock import patch
+
 import json
 import os
-from copy import deepcopy
 from dataclasses import dataclass
 from typing import Dict, List
 
 import pytest
+
+from openai.types.chat import ChatCompletion, ChatCompletionMessage
+from openai.types.chat.chat_completion import Choice
 
 from haystack import Pipeline, component
 from haystack.components.builders import PromptBuilder
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.tools import ToolInvoker
 from haystack.components.websearch.serper_dev import SerperDevWebSearch
+from haystack.core.pipeline.utils import _deepcopy_with_exceptions
 from haystack.dataclasses import ChatMessage, ChatRole, Document
 from haystack.tools import ComponentTool
 from haystack.utils.auth import Secret
 
-### Component and Model Definitions
+from test.tools.test_parameters_schema_utils import BYTE_STREAM_SCHEMA, DOCUMENT_SCHEMA, SPARSE_EMBEDDING_SCHEMA
+
+
+# Component and Model Definitions
 
 
 @component
@@ -129,17 +137,18 @@ def output_handler(old, new):
     return old + new
 
 
-## Unit tests
-class TestToolComponent:
+# TODO Add test for Builder components that have dynamic input types
+#      Does create_parameters schema work in these cases?
+# Unit tests
+class TestComponentTool:
     def test_from_component_basic(self):
-        component = SimpleComponent()
-
-        tool = ComponentTool(component=component)
+        tool = ComponentTool(component=SimpleComponent())
 
         assert tool.name == "simple_component"
         assert tool.description == "A simple component that generates text."
         assert tool.parameters == {
             "type": "object",
+            "description": "A simple component that generates text.",
             "properties": {"text": {"type": "string", "description": "user's name"}},
             "required": ["text"],
         }
@@ -151,44 +160,39 @@ class TestToolComponent:
         assert result["reply"] == "Hello, world!"
 
     def test_from_component_long_description(self):
-        component = SimpleComponent()
-        tool = ComponentTool(component=component, description="".join(["A"] * 1024))
-
+        tool = ComponentTool(component=SimpleComponent(), description="".join(["A"] * 1024))
         assert len(tool.description) == 1024
 
     def test_from_component_with_inputs(self):
-        component = SimpleComponent()
-
-        tool = ComponentTool(component=component, inputs_from_state={"text": "text"})
-
+        tool = ComponentTool(component=SimpleComponent(), inputs_from_state={"text": "text"})
         assert tool.inputs_from_state == {"text": "text"}
         # Inputs should be excluded from schema generation
-        assert tool.parameters == {"type": "object", "properties": {}}
+        assert tool.parameters == {
+            "type": "object",
+            "properties": {},
+            "description": "A simple component that generates text.",
+        }
 
     def test_from_component_with_outputs(self):
-        component = SimpleComponent()
-
-        tool = ComponentTool(component=component, outputs_to_state={"replies": {"source": "reply"}})
-
+        tool = ComponentTool(component=SimpleComponent(), outputs_to_state={"replies": {"source": "reply"}})
         assert tool.outputs_to_state == {"replies": {"source": "reply"}}
 
     def test_from_component_with_dataclass(self):
-        component = UserGreeter()
-
-        tool = ComponentTool(component=component)
+        tool = ComponentTool(component=UserGreeter())
         assert tool.parameters == {
-            "type": "object",
-            "properties": {
-                "user": {
-                    "type": "object",
-                    "description": "The User object to process.",
+            "$defs": {
+                "User": {
                     "properties": {
-                        "name": {"type": "string", "description": "Field 'name' of 'User'."},
-                        "age": {"type": "integer", "description": "Field 'age' of 'User'."},
+                        "name": {"description": "Field 'name' of 'User'.", "type": "string", "default": "Anonymous"},
+                        "age": {"description": "Field 'age' of 'User'.", "type": "integer", "default": 0},
                     },
+                    "type": "object",
                 }
             },
+            "description": "A simple component that processes a User.",
+            "properties": {"user": {"$ref": "#/$defs/User", "description": "The User object to process."}},
             "required": ["user"],
+            "type": "object",
         }
 
         assert tool.name == "user_greeter"
@@ -201,14 +205,13 @@ class TestToolComponent:
         assert result["message"] == "User Alice is 30 years old"
 
     def test_from_component_with_list_input(self):
-        component = ListProcessor()
-
         tool = ComponentTool(
-            component=component, name="list_processing_tool", description="A tool that concatenates strings"
+            component=ListProcessor(), name="list_processing_tool", description="A tool that concatenates strings"
         )
 
         assert tool.parameters == {
             "type": "object",
+            "description": "Concatenates a list of strings into a single string.",
             "properties": {
                 "texts": {
                     "type": "array",
@@ -226,30 +229,33 @@ class TestToolComponent:
         assert result["concatenated"] == "hello world"
 
     def test_from_component_with_nested_dataclass(self):
-        component = PersonProcessor()
-
-        tool = ComponentTool(component=component, name="person_tool", description="A tool that processes people")
+        tool = ComponentTool(
+            component=PersonProcessor(), name="person_tool", description="A tool that processes people"
+        )
 
         assert tool.parameters == {
-            "type": "object",
-            "properties": {
-                "person": {
-                    "type": "object",
-                    "description": "The Person to process.",
+            "$defs": {
+                "Address": {
                     "properties": {
-                        "name": {"type": "string", "description": "Field 'name' of 'Person'."},
-                        "address": {
-                            "type": "object",
-                            "description": "Field 'address' of 'Person'.",
-                            "properties": {
-                                "street": {"type": "string", "description": "Field 'street' of 'Address'."},
-                                "city": {"type": "string", "description": "Field 'city' of 'Address'."},
-                            },
-                        },
+                        "street": {"description": "Field 'street' of 'Address'.", "type": "string"},
+                        "city": {"description": "Field 'city' of 'Address'.", "type": "string"},
                     },
-                }
+                    "required": ["street", "city"],
+                    "type": "object",
+                },
+                "Person": {
+                    "properties": {
+                        "name": {"description": "Field 'name' of 'Person'.", "type": "string"},
+                        "address": {"$ref": "#/$defs/Address", "description": "Field 'address' of 'Person'."},
+                    },
+                    "required": ["name", "address"],
+                    "type": "object",
+                },
             },
+            "description": "Creates information about the person.",
+            "properties": {"person": {"$ref": "#/$defs/Person", "description": "The Person to process."}},
             "required": ["person"],
+            "type": "object",
         }
 
         # Test tool invocation
@@ -259,64 +265,29 @@ class TestToolComponent:
         assert result["info"] == "Diana lives at 123 Elm Street, Metropolis."
 
     def test_from_component_with_document_list(self):
-        component = DocumentProcessor()
-
         tool = ComponentTool(
-            component=component, name="document_processor", description="A tool that concatenates document contents"
+            component=DocumentProcessor(),
+            name="document_processor",
+            description="A tool that concatenates document contents",
         )
 
         assert tool.parameters == {
-            "type": "object",
+            "$defs": {
+                "ByteStream": BYTE_STREAM_SCHEMA,
+                "Document": DOCUMENT_SCHEMA,
+                "SparseEmbedding": SPARSE_EMBEDDING_SCHEMA,
+            },
+            "description": "Concatenates the content of multiple documents with newlines.",
             "properties": {
                 "documents": {
-                    "type": "array",
                     "description": "List of Documents whose content will be concatenated",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "id": {"type": "string", "description": "Field 'id' of 'Document'."},
-                            "content": {"type": "string", "description": "Field 'content' of 'Document'."},
-                            "blob": {
-                                "type": "object",
-                                "description": "Field 'blob' of 'Document'.",
-                                "properties": {
-                                    "data": {"type": "string", "description": "Field 'data' of 'ByteStream'."},
-                                    "meta": {"type": "string", "description": "Field 'meta' of 'ByteStream'."},
-                                    "mime_type": {
-                                        "type": "string",
-                                        "description": "Field 'mime_type' of 'ByteStream'.",
-                                    },
-                                },
-                            },
-                            "meta": {"type": "string", "description": "Field 'meta' of 'Document'."},
-                            "score": {"type": "number", "description": "Field 'score' of 'Document'."},
-                            "embedding": {
-                                "type": "array",
-                                "description": "Field 'embedding' of 'Document'.",
-                                "items": {"type": "number"},
-                            },
-                            "sparse_embedding": {
-                                "type": "object",
-                                "description": "Field 'sparse_embedding' of 'Document'.",
-                                "properties": {
-                                    "indices": {
-                                        "type": "array",
-                                        "description": "Field 'indices' of 'SparseEmbedding'.",
-                                        "items": {"type": "integer"},
-                                    },
-                                    "values": {
-                                        "type": "array",
-                                        "description": "Field 'values' of 'SparseEmbedding'.",
-                                        "items": {"type": "number"},
-                                    },
-                                },
-                            },
-                        },
-                    },
+                    "items": {"$ref": "#/$defs/Document"},
+                    "type": "array",
                 },
-                "top_k": {"description": "The number of top documents to concatenate", "type": "integer"},
+                "top_k": {"description": "The number of top documents to concatenate", "type": "integer", "default": 5},
             },
             "required": ["documents"],
+            "type": "object",
         }
 
         # Test tool invocation
@@ -336,15 +307,16 @@ class TestToolComponent:
             ComponentTool(component=not_a_component, name="invalid_tool", description="This should fail")
 
 
-## Integration tests
+# Integration tests
 class TestToolComponentInPipelineWithOpenAI:
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
     def test_component_tool_in_pipeline(self):
         # Create component and convert it to tool
-        component = SimpleComponent()
         tool = ComponentTool(
-            component=component, name="hello_tool", description="A tool that generates a greeting message for the user"
+            component=SimpleComponent(),
+            name="hello_tool",
+            description="A tool that generates a greeting message for the user",
         )
 
         # Create pipeline with OpenAIChatGenerator and ToolInvoker
@@ -373,9 +345,10 @@ class TestToolComponentInPipelineWithOpenAI:
     @pytest.mark.integration
     def test_component_tool_in_pipeline_openai_tools_strict(self):
         # Create component and convert it to tool
-        component = SimpleComponent()
         tool = ComponentTool(
-            component=component, name="hello_tool", description="A tool that generates a greeting message for the user"
+            component=SimpleComponent(),
+            name="hello_tool",
+            description="A tool that generates a greeting message for the user",
         )
 
         # Create pipeline with OpenAIChatGenerator and ToolInvoker
@@ -403,9 +376,8 @@ class TestToolComponentInPipelineWithOpenAI:
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
     def test_user_greeter_in_pipeline(self):
-        component = UserGreeter()
         tool = ComponentTool(
-            component=component, name="user_greeter", description="A tool that greets users with their name and age"
+            component=UserGreeter(), name="user_greeter", description="A tool that greets users with their name and age"
         )
 
         pipeline = Pipeline()
@@ -427,9 +399,8 @@ class TestToolComponentInPipelineWithOpenAI:
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
     def test_list_processor_in_pipeline(self):
-        component = ListProcessor()
         tool = ComponentTool(
-            component=component, name="list_processor", description="A tool that concatenates a list of strings"
+            component=ListProcessor(), name="list_processor", description="A tool that concatenates a list of strings"
         )
 
         pipeline = Pipeline()
@@ -451,9 +422,8 @@ class TestToolComponentInPipelineWithOpenAI:
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
     def test_person_processor_in_pipeline(self):
-        component = PersonProcessor()
         tool = ComponentTool(
-            component=component,
+            component=PersonProcessor(),
             name="person_processor",
             description="A tool that processes information about a person and their address",
         )
@@ -477,9 +447,8 @@ class TestToolComponentInPipelineWithOpenAI:
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
     def test_document_processor_in_pipeline(self):
-        component = DocumentProcessor()
         tool = ComponentTool(
-            component=component,
+            component=DocumentProcessor(),
             name="document_processor",
             description="A tool that concatenates the content of multiple documents",
         )
@@ -511,9 +480,8 @@ class TestToolComponentInPipelineWithOpenAI:
     def test_lost_in_middle_ranker_in_pipeline(self):
         from haystack.components.rankers import LostInTheMiddleRanker
 
-        component = LostInTheMiddleRanker()
         tool = ComponentTool(
-            component=component,
+            component=LostInTheMiddleRanker(),
             name="lost_in_middle_ranker",
             description="A tool that ranks documents using the Lost in the Middle algorithm and returns top k results",
         )
@@ -538,9 +506,10 @@ class TestToolComponentInPipelineWithOpenAI:
     @pytest.mark.skipif(not os.environ.get("SERPERDEV_API_KEY"), reason="SERPERDEV_API_KEY not set")
     @pytest.mark.integration
     def test_serper_dev_web_search_in_pipeline(self):
-        component = SerperDevWebSearch(api_key=Secret.from_env_var("SERPERDEV_API_KEY"), top_k=3)
         tool = ComponentTool(
-            component=component, name="web_search", description="Search the web for current information on any topic"
+            component=SerperDevWebSearch(api_key=Secret.from_env_var("SERPERDEV_API_KEY"), top_k=3),
+            name="web_search",
+            description="Search the web for current information on any topic",
         )
 
         pipeline = Pipeline()
@@ -598,10 +567,8 @@ class TestToolComponentInPipelineWithOpenAI:
         assert new_pipeline == pipeline
 
     def test_component_tool_serde(self):
-        component = SimpleComponent()
-
         tool = ComponentTool(
-            component=component,
+            component=SimpleComponent(),
             name="simple_tool",
             description="A simple tool",
             inputs_from_state={"test": "input"},
@@ -627,31 +594,48 @@ class TestToolComponentInPipelineWithOpenAI:
         assert isinstance(new_tool._component, SimpleComponent)
 
     def test_pipeline_component_fails(self):
-        component = SimpleComponent()
+        comp = SimpleComponent()
 
         # Create a pipeline and add the component to it
         pipeline = Pipeline()
-        pipeline.add_component("simple", component)
+        pipeline.add_component("simple", comp)
 
         # Try to create a tool from the component and it should fail because the component has been added to a pipeline and
         # thus can't be used as tool
         with pytest.raises(ValueError, match="Component has been added to a pipeline"):
-            ComponentTool(component=component)
+            ComponentTool(component=comp)
 
     def test_deepcopy_with_jinja_based_component(self):
-        # Jinja2 templates throw an Exception when we deepcopy them (see https://github.com/pallets/jinja/issues/758)
-        # When we use a ComponentTool in a pipeline at runtime, we deepcopy the tool
-        # We overwrite ComponentTool.__deepcopy__ to fix this in experimental until a more comprehensive fix is merged.
-        # We track the issue here: https://github.com/deepset-ai/haystack/issues/9011
-
         builder = PromptBuilder("{{query}}")
-
         tool = ComponentTool(component=builder)
         result = tool.function(query="Hello")
-
-        tool_copy = deepcopy(tool)
-
+        tool_copy = _deepcopy_with_exceptions(tool)
         result_from_copy = tool_copy.function(query="Hello")
-
         assert "prompt" in result_from_copy
         assert result_from_copy["prompt"] == result["prompt"]
+
+    def test_jinja_based_component_tool_in_pipeline(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+
+        with patch("openai.resources.chat.completions.Completions.create") as mock_create:
+            mock_create.return_value = ChatCompletion(
+                id="test",
+                model="gpt-4o-mini",
+                object="chat.completion",
+                choices=[
+                    Choice(
+                        finish_reason="length",
+                        index=0,
+                        message=ChatCompletionMessage(role="assistant", content="A response from the model"),
+                    )
+                ],
+                created=1234567890,
+            )
+
+            builder = PromptBuilder("{{query}}")
+            tool = ComponentTool(component=builder)
+            pipeline = Pipeline()
+            pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini"))
+            result = pipeline.run({"llm": {"messages": [ChatMessage.from_user(text="Hello")], "tools": [tool]}})
+
+        assert result["llm"]["replies"][0].text == "A response from the model"

@@ -11,6 +11,10 @@ from typing import Any, Dict, Optional
 class ByteStream:
     """
     Base data class representing a binary object in the Haystack API.
+
+    :param data: The binary data stored in Bytestream.
+    :param meta: Additional metadata to be stored with the ByteStream.
+    :param mime_type: The mime type of the binary data.
     """
 
     data: bytes

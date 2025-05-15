@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import functools
+from pathlib import Path
 from types import new_class
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -462,6 +463,76 @@ class SuperComponent(_SuperComponent):
         pipeline = Pipeline.from_dict(data["init_parameters"]["pipeline"])
         data["init_parameters"]["pipeline"] = pipeline
         return default_from_dict(cls, data)
+
+    def show(self, server_url: str = "https://mermaid.ink", params: Optional[dict] = None, timeout: int = 30) -> None:
+        """
+        Display an image representing this SuperComponent's underlying pipeline in a Jupyter notebook.
+
+        This function generates a diagram of the Pipeline using a Mermaid server and displays it directly in
+        the notebook.
+
+        :param server_url:
+            The base URL of the Mermaid server used for rendering (default: 'https://mermaid.ink').
+            See https://github.com/jihchi/mermaid.ink and https://github.com/mermaid-js/mermaid-live-editor for more
+            info on how to set up your own Mermaid server.
+
+        :param params:
+            Dictionary of customization parameters to modify the output. Refer to Mermaid documentation for more details
+            Supported keys:
+                - format: Output format ('img', 'svg', or 'pdf'). Default: 'img'.
+                - type: Image type for /img endpoint ('jpeg', 'png', 'webp'). Default: 'png'.
+                - theme: Mermaid theme ('default', 'neutral', 'dark', 'forest'). Default: 'neutral'.
+                - bgColor: Background color in hexadecimal (e.g., 'FFFFFF') or named format (e.g., '!white').
+                - width: Width of the output image (integer).
+                - height: Height of the output image (integer).
+                - scale: Scaling factor (1–3). Only applicable if 'width' or 'height' is specified.
+                - fit: Whether to fit the diagram size to the page (PDF only, boolean).
+                - paper: Paper size for PDFs (e.g., 'a4', 'a3'). Ignored if 'fit' is true.
+                - landscape: Landscape orientation for PDFs (boolean). Ignored if 'fit' is true.
+
+        :param timeout:
+            Timeout in seconds for the request to the Mermaid server.
+
+        :raises PipelineDrawingError:
+            If the function is called outside of a Jupyter notebook or if there is an issue with rendering.
+        """
+        self.pipeline.show(server_url=server_url, params=params, timeout=timeout)
+
+    def draw(
+        self, path: Path, server_url: str = "https://mermaid.ink", params: Optional[dict] = None, timeout: int = 30
+    ) -> None:
+        """
+        Save an image representing this SuperComponent's underlying pipeline to the specified file path.
+
+        This function generates a diagram of the Pipeline using the Mermaid server and saves it to the provided path.
+
+        :param path:
+            The file path where the generated image will be saved.
+        :param server_url:
+            The base URL of the Mermaid server used for rendering (default: 'https://mermaid.ink').
+            See https://github.com/jihchi/mermaid.ink and https://github.com/mermaid-js/mermaid-live-editor for more
+            info on how to set up your own Mermaid server.
+        :param params:
+            Dictionary of customization parameters to modify the output. Refer to Mermaid documentation for more details
+            Supported keys:
+                - format: Output format ('img', 'svg', or 'pdf'). Default: 'img'.
+                - type: Image type for /img endpoint ('jpeg', 'png', 'webp'). Default: 'png'.
+                - theme: Mermaid theme ('default', 'neutral', 'dark', 'forest'). Default: 'neutral'.
+                - bgColor: Background color in hexadecimal (e.g., 'FFFFFF') or named format (e.g., '!white').
+                - width: Width of the output image (integer).
+                - height: Height of the output image (integer).
+                - scale: Scaling factor (1–3). Only applicable if 'width' or 'height' is specified.
+                - fit: Whether to fit the diagram size to the page (PDF only, boolean).
+                - paper: Paper size for PDFs (e.g., 'a4', 'a3'). Ignored if 'fit' is true.
+                - landscape: Landscape orientation for PDFs (boolean). Ignored if 'fit' is true.
+
+        :param timeout:
+            Timeout in seconds for the request to the Mermaid server.
+
+        :raises PipelineDrawingError:
+            If there is an issue with rendering or saving the image.
+        """
+        self.pipeline.draw(path=path, server_url=server_url, params=params, timeout=timeout)
 
 
 def super_component(cls: Any):

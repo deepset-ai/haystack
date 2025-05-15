@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-import logging
+
 from functools import partial
 from typing import Any
 
@@ -9,7 +9,6 @@ import pytest
 
 from haystack.core.component import Component, InputSocket, OutputSocket, component
 from haystack.core.component.component import _hook_component_init
-from haystack.core.component.types import Variadic
 from haystack.core.errors import ComponentError
 from haystack.core.pipeline import Pipeline
 
@@ -134,7 +133,7 @@ def test_async_run_not_async():
             return {"value": 1}
 
     with pytest.raises(ComponentError, match=r"must be a coroutine"):
-        comp = MockComponent()
+        _ = MockComponent()
 
 
 def test_async_run_not_coroutine():
@@ -149,7 +148,7 @@ def test_async_run_not_coroutine():
             yield {"value": 1}
 
     with pytest.raises(ComponentError, match=r"must be a coroutine"):
-        comp = MockComponent()
+        _ = MockComponent()
 
 
 def test_parameters_mismatch_run_and_async_run():
@@ -166,7 +165,7 @@ def test_parameters_mismatch_run_and_async_run():
             return {"value": "1"}
 
     with pytest.raises(ComponentError, match=err_msg):
-        comp = MockComponentMismatchingInputTypes()
+        _ = MockComponentMismatchingInputTypes()
 
     @component
     class MockComponentMismatchingInputs:
@@ -179,7 +178,7 @@ def test_parameters_mismatch_run_and_async_run():
             return {"value": "1"}
 
     with pytest.raises(ComponentError, match=err_msg):
-        comp = MockComponentMismatchingInputs()
+        _ = MockComponentMismatchingInputs()
 
     @component
     class MockComponentMismatchingInputOrder:
@@ -192,7 +191,7 @@ def test_parameters_mismatch_run_and_async_run():
             return {"value": "1"}
 
     with pytest.raises(ComponentError, match=err_msg):
-        comp = MockComponentMismatchingInputOrder()
+        _ = MockComponentMismatchingInputOrder()
 
 
 def test_set_input_types():
@@ -233,10 +232,10 @@ def test_set_input_types_no_kwarg():
             return {"value": 1}
 
     with pytest.raises(ComponentError, match=r"doesn't have a kwargs parameter"):
-        comp = MockComponent(False)
+        _ = MockComponent(False)
 
     with pytest.raises(ComponentError, match=r"doesn't have a kwargs parameter"):
-        comp = MockComponent(True)
+        _ = MockComponent(True)
 
 
 def test_set_input_types_overrides_run():
@@ -326,7 +325,7 @@ def test_output_types_decorator_and_set_output_types():
             return {"value": 1}
 
     with pytest.raises(ComponentError, match="Cannot call `set_output_types`"):
-        comp = MockComponent()
+        _ = MockComponent()
 
 
 def test_output_types_decorator_mismatch_run_async_run():
@@ -341,7 +340,7 @@ def test_output_types_decorator_mismatch_run_async_run():
             return {"value": "1"}
 
     with pytest.raises(ComponentError, match=r"Output type specifications .* must be the same"):
-        comp = MockComponent()
+        _ = MockComponent()
 
 
 def test_output_types_decorator_missing_async_run():
@@ -355,7 +354,7 @@ def test_output_types_decorator_missing_async_run():
             return {"value": "1"}
 
     with pytest.raises(ComponentError, match=r"Output type specifications .* must be the same"):
-        comp = MockComponent()
+        _ = MockComponent()
 
 
 def test_component_decorator_set_it_as_component():

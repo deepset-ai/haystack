@@ -1,13 +1,14 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch, MagicMock
 import pytest
 
 
 import logging
 import os
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 from openai import OpenAIError
 from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletionMessage, ChatCompletionMessageToolCall
@@ -16,11 +17,12 @@ from openai.types.completion_usage import CompletionTokensDetails, CompletionUsa
 from openai.types.chat.chat_completion_message_tool_call import Function
 from openai.types.chat import chat_completion_chunk
 
+from haystack import component
 from haystack.components.generators.utils import print_streaming_chunk
 from haystack.dataclasses import StreamingChunk
 from haystack.utils.auth import Secret
 from haystack.dataclasses import ChatMessage, ToolCall
-from haystack.tools import Tool
+from haystack.tools import ComponentTool, Tool
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.tools.toolset import Toolset
 
@@ -72,21 +74,47 @@ def mock_chat_completion_chunk_with_tools(openai_mock_stream):
         yield mock_chat_completion_create
 
 
-def mock_tool_function(x):
-    return x
+def weather_function(city: str) -> Dict[str, Any]:
+    weather_info = {
+        "Berlin": {"weather": "mostly sunny", "temperature": 7, "unit": "celsius"},
+        "Paris": {"weather": "mostly cloudy", "temperature": 8, "unit": "celsius"},
+        "Rome": {"weather": "sunny", "temperature": 14, "unit": "celsius"},
+    }
+    return weather_info.get(city, {"weather": "unknown", "temperature": 0, "unit": "celsius"})
+
+
+@component
+class MessageExtractor:
+    @component.output_types(messages=List[str], meta=Dict[str, Any])
+    def run(self, messages: List[ChatMessage], meta: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """
+        Extracts the text content of ChatMessage objects
+
+        :param messages: List of Haystack ChatMessage objects
+        :param meta: Optional metadata to include in the response.
+        :returns:
+            A dictionary with keys "messages" and "meta".
+        """
+        if meta is None:
+            meta = {}
+        return {"messages": [m.text for m in messages], "meta": meta}
 
 
 @pytest.fixture
 def tools():
-    tool_parameters = {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}
-    tool = Tool(
+    weather_tool = Tool(
         name="weather",
         description="useful to determine the weather in a given location",
-        parameters=tool_parameters,
-        function=mock_tool_function,
+        parameters={"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]},
+        function=weather_function,
     )
-
-    return [tool]
+    # We add a tool that has a more complex parameter signature
+    message_extractor_tool = ComponentTool(
+        component=MessageExtractor(),
+        name="message_extractor",
+        description="Useful for returning the text content of ChatMessage objects",
+    )
+    return [weather_tool, message_extractor_tool]
 
 
 class TestOpenAIChatGenerator:
@@ -462,7 +490,9 @@ class TestOpenAIChatGenerator:
 
             mock_chat_completion_create.return_value = completion
 
-            component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"), tools=tools, tools_strict=True)
+            component = OpenAIChatGenerator(
+                api_key=Secret.from_token("test-api-key"), tools=tools[:1], tools_strict=True
+            )
             response = component.run([ChatMessage.from_user("What's the weather like in Paris?")])
 
         # ensure that the tools are passed to the OpenAI API
@@ -894,15 +924,16 @@ class TestOpenAIChatGenerator:
         assert message.meta["finish_reason"] == "stop"
         assert message.meta["usage"]["prompt_tokens"] > 0
 
-    @pytest.mark.skipif(
-        not os.environ.get("OPENAI_API_KEY", None),
-        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-    )
-    @pytest.mark.integration
-    def test_live_run_wrong_model(self, chat_messages):
-        component = OpenAIChatGenerator(model="something-obviously-wrong")
+    def test_run_with_wrong_model(self):
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.side_effect = OpenAIError("Invalid model name")
+
+        generator = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"), model="something-obviously-wrong")
+
+        generator.client = mock_client
+
         with pytest.raises(OpenAIError):
-            component.run(chat_messages)
+            generator.run([ChatMessage.from_user("irrelevant")])
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
@@ -925,45 +956,31 @@ class TestOpenAIChatGenerator:
         )
         results = component.run([ChatMessage.from_user("What's the capital of France?")])
 
+        # Basic response checks
+        assert "replies" in results
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert "Paris" in message.text
+        assert isinstance(message.meta, dict)
 
-        assert "gpt-4o" in message.meta["model"]
-        assert message.meta["finish_reason"] == "stop"
+        # Metadata checks
+        metadata = message.meta
+        assert "gpt-4o" in metadata["model"]
+        assert metadata["finish_reason"] == "stop"
 
+        # Usage information checks
+        assert isinstance(metadata.get("usage"), dict), "meta.usage not a dict"
+        usage = metadata["usage"]
+        assert "prompt_tokens" in usage and usage["prompt_tokens"] > 0
+        assert "completion_tokens" in usage and usage["completion_tokens"] > 0
+
+        # Detailed token information checks
+        assert isinstance(usage.get("completion_tokens_details"), dict), "usage.completion_tokens_details not a dict"
+        assert isinstance(usage.get("prompt_tokens_details"), dict), "usage.prompt_tokens_details not a dict"
+
+        # Streaming callback verification
         assert callback.counter > 1
         assert "Paris" in callback.responses
-
-        # check that the completion_start_time is set and valid ISO format
-        assert "completion_start_time" in message.meta
-        assert datetime.fromisoformat(message.meta["completion_start_time"]) <= datetime.now()
-
-        assert isinstance(message.meta["usage"], dict)
-        assert message.meta["usage"]["prompt_tokens"] > 0
-        assert message.meta["usage"]["completion_tokens"] > 0
-        assert message.meta["usage"]["total_tokens"] > 0
-
-    @pytest.mark.skipif(
-        not os.environ.get("OPENAI_API_KEY", None),
-        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-    )
-    @pytest.mark.integration
-    def test_live_run_with_tools(self, tools):
-        chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
-        component = OpenAIChatGenerator(tools=tools)
-        results = component.run(chat_messages)
-        assert len(results["replies"]) == 1
-        message = results["replies"][0]
-
-        assert not message.texts
-        assert not message.text
-        assert message.tool_calls
-        tool_call = message.tool_call
-        assert isinstance(tool_call, ToolCall)
-        assert tool_call.tool_name == "weather"
-        assert tool_call.arguments == {"city": "Paris"}
-        assert message.meta["finish_reason"] == "tool_calls"
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),

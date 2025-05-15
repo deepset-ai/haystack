@@ -2,18 +2,16 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import TYPE_CHECKING, Any, Dict, List, Union
+from typing import Any, Dict, List, Union
 
 from haystack.core.errors import DeserializationError
 from haystack.core.serialization import import_class_by_name
-
-if TYPE_CHECKING:
-    from haystack.tools.tool import Tool
-    from haystack.tools.toolset import Toolset
+from haystack.tools.tool import Tool
+from haystack.tools.toolset import Toolset
 
 
 def serialize_tools_or_toolset(
-    tools: Union["Toolset", List["Tool"], None],
+    tools: Union[Toolset, List[Tool], None],
 ) -> Union[Dict[str, Any], List[Dict[str, Any]], None]:
     """
     Serialize a Toolset or a list of Tools to a dictionary or a list of tool dictionaries.
@@ -21,8 +19,6 @@ def serialize_tools_or_toolset(
     :param tools: A Toolset, a list of Tools, or None
     :returns: A dictionary, a list of tool dictionaries, or None if tools is None
     """
-    from haystack.tools.toolset import Toolset
-
     if tools is None:
         return None
     if isinstance(tools, Toolset):
@@ -39,9 +35,6 @@ def deserialize_tools_or_toolset_inplace(data: Dict[str, Any], key: str = "tools
     :param key:
         The key in the dictionary where the list of Tools or Toolset is stored.
     """
-    from haystack.tools.tool import Tool
-    from haystack.tools.toolset import Toolset
-
     if key in data:
         serialized_tools = data[key]
 
