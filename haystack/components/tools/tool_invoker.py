@@ -475,7 +475,7 @@ class ToolInvoker:
                     streaming_callback(
                         StreamingChunk(
                             content="",
-                            meta={"tool_result": tool_messages[-1].tool_call_result.result, "tool_call": tool_call},
+                            meta={"tool_result": tool_messages[-1].tool_call_results[0].result, "tool_call": tool_call},
                         )
                     )
 
