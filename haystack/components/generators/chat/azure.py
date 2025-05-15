@@ -57,10 +57,11 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
 
     ```
     {'replies':
-        [ChatMessage(content='Natural Language Processing (NLP) is a branch of artificial intelligence that focuses on
-         enabling computers to understand, interpret, and generate human language in a way that is useful.',
-         role=<ChatRole.ASSISTANT: 'assistant'>, name=None,
-         meta={'model': 'gpt-4o-mini', 'index': 0, 'finish_reason': 'stop',
+        [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[TextContent(text=
+        "Natural Language Processing (NLP) is a branch of artificial intelligence that focuses on
+         enabling computers to understand, interpret, and generate human language in a way that is useful.")],
+         _name=None,
+         _meta={'model': 'gpt-4o-mini', 'index': 0, 'finish_reason': 'stop',
          'usage': {'prompt_tokens': 15, 'completion_tokens': 36, 'total_tokens': 51}})]
     }
     ```
