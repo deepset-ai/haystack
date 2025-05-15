@@ -5,8 +5,10 @@
 from enum import Enum
 from typing import Any, Dict, List, Union
 
-from haystack import component, default_to_dict
+from haystack import component, default_to_dict, logging
 from haystack.dataclasses import Document
+
+logger = logging.getLogger(__name__)
 
 
 class RecallMode(Enum):
@@ -97,7 +99,21 @@ class DocumentRecallEvaluator:
         unique_retrievals = {p.content for p in retrieved_documents}
         retrieved_ground_truths = unique_truths.intersection(unique_retrievals)
 
-        return len(retrieved_ground_truths) / len(ground_truth_documents)
+        if not unique_truths or unique_truths == {""}:
+            logger.warning(
+                "There are no ground truth documents or all of them have an empty string as content. "
+                "Score will be set to 0."
+            )
+            return 0.0
+
+        if not unique_retrievals or unique_retrievals == {""}:
+            logger.warning(
+                "There are no retrieved documents or all of them have an empty string as content. "
+                "Score will be set to 0."
+            )
+            return 0.0
+
+        return len(retrieved_ground_truths) / len(unique_truths)
 
     @component.output_types(score=float, individual_scores=List[float])
     def run(
