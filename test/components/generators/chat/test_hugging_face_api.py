@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from datetime import datetime
 import os
+from typing import Any, Dict
 from unittest.mock import MagicMock, Mock, AsyncMock, patch
 
 import pytest
@@ -43,22 +44,24 @@ def chat_messages():
     ]
 
 
-def get_weather(city: str) -> str:
-    """Get weather information for a city."""
-    return f"Weather info for {city}"
+def get_weather(city: str) -> Dict[str, Any]:
+    weather_info = {
+        "Berlin": {"weather": "mostly sunny", "temperature": 7, "unit": "celsius"},
+        "Paris": {"weather": "mostly cloudy", "temperature": 8, "unit": "celsius"},
+        "Rome": {"weather": "sunny", "temperature": 14, "unit": "celsius"},
+    }
+    return weather_info.get(city, {"weather": "unknown", "temperature": 0, "unit": "celsius"})
 
 
 @pytest.fixture
 def tools():
-    tool_parameters = {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}
-    tool = Tool(
+    weather_tool = Tool(
         name="weather",
         description="useful to determine the weather in a given location",
-        parameters=tool_parameters,
+        parameters={"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]},
         function=get_weather,
     )
-
-    return [tool]
+    return [weather_tool]
 
 
 @pytest.fixture
@@ -974,7 +977,7 @@ class TestHuggingFaceAPIChatGenerator:
 
     def test_to_dict_with_toolset(self, mock_check_valid_model, tools):
         """Test that the HuggingFaceAPIChatGenerator can be serialized to a dictionary with a Toolset."""
-        toolset = Toolset(tools)
+        toolset = Toolset(tools[:1])
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API, api_params={"model": "irrelevant"}, tools=toolset
         )
