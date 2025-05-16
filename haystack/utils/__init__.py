@@ -19,7 +19,6 @@ _import_structure = {
     "jupyter": ["is_in_jupyter"],
     "misc": ["expit", "expand_page_range"],
     "requests_utils": ["request_with_retry"],
-    "state": ["State"],
     "type_serialization": ["deserialize_type", "serialize_type"],
 }
 
