@@ -17,8 +17,9 @@ from haystack.dataclasses.streaming_chunk import StreamingCallbackT, select_stre
 from haystack.tools import Tool, Toolset, deserialize_tools_or_toolset_inplace, serialize_tools_or_toolset
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 from haystack.utils.deserialization import deserialize_chatgenerator_inplace
-from haystack.utils.state import State, _schema_from_dict, _schema_to_dict, _validate_schema
-from haystack.utils.state_utils import merge_lists
+
+from .state.state import State, _schema_from_dict, _schema_to_dict, _validate_schema
+from .state.state_utils import merge_lists
 
 logger = logging.getLogger(__name__)
 

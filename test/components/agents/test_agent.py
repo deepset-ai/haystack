@@ -28,7 +28,7 @@ from haystack.dataclasses.streaming_chunk import StreamingChunk
 from haystack.tools import Tool, ComponentTool
 from haystack.tools.toolset import Toolset
 from haystack.utils import serialize_callable, Secret
-from haystack.utils.state_utils import merge_lists
+from haystack.components.agents.state.state_utils import merge_lists
 
 
 def streaming_callback_for_serde(chunk: StreamingChunk):

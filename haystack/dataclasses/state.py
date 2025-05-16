@@ -6,14 +6,14 @@
 import warnings
 from typing import Any, Dict, Optional
 
-from haystack.utils.state import State as Utils_State
+from haystack.components.agents import State as Utils_State
 
 
 class State(Utils_State):
     """
     A class that wraps a StateSchema and maintains an internal _data dictionary.
 
-    Deprecated in favor of `haystack.utils.State`. It will be removed in Haystack 2.16.0.
+    Deprecated in favor of `haystack.components.agents.State`. It will be removed in Haystack 2.16.0.
 
     Each schema entry has:
       "parameter_name": {
@@ -29,14 +29,14 @@ class State(Utils_State):
         :param schema: Dictionary mapping parameter names to their type and handler configs.
             Type must be a valid Python type, and handler must be a callable function or None.
             If handler is None, the default handler for the type will be used. The default handlers are:
-                - For list types: `haystack.dataclasses.state_utils.merge_lists`
-                - For all other types: `haystack.dataclasses.state_utils.replace_values`
+                - For list types: `haystack.components.agents.state.state_utils.merge_lists`
+                - For all other types: `haystack.components.agents.state.state_utils.replace_values`
         :param data: Optional dictionary of initial data to populate the state
         """
 
         warnings.warn(
             "`haystack.dataclasses.State` is deprecated and will be removed in Haystack 2.16.0. "
-            "Use `haystack.utils.State` instead.",
+            "Use `haystack.components.agents.State` instead.",
             DeprecationWarning,
         )
 

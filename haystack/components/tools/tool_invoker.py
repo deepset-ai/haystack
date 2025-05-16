@@ -7,6 +7,7 @@ import json
 from typing import Any, Dict, List, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
+from haystack.components.agents import State
 from haystack.core.component.sockets import Sockets
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT, StreamingChunk, select_streaming_callback
@@ -19,7 +20,6 @@ from haystack.tools import (
     serialize_tools_or_toolset,
 )
 from haystack.tools.errors import ToolInvocationError
-from haystack.utils.state import State
 
 logger = logging.getLogger(__name__)
 

@@ -35,7 +35,6 @@ if TYPE_CHECKING:
     from .jupyter import is_in_jupyter
     from .misc import expand_page_range, expit
     from .requests_utils import request_with_retry
-    from .state import State
     from .type_serialization import deserialize_type, serialize_type
 else:
     sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)
