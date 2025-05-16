@@ -175,6 +175,94 @@ class TestPipelineBase:
         pipe.draw(path=image_path)
         assert image_path.read_bytes() == mock_to_mermaid_image.return_value
 
+    def test_find_super_components(self):
+        """
+        Test that the pipeline can find super components in it's pipeline.
+        """
+        from haystack import Pipeline
+        from haystack.components.converters import MultiFileConverter
+        from haystack.components.preprocessors import DocumentPreprocessor
+        from haystack.components.writers import DocumentWriter
+        from haystack.document_stores.in_memory import InMemoryDocumentStore
+
+        multi_file_converter = MultiFileConverter()
+        doc_processor = DocumentPreprocessor()
+
+        pipeline = Pipeline()
+        pipeline.add_component("converter", multi_file_converter)
+        pipeline.add_component("preprocessor", doc_processor)
+        pipeline.add_component("writer", DocumentWriter(document_store=InMemoryDocumentStore()))
+        pipeline.connect("converter", "preprocessor")
+        pipeline.connect("preprocessor", "writer")
+
+        result = pipeline._find_super_components()
+
+        assert len(result) == 2
+        assert [("converter", multi_file_converter), ("preprocessor", doc_processor)] == result
+
+    def test_merge_super_component_pipelines(self):
+        from haystack import Pipeline
+        from haystack.components.converters import MultiFileConverter
+        from haystack.components.preprocessors import DocumentPreprocessor
+        from haystack.components.writers import DocumentWriter
+        from haystack.document_stores.in_memory import InMemoryDocumentStore
+
+        multi_file_converter = MultiFileConverter()
+        doc_processor = DocumentPreprocessor()
+
+        pipeline = Pipeline()
+        pipeline.add_component("converter", multi_file_converter)
+        pipeline.add_component("preprocessor", doc_processor)
+        pipeline.add_component("writer", DocumentWriter(document_store=InMemoryDocumentStore()))
+        pipeline.connect("converter", "preprocessor")
+        pipeline.connect("preprocessor", "writer")
+
+        merged_graph = pipeline._merge_super_component_pipelines()
+
+        expected_nodes = [
+            "cleaner",
+            "csv",
+            "docx",
+            "html",
+            "joiner",
+            "json",
+            "md",
+            "pdf",
+            "pptx",
+            "router",
+            "splitter",
+            "text",
+            "writer",
+            "xlsx",
+        ]
+        assert sorted(merged_graph.nodes) == expected_nodes
+
+        expected_edges = [
+            ("cleaner", "writer"),
+            ("csv", "joiner"),
+            ("docx", "joiner"),
+            ("html", "joiner"),
+            ("joiner", "splitter"),
+            ("json", "joiner"),
+            ("md", "joiner"),
+            ("pdf", "joiner"),
+            ("pptx", "joiner"),
+            ("router", "csv"),
+            ("router", "docx"),
+            ("router", "html"),
+            ("router", "json"),
+            ("router", "md"),
+            ("router", "pdf"),
+            ("router", "pptx"),
+            ("router", "text"),
+            ("router", "xlsx"),
+            ("splitter", "cleaner"),
+            ("text", "joiner"),
+            ("xlsx", "joiner"),
+        ]
+        actual_edges = [(u, v) for u, v, _ in merged_graph.edges]
+        assert sorted(actual_edges) == expected_edges
+
     # UNIT
     def test_add_invalid_component_name(self):
         pipe = PipelineBase()

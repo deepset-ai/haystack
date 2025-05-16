@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    The `draw()` and `show()` methods from `Pipeline` now have an extra boolean parameter, `super_component_expansion`, which, when set to `True` and if the pipeline contains SuperComponents, the visualisation diagram
+    will show the internal structure of super-components as if they were components part of the pipeline instead of a "black-box" with the name of the SuperComponent.

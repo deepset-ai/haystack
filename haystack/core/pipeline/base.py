@@ -669,7 +669,13 @@ class PipelineBase:
         }
         return outputs
 
-    def show(self, server_url: str = "https://mermaid.ink", params: Optional[dict] = None, timeout: int = 30) -> None:
+    def show(
+        self,
+        server_url: str = "https://mermaid.ink",
+        super_component_expansion: bool = False,
+        params: Optional[dict] = None,
+        timeout: int = 30,
+    ) -> None:
         """
         Display an image representing this `Pipeline` in a Jupyter notebook.
 
@@ -680,6 +686,11 @@ class PipelineBase:
             The base URL of the Mermaid server used for rendering (default: 'https://mermaid.ink').
             See https://github.com/jihchi/mermaid.ink and https://github.com/mermaid-js/mermaid-live-editor for more
             info on how to set up your own Mermaid server.
+
+        :param super_component_expansion:
+            If set to True and the pipeline contains SuperComponents the diagram will show the internal structure of
+            super-components as if they were components part of the pipeline instead of a "black-box".
+            Otherwise, only the super-component itself will be displayed.
 
         :param params:
             Dictionary of customization parameters to modify the output. Refer to Mermaid documentation for more details
@@ -704,14 +715,20 @@ class PipelineBase:
         if is_in_jupyter():
             from IPython.display import Image, display  # type: ignore
 
-            image_data = _to_mermaid_image(self.graph, server_url=server_url, params=params, timeout=timeout)
+            graph = self._merge_super_component_pipelines() if super_component_expansion else self.graph
+            image_data = _to_mermaid_image(graph, server_url=server_url, params=params, timeout=timeout)
             display(Image(image_data))
         else:
             msg = "This method is only supported in Jupyter notebooks. Use Pipeline.draw() to save an image locally."
             raise PipelineDrawingError(msg)
 
-    def draw(
-        self, path: Path, server_url: str = "https://mermaid.ink", params: Optional[dict] = None, timeout: int = 30
+    def draw(  # pylint: disable=too-many-positional-arguments
+        self,
+        path: Path,
+        server_url: str = "https://mermaid.ink",
+        super_component_expansion: bool = False,
+        params: Optional[dict] = None,
+        timeout: int = 30,
     ) -> None:
         """
         Save an image representing this `Pipeline` to the specified file path.
@@ -720,10 +737,17 @@ class PipelineBase:
 
         :param path:
             The file path where the generated image will be saved.
+
         :param server_url:
             The base URL of the Mermaid server used for rendering (default: 'https://mermaid.ink').
             See https://github.com/jihchi/mermaid.ink and https://github.com/mermaid-js/mermaid-live-editor for more
             info on how to set up your own Mermaid server.
+
+        :param super_component_expansion:
+            If set to True and the pipeline contains SuperComponents the diagram will show the internal structure of
+            super-components as if they were components part of the pipeline instead of a "black-box".
+            Otherwise, only the super-component itself will be displayed.
+
         :param params:
             Dictionary of customization parameters to modify the output. Refer to Mermaid documentation for more details
             Supported keys:
@@ -746,7 +770,8 @@ class PipelineBase:
         """
         # Before drawing we edit a bit the graph, to avoid modifying the original that is
         # used for running the pipeline we copy it.
-        image_data = _to_mermaid_image(self.graph, server_url=server_url, params=params, timeout=timeout)
+        graph = self._merge_super_component_pipelines() if super_component_expansion else self.graph
+        image_data = _to_mermaid_image(graph, server_url=server_url, params=params, timeout=timeout)
         Path(path).write_bytes(image_data)
 
     def walk(self) -> Iterator[Tuple[str, Component]]:
@@ -1238,6 +1263,90 @@ class PipelineBase:
         candidate = priority_queue.peek()
         if candidate is not None and candidate[0] == ComponentPriority.BLOCKED:
             raise PipelineComponentsBlockedError()
+
+    def _find_super_components(self) -> list[tuple[str, Component]]:
+        """
+        Find all SuperComponents in the pipeline.
+
+        :returns:
+            List of tuples containing (component_name, component_instance) representing a SuperComponent.
+        """
+
+        super_components = []
+        for comp_name, comp in self.walk():
+            # a SuperComponent has a "pipeline" attribute which itself a Pipeline instance
+            # we don't test against SuperComponent because doing so always lead to circular imports
+            if hasattr(comp, "pipeline") and isinstance(comp.pipeline, self.__class__):
+                super_components.append((comp_name, comp))
+        return super_components
+
+    def _merge_super_component_pipelines(self) -> "networkx.MultiDiGraph":
+        """
+        Merge the internal pipelines of SuperComponents into the main pipeline graph structure.
+
+        This creates a new networkx.MultiDiGraph containing all the components from both the main pipeline
+        and all the internal SuperComponents' pipelines. The SuperComponents are removed and their internal
+        components are connected to corresponding input and output sockets of the main pipeline.
+
+        :returns:
+            A networkx.MultiDiGraph with the expanded structure of the main pipeline and all it's SuperComponents
+        """
+        merged_graph = self.graph.copy()
+
+        for super_name, super_component in self._find_super_components():
+            internal_pipeline = super_component.pipeline  # type: ignore
+            internal_graph = internal_pipeline.graph.copy()
+
+            # edges connected to the super component
+            incoming_edges = list(merged_graph.in_edges(super_name, data=True))
+            outgoing_edges = list(merged_graph.out_edges(super_name, data=True))
+
+            # merge the SuperComponent graph into the main graph and remove the super component node
+            # since its components are now part of the main graph
+            merged_graph = networkx.compose(merged_graph, internal_graph)
+            merged_graph.remove_node(super_name)
+
+            # get the entry and exit points of the SuperComponent internal pipeline
+            entry_points = [n for n in internal_graph.nodes() if internal_graph.in_degree(n) == 0]
+            exit_points = [n for n in internal_graph.nodes() if internal_graph.out_degree(n) == 0]
+
+            # connect the incoming edges to entry points
+            for sender, _, edge_data in incoming_edges:
+                sender_socket = edge_data["from_socket"]
+                for entry_point in entry_points:
+                    # find a matching input socket in the entry point
+                    entry_point_sockets = internal_graph.nodes[entry_point]["input_sockets"]
+                    for socket_name, socket in entry_point_sockets.items():
+                        if _types_are_compatible(sender_socket.type, socket.type, self._connection_type_validation):
+                            merged_graph.add_edge(
+                                sender,
+                                entry_point,
+                                key=f"{sender_socket.name}/{socket_name}",
+                                conn_type=_type_name(sender_socket.type),
+                                from_socket=sender_socket,
+                                to_socket=socket,
+                                mandatory=socket.is_mandatory,
+                            )
+
+            # connect outgoing edges from exit points
+            for _, receiver, edge_data in outgoing_edges:
+                receiver_socket = edge_data["to_socket"]
+                for exit_point in exit_points:
+                    # find a matching output socket in the exit point
+                    exit_point_sockets = internal_graph.nodes[exit_point]["output_sockets"]
+                    for socket_name, socket in exit_point_sockets.items():
+                        if _types_are_compatible(socket.type, receiver_socket.type, self._connection_type_validation):
+                            merged_graph.add_edge(
+                                exit_point,
+                                receiver,
+                                key=f"{socket_name}/{receiver_socket.name}",
+                                conn_type=_type_name(socket.type),
+                                from_socket=socket,
+                                to_socket=receiver_socket,
+                                mandatory=receiver_socket.is_mandatory,
+                            )
+
+        return merged_graph
 
 
 def _connections_status(
