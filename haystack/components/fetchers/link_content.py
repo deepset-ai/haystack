@@ -188,10 +188,7 @@ class LinkContentFetcher:
             if hasattr(self, "_client"):
                 self._client.close()
 
-            # Close the asynchronous client if it exists
-            if hasattr(self, "_async_client"):
-                # We can't await here in __del__, so we need to use close() instead of aclose()
-                self._async_client.close()
+            # There is no way to close the async client without await
         except Exception:
             # Suppress any exceptions during cleanup
             pass

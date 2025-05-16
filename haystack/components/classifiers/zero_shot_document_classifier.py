@@ -10,7 +10,7 @@ from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
 from haystack.utils.hf import deserialize_hf_model_kwargs, resolve_hf_pipeline_kwargs, serialize_hf_model_kwargs
 
 with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
-    from transformers import pipeline
+    from transformers import Pipeline, pipeline
 
 
 @component
@@ -129,7 +129,7 @@ class TransformersZeroShotDocumentClassifier:
         )
 
         self.huggingface_pipeline_kwargs = huggingface_pipeline_kwargs
-        self.pipeline = None
+        self.pipeline: Optional[Pipeline] = None
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """

@@ -149,6 +149,7 @@ class TransformersSimilarityRanker:
                 token=self.token.resolve_value() if self.token else None,
                 **self.tokenizer_kwargs,
             )
+            assert self.model is not None
             self.device = ComponentDevice.from_multiple(device_map=DeviceMap.from_hf(self.model.hf_device_map))
 
     def to_dict(self) -> Dict[str, Any]:

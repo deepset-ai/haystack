@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Literal, Optional
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.embedders.backends.sentence_transformers_backend import (
+    _SentenceTransformersEmbeddingBackend,
     _SentenceTransformersEmbeddingBackendFactory,
 )
 from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
@@ -120,7 +121,7 @@ class SentenceTransformersTextEmbedder:
         self.tokenizer_kwargs = tokenizer_kwargs
         self.config_kwargs = config_kwargs
         self.encode_kwargs = encode_kwargs
-        self.embedding_backend = None
+        self.embedding_backend: Optional[_SentenceTransformersEmbeddingBackend] = None
         self.precision = precision
         self.backend = backend
 

@@ -151,7 +151,7 @@ class ComponentTool(Tool):
             :returns: The result of the component invocation.
             """
             converted_kwargs = {}
-            input_sockets = component.__haystack_input__._sockets_dict
+            input_sockets = component.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
             for param_name, param_value in kwargs.items():
                 param_type = input_sockets[param_name].type
 

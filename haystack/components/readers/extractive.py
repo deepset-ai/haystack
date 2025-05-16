@@ -111,7 +111,7 @@ class ExtractiveReader:
         self.model_name_or_path = str(model)
         self.model = None
         self.tokenizer = None
-        self.device = None
+        self.device: Optional[ComponentDevice] = None
         self.token = token
         self.max_seq_length = max_seq_length
         self.top_k = top_k
@@ -189,6 +189,7 @@ class ExtractiveReader:
             self.tokenizer = AutoTokenizer.from_pretrained(
                 self.model_name_or_path, token=self.token.resolve_value() if self.token else None
             )
+            assert self.model is not None
             self.device = ComponentDevice.from_multiple(device_map=DeviceMap.from_hf(self.model.hf_device_map))
 
     @staticmethod

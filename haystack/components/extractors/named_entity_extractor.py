@@ -382,7 +382,7 @@ class _HfBackend(_NerBackend):
         self.tokenizer = AutoTokenizer.from_pretrained(self._model_name_or_path, token=token)
         self.model = AutoModelForTokenClassification.from_pretrained(self._model_name_or_path, token=token)
 
-        pipeline_params = {
+        pipeline_params: Dict[str, Any] = {
             "task": "ner",
             "model": self.model,
             "tokenizer": self.tokenizer,

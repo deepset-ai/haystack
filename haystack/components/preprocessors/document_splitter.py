@@ -109,7 +109,7 @@ class DocumentSplitter:
         self._use_sentence_splitter = split_by == "sentence" or (respect_sentence_boundary and split_by == "word")
         if self._use_sentence_splitter:
             nltk_imports.check()
-            self.sentence_splitter = None
+            self.sentence_splitter: Optional[SentenceSplitter] = None
 
     def _init_checks(
         self,
