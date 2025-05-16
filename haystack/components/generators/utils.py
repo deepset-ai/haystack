@@ -30,18 +30,15 @@ def print_streaming_chunk(chunk: StreamingChunk) -> None:
                 if tool_call.function.name and not tool_call.function.arguments:
                     print("[TOOL CALL]\n", flush=True, end="")
                     print(f"Tool: {tool_call.function.name} ", flush=True, end="")
+                    print("\nArguments: ", flush=True, end="")
 
                 # print the tool arguments
                 if tool_call.function.arguments:
-                    if tool_call.function.arguments.startswith("{"):
-                        print("\nArguments: ", flush=True, end="")
                     print(tool_call.function.arguments, flush=True, end="")
-                    if tool_call.function.arguments.endswith("}"):
-                        print("\n\n", flush=True, end="")
 
     # Print tool call results if available (from ToolInvoker)
     if chunk.meta.get("tool_result"):
-        print(f"[TOOL RESULT]\n{chunk.meta['tool_result']}\n\n", flush=True, end="")
+        print(f"\n\n[TOOL RESULT]\n{chunk.meta['tool_result']}\n\n", flush=True, end="")
 
     # Print the main content of the chunk (from ChatGenerator)
     if chunk.content:

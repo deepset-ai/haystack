@@ -1,0 +1,7 @@
+---
+enhancements:
+  - |
+    A variety of improvements have been made so an Agent component can be directly used in ComponentTool enabling straightforward building of Multi-Agent systems.
+    These improvements include:
+    - Adding a `last_message` field to the Agent's output which returns the last generated ChatMessage.
+    - Improving the `_default_output_handler` in the `ToolInvoker` to try and first serialize the outputs in the tool result before converting it into a string. This is especially relevant for getting a better representation when stringifying dataclasses like ChatMessage.
