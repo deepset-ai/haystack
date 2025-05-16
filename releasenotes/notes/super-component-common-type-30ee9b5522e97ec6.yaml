@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Enhance SuperComponent's type compatibility check to return the detected common type between two input types.
