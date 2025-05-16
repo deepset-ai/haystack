@@ -209,7 +209,7 @@ class TransformersZeroShotTextRouter:
         if not isinstance(text, str):
             raise TypeError("TransformersZeroShotTextRouter expects a str as input.")
 
-        prediction = self.pipeline(inputs=[text], candidate_labels=self.labels, multi_label=self.multi_label)
+        prediction = self.pipeline([text], candidate_labels=self.labels, multi_label=self.multi_label)
         predicted_scores = prediction[0]["scores"]
         max_score_index = max(range(len(predicted_scores)), key=predicted_scores.__getitem__)
         label = prediction[0]["labels"][max_score_index]
