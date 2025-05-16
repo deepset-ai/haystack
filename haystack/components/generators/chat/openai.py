@@ -227,7 +227,7 @@ class OpenAIChatGenerator:
     def run(
         self,
         messages: List[ChatMessage],
-        streaming_callback: Optional[StreamingCallbackT] = None,
+        streaming_callback: Optional[SyncStreamingCallbackT] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
         *,
         tools: Optional[Union[List[Tool], Toolset]] = None,
@@ -298,7 +298,7 @@ class OpenAIChatGenerator:
     async def run_async(
         self,
         messages: List[ChatMessage],
-        streaming_callback: Optional[StreamingCallbackT] = None,
+        streaming_callback: Optional[AsyncStreamingCallbackT] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
         *,
         tools: Optional[Union[List[Tool], Toolset]] = None,

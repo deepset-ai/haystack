@@ -76,7 +76,7 @@ from contextvars import ContextVar
 from copy import deepcopy
 from dataclasses import dataclass
 from types import new_class
-from typing import Any, Dict, Optional, Protocol, Type, TypeVar, Union, runtime_checkable
+from typing import Any, Dict, Optional, OrderedDict, Protocol, Type, TypeVar, Union, runtime_checkable
 
 from typing_extensions import ParamSpec
 
@@ -240,6 +240,10 @@ class ComponentMeta(type):
                 if param_name == "self" or param_info.kind in (Parameter.VAR_POSITIONAL, Parameter.VAR_KEYWORD):
                     continue
 
+                # We expect this one to have a different signature SyncStreamingCallbackT vs. AsyncStreamingCallbackT
+                if param_name == "streaming_callback":
+                    continue
+
                 socket_kwargs = {"name": param_name, "type": param_info.annotation}
                 if param_info.default != Parameter.empty:
                     socket_kwargs["default_value"] = param_info.default
@@ -274,7 +278,16 @@ class ComponentMeta(type):
             run_sig = inner(getattr(component_cls, "run"), run_sockets)
             async_run_sig = inner(async_run, async_run_sockets)
 
-            if async_run_sockets != run_sockets or run_sig != async_run_sig:
+            # We need to remove the streaming_callback parameter from the signatures since we know that they will be
+            # different SyncStreamingCallbackT vs. AsyncStreamingCallbackT
+            run_params = OrderedDict(run_sig.parameters)
+            run_params.pop("streaming_callback", None)
+            mod_run_sig = run_sig.replace(parameters=list(run_params.values()))
+            async_run_params = OrderedDict(async_run_sig.parameters)
+            async_run_params.pop("streaming_callback", None)
+            mod_async_run_sig = async_run_sig.replace(parameters=list(async_run_params.values()))
+
+            if async_run_sockets != run_sockets or mod_run_sig != mod_async_run_sig:
                 sig_diff = _compare_run_methods_signatures(run_sig, async_run_sig)
                 raise ComponentError(
                     f"Parameters of 'run' and 'run_async' methods must be the same.\nDifferences found:\n{sig_diff}"

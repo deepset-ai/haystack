@@ -4,10 +4,10 @@
 
 from dataclasses import asdict
 from datetime import datetime
-from typing import Any, Callable, Dict, Iterable, List, Optional, Union, cast
+from typing import Any, Dict, Iterable, List, Optional, Union, cast
 
 from haystack import component, default_from_dict, default_to_dict
-from haystack.dataclasses import StreamingChunk
+from haystack.dataclasses import StreamingChunk, SyncStreamingCallbackT
 from haystack.lazy_imports import LazyImport
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 from haystack.utils.hf import HFGenerationAPIType, HFModelType, check_valid_model
@@ -80,7 +80,7 @@ class HuggingFaceAPIGenerator:
         token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         generation_kwargs: Optional[Dict[str, Any]] = None,
         stop_words: Optional[List[str]] = None,
-        streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
+        streaming_callback: Optional[SyncStreamingCallbackT] = None,
     ):
         """
         Initialize the HuggingFaceAPIGenerator instance.
@@ -180,7 +180,7 @@ class HuggingFaceAPIGenerator:
     def run(
         self,
         prompt: str,
-        streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
+        streaming_callback: Optional[SyncStreamingCallbackT] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
@@ -213,7 +213,7 @@ class HuggingFaceAPIGenerator:
         return self._build_non_streaming_response(cast(TextGenerationOutput, hf_output))
 
     def _stream_and_build_response(
-        self, hf_output: Iterable["TextGenerationStreamOutput"], streaming_callback: Callable[[StreamingChunk], None]
+        self, hf_output: Iterable["TextGenerationStreamOutput"], streaming_callback: SyncStreamingCallbackT
     ):
         chunks: List[StreamingChunk] = []
         first_chunk_time = None
