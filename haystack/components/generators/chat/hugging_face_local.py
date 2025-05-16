@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as torch_and_transformers_import:
     from huggingface_hub import model_info
-    from transformers import Pipeline, StoppingCriteriaList, pipeline
+    from transformers import StoppingCriteriaList, pipeline
     from transformers.tokenization_utils import PreTrainedTokenizer
     from transformers.tokenization_utils_fast import PreTrainedTokenizerFast
 
@@ -235,7 +235,7 @@ class HuggingFaceLocalChatGenerator:
         self.generation_kwargs = generation_kwargs
         self.chat_template = chat_template
         self.streaming_callback = streaming_callback
-        self.pipeline: Optional[Pipeline] = None
+        self.pipeline = None
         self.tools = tools
 
         self._owns_executor = async_executor is None
@@ -272,7 +272,7 @@ class HuggingFaceLocalChatGenerator:
         Initializes the component.
         """
         if self.pipeline is None:
-            self.pipeline = cast(Pipeline, pipeline(**self.huggingface_pipeline_kwargs))
+            self.pipeline = pipeline(**self.huggingface_pipeline_kwargs)
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -352,12 +352,9 @@ class HuggingFaceLocalChatGenerator:
         tools = tools or self.tools
         if tools and streaming_callback is not None:
             raise ValueError("Using tools and streaming at the same time is not supported. Please choose one.")
-        _check_duplicate_tool_names(list(tools or []))
+        _check_duplicate_tool_names(tools)
 
         tokenizer = self.pipeline.tokenizer
-
-        # text-generation and text2text-generation pipelines always have a non-None tokenizer
-        assert tokenizer is not None
 
         # Check and update generation parameters
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
@@ -400,9 +397,6 @@ class HuggingFaceLocalChatGenerator:
             add_generation_prompt=True,
             tools=[tc.tool_spec for tc in tools] if tools else None,
         )
-
-        # the output is a string since we set tokenize=False
-        assert isinstance(prepared_prompt, str)
 
         # Avoid some unnecessary warnings in the generation pipeline call
         generation_kwargs["pad_token_id"] = (
@@ -521,12 +515,9 @@ class HuggingFaceLocalChatGenerator:
         tools = tools or self.tools
         if tools and streaming_callback is not None:
             raise ValueError("Using tools and streaming at the same time is not supported. Please choose one.")
-        _check_duplicate_tool_names(list(tools or []))
+        _check_duplicate_tool_names(tools)
 
         tokenizer = self.pipeline.tokenizer
-
-        # text-generation and text2text-generation pipelines always have a non-None tokenizer
-        assert tokenizer is not None
 
         # Check and update generation parameters
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
