@@ -105,14 +105,14 @@ class HuggingFaceLocalChatGenerator:
 
     ```
     {'replies':
-        [ChatMessage(content=' Natural Language Processing (NLP) is a subfield of artificial intelligence that deals
+        [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[TextContent(text=
+        "Natural Language Processing (NLP) is a subfield of artificial intelligence that deals
         with the interaction between computers and human language. It enables computers to understand, interpret, and
         generate human language in a valuable way. NLP involves various techniques such as speech recognition, text
         analysis, sentiment analysis, and machine translation. The ultimate goal is to make it easier for computers to
-        process and derive meaning from human language, improving communication between humans and machines.',
-        role=<ChatRole.ASSISTANT: 'assistant'>,
-        name=None,
-        meta={'finish_reason': 'stop', 'index': 0, 'model':
+        process and derive meaning from human language, improving communication between humans and machines.")],
+        _name=None,
+        _meta={'finish_reason': 'stop', 'index': 0, 'model':
               'mistralai/Mistral-7B-Instruct-v0.2',
               'usage': {'completion_tokens': 90, 'prompt_tokens': 19, 'total_tokens': 109}})
               ]

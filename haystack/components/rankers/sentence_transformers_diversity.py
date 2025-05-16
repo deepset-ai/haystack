@@ -367,7 +367,10 @@ class SentenceTransformersDiversityRanker:
                 if idx in selected:
                     continue
                 relevance_score = query_similarities[idx]
-                diversity_score = max(doc_embeddings[idx] @ doc_embeddings[j].T for j in selected)
+                diversity_score = max(
+                    doc_embeddings[idx] @ doc_embeddings[j].permute(*torch.arange(doc_embeddings[j].ndim - 1, -1, -1))
+                    for j in selected
+                )
                 mmr_score = lambda_threshold * relevance_score - (1 - lambda_threshold) * diversity_score
                 if mmr_score > best_score:
                     best_score = mmr_score
