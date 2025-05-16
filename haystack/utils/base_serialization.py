@@ -52,3 +52,75 @@ def deserialize_class_instance(data: Dict[str, Any]) -> Any:
         raise DeserializationError(f"Class '{data['type']}' does not have a 'from_dict' method")
 
     return obj_class.from_dict(data["data"])
+
+
+def serialize_value(value: Any) -> Any:
+    """
+    Serializes a value into a format suitable for storage or transmission.
+
+    Handles various types including:
+    - Haystack dataclass objects (Answer, Document, etc.)
+    - Primitive types (returned as is)
+    - Lists of primitives (returned as is)
+    - Lists of complex types (recursively serialized)
+    - Dictionaries (recursively serialized)
+
+    :param value: The value to serialize
+    :returns: The serialized representation of the value
+    """
+
+    if hasattr(value, "to_dict") and callable(getattr(value, "to_dict")):
+        serialized_value = value.to_dict()
+        serialized_value["_type"] = generate_qualified_class_name(type(value))
+
+        return serialized_value
+
+    # this is a hack to serialize inputs that don't have a to_dict
+    elif hasattr(value, "__dict__"):
+        return {"_type": value.__class__, "attributes": value.__dict__}
+
+    # recursively serialize all inputs in a dict
+    elif isinstance(value, dict):
+        return {k: serialize_value(v) for k, v in value.items()}
+
+    # recursively serialize all inputs in lists or tuples
+    elif isinstance(value, (list, tuple, set)):
+        return type(value)(serialize_value(item) for item in value)
+
+    return value
+
+
+# pylint: disable=too-many-return-statements
+def deserialize_value(value: Any) -> Any:
+    """
+    Deserializes a value from its serialized representation.
+
+    Handles various types including:
+    - Haystack dataclass objects (Answer, Document, etc.)
+    - Primitive types (returned as is)
+    - Lists of primitives (returned as is)
+    - Lists of complex types (recursively deserialized)
+    - Dictionaries (recursively deserialized)
+
+    :param value: The serialized value to deserialize
+    :returns: The deserialized value
+    """
+
+    # None or primitive types are returned as is
+    if not value or isinstance(value, (str, int, float, bool)):
+        return value
+
+    # check if the dictionary has a "_type" key and the class type has a "from_dict" method
+    if isinstance(value, dict):
+        if "_type" in value:
+            obj_class = import_class_by_name(value.pop("_type"))
+            if hasattr(obj_class, "from_dict"):
+                return obj_class.from_dict(value)
+
+        # If not a known type, recursively deserialize each item in the dictionary
+        return {k: deserialize_value(v) for k, v in value.items()}
+
+    if isinstance(value, (list, tuple, set)):
+        return type(value)(deserialize_value(i) for i in value)
+
+    return value
