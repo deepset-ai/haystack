@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from datetime import datetime
 import os
+from typing import Any, Dict
 from unittest.mock import MagicMock, Mock, AsyncMock, patch
 
 import pytest
@@ -10,6 +11,7 @@ from haystack import Pipeline
 from haystack.dataclasses import StreamingChunk
 from haystack.utils.auth import Secret
 from haystack.utils.hf import HFGenerationAPIType
+
 from huggingface_hub import (
     ChatCompletionOutput,
     ChatCompletionOutputComplete,
@@ -20,10 +22,16 @@ from huggingface_hub import (
     ChatCompletionStreamOutput,
     ChatCompletionStreamOutputChoice,
     ChatCompletionStreamOutputDelta,
+    ChatCompletionInputStreamOptions,
 )
-from huggingface_hub.utils import RepositoryNotFoundError
+from huggingface_hub.errors import RepositoryNotFoundError
 
-from haystack.components.generators.chat.hugging_face_api import HuggingFaceAPIChatGenerator, _convert_hfapi_tool_calls
+from haystack.components.generators.chat.hugging_face_api import (
+    HuggingFaceAPIChatGenerator,
+    _convert_hfapi_tool_calls,
+    _convert_tools_to_hfapi_tools,
+)
+
 from haystack.tools import Tool
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.tools.toolset import Toolset
@@ -37,22 +45,24 @@ def chat_messages():
     ]
 
 
-def get_weather(city: str) -> str:
-    """Get weather information for a city."""
-    return f"Weather info for {city}"
+def get_weather(city: str) -> Dict[str, Any]:
+    weather_info = {
+        "Berlin": {"weather": "mostly sunny", "temperature": 7, "unit": "celsius"},
+        "Paris": {"weather": "mostly cloudy", "temperature": 8, "unit": "celsius"},
+        "Rome": {"weather": "sunny", "temperature": 14, "unit": "celsius"},
+    }
+    return weather_info.get(city, {"weather": "unknown", "temperature": 0, "unit": "celsius"})
 
 
 @pytest.fixture
 def tools():
-    tool_parameters = {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}
-    tool = Tool(
+    weather_tool = Tool(
         name="weather",
         description="useful to determine the weather in a given location",
-        parameters=tool_parameters,
+        parameters={"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]},
         function=get_weather,
     )
-
-    return [tool]
+    return [weather_tool]
 
 
 @pytest.fixture
@@ -432,7 +442,12 @@ class TestHuggingFaceAPIChatGenerator:
 
         # check kwargs passed to text_generation
         _, kwargs = mock_chat_completion.call_args
-        assert kwargs == {"stop": [], "stream": True, "max_tokens": 512}
+        assert kwargs == {
+            "stop": [],
+            "stream": True,
+            "max_tokens": 512,
+            "stream_options": ChatCompletionInputStreamOptions(include_usage=True),
+        }
 
         # Assert that the streaming callback was called twice
         assert streaming_call_count == 2
@@ -496,7 +511,12 @@ class TestHuggingFaceAPIChatGenerator:
 
         # check kwargs passed to text_generation
         _, kwargs = mock_chat_completion.call_args
-        assert kwargs == {"stop": [], "stream": True, "max_tokens": 512}
+        assert kwargs == {
+            "stop": [],
+            "stream": True,
+            "max_tokens": 512,
+            "stream_options": ChatCompletionInputStreamOptions(include_usage=True),
+        }
 
         # Assert that the streaming callback was called twice
         assert streaming_call_count == 2
@@ -665,9 +685,15 @@ class TestHuggingFaceAPIChatGenerator:
         assert isinstance(response["replies"], list)
         assert len(response["replies"]) > 0
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
-        assert "usage" in response["replies"][0].meta
-        assert "prompt_tokens" in response["replies"][0].meta["usage"]
-        assert "completion_tokens" in response["replies"][0].meta["usage"]
+        assert response["replies"][0].text is not None
+        meta = response["replies"][0].meta
+        assert "usage" in meta
+        assert "prompt_tokens" in meta["usage"]
+        assert meta["usage"]["prompt_tokens"] > 0
+        assert "completion_tokens" in meta["usage"]
+        assert meta["usage"]["completion_tokens"] > 0
+        assert meta["model"] == "microsoft/Phi-3.5-mini-instruct"
+        assert meta["finish_reason"] is not None
 
     @pytest.mark.integration
     @pytest.mark.slow
@@ -695,13 +721,18 @@ class TestHuggingFaceAPIChatGenerator:
         assert isinstance(response["replies"], list)
         assert len(response["replies"]) > 0
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
+        assert response["replies"][0].text is not None
 
         response_meta = response["replies"][0].meta
         assert "completion_start_time" in response_meta
         assert datetime.fromisoformat(response_meta["completion_start_time"]) <= datetime.now()
         assert "usage" in response_meta
         assert "prompt_tokens" in response_meta["usage"]
+        assert response_meta["usage"]["prompt_tokens"] > 0
         assert "completion_tokens" in response_meta["usage"]
+        assert response_meta["usage"]["completion_tokens"] > 0
+        assert response_meta["model"] == "microsoft/Phi-3.5-mini-instruct"
+        assert response_meta["finish_reason"] is not None
 
     @pytest.mark.integration
     @pytest.mark.slow
@@ -828,7 +859,12 @@ class TestHuggingFaceAPIChatGenerator:
 
         # check kwargs passed to chat_completion
         _, kwargs = mock_chat_completion_async.call_args
-        assert kwargs == {"stop": [], "stream": True, "max_tokens": 512}
+        assert kwargs == {
+            "stop": [],
+            "stream": True,
+            "max_tokens": 512,
+            "stream_options": ChatCompletionInputStreamOptions(include_usage=True),
+        }
 
         # Assert that the streaming callback was called twice
         assert streaming_call_count == 2
@@ -920,9 +956,16 @@ class TestHuggingFaceAPIChatGenerator:
             assert isinstance(response["replies"], list)
             assert len(response["replies"]) > 0
             assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
-            assert "usage" in response["replies"][0].meta
-            assert "prompt_tokens" in response["replies"][0].meta["usage"]
-            assert "completion_tokens" in response["replies"][0].meta["usage"]
+            assert response["replies"][0].text is not None
+
+            meta = response["replies"][0].meta
+            assert "usage" in meta
+            assert "prompt_tokens" in meta["usage"]
+            assert meta["usage"]["prompt_tokens"] > 0
+            assert "completion_tokens" in meta["usage"]
+            assert meta["usage"]["completion_tokens"] > 0
+            assert meta["model"] == "microsoft/Phi-3.5-mini-instruct"
+            assert meta["finish_reason"] is not None
         finally:
             await generator._async_client.close()
 
@@ -950,7 +993,7 @@ class TestHuggingFaceAPIChatGenerator:
 
     def test_to_dict_with_toolset(self, mock_check_valid_model, tools):
         """Test that the HuggingFaceAPIChatGenerator can be serialized to a dictionary with a Toolset."""
-        toolset = Toolset(tools)
+        toolset = Toolset(tools[:1])
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API, api_params={"model": "irrelevant"}, tools=toolset
         )
@@ -980,3 +1023,41 @@ class TestHuggingFaceAPIChatGenerator:
             },
         }
         assert data["init_parameters"]["tools"] == expected_tools_data
+
+    def test_convert_tools_to_hfapi_tools(self):
+        assert _convert_tools_to_hfapi_tools(None) is None
+        assert _convert_tools_to_hfapi_tools([]) is None
+
+        tool = Tool(
+            name="weather",
+            description="useful to determine the weather in a given location",
+            parameters={"city": {"type": "string"}},
+            function=get_weather,
+        )
+        hf_tools = _convert_tools_to_hfapi_tools([tool])
+        assert len(hf_tools) == 1
+        assert hf_tools[0].type == "function"
+        assert hf_tools[0].function.name == "weather"
+        assert hf_tools[0].function.description == "useful to determine the weather in a given location"
+        assert hf_tools[0].function.parameters == {"city": {"type": "string"}}
+
+    def test_convert_tools_to_hfapi_tools_legacy(self):
+        # this satisfies the check hasattr(ChatCompletionInputFunctionDefinition, "arguments")
+        mock_class = MagicMock()
+
+        with patch(
+            "haystack.components.generators.chat.hugging_face_api.ChatCompletionInputFunctionDefinition", mock_class
+        ):
+            tool = Tool(
+                name="weather",
+                description="useful to determine the weather in a given location",
+                parameters={"city": {"type": "string"}},
+                function=get_weather,
+            )
+            _convert_tools_to_hfapi_tools([tool])
+
+        mock_class.assert_called_once_with(
+            name="weather",
+            arguments={"city": {"type": "string"}},
+            description="useful to determine the weather in a given location",
+        )

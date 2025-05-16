@@ -76,7 +76,7 @@ from contextvars import ContextVar
 from copy import deepcopy
 from dataclasses import dataclass
 from types import new_class
-from typing import Any, Dict, Optional, Protocol, Type, TypeVar, Union, runtime_checkable
+from typing import Any, Dict, Mapping, Optional, Protocol, Type, TypeVar, Union, overload, runtime_checkable
 
 from typing_extensions import ParamSpec
 
@@ -89,11 +89,7 @@ from .types import InputSocket, OutputSocket, _empty
 logger = logging.getLogger(__name__)
 
 RunParamsT = ParamSpec("RunParamsT")
-SyncRunReturnT = TypeVar("SyncRunReturnT", bound=Dict[str, Any])
-AsyncRunReturnT = TypeVar("AsyncRunReturnT", bound=Coroutine[Any, Any, Dict[str, Any]])
-RunReturnT = Union[SyncRunReturnT, AsyncRunReturnT]
-
-T = TypeVar("T")
+RunReturnT = TypeVar("RunReturnT", bound=Union[Mapping[str, Any], Coroutine[Any, Any, Mapping[str, Any]]])
 
 
 @dataclass
@@ -160,12 +156,29 @@ class Component(Protocol):
         isinstance(MyComponent, Component)
     """
 
-    # This is the most reliable way to define the protocol for the `run` method.
-    # Defining a method doesn't work as different Components will have different
-    # arguments. Even defining here a method with `**kwargs` doesn't work as the
-    # expected signature must be identical.
-    # This makes most Language Servers and type checkers happy and shows less errors.
-    run: Callable[..., Dict[str, Any]]
+    # The following expression defines a run method compatible with any input signature.
+    # Its type is equivalent to Callable[..., Dict[str, Any]].
+    # See https://typing.python.org/en/latest/spec/callables.html#meaning-of-in-callable.
+    #
+    # Using `run: Callable[..., Dict[str, Any]]` directly leads to type errors: the protocol would expect a settable
+    # attribute `run`, while the actual implementation is a read-only method.
+    # For example:
+    # from haystack import Pipeline, component
+    # @component
+    # class MyComponent:
+    #     @component.output_types(out=str)
+    #     def run(self):
+    #         return {"out": "Hello, world!"}
+    # pipeline = Pipeline()
+    # pipeline.add_component("my_component", MyComponent())
+    #
+    # mypy raises:
+    # error: Argument 2 to "add_component" of "PipelineBase" has incompatible type "MyComponent"; expected "Component"
+    # [arg-type]
+    # note: Protocol member Component.run expected settable variable, got read-only attribute
+
+    def run(self, *args: Any, **kwargs: Any) -> Mapping[str, Any]:  # pylint: disable=missing-function-docstring # noqa: D102
+        ...
 
 
 class ComponentMeta(type):
@@ -371,6 +384,9 @@ def _compare_run_methods_signatures(run_sig: inspect.Signature, async_run_sig: i
             )
 
     return "\n".join(differences)
+
+
+T = TypeVar("T", bound=Component)
 
 
 class _Component:
@@ -584,10 +600,18 @@ class _Component:
 
         return new_cls
 
-    def __call__(self, cls: Optional[type] = None):
+    # Call signature when the the decorator is usead without parens (@component).
+    @overload
+    def __call__(self, cls: Type[T]) -> Type[T]: ...
+
+    # Overload allowing the decorator to be used with parens (@component()).
+    @overload
+    def __call__(self) -> Callable[[Type[T]], Type[T]]: ...
+
+    def __call__(self, cls: Optional[type[T]] = None) -> Union[T, Callable[[Type[T]], Type[T]]]:
         # We must wrap the call to the decorator in a function for it to work
         # correctly with or without parens
-        def wrap(cls):
+        def wrap(cls: type[T]):
             return self._component(cls)
 
         if cls:

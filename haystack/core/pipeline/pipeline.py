@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from copy import deepcopy
 from typing import Any, Dict, Mapping, Optional, Set, cast
 
 from haystack import logging, tracing
@@ -15,6 +14,7 @@ from haystack.core.pipeline.base import (
     ComponentPriority,
     PipelineBase,
 )
+from haystack.core.pipeline.utils import _deepcopy_with_exceptions
 from haystack.telemetry import pipeline_running
 
 logger = logging.getLogger(__name__)
@@ -54,7 +54,7 @@ class Pipeline(PipelineBase):
         ) as span:
             # We deepcopy the inputs otherwise we might lose that information
             # when we delete them in case they're sent to other Components
-            span.set_content_tag(_COMPONENT_INPUT, deepcopy(inputs))
+            span.set_content_tag(_COMPONENT_INPUT, _deepcopy_with_exceptions(inputs))
             logger.info("Running component {component_name}", component_name=component_name)
             try:
                 component_output = instance.run(**inputs)
@@ -252,7 +252,7 @@ class Pipeline(PipelineBase):
                 )
 
                 if component_pipeline_outputs:
-                    pipeline_outputs[component_name] = deepcopy(component_pipeline_outputs)
+                    pipeline_outputs[component_name] = _deepcopy_with_exceptions(component_pipeline_outputs)
                 if self._is_queue_stale(priority_queue):
                     priority_queue = self._fill_queue(ordered_component_names, inputs, component_visits)
 

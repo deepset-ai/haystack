@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
-from copy import deepcopy
 from typing import Any, AsyncIterator, Dict, List, Optional, Set
 
 from haystack import logging, tracing
@@ -16,6 +15,7 @@ from haystack.core.pipeline.base import (
     ComponentPriority,
     PipelineBase,
 )
+from haystack.core.pipeline.utils import _deepcopy_with_exceptions
 from haystack.telemetry import pipeline_running
 
 logger = logging.getLogger(__name__)
@@ -58,7 +58,7 @@ class AsyncPipeline(PipelineBase):
         with PipelineBase._create_component_span(
             component_name=component_name, instance=instance, inputs=component_inputs, parent_span=parent_span
         ) as span:
-            span.set_content_tag(_COMPONENT_INPUT, deepcopy(component_inputs))
+            span.set_content_tag(_COMPONENT_INPUT, _deepcopy_with_exceptions(component_inputs))
             logger.info("Running component {component_name}", component_name=component_name)
 
             if getattr(instance, "__haystack_supports_async__", False):
@@ -76,7 +76,7 @@ class AsyncPipeline(PipelineBase):
                 raise PipelineRuntimeError.from_invalid_output(component_name, instance.__class__, outputs)
 
             span.set_tag(_COMPONENT_VISITS, component_visits[component_name])
-            span.set_content_tag(_COMPONENT_OUTPUT, deepcopy(outputs))
+            span.set_content_tag(_COMPONENT_OUTPUT, _deepcopy_with_exceptions(outputs))
 
             return outputs
 
@@ -238,7 +238,7 @@ class AsyncPipeline(PipelineBase):
                         partial_result = finished.result()
                         scheduled_components.discard(finished_component_name)
                         if partial_result:
-                            yield_dict = {finished_component_name: deepcopy(partial_result)}
+                            yield_dict = {finished_component_name: _deepcopy_with_exceptions(partial_result)}
                             yield yield_dict  # partial outputs
 
                 if component_name in scheduled_components:
@@ -274,7 +274,7 @@ class AsyncPipeline(PipelineBase):
 
                 scheduled_components.remove(component_name)
                 if pruned:
-                    yield {component_name: deepcopy(pruned)}
+                    yield {component_name: _deepcopy_with_exceptions(pruned)}
 
             async def _schedule_task(component_name: str) -> None:
                 """
@@ -337,7 +337,7 @@ class AsyncPipeline(PipelineBase):
                         partial_result = finished.result()
                         scheduled_components.discard(finished_component_name)
                         if partial_result:
-                            yield {finished_component_name: deepcopy(partial_result)}
+                            yield {finished_component_name: _deepcopy_with_exceptions(partial_result)}
 
             async def _wait_for_all_tasks_to_complete() -> AsyncIterator[Dict[str, Any]]:
                 """
@@ -350,7 +350,7 @@ class AsyncPipeline(PipelineBase):
                         partial_result = finished.result()
                         scheduled_components.discard(finished_component_name)
                         if partial_result:
-                            yield {finished_component_name: deepcopy(partial_result)}
+                            yield {finished_component_name: _deepcopy_with_exceptions(partial_result)}
 
             # -------------------------------------------------
             # MAIN SCHEDULING LOOP
@@ -428,7 +428,7 @@ class AsyncPipeline(PipelineBase):
                 yield partial_res
 
             # 4) Yield final pipeline outputs
-            yield deepcopy(pipeline_outputs)
+            yield _deepcopy_with_exceptions(pipeline_outputs)
 
     async def run_async(
         self, data: Dict[str, Any], include_outputs_from: Optional[Set[str]] = None, concurrency_limit: int = 4

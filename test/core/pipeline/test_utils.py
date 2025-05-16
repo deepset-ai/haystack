@@ -2,9 +2,17 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import logging
 import pytest
 
-from haystack.core.pipeline.utils import parse_connect_string, FIFOPriorityQueue
+from haystack.components.builders.prompt_builder import PromptBuilder
+from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.core.pipeline.utils import parse_connect_string, FIFOPriorityQueue, _deepcopy_with_exceptions
+from haystack.tools import ComponentTool, Tool
+
+
+def get_weather_report(city: str) -> str:
+    return f"Weather report for {city}: 20°C, sunny"
 
 
 def test_parse_connection():
@@ -175,3 +183,67 @@ def test_queue_ordering_parametrized(empty_queue, items):
     sorted_items = sorted(items, key=lambda x: (x[0], items.index(x)))
     for priority, item in sorted_items:
         assert empty_queue.pop() == (priority, item)
+
+
+class Copyable:
+    def __init__(self, name="copyable"):
+        self.name = name
+
+
+class NotCopyable:
+    def __init__(self, name="not_copyable"):
+        self.name = name
+
+    def __deepcopy__(self, memo):
+        raise TypeError("This object cannot be deepcopied.")
+
+
+class TestDeepcopyWithFallback:
+    def test_deepcopy_with_fallback_copyable(self, caplog):
+        original = {"class": Copyable()}
+        with caplog.at_level(logging.INFO):
+            copy = _deepcopy_with_exceptions(original)
+            assert "Deepcopy failed for object of type" not in caplog.text
+        assert copy["class"] is not original["class"]
+
+    def test_deepcopy_with_fallback_not_copyable_error(self, caplog):
+        original = {"class": NotCopyable()}
+        with caplog.at_level(logging.INFO):
+            copy = _deepcopy_with_exceptions(original)
+            assert "Deepcopy failed for object of type 'NotCopyable'" in caplog.text
+        assert copy["class"] is original["class"]
+
+    def test_deepcopy_with_fallback_mixed_copyable_list(self, caplog):
+        obj1 = Copyable()
+        obj2 = NotCopyable()
+        original = {"objects": [obj1, obj2]}
+        with caplog.at_level(logging.INFO):
+            copy = _deepcopy_with_exceptions(original)
+            assert "Deepcopy failed for object of type 'NotCopyable'" in caplog.text
+        assert copy["objects"][0] is not original["objects"][0]
+        assert copy["objects"][1] is original["objects"][1]
+
+    def test_deepcopy_with_fallback_mixed_copyable_tuple(self, caplog):
+        obj1 = Copyable()
+        obj2 = NotCopyable()
+        original = {"objects": (obj1, obj2)}
+        with caplog.at_level(logging.INFO):
+            copy = _deepcopy_with_exceptions(original)
+            assert "Deepcopy failed for object of type 'NotCopyable'" in caplog.text
+        assert copy["objects"][0] is not original["objects"][0]
+        assert copy["objects"][1] is original["objects"][1]
+
+    def test_deepcopy_with_fallback_tool(self):
+        tool = ComponentTool(
+            name="problematic_tool", description="This is a problematic tool.", component=PromptBuilder("{{query}}")
+        )
+        original = {"tools": tool}
+        copy = _deepcopy_with_exceptions(original)
+        assert copy["tools"] is original["tools"]
+
+    def test_deepcopy_with_fallback_component(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test")
+        comp = OpenAIChatGenerator()
+        original = {"component": comp}
+        res = _deepcopy_with_exceptions(original)
+        assert res["component"] is original["component"]

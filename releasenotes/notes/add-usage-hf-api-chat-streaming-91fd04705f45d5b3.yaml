@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    When using HuggingFaceAPIChatGenerator with streaming, the returned ChatMessage now contains the number of prompt tokens and completion tokens in its meta data.
+    Internally, the HuggingFaceAPIChatGenerator requests an additional streaming chunk that contains usage data.
+    It then processes the usage streaming chunk to add usage meta data to the returned ChatMessage.

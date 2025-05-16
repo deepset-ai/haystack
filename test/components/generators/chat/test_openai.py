@@ -8,6 +8,7 @@ import pytest
 import logging
 import os
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 from openai import OpenAIError
 from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletionMessage, ChatCompletionMessageToolCall
@@ -16,11 +17,12 @@ from openai.types.completion_usage import CompletionTokensDetails, CompletionUsa
 from openai.types.chat.chat_completion_message_tool_call import Function
 from openai.types.chat import chat_completion_chunk
 
+from haystack import component
 from haystack.components.generators.utils import print_streaming_chunk
 from haystack.dataclasses import StreamingChunk
 from haystack.utils.auth import Secret
 from haystack.dataclasses import ChatMessage, ToolCall
-from haystack.tools import Tool
+from haystack.tools import ComponentTool, Tool
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.tools.toolset import Toolset
 
@@ -72,21 +74,47 @@ def mock_chat_completion_chunk_with_tools(openai_mock_stream):
         yield mock_chat_completion_create
 
 
-def mock_tool_function(x):
-    return x
+def weather_function(city: str) -> Dict[str, Any]:
+    weather_info = {
+        "Berlin": {"weather": "mostly sunny", "temperature": 7, "unit": "celsius"},
+        "Paris": {"weather": "mostly cloudy", "temperature": 8, "unit": "celsius"},
+        "Rome": {"weather": "sunny", "temperature": 14, "unit": "celsius"},
+    }
+    return weather_info.get(city, {"weather": "unknown", "temperature": 0, "unit": "celsius"})
+
+
+@component
+class MessageExtractor:
+    @component.output_types(messages=List[str], meta=Dict[str, Any])
+    def run(self, messages: List[ChatMessage], meta: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """
+        Extracts the text content of ChatMessage objects
+
+        :param messages: List of Haystack ChatMessage objects
+        :param meta: Optional metadata to include in the response.
+        :returns:
+            A dictionary with keys "messages" and "meta".
+        """
+        if meta is None:
+            meta = {}
+        return {"messages": [m.text for m in messages], "meta": meta}
 
 
 @pytest.fixture
 def tools():
-    tool_parameters = {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}
-    tool = Tool(
+    weather_tool = Tool(
         name="weather",
         description="useful to determine the weather in a given location",
-        parameters=tool_parameters,
-        function=mock_tool_function,
+        parameters={"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]},
+        function=weather_function,
     )
-
-    return [tool]
+    # We add a tool that has a more complex parameter signature
+    message_extractor_tool = ComponentTool(
+        component=MessageExtractor(),
+        name="message_extractor",
+        description="Useful for returning the text content of ChatMessage objects",
+    )
+    return [weather_tool, message_extractor_tool]
 
 
 class TestOpenAIChatGenerator:
@@ -462,7 +490,9 @@ class TestOpenAIChatGenerator:
 
             mock_chat_completion_create.return_value = completion
 
-            component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"), tools=tools, tools_strict=True)
+            component = OpenAIChatGenerator(
+                api_key=Secret.from_token("test-api-key"), tools=tools[:1], tools_strict=True
+            )
             response = component.run([ChatMessage.from_user("What's the weather like in Paris?")])
 
         # ensure that the tools are passed to the OpenAI API
