@@ -3,8 +3,7 @@ from typing import List, Dict
 
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.state import State
-from haystack.utils.state import _validate_schema, _schema_to_dict, _schema_from_dict
-from haystack.utils.state_utils import merge_lists
+from haystack.components.agents.state.state import _validate_schema, _schema_to_dict, _schema_from_dict, merge_lists
 
 
 @pytest.fixture
