@@ -32,6 +32,7 @@ def test_model_initialization(mock_sentence_transformer):
         device="cpu",
         auth_token=Secret.from_token("fake-api-token"),
         trust_remote_code=True,
+        local_files_only=True,
         truncate_dim=256,
         backend="torch",
     )
@@ -40,6 +41,7 @@ def test_model_initialization(mock_sentence_transformer):
         device="cpu",
         token="fake-api-token",
         trust_remote_code=True,
+        local_files_only=True,
         truncate_dim=256,
         model_kwargs=None,
         tokenizer_kwargs=None,

@@ -23,6 +23,7 @@ class TestSentenceTransformersTextEmbedder:
         assert embedder.progress_bar is True
         assert embedder.normalize_embeddings is False
         assert embedder.trust_remote_code is False
+        assert embedder.local_files_only is False
         assert embedder.truncate_dim is None
         assert embedder.precision == "float32"
 
@@ -37,6 +38,7 @@ class TestSentenceTransformersTextEmbedder:
             progress_bar=False,
             normalize_embeddings=True,
             trust_remote_code=True,
+            local_files_only=True,
             truncate_dim=256,
             precision="int8",
         )
@@ -49,6 +51,7 @@ class TestSentenceTransformersTextEmbedder:
         assert embedder.progress_bar is False
         assert embedder.normalize_embeddings is True
         assert embedder.trust_remote_code is True
+        assert embedder.local_files_only is True
         assert embedder.truncate_dim == 256
         assert embedder.precision == "int8"
 
@@ -67,6 +70,7 @@ class TestSentenceTransformersTextEmbedder:
                 "progress_bar": True,
                 "normalize_embeddings": False,
                 "trust_remote_code": False,
+                "local_files_only": False,
                 "truncate_dim": None,
                 "model_kwargs": None,
                 "tokenizer_kwargs": None,
@@ -88,6 +92,7 @@ class TestSentenceTransformersTextEmbedder:
             progress_bar=False,
             normalize_embeddings=True,
             trust_remote_code=True,
+            local_files_only=True,
             truncate_dim=256,
             model_kwargs={"torch_dtype": torch.float32},
             tokenizer_kwargs={"model_max_length": 512},
@@ -108,6 +113,7 @@ class TestSentenceTransformersTextEmbedder:
                 "progress_bar": False,
                 "normalize_embeddings": True,
                 "trust_remote_code": True,
+                "local_files_only": True,
                 "truncate_dim": 256,
                 "model_kwargs": {"torch_dtype": "torch.float32"},
                 "tokenizer_kwargs": {"model_max_length": 512},
@@ -136,6 +142,7 @@ class TestSentenceTransformersTextEmbedder:
                 "progress_bar": True,
                 "normalize_embeddings": False,
                 "trust_remote_code": False,
+                "local_files_only": False,
                 "truncate_dim": None,
                 "model_kwargs": {"torch_dtype": "torch.float32"},
                 "tokenizer_kwargs": {"model_max_length": 512},
@@ -153,6 +160,7 @@ class TestSentenceTransformersTextEmbedder:
         assert component.progress_bar is True
         assert component.normalize_embeddings is False
         assert component.trust_remote_code is False
+        assert component.local_files_only is False
         assert component.truncate_dim is None
         assert component.model_kwargs == {"torch_dtype": torch.float32}
         assert component.tokenizer_kwargs == {"model_max_length": 512}
@@ -174,6 +182,7 @@ class TestSentenceTransformersTextEmbedder:
         assert component.progress_bar is True
         assert component.normalize_embeddings is False
         assert component.trust_remote_code is False
+        assert component.local_files_only is False
         assert component.truncate_dim is None
         assert component.precision == "float32"
 
@@ -190,6 +199,7 @@ class TestSentenceTransformersTextEmbedder:
                 "progress_bar": True,
                 "normalize_embeddings": False,
                 "trust_remote_code": False,
+                "local_files_only": False,
                 "truncate_dim": 256,
                 "precision": "int8",
             },
@@ -204,6 +214,7 @@ class TestSentenceTransformersTextEmbedder:
         assert component.progress_bar is True
         assert component.normalize_embeddings is False
         assert component.trust_remote_code is False
+        assert component.local_files_only is False
         assert component.truncate_dim == 256
         assert component.precision == "int8"
 
@@ -225,6 +236,7 @@ class TestSentenceTransformersTextEmbedder:
             device="cpu",
             auth_token=None,
             trust_remote_code=False,
+            local_files_only=False,
             truncate_dim=None,
             model_kwargs=None,
             tokenizer_kwargs={"model_max_length": 512},
@@ -340,6 +352,7 @@ class TestSentenceTransformersTextEmbedder:
             device="cpu",
             auth_token=None,
             trust_remote_code=False,
+            local_files_only=False,
             truncate_dim=None,
             model_kwargs={"file_name": "onnx/model.onnx"},
             tokenizer_kwargs=None,
@@ -367,6 +380,7 @@ class TestSentenceTransformersTextEmbedder:
             device="cpu",
             auth_token=None,
             trust_remote_code=False,
+            local_files_only=False,
             truncate_dim=None,
             model_kwargs={"file_name": "openvino/openvino_model.xml"},
             tokenizer_kwargs=None,
@@ -392,6 +406,7 @@ class TestSentenceTransformersTextEmbedder:
             device="cuda:0",
             auth_token=None,
             trust_remote_code=False,
+            local_files_only=False,
             truncate_dim=None,
             model_kwargs=model_kwargs,
             tokenizer_kwargs=None,
