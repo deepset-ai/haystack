@@ -1,9 +1,8 @@
 import pytest
+import json
 import datetime
 
 from haystack import Pipeline
-
-
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.tools.tool_invoker import ToolInvoker, ToolNotFoundException, StringConversionError
@@ -283,8 +282,16 @@ class TestToolInvoker:
         assert tool_message.tool_call_results[0].error
         assert "Failed to invoke" in tool_message.tool_call_results[0].result
 
-    def test_string_conversion_error(self, weather_tool):
-        invoker = ToolInvoker(tools=[weather_tool], raise_on_failure=True, convert_result_to_json_string=True)
+    def test_string_conversion_error(self):
+        weather_tool = Tool(
+            name="weather_tool",
+            description="Provides weather information for a given location.",
+            parameters=weather_parameters,
+            function=weather_function,
+            # Pass custom handler that will throw an error when trying to convert tool_result
+            outputs_to_string={"handler": lambda x: json.dumps(x)},
+        )
+        invoker = ToolInvoker(tools=[weather_tool], raise_on_failure=True)
 
         tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
 
@@ -292,8 +299,16 @@ class TestToolInvoker:
         with pytest.raises(StringConversionError):
             invoker._prepare_tool_result_message(result=tool_result, tool_call=tool_call, tool_to_invoke=weather_tool)
 
-    def test_string_conversion_error_does_not_raise_exception(self, weather_tool):
-        invoker = ToolInvoker(tools=[weather_tool], raise_on_failure=False, convert_result_to_json_string=True)
+    def test_string_conversion_error_does_not_raise_exception(self):
+        weather_tool = Tool(
+            name="weather_tool",
+            description="Provides weather information for a given location.",
+            parameters=weather_parameters,
+            function=weather_function,
+            # Pass custom handler that will throw an error when trying to convert tool_result
+            outputs_to_string={"handler": lambda x: json.dumps(x)},
+        )
+        invoker = ToolInvoker(tools=[weather_tool], raise_on_failure=False)
 
         tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
 
