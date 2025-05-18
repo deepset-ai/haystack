@@ -10,6 +10,12 @@ from haystack.components.builders.answer_builder import AnswerBuilder
 from haystack.dataclasses.chat_message import ChatMessage, ChatRole
 
 
+def _check_metadata_excluding_all_messages(actual_meta, expected_meta):
+    """Helper function to check metadata while ignoring the all_messages field"""
+    actual_without_messages = {k: v for k, v in actual_meta.items() if k != "all_messages"}
+    assert actual_without_messages == expected_meta
+
+
 class TestAnswerBuilder:
     def test_run_unmatching_input_len(self):
         component = AnswerBuilder()
@@ -21,7 +27,8 @@ class TestAnswerBuilder:
         output = component.run(query="query", replies=["reply1"])
         answers = output["answers"]
         assert answers[0].data == "reply1"
-        assert answers[0].meta == {}
+        _check_metadata_excluding_all_messages(answers[0].meta, {})
+        assert "all_messages" in answers[0].meta  # Check that all_messages exists
         assert answers[0].query == "query"
         assert answers[0].documents == []
         assert isinstance(answers[0], GeneratedAnswer)
@@ -31,7 +38,8 @@ class TestAnswerBuilder:
         output = component.run(query="query", replies=["reply1"], meta=[])
         answers = output["answers"]
         assert answers[0].data == "reply1"
-        assert answers[0].meta == {}
+        _check_metadata_excluding_all_messages(answers[0].meta, {})
+        assert "all_messages" in answers[0].meta
         assert answers[0].query == "query"
         assert answers[0].documents == []
         assert isinstance(answers[0], GeneratedAnswer)
@@ -41,7 +49,8 @@ class TestAnswerBuilder:
         output = component.run(query="query", replies=["reply1"], meta=[{"test": "meta"}])
         answers = output["answers"]
         assert answers[0].data == "reply1"
-        assert answers[0].meta == {"test": "meta"}
+        _check_metadata_excluding_all_messages(answers[0].meta, {"test": "meta"})
+        assert "all_messages" in answers[0].meta
         assert answers[0].query == "query"
         assert answers[0].documents == []
         assert isinstance(answers[0], GeneratedAnswer)
@@ -52,7 +61,8 @@ class TestAnswerBuilder:
         answers = output["answers"]
         assert len(answers) == 1
         assert answers[0].data == "Answer: AnswerString"
-        assert answers[0].meta == {}
+        _check_metadata_excluding_all_messages(answers[0].meta, {})
+        assert "all_messages" in answers[0].meta
         assert answers[0].query == "test query"
         assert answers[0].documents == []
         assert isinstance(answers[0], GeneratedAnswer)
@@ -63,7 +73,8 @@ class TestAnswerBuilder:
         answers = output["answers"]
         assert len(answers) == 1
         assert answers[0].data == "AnswerString"
-        assert answers[0].meta == {}
+        _check_metadata_excluding_all_messages(answers[0].meta, {})
+        assert "all_messages" in answers[0].meta
         assert answers[0].query == "test query"
         assert answers[0].documents == []
         assert isinstance(answers[0], GeneratedAnswer)
@@ -74,7 +85,8 @@ class TestAnswerBuilder:
         answers = output["answers"]
         assert len(answers) == 1
         assert answers[0].data == "'AnswerString'"
-        assert answers[0].meta == {}
+        _check_metadata_excluding_all_messages(answers[0].meta, {})
+        assert "all_messages" in answers[0].meta
         assert answers[0].query == "test query"
         assert answers[0].documents == []
         assert isinstance(answers[0], GeneratedAnswer)
@@ -89,7 +101,8 @@ class TestAnswerBuilder:
         answers = output["answers"]
         assert len(answers) == 1
         assert answers[0].data == "AnswerString"
-        assert answers[0].meta == {}
+        _check_metadata_excluding_all_messages(answers[0].meta, {})
+        assert "all_messages" in answers[0].meta
         assert answers[0].query == "test query"
         assert answers[0].documents == []
         assert isinstance(answers[0], GeneratedAnswer)
@@ -105,7 +118,8 @@ class TestAnswerBuilder:
         answers = output["answers"]
         assert len(answers) == 1
         assert answers[0].data == "Answer: AnswerString"
-        assert answers[0].meta == {}
+        _check_metadata_excluding_all_messages(answers[0].meta, {})
+        assert "all_messages" in answers[0].meta
         assert answers[0].query == "test query"
         assert len(answers[0].documents) == 2
         assert answers[0].documents[0].content == "test doc 1"
@@ -122,7 +136,8 @@ class TestAnswerBuilder:
         answers = output["answers"]
         assert len(answers) == 1
         assert answers[0].data == "Answer: AnswerString[2]"
-        assert answers[0].meta == {}
+        _check_metadata_excluding_all_messages(answers[0].meta, {})
+        assert "all_messages" in answers[0].meta
         assert answers[0].query == "test query"
         assert len(answers[0].documents) == 1
         assert answers[0].documents[0].content == "test doc 2"
@@ -139,7 +154,8 @@ class TestAnswerBuilder:
         answers = output["answers"]
         assert len(answers) == 1
         assert answers[0].data == "Answer: AnswerString[3]"
-        assert answers[0].meta == {}
+        _check_metadata_excluding_all_messages(answers[0].meta, {})
+        assert "all_messages" in answers[0].meta
         assert answers[0].query == "test query"
         assert len(answers[0].documents) == 0
         assert "Document index '3' referenced in Generator output is out of range." in caplog.text
@@ -156,7 +172,8 @@ class TestAnswerBuilder:
         answers = output["answers"]
         assert len(answers) == 1
         assert answers[0].data == "Answer: AnswerString[2][3]"
-        assert answers[0].meta == {}
+        _check_metadata_excluding_all_messages(answers[0].meta, {})
+        assert "all_messages" in answers[0].meta
         assert answers[0].query == "test query"
         assert len(answers[0].documents) == 2
         assert answers[0].documents[0].content == "test doc 2"
@@ -177,7 +194,12 @@ class TestAnswerBuilder:
         answers = output["answers"]
         assert len(answers) == 1
         assert answers[0].data == "Answer: AnswerString"
-        assert answers[0].meta == message_meta
+
+        # Check metadata excluding all_messages
+        expected_meta = message_meta.copy()
+        _check_metadata_excluding_all_messages(answers[0].meta, expected_meta)
+        assert "all_messages" in answers[0].meta
+
         assert answers[0].query == "test query"
         assert answers[0].documents == []
         assert isinstance(answers[0], GeneratedAnswer)
@@ -197,7 +219,12 @@ class TestAnswerBuilder:
         answers = output["answers"]
         assert len(answers) == 1
         assert answers[0].data == "AnswerString"
-        assert answers[0].meta == message_meta
+
+        # Check metadata excluding all_messages
+        expected_meta = message_meta.copy()
+        _check_metadata_excluding_all_messages(answers[0].meta, expected_meta)
+        assert "all_messages" in answers[0].meta
+
         assert answers[0].query == "test query"
         assert answers[0].documents == []
         assert isinstance(answers[0], GeneratedAnswer)
@@ -221,7 +248,12 @@ class TestAnswerBuilder:
         answers = output["answers"]
         assert len(answers) == 1
         assert answers[0].data == "Answer: AnswerString[2]"
-        assert answers[0].meta == message_meta
+
+        # Check metadata excluding all_messages
+        expected_meta = message_meta.copy()
+        _check_metadata_excluding_all_messages(answers[0].meta, expected_meta)
+        assert "all_messages" in answers[0].meta
+
         assert answers[0].query == "test query"
         assert len(answers[0].documents) == 1
         assert answers[0].documents[0].content == "test doc 2"
@@ -240,7 +272,12 @@ class TestAnswerBuilder:
         answers = output["answers"]
         assert len(answers) == 1
         assert answers[0].data == "AnswerString"
-        assert answers[0].meta == message_meta
+
+        # Check metadata excluding all_messages
+        expected_meta = message_meta.copy()
+        _check_metadata_excluding_all_messages(answers[0].meta, expected_meta)
+        assert "all_messages" in answers[0].meta
+
         assert answers[0].query == "test query"
         assert answers[0].documents == []
         assert isinstance(answers[0], GeneratedAnswer)
@@ -259,13 +296,18 @@ class TestAnswerBuilder:
         answers = output["answers"]
         assert len(answers) == 1
         assert answers[0].data == "AnswerString"
-        assert answers[0].meta == {
+
+        # Check metadata excluding all_messages
+        expected_meta = {
             "model": "gpt-4o-mini",
             "index": 0,
             "finish_reason": "stop",
             "usage": {"prompt_tokens": 32, "completion_tokens": 153, "total_tokens": 185},
             "test": "meta",
         }
+        _check_metadata_excluding_all_messages(answers[0].meta, expected_meta)
+        assert "all_messages" in answers[0].meta
+
         assert answers[0].query == "test query"
         assert answers[0].documents == []
         assert isinstance(answers[0], GeneratedAnswer)
@@ -278,7 +320,29 @@ class TestAnswerBuilder:
         answers = output["answers"]
         assert len(answers) == 1
         assert answers[0].data == "AnswerString"
-        assert answers[0].meta == {"test": "meta"}
+
+        # Check metadata excluding all_messages
+        _check_metadata_excluding_all_messages(answers[0].meta, {"test": "meta"})
+        assert "all_messages" in answers[0].meta
+
         assert answers[0].query == "test query"
         assert answers[0].documents == []
         assert isinstance(answers[0], GeneratedAnswer)
+
+    def test_conversation_history_in_all_messages(self):
+        """Test that multiple messages in replies are stored in all_messages."""
+        component = AnswerBuilder()
+        replies = [
+            ChatMessage.from_user("What is Haystack?"),
+            ChatMessage.from_assistant("Haystack is a framework for building LLM applications."),
+        ]
+        output = component.run(query="test query", replies=replies)
+
+        answers = output["answers"]
+        assert len(answers) == 2  # One answer for each message in replies
+
+        # Check that each answer contains the full conversation history
+        for answer in answers:
+            assert "all_messages" in answer.meta
+            assert answer.meta["all_messages"] == replies
+            assert len(answer.meta["all_messages"]) == 2
