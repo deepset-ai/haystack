@@ -14,7 +14,7 @@ import pytest
 from openai.types.chat import ChatCompletion, ChatCompletionMessage
 from openai.types.chat.chat_completion import Choice
 
-from haystack import Pipeline, component
+from haystack import Pipeline, component, SuperComponent
 from haystack.components.builders import PromptBuilder
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.tools import ToolInvoker
@@ -639,3 +639,44 @@ class TestToolComponentInPipelineWithOpenAI:
             result = pipeline.run({"llm": {"messages": [ChatMessage.from_user(text="Hello")], "tools": [tool]}})
 
         assert result["llm"]["replies"][0].text == "A response from the model"
+
+    def test_component_tool_with_super_component_docstrings(self, monkeypatch):
+        """Test that ComponentTool preserves docstrings from underlying pipeline components in SuperComponents."""
+
+        @component
+        class AnnotatedComponent:
+            """An annotated component with descriptive parameter docstrings."""
+
+            @component.output_types(result=str)
+            def run(self, text: str, number: int = 42):
+                """Process inputs and return result.
+                :param text: A detailed description of the text parameter that should be preserved
+                :param number: A detailed description of the number parameter that should be preserved
+                """
+                return {"result": f"Processed: {text} and {number}"}
+
+        # Create a pipeline with the annotated component
+        pipeline = Pipeline()
+        pipeline.add_component("processor", AnnotatedComponent())
+        # Create SuperComponent with mapping
+        super_comp = SuperComponent(
+            pipeline=pipeline,
+            input_mapping={"input_text": ["processor.text"], "input_number": ["processor.number"]},
+            output_mapping={"processor.result": "processed_result"},
+        )
+
+        # Create ComponentTool from SuperComponent
+        tool = ComponentTool(component=super_comp, name="text_processor")
+
+        # Verify that schema includes the docstrings from the original component
+        assert (
+            "A detailed description of the text parameter" in tool.parameters["properties"]["input_text"]["description"]
+        )
+        assert (
+            "A detailed description of the number parameter"
+            in tool.parameters["properties"]["input_number"]["description"]
+        )
+
+        # Test the tool functionality works
+        result = tool.invoke(input_text="Hello", input_number=42)
+        assert result["processed_result"] == "Processed: Hello and 42"

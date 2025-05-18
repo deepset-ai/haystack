@@ -47,6 +47,42 @@ def _get_param_descriptions(method: Callable) -> Tuple[str, Dict[str, str]]:
     return parsed_doc.short_description or "", param_descriptions
 
 
+def _get_component_param_descriptions(component: Any) -> Tuple[str, Dict[str, str]]:
+    """
+    Get parameter descriptions from a component, handling both regular Components and SuperComponents.
+
+    For regular components, this extracts descriptions from the run method's docstring.
+    For SuperComponents, this extracts descriptions from the underlying pipeline components.
+
+    :param component: The component to extract parameter descriptions from
+    :returns: A tuple of (short_description, param_descriptions)
+    """
+    # Import here to avoid circular imports
+    from haystack.core import SuperComponent
+
+    # Get descriptions from the component's run method
+    short_desc, param_descriptions = _get_param_descriptions(component.run)
+
+    # If it's a SuperComponent, enhance the descriptions from the original components
+    if isinstance(component, SuperComponent):
+        for super_param_name, pipeline_paths in component.input_mapping.items():
+            for path in pipeline_paths:
+                try:
+                    # Get the component and socket this input is mapped from
+                    comp_name, socket_name = component._split_component_path(path)
+                    pipeline_component = component.pipeline.get_component(comp_name)
+
+                    # Get descriptions from the component's run method
+                    _, pipeline_param_descriptions = _get_param_descriptions(pipeline_component.run)
+                    if socket_name in pipeline_param_descriptions:
+                        param_descriptions[super_param_name] = pipeline_param_descriptions[socket_name]
+                        break
+                except Exception as e:
+                    logger.debug(f"Error extracting description for {super_param_name} from {path}: {str(e)}")
+
+    return short_desc, param_descriptions
+
+
 def _dataclass_to_pydantic_model(dc_type: Any) -> type[BaseModel]:
     """
     Convert a Python dataclass to an equivalent Pydantic model.

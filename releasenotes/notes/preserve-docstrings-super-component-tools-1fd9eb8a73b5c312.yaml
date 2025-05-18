@@ -1,0 +1,7 @@
+---
+enhancements:
+  - |
+    ComponentTool now preserves docstrings from underlying pipeline components when wrapping a SuperComponent.
+    When a SuperComponent is used with ComponentTool, the parameter descriptions are now extracted from the
+    original components in the wrapped pipeline, making it much more helpful when using SuperComponents with
+    LLM function calling as the LLM will get detailed parameter information directly from the underlying components.
