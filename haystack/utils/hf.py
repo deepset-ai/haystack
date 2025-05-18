@@ -4,7 +4,7 @@
 
 import copy
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Union
 
 from haystack import logging
 from haystack.dataclasses import ChatMessage, StreamingChunk
@@ -369,3 +369,29 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
             word_to_send = word + "\n" if stream_end else word
             if word_to_send.strip() not in self.stop_words:
                 self.token_handler(StreamingChunk(content=word_to_send))
+
+    class AsyncHFTokenStreamingHandler(TextStreamer):
+        """
+        Async streaming handler for HuggingFaceLocalGenerator and HuggingFaceLocalChatGenerator.
+
+        Note: This is a helper class for HuggingFaceLocalGenerator & HuggingFaceLocalChatGenerator enabling
+        async streaming of generated text via Haystack Callable[StreamingChunk, Awaitable[None]] callbacks.
+
+        Do not use this class directly.
+        """
+
+        def __init__(
+            self,
+            tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
+            stream_handler: Callable[[StreamingChunk], Awaitable[None]],
+            stop_words: Optional[List[str]] = None,
+        ):
+            super().__init__(tokenizer=tokenizer, skip_prompt=True)  # type: ignore
+            self.token_handler = stream_handler
+            self.stop_words = stop_words or []
+
+        async def on_finalized_text(self, word: str, stream_end: bool = False):
+            """Async callback function for handling the generated text."""
+            word_to_send = word + "\n" if stream_end else word
+            if word_to_send.strip() not in self.stop_words:
+                await self.token_handler(StreamingChunk(content=word_to_send))

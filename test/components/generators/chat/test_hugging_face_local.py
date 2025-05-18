@@ -12,7 +12,7 @@ from transformers import PreTrainedTokenizer
 
 from haystack.components.generators.chat import HuggingFaceLocalChatGenerator
 from haystack.dataclasses import ChatMessage, ChatRole, ToolCall
-from haystack.dataclasses.streaming_chunk import StreamingChunk
+from haystack.dataclasses.streaming_chunk import StreamingChunk, AsyncStreamingCallbackT
 from haystack.tools import Tool
 from haystack.utils import ComponentDevice
 from haystack.utils.auth import Secret
@@ -485,6 +485,11 @@ class TestHuggingFaceLocalChatGenerator:
 
     # Async tests
 
+
+class TestHuggingFaceLocalChatGeneratorAsync:
+    """Async tests for HuggingFaceLocalChatGenerator"""
+
+    @pytest.mark.asyncio
     async def test_run_async(self, model_info_mock, mock_pipeline_tokenizer, chat_messages):
         """Test basic async functionality"""
         generator = HuggingFaceLocalChatGenerator(model="mocked-model")
@@ -498,6 +503,7 @@ class TestHuggingFaceLocalChatGenerator:
         assert chat_message.is_from(ChatRole.ASSISTANT)
         assert chat_message.text == "Berlin is cool"
 
+    @pytest.mark.asyncio
     async def test_run_async_with_tools(self, model_info_mock, mock_pipeline_tokenizer, tools):
         """Test async functionality with tools"""
         generator = HuggingFaceLocalChatGenerator(model="mocked-model", tools=tools)
@@ -516,6 +522,7 @@ class TestHuggingFaceLocalChatGenerator:
         assert tool_call.tool_name == "weather"
         assert tool_call.arguments == {"city": "Berlin"}
 
+    @pytest.mark.asyncio
     async def test_concurrent_async_requests(self, model_info_mock, mock_pipeline_tokenizer, chat_messages):
         """Test handling of multiple concurrent async requests"""
         generator = HuggingFaceLocalChatGenerator(model="mocked-model")
@@ -530,6 +537,7 @@ class TestHuggingFaceLocalChatGenerator:
             assert isinstance(result["replies"][0], ChatMessage)
             assert result["replies"][0].text == "Berlin is cool"
 
+    @pytest.mark.asyncio
     async def test_async_error_handling(self, model_info_mock, mock_pipeline_tokenizer):
         """Test error handling in async context"""
         generator = HuggingFaceLocalChatGenerator(model="mocked-model")
@@ -608,3 +616,56 @@ class TestHuggingFaceLocalChatGenerator:
             },
         }
         assert data["init_parameters"]["tools"] == expected_tools_data
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_streaming_callback(self, model_info_mock):
+        """Test that async streaming works correctly with HuggingFaceLocalChatGenerator."""
+        streaming_chunks = []
+        streaming_complete = asyncio.Event()
+        loop = asyncio.get_running_loop()
+
+        async def streaming_callback(chunk: StreamingChunk) -> None:
+            streaming_chunks.append(chunk)
+            if chunk.content.endswith("\n"):
+                streaming_complete.set()
+
+        # Create a mock pipeline that simulates streaming
+        mock_pipeline = Mock()
+        mock_tokenizer = Mock()
+        mock_tokenizer.apply_chat_template.return_value = "Test prompt"
+        mock_tokenizer.encode.return_value = [1, 2, 3]  # Return a list with a length
+        mock_pipeline.tokenizer = mock_tokenizer
+
+        # Mock the pipeline to return a stream of responses
+        def mock_generate(*args, **kwargs):
+            streamer = kwargs.get("streamer")
+            if streamer:
+                # Schedule the streaming callbacks in the main event loop
+                loop.call_soon_threadsafe(
+                    lambda: asyncio.create_task(streamer.on_finalized_text("Hello", stream_end=False))
+                )
+                loop.call_soon_threadsafe(
+                    lambda: asyncio.create_task(streamer.on_finalized_text(" world", stream_end=True))
+                )
+            return [{"generated_text": "Hello world"}]
+
+        mock_pipeline.side_effect = mock_generate
+
+        generator = HuggingFaceLocalChatGenerator(model="test-model", streaming_callback=streaming_callback)
+        generator.pipeline = mock_pipeline
+
+        messages = [ChatMessage.from_user("Test message")]
+        response = await generator.run_async(messages)
+
+        # Wait for streaming to complete
+        await streaming_complete.wait()
+
+        assert len(streaming_chunks) == 2
+        assert streaming_chunks[0].content == "Hello"
+        assert streaming_chunks[1].content == " world\n"
+
+        assert isinstance(response, dict)
+        assert "replies" in response
+        assert len(response["replies"]) == 1
+        assert isinstance(response["replies"][0], ChatMessage)
+        assert response["replies"][0].text == "Hello world"

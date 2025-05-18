@@ -11,6 +11,7 @@ from typing import Any, Callable, Dict, List, Literal, Optional, Union, cast
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall, select_streaming_callback
+from haystack.dataclasses.streaming_chunk import AsyncStreamingCallbackT, StreamingCallbackT
 from haystack.lazy_imports import LazyImport
 from haystack.tools import (
     Tool,
@@ -36,6 +37,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as torch_an
     from transformers.tokenization_utils_fast import PreTrainedTokenizerFast
 
     from haystack.utils.hf import (  # pylint: disable=ungrouped-imports
+        AsyncHFTokenStreamingHandler,
         HFTokenStreamingHandler,
         StopWordsCriteria,
         convert_message_to_hf_format,
@@ -130,7 +132,7 @@ class HuggingFaceLocalChatGenerator:
         generation_kwargs: Optional[Dict[str, Any]] = None,
         huggingface_pipeline_kwargs: Optional[Dict[str, Any]] = None,
         stop_words: Optional[List[str]] = None,
-        streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
+        streaming_callback: Optional[StreamingCallbackT] = None,
         tools: Optional[Union[List[Tool], Toolset]] = None,
         tool_parsing_function: Optional[Callable[[str], Optional[List[ToolCall]]]] = None,
         async_executor: Optional[ThreadPoolExecutor] = None,
@@ -330,7 +332,7 @@ class HuggingFaceLocalChatGenerator:
         self,
         messages: List[ChatMessage],
         generation_kwargs: Optional[Dict[str, Any]] = None,
-        streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
+        streaming_callback: Optional[StreamingCallbackT] = None,
         tools: Optional[Union[List[Tool], Toolset]] = None,
     ):
         """
@@ -492,7 +494,7 @@ class HuggingFaceLocalChatGenerator:
         self,
         messages: List[ChatMessage],
         generation_kwargs: Optional[Dict[str, Any]] = None,
-        streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
+        streaming_callback: Optional[StreamingCallbackT] = None,
         tools: Optional[Union[List[Tool], Toolset]] = None,
     ):
         """
@@ -546,7 +548,7 @@ class HuggingFaceLocalChatGenerator:
         tokenizer: Union["PreTrainedTokenizer", "PreTrainedTokenizerFast"],
         generation_kwargs: Dict[str, Any],
         stop_words: Optional[List[str]],
-        streaming_callback: Callable[[StreamingChunk], None],
+        streaming_callback: StreamingCallbackT,
     ):
         """
         Handles async streaming generation of responses.
@@ -566,7 +568,7 @@ class HuggingFaceLocalChatGenerator:
         )
 
         # Set up streaming handler
-        generation_kwargs["streamer"] = HFTokenStreamingHandler(tokenizer, streaming_callback, stop_words)
+        generation_kwargs["streamer"] = AsyncHFTokenStreamingHandler(tokenizer, streaming_callback, stop_words)
 
         # Generate responses asynchronously
         output = await asyncio.get_running_loop().run_in_executor(
