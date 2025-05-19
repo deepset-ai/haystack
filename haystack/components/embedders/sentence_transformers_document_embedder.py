@@ -91,7 +91,7 @@ class SentenceTransformersDocumentEmbedder:
             If `False`, allows only Hugging Face verified model architectures.
             If `True`, allows custom models and scripts.
         :param local_files_only:
-            If `True` does not attempt to load the model from huggingface hub (i.e., only looks at local files).
+            If `True`, does not attempt to download the model from Hugging Face Hub and only looks at local files.
         :param truncate_dim:
             The dimension to truncate sentence embeddings to. `None` does no truncation.
             If the model wasn't trained with Matryoshka Representation Learning,
