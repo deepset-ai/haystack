@@ -599,7 +599,7 @@ class ToolInvoker:
                 )
 
                 if streaming_callback is not None:
-                    await streaming_callback(
+                    streaming_callback(
                         StreamingChunk(
                             content="",
                             meta={"tool_result": tool_messages[-1].tool_call_results[0].result, "tool_call": tool_call},
