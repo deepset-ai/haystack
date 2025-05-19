@@ -188,7 +188,8 @@ class OpenAPIServiceConnector:
                                    service_openapi_spec=serperdev_openapi_spec, service_credentials=serper_token)
     print(result)
 
-    >> {'service_response': [ChatMessage(content='{"searchParameters": {"q": "Why was Sam Altman ousted from OpenAI?",
+    >> {'service_response': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[TextContent(text=
+    >> '{"searchParameters": {"q": "Why was Sam Altman ousted from OpenAI?",
     >> "type": "search", "engine": "google"}, "answerBox": {"snippet": "Concerns over AI safety and OpenAI\'s role
     >> in protecting were at the center of Altman\'s brief ouster from the company."...
     ```

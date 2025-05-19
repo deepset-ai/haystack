@@ -19,6 +19,7 @@ from haystack.tools import (
     serialize_tools_or_toolset,
 )
 from haystack.tools.errors import ToolInvocationError
+from haystack.tracing.utils import _serializable_value
 
 logger = logging.getLogger(__name__)
 
@@ -226,12 +227,30 @@ class ToolInvoker:
         :param result: The tool result to convert to a string.
         :returns: The converted tool result as a string.
         """
+        # We iterate through all items in result and call to_dict() if present
+        # Relevant for a few reasons:
+        # - If using convert_result_to_json_string we'd rather convert Haystack objects to JSON serializable dicts
+        # - If using default str() we prefer converting Haystack objects to dicts rather than relying on the
+        #   __repr__ method
+        serializable = _serializable_value(result)
+
         if self.convert_result_to_json_string:
-            # We disable ensure_ascii so special chars like emojis are not converted
-            tool_result_str = json.dumps(result, ensure_ascii=False)
-        else:
-            tool_result_str = str(result)
-        return tool_result_str
+            try:
+                # We disable ensure_ascii so special chars like emojis are not converted
+                str_result = json.dumps(serializable, ensure_ascii=False)
+            except Exception as error:
+                # If the result is not JSON serializable, we fall back to str
+                logger.warning(
+                    "Tool result is not JSON serializable. Falling back to str conversion. "
+                    "Result: {result}\n"
+                    "Error: {error}",
+                    result=result,
+                    err=error,
+                )
+                str_result = str(result)
+            return str_result
+
+        return str(serializable)
 
     def _prepare_tool_result_message(self, result: Any, tool_call: ToolCall, tool_to_invoke: Tool) -> ChatMessage:
         """
@@ -454,7 +473,10 @@ class ToolInvoker:
 
                 if streaming_callback is not None:
                     streaming_callback(
-                        StreamingChunk(content="", meta={"tool_result": tool_result, "tool_call": tool_call})
+                        StreamingChunk(
+                            content="",
+                            meta={"tool_result": tool_messages[-1].tool_call_results[0].result, "tool_call": tool_call},
+                        )
                     )
 
         return {"tool_messages": tool_messages, "state": state}
