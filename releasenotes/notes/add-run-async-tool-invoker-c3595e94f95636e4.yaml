@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Added `run_async` method to `ToolInvoker` class to allow asynchronous tool invocations.
