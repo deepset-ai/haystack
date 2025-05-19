@@ -2,8 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 import inspect
 import json
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Dict, List, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
@@ -162,6 +164,7 @@ class ToolInvoker:
         raise_on_failure: bool = True,
         convert_result_to_json_string: bool = False,
         streaming_callback: Optional[StreamingCallbackT] = None,
+        async_executor: Optional[ThreadPoolExecutor] = None,
     ):
         """
         Initialize the ToolInvoker component.
@@ -180,6 +183,9 @@ class ToolInvoker:
             A callback function that will be called to emit tool results.
             Note that the result is only emitted once it becomes available — it is not
             streamed incrementally in real time.
+        :param async_executor:
+            Optional ThreadPoolExecutor to use for async calls. If not provided, a single-threaded executor will be
+            initialized and used.
         :raises ValueError:
             If no tools are provided or if duplicate tool names are found.
         """
@@ -205,6 +211,26 @@ class ToolInvoker:
         self._tools_with_names = dict(zip(tool_names, converted_tools))
         self.raise_on_failure = raise_on_failure
         self.convert_result_to_json_string = convert_result_to_json_string
+        self._owns_executor = async_executor is None
+        self.executor = (
+            ThreadPoolExecutor(thread_name_prefix=f"async-ToolInvoker-executor-{id(self)}", max_workers=1)
+            if async_executor is None
+            else async_executor
+        )
+
+    def __del__(self):
+        """
+        Cleanup when the instance is being destroyed.
+        """
+        if hasattr(self, "_owns_executor") and self._owns_executor and hasattr(self, "executor"):
+            self.executor.shutdown(wait=True)
+
+    def shutdown(self):
+        """
+        Explicitly shutdown the executor if we own it.
+        """
+        if self._owns_executor:
+            self.executor.shutdown(wait=True)
 
     def _handle_error(self, error: Exception) -> str:
         """
@@ -540,7 +566,9 @@ class ToolInvoker:
 
                 # 2) Invoke the tool asynchronously
                 try:
-                    tool_result = await tool_to_invoke.invoke_async(**final_args)
+                    tool_result = await asyncio.get_running_loop().run_in_executor(
+                        self.executor, lambda: tool_to_invoke.invoke(**final_args)
+                    )
 
                 except ToolInvocationError as e:
                     error_message = self._handle_error(e)
