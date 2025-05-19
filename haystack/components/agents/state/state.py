@@ -91,8 +91,8 @@ class State:
         :param schema: Dictionary mapping parameter names to their type and handler configs.
             Type must be a valid Python type, and handler must be a callable function or None.
             If handler is None, the default handler for the type will be used. The default handlers are:
-                - For list types: `haystack.dataclasses.state_utils.merge_lists`
-                - For all other types: `haystack.dataclasses.state_utils.replace_values`
+                - For list types: `haystack.agents.state.state_utils.merge_lists`
+                - For all other types: `haystack.agents.state.state_utils.replace_values`
         :param data: Optional dictionary of initial data to populate the state
         """
         _validate_schema(schema)
