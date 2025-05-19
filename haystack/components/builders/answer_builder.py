@@ -114,6 +114,7 @@ class AnswerBuilder:
         for reply, given_metadata in zip(replies, meta):
             # Extract content from ChatMessage objects if reply is a ChatMessages, else use the string as is
             if isinstance(reply, ChatMessage):
+                extracted_reply = ""
                 if reply.text:
                     extracted_reply = reply.text
             else:
