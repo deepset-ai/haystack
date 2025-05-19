@@ -481,6 +481,105 @@ class ToolInvoker:
 
         return {"tool_messages": tool_messages, "state": state}
 
+    @component.output_types(tool_messages=List[ChatMessage], state=State)
+    async def run_async(
+        self,
+        messages: List[ChatMessage],
+        state: Optional[State] = None,
+        streaming_callback: Optional[StreamingCallbackT] = None,
+    ) -> Dict[str, Any]:
+        """
+        Asynchronously processes ChatMessage objects containing tool calls and invokes the corresponding tools.
+
+        :param messages:
+            A list of ChatMessage objects.
+        :param state: The runtime state that should be used by the tools.
+        :param streaming_callback: A callback function that will be called to emit tool results.
+            Note that the result is only emitted once it becomes available — it is not
+            streamed incrementally in real time.
+        :returns:
+            A dictionary with the key `tool_messages` containing a list of ChatMessage objects with tool role.
+            Each ChatMessage objects wraps the result of a tool invocation.
+
+        :raises ToolNotFoundException:
+            If the tool is not found in the list of available tools and `raise_on_failure` is True.
+        :raises ToolInvocationError:
+            If the tool invocation fails and `raise_on_failure` is True.
+        :raises StringConversionError:
+            If the conversion of the tool result to a string fails and `raise_on_failure` is True.
+        :raises ToolOutputMergeError:
+            If merging tool outputs into state fails and `raise_on_failure` is True.
+        """
+        if state is None:
+            state = State(schema={})
+
+        # Only keep messages with tool calls
+        messages_with_tool_calls = [message for message in messages if message.tool_calls]
+        streaming_callback = select_streaming_callback(
+            init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=True
+        )
+
+        tool_messages = []
+        for message in messages_with_tool_calls:
+            for tool_call in message.tool_calls:
+                tool_name = tool_call.tool_name
+
+                # Check if the tool is available, otherwise return an error message
+                if tool_name not in self._tools_with_names:
+                    error_message = self._handle_error(
+                        ToolNotFoundException(tool_name, list(self._tools_with_names.keys()))
+                    )
+                    tool_messages.append(ChatMessage.from_tool(tool_result=error_message, origin=tool_call, error=True))
+                    continue
+
+                tool_to_invoke = self._tools_with_names[tool_name]
+
+                # 1) Combine user + state inputs
+                llm_args = tool_call.arguments.copy()
+                final_args = self._inject_state_args(tool_to_invoke, llm_args, state)
+
+                # 2) Invoke the tool asynchronously
+                try:
+                    tool_result = await tool_to_invoke.invoke_async(**final_args)
+
+                except ToolInvocationError as e:
+                    error_message = self._handle_error(e)
+                    tool_messages.append(ChatMessage.from_tool(tool_result=error_message, origin=tool_call, error=True))
+                    continue
+
+                # 3) Merge outputs into state
+                try:
+                    self._merge_tool_outputs(tool_to_invoke, tool_result, state)
+                except Exception as e:
+                    try:
+                        error_message = self._handle_error(
+                            ToolOutputMergeError(f"Failed to merge tool outputs from tool {tool_name} into State: {e}")
+                        )
+                        tool_messages.append(
+                            ChatMessage.from_tool(tool_result=error_message, origin=tool_call, error=True)
+                        )
+                        continue
+                    except ToolOutputMergeError as propagated_e:
+                        # Re-raise with proper error chain
+                        raise propagated_e from e
+
+                # 4) Prepare the tool result ChatMessage message
+                tool_messages.append(
+                    self._prepare_tool_result_message(
+                        result=tool_result, tool_call=tool_call, tool_to_invoke=tool_to_invoke
+                    )
+                )
+
+                if streaming_callback is not None:
+                    await streaming_callback(
+                        StreamingChunk(
+                            content="",
+                            meta={"tool_result": tool_messages[-1].tool_call_results[0].result, "tool_call": tool_call},
+                        )
+                    )
+
+        return {"tool_messages": tool_messages, "state": state}
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Serializes the component to a dictionary.

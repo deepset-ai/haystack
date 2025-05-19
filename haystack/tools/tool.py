@@ -2,7 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 from dataclasses import asdict, dataclass
+from functools import partial
 from typing import Any, Callable, Dict, List, Optional
 
 from jsonschema import Draft202012Validator
@@ -100,6 +102,18 @@ class Tool:
                 f"Failed to invoke Tool `{self.name}` with parameters {kwargs}. Error: {e}"
             ) from e
         return result
+
+    async def invoke_async(self, **kwargs) -> Any:
+        """
+        Asynchronously invoke the Tool with the provided keyword arguments.
+        """
+        loop = asyncio.get_running_loop()
+        try:
+            return await loop.run_in_executor(None, partial(self.function, **kwargs))
+        except Exception as e:
+            raise ToolInvocationError(
+                f"Failed to invoke Tool `{self.name}` with parameters {kwargs}. Error: {e}"
+            ) from e
 
     def to_dict(self) -> Dict[str, Any]:
         """
