@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    The AnswerBuilder component now stores all generated messages in the `meta` field of the GeneratedAnswer objects under an `all_messages` key. This enhancement improves traceability and debugging capabilities for agent workflows by providing access to the complete history of generated messages.
