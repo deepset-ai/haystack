@@ -68,16 +68,17 @@ def serialize_value(value: Any) -> Any:
     :param value: The value to serialize
     :returns: The serialized representation of the value
     """
-
-    if hasattr(value, "to_dict") and callable(getattr(value, "to_dict")):
+    if hasattr(value, "to_dict") and callable(value.to_dict):
         serialized_value = value.to_dict()
         serialized_value["_type"] = generate_qualified_class_name(type(value))
-
         return serialized_value
 
     # this is a hack to serialize inputs that don't have a to_dict
     elif hasattr(value, "__dict__"):
-        return {"_type": value.__class__, "attributes": value.__dict__}
+        return {
+            "_type": generate_qualified_class_name(type(value)),
+            "attributes": {k: serialize_value(v) for k, v in value.__dict__.items()},
+        }
 
     # recursively serialize all inputs in a dict
     elif isinstance(value, dict):
@@ -85,42 +86,56 @@ def serialize_value(value: Any) -> Any:
 
     # recursively serialize all inputs in lists or tuples
     elif isinstance(value, (list, tuple, set)):
-        return type(value)(serialize_value(item) for item in value)
+        return type(value)(serialize_value(v) for v in value)
 
+    # None and primitives fall through
     return value
 
 
-# pylint: disable=too-many-return-statements
 def deserialize_value(value: Any) -> Any:
     """
     Deserializes a value from its serialized representation.
 
-    Handles various types including:
-    - Haystack dataclass objects (Answer, Document, etc.)
-    - Primitive types (returned as is)
-    - Lists of primitives (returned as is)
-    - Lists of complex types (recursively deserialized)
-    - Dictionaries (recursively deserialized)
+    - Primitives and None are returned as-is.
+    - dicts with a "_type" key are turned back into instances:
+        * If the target class has a `from_dict`, it's used.
+        * Otherwise, if an "attributes" sub-dict exists, we reconstruct
+          by creating a blank instance and setting attributes.
+    - Other dicts, lists, tuples, and sets are recursively deserialized.
 
     :param value: The serialized value to deserialize
     :returns: The deserialized value
     """
-
-    # None or primitive types are returned as is
-    if not value or isinstance(value, (str, int, float, bool)):
+    # 1) Primitives & None
+    if value is None or isinstance(value, (str, int, float, bool)):
         return value
 
-    # check if the dictionary has a "_type" key and the class type has a "from_dict" method
-    if isinstance(value, dict):
-        if "_type" in value:
-            obj_class = import_class_by_name(value.pop("_type"))
-            if hasattr(obj_class, "from_dict"):
-                return obj_class.from_dict(value)
+    # 2) Typed objects
+    if isinstance(value, dict) and "_type" in value:
+        type_name = value.pop("_type")  # remove without mutating original
+        obj_class = import_class_by_name(type_name)
 
-        # If not a known type, recursively deserialize each item in the dictionary
+        # a) Preferred: class method
+        if hasattr(obj_class, "from_dict") and callable(obj_class.from_dict):
+            deserialized_payload = {k: deserialize_value(v) for k, v in value.items()}
+            return obj_class.from_dict(deserialized_payload)
+
+        # b) Fallback: if attributes are present, we reconstruct the object
+        if "attributes" in value:
+            raw_attrs = value["attributes"]
+            deserialized_attrs = {k: deserialize_value(v) for k, v in raw_attrs.items()}
+            instance = obj_class.__new__(obj_class)
+            for attr_name, attr_value in deserialized_attrs.items():
+                setattr(instance, attr_name, attr_value)
+            return instance
+
+    # 3) Generic dict
+    if isinstance(value, dict):
         return {k: deserialize_value(v) for k, v in value.items()}
 
+    # 4) Collections
     if isinstance(value, (list, tuple, set)):
-        return type(value)(deserialize_value(i) for i in value)
+        return type(value)(deserialize_value(v) for v in value)
 
+    # 5) Anything else
     return value
