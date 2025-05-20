@@ -234,15 +234,15 @@ class TestSimilarityRanker:
         assert kwargs["return_documents"] is False
 
     def test_prefix(self):
-        embedder = TransformersSimilarityRanker(
+        ranker = TransformersSimilarityRanker(
             model="model", query_prefix="query_instruction: ", document_prefix="document_instruction: "
         )
         mock_cross_encoder = MagicMock()
-        embedder.model = mock_cross_encoder
+        ranker.model = mock_cross_encoder
 
         documents = [Document(content=f"document number {i}", meta={"meta_field": f"meta_value {i}"}) for i in range(5)]
 
-        embedder.run(query="test", documents=documents)
+        ranker.run(query="test", documents=documents)
 
         _, kwargs = mock_cross_encoder.rank.call_args
         assert kwargs["query"] == "query_instruction: test"
