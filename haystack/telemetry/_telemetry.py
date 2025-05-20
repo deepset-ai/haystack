@@ -61,7 +61,7 @@ class Telemetry:
             logging.getLogger(module_name).addHandler(logging.NullHandler())
             logging.getLogger(module_name).propagate = False
 
-        self.user_id = None
+        self.user_id = ""
 
         if CONFIG_PATH.exists():
             # Load the config file

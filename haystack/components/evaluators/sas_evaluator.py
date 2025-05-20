@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from numpy import mean as np_mean
 
@@ -80,7 +80,7 @@ class SASEvaluator:
         self._batch_size = batch_size
         self._device = device
         self._token = token
-        self._similarity_model = None
+        self._similarity_model: Union[SentenceTransformer, CrossEncoder, None] = None
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -182,7 +182,7 @@ class SASEvaluator:
             # Convert scores to list of floats from numpy array
             similarity_scores = similarity_scores.tolist()
 
-        else:
+        elif isinstance(self._similarity_model, SentenceTransformer):
             # For Bi-encoders we create embeddings separately for predictions and labels
             predictions_embeddings = self._similarity_model.encode(
                 predicted_answers, batch_size=self._batch_size, convert_to_tensor=True

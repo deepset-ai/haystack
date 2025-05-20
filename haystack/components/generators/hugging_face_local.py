@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Callable, Dict, List, Literal, Optional
+from typing import Any, Callable, Dict, List, Literal, Optional, cast
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import StreamingChunk
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 SUPPORTED_TASKS = ["text-generation", "text2text-generation"]
 
 with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transformers_import:
-    from transformers import StoppingCriteriaList, pipeline
+    from transformers import Pipeline, StoppingCriteriaList, pipeline
 
     from haystack.utils.hf import (  # pylint: disable=ungrouped-imports
         HFTokenStreamingHandler,
@@ -126,8 +126,8 @@ class HuggingFaceLocalGenerator:
         self.huggingface_pipeline_kwargs = huggingface_pipeline_kwargs
         self.generation_kwargs = generation_kwargs
         self.stop_words = stop_words
-        self.pipeline = None
-        self.stopping_criteria_list = None
+        self.pipeline: Optional[Pipeline] = None
+        self.stopping_criteria_list: Optional[StoppingCriteriaList] = None
         self.streaming_callback = streaming_callback
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
@@ -152,9 +152,12 @@ class HuggingFaceLocalGenerator:
             return
 
         if self.pipeline is None:
-            self.pipeline = pipeline(**self.huggingface_pipeline_kwargs)
+            self.pipeline = cast(Pipeline, pipeline(**self.huggingface_pipeline_kwargs))
 
         if self.stop_words:
+            # text-generation and text2text-generation pipelines always have a non-None tokenizer
+            assert self.pipeline.tokenizer is not None
+
             stop_words_criteria = StopWordsCriteria(
                 tokenizer=self.pipeline.tokenizer, stop_words=self.stop_words, device=self.pipeline.device
             )
