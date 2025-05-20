@@ -6,6 +6,7 @@ import asyncio
 import inspect
 import json
 from concurrent.futures import ThreadPoolExecutor
+from functools import partial
 from typing import Any, Dict, List, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
@@ -158,7 +159,7 @@ class ToolInvoker:
     print(result)
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         tools: Union[List[Tool], Toolset],
         raise_on_failure: bool = True,
@@ -567,7 +568,7 @@ class ToolInvoker:
                 # 2) Invoke the tool asynchronously
                 try:
                     tool_result = await asyncio.get_running_loop().run_in_executor(
-                        self.executor, lambda: tool_to_invoke.invoke(**final_args)
+                        self.executor, partial(tool_to_invoke.invoke, **final_args)
                     )
 
                 except ToolInvocationError as e:
