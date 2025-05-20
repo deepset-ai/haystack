@@ -9,7 +9,7 @@ from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
 
 with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
-    from transformers import AutoConfig, pipeline
+    from transformers import AutoConfig, Pipeline, pipeline
 
     from haystack.utils.hf import (  # pylint: disable=ungrouped-imports
         deserialize_hf_model_kwargs,
@@ -115,7 +115,7 @@ class TransformersTextRouter:
             self.labels = labels
         component.set_output_types(self, **dict.fromkeys(self.labels, str))
 
-        self.pipeline = None
+        self.pipeline: Optional["Pipeline"] = None
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
