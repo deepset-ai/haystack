@@ -82,30 +82,13 @@ def mock_chat_completion_chunk_with_tools(openai_mock_stream):
         yield mock_chat_completion_create
 
 
-def weather_function(city: str):
+def weather_function(city: str) -> Dict[str, Any]:
     weather_info = {
         "Berlin": {"weather": "mostly sunny", "temperature": 7, "unit": "celsius"},
         "Paris": {"weather": "mostly cloudy", "temperature": 8, "unit": "celsius"},
         "Rome": {"weather": "sunny", "temperature": 14, "unit": "celsius"},
     }
     return weather_info.get(city, {"weather": "unknown", "temperature": 0, "unit": "celsius"})
-
-
-@component
-class Adder:
-    # We purposely add meta to test how OpenAI handles "additionalProperties"
-    @component.output_types(answer=int, meta=Dict[str, Any])
-    def run(self, a: int, b: int, meta: Optional[Dict[str, Any]] = None) -> Dict[str, int]:
-        """
-        Adds two numbers together and returns the result.
-
-        :param a: The first number to add.
-        :param b: The second number to add.
-        :param meta: Optional metadata to include in the response.
-        """
-        if meta is None:
-            meta = {}
-        return {"answer": a + b, "meta": meta}
 
 
 @component
