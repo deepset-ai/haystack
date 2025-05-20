@@ -6,16 +6,14 @@ from copy import copy
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Union
 
-from haystack import Document, component, default_from_dict, default_to_dict, logging
+from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
-from haystack.utils.hf import deserialize_hf_model_kwargs, resolve_hf_device_map, serialize_hf_model_kwargs
+from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs
 
 with LazyImport(message="Run 'pip install \"sentence-transformers>=4.1.0\"'") as torch_and_sentence_transformers_import:
     from sentence_transformers import CrossEncoder
     from torch.nn import Identity, Sigmoid
-
-logger = logging.getLogger(__name__)
 
 
 @component
@@ -29,7 +27,7 @@ class SentenceTransformersSimilarityRanker:
 
     ```python
     from haystack import Document
-    from haystack.components.rankers import TransformersSimilarityRanker
+    from haystack.components.rankers import SentenceTransformersSimilarityRanker
 
     ranker = SentenceTransformersSimilarityRanker()
     docs = [Document(content="Paris"), Document(content="Berlin")]
@@ -61,7 +59,7 @@ class SentenceTransformersSimilarityRanker:
         batch_size: int = 16,
     ):
         """
-        Creates an instance of TransformersSimilarityRanker.
+        Creates an instance of SentenceTransformersSimilarityRanker.
 
         :param model:
             The ranking model. Pass a local path or the Hugging Face model name of a cross-encoder model.

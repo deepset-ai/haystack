@@ -1,0 +1,11 @@
+---
+features:
+  - |
+    Added a new `SentenceTransformersSimilarityRanker` component that uses the Sentence Transformers library to rank
+    documents based on their semantic similarity to the query.
+
+    This component is a replacement for the legacy `TransformersSimilarityRanker` component, which may be deprecated in
+    a future release, with removal following after a deprecation period.
+
+    The `SentenceTransformersSimilarityRanker` also allows choosing different inference backends: PyTorch, ONNX,
+    and OpenVINO.
