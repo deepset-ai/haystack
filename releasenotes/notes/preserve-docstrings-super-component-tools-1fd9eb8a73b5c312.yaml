@@ -1,7 +1,16 @@
 ---
 enhancements:
   - |
-    ComponentTool now preserves docstrings from underlying pipeline components when wrapping a SuperComponent.
-    When a SuperComponent is used with ComponentTool, the parameter descriptions are now extracted from the
-    original components in the wrapped pipeline, making it much more helpful when using SuperComponents with
-    LLM function calling as the LLM will get detailed parameter information directly from the underlying components.
+    ComponentTool now preserves and combines docstrings from underlying pipeline components when wrapping a SuperComponent.
+    When a SuperComponent is used with ComponentTool, two key improvements are made:
+
+    1. Parameter descriptions are now extracted from the original components in the wrapped pipeline. When
+       a single input is mapped to multiple components, the parameter descriptions are combined from all
+       mapped components, providing comprehensive information about how the parameter is used throughout the pipeline.
+
+    2. The overall component description is now generated from the descriptions of all underlying components
+       instead of using the generic SuperComponent description. This helps LLMs understand what the component
+       actually does rather than just seeing "Runs the wrapped pipeline with the provided inputs."
+
+    These changes make SuperComponents much more useful with LLM function calling as the LLM will get detailed
+    information about both the component's purpose and its parameters.

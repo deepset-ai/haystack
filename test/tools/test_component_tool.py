@@ -669,14 +669,78 @@ class TestToolComponentInPipelineWithOpenAI:
         tool = ComponentTool(component=super_comp, name="text_processor")
 
         # Verify that schema includes the docstrings from the original component
-        assert (
-            "A detailed description of the text parameter" in tool.parameters["properties"]["input_text"]["description"]
-        )
-        assert (
-            "A detailed description of the number parameter"
-            in tool.parameters["properties"]["input_number"]["description"]
-        )
+        assert tool.parameters == {
+            "type": "object",
+            "description": "A component that combines: 'processor': Process inputs and return result.",
+            "properties": {
+                "input_text": {
+                    "type": "string",
+                    "description": "Provided to the 'processor' component as: 'A detailed description of the text parameter that should be preserved'.",
+                },
+                "input_number": {
+                    "type": "integer",
+                    "description": "Provided to the 'processor' component as: 'A detailed description of the number parameter that should be preserved'.",
+                },
+            },
+            "required": ["input_text"],
+        }
 
         # Test the tool functionality works
         result = tool.invoke(input_text="Hello", input_number=42)
         assert result["processed_result"] == "Processed: Hello and 42"
+
+    def test_component_tool_with_multiple_mapped_docstrings(self):
+        """Test that ComponentTool combines docstrings from multiple components when a single input maps to multiple components."""
+
+        @component
+        class ComponentA:
+            """Component A with descriptive docstrings."""
+
+            @component.output_types(output_a=str)
+            def run(self, query: str):
+                """Process query in component A.
+                :param query: The query string for component A
+                """
+                return {"output_a": f"A processed: {query}"}
+
+        @component
+        class ComponentB:
+            """Component B with descriptive docstrings."""
+
+            @component.output_types(output_b=str)
+            def run(self, text: str):
+                """Process text in component B.
+                :param text: Text to process in component B
+                """
+                return {"output_b": f"B processed: {text}"}
+
+        # Create a pipeline with both components
+        pipeline = Pipeline()
+        pipeline.add_component("comp_a", ComponentA())
+        pipeline.add_component("comp_b", ComponentB())
+
+        # Create SuperComponent with a single input mapped to both components
+        super_comp = SuperComponent(
+            pipeline=pipeline, input_mapping={"combined_input": ["comp_a.query", "comp_b.text"]}
+        )
+
+        # Create ComponentTool from SuperComponent
+        tool = ComponentTool(component=super_comp, name="combined_processor")
+
+        # Verify that schema includes combined docstrings from both components
+        assert tool.parameters == {
+            "type": "object",
+            "description": "A component that combines: 'comp_a': Process query in component A., 'comp_b': Process text in component B.",
+            "properties": {
+                "combined_input": {
+                    "type": "string",
+                    "description": "Provided to the 'comp_a' component as: 'The query string for component A', and Provided to the 'comp_b' component as: 'Text to process in component B'.",
+                }
+            },
+            "required": ["combined_input"],
+        }
+
+        # Test the tool functionality works
+        result = tool.invoke(combined_input="test input")
+        assert result["output_a"] == "A processed: test input"
+        assert result["output_b"] == "B processed: test input"
