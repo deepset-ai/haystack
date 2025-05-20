@@ -200,9 +200,6 @@ class TestToolInvoker:
             nonlocal streaming_callback_called
             streaming_callback_called = True
 
-        # check we called the streaming callback
-        assert streaming_callback_called
-
         tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
         message = ChatMessage.from_assistant(tool_calls=[tool_call])
 
@@ -221,6 +218,9 @@ class TestToolInvoker:
         assert tool_call_result.result == str({"weather": "mostly sunny", "temperature": 7, "unit": "celsius"})
         assert tool_call_result.origin == tool_call
         assert not tool_call_result.error
+
+        # check we called the streaming callback
+        assert streaming_callback_called
 
     def test_run_with_toolset(self, tool_set):
         tool_invoker = ToolInvoker(tools=tool_set, raise_on_failure=True, convert_result_to_json_string=False)
