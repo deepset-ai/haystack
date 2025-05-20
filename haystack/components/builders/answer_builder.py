@@ -31,7 +31,9 @@ class AnswerBuilder:
     ```
     """
 
-    def __init__(self, pattern: Optional[str] = None, reference_pattern: Optional[str] = None):
+    def __init__(
+        self, pattern: Optional[str] = None, reference_pattern: Optional[str] = None, last_message_only: bool = False
+    ):
         """
         Creates an instance of the AnswerBuilder component.
 
@@ -50,12 +52,17 @@ class AnswerBuilder:
             If not specified, no parsing is done, and all documents are referenced.
             References need to be specified as indices of the input documents and start at [1].
             Example: `\\[(\\d+)\\]` finds "1" in a string "this is an answer[1]".
+
+        :param last_message_only:
+            If True, only the last message is used as the answer.
+            If False, all messages are used as the answer.
         """
         if pattern:
             AnswerBuilder._check_num_groups_in_regex(pattern)
 
         self.pattern = pattern
         self.reference_pattern = reference_pattern
+        self.last_message_only = last_message_only
 
     @component.output_types(answers=List[GeneratedAnswer])
     def run(  # pylint: disable=too-many-positional-arguments
@@ -111,7 +118,15 @@ class AnswerBuilder:
         pattern = pattern or self.pattern
         reference_pattern = reference_pattern or self.reference_pattern
         all_answers = []
-        for reply, given_metadata in zip(replies, meta):
+
+        replies_to_iterate = replies
+        meta_to_iterate = meta
+
+        if self.last_message_only and replies:
+            replies_to_iterate = replies[-1:]
+            meta_to_iterate = meta[-1:]
+
+        for reply, given_metadata in zip(replies_to_iterate, meta_to_iterate):
             # Extract content from ChatMessage objects if reply is a ChatMessages, else use the string as is
             if isinstance(reply, ChatMessage):
                 extracted_reply = ""
