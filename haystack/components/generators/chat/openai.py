@@ -382,7 +382,49 @@ class OpenAIChatGenerator:
         """
         return isinstance(obj, dict) and "type" in obj and obj["type"] == "object"
 
-    def _strictify(self, obj: Any) -> Any:
+    def _strictify_object(self, obj: Any) -> Any:
+        """
+        Recursively updates the sub-objects of the tool specification to follow OpenAI's strict schema.
+
+        This function:
+        - Sets "additionalProperties" to False in all type = object sections of the tool specification, which is a
+          requirement for OpenAI's strict schema.
+        - Removes all non-required fields since all property fields must be required. For ease, we opt to remove all
+          variables that are not required.
+        """
+        if isinstance(obj, dict):
+            for key, value in list(obj.items()):
+                # type = object updates
+                if self._is_type_object(value):
+                    if "required" not in value:
+                        # If type = object and doesn't have required variables it needs to be removed
+                        del obj[key]
+                        continue
+
+                    # If type = object and has required variables, we need to remove all non-required variables
+                    # from the properties
+                    obj[key]["properties"] = {
+                        k: self._strictify_object(v) for k, v in value["properties"].items() if k in value["required"]
+                    }
+                    # Always add and set additionalProperties to False for type = object
+                    obj[key]["additionalProperties"] = False
+                    continue
+
+                obj[key] = self._strictify_object(value)
+            return obj
+
+        if isinstance(obj, list):
+            new_items = []
+            for item in obj:
+                # If type = object and doesn't have required variables it needs to be removed
+                if self._is_type_object(item) and "required" not in item:
+                    continue
+                new_items.append(self._strictify_object(item))
+            return new_items
+
+        return obj
+
+    def _strictify_function_schema(self, function_schema: Dict[str, Any]) -> Dict[str, Any]:
         """
         Updates the tool specification object to follow OpenAI's strict schema.
 
@@ -392,53 +434,11 @@ class OpenAIChatGenerator:
 
         The supported schemas for Structured Outputs can be found
         (here)[https://platform.openai.com/docs/guides/structured-outputs/supported-schemas?api-mode=responses#supported-schemas]
-
-        This function:
-        - Sets "additionalProperties" to False in all type = object sections of the tool specification, which is a
-          requirement for OpenAI's strict schema.
-        - Converts "oneOf" to "anyOf" in the parameters section of the tool specification since OpenAI's strict schema
-          only supports "anyOf".
-        - Removes all non-required fields since all property fields must be required. For ease, we opt to remove all
-          variables that are not required.
         """
-        if isinstance(obj, dict):
-            # Need to make a copy because I can't delete keys in the original object while iterating through it
-            copy_obj = deepcopy(obj)
-            for key, value in obj.items():
-                # type = object updates
-                if self._is_type_object(value):
-                    if "required" not in value:
-                        # If type = object and doesn't have required variables it needs to be removed
-                        del copy_obj[key]
-                    else:
-                        # If type = object and has required variables, we need to remove all non-required variables
-                        # from the properties
-                        copy_obj[key]["properties"] = {
-                            k: self._strictify(v) for k, v in value["properties"].items() if k in value["required"]
-                        }
-                    # Always add and set additionalProperties to False for type = object
-                    copy_obj[key]["additionalProperties"] = False
-                    continue
-
-                # oneOf to anyOf updates
-                if key == "oneOf":
-                    copy_obj["anyOf"] = self._strictify(value)
-                    del copy_obj["oneOf"]
-                    continue
-
-                copy_obj[key] = self._strictify(value)
-            return copy_obj
-
-        if isinstance(obj, list):
-            new_items = []
-            for item in obj:
-                # If type = object and doesn't have required variables it needs to be removed
-                if self._is_type_object(item) and "required" not in item:
-                    continue
-                new_items.append(self._strictify(item))
-            return new_items
-
-        return obj
+        # TODO Ideally _strictify would also "repair" any function schema. e.g. a required variable had to be
+        #      removed b/c it had schema {"type": "object", "additionalProperties": True} which is not allowed
+        #      Look at test_strictify_function_schema_chat_message for a real example that is quite messy.
+        return {**self._strictify_object(deepcopy(function_schema)), **{"strict": True}}
 
     def _prepare_api_call(  # noqa: PLR0913
         self,
@@ -467,7 +467,7 @@ class OpenAIChatGenerator:
             for t in tools:
                 function_spec = {**t.tool_spec}
                 if tools_strict:
-                    function_spec = {**self._strictify(deepcopy(function_spec)), **{"strict": True}}
+                    function_spec = self._strictify_function_schema(function_spec)
                 tool_definitions.append({"type": "function", "function": function_spec})
             openai_tools = {"tools": tool_definitions}
 
