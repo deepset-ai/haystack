@@ -69,15 +69,16 @@ def serialize_value(value: Any) -> Any:
     :returns: The serialized representation of the value
     """
     if hasattr(value, "to_dict") and callable(value.to_dict):
-        serialized_value = value.to_dict()
-        serialized_value["_type"] = generate_qualified_class_name(type(value))
+        serialized_value = {}
+        serialized_value["data"] = value.to_dict()
+        serialized_value["type"] = generate_qualified_class_name(type(value))
         return serialized_value
 
     # this is a hack to serialize inputs that don't have a to_dict
     elif hasattr(value, "__dict__"):
         return {
-            "_type": generate_qualified_class_name(type(value)),
-            "attributes": {k: serialize_value(v) for k, v in value.__dict__.items()},
+            "type": generate_qualified_class_name(type(value)),
+            "data": {k: serialize_value(v) for k, v in value.__dict__.items()},
         }
 
     # recursively serialize all inputs in a dict
@@ -97,7 +98,7 @@ def deserialize_value(value: Any) -> Any:
     Deserializes a value from its serialized representation.
 
     - Primitives and None are returned as-is.
-    - dicts with a "_type" key are turned back into instances:
+    - dicts with a "type" key are turned back into instances:
         * If the target class has a `from_dict`, it's used.
         * Otherwise, if an "attributes" sub-dict exists, we reconstruct
           by creating a blank instance and setting attributes.
@@ -106,36 +107,34 @@ def deserialize_value(value: Any) -> Any:
     :param value: The serialized value to deserialize
     :returns: The deserialized value
     """
-    # 1) Primitives & None
-    if value is None or isinstance(value, (str, int, float, bool)):
-        return value
 
-    # 2) Typed objects
-    if isinstance(value, dict) and "_type" in value:
-        type_name = value.pop("_type")  # remove without mutating original
+    # 1) Typed objects
+    if isinstance(value, dict) and "type" in value and "data" in value:
+        type_name = value.get("type")  # remove without mutating original
         obj_class = import_class_by_name(type_name)
+        data = value.get("data")
 
         # a) Preferred: class method
         if hasattr(obj_class, "from_dict") and callable(obj_class.from_dict):
-            deserialized_payload = {k: deserialize_value(v) for k, v in value.items()}
+            deserialized_payload = {k: deserialize_value(v) for k, v in data.items()}
             return obj_class.from_dict(deserialized_payload)
 
         # b) Fallback: if attributes are present, we reconstruct the object
-        if "attributes" in value:
-            raw_attrs = value["attributes"]
+        if "attributes" in data:
+            raw_attrs = data["attributes"]
             deserialized_attrs = {k: deserialize_value(v) for k, v in raw_attrs.items()}
             instance = obj_class.__new__(obj_class)
             for attr_name, attr_value in deserialized_attrs.items():
                 setattr(instance, attr_name, attr_value)
             return instance
 
-    # 3) Generic dict
+    # 2) Generic dict
     if isinstance(value, dict):
         return {k: deserialize_value(v) for k, v in value.items()}
 
-    # 4) Collections
+    # 3) Collections
     if isinstance(value, (list, tuple, set)):
         return type(value)(deserialize_value(v) for v in value)
 
-    # 5) Anything else
+    # 4) Anything else
     return value
