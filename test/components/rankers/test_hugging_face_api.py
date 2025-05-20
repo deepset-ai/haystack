@@ -7,7 +7,7 @@ from haystack import Document
 from haystack.components.rankers.hugging_face_api import HuggingFaceAPIRanker
 
 
-class TestSimilarityRanker:
+class TestHuggingFaceAPIRanker:
     def test_to_dict(self):
         component = HuggingFaceAPIRanker(
             url="https://api.my-tei-service.com",
@@ -63,13 +63,11 @@ class TestSimilarityRanker:
 
 
     @pytest.mark.integration
-    @pytest.mark.slow
     def test_run(self):
         """
         Test if the component ranks documents correctly.
         """
         ranker = HuggingFaceAPIRanker(url="http://localhost:3000", timeout=5)
-        ranker.warm_up()
 
         query = "City in Bosnia and Herzegovina"
         docs_before_texts = ["Berlin", "Belgrade", "Sarajevo"]
@@ -89,13 +87,11 @@ class TestSimilarityRanker:
         assert docs_after[2].score == pytest.approx(sorted_scores[2], abs=1e-6)
 
     @pytest.mark.integration
-    @pytest.mark.slow
     def test_run_top_k(self):
         """
         Test if the component ranks documents correctly with a custom top_k.
         """
         ranker = HuggingFaceAPIRanker(url="http://localhost:3000", timeout=5, top_k=2)
-        ranker.warm_up()
 
         query = "City in Bosnia and Herzegovina"
         docs_before_texts = ["Berlin", "Belgrade", "Sarajevo"]
@@ -112,15 +108,37 @@ class TestSimilarityRanker:
         assert [doc.score for doc in docs_after] == sorted_scores
 
     @pytest.mark.integration
-    @pytest.mark.slow
     def test_run_single_document(self):
         """
         Test if the component runs with a single document.
         """
         ranker = HuggingFaceAPIRanker(url="http://localhost:3000", timeout=5)
-        ranker.warm_up()
         docs_before = [Document(content="Berlin")]
         output = ranker.run(query="City in Germany", documents=docs_before)
         docs_after = output["documents"]
 
         assert len(docs_after) == 1
+
+    @pytest.mark.asyncio
+    async def test_run_async(self):
+        """
+        Test if the component ranks documents correctly.
+        """
+        ranker = HuggingFaceAPIRanker(url="http://localhost:3000", timeout=5)
+
+        query = "City in Bosnia and Herzegovina"
+        docs_before_texts = ["Berlin", "Belgrade", "Sarajevo"]
+        expected_first_text = "Sarajevo"
+        expected_scores = [0.07423137, 0.89478946, 0.96765566]
+
+        docs_before = [Document(content=text) for text in docs_before_texts]
+        output = await ranker.run_async(query=query, documents=docs_before)
+        docs_after = output["documents"]
+
+        assert len(docs_after) == 3
+        assert docs_after[0].content == expected_first_text
+
+        sorted_scores = sorted(expected_scores, reverse=True)
+        assert docs_after[0].score == pytest.approx(sorted_scores[0], abs=1e-6)
+        assert docs_after[1].score == pytest.approx(sorted_scores[1], abs=1e-6)
+        assert docs_after[2].score == pytest.approx(sorted_scores[2], abs=1e-6)
