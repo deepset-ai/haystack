@@ -191,6 +191,37 @@ class TestToolInvoker:
         assert tool_call_result.origin == tool_call
         assert not tool_call_result.error
 
+    @pytest.mark.asyncio
+    async def test_run_async_with_streaming_callback(self, invoker):
+        streaming_callback_called = False
+
+        async def streaming_callback(chunk: StreamingChunk) -> None:
+            print(f"Streaming callback called with chunk: {chunk}")
+            nonlocal streaming_callback_called
+            streaming_callback_called = True
+
+        # check we called the streaming callback
+        assert streaming_callback_called
+
+        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+        message = ChatMessage.from_assistant(tool_calls=[tool_call])
+
+        result = await invoker.run_async(messages=[message], streaming_callback=streaming_callback)
+        assert "tool_messages" in result
+        assert len(result["tool_messages"]) == 1
+
+        tool_message = result["tool_messages"][0]
+        assert isinstance(tool_message, ChatMessage)
+        assert tool_message.is_from(ChatRole.TOOL)
+
+        assert tool_message.tool_call_results
+        tool_call_result = tool_message.tool_call_result
+
+        assert isinstance(tool_call_result, ToolCallResult)
+        assert tool_call_result.result == str({"weather": "mostly sunny", "temperature": 7, "unit": "celsius"})
+        assert tool_call_result.origin == tool_call
+        assert not tool_call_result.error
+
     def test_run_with_toolset(self, tool_set):
         tool_invoker = ToolInvoker(tools=tool_set, raise_on_failure=True, convert_result_to_json_string=False)
         tool_call = ToolCall(tool_name="addition_tool", arguments={"num1": 5, "num2": 3})
@@ -206,6 +237,28 @@ class TestToolInvoker:
         assert tool_message.tool_call_results
 
         tool_call_result = tool_message.tool_call_result
+        assert isinstance(tool_call_result, ToolCallResult)
+        assert tool_call_result.result == str(8)
+        assert tool_call_result.origin == tool_call
+        assert not tool_call_result.error
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_toolset(self, tool_set):
+        tool_invoker = ToolInvoker(tools=tool_set, raise_on_failure=True, convert_result_to_json_string=False)
+        tool_call = ToolCall(tool_name="addition_tool", arguments={"num1": 5, "num2": 3})
+        message = ChatMessage.from_assistant(tool_calls=[tool_call])
+
+        result = await tool_invoker.run_async(messages=[message])
+        assert "tool_messages" in result
+        assert len(result["tool_messages"]) == 1
+
+        tool_message = result["tool_messages"][0]
+        assert isinstance(tool_message, ChatMessage)
+        assert tool_message.is_from(ChatRole.TOOL)
+
+        assert tool_message.tool_call_results
+        tool_call_result = tool_message.tool_call_result
+
         assert isinstance(tool_call_result, ToolCallResult)
         assert tool_call_result.result == str(8)
         assert tool_call_result.origin == tool_call
@@ -231,6 +284,30 @@ class TestToolInvoker:
         message = ChatMessage.from_assistant(tool_calls=tool_calls)
 
         result = invoker.run(messages=[message])
+        assert "tool_messages" in result
+        assert len(result["tool_messages"]) == 3
+
+        for i, tool_message in enumerate(result["tool_messages"]):
+            assert isinstance(tool_message, ChatMessage)
+            assert tool_message.is_from(ChatRole.TOOL)
+
+            assert tool_message.tool_call_results
+            tool_call_result = tool_message.tool_call_result
+
+            assert isinstance(tool_call_result, ToolCallResult)
+            assert not tool_call_result.error
+            assert tool_call_result.origin == tool_calls[i]
+
+    @pytest.mark.asyncio
+    async def test_run_async_multiple_tool_calls(self, invoker):
+        tool_calls = [
+            ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"}),
+            ToolCall(tool_name="weather_tool", arguments={"location": "Paris"}),
+            ToolCall(tool_name="weather_tool", arguments={"location": "Rome"}),
+        ]
+        message = ChatMessage.from_assistant(tool_calls=tool_calls)
+
+        result = await invoker.run_async(messages=[message])
         assert "tool_messages" in result
         assert len(result["tool_messages"]) == 3
 

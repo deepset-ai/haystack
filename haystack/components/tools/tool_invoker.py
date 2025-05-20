@@ -521,7 +521,7 @@ class ToolInvoker:
         :param messages:
             A list of ChatMessage objects.
         :param state: The runtime state that should be used by the tools.
-        :param streaming_callback: A callback function that will be called to emit tool results.
+        :param streaming_callback: An asynchronous callback function that will be called to emit tool results.
             Note that the result is only emitted once it becomes available — it is not
             streamed incrementally in real time.
         :returns:
@@ -600,7 +600,7 @@ class ToolInvoker:
                 )
 
                 if streaming_callback is not None:
-                    streaming_callback(
+                    await streaming_callback(
                         StreamingChunk(
                             content="",
                             meta={"tool_result": tool_messages[-1].tool_call_results[0].result, "tool_call": tool_call},
