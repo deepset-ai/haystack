@@ -605,7 +605,7 @@ class ToolInvoker:
                             content="",
                             meta={"tool_result": tool_messages[-1].tool_call_results[0].result, "tool_call": tool_call},
                         )
-                    )
+                    )  # type: ignore[misc] # we have checked that streaming_callback is not None and async
 
         return {"tool_messages": tool_messages, "state": state}
 
