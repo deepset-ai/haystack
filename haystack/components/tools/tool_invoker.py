@@ -159,12 +159,13 @@ class ToolInvoker:
     print(result)
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         tools: Union[List[Tool], Toolset],
         raise_on_failure: bool = True,
         convert_result_to_json_string: bool = False,
         streaming_callback: Optional[StreamingCallbackT] = None,
+        *,
         async_executor: Optional[ThreadPoolExecutor] = None,
     ):
         """
