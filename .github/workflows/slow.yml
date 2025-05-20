@@ -92,6 +92,7 @@ jobs:
     name: Slow Tests / ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     needs: check-if-changed
+    timeout-minutes: 30
     # Run tests if: manual trigger, scheduled, PR has label, release branch, or relevant files changed
     if: |
       github.event_name == 'workflow_dispatch' ||
