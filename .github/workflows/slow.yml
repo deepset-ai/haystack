@@ -84,6 +84,7 @@ jobs:
               - "test/components/generators/test_hugging_face_local_generator.py"
               - "test/components/rankers/test_sentence_transformers_diversity.py"
               - "test/components/rankers/test_transformers_similarity.py"
+              - "test/components/rankers/test_hugging_face_api.py"
               - "test/components/readers/test_extractive.py"
               - "test/components/routers/test_transformers_text_router.py"
               - "test/components/routers/test_zero_shot_text_router.py"
