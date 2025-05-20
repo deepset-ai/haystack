@@ -62,6 +62,7 @@ graph TD;
 {connections}
 
 classDef component text-align:center;
+classDef superComponent fill:#2e8b57,color:white;
 """
 
 
@@ -133,6 +134,7 @@ def _to_mermaid_image(
     server_url: str = "https://mermaid.ink",
     params: Optional[dict] = None,
     timeout: int = 30,
+    super_component_mapping: Optional[Dict[str, str]] = None,
 ) -> bytes:
     """
     Renders a pipeline using a Mermaid server.
@@ -162,7 +164,7 @@ def _to_mermaid_image(
     init_params = json.dumps({"theme": theme})
 
     # Copy the graph to avoid modifying the original
-    graph_styled = _to_mermaid_text(graph.copy(), init_params)
+    graph_styled = _to_mermaid_text(graph.copy(), init_params, super_component_mapping)
     json_string = json.dumps({"code": graph_styled})
 
     # Compress the JSON string with zlib (RFC 1950)
@@ -214,12 +216,17 @@ def _to_mermaid_image(
     return resp.content
 
 
-def _to_mermaid_text(graph: networkx.MultiDiGraph, init_params: str) -> str:
+def _to_mermaid_text(
+    graph: networkx.MultiDiGraph, init_params: str, super_component_mapping: Optional[Dict[str, str]] = None
+) -> str:
     """
     Converts a Networkx graph into Mermaid syntax.
 
     The output of this function can be used in the documentation with `mermaid` codeblocks and will be
     automatically rendered.
+
+    :param graph: The graph to convert to Mermaid syntax
+    :param init_params: Initialization parameters for Mermaid
     """
     # Copy the graph to avoid modifying the original
     graph = _prepare_for_drawing(graph.copy())
@@ -238,11 +245,24 @@ def _to_mermaid_text(graph: networkx.MultiDiGraph, init_params: str) -> str:
         for comp, sockets in sockets.items()
     }
 
-    states = {
-        comp: f'{comp}["<b>{comp}</b><br><small><i>{type(data["instance"]).__name__}{optional_inputs[comp]}</i></small>"]:::component'  # noqa
-        for comp, data in graph.nodes(data=True)
-        if comp not in ["input", "output"]
-    }
+    # Create node definitions
+    states = {}
+    super_component_components = super_component_mapping.keys() if super_component_mapping else {}
+
+    for comp, data in graph.nodes(data=True):
+        if comp in ["input", "output"]:
+            continue
+
+        # Apply different styling based on whether the component is a SuperComponent
+        if comp in super_component_components:
+            style = "superComponent"
+            super_component_name = super_component_mapping[comp]
+            legend = f"<br><small>({super_component_name})</small>"
+        else:
+            style = "component"
+            legend = ""
+        node_def = f'{comp}["<b>{comp}</b>{legend}<br><small><i>{type(data["instance"]).__name__}{optional_inputs[comp]}</i></small>"]:::{style}'  # noqa: E501
+        states[comp] = node_def
 
     connections_list = []
     for from_comp, to_comp, conn_data in graph.edges(data=True):

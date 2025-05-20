@@ -715,8 +715,19 @@ class PipelineBase:
         if is_in_jupyter():
             from IPython.display import Image, display  # type: ignore
 
-            graph = self._merge_super_component_pipelines() if super_component_expansion else self.graph
-            image_data = _to_mermaid_image(graph, server_url=server_url, params=params, timeout=timeout)
+            if super_component_expansion:
+                graph, super_component_mapping = self._merge_super_component_pipelines()
+            else:
+                graph = self.graph
+                super_component_mapping = None
+
+            image_data = _to_mermaid_image(
+                graph,
+                server_url=server_url,
+                params=params,
+                timeout=timeout,
+                super_component_mapping=super_component_mapping,
+            )
             display(Image(image_data))
         else:
             msg = "This method is only supported in Jupyter notebooks. Use Pipeline.draw() to save an image locally."
@@ -770,8 +781,19 @@ class PipelineBase:
         """
         # Before drawing we edit a bit the graph, to avoid modifying the original that is
         # used for running the pipeline we copy it.
-        graph = self._merge_super_component_pipelines() if super_component_expansion else self.graph
-        image_data = _to_mermaid_image(graph, server_url=server_url, params=params, timeout=timeout)
+        if super_component_expansion:
+            graph, super_component_mapping = self._merge_super_component_pipelines()
+        else:
+            graph = self.graph
+            super_component_mapping = None
+
+        image_data = _to_mermaid_image(
+            graph,
+            server_url=server_url,
+            params=params,
+            timeout=timeout,
+            super_component_mapping=super_component_mapping,
+        )
         Path(path).write_bytes(image_data)
 
     def walk(self) -> Iterator[Tuple[str, Component]]:
@@ -1200,7 +1222,7 @@ class PipelineBase:
         for receiver_name, sender_socket, receiver_socket in receivers:
             # We either get the value that was produced by the actor or we use the _NO_OUTPUT_PRODUCED class to indicate
             # that the sender did not produce an output for this socket.
-            # This allows us to track if a pre-decessor already ran but did not produce an output.
+            # This allows us to track if a pre-cessor already ran but did not produce an output.
             value = component_outputs.get(sender_socket.name, _NO_OUTPUT_PRODUCED)
 
             if receiver_name not in inputs:
@@ -1280,7 +1302,7 @@ class PipelineBase:
                 super_components.append((comp_name, comp))
         return super_components
 
-    def _merge_super_component_pipelines(self) -> "networkx.MultiDiGraph":
+    def _merge_super_component_pipelines(self) -> Tuple["networkx.MultiDiGraph", Dict[str, str]]:
         """
         Merge the internal pipelines of SuperComponents into the main pipeline graph structure.
 
@@ -1289,13 +1311,22 @@ class PipelineBase:
         components are connected to corresponding input and output sockets of the main pipeline.
 
         :returns:
-            A networkx.MultiDiGraph with the expanded structure of the main pipeline and all it's SuperComponents
+            A tuple containing:
+            - A networkx.MultiDiGraph with the expanded structure of the main pipeline and all it's SuperComponents
+            - A dictionary mapping component names to boolean indicating that this component was part of a
+              SuperComponent
+            - A dictionary mapping component names to their SuperComponent name
         """
         merged_graph = self.graph.copy()
+        super_component_mapping: Dict[str, str] = {}
 
         for super_name, super_component in self._find_super_components():
             internal_pipeline = super_component.pipeline  # type: ignore
             internal_graph = internal_pipeline.graph.copy()
+
+            # Mark all components in the internal pipeline as being part of a SuperComponent
+            for node in internal_graph.nodes():
+                super_component_mapping[node] = super_name
 
             # edges connected to the super component
             incoming_edges = list(merged_graph.in_edges(super_name, data=True))
@@ -1346,7 +1377,7 @@ class PipelineBase:
                                 mandatory=receiver_socket.is_mandatory,
                             )
 
-        return merged_graph
+        return merged_graph, super_component_mapping
 
 
 def _connections_status(
