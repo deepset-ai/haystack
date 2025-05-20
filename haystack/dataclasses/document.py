@@ -103,7 +103,7 @@ class Document(metaclass=_BackwardCompatible):
         # Generate an id only if not explicitly set
         self.id = self.id or self._create_id()
 
-    def _create_id(self):
+    def _create_id(self) -> str:
         """
         Creates a hash of the given content that acts as the document's ID.
         """
@@ -114,7 +114,7 @@ class Document(metaclass=_BackwardCompatible):
         meta = self.meta or {}
         embedding = self.embedding if self.embedding is not None else None
         sparse_embedding = self.sparse_embedding.to_dict() if self.sparse_embedding is not None else ""
-        data = f"{text}{dataframe}{blob}{mime_type}{meta}{embedding}{sparse_embedding}"
+        data = f"{text}{dataframe}{blob!r}{mime_type}{meta}{embedding}{sparse_embedding}"
         return hashlib.sha256(data.encode("utf-8")).hexdigest()
 
     def to_dict(self, flatten=True) -> Dict[str, Any]:
