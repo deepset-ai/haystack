@@ -25,11 +25,20 @@ class TestTypeCompatibility:
 
     def test_any_type(self):
         """Test Any type compatibility."""
-        assert _is_compatible(int, Any)
-        assert _is_compatible(Any, int)
-        assert _is_compatible(Any, Any)
-        assert _is_compatible(Any, str)
-        assert _is_compatible(str, Any)
+        is_compat, common = _is_compatible(int, Any)
+        assert is_compat and common == int
+
+        is_compat, common = _is_compatible(Any, int)
+        assert is_compat and common == int
+
+        is_compat, common = _is_compatible(Any, Any)
+        assert is_compat and common == Any
+
+        is_compat, common = _is_compatible(Any, str)
+        assert is_compat and common == str
+
+        is_compat, common = _is_compatible(str, Any)
+        assert is_compat and common == str
 
     def test_union_types(self):
         """Test Union type compatibility."""
@@ -58,30 +67,60 @@ class TestTypeCompatibility:
         variadic_int = Variadic[int]
         greedy_int = GreedyVariadic[int]
 
-        assert _is_compatible(variadic_int, int)
-        assert _is_compatible(int, variadic_int)
-        assert _is_compatible(greedy_int, int)
-        assert _is_compatible(int, greedy_int)
+        is_compat, common = _is_compatible(variadic_int, int)
+        assert is_compat and common == int
+
+        is_compat, common = _is_compatible(int, variadic_int)
+        assert is_compat and common == int
+
+        is_compat, common = _is_compatible(greedy_int, int)
+        assert is_compat and common == int
+
+        is_compat, common = _is_compatible(int, greedy_int)
+        assert is_compat and common == int
 
         # List type compatibility
         variadic_list = Variadic[List[int]]
         greedy_list = GreedyVariadic[List[int]]
 
-        assert _is_compatible(variadic_list, List[int])
-        assert _is_compatible(List[int], variadic_list)
-        assert _is_compatible(greedy_list, List[int])
-        assert _is_compatible(List[int], greedy_list)
+        is_compat, common = _is_compatible(variadic_list, List[int])
+        assert is_compat
+        assert common == list[int]
+
+        is_compat, common = _is_compatible(List[int], variadic_list)
+        assert is_compat
+        assert common == list[int]
+
+        is_compat, common = _is_compatible(greedy_list, List[int])
+        assert is_compat
+        assert common == list[int]
+
+        is_compat, common = _is_compatible(List[int], greedy_list)
+        assert is_compat
+        assert common == list[int]
 
     def test_nested_type_unwrapping(self):
         """Test nested type unwrapping behavior with unwrap_nested parameter."""
         # Test with unwrap_nested=True (default)
         nested_optional = Variadic[List[Optional[int]]]
-        assert _is_compatible(nested_optional, List[int])
-        assert _is_compatible(List[int], nested_optional)
+
+        is_compat, common = _is_compatible(nested_optional, List[int])
+        assert is_compat
+        assert common == list[int]
+
+        is_compat, common = _is_compatible(List[int], nested_optional)
+        assert is_compat
+        assert common == list[int]
 
         nested_union = Variadic[List[Union[int, None]]]
-        assert _is_compatible(nested_union, List[int])
-        assert _is_compatible(List[int], nested_union)
+
+        is_compat, common = _is_compatible(nested_union, List[int])
+        assert is_compat
+        assert common == list[int]
+
+        is_compat, common = _is_compatible(List[int], nested_union)
+        assert is_compat
+        assert common == list[int]
 
     def test_complex_nested_types(self):
         """Test complex nested type scenarios."""
@@ -110,14 +149,25 @@ class TestTypeCompatibility:
         """Test mixing Variadic and GreedyVariadic with other type constructs."""
         # Variadic with Union
         var_union = Variadic[Union[int, str]]
-        assert _is_compatible(var_union, Union[int, str])
-        assert _is_compatible(Union[int, str], var_union)
+
+        is_compat, common = _is_compatible(var_union, Union[int, str])
+        assert is_compat and common == Union[int, str]
+
+        is_compat, common = _is_compatible(Union[int, str], var_union)
+        assert is_compat and common == Union[int, str]
 
         # GreedyVariadic with Optional
         greedy_opt = GreedyVariadic[Optional[int]]
-        assert _is_compatible(greedy_opt, int)
-        assert _is_compatible(int, greedy_opt)
+
+        is_compat, common = _is_compatible(greedy_opt, int)
+        assert is_compat and common == int
+
+        is_compat, common = _is_compatible(int, greedy_opt)
+        assert is_compat and common == int
 
         # Nested Variadic and GreedyVariadic
         nested_var = Variadic[List[GreedyVariadic[int]]]
-        assert _is_compatible(nested_var, List[int])
+
+        is_compat, common = _is_compatible(nested_var, List[int])
+        assert is_compat
+        assert common == list[int]
