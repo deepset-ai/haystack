@@ -3,9 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import base64
+import colorsys
 import json
+import random
 import zlib
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import networkx  # type:ignore
 import requests
@@ -16,6 +18,44 @@ from haystack.core.pipeline.descriptions import find_pipeline_inputs, find_pipel
 from haystack.core.type_utils import _type_name
 
 logger = logging.getLogger(__name__)
+
+
+def generate_color_variations(n: int, base_color: Optional[str] = "#3498DB", variation_range=0.4) -> List[str]:
+    """
+    Generate n different variations of a base color.
+
+    :param n: Number of variations to generate
+    :param base_color: Hex color code, default is a shade of blue (#3498DB)
+    :param variation_range: Range for varying brightness and saturation (0-1)
+
+    :returns:
+        list: List of hex color codes representing variations of the base color
+    """
+    # convert hex to RGB
+    base_color = base_color.lstrip("#")
+    r = int(base_color[0:2], 16) / 255.0
+    g = int(base_color[2:4], 16) / 255.0
+    b = int(base_color[4:6], 16) / 255.0
+
+    # convert RGB to HSV (Hue, Saturation, Value)
+    h, s, v = colorsys.rgb_to_hsv(r, g, b)
+
+    variations = []
+    for _ in range(n):
+        # vary saturation and brightness within the specified range
+        new_s = max(0, min(1, s + random.uniform(-variation_range, variation_range)))
+        new_v = max(0, min(1, v + random.uniform(-variation_range, variation_range)))
+
+        # keep hue the same for color consistency
+        new_h = h
+
+        # Convert back to RGB and then to hex
+        new_r, new_g, new_b = colorsys.hsv_to_rgb(new_h, new_s, new_v)
+        hex_color = "#{:02x}{:02x}{:02x}".format(int(new_r * 255), int(new_g * 255), int(new_b * 255))
+
+        variations.append(hex_color)
+
+    return variations
 
 
 def _prepare_for_drawing(graph: networkx.MultiDiGraph) -> networkx.MultiDiGraph:
@@ -62,7 +102,7 @@ graph TD;
 {connections}
 
 classDef component text-align:center;
-classDef superComponent fill:#2e8b57,color:white;
+{style_definitions}
 """
 
 
@@ -249,19 +289,30 @@ def _to_mermaid_text(
     states = {}
     super_component_components = super_component_mapping.keys() if super_component_mapping else {}
 
+    # color variations for super components
+    super_component_colors = {}
+    if super_component_components:
+        unique_super_components = set(super_component_mapping.values())
+        color_variations = generate_color_variations(n=len(unique_super_components))
+        super_component_colors = dict(zip(unique_super_components, color_variations))
+        print(f"Super component colors: {super_component_colors}")
+
+    # Generate style definitions for each super component
+    style_definitions = []
+    for super_comp, color in super_component_colors.items():
+        style_definitions.append(f"classDef {super_comp} fill:{color},color:white;")
+
     for comp, data in graph.nodes(data=True):
         if comp in ["input", "output"]:
             continue
 
-        # Apply different styling based on whether the component is a SuperComponent
+        # styling based on whether the component is a SuperComponent
         if comp in super_component_components:
-            style = "superComponent"
             super_component_name = super_component_mapping[comp]
-            legend = f"<br><small>({super_component_name})</small>"
+            style = super_component_name
         else:
             style = "component"
-            legend = ""
-        node_def = f'{comp}["<b>{comp}</b>{legend}<br><small><i>{type(data["instance"]).__name__}{optional_inputs[comp]}</i></small>"]:::{style}'  # noqa: E501
+        node_def = f'{comp}["<b>{comp}</b><br><small><i>{type(data["instance"]).__name__}{optional_inputs[comp]}</i></small>"]:::{style}'  # noqa: E501
         states[comp] = node_def
 
     connections_list = []
@@ -283,7 +334,20 @@ def _to_mermaid_text(
     ]
     connections = "\n".join(connections_list + input_connections + output_connections)
 
-    graph_styled = MERMAID_STYLED_TEMPLATE.format(params=init_params, connections=connections)
+    # Create legend
+    legend_nodes = []
+    if super_component_colors:
+        legend_nodes.append("subgraph Legend")
+        for super_comp, color in super_component_colors.items():
+            legend_id = f"legend_{super_comp}"
+            legend_nodes.append(f'{legend_id}["{super_comp}"]:::{super_comp}')
+        legend_nodes.append("end")
+        connections += "\n" + "\n".join(legend_nodes)
+
+    # Add style definitions to the template
+    graph_styled = MERMAID_STYLED_TEMPLATE.format(
+        params=init_params, connections=connections, style_definitions="\n".join(style_definitions)
+    )
     logger.debug("Mermaid diagram:\n{diagram}", diagram=graph_styled)
 
     return graph_styled
