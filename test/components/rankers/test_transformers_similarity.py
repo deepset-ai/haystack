@@ -6,7 +6,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import torch
-from transformers.modeling_outputs import SequenceClassifierOutput
 
 from haystack import Document
 from haystack.components.rankers.transformers_similarity import TransformersSimilarityRanker
@@ -30,7 +29,7 @@ class TestSimilarityRanker:
                 "meta_fields_to_embed": [],
                 "embedding_separator": "\n",
                 "scale_score": True,
-                "calibration_factor": 1.0,
+                "calibration_factor": None,
                 "score_threshold": None,
                 "model_kwargs": {"device_map": ComponentDevice.resolve_device(None).to_hf()},
                 "tokenizer_kwargs": {},
@@ -99,7 +98,7 @@ class TestSimilarityRanker:
                 "meta_fields_to_embed": [],
                 "embedding_separator": "\n",
                 "scale_score": True,
-                "calibration_factor": 1.0,
+                "calibration_factor": None,
                 "score_threshold": None,
                 "model_kwargs": {
                     "load_in_4bit": True,
@@ -137,7 +136,7 @@ class TestSimilarityRanker:
                 "meta_fields_to_embed": [],
                 "embedding_separator": "\n",
                 "scale_score": True,
-                "calibration_factor": 1.0,
+                "calibration_factor": None,
                 "score_threshold": None,
                 "model_kwargs": {"device_map": expected},
                 "tokenizer_kwargs": {},
@@ -202,110 +201,87 @@ class TestSimilarityRanker:
         assert component.meta_fields_to_embed == []
         assert component.embedding_separator == "\n"
         assert component.scale_score
-        assert component.calibration_factor == 1.0
+        assert component.calibration_factor is None
         assert component.score_threshold is None
         # torch_dtype is correctly deserialized
         assert component.model_kwargs == {"device_map": ComponentDevice.resolve_device(None).to_hf()}
         assert component.tokenizer_kwargs == {}
         assert component.batch_size == 16
 
-    @patch("torch.sigmoid")
-    @patch("torch.sort")
-    @patch("torch.stack")
-    def test_embed_meta(self, mocked_stack, mocked_sort, mocked_sigmoid):
-        mocked_stack.return_value = torch.tensor([0])
-        mocked_sort.return_value = (None, torch.tensor([0]))
-        mocked_sigmoid.return_value = torch.tensor([0])
-        embedder = TransformersSimilarityRanker(
+    def test_embed_meta(self):
+        ranker = TransformersSimilarityRanker(
             model="model", meta_fields_to_embed=["meta_field"], embedding_separator="\n"
         )
-        embedder.model = MagicMock()
-        embedder.tokenizer = MagicMock()
-        embedder.device = MagicMock()
-        embedder.warm_up()
+        mock_cross_encoder = MagicMock()
+        ranker.model = mock_cross_encoder
 
         documents = [Document(content=f"document number {i}", meta={"meta_field": f"meta_value {i}"}) for i in range(5)]
 
-        embedder.run(query="test", documents=documents)
+        ranker.run(query="test", documents=documents)
 
-        embedder.tokenizer.assert_called_once_with(
-            [
-                ["test", "meta_value 0\ndocument number 0"],
-                ["test", "meta_value 1\ndocument number 1"],
-                ["test", "meta_value 2\ndocument number 2"],
-                ["test", "meta_value 3\ndocument number 3"],
-                ["test", "meta_value 4\ndocument number 4"],
-            ],
-            padding=True,
-            truncation=True,
-            return_tensors="pt",
-        )
+        _, kwargs = mock_cross_encoder.rank.call_args
+        assert kwargs["query"] == "test"
+        assert kwargs["documents"] == [
+            "meta_value 0\ndocument number 0",
+            "meta_value 1\ndocument number 1",
+            "meta_value 2\ndocument number 2",
+            "meta_value 3\ndocument number 3",
+            "meta_value 4\ndocument number 4",
+        ]
+        assert kwargs["batch_size"] == 16
+        assert isinstance(kwargs["activation_fn"], torch.nn.Sigmoid)
+        assert kwargs["convert_to_numpy"] is True
+        assert kwargs["return_documents"] is False
 
-    @patch("torch.sigmoid")
-    @patch("torch.sort")
-    @patch("torch.stack")
-    def test_prefix(self, mocked_stack, mocked_sort, mocked_sigmoid):
-        mocked_stack.return_value = torch.tensor([0])
-        mocked_sort.return_value = (None, torch.tensor([0]))
-        mocked_sigmoid.return_value = torch.tensor([0])
+    def test_prefix(self):
         embedder = TransformersSimilarityRanker(
             model="model", query_prefix="query_instruction: ", document_prefix="document_instruction: "
         )
-        embedder.model = MagicMock()
-        embedder.tokenizer = MagicMock()
-        embedder.device = MagicMock()
-        embedder.warm_up()
+        mock_cross_encoder = MagicMock()
+        embedder.model = mock_cross_encoder
 
         documents = [Document(content=f"document number {i}", meta={"meta_field": f"meta_value {i}"}) for i in range(5)]
 
         embedder.run(query="test", documents=documents)
 
-        embedder.tokenizer.assert_called_once_with(
-            [
-                ["query_instruction: test", "document_instruction: document number 0"],
-                ["query_instruction: test", "document_instruction: document number 1"],
-                ["query_instruction: test", "document_instruction: document number 2"],
-                ["query_instruction: test", "document_instruction: document number 3"],
-                ["query_instruction: test", "document_instruction: document number 4"],
-            ],
-            padding=True,
-            truncation=True,
-            return_tensors="pt",
-        )
+        _, kwargs = mock_cross_encoder.rank.call_args
+        assert kwargs["query"] == "query_instruction: test"
+        assert kwargs["documents"] == [
+            "document_instruction: document number 0",
+            "document_instruction: document number 1",
+            "document_instruction: document number 2",
+            "document_instruction: document number 3",
+            "document_instruction: document number 4",
+        ]
+        assert kwargs["batch_size"] == 16
+        assert isinstance(kwargs["activation_fn"], torch.nn.Sigmoid)
+        assert kwargs["convert_to_numpy"] is True
 
-    @patch("torch.sort")
-    @patch("torch.stack")
-    def test_scale_score_false(self, mocked_stack, mocked_sort):
-        mocked_stack.return_value = torch.FloatTensor([-10.6859, -8.9874])
-        mocked_sort.return_value = (None, torch.tensor([0, 1]))
-        embedder = TransformersSimilarityRanker(model="model", scale_score=False)
-        embedder.model = MagicMock()
-        embedder.model.return_value = SequenceClassifierOutput(
-            loss=None, logits=torch.FloatTensor([[-10.6859], [-8.9874]]), hidden_states=None, attentions=None
-        )
-        embedder.tokenizer = MagicMock()
-        embedder.device = MagicMock()
+    def test_scale_score_false(self):
+        mock_cross_encoder = MagicMock()
+        ranker = TransformersSimilarityRanker(model="model", scale_score=False)
+        ranker.model = mock_cross_encoder
+
+        mock_cross_encoder.rank.return_value = [{"score": -10.6859, "corpus_id": 0}, {"score": -8.9874, "corpus_id": 1}]
 
         documents = [Document(content="document number 0"), Document(content="document number 1")]
-        out = embedder.run(query="test", documents=documents)
+        out = ranker.run(query="test", documents=documents)
         assert out["documents"][0].score == pytest.approx(-10.6859, abs=1e-4)
         assert out["documents"][1].score == pytest.approx(-8.9874, abs=1e-4)
 
-    @patch("torch.sort")
-    @patch("torch.stack")
-    def test_score_threshold(self, mocked_stack, mocked_sort):
-        mocked_stack.return_value = torch.FloatTensor([0.955, 0.001])
-        mocked_sort.return_value = (None, torch.tensor([0, 1]))
-        embedder = TransformersSimilarityRanker(model="model", scale_score=False, score_threshold=0.1)
-        embedder.model = MagicMock()
-        embedder.model.return_value = SequenceClassifierOutput(
-            loss=None, logits=torch.FloatTensor([[0.955], [0.001]]), hidden_states=None, attentions=None
-        )
-        embedder.tokenizer = MagicMock()
-        embedder.device = MagicMock()
+    def test_score_threshold(self):
+        mock_cross_encoder = MagicMock()
+        ranker = TransformersSimilarityRanker(model="model", scale_score=False, score_threshold=0.1)
+        ranker.model = mock_cross_encoder
+
+        mock_cross_encoder.rank.return_value = [{"score": 0.955, "corpus_id": 0}, {"score": 0.001, "corpus_id": 1}]
 
         documents = [Document(content="document number 0"), Document(content="document number 1")]
-        out = embedder.run(query="test", documents=documents)
+        out = ranker.run(query="test", documents=documents)
+        assert len(out["documents"]) == 1
+
+        documents = [Document(content="document number 0"), Document(content="document number 1")]
+        out = ranker.run(query="test", documents=documents)
         assert len(out["documents"]) == 1
 
     def test_device_map_and_device_raises(self, caplog):
@@ -318,9 +294,8 @@ class TestSimilarityRanker:
                 in caplog.text
             )
 
-    @patch("haystack.components.rankers.transformers_similarity.AutoTokenizer.from_pretrained")
-    @patch("haystack.components.rankers.transformers_similarity.AutoModelForSequenceClassification.from_pretrained")
-    def test_device_map_dict(self, mocked_automodel, _mocked_autotokenizer, monkeypatch):
+    @patch("haystack.components.rankers.transformers_similarity.CrossEncoder")
+    def test_device_map_dict(self, mocked_cross_encoder, monkeypatch):
         monkeypatch.delenv("HF_API_TOKEN", raising=False)
         monkeypatch.delenv("HF_TOKEN", raising=False)
         ranker = TransformersSimilarityRanker("model", model_kwargs={"device_map": {"layer_1": 1, "classifier": "cpu"}})
@@ -329,11 +304,15 @@ class TestSimilarityRanker:
             def __init__(self):
                 self.hf_device_map = {"layer_1": 1, "classifier": "cpu"}
 
-        mocked_automodel.return_value = MockedModel()
+        mocked_cross_encoder.model.return_value = MockedModel()
         ranker.warm_up()
 
-        mocked_automodel.assert_called_once_with("model", token=None, device_map={"layer_1": 1, "classifier": "cpu"})
-        assert ranker.device == ComponentDevice.from_multiple(DeviceMap.from_hf({"layer_1": 1, "classifier": "cpu"}))
+        mocked_cross_encoder.assert_called_once_with(
+            model_name_or_path="model",
+            token=None,
+            model_kwargs={"device_map": {"layer_1": 1, "classifier": "cpu"}},
+            tokenizer_kwargs={},
+        )
 
     @pytest.mark.integration
     @pytest.mark.slow

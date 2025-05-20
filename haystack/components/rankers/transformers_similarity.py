@@ -2,19 +2,20 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from copy import copy
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-from haystack import Document, component, default_from_dict, default_to_dict
+from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.lazy_imports import LazyImport
-from haystack.utils import ComponentDevice, DeviceMap, Secret, deserialize_secrets_inplace
+from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
 from haystack.utils.hf import deserialize_hf_model_kwargs, resolve_hf_device_map, serialize_hf_model_kwargs
 
-with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
-    import accelerate  # pylint: disable=unused-import # the library is used but not directly referenced
-    import torch
-    from torch.utils.data import DataLoader, Dataset
-    from transformers import AutoModelForSequenceClassification, AutoTokenizer
+with LazyImport(message="Run 'pip install \"sentence-transformers>=4.1.0\"'") as torch_and_sentence_transformers_import:
+    from sentence_transformers import CrossEncoder
+    from torch.nn import Identity, Sigmoid
+
+logger = logging.getLogger(__name__)
 
 
 @component
@@ -51,7 +52,7 @@ class TransformersSimilarityRanker:
         meta_fields_to_embed: Optional[List[str]] = None,
         embedding_separator: str = "\n",
         scale_score: bool = True,
-        calibration_factor: Optional[float] = 1.0,
+        calibration_factor: Optional[float] = None,
         score_threshold: Optional[float] = None,
         model_kwargs: Optional[Dict[str, Any]] = None,
         tokenizer_kwargs: Optional[Dict[str, Any]] = None,
@@ -82,8 +83,7 @@ class TransformersSimilarityRanker:
             If `True`, scales the raw logit predictions using a Sigmoid activation function.
             If `False`, disables scaling of the raw logit predictions.
         :param calibration_factor:
-            Use this factor to calibrate probabilities with `sigmoid(logits * calibration_factor)`.
-            Used only if `scale_score` is `True`.
+            This parameter has no effect and will be removed in a future release.
         :param score_threshold:
             Use it to return documents with a score above this threshold only.
         :param model_kwargs:
@@ -100,7 +100,7 @@ class TransformersSimilarityRanker:
             If `top_k` is not > 0.
             If `scale_score` is True and `calibration_factor` is not provided.
         """
-        torch_and_transformers_import.check()
+        torch_and_sentence_transformers_import.check()
 
         self.model_name_or_path = str(model)
         self.model = None
@@ -121,11 +121,8 @@ class TransformersSimilarityRanker:
         self.tokenizer_kwargs = tokenizer_kwargs or {}
         self.batch_size = batch_size
 
-        # Parameter validation
-        if self.scale_score and self.calibration_factor is None:
-            raise ValueError(
-                f"scale_score is True so calibration_factor must be provided, but got {calibration_factor}"
-            )
+        if self.calibration_factor is not None:
+            logger.warning("The parameter `calibration_factor` has no effect and will be removed in a future release.")
 
         if self.top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
@@ -141,16 +138,14 @@ class TransformersSimilarityRanker:
         Initializes the component.
         """
         if self.model is None:
-            self.model = AutoModelForSequenceClassification.from_pretrained(
-                self.model_name_or_path, token=self.token.resolve_value() if self.token else None, **self.model_kwargs
-            )
-            self.tokenizer = AutoTokenizer.from_pretrained(
-                self.model_name_or_path,
+            self.model = CrossEncoder(
+                model_name_or_path=self.model_name_or_path,
                 token=self.token.resolve_value() if self.token else None,
-                **self.tokenizer_kwargs,
+                model_kwargs=self.model_kwargs,
+                tokenizer_kwargs=self.tokenizer_kwargs,
             )
+
             assert self.model is not None
-            self.device = ComponentDevice.from_multiple(device_map=DeviceMap.from_hf(self.model.hf_device_map))
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -161,7 +156,7 @@ class TransformersSimilarityRanker:
         """
         serialization_dict = default_to_dict(
             self,
-            device=None,
+            device=None,  # device settings are serialized in model_kwargs
             model=self.model_name_or_path,
             token=self.token.to_dict() if self.token else None,
             top_k=self.top_k,
@@ -222,8 +217,7 @@ class TransformersSimilarityRanker:
             If `True`, scales the raw logit predictions using a Sigmoid activation function.
             If `False`, disables scaling of the raw logit predictions.
         :param calibration_factor:
-            Use this factor to calibrate probabilities with `sigmoid(logits * calibration_factor)`.
-            Used only if `scale_score` is `True`.
+            This parameter has no effect and will be removed in a future release.
         :param score_threshold:
             Use it to return documents only with a score above this threshold.
         :returns:
@@ -247,60 +241,44 @@ class TransformersSimilarityRanker:
 
         top_k = top_k or self.top_k
         scale_score = scale_score or self.scale_score
-        calibration_factor = calibration_factor or self.calibration_factor
         score_threshold = score_threshold or self.score_threshold
+
+        if calibration_factor is not None:
+            logger.warning("The parameter `calibration_factor` has no effect and will be removed in a future release.")
 
         if top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
 
-        if scale_score and calibration_factor is None:
-            raise ValueError(
-                f"scale_score is True so calibration_factor must be provided, but got {calibration_factor}"
-            )
-
-        query_doc_pairs = []
+        prepared_query = self.query_prefix + query
+        prepared_documents = []
         for doc in documents:
             meta_values_to_embed = [
                 str(doc.meta[key]) for key in self.meta_fields_to_embed if key in doc.meta and doc.meta[key]
             ]
-            text_to_embed = self.embedding_separator.join(meta_values_to_embed + [doc.content or ""])
-            query_doc_pairs.append([self.query_prefix + query, self.document_prefix + text_to_embed])
+            prepared_documents.append(
+                self.document_prefix + self.embedding_separator.join(meta_values_to_embed + [doc.content or ""])
+            )
 
-        class _Dataset(Dataset):
-            def __init__(self, batch_encoding):
-                self.batch_encoding = batch_encoding
-
-            def __len__(self):
-                return len(self.batch_encoding["input_ids"])
-
-            def __getitem__(self, item):
-                return {key: self.batch_encoding.data[key][item] for key in self.batch_encoding.data.keys()}
-
-        batch_enc = self.tokenizer(query_doc_pairs, padding=True, truncation=True, return_tensors="pt").to(  # type: ignore
-            self.device.first_device.to_torch()
-        )
-        dataset = _Dataset(batch_enc)
-        inp_dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False)
-
-        similarity_scores = []
-        with torch.inference_mode():
-            for features in inp_dataloader:
-                model_preds = self.model(**features).logits.squeeze(dim=1)  # type: ignore
-                similarity_scores.extend(model_preds)
-        similarity_scores = torch.stack(similarity_scores)
-
+        activation_fn = Identity()
         if scale_score:
-            similarity_scores = torch.sigmoid(similarity_scores * calibration_factor)
+            activation_fn = Sigmoid()
 
-        _, sorted_indices = torch.sort(similarity_scores, descending=True)
+        ranking_result = self.model.rank(
+            query=prepared_query,
+            documents=prepared_documents,
+            batch_size=self.batch_size,
+            activation_fn=activation_fn,
+            convert_to_numpy=True,
+            return_documents=False,
+        )
 
-        sorted_indices = sorted_indices.cpu().tolist()  # type: ignore
-        similarity_scores = similarity_scores.cpu().tolist()
         ranked_docs = []
-        for sorted_index in sorted_indices:
-            i = sorted_index
-            documents[i].score = similarity_scores[i]
-            ranked_docs.append(documents[i])
+        for el in ranking_result:
+            index = el["corpus_id"]
+            score = el["score"]
+            document = copy(documents[index])
+            document.score = score
+            ranked_docs.append(document)
 
         if score_threshold is not None:
             ranked_docs = [doc for doc in ranked_docs if doc.score >= score_threshold]
