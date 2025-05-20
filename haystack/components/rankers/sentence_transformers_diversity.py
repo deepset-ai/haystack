@@ -175,7 +175,7 @@ class SentenceTransformersDiversityRanker:
         self.top_k = top_k
         self.device = ComponentDevice.resolve_device(device)
         self.token = token
-        self.model = None
+        self.model: Optional[SentenceTransformer] = None
         self.similarity = DiversityRankingSimilarity.from_str(similarity) if isinstance(similarity, str) else similarity
         self.query_prefix = query_prefix
         self.document_prefix = document_prefix
@@ -320,9 +320,11 @@ class SentenceTransformersDiversityRanker:
         return ranked_docs
 
     def _embed_and_normalize(self, query, texts_to_embed):
+        assert self.model is not None  # verified in run but mypy doesn't see it
+
         # Calculate embeddings
-        doc_embeddings = self.model.encode(texts_to_embed, convert_to_tensor=True)  # type: ignore[attr-defined]
-        query_embedding = self.model.encode([self.query_prefix + query + self.query_suffix], convert_to_tensor=True)  # type: ignore[attr-defined]
+        doc_embeddings = self.model.encode(texts_to_embed, convert_to_tensor=True)
+        query_embedding = self.model.encode([self.query_prefix + query + self.query_suffix], convert_to_tensor=True)
 
         # Normalize embeddings to unit length for computing cosine similarity
         if self.similarity == DiversityRankingSimilarity.COSINE:
@@ -365,7 +367,10 @@ class SentenceTransformersDiversityRanker:
                 if idx in selected:
                     continue
                 relevance_score = query_similarities[idx]
-                diversity_score = max(doc_embeddings[idx] @ doc_embeddings[j].T for j in selected)
+                diversity_score = max(
+                    doc_embeddings[idx] @ doc_embeddings[j].permute(*torch.arange(doc_embeddings[j].ndim - 1, -1, -1))
+                    for j in selected
+                )
                 mmr_score = lambda_threshold * relevance_score - (1 - lambda_threshold) * diversity_score
                 if mmr_score > best_score:
                     best_score = mmr_score

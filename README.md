@@ -58,9 +58,9 @@ Some examples of what you can do with Haystack:
 -   Use **user feedback** to evaluate, benchmark, and continuously improve your models.
 
 > [!TIP]
-><img src="https://github.com/deepset-ai/haystack/raw/main/docs/img/deepset-cloud-logo-lightblue.png"  width=30% height=30%>
+><img src="https://github.com/deepset-ai/haystack/raw/main/docs/img/deepset-platform-logo-alternative.jpeg"  width=30% height=30%>
 >
-> Are you looking for a managed solution that benefits from Haystack? [deepset Cloud](https://www.deepset.ai/deepset-cloud?utm_campaign=developer-relations&utm_source=haystack&utm_medium=readme) is our fully managed, end-to-end platform to integrate LLMs with your data, which uses Haystack for the LLM pipelines architecture.
+> Are you looking for a managed solution that benefits from Haystack? [deepset AI Platform](https://www.deepset.ai/products-and-services/deepset-ai-platform?utm_campaign=developer-relations&utm_source=haystack&utm_medium=readme) is our fully managed, end-to-end platform to integrate LLMs with your data, which uses Haystack for the LLM pipelines architecture.
 
 > [!TIP]
 >

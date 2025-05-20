@@ -210,9 +210,16 @@ def _remove_title_from_schema(schema: Dict[str, Any]):
     :param schema:
         The JSON schema to remove the 'title' keyword from.
     """
-    schema.pop("title", None)
-
-    for property_schema in schema["properties"].values():
-        for key in list(property_schema.keys()):
-            if key == "title":
-                del property_schema[key]
+    for key, value in list(schema.items()):
+        # Make sure not to remove parameters named title
+        if key == "properties" and isinstance(value, dict) and "title" in value:
+            for sub_val in value.values():
+                _remove_title_from_schema(sub_val)
+        elif key == "title":
+            del schema[key]
+        elif isinstance(value, dict):
+            _remove_title_from_schema(value)
+        elif isinstance(value, list):
+            for item in value:
+                if isinstance(item, dict):
+                    _remove_title_from_schema(item)

@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from datetime import datetime
 import os
+from typing import Any, Dict
 from unittest.mock import MagicMock, Mock, AsyncMock, patch
 
 import pytest
@@ -21,6 +22,7 @@ from huggingface_hub import (
     ChatCompletionStreamOutput,
     ChatCompletionStreamOutputChoice,
     ChatCompletionStreamOutputDelta,
+    ChatCompletionInputStreamOptions,
 )
 from huggingface_hub.errors import RepositoryNotFoundError
 
@@ -43,22 +45,24 @@ def chat_messages():
     ]
 
 
-def get_weather(city: str) -> str:
-    """Get weather information for a city."""
-    return f"Weather info for {city}"
+def get_weather(city: str) -> Dict[str, Any]:
+    weather_info = {
+        "Berlin": {"weather": "mostly sunny", "temperature": 7, "unit": "celsius"},
+        "Paris": {"weather": "mostly cloudy", "temperature": 8, "unit": "celsius"},
+        "Rome": {"weather": "sunny", "temperature": 14, "unit": "celsius"},
+    }
+    return weather_info.get(city, {"weather": "unknown", "temperature": 0, "unit": "celsius"})
 
 
 @pytest.fixture
 def tools():
-    tool_parameters = {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}
-    tool = Tool(
+    weather_tool = Tool(
         name="weather",
         description="useful to determine the weather in a given location",
-        parameters=tool_parameters,
+        parameters={"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]},
         function=get_weather,
     )
-
-    return [tool]
+    return [weather_tool]
 
 
 @pytest.fixture
@@ -438,7 +442,12 @@ class TestHuggingFaceAPIChatGenerator:
 
         # check kwargs passed to text_generation
         _, kwargs = mock_chat_completion.call_args
-        assert kwargs == {"stop": [], "stream": True, "max_tokens": 512}
+        assert kwargs == {
+            "stop": [],
+            "stream": True,
+            "max_tokens": 512,
+            "stream_options": ChatCompletionInputStreamOptions(include_usage=True),
+        }
 
         # Assert that the streaming callback was called twice
         assert streaming_call_count == 2
@@ -502,7 +511,12 @@ class TestHuggingFaceAPIChatGenerator:
 
         # check kwargs passed to text_generation
         _, kwargs = mock_chat_completion.call_args
-        assert kwargs == {"stop": [], "stream": True, "max_tokens": 512}
+        assert kwargs == {
+            "stop": [],
+            "stream": True,
+            "max_tokens": 512,
+            "stream_options": ChatCompletionInputStreamOptions(include_usage=True),
+        }
 
         # Assert that the streaming callback was called twice
         assert streaming_call_count == 2
@@ -714,9 +728,9 @@ class TestHuggingFaceAPIChatGenerator:
         assert datetime.fromisoformat(response_meta["completion_start_time"]) <= datetime.now()
         assert "usage" in response_meta
         assert "prompt_tokens" in response_meta["usage"]
-        assert response_meta["usage"]["prompt_tokens"] == 0
+        assert response_meta["usage"]["prompt_tokens"] > 0
         assert "completion_tokens" in response_meta["usage"]
-        assert response_meta["usage"]["completion_tokens"] == 0
+        assert response_meta["usage"]["completion_tokens"] > 0
         assert response_meta["model"] == "microsoft/Phi-3.5-mini-instruct"
         assert response_meta["finish_reason"] is not None
 
@@ -845,7 +859,12 @@ class TestHuggingFaceAPIChatGenerator:
 
         # check kwargs passed to chat_completion
         _, kwargs = mock_chat_completion_async.call_args
-        assert kwargs == {"stop": [], "stream": True, "max_tokens": 512}
+        assert kwargs == {
+            "stop": [],
+            "stream": True,
+            "max_tokens": 512,
+            "stream_options": ChatCompletionInputStreamOptions(include_usage=True),
+        }
 
         # Assert that the streaming callback was called twice
         assert streaming_call_count == 2
@@ -974,7 +993,7 @@ class TestHuggingFaceAPIChatGenerator:
 
     def test_to_dict_with_toolset(self, mock_check_valid_model, tools):
         """Test that the HuggingFaceAPIChatGenerator can be serialized to a dictionary with a Toolset."""
-        toolset = Toolset(tools)
+        toolset = Toolset(tools[:1])
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API, api_params={"model": "irrelevant"}, tools=toolset
         )

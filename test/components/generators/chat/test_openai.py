@@ -8,7 +8,7 @@ import pytest
 import logging
 import os
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from openai import OpenAIError
 from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletionMessage, ChatCompletionMessageToolCall
@@ -100,6 +100,23 @@ class Adder:
         return {"answer": a + b, "meta": meta}
 
 
+@component
+class MessageExtractor:
+    @component.output_types(messages=List[str], meta=Dict[str, Any])
+    def run(self, messages: List[ChatMessage], meta: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """
+        Extracts the text content of ChatMessage objects
+
+        :param messages: List of Haystack ChatMessage objects
+        :param meta: Optional metadata to include in the response.
+        :returns:
+            A dictionary with keys "messages" and "meta".
+        """
+        if meta is None:
+            meta = {}
+        return {"messages": [m.text for m in messages], "meta": meta}
+
+
 @pytest.fixture
 def tools():
     weather_tool = Tool(
@@ -125,6 +142,12 @@ def tools():
             },
             "required": ["a", "b"],
         },
+    )
+    # We add a tool that has a more complex parameter signature
+    message_extractor_tool = ComponentTool(
+        component=MessageExtractor(),
+        name="message_extractor",
+        description="Useful for returning the text content of ChatMessage objects",
     )
     return [weather_tool, addition_tool]
 

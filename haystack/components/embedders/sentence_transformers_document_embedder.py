@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Literal, Optional
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.components.embedders.backends.sentence_transformers_backend import (
+    _SentenceTransformersEmbeddingBackend,
     _SentenceTransformersEmbeddingBackendFactory,
 )
 from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
@@ -51,6 +52,7 @@ class SentenceTransformersDocumentEmbedder:
         meta_fields_to_embed: Optional[List[str]] = None,
         embedding_separator: str = "\n",
         trust_remote_code: bool = False,
+        local_files_only: bool = False,
         truncate_dim: Optional[int] = None,
         model_kwargs: Optional[Dict[str, Any]] = None,
         tokenizer_kwargs: Optional[Dict[str, Any]] = None,
@@ -89,6 +91,8 @@ class SentenceTransformersDocumentEmbedder:
         :param trust_remote_code:
             If `False`, allows only Hugging Face verified model architectures.
             If `True`, allows custom models and scripts.
+        :param local_files_only:
+            If `True`, does not attempt to download the model from Hugging Face Hub and only looks at local files.
         :param truncate_dim:
             The dimension to truncate sentence embeddings to. `None` does no truncation.
             If the model wasn't trained with Matryoshka Representation Learning,
@@ -127,12 +131,13 @@ class SentenceTransformersDocumentEmbedder:
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
         self.trust_remote_code = trust_remote_code
+        self.local_files_only = local_files_only
         self.truncate_dim = truncate_dim
         self.model_kwargs = model_kwargs
         self.tokenizer_kwargs = tokenizer_kwargs
         self.config_kwargs = config_kwargs
         self.encode_kwargs = encode_kwargs
-        self.embedding_backend = None
+        self.embedding_backend: Optional[_SentenceTransformersEmbeddingBackend] = None
         self.precision = precision
         self.backend = backend
 
@@ -162,6 +167,7 @@ class SentenceTransformersDocumentEmbedder:
             meta_fields_to_embed=self.meta_fields_to_embed,
             embedding_separator=self.embedding_separator,
             trust_remote_code=self.trust_remote_code,
+            local_files_only=self.local_files_only,
             truncate_dim=self.truncate_dim,
             model_kwargs=self.model_kwargs,
             tokenizer_kwargs=self.tokenizer_kwargs,
@@ -202,6 +208,7 @@ class SentenceTransformersDocumentEmbedder:
                 device=self.device.to_torch_str(),
                 auth_token=self.token,
                 trust_remote_code=self.trust_remote_code,
+                local_files_only=self.local_files_only,
                 truncate_dim=self.truncate_dim,
                 model_kwargs=self.model_kwargs,
                 tokenizer_kwargs=self.tokenizer_kwargs,
