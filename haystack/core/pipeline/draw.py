@@ -267,6 +267,7 @@ def _to_mermaid_text(
 
     :param graph: The graph to convert to Mermaid syntax
     :param init_params: Initialization parameters for Mermaid
+    :param super_component_mapping: Mapping of component names to super component names
     """
     # Copy the graph to avoid modifying the original
     graph = _prepare_for_drawing(graph.copy())
