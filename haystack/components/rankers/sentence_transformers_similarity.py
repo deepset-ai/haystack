@@ -108,8 +108,8 @@ class SentenceTransformersSimilarityRanker:
         if top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
 
-        self.model_name_or_path = str(model)
-        self.model = None
+        self.model = str(model)
+        self._cross_encoder = None
         self.query_prefix = query_prefix
         self.document_prefix = document_prefix
         self.device = ComponentDevice.resolve_device(device)
@@ -129,15 +129,15 @@ class SentenceTransformersSimilarityRanker:
         """
         Data that is sent to Posthog for usage analytics.
         """
-        return {"model": self.model_name_or_path}
+        return {"model": self.model}
 
     def warm_up(self):
         """
         Initializes the component.
         """
-        if self.model is None:
-            self.model = CrossEncoder(
-                model_name_or_path=self.model_name_or_path,
+        if self._cross_encoder is None:
+            self._cross_encoder = CrossEncoder(
+                model_name_or_path=self.model,
                 device=self.device.to_torch_str(),
                 token=self.token.resolve_value() if self.token else None,
                 model_kwargs=self.model_kwargs,
@@ -156,7 +156,7 @@ class SentenceTransformersSimilarityRanker:
         serialization_dict = default_to_dict(
             self,
             device=self.device.to_dict(),
-            model=self.model_name_or_path,
+            model=self.model,
             token=self.token.to_dict() if self.token else None,
             top_k=self.top_k,
             query_prefix=self.query_prefix,
@@ -229,7 +229,7 @@ class SentenceTransformersSimilarityRanker:
         :raises RuntimeError:
             If the model is not loaded because `warm_up()` was not called before.
         """
-        if self.model is None:
+        if self._cross_encoder is None:
             raise RuntimeError(
                 "The component SentenceTransformersSimilarityRanker wasn't warmed up. "
                 "Run 'warm_up()' before calling 'run()'."
@@ -257,7 +257,7 @@ class SentenceTransformersSimilarityRanker:
 
         activation_fn = Sigmoid() if scale_score else Identity()
 
-        ranking_result = self.model.rank(
+        ranking_result = self._cross_encoder.rank(
             query=prepared_query,
             documents=prepared_documents,
             batch_size=self.batch_size,

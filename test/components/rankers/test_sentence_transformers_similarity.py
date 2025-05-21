@@ -177,7 +177,7 @@ class TestSentenceTransformersSimilarityRanker:
 
         component = SentenceTransformersSimilarityRanker.from_dict(data)
         assert component.device == ComponentDevice.resolve_device(None)
-        assert component.model_name_or_path == "my_model"
+        assert component.model == "my_model"
         assert component.token is None
         assert component.top_k == 5
         assert component.query_prefix == ""
@@ -199,7 +199,7 @@ class TestSentenceTransformersSimilarityRanker:
 
         component = SentenceTransformersSimilarityRanker.from_dict(data)
         assert component.device == ComponentDevice.resolve_device(None)
-        assert component.model_name_or_path == "cross-encoder/ms-marco-MiniLM-L-6-v2"
+        assert component.model == "cross-encoder/ms-marco-MiniLM-L-6-v2"
         assert component.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
         assert component.top_k == 10
         assert component.query_prefix == ""
@@ -225,29 +225,29 @@ class TestSentenceTransformersSimilarityRanker:
 
     def test_run_invalid_top_k(self):
         ranker = SentenceTransformersSimilarityRanker()
-        ranker.model = MagicMock()
+        ranker._cross_encoder = MagicMock()
 
         with pytest.raises(ValueError):
             ranker.run(query="test", documents=[Document(content="document")], top_k=-1)
 
     def test_returns_empty_list_if_no_documents_are_provided(self):
-        sampler = SentenceTransformersSimilarityRanker()
-        sampler.model = MagicMock()
+        ranker = SentenceTransformersSimilarityRanker()
+        ranker._cross_encoder = MagicMock()
 
-        output = sampler.run(query="City in Germany", documents=[])
+        output = ranker.run(query="City in Germany", documents=[])
         assert not output["documents"]
 
     def test_raises_component_error_if_model_not_warmed_up(self):
-        sampler = SentenceTransformersSimilarityRanker()
+        ranker = SentenceTransformersSimilarityRanker()
         with pytest.raises(RuntimeError):
-            sampler.run(query="query", documents=[Document(content="document")])
+            ranker.run(query="query", documents=[Document(content="document")])
 
     def test_embed_meta(self):
         ranker = SentenceTransformersSimilarityRanker(
             model="model", meta_fields_to_embed=["meta_field"], embedding_separator="\n"
         )
         mock_cross_encoder = MagicMock()
-        ranker.model = mock_cross_encoder
+        ranker._cross_encoder = mock_cross_encoder
 
         documents = [Document(content=f"document number {i}", meta={"meta_field": f"meta_value {i}"}) for i in range(5)]
 
@@ -272,7 +272,7 @@ class TestSentenceTransformersSimilarityRanker:
             model="model", query_prefix="query_instruction: ", document_prefix="document_instruction: "
         )
         mock_cross_encoder = MagicMock()
-        ranker.model = mock_cross_encoder
+        ranker._cross_encoder = mock_cross_encoder
 
         documents = [Document(content=f"document number {i}", meta={"meta_field": f"meta_value {i}"}) for i in range(5)]
 
@@ -294,7 +294,7 @@ class TestSentenceTransformersSimilarityRanker:
     def test_scale_score_false(self):
         mock_cross_encoder = MagicMock()
         ranker = SentenceTransformersSimilarityRanker(model="model", scale_score=False)
-        ranker.model = mock_cross_encoder
+        ranker._cross_encoder = mock_cross_encoder
 
         mock_cross_encoder.rank.return_value = [{"score": -10.6859, "corpus_id": 0}, {"score": -8.9874, "corpus_id": 1}]
 
@@ -306,7 +306,7 @@ class TestSentenceTransformersSimilarityRanker:
     def test_score_threshold(self):
         mock_cross_encoder = MagicMock()
         ranker = SentenceTransformersSimilarityRanker(model="model", scale_score=False, score_threshold=0.1)
-        ranker.model = mock_cross_encoder
+        ranker._cross_encoder = mock_cross_encoder
 
         mock_cross_encoder.rank.return_value = [{"score": 0.955, "corpus_id": 0}, {"score": 0.001, "corpus_id": 1}]
 
