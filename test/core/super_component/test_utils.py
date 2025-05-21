@@ -126,13 +126,10 @@ class TestTypeCompatibility:
 
         # With unwrap_nested=True
         is_compat, common = _is_compatible(complex_type, target_type)
-        assert is_compat
-        # Handle both typing.List and built-in list notation
-        assert common == List[List[int]] or common == list[list[int]]
+        assert is_compat and common == List[List[int]]
 
         is_compat, common = _is_compatible(target_type, complex_type)
-        assert is_compat
-        assert common == List[List[int]] or common == list[list[int]]
+        assert is_compat and common == List[List[int]]
 
         # With unwrap_nested=False
         is_compat, common = _is_compatible(complex_type, target_type, unwrap_nested=False)
