@@ -1,8 +1,4 @@
 ---
 features:
- - |
-   Added new `HuggingFaceAPIRanker` component to support text-embeddings-inference service
-    for rerank models. This implementation allows integration with models like BAAI/bge-reranker-v2-m3
-    through HuggingFace Inference API. with both synchronous (`run`) and asynchronous (`run_async`) execution modes.
-   Unit tests included in `test/components/rankers/test_hugging_face_api.py`
-    (requires running text-embeddings-inference service BAAI/bge-reranker-v2-m3 for test execution).
+  - |
+    Added haystack-experimental to the project's dependencies to enable automatic use of cutting-edge features from Haystack. Users can now access components from haystack-experimental by simply importing them from haystack_experimental instead of haystack. For more information, visit https://github.com/deepset-ai/haystack-experimental.
