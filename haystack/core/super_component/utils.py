@@ -235,13 +235,25 @@ def _convert_to_typing_type(t: Any) -> Any:
     origin = get_origin(t)
     args = get_args(t)
 
-    # Mapping of built-in types to their typing equivalents and recursive argument handling
+    # Mapping of built-in types to their typing equivalents
     type_converters = {
-        list: lambda: List if not args else List[_convert_to_typing_type(args[0])],
-        dict: lambda: Dict if not args else Dict[_convert_to_typing_type(args[0]), _convert_to_typing_type(args[1])],
-        set: lambda: Set if not args else Set[_convert_to_typing_type(args[0])],
-        tuple: lambda: Tuple if not args else Tuple[tuple(_convert_to_typing_type(arg) for arg in args)],
+        list: lambda: List if not args else List[Any],
+        dict: lambda: Dict if not args else Dict[Any, Any],
+        set: lambda: Set if not args else Set[Any],
+        tuple: lambda: Tuple if not args else Tuple[Any, ...],
     }
+
+    # Recursive argument handling
     if origin in type_converters:
-        return type_converters[origin]()
+        result = type_converters[origin]()
+        if args:
+            if origin == list:
+                return List[_convert_to_typing_type(args[0])]
+            if origin == dict:
+                return Dict[_convert_to_typing_type(args[0]), _convert_to_typing_type(args[1])]
+            if origin == set:
+                return Set[_convert_to_typing_type(args[0])]
+            if origin == tuple:
+                return Tuple[tuple(_convert_to_typing_type(arg) for arg in args)]
+        return result
     return t
