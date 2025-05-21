@@ -671,11 +671,10 @@ class PipelineBase:
 
     def show(
         self,
-        *,
         server_url: str = "https://mermaid.ink",
-        super_component_expansion: bool = False,
         params: Optional[dict] = None,
         timeout: int = 30,
+        super_component_expansion: bool = False,
     ) -> None:
         """
         Display an image representing this `Pipeline` in a Jupyter notebook.
@@ -687,11 +686,6 @@ class PipelineBase:
             The base URL of the Mermaid server used for rendering (default: 'https://mermaid.ink').
             See https://github.com/jihchi/mermaid.ink and https://github.com/mermaid-js/mermaid-live-editor for more
             info on how to set up your own Mermaid server.
-
-        :param super_component_expansion:
-            If set to True and the pipeline contains SuperComponents the diagram will show the internal structure of
-            super-components as if they were components part of the pipeline instead of a "black-box".
-            Otherwise, only the super-component itself will be displayed.
 
         :param params:
             Dictionary of customization parameters to modify the output. Refer to Mermaid documentation for more details
@@ -710,8 +704,41 @@ class PipelineBase:
         :param timeout:
             Timeout in seconds for the request to the Mermaid server.
 
+        :param super_component_expansion:
+            If set to True and the pipeline contains SuperComponents the diagram will show the internal structure of
+            super-components as if they were components part of the pipeline instead of a "black-box".
+            Otherwise, only the super-component itself will be displayed.
+
         :raises PipelineDrawingError:
             If the function is called outside of a Jupyter notebook or if there is an issue with rendering.
+        """
+        import warnings
+
+        warnings.warn(
+            "In an upcoming release, this method will require keyword arguments for all parameters. "
+            "Please update your code to use keyword arguments to ensure future compatibility."
+            'Example: pipeline.show(server_url="https://custom-server.com"',
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+        # Call the internal implementation with keyword arguments
+        self._show_internal(
+            server_url=server_url, params=params, timeout=timeout, super_component_expansion=super_component_expansion
+        )
+
+    def _show_internal(
+        self,
+        *,
+        server_url: str = "https://mermaid.ink",
+        params: Optional[dict] = None,
+        timeout: int = 30,
+        super_component_expansion: bool = False,
+    ) -> None:
+        """
+        Internal implementation of show() that uses keyword-only arguments.
+
+        ToDo: after 2.14.0 release make this the main function and remove the old one.
         """
         if is_in_jupyter():
             from IPython.display import Image, display  # type: ignore
@@ -737,11 +764,10 @@ class PipelineBase:
     def draw(
         self,
         path: Path,
-        *,
         server_url: str = "https://mermaid.ink",
-        super_component_expansion: bool = False,
         params: Optional[dict] = None,
         timeout: int = 30,
+        super_component_expansion: bool = False,
     ) -> None:
         """
         Save an image representing this `Pipeline` to the specified file path.
@@ -755,11 +781,6 @@ class PipelineBase:
             The base URL of the Mermaid server used for rendering (default: 'https://mermaid.ink').
             See https://github.com/jihchi/mermaid.ink and https://github.com/mermaid-js/mermaid-live-editor for more
             info on how to set up your own Mermaid server.
-
-        :param super_component_expansion:
-            If set to True and the pipeline contains SuperComponents the diagram will show the internal structure of
-            super-components as if they were components part of the pipeline instead of a "black-box".
-            Otherwise, only the super-component itself will be displayed.
 
         :param params:
             Dictionary of customization parameters to modify the output. Refer to Mermaid documentation for more details
@@ -778,8 +799,46 @@ class PipelineBase:
         :param timeout:
             Timeout in seconds for the request to the Mermaid server.
 
+        :param super_component_expansion:
+            If set to True and the pipeline contains SuperComponents the diagram will show the internal structure of
+            super-components as if they were components part of the pipeline instead of a "black-box".
+            Otherwise, only the super-component itself will be displayed.
+
         :raises PipelineDrawingError:
             If there is an issue with rendering or saving the image.
+        """
+        import warnings
+
+        warnings.warn(
+            "In an upcoming release, this method will require keyword arguments for all parameters except 'path'. "
+            "Please update your code to use keyword arguments to ensure future compatibility."
+            'Example: pipeline.draw(path="output.png", server_url="https://custom-server.com")',
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+        # Call the internal implementation with keyword arguments
+        self._draw_internal(
+            path=path,
+            server_url=server_url,
+            params=params,
+            timeout=timeout,
+            super_component_expansion=super_component_expansion,
+        )
+
+    def _draw_internal(
+        self,
+        path: Path,
+        *,
+        server_url: str = "https://mermaid.ink",
+        params: Optional[dict] = None,
+        timeout: int = 30,
+        super_component_expansion: bool = False,
+    ) -> None:
+        """
+        Internal implementation of draw() that uses keyword-only arguments.
+
+        ToDo: after 2.14.0 release make this the main function and remove the old one.
         """
         # Before drawing we edit a bit the graph, to avoid modifying the original that is
         # used for running the pipeline we copy it.
