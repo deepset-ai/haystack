@@ -51,9 +51,7 @@ class HuggingFaceAPIRanker:
     ```
     """
 
-    def __init__(
-        self, url: str, top_k: int = 10, timeout: Optional[int] = 30, token: Optional[str] = None
-    ) -> None:
+    def __init__(self, url: str, top_k: int = 10, timeout: Optional[int] = 30, token: Optional[str] = None) -> None:
         """
         Initializes the TEI reranker component.
 
@@ -92,10 +90,7 @@ class HuggingFaceAPIRanker:
         return default_from_dict(cls, data)
 
     def _compose_response(
-            self,
-            result: Union[Dict[str, str], List[Dict[str, Any]]],
-            top_k: Optional[int],
-            documents: List[Document],
+        self, result: Union[Dict[str, str], List[Dict[str, Any]]], top_k: Optional[int], documents: List[Document]
     ) -> Dict[str, List[Document]]:
         """
         Processes the API response into a structured format.
@@ -179,12 +174,12 @@ class HuggingFaceAPIRanker:
         retry=retry_if_exception_type(httpx.RequestError),
     )
     async def run_async(
-            self,
-            query: str,
-            documents: List[Document],
-            top_k: Optional[int] = None,
-            raw_scores: bool = False,
-            truncation_direction: Optional[TruncationDirection] = None,
+        self,
+        query: str,
+        documents: List[Document],
+        top_k: Optional[int] = None,
+        raw_scores: bool = False,
+        truncation_direction: Optional[TruncationDirection] = None,
     ) -> Dict[str, List[Document]]:
         """
         Asynchronously reranks the provided documents by relevance to the query via the TEI API.

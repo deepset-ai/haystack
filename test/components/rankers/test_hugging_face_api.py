@@ -10,10 +10,7 @@ from haystack.components.rankers.hugging_face_api import HuggingFaceAPIRanker
 class TestHuggingFaceAPIRanker:
     def test_to_dict(self):
         component = HuggingFaceAPIRanker(
-            url="https://api.my-tei-service.com",
-            top_k=5,
-            timeout=30,
-            token="my_api_token",
+            url="https://api.my-tei-service.com", top_k=5, timeout=30, token="my_api_token"
         )
         data = component.to_dict()
         assert data == {
@@ -28,10 +25,7 @@ class TestHuggingFaceAPIRanker:
 
     def test_to_dict_with_custom_init_parameters(self):
         component = HuggingFaceAPIRanker(
-            url="https://api.my-tei-service.com",
-            top_k=5,
-            timeout=30,
-            token="my_api_token",
+            url="https://api.my-tei-service.com", top_k=5, timeout=30, token="my_api_token"
         )
         data = component.to_dict()
         assert data == {
@@ -60,7 +54,6 @@ class TestHuggingFaceAPIRanker:
         assert component.top_k == 5
         assert component.timeout == 30
         assert component.token == "my_api_token"
-
 
     @pytest.mark.integration
     def test_run(self):
