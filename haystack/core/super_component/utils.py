@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Annotated, Any, Optional, Tuple, TypeVar, Union, cast, get_args, get_origin
+from typing import Annotated, Any, Dict, List, Optional, Set, Tuple, TypeVar, Union, cast, get_args, get_origin
 
 from haystack.core.component.types import HAYSTACK_GREEDY_VARIADIC_ANNOTATION, HAYSTACK_VARIADIC_ANNOTATION
 
@@ -40,13 +40,13 @@ def _types_are_compatible(type1: T, type2: T) -> Tuple[bool, Optional[T]]:
     """
     # Handle Any type
     if type1 is Any:
-        return True, type2
+        return True, _convert_to_typing_type(type2)
     if type2 is Any:
-        return True, type1
+        return True, _convert_to_typing_type(type1)
 
     # Direct equality
     if type1 == type2:
-        return True, type1
+        return True, _convert_to_typing_type(type1)
 
     type1_origin = get_origin(type1)
     type2_origin = get_origin(type2)
@@ -135,7 +135,8 @@ def _check_non_union_compatibility(
         common_args.append(common)
 
     # Reconstruct the type with common arguments
-    return True, cast(Optional[T], type1_origin[tuple(common_args)])
+    typing_type = _convert_to_typing_type(type1_origin)
+    return True, cast(Optional[T], typing_type[tuple(common_args)])
 
 
 def _unwrap_all(t: T, recursive: bool) -> T:
@@ -222,3 +223,25 @@ def _unwrap_optionals(t: T, recursive: bool) -> T:
     if recursive:
         return _unwrap_all(result, recursive)  # type: ignore
     return result  # type: ignore
+
+
+def _convert_to_typing_type(t: Any) -> Any:
+    """
+    Convert built-in Python types to their typing equivalents.
+
+    :param t: Type to convert
+    :return: The type using typing module types
+    """
+    origin = get_origin(t)
+    args = get_args(t)
+
+    # Mapping of built-in types to their typing equivalents and recursive argument handling
+    type_converters = {
+        list: lambda: List if not args else List[_convert_to_typing_type(args[0])],
+        dict: lambda: Dict if not args else Dict[_convert_to_typing_type(args[0]), _convert_to_typing_type(args[1])],
+        set: lambda: Set if not args else Set[_convert_to_typing_type(args[0])],
+        tuple: lambda: Tuple if not args else Tuple[tuple(_convert_to_typing_type(arg) for arg in args)],
+    }
+    if origin in type_converters:
+        return type_converters[origin]()
+    return t

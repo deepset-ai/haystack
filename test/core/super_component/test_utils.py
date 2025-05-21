@@ -1,7 +1,7 @@
-from typing import Any, List, Optional, Union
+from typing import Any, List, Optional, Tuple, Union, cast
 
 from haystack.core.component.types import GreedyVariadic, Variadic
-from haystack.core.super_component.utils import _is_compatible
+from haystack.core.super_component.utils import _is_compatible, get_args
 
 
 class TestTypeCompatibility:
@@ -84,20 +84,16 @@ class TestTypeCompatibility:
         greedy_list = GreedyVariadic[List[int]]
 
         is_compat, common = _is_compatible(variadic_list, List[int])
-        assert is_compat
-        assert common == list[int]
+        assert is_compat and common == List[int]
 
         is_compat, common = _is_compatible(List[int], variadic_list)
-        assert is_compat
-        assert common == list[int]
+        assert is_compat and common == List[int]
 
         is_compat, common = _is_compatible(greedy_list, List[int])
-        assert is_compat
-        assert common == list[int]
+        assert is_compat and common == List[int]
 
         is_compat, common = _is_compatible(List[int], greedy_list)
-        assert is_compat
-        assert common == list[int]
+        assert is_compat and common == List[int]
 
     def test_nested_type_unwrapping(self):
         """Test nested type unwrapping behavior with unwrap_nested parameter."""
@@ -106,21 +102,21 @@ class TestTypeCompatibility:
 
         is_compat, common = _is_compatible(nested_optional, List[int])
         assert is_compat
-        assert common == list[int]
+        assert common == List[int]
 
         is_compat, common = _is_compatible(List[int], nested_optional)
         assert is_compat
-        assert common == list[int]
+        assert common == List[int]
 
         nested_union = Variadic[List[Union[int, None]]]
 
         is_compat, common = _is_compatible(nested_union, List[int])
         assert is_compat
-        assert common == list[int]
+        assert common == List[int]
 
         is_compat, common = _is_compatible(List[int], nested_union)
         assert is_compat
-        assert common == list[int]
+        assert common == List[int]
 
     def test_complex_nested_types(self):
         """Test complex nested type scenarios."""
@@ -170,4 +166,4 @@ class TestTypeCompatibility:
 
         is_compat, common = _is_compatible(nested_var, List[int])
         assert is_compat
-        assert common == list[int]
+        assert common == List[int]
