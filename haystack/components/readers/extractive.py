@@ -513,6 +513,9 @@ class ExtractiveReader:
         :returns:
             List of deduplicated answers.
         """
+        if not answers:
+            return []
+
         if overlap_threshold is None:
             return answers
 
