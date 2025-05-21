@@ -13,6 +13,7 @@ _import_structure = {
     "meta_field": ["MetaFieldRanker"],
     "meta_field_grouping_ranker": ["MetaFieldGroupingRanker"],
     "sentence_transformers_diversity": ["SentenceTransformersDiversityRanker"],
+    "sentence_transformers_similarity": ["SentenceTransformersSimilarityRanker"],
     "transformers_similarity": ["TransformersSimilarityRanker"],
 }
 
@@ -22,6 +23,7 @@ if TYPE_CHECKING:
     from .meta_field import MetaFieldRanker
     from .meta_field_grouping_ranker import MetaFieldGroupingRanker
     from .sentence_transformers_diversity import SentenceTransformersDiversityRanker
+    from .sentence_transformers_similarity import SentenceTransformersSimilarityRanker
     from .transformers_similarity import TransformersSimilarityRanker
 
 else:
