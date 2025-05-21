@@ -1222,7 +1222,7 @@ class PipelineBase:
         for receiver_name, sender_socket, receiver_socket in receivers:
             # We either get the value that was produced by the actor or we use the _NO_OUTPUT_PRODUCED class to indicate
             # that the sender did not produce an output for this socket.
-            # This allows us to track if a pre-cessor already ran but did not produce an output.
+            # This allows us to track if a predecessor already ran but did not produce an output.
             value = component_outputs.get(sender_socket.name, _NO_OUTPUT_PRODUCED)
 
             if receiver_name not in inputs:
