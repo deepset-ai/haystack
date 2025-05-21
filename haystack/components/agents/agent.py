@@ -327,8 +327,9 @@ class Agent:
         if available.
 
         :param messages: List of chat messages to process
-        :param streaming_callback: A callback that will be invoked when a response is streamed from the LLM.
-            The same callback can be configured to emit tool results when a tool is called.
+        :param streaming_callback: An asynchronous callback that will be invoked when a response
+        is streamed from the LLM. The same callback can be configured to emit tool results
+        when a tool is called.
         :param kwargs: Additional data to pass to the State schema used by the Agent.
             The keys must match the schema defined in the Agent's `state_schema`.
         :returns:
@@ -381,7 +382,11 @@ class Agent:
                 tool_invoker_result = await AsyncPipeline._run_component_async(
                     component_name="tool_invoker",
                     component={"instance": self._tool_invoker},
-                    component_inputs={"messages": llm_messages, "state": state},
+                    component_inputs={
+                        "messages": llm_messages,
+                        "state": state,
+                        "streaming_callback": streaming_callback,
+                    },
                     component_visits=component_visits,
                     max_runs_per_component=self.max_agent_steps,
                     parent_span=span,
