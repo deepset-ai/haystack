@@ -217,7 +217,23 @@ class TestPipelineBase:
         pipeline.connect("converter", "preprocessor")
         pipeline.connect("preprocessor", "writer")
 
-        merged_graph = pipeline._merge_super_component_pipelines()
+        merged_graph, super_component_components = pipeline._merge_super_component_pipelines()
+
+        assert super_component_components == {
+            "router": "converter",
+            "docx": "converter",
+            "html": "converter",
+            "json": "converter",
+            "md": "converter",
+            "text": "converter",
+            "pdf": "converter",
+            "pptx": "converter",
+            "xlsx": "converter",
+            "joiner": "converter",
+            "csv": "converter",
+            "splitter": "preprocessor",
+            "cleaner": "preprocessor",
+        }
 
         expected_nodes = [
             "cleaner",

@@ -32,7 +32,7 @@ def generate_color_variations(n: int, base_color: Optional[str] = "#3498DB", var
         list: List of hex color codes representing variations of the base color
     """
     # convert hex to RGB
-    base_color = base_color.lstrip("#")
+    base_color = base_color.lstrip("#")  # type:ignore
     r = int(base_color[0:2], 16) / 255.0
     g = int(base_color[2:4], 16) / 255.0
     b = int(base_color[4:6], 16) / 255.0
@@ -293,7 +293,7 @@ def _to_mermaid_text(
     # color variations for super components
     super_component_colors = {}
     if super_component_components:
-        unique_super_components = set(super_component_mapping.values())
+        unique_super_components = set(super_component_mapping.values())  # type:ignore
         color_variations = generate_color_variations(n=len(unique_super_components))
         super_component_colors = dict(zip(unique_super_components, color_variations))
         print(f"Super component colors: {super_component_colors}")
@@ -309,7 +309,7 @@ def _to_mermaid_text(
 
         # styling based on whether the component is a SuperComponent
         if comp in super_component_components:
-            super_component_name = super_component_mapping[comp]
+            super_component_name = super_component_mapping[comp]  # type:ignore
             style = super_component_name
         else:
             style = "component"
