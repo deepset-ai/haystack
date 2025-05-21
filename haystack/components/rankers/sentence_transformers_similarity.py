@@ -131,7 +131,7 @@ class SentenceTransformersSimilarityRanker:
         """
         return {"model": self.model}
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Initializes the component.
         """
@@ -203,7 +203,7 @@ class SentenceTransformersSimilarityRanker:
         top_k: Optional[int] = None,
         scale_score: Optional[bool] = None,
         score_threshold: Optional[float] = None,
-    ):
+    ) -> Dict[str, List[Document]]:
         """
         Returns a list of documents ranked by their similarity to the given query.
 
