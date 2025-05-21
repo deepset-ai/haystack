@@ -7,8 +7,8 @@ import pytest
 from haystack.utils.base_serialization import (
     serialize_class_instance,
     deserialize_class_instance,
-    serialize_value,
-    deserialize_value,
+    serialize_value_with_schema,
+    deserialize_value_with_schema,
 )
 from haystack.dataclasses import ChatMessage, Document, GeneratedAnswer
 
@@ -73,7 +73,7 @@ def test_deserialize_class_instance_invalid_data():
         deserialize_class_instance({"type": "test_base_serialization.CustomClassNoFromDict", "data": {}})
 
 
-def test_serialize_value():
+def test_serialize_value_with_schema():
     data = {
         "numbers": 1,
         "messages": [ChatMessage.from_user(text="Hello, world!")],
@@ -90,86 +90,110 @@ def test_serialize_value():
             )
         ],
     }
-    result = serialize_value(data)
+    result = serialize_value_with_schema(data)
     assert result == {
-        "numbers": 1,
-        "messages": [
-            {
-                "data": {"role": "user", "meta": {}, "name": None, "content": [{"text": "Hello, world!"}]},
-                "type": "haystack.dataclasses.chat_message.ChatMessage",
-            }
-        ],
-        "user_id": "123",
-        "dict_of_lists": {"numbers": [1, 2, 3]},
-        "documents": [
-            {
-                "data": {
+        "schema": {
+            "numbers": {"type": "integer"},
+            "messages": {"type": "array", "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"}},
+            "user_id": {"type": "string"},
+            "dict_of_lists": {"type": "object"},
+            "documents": {"type": "array", "items": {"type": "haystack.dataclasses.document.Document"}},
+            "list_of_dicts": {"type": "array", "items": {"type": "string"}},
+            "answers": {"type": "array", "items": {"type": "haystack.dataclasses.answer.GeneratedAnswer"}},
+        },
+        "data": {
+            "numbers": 1,
+            "messages": [{"role": "user", "meta": {}, "name": None, "content": [{"text": "Hello, world!"}]}],
+            "user_id": "123",
+            "dict_of_lists": {"numbers": [1, 2, 3]},
+            "documents": [
+                {
                     "id": "e0f8c9e42f5535600aee6c5224bf4478b73bcf0a1bcba6f357bf162e88ff985d",
                     "content": "Hello, world!",
                     "blob": None,
                     "score": None,
                     "embedding": None,
                     "sparse_embedding": None,
-                },
-                "type": "haystack.dataclasses.document.Document",
-            }
-        ],
-        "list_of_dicts": [{"numbers": [1, 2, 3]}],
-        "answers": [
-            {
-                "data": {
+                }
+            ],
+            "list_of_dicts": [{"numbers": [1, 2, 3]}],
+            "answers": [
+                {
+                    "type": "haystack.dataclasses.answer.GeneratedAnswer",
                     "init_parameters": {
                         "data": "Paris",
+                        "query": "What is the capital of France?",
                         "documents": [
                             {
-                                "blob": None,
-                                "content": "Paris is the capital of France",
-                                "embedding": None,
                                 "id": "413dccdf51a54cca75b7ed2eddac04e6e58560bd2f0caf4106a3efc023fe3651",
+                                "content": "Paris is the capital of France",
+                                "blob": None,
                                 "meta": {},
                                 "score": None,
+                                "embedding": None,
                                 "sparse_embedding": None,
                             }
                         ],
                         "meta": {"page": 1},
-                        "query": "What is the capital of France?",
                     },
-                    "type": "haystack.dataclasses.answer.GeneratedAnswer",
-                },
-                "type": "haystack.dataclasses.answer.GeneratedAnswer",
-            }
-        ],
+                }
+            ],
+        },
     }
 
 
-def test_deserialize_value():
+def test_deserialize_value_with_schema():
     serialized__data = {
-        "numbers": 1,
-        "messages": [
-            {
-                "data": {"role": "user", "meta": {}, "name": None, "content": [{"text": "Hello, world!"}]},
-                "type": "haystack.dataclasses.chat_message.ChatMessage",
-            }
-        ],
-        "user_id": "123",
-        "dict_of_lists": {"numbers": [1, 2, 3]},
-        "documents": [
-            {
-                "data": {
+        "schema": {
+            "numbers": {"type": "integer"},
+            "messages": {"type": "array", "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"}},
+            "user_id": {"type": "string"},
+            "dict_of_lists": {"type": "object"},
+            "documents": {"type": "array", "items": {"type": "haystack.dataclasses.document.Document"}},
+            "list_of_dicts": {"type": "array", "items": {"type": "string"}},
+            "answers": {"type": "array", "items": {"type": "haystack.dataclasses.answer.GeneratedAnswer"}},
+        },
+        "data": {
+            "numbers": 1,
+            "messages": [{"role": "user", "meta": {}, "name": None, "content": [{"text": "Hello, world!"}]}],
+            "user_id": "123",
+            "dict_of_lists": {"numbers": [1, 2, 3]},
+            "documents": [
+                {
                     "id": "e0f8c9e42f5535600aee6c5224bf4478b73bcf0a1bcba6f357bf162e88ff985d",
                     "content": "Hello, world!",
                     "blob": None,
                     "score": None,
                     "embedding": None,
                     "sparse_embedding": None,
-                },
-                "type": "haystack.dataclasses.document.Document",
-            }
-        ],
-        "list_of_dicts": [{"numbers": [1, 2, 3]}],
+                }
+            ],
+            "list_of_dicts": [{"numbers": [1, 2, 3]}],
+            "answers": [
+                {
+                    "type": "haystack.dataclasses.answer.GeneratedAnswer",
+                    "init_parameters": {
+                        "data": "Paris",
+                        "query": "What is the capital of France?",
+                        "documents": [
+                            {
+                                "id": "413dccdf51a54cca75b7ed2eddac04e6e58560bd2f0caf4106a3efc023fe3651",
+                                "content": "Paris is the capital of France",
+                                "blob": None,
+                                "meta": {},
+                                "score": None,
+                                "embedding": None,
+                                "sparse_embedding": None,
+                            }
+                        ],
+                        "meta": {"page": 1},
+                    },
+                }
+            ],
+        },
     }
 
-    result = deserialize_value(serialized__data)
+    result = deserialize_value_with_schema(serialized__data)
     assert result["numbers"] == 1
     assert isinstance(result["messages"][0], ChatMessage)
     assert result["messages"][0].text == "Hello, world!"
@@ -177,23 +201,24 @@ def test_deserialize_value():
     assert result["dict_of_lists"] == {"numbers": [1, 2, 3]}
     assert isinstance(result["documents"][0], Document)
     assert result["documents"][0].content == "Hello, world!"
+    assert isinstance(result["answers"][0], GeneratedAnswer)
 
 
 def test_serialize_value_with_custom_class_type():
     custom_type = CustomClass()
     data = {"numbers": 1, "custom_type": custom_type}
-    result = serialize_value(data)
+    result = serialize_value_with_schema(data)
     assert result == {
-        "numbers": 1,
-        "custom_type": {"data": {"key": "value", "more": False}, "type": "test_base_serialization.CustomClass"},
+        "schema": {"numbers": {"type": "integer"}, "custom_type": {"type": "test_base_serialization.CustomClass"}},
+        "data": {"numbers": 1, "custom_type": {"key": "value", "more": False}},
     }
 
 
 def test_deserialize_value_with_custom_class_type():
     serialized_data = {
-        "numbers": 1,
-        "custom_type": {"data": {"key": "value", "more": False}, "type": "test_base_serialization.CustomClass"},
+        "schema": {"numbers": {"type": "integer"}, "custom_type": {"type": "test_base_serialization.CustomClass"}},
+        "data": {"numbers": 1, "custom_type": {"key": "value", "more": False}},
     }
-    result = deserialize_value(serialized_data)
+    result = deserialize_value_with_schema(serialized_data)
     assert result["numbers"] == 1
     assert isinstance(result["custom_type"], CustomClass)

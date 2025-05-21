@@ -364,17 +364,16 @@ class TestState:
             "dict_of_lists": {"type": "dict", "handler": "haystack.components.agents.state.state_utils.replace_values"},
         }
         assert state_dict["data"] == {
-            "numbers": 1,
-            "messages": [
-                {
-                    "role": "user",
-                    "meta": {},
-                    "name": None,
-                    "content": [{"text": "Hello, world!"}],
-                    "_type": "haystack.dataclasses.chat_message.ChatMessage",
-                }
-            ],
-            "dict_of_lists": {"numbers": [1, 2, 3]},
+            "schema": {
+                "numbers": {"type": "integer"},
+                "messages": {"type": "array", "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"}},
+                "dict_of_lists": {"type": "object"},
+            },
+            "data": {
+                "numbers": 1,
+                "messages": [{"role": "user", "meta": {}, "name": None, "content": [{"text": "Hello, world!"}]}],
+                "dict_of_lists": {"numbers": [1, 2, 3]},
+            },
         }
 
     def test_state_from_dict(self):
@@ -391,17 +390,16 @@ class TestState:
                 },
             },
             "data": {
-                "numbers": 1,
-                "messages": [
-                    {
-                        "role": "user",
-                        "meta": {},
-                        "name": None,
-                        "content": [{"text": "Hello, world!"}],
-                        "_type": "haystack.dataclasses.chat_message.ChatMessage",
-                    }
-                ],
-                "dict_of_lists": {"numbers": [1, 2, 3]},
+                "schema": {
+                    "numbers": {"type": "integer"},
+                    "messages": {"type": "array", "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"}},
+                    "dict_of_lists": {"type": "object"},
+                },
+                "data": {
+                    "numbers": 1,
+                    "messages": [{"role": "user", "meta": {}, "name": None, "content": [{"text": "Hello, world!"}]}],
+                    "dict_of_lists": {"numbers": [1, 2, 3]},
+                },
             },
         }
         state = State.from_dict(state_dict)
