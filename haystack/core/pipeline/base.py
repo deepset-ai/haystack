@@ -671,6 +671,7 @@ class PipelineBase:
 
     def show(
         self,
+        *,
         server_url: str = "https://mermaid.ink",
         super_component_expansion: bool = False,
         params: Optional[dict] = None,
@@ -733,9 +734,10 @@ class PipelineBase:
             msg = "This method is only supported in Jupyter notebooks. Use Pipeline.draw() to save an image locally."
             raise PipelineDrawingError(msg)
 
-    def draw(  # pylint: disable=too-many-positional-arguments
+    def draw(
         self,
         path: Path,
+        *,
         server_url: str = "https://mermaid.ink",
         super_component_expansion: bool = False,
         params: Optional[dict] = None,
