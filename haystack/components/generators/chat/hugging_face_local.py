@@ -568,6 +568,7 @@ class HuggingFaceLocalChatGenerator:
         )
 
         # Set up streaming handler
+        assert asyncio.iscoroutinefunction(streaming_callback), "Streaming callback must be asynchronous"
         generation_kwargs["streamer"] = AsyncHFTokenStreamingHandler(tokenizer, streaming_callback, stop_words)
 
         # Generate responses asynchronously
