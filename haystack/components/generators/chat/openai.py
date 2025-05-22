@@ -16,6 +16,7 @@ from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import (
     AsyncStreamingCallbackT,
     ChatMessage,
+    ComponentInfo,
     StreamingCallbackT,
     StreamingChunk,
     SyncStreamingCallbackT,
@@ -570,24 +571,26 @@ class OpenAIChatGenerator:
         :returns:
             The StreamingChunk.
         """
-        # if there are no choices, return an empty chunk
-        if len(chunk.choices) == 0:
-            return StreamingChunk(content="", meta={"model": chunk.model, "received_at": datetime.now().isoformat()})
 
-        # get the name assigned to component in the pipeline
-        component_name = str(self.__component_name__) if getattr(self, "__component_name__", None) is not None else None
+        # get the component name and type
+        component_info = ComponentInfo()
+        component_info.name = (
+            str(self.__component_name__) if getattr(self, "__component_name__", None) is not None else None
+        )
+        component_info.type = f"{self.__class__.__module__}.{self.__class__.__name__}"
 
         # we stream the content of the chunk if it's not a tool or function call
+        # if there are no choices, return an empty chunk
+        if len(chunk.choices) == 0:
+            return StreamingChunk(
+                content="",
+                meta={"model": chunk.model, "received_at": datetime.now().isoformat()},
+                component_info=component_info,
+            )
+
         choice: ChunkChoice = chunk.choices[0]
         content = choice.delta.content or ""
-        chunk_message = StreamingChunk(content)
-
-        # add the component info to the chunk
-        # component_name will be available if the component is added to a pipeline
-        component_info = {"component_type": f"{self.__class__.__module__}.{self.__class__.__name__}"}
-        if component_name:
-            component_info["component_name"] = component_name
-        chunk_message.component_info.update(component_info)
+        chunk_message = StreamingChunk(content, component_info=component_info)
 
         # but save the tool calls and function call in the meta if they are present
         # and then connect the chunks in the _convert_streaming_chunks_to_chat_message method

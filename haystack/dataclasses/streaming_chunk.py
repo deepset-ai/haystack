@@ -9,6 +9,19 @@ from haystack.utils.asynchronous import is_callable_async_compatible
 
 
 @dataclass
+class ComponentInfo:
+    """
+    The ComponentInfo class encapsulates information about a component.
+
+    :param name: The name of the component assigned in the pipeline.
+    :param type: The type of the component.
+    """
+
+    name: Optional[str] = field(default=None)
+    type: str = field(default="")
+
+
+@dataclass
 class StreamingChunk:
     """
     The StreamingChunk class encapsulates a segment of streamed content along with associated metadata.
@@ -23,7 +36,7 @@ class StreamingChunk:
 
     content: str
     meta: Dict[str, Any] = field(default_factory=dict, hash=False)
-    component_info: Dict[str, Any] = field(default_factory=dict, hash=False)
+    component_info: ComponentInfo = field(default_factory=ComponentInfo)
 
 
 SyncStreamingCallbackT = Callable[[StreamingChunk], None]
