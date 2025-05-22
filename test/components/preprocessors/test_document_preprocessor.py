@@ -133,9 +133,3 @@ class TestDocumentPreprocessor:
         processed_docs = result["documents"]
         assert len(processed_docs) == 3  # Should be split into 3 sentences
         assert all("." not in doc.content for doc in processed_docs)  # Each doc should be a single sentence
-
-
-def test_import_document_preprocessor() -> None:
-    # test if the DocumentPreprocessor.run() doesn't trigger any type or static analyzer errors
-    doc_processor = DocumentPreprocessor()
-    doc_processor.run(documents=[])

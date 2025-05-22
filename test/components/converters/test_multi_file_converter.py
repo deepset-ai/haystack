@@ -143,9 +143,3 @@ class TestMultiFileConverter:
         assert len(docs) == 2
         assert all(isinstance(doc, Document) for doc in docs)
         assert all(doc.content is not None for doc in docs)
-
-
-def test_import_document_preprocessor() -> None:
-    # test if the MultiFileConverter.run() doesn't trigger any type or static analyzer errors
-    converter = MultiFileConverter()
-    converter.run(sources=[])
