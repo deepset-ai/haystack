@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Literal, Optional
 from haystack.lazy_imports import LazyImport
 from haystack.utils.auth import Secret
 
-with LazyImport(message="Run 'pip install \"sentence-transformers>=3.0.0\"'") as sentence_transformers_import:
+with LazyImport(message="Run 'pip install \"sentence-transformers>=4.1.0\"'") as sentence_transformers_import:
     from sentence_transformers import SentenceTransformer
 
 
@@ -24,6 +24,7 @@ class _SentenceTransformersEmbeddingBackendFactory:
         device: Optional[str] = None,
         auth_token: Optional[Secret] = None,
         trust_remote_code: bool = False,
+        local_files_only: bool = False,
         truncate_dim: Optional[int] = None,
         model_kwargs: Optional[Dict[str, Any]] = None,
         tokenizer_kwargs: Optional[Dict[str, Any]] = None,
@@ -39,6 +40,7 @@ class _SentenceTransformersEmbeddingBackendFactory:
             device=device,
             auth_token=auth_token,
             trust_remote_code=trust_remote_code,
+            local_files_only=local_files_only,
             truncate_dim=truncate_dim,
             model_kwargs=model_kwargs,
             tokenizer_kwargs=tokenizer_kwargs,
@@ -60,6 +62,7 @@ class _SentenceTransformersEmbeddingBackend:
         device: Optional[str] = None,
         auth_token: Optional[Secret] = None,
         trust_remote_code: bool = False,
+        local_files_only: bool = False,
         truncate_dim: Optional[int] = None,
         model_kwargs: Optional[Dict[str, Any]] = None,
         tokenizer_kwargs: Optional[Dict[str, Any]] = None,
@@ -68,12 +71,12 @@ class _SentenceTransformersEmbeddingBackend:
     ):
         sentence_transformers_import.check()
 
-        self.model = SentenceTransformer(  # type: ignore[call-overload, misc]
-            # type issues with sentence-transformers 4.0.1 - https://github.com/UKPLab/sentence-transformers/issues/3290
+        self.model = SentenceTransformer(
             model_name_or_path=model,
             device=device,
             token=auth_token.resolve_value() if auth_token else None,
             trust_remote_code=trust_remote_code,
+            local_files_only=local_files_only,
             truncate_dim=truncate_dim,
             model_kwargs=model_kwargs,
             tokenizer_kwargs=tokenizer_kwargs,

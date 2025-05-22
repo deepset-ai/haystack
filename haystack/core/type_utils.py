@@ -95,7 +95,7 @@ def _check_callable_compatibility(sender_args, receiver_args):
     return all(_strict_types_are_compatible(sender_args[0][i], receiver_args[0][i]) for i in range(len(sender_args[0])))
 
 
-def _type_name(type_):
+def _type_name(type_: Any) -> str:
     """
     Util methods to get a nice readable representation of a type.
 
@@ -118,7 +118,7 @@ def _type_name(type_):
         name = "Optional"
 
     if args:
-        args = ", ".join([_type_name(a) for a in args if a is not type(None)])
-        return f"{name}[{args}]"
+        args_str = ", ".join([_type_name(a) for a in args if a is not type(None)])
+        return f"{name}[{args_str}]"
 
     return f"{name}"
