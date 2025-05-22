@@ -5,11 +5,10 @@
 from typing import Any, Dict, List
 
 from haystack import super_component
-from haystack.core.super_component.super_component import _SuperComponent
 from haystack.dataclasses import Document
 
 @super_component
-class MultiFileConverter(_SuperComponent):
+class MultiFileConverter:
     """
     A SuperComponent that converts multiple files into documents.
 
@@ -20,4 +19,5 @@ class MultiFileConverter(_SuperComponent):
     def to_dict(self) -> Dict[str, Any]: ...
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "MultiFileConverter": ...
+    # pylint: disable=no-member
     def run(self, sources: List[str]) -> Dict[str, List[Document]]: ...
