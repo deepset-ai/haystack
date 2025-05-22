@@ -429,11 +429,6 @@ class HuggingFaceAPIChatGenerator:
                 text = choice.delta.content or ""
                 generated_text += text
 
-                if choice.finish_reason:
-                    finish_reason = choice.finish_reason
-                    meta["finish_reason"] = finish_reason
-
-                meta["model"] = self._client.model
                 stream_chunk = StreamingChunk(text, meta, component_info)
                 streaming_callback(stream_chunk)
 
@@ -530,12 +525,6 @@ class HuggingFaceAPIChatGenerator:
 
                 text = choice.delta.content or ""
                 generated_text += text
-
-                if choice.finish_reason:
-                    finish_reason = choice.finish_reason
-                    meta["finish_reason"] = finish_reason
-
-                meta["model"] = self._async_client.model
 
                 stream_chunk = StreamingChunk(text, meta, component_info)
                 await streaming_callback(stream_chunk)  # type: ignore
