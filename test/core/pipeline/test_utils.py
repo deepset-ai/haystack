@@ -4,6 +4,7 @@
 
 import logging
 import pytest
+import warnings
 
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
@@ -11,7 +12,7 @@ from haystack.core.pipeline.utils import (
     parse_connect_string,
     FIFOPriorityQueue,
     _deepcopy_with_exceptions,
-    _positional_arg_warning,
+    args_deprecated,
 )
 from haystack.tools import ComponentTool, Tool
 
@@ -253,6 +254,42 @@ class TestDeepcopyWithFallback:
         res = _deepcopy_with_exceptions(original)
         assert res["component"] is original["component"]
 
-    def test__positional_arg_warning(self):
-        with pytest.warns(DeprecationWarning, match="Positional arguments are deprecated"):
-            _positional_arg_warning("foo", "bar", "baz")
+
+class TestArgsDeprecated:
+    @pytest.fixture
+    def sample_function(self):
+        @args_deprecated
+        def sample_func(param1: str = "default1", param2: int = 42):
+            return f"{param1}-{param2}"
+
+        return sample_func
+
+    def test_warning_with_positional_args(self, sample_function):
+        # using positional arguments only"""
+        with pytest.warns(
+            DeprecationWarning, match="In an upcoming release, this method will require keyword arguments"
+        ):
+            result = sample_function("test", 123)
+            assert result == "test-123"
+
+    def test_warning_with_mixed_args(self, sample_function):
+        # mixing positional and keyword arguments"""
+        with pytest.warns(
+            DeprecationWarning, match="In an upcoming release, this method will require keyword arguments"
+        ):
+            result = sample_function("test", 123)
+            assert result == "test-123"
+
+    def test_no_warning_with_default_args(self, sample_function):
+        # using default arguments
+        with warnings.catch_warnings(record=True) as w:
+            result = sample_function()
+            assert result == "default1-42"
+            assert len(w) == 0
+
+    def test_no_warning_with_keyword_args(self, sample_function):
+        # using keyword arguments
+        with warnings.catch_warnings(record=True) as w:
+            result = sample_function(param1="test", param2=123)
+            assert result == "test-123"
+            assert len(w) == 0

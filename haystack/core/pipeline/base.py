@@ -718,15 +718,6 @@ class PipelineBase:
         :raises PipelineDrawingError:
             If the function is called outside of a Jupyter notebook or if there is an issue with rendering.
         """
-        import warnings
-
-        warnings.warn(
-            "In an upcoming release, this method will require keyword arguments for all parameters. "
-            "Please update your code to use keyword arguments to ensure future compatibility."
-            'Example: pipeline.show(server_url="https://custom-server.com"',
-            DeprecationWarning,
-            stacklevel=2,
-        )
 
         # Call the internal implementation with keyword arguments
         self._show_internal(
@@ -814,15 +805,6 @@ class PipelineBase:
         :raises PipelineDrawingError:
             If there is an issue with rendering or saving the image.
         """
-        import warnings
-
-        warnings.warn(
-            "In an upcoming release, this method will require keyword arguments for all parameters except 'path'. "
-            "Please update your code to use keyword arguments to ensure future compatibility."
-            'Example: pipeline.draw(path="output.png", server_url="https://custom-server.com")',
-            DeprecationWarning,
-            stacklevel=2,
-        )
 
         # Call the internal implementation with keyword arguments
         self._draw_internal(
@@ -835,8 +817,8 @@ class PipelineBase:
 
     def _draw_internal(
         self,
-        path: Path,
         *,
+        path: Path,
         server_url: str = "https://mermaid.ink",
         params: Optional[dict] = None,
         timeout: int = 30,
