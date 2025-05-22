@@ -1136,7 +1136,7 @@ class TestOpenAIChatGenerator:
         assert not message.texts
         assert not message.text
         assert message.tool_calls
-        tool_call = message.tool_calls
+        tool_call = message.tool_call
         assert isinstance(tool_call, ToolCall)
         assert tool_call.tool_name == "weather"
         assert tool_call.arguments == {"city": "Paris"}

@@ -605,16 +605,17 @@ class OpenAIChatGenerator:
         if choice.delta.tool_calls:
             chunk_messages = []
             for tool_call in choice.delta.tool_calls:
+                function = tool_call.function
                 chunk_message = StreamingChunk(
                     content=content,
                     # We adopt the tool_call.index as the index of the chunk
                     index=tool_call.index,
                     tool_call=ToolCallDelta(
                         id=tool_call.id,
-                        tool_name=tool_call.function.name,
-                        arguments=tool_call.function.arguments or None,
+                        tool_name=function.name if function else None,
+                        arguments=function.arguments if function and function.arguments else None,
                     ),
-                    start=tool_call.function.name is not None,
+                    start=function.name is not None if function else None,
                     meta={
                         "model": chunk.model,
                         "index": choice.index,
