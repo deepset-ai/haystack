@@ -129,9 +129,7 @@ class AnswerBuilder:
         for reply, given_metadata in zip(replies_to_iterate, meta_to_iterate):
             # Extract content from ChatMessage objects if reply is a ChatMessages, else use the string as is
             if isinstance(reply, ChatMessage):
-                extracted_reply = ""
-                if reply.text:
-                    extracted_reply = reply.text
+                extracted_reply = reply.text or ""
             else:
                 extracted_reply = str(reply)
             extracted_metadata = reply.meta if isinstance(reply, ChatMessage) else {}
