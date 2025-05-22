@@ -3,8 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from enum import Enum
+from typing import TYPE_CHECKING
 
-from haystack import Pipeline, super_component
+from haystack import Document, Pipeline, super_component
 from haystack.components.converters import (
     CSVToDocument,
     DOCXToDocument,
@@ -114,3 +115,8 @@ class MultiFileConverter:
         self.pipeline = pp
         self.output_mapping = {"joiner.documents": "documents", "router.unclassified": "unclassified"}
         self.input_mapping = {"sources": ["router.sources"], "meta": ["router.meta"]}
+
+    if TYPE_CHECKING:
+        # fake method, never executed, but static analyzers will not complain about missing method
+        def run(self, sources: list[str]) -> dict[str, list[Document]]:  # noqa: D102
+            ...
