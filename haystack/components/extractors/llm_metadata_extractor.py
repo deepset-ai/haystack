@@ -258,7 +258,7 @@ class LLMMetadataExtractor:
     def _run_on_thread(self, prompt: Optional[ChatMessage]) -> Dict[str, Any]:
         # If prompt is None, return an empty dictionary
         if prompt is None:
-            return {"replies": ["{}"]}
+            return {"error": "Document has no content, skipping LLM call."}
 
         try:
             result = self._chat_generator.run(messages=[prompt])
