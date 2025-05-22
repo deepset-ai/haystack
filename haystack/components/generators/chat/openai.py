@@ -610,7 +610,9 @@ class OpenAIChatGenerator:
                     # We adopt the tool_call.index as the index of the chunk
                     index=tool_call.index,
                     tool_call=ToolCallDelta(
-                        id=tool_call.id, name=tool_call.function.name, arguments=tool_call.function.arguments or None
+                        id=tool_call.id,
+                        tool_name=tool_call.function.name,
+                        arguments=tool_call.function.arguments or None,
                     ),
                     start=tool_call.function.name is not None,
                     meta={

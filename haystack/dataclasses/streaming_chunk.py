@@ -9,23 +9,21 @@ from haystack.dataclasses.chat_message import ToolCallResult
 from haystack.utils.asynchronous import is_callable_async_compatible
 
 
-# Similar to ChoiceDeltaToolCall from OpenAI
-@dataclass(kw_only=True)
 class ToolCallDelta:
     """
     Represents a Tool call prepared by the model, usually contained in an assistant message.
 
     :param id: The ID of the Tool call.
-    :param name: The name of the Tool to call.
+    :param tool_name: The name of the Tool to call.
     :param arguments: Either the full arguments in JSON format or a delta of the arguments.
     """
 
     id: Optional[str] = None  # noqa: A003
-    name: Optional[str] = None
+    tool_name: Optional[str] = None
     arguments: Optional[str] = None
 
     def __post_init__(self):
-        if self.name is None and self.arguments is None:
+        if self.tool_name is None and self.arguments is None:
             raise ValueError("At least one of tool_name or arguments must be provided.")
         # NOTE: We allow for name and arguments to both be present because some providers like Mistral provide the
         # name and full arguments in one chunk
