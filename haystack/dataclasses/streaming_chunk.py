@@ -9,6 +9,7 @@ from haystack.dataclasses.chat_message import ToolCallResult
 from haystack.utils.asynchronous import is_callable_async_compatible
 
 
+@dataclass
 class ToolCallDelta:
     """
     Represents a Tool call prepared by the model, usually contained in an assistant message.

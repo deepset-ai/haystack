@@ -320,14 +320,15 @@ class OpenAIGenerator:
         """
         choice = chunk.choices[0]
         content = choice.delta.content or ""
-        chunk_message = StreamingChunk(content=content)
-        chunk_message.meta.update(
-            {
+        # TODO Consider adding start
+        chunk_message = StreamingChunk(
+            content=content,
+            meta={
                 "model": chunk.model,
                 "index": choice.index,
                 "finish_reason": choice.finish_reason,
                 "received_at": datetime.now().isoformat(),
-            }
+            },
         )
         return chunk_message
 

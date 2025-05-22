@@ -634,7 +634,6 @@ class OpenAIChatGenerator:
             # NOTE: We may need to revisit this if OpenAI allows planning/thinking content before tool calls like
             #       Anthropic/Bedrock
             index=0,
-            tool_call=None,
             # The first chunk is always a start message chunk, so if we reach here and previous_chunks is length 1
             # then this is the start of text content
             start=len(previous_chunks) == 1 or None,

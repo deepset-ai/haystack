@@ -20,7 +20,7 @@ def print_streaming_chunk(chunk: StreamingChunk) -> None:
     :param chunk: A chunk of streaming data containing content and optional metadata, such as tool calls and
         tool results.
     """
-    if chunk.start and chunk.index > 0:
+    if chunk.start and chunk.index and chunk.index > 0:
         # If this is not the first content block of the message, add two new lines
         print("\n\n", flush=True, end="")
 
@@ -30,7 +30,7 @@ def print_streaming_chunk(chunk: StreamingChunk) -> None:
         # or chunk.tool_call.name: would be equivalent here
         if chunk.start:
             print("[TOOL CALL]\n", flush=True, end="")
-            print(f"Tool: {chunk.tool_call.name} ", flush=True, end="")
+            print(f"Tool: {chunk.tool_call.tool_name} ", flush=True, end="")
             print("\nArguments: ", flush=True, end="")
 
         # print the tool arguments
@@ -41,7 +41,7 @@ def print_streaming_chunk(chunk: StreamingChunk) -> None:
     # Print tool call results if available (from ToolInvoker)
     if chunk.tool_call_result:
         # Tool Call Result is fully formed so delta accumulation is not needed
-        print(f"[TOOL RESULT]\n{chunk.tool_call_result}", flush=True, end="")
+        print(f"[TOOL RESULT]\n{chunk.tool_call_result.result}", flush=True, end="")
 
     ## Normal content streaming
     # Print the main content of the chunk (from ChatGenerator)
