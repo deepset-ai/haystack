@@ -5,10 +5,11 @@
 from typing import Any, Dict, List
 
 from haystack import super_component
+from haystack.core.super_component.super_component import _SuperComponent
 from haystack.dataclasses import Document
 
 @super_component
-class MultiFileConverter:
+class MultiFileConverter(_SuperComponent):
     """
     A SuperComponent that converts multiple files into documents.
 
