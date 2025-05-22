@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Union
+from typing import Any, Awaitable, Callable, Dict, Optional, Union
 
 from haystack.dataclasses.chat_message import ToolCallResult
 from haystack.utils.asynchronous import is_callable_async_compatible
