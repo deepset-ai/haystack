@@ -146,6 +146,10 @@ class DocumentPreprocessor:
         # fake method, never executed, but static analyzers will not complain about missing method
         def run(self, *, documents: List[Document]) -> dict[str, list[Document]]:  # noqa: D102
             ...
+        def warm_up(self) -> None:  # noqa: D102
+            ...
+        async def run_async(self, **kwargs: Any) -> dict[str, Any]:  # noqa: D102
+            ...
 
     def to_dict(self) -> Dict[str, Any]:
         """
