@@ -359,7 +359,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
             tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
             stream_handler: Callable[[StreamingChunk], None],
             stop_words: Optional[List[str]] = None,
-            component_info: Optional[ComponentInfo] = None,
+            component_info: ComponentInfo = ComponentInfo(),
         ):
             super().__init__(tokenizer=tokenizer, skip_prompt=True)  # type: ignore
             self.token_handler = stream_handler

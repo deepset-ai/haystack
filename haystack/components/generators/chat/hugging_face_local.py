@@ -385,7 +385,7 @@ class HuggingFaceLocalChatGenerator:
                 logger.warning(msg, num_responses=num_responses)
                 generation_kwargs["num_return_sequences"] = 1
 
-                # Set up streaming handler
+            # Get component name and type
             component_name = self.__component_name__ if hasattr(self, "__component_name__") else None
             component_type = self.__class__.__module__ + "." + self.__class__.__name__
             component_info = ComponentInfo(name=component_name, type=component_type)
@@ -575,7 +575,7 @@ class HuggingFaceLocalChatGenerator:
             generation_kwargs.get("pad_token_id", tokenizer.pad_token_id) or tokenizer.eos_token_id
         )
 
-        # Set up streaming handler
+        # Get component name and type
         component_name = self.__component_name__ if hasattr(self, "__component_name__") else None
         component_type = self.__class__.__module__ + "." + self.__class__.__name__
         component_info = ComponentInfo(name=component_name, type=component_type)
