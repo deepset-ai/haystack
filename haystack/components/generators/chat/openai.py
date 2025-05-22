@@ -574,10 +574,23 @@ class OpenAIChatGenerator:
         if len(chunk.choices) == 0:
             return StreamingChunk(content="", meta={"model": chunk.model, "received_at": datetime.now().isoformat()})
 
+        # get the name assigned to component in the pipeline
+        component_name = None
+        if getattr(self, "__haystack_added_to_pipeline__", None):
+            component_name = self.__component_name__
+
         # we stream the content of the chunk if it's not a tool or function call
         choice: ChunkChoice = chunk.choices[0]
         content = choice.delta.content or ""
         chunk_message = StreamingChunk(content)
+
+        # add the component info to the chunk
+        # component_name will be available if the component is added to a pipeline
+        component_info = {"component_type": self.__class__}
+        if component_name:
+            component_info["component_name"] = component_name
+        chunk_message.component_info.update(component_info)
+
         # but save the tool calls and function call in the meta if they are present
         # and then connect the chunks in the _convert_streaming_chunks_to_chat_message method
         chunk_message.meta.update(
