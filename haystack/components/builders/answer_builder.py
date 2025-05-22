@@ -54,8 +54,8 @@ class AnswerBuilder:
             Example: `\\[(\\d+)\\]` finds "1" in a string "this is an answer[1]".
 
         :param last_message_only:
-            If True, only the last message is used as the answer.
-            If False, all messages are used as the answer.
+           If False (default value), all messages are used as the answer.
+           If True, only the last message is used as the answer.
         """
         if pattern:
             AnswerBuilder._check_num_groups_in_regex(pattern)
