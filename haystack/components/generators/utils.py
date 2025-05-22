@@ -2,8 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from openai.types.chat.chat_completion_chunk import ChoiceDeltaToolCall
-
 from haystack.dataclasses import StreamingChunk
 
 
@@ -22,24 +20,38 @@ def print_streaming_chunk(chunk: StreamingChunk) -> None:
     :param chunk: A chunk of streaming data containing content and optional metadata, such as tool calls and
         tool results.
     """
-    # Print tool call metadata if available (from ChatGenerator)
-    if chunk.meta.get("tool_calls"):
-        for tool_call in chunk.meta["tool_calls"]:
-            if isinstance(tool_call, ChoiceDeltaToolCall) and tool_call.function:
-                # print the tool name
-                if tool_call.function.name and not tool_call.function.arguments:
-                    print("[TOOL CALL]\n", flush=True, end="")
-                    print(f"Tool: {tool_call.function.name} ", flush=True, end="")
-                    print("\nArguments: ", flush=True, end="")
+    ## Tool Call streaming
+    if chunk.tool_calls:
+        for tool_call in chunk.tool_calls:
+            # Presence of tool_name indicates beginning of a tool call
+            # or chunk.start: would be equivalent here
+            if tool_call.name:
+                # If this is not the first tool call, we add two new lines
+                if tool_call.index > 0:
+                    print("\n\n", flush=True, end="")
+
+                print("[TOOL CALL]\n", flush=True, end="")
+                print(f"Tool: {tool_call.name} ", flush=True, end="")
+                print("\nArguments: ", flush=True, end="")
 
                 # print the tool arguments
-                if tool_call.function.arguments:
-                    print(tool_call.function.arguments, flush=True, end="")
+                if tool_call.arguments:
+                    print(tool_call.arguments, flush=True, end="")
 
+    ## Tool Call Result streaming
     # Print tool call results if available (from ToolInvoker)
-    if chunk.meta.get("tool_result"):
-        print(f"\n\n[TOOL RESULT]\n{chunk.meta['tool_result']}\n\n", flush=True, end="")
+    if chunk.tool_call_results:
+        # Tool Call Result is fully formed so delta accumulation is not needed
+        print(f"[TOOL RESULT]\n{chunk.tool_call_results[0]}\n\n", flush=True, end="")
 
+    ## Normal content streaming
     # Print the main content of the chunk (from ChatGenerator)
     if chunk.content:
+        if chunk.start:
+            print("[ASSISTANT]\n", flush=True, end="")
         print(chunk.content, flush=True, end="")
+
+    # End of LLM assistant message so we add two new lines
+    # This ensures spacing between LLM message and next LLM message or Tool Call Result
+    if chunk.meta.get("finish_reason") is not None:
+        print("\n\n", flush=True, end="")

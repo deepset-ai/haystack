@@ -20,6 +20,8 @@ from haystack.dataclasses import (
     StreamingChunk,
     SyncStreamingCallbackT,
     ToolCall,
+    ToolCallDelta,
+    ToolCallResult,
     select_streaming_callback,
 )
 from haystack.tools import (
@@ -418,22 +420,22 @@ class OpenAIChatGenerator:
         }
 
     def _handle_stream_response(self, chat_completion: Stream, callback: SyncStreamingCallbackT) -> List[ChatMessage]:
+        openai_chunks = []
         chunks: List[StreamingChunk] = []
-        chunk = None
         chunk_delta: StreamingChunk
 
         for chunk in chat_completion:  # pylint: disable=not-an-iterable
             assert len(chunk.choices) <= 1, "Streaming responses should have at most one choice."
+            openai_chunks.append(chunk)
             chunk_delta = self._convert_chat_completion_chunk_to_streaming_chunk(chunk)
             chunks.append(chunk_delta)
             callback(chunk_delta)
-        return [self._convert_streaming_chunks_to_chat_message(chunk, chunks)]
+        return [self._convert_streaming_chunks_to_chat_message(chunks=chunks)]
 
     async def _handle_async_stream_response(
         self, chat_completion: AsyncStream, callback: AsyncStreamingCallbackT
     ) -> List[ChatMessage]:
         chunks: List[StreamingChunk] = []
-        chunk = None
         chunk_delta: StreamingChunk
 
         async for chunk in chat_completion:  # pylint: disable=not-an-iterable
@@ -441,7 +443,7 @@ class OpenAIChatGenerator:
             chunk_delta = self._convert_chat_completion_chunk_to_streaming_chunk(chunk)
             chunks.append(chunk_delta)
             await callback(chunk_delta)
-        return [self._convert_streaming_chunks_to_chat_message(chunk, chunks)]
+        return [self._convert_streaming_chunks_to_chat_message(chunks=chunks)]
 
     def _check_finish_reason(self, meta: Dict[str, Any]) -> None:
         if meta["finish_reason"] == "length":
@@ -458,13 +460,10 @@ class OpenAIChatGenerator:
                 finish_reason=meta["finish_reason"],
             )
 
-    def _convert_streaming_chunks_to_chat_message(
-        self, last_chunk: ChatCompletionChunk, chunks: List[StreamingChunk]
-    ) -> ChatMessage:
+    def _convert_streaming_chunks_to_chat_message(self, chunks: List[StreamingChunk]) -> ChatMessage:
         """
         Connects the streaming chunks into a single ChatMessage.
 
-        :param last_chunk: The last chunk returned by the OpenAI API.
         :param chunks: The list of all `StreamingChunk` objects.
 
         :returns: The ChatMessage.
@@ -514,11 +513,11 @@ class OpenAIChatGenerator:
         finish_reason = finish_reasons[-1] if finish_reasons else None
 
         meta = {
-            "model": last_chunk.model,
+            "model": chunks[-1].meta.get("model"),
             "index": 0,
             "finish_reason": finish_reason,
             "completion_start_time": chunks[0].meta.get("received_at"),  # first chunk received
-            "usage": self._serialize_usage(last_chunk.usage),  # last chunk has the final usage data if available
+            "usage": chunks[-1].meta.get("usage"),  # last chunk has the final usage data if available
         }
 
         return ChatMessage.from_assistant(text=text or None, tool_calls=tool_calls, meta=meta)
@@ -570,25 +569,53 @@ class OpenAIChatGenerator:
         :returns:
             The StreamingChunk.
         """
-        # if there are no choices, return an empty chunk
+        # Choices is empty on the very first chunk which provides role information (e.g. "assistant").
+        # It is also empty if include_usage is set to True where the usage information is returned.
         if len(chunk.choices) == 0:
-            return StreamingChunk(content="", meta={"model": chunk.model, "received_at": datetime.now().isoformat()})
+            return StreamingChunk(
+                content="",
+                meta={
+                    "model": chunk.model,
+                    "received_at": datetime.now().isoformat(),
+                    "usage": self._serialize_usage(chunk.usage),
+                },
+            )
 
         # we stream the content of the chunk if it's not a tool or function call
         choice: ChunkChoice = chunk.choices[0]
         content = choice.delta.content or ""
-        chunk_message = StreamingChunk(content=content)
-        # but save the tool calls and function call in the meta if they are present
-        # and then connect the chunks in the _convert_streaming_chunks_to_chat_message method
-        chunk_message.meta.update(
-            {
+        # create a list of ToolCallDelta objects from the tool calls
+        tool_call_deltas = []
+        if choice.delta.tool_calls:
+            for tool_call in choice.delta.tool_calls:
+                tool_call_deltas.append(
+                    ToolCallDelta(
+                        index=tool_call.index,
+                        id=tool_call.id,
+                        name=tool_call.function.name,
+                        arguments=tool_call.function.arguments or None,
+                    )
+                )
+        # determine if this is the start of a content block (e.g. new tool call, completion, etc.)
+        start = None
+        if tool_call_deltas:
+            start = any(tc.name is not None for tc in tool_call_deltas)
+        # TODO Need to add check for when the start of a normal content stream is
+        chunk_message = StreamingChunk(
+            content=content,
+            tool_calls=tool_call_deltas if tool_call_deltas else None,
+            start=start,
+            meta={
                 "model": chunk.model,
                 "index": choice.index,
                 "tool_calls": choice.delta.tool_calls,
                 "finish_reason": choice.finish_reason,
                 "received_at": datetime.now().isoformat(),
-            }
+                "usage": self._serialize_usage(chunk.usage),
+            },
         )
+        # but save the tool calls and function call in the meta if they are present
+        # and then connect the chunks in the _convert_streaming_chunks_to_chat_message method
         return chunk_message
 
     def _serialize_usage(self, usage):

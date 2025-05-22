@@ -76,21 +76,6 @@ class ToolCallResult:
 
 
 @dataclass
-class ToolCallDelta:
-    """
-    Represents a Tool call prepared by the model, usually contained in an assistant message.
-
-    :param id: The ID of the Tool call.
-    :param tool_name: The name of the Tool to call.
-    :param arguments_delta:
-    """
-
-    tool_name: Optional[str] = None
-    arguments_delta: Optional[str] = None
-    id: Optional[str] = None  # noqa: A003
-
-
-@dataclass
 class TextContent:
     """
     The textual content of a chat message.
