@@ -147,17 +147,19 @@ class OpenAIDocumentEmbedder:
         """
         return default_to_dict(
             self,
+            api_key=self.api_key.to_dict(),
             model=self.model,
             dimensions=self.dimensions,
-            organization=self.organization,
             api_base_url=self.api_base_url,
+            organization=self.organization,
             prefix=self.prefix,
             suffix=self.suffix,
             batch_size=self.batch_size,
             progress_bar=self.progress_bar,
             meta_fields_to_embed=self.meta_fields_to_embed,
             embedding_separator=self.embedding_separator,
-            api_key=self.api_key.to_dict(),
+            timeout=self.client.timeout,
+            max_retries=self.client.max_retries,
             http_client_kwargs=self.http_client_kwargs,
         )
 
