@@ -265,20 +265,28 @@ class TestArgsDeprecated:
         return sample_func
 
     def test_warning_with_positional_args(self, sample_function):
-        # using positional arguments only"""
-        with pytest.warns(
-            DeprecationWarning, match="In an upcoming release, this method will require keyword arguments"
-        ):
+        # using positional arguments only
+        with warnings.catch_warnings(record=True) as w:
             result = sample_function("test", 123)
             assert result == "test-123"
+            assert len(w) == 1
+            assert issubclass(w[0].category, DeprecationWarning)
+            assert (
+                "Warning: In an upcoming release, this method will require keyword arguments for all parameters"
+                in str(w[0].message)
+            )
 
     def test_warning_with_mixed_args(self, sample_function):
-        # mixing positional and keyword arguments"""
-        with pytest.warns(
-            DeprecationWarning, match="In an upcoming release, this method will require keyword arguments"
-        ):
+        # mixing positional and keyword arguments
+        with warnings.catch_warnings(record=True) as w:
             result = sample_function("test", 123)
             assert result == "test-123"
+            assert len(w) == 1
+            assert issubclass(w[0].category, DeprecationWarning)
+            assert (
+                "Warning: In an upcoming release, this method will require keyword arguments for all parameters"
+                in str(w[0].message)
+            )
 
     def test_no_warning_with_default_args(self, sample_function):
         # using default arguments
