@@ -94,6 +94,8 @@ class OpenAITextEmbedder:
         self.prefix = prefix
         self.suffix = suffix
         self.api_key = api_key
+        self.timeout = timeout
+        self.max_retries = max_retries
         self.http_client_kwargs = http_client_kwargs
 
         if timeout is None:
@@ -129,13 +131,15 @@ class OpenAITextEmbedder:
         """
         return default_to_dict(
             self,
+            api_key=self.api_key.to_dict(),
             model=self.model,
+            dimensions=self.dimensions,
             api_base_url=self.api_base_url,
             organization=self.organization,
             prefix=self.prefix,
             suffix=self.suffix,
-            dimensions=self.dimensions,
-            api_key=self.api_key.to_dict(),
+            timeout=self.timeout,
+            max_retries=self.max_retries,
             http_client_kwargs=self.http_client_kwargs,
         )
 
