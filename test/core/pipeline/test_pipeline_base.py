@@ -1785,3 +1785,35 @@ class TestPipelineBase:
         consumed = PipelineBase._consume_component_inputs("test_component", component, inputs)
 
         assert consumed["input1"].equals(DataFrame({"a": [1, 2], "b": [1, 2]}))
+
+    def test_pipeline_draw_called_with_positional_args_triggers_a_warning(self):
+        """
+        Test that calling the pipeline draw method with positional arguments raises a warning.
+        """
+        pipe = PipelineBase()
+        with pytest.warns(DeprecationWarning):
+            pipe.draw("test_path")
+
+    def test_pipeline_show_called_with_positional_args_triggers_a_warning(self):
+        """
+        Test that calling the pipeline show method with positional arguments raises a warning.
+        """
+        pipe = PipelineBase()
+        with pytest.warns(DeprecationWarning):
+            pipe.show("test_path")
+
+    def test_pipeline_draw_called_with_keyword_args_does_not_trigger_a_warning(self):
+        """
+        Test that calling the pipeline draw method with keyword arguments does not raise a warning.
+        """
+        pipe = PipelineBase()
+        with pytest.warns(None) as record:
+            pipe.draw(path="test_path")
+
+    def test_pipeline_show_called_with_keyword_args_does_not_trigger_a_warning(self):
+        """
+        Test that calling the pipeline show method with keyword arguments does not raise a warning.
+        """
+        pipe = PipelineBase()
+        with pytest.warns(None) as record:
+            pipe.show(path="test_path")

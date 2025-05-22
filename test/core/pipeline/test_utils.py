@@ -7,7 +7,12 @@ import pytest
 
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
-from haystack.core.pipeline.utils import parse_connect_string, FIFOPriorityQueue, _deepcopy_with_exceptions
+from haystack.core.pipeline.utils import (
+    parse_connect_string,
+    FIFOPriorityQueue,
+    _deepcopy_with_exceptions,
+    _positional_arg_warning,
+)
 from haystack.tools import ComponentTool, Tool
 
 
@@ -247,3 +252,7 @@ class TestDeepcopyWithFallback:
         original = {"component": comp}
         res = _deepcopy_with_exceptions(original)
         assert res["component"] is original["component"]
+
+    def test__positional_arg_warning(self):
+        with pytest.warns(DeprecationWarning, match="Positional arguments are deprecated"):
+            _positional_arg_warning("foo", "bar", "baz")

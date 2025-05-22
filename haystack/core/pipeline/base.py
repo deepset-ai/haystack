@@ -32,7 +32,12 @@ from haystack.core.pipeline.component_checks import (
     is_any_greedy_socket_ready,
     is_socket_lazy_variadic,
 )
-from haystack.core.pipeline.utils import FIFOPriorityQueue, _deepcopy_with_exceptions, parse_connect_string
+from haystack.core.pipeline.utils import (
+    FIFOPriorityQueue,
+    _deepcopy_with_exceptions,
+    args_deprecated,
+    parse_connect_string,
+)
 from haystack.core.serialization import DeserializationCallbacks, component_from_dict, component_to_dict
 from haystack.core.type_utils import _type_name, _types_are_compatible
 from haystack.marshal import Marshaller, YamlMarshaller
@@ -669,6 +674,7 @@ class PipelineBase:
         }
         return outputs
 
+    @args_deprecated
     def show(
         self,
         server_url: str = "https://mermaid.ink",
@@ -761,6 +767,7 @@ class PipelineBase:
             msg = "This method is only supported in Jupyter notebooks. Use Pipeline.draw() to save an image locally."
             raise PipelineDrawingError(msg)
 
+    @args_deprecated
     def draw(  # pylint: disable=too-many-positional-arguments
         self,
         path: Path,

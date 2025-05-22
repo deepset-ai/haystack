@@ -4,6 +4,7 @@
 
 import heapq
 from copy import deepcopy
+from functools import wraps
 from itertools import count
 from typing import Any, List, Optional, Tuple
 
@@ -163,3 +164,43 @@ class FIFOPriorityQueue:
             True if the queue contains items, False otherwise.
         """
         return bool(self._queue)
+
+
+def _positional_arg_warning(args, func) -> None:
+    """
+    Print a warning message if positional arguments are used in a function
+
+    Adapted from https://stackoverflow.com/questions/68432070/
+    :param args:
+    :param func:
+    """
+    var_names = func.__code__.co_varnames
+
+    pos_var_names = ", ".join(var_names[: len(args)])
+
+    msg = (
+        f"Warning: positional arguments `{pos_var_names}` for `{func.__qualname__}` "
+        "are deprecated.  Please use keyword arguments instead."
+    )
+    print(msg)
+
+
+def args_deprecated(func):
+    """
+    Decorator to warn about the use of positional arguments in a function.
+
+    Adapted from https://stackoverflow.com/questions/68432070/
+    :param func:
+    """
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        # call the function first, to make sure the signature matches
+        ret_value = func(*args, **kwargs)
+
+        if args:
+            _positional_arg_warning(args, func)
+
+        return ret_value
+
+    return wrapper
