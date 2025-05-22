@@ -364,12 +364,12 @@ class TestState:
             "dict_of_lists": {"type": "dict", "handler": "haystack.components.agents.state.state_utils.replace_values"},
         }
         assert state_dict["data"] == {
-            "schema": {
+            "serialization_schema": {
                 "numbers": {"type": "integer"},
                 "messages": {"type": "array", "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"}},
                 "dict_of_lists": {"type": "object"},
             },
-            "data": {
+            "serialized_data": {
                 "numbers": 1,
                 "messages": [{"role": "user", "meta": {}, "name": None, "content": [{"text": "Hello, world!"}]}],
                 "dict_of_lists": {"numbers": [1, 2, 3]},
@@ -390,12 +390,12 @@ class TestState:
                 },
             },
             "data": {
-                "schema": {
+                "serialization_schema": {
                     "numbers": {"type": "integer"},
                     "messages": {"type": "array", "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"}},
                     "dict_of_lists": {"type": "object"},
                 },
-                "data": {
+                "serialized_data": {
                     "numbers": 1,
                     "messages": [{"role": "user", "meta": {}, "name": None, "content": [{"text": "Hello, world!"}]}],
                     "dict_of_lists": {"numbers": [1, 2, 3]},

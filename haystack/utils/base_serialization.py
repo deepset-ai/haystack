@@ -121,7 +121,7 @@ def serialize_value_with_schema(payload: Dict[str, Any]) -> Dict[str, Any]:
             schema[field] = {"type": prim_type}
             data[field] = val
 
-    return {"schema": schema, "data": data}
+    return {"serialization_schema": schema, "serialized_data": data}
 
 
 def _primitive_schema_type(value: Any) -> str:
@@ -196,8 +196,8 @@ def deserialize_value_with_schema(serialized: Dict[str, Any]) -> Dict[str, Any]:
     :param serialized: The serialized dict with schema and data.
     :returns: The deserialized dict with original values.
     """
-    schema = serialized.get("schema", {})
-    data = serialized.get("data", {})
+    schema = serialized.get("serialization_schema", {})
+    data = serialized.get("serialized_data", {})
 
     result: Dict[str, Any] = {}
     for field, raw in data.items():

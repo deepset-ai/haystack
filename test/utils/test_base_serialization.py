@@ -92,7 +92,7 @@ def test_serialize_value_with_schema():
     }
     result = serialize_value_with_schema(data)
     assert result == {
-        "schema": {
+        "serialization_schema": {
             "numbers": {"type": "integer"},
             "messages": {"type": "array", "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"}},
             "user_id": {"type": "string"},
@@ -101,7 +101,7 @@ def test_serialize_value_with_schema():
             "list_of_dicts": {"type": "array", "items": {"type": "string"}},
             "answers": {"type": "array", "items": {"type": "haystack.dataclasses.answer.GeneratedAnswer"}},
         },
-        "data": {
+        "serialized_data": {
             "numbers": 1,
             "messages": [{"role": "user", "meta": {}, "name": None, "content": [{"text": "Hello, world!"}]}],
             "user_id": "123",
@@ -144,7 +144,7 @@ def test_serialize_value_with_schema():
 
 def test_deserialize_value_with_schema():
     serialized__data = {
-        "schema": {
+        "serialization_schema": {
             "numbers": {"type": "integer"},
             "messages": {"type": "array", "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"}},
             "user_id": {"type": "string"},
@@ -153,7 +153,7 @@ def test_deserialize_value_with_schema():
             "list_of_dicts": {"type": "array", "items": {"type": "string"}},
             "answers": {"type": "array", "items": {"type": "haystack.dataclasses.answer.GeneratedAnswer"}},
         },
-        "data": {
+        "serialized_data": {
             "numbers": 1,
             "messages": [{"role": "user", "meta": {}, "name": None, "content": [{"text": "Hello, world!"}]}],
             "user_id": "123",
@@ -209,15 +209,21 @@ def test_serialize_value_with_custom_class_type():
     data = {"numbers": 1, "custom_type": custom_type}
     result = serialize_value_with_schema(data)
     assert result == {
-        "schema": {"numbers": {"type": "integer"}, "custom_type": {"type": "test_base_serialization.CustomClass"}},
-        "data": {"numbers": 1, "custom_type": {"key": "value", "more": False}},
+        "serialization_schema": {
+            "numbers": {"type": "integer"},
+            "custom_type": {"type": "test_base_serialization.CustomClass"},
+        },
+        "serialized_data": {"numbers": 1, "custom_type": {"key": "value", "more": False}},
     }
 
 
 def test_deserialize_value_with_custom_class_type():
     serialized_data = {
-        "schema": {"numbers": {"type": "integer"}, "custom_type": {"type": "test_base_serialization.CustomClass"}},
-        "data": {"numbers": 1, "custom_type": {"key": "value", "more": False}},
+        "serialization_schema": {
+            "numbers": {"type": "integer"},
+            "custom_type": {"type": "test_base_serialization.CustomClass"},
+        },
+        "serialized_data": {"numbers": 1, "custom_type": {"key": "value", "more": False}},
     }
     result = deserialize_value_with_schema(serialized_data)
     assert result["numbers"] == 1
