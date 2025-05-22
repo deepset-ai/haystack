@@ -112,6 +112,8 @@ class OpenAIDocumentEmbedder:
         self.progress_bar = progress_bar
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
+        self.timeout = timeout
+        self.max_retries = max_retries
         self.http_client_kwargs = http_client_kwargs
 
         if timeout is None:
@@ -158,8 +160,8 @@ class OpenAIDocumentEmbedder:
             progress_bar=self.progress_bar,
             meta_fields_to_embed=self.meta_fields_to_embed,
             embedding_separator=self.embedding_separator,
-            timeout=self.client.timeout,
-            max_retries=self.client.max_retries,
+            timeout=self.timeout,
+            max_retries=self.max_retries,
             http_client_kwargs=self.http_client_kwargs,
         )
 

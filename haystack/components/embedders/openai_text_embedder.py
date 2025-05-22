@@ -94,6 +94,8 @@ class OpenAITextEmbedder:
         self.prefix = prefix
         self.suffix = suffix
         self.api_key = api_key
+        self.timeout = timeout
+        self.max_retries = max_retries
         self.http_client_kwargs = http_client_kwargs
 
         if timeout is None:
@@ -136,8 +138,8 @@ class OpenAITextEmbedder:
             organization=self.organization,
             prefix=self.prefix,
             suffix=self.suffix,
-            timeout=self.client.timeout,
-            max_retries=self.client.max_retries,
+            timeout=self.timeout,
+            max_retries=self.max_retries,
             http_client_kwargs=self.http_client_kwargs,
         )
 

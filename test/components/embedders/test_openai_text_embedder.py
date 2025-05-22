@@ -86,8 +86,8 @@ class TestOpenAITextEmbedder:
                 "http_client_kwargs": None,
                 "prefix": "",
                 "suffix": "",
-                "timeout": 30.0,
-                "max_retries": 5,
+                "timeout": None,
+                "max_retries": None,
             },
         }
 

@@ -122,8 +122,8 @@ class TestOpenAIDocumentEmbedder:
                 "progress_bar": True,
                 "meta_fields_to_embed": [],
                 "embedding_separator": "\n",
-                "timeout": 30.0,
-                "max_retries": 5,
+                "timeout": None,
+                "max_retries": None,
             },
         }
 
