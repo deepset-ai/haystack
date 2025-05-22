@@ -329,12 +329,10 @@ class TestAnswerBuilder:
         assert answers[0].documents == []
         assert isinstance(answers[0], GeneratedAnswer)
 
-    @pytest.mark.parametrize("last_message_only", [True, False])
-    def test_conversation_history_in_all_messages(self, last_message_only):
-        """Test behavior with last_message_only flag"""
-
+    def test_conversation_history_with_last_message_only_false(self):
+        """Test behavior with last_message_only=False (default)"""
         # Test with two messages in replies
-        component = AnswerBuilder(last_message_only=last_message_only)
+        component = AnswerBuilder(last_message_only=False)
         replies = [
             ChatMessage.from_user("What is Haystack?"),
             ChatMessage.from_assistant("Haystack is a framework for building LLM applications."),
@@ -342,15 +340,10 @@ class TestAnswerBuilder:
         output = component.run(query="test query", replies=replies)
 
         answers = output["answers"]
-
-        if last_message_only:
-            assert len(answers) == 1  # Only one answer when last_message_only=True
-            # Check that the answer is the last message
-            assert answers[0].data == "Haystack is a framework for building LLM applications."
-        else:
-            assert len(answers) == 2  # One answer for each message in replies
-            assert answers[0].data == "What is Haystack?"
-            assert answers[1].data == "Haystack is a framework for building LLM applications."
+        # Should have one answer for each message in replies
+        assert len(answers) == 2
+        assert answers[0].data == "What is Haystack?"
+        assert answers[1].data == "Haystack is a framework for building LLM applications."
 
         # Check that each answer contains the full conversation history
         for answer in answers:
@@ -359,17 +352,45 @@ class TestAnswerBuilder:
             assert answer.meta["all_messages"] == replies
 
         # Test with one message in replies
-        component = AnswerBuilder(last_message_only=last_message_only)
+        component = AnswerBuilder(last_message_only=False)
         replies = [ChatMessage.from_user("What is Haystack?")]
         output = component.run(query="test query", replies=replies)
 
         answers = output["answers"]
-        assert len(answers) == 1  # Always one answer when there's only one message
-
-        # Check that the answer is the message
+        assert len(answers) == 1
         assert answers[0].data == "What is Haystack?"
+        assert "all_messages" in answers[0].meta
+        assert answers[0].meta["all_messages"] == replies
+        assert len(answers[0].meta["all_messages"]) == 1
 
-        # Check that the conversation history is stored in all_messages
+    def test_conversation_history_with_last_message_only_true(self):
+        """Test behavior with last_message_only=True"""
+        # Test with two messages in replies
+        component = AnswerBuilder(last_message_only=True)
+        replies = [
+            ChatMessage.from_user("What is Haystack?"),
+            ChatMessage.from_assistant("Haystack is a framework for building LLM applications."),
+        ]
+        output = component.run(query="test query", replies=replies)
+
+        answers = output["answers"]
+        # Should only have one answer - the last message
+        assert len(answers) == 1
+        assert answers[0].data == "Haystack is a framework for building LLM applications."
+
+        # Check that the answer contains the full conversation history
+        assert "all_messages" in answers[0].meta
+        assert len(answers[0].meta["all_messages"]) == 2
+        assert answers[0].meta["all_messages"] == replies
+
+        # Test with one message in replies
+        component = AnswerBuilder(last_message_only=True)
+        replies = [ChatMessage.from_user("What is Haystack?")]
+        output = component.run(query="test query", replies=replies)
+
+        answers = output["answers"]
+        assert len(answers) == 1
+        assert answers[0].data == "What is Haystack?"
         assert "all_messages" in answers[0].meta
         assert answers[0].meta["all_messages"] == replies
         assert len(answers[0].meta["all_messages"]) == 1
