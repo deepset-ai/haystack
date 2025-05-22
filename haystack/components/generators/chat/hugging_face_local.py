@@ -10,8 +10,8 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Callable, Dict, List, Literal, Optional, Union, cast
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall, select_streaming_callback
-from haystack.dataclasses.streaming_chunk import AsyncStreamingCallbackT, StreamingCallbackT
+from haystack.dataclasses import ChatMessage, ToolCall, select_streaming_callback
+from haystack.dataclasses.streaming_chunk import StreamingCallbackT
 from haystack.lazy_imports import LazyImport
 from haystack.tools import (
     Tool,
