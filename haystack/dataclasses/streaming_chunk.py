@@ -17,10 +17,9 @@ class ToolCallDelta:
 
     :param id: The ID of the Tool call.
     :param name: The name of the Tool to call.
-    :param arguments:
+    :param arguments: Either the full arguments in JSON format or a delta of the arguments.
     """
 
-    index: int
     id: Optional[str] = None  # noqa: A003
     name: Optional[str] = None
     arguments: Optional[str] = None
@@ -28,8 +27,8 @@ class ToolCallDelta:
     def __post_init__(self):
         if self.name is None and self.arguments is None:
             raise ValueError("At least one of tool_name or arguments must be provided.")
-        if self.name is not None and self.arguments is not None:
-            raise ValueError("Only one of tool_name or arguments can be provided.")
+        # NOTE: We allow for name and arguments to both be present because some providers like Mistral provide the
+        # name and full arguments in one chunk
 
 
 @dataclass
@@ -40,25 +39,28 @@ class StreamingChunk:
     This structure facilitates the handling and processing of streamed data in a systematic manner.
 
     :param content: The content of the message chunk as a string.
-    :param tool_calls: An optional ToolCallDelta object representing a tool call associated with the message chunk.
-    :param tool_call_results: An optional ToolCallResult object representing the result of a tool call.
-    :param start: A boolean indicating whether this chunk marks the start of a message.
     :param meta: A dictionary containing metadata related to the message chunk.
+    :param index: An optional integer index representing which content block this chunk belongs to.
+    :param tool_call: An optional ToolCallDelta object representing a tool call associated with the message chunk.
+    :param tool_call_result: An optional ToolCallResult object representing the result of a tool call.
+    :param start: A boolean indicating whether this chunk marks the start of a content block.
     """
 
     content: str
     meta: Dict[str, Any] = field(default_factory=dict, hash=False)
-    tool_calls: Optional[List[ToolCallDelta]] = None
-    tool_call_results: Optional[List[ToolCallResult]] = None
+    index: Optional[int] = None
+    tool_call: Optional[ToolCallDelta] = None
+    tool_call_result: Optional[ToolCallResult] = None
     start: Optional[bool] = None
 
     def __post_init__(self):
-        if self.tool_calls and self.content:
-            raise ValueError("A StreamingChunk should not have both content and tool calls.")
-        if self.tool_call_results and self.content:
-            raise ValueError("A StreamingChunk should not have both content and tool call results.")
-        if self.tool_calls and self.tool_call_results:
-            raise ValueError("A StreamingChunk should not have both tool calls and tool call results.")
+        fields_set = sum(bool(x) for x in (self.content, self.tool_call, self.tool_call_result))
+        if fields_set > 1:
+            raise ValueError(
+                "Only one of `content`, `tool_call`, or `tool_call_result` may be set in a StreamingChunk. "
+                f"Got content: '{self.content}', tool_call: '{self.tool_call}', "
+                f"tool_call_result: '{self.tool_call_result}'"
+            )
 
 
 SyncStreamingCallbackT = Callable[[StreamingChunk], None]

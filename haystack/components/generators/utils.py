@@ -21,37 +21,38 @@ def print_streaming_chunk(chunk: StreamingChunk) -> None:
         tool results.
     """
     ## Tool Call streaming
-    if chunk.tool_calls:
-        for tool_call in chunk.tool_calls:
-            # Presence of tool_name indicates beginning of a tool call
-            # or chunk.start: would be equivalent here
-            if tool_call.name:
-                # If this is not the first tool call, we add two new lines
-                if tool_call.index > 0:
-                    print("\n\n", flush=True, end="")
+    if chunk.tool_call:
+        # Presence of tool_name indicates beginning of a tool call
+        # or chunk.tool_call.name: would be equivalent here
+        if chunk.start:
+            # If this is not the first content block of the message, add two new lines
+            if chunk.index > 0:
+                print("\n\n", flush=True, end="")
+            print("[TOOL CALL]\n", flush=True, end="")
+            print(f"Tool: {chunk.tool_call.name} ", flush=True, end="")
+            print("\nArguments: ", flush=True, end="")
 
-                print("[TOOL CALL]\n", flush=True, end="")
-                print(f"Tool: {tool_call.name} ", flush=True, end="")
-                print("\nArguments: ", flush=True, end="")
-
-                # print the tool arguments
-                if tool_call.arguments:
-                    print(tool_call.arguments, flush=True, end="")
+        # print the tool arguments
+        if chunk.tool_call.arguments:
+            print(chunk.tool_call.arguments, flush=True, end="")
 
     ## Tool Call Result streaming
     # Print tool call results if available (from ToolInvoker)
-    if chunk.tool_call_results:
+    if chunk.tool_call_result:
         # Tool Call Result is fully formed so delta accumulation is not needed
-        print(f"[TOOL RESULT]\n{chunk.tool_call_results[0]}\n\n", flush=True, end="")
+        print(f"[TOOL RESULT]\n{chunk.tool_call_result}\n\n", flush=True, end="")
 
     ## Normal content streaming
     # Print the main content of the chunk (from ChatGenerator)
     if chunk.content:
         if chunk.start:
+            # If this is not the first content block of the message, add two new lines
+            if chunk.index > 0:
+                print("\n\n", flush=True, end="")
             print("[ASSISTANT]\n", flush=True, end="")
         print(chunk.content, flush=True, end="")
 
     # End of LLM assistant message so we add two new lines
-    # This ensures spacing between LLM message and next LLM message or Tool Call Result
+    # This ensures spacing between multiple LLM messages (e.g. Agent) or Tool Call Result
     if chunk.meta.get("finish_reason") is not None:
         print("\n\n", flush=True, end="")
