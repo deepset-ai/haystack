@@ -248,11 +248,11 @@ def _convert_to_typing_type(t: Any) -> Any:
         result = type_converters[origin]()
         if args:
             if origin == list:
-                return List[_convert_to_typing_type(args[0])]
+                return List[_convert_to_typing_type(args[0])]  # type: ignore
             if origin == dict:
-                return Dict[_convert_to_typing_type(args[0]), _convert_to_typing_type(args[1])]
+                return Dict[_convert_to_typing_type(args[0]), _convert_to_typing_type(args[1])]  # type: ignore
             if origin == set:
-                return Set[_convert_to_typing_type(args[0])]
+                return Set[_convert_to_typing_type(args[0])]  # type: ignore
             if origin == tuple:
                 return Tuple[tuple(_convert_to_typing_type(arg) for arg in args)]
         return result
