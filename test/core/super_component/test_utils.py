@@ -49,8 +49,7 @@ class TestTypeCompatibility:
         assert is_compat and common == int
 
         is_compat, common = _is_compatible(Union[int, str], Union[str, int])
-        assert is_compat
-        assert common == Union[int, str] or common == Union[str, int]
+        assert is_compat and common == Union[int, str] or common == Union[str, int]
 
         is_compat, common = _is_compatible(str, Union[int, str])
         assert is_compat and common == str
@@ -101,22 +100,18 @@ class TestTypeCompatibility:
         nested_optional = Variadic[List[Optional[int]]]
 
         is_compat, common = _is_compatible(nested_optional, List[int])
-        assert is_compat
-        assert common == List[int]
+        assert is_compat and common == List[int]
 
         is_compat, common = _is_compatible(List[int], nested_optional)
-        assert is_compat
-        assert common == List[int]
+        assert is_compat and common == List[int]
 
         nested_union = Variadic[List[Union[int, None]]]
 
         is_compat, common = _is_compatible(nested_union, List[int])
-        assert is_compat
-        assert common == List[int]
+        assert is_compat and common == List[int]
 
         is_compat, common = _is_compatible(List[int], nested_union)
-        assert is_compat
-        assert common == List[int]
+        assert is_compat and common == List[int]
 
     def test_complex_nested_types(self):
         """Test complex nested type scenarios."""
@@ -162,5 +157,4 @@ class TestTypeCompatibility:
         nested_var = Variadic[List[GreedyVariadic[int]]]
 
         is_compat, common = _is_compatible(nested_var, List[int])
-        assert is_compat
-        assert common == List[int]
+        assert is_compat and common == List[int]
