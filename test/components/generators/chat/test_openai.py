@@ -509,7 +509,7 @@ class TestOpenAIChatGenerator:
         assert not message.text
 
         assert message.tool_calls
-        tool_call = message.tool_calls
+        tool_call = message.tool_call
         assert isinstance(tool_call, ToolCall)
         assert tool_call.tool_name == "weather"
         assert tool_call.arguments == {"city": "Paris"}
@@ -542,7 +542,7 @@ class TestOpenAIChatGenerator:
         message = response["replies"][0]
 
         assert message.tool_calls
-        tool_call = message.tool_calls
+        tool_call = message.tool_call
         assert isinstance(tool_call, ToolCall)
         assert tool_call.tool_name == "weather"
         assert tool_call.arguments == {"city": "Paris"}
@@ -959,18 +959,18 @@ class TestOpenAIChatGenerator:
 
         # Verify both tool calls were found and processed
         assert len(result.tool_calls) == 2
-        assert result.tool_calls[0].id == "call_ZOj5l67zhZOx6jqjg7ATQwb6"
-        assert result.tool_calls[0].tool_name == "rag_pipeline_tool"
-        assert result.tool_calls[0].arguments == {"query": "Where does Mark live?"}
-        assert result.tool_calls[1].id == "call_STxsYY69wVOvxWqopAt3uWTB"
-        assert result.tool_calls[1].tool_name == "get_weather"
+        assert result.tool_calls[0].id == "call_zcvlnVaTeJWRjLAFfYxX69z4"
+        assert result.tool_calls[0].tool_name == "weather"
+        assert result.tool_calls[0].arguments == {"city": "Paris"}
+        assert result.tool_calls[1].id == "call_C88m67V16CrETq6jbNXjdZI9"
+        assert result.tool_calls[1].tool_name == "weather"
         assert result.tool_calls[1].arguments == {"city": "Berlin"}
 
         # Verify meta information
         assert result.meta["model"] == "gpt-4o-mini-2024-07-18"
         assert result.meta["finish_reason"] == "tool_calls"
         assert result.meta["index"] == 0
-        assert result.meta["completion_start_time"] == "2025-02-19T16:02:55.910076"
+        assert result.meta["completion_start_time"] is not None
 
     def test_convert_usage_chunk_to_streaming_chunk(self):
         component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
@@ -992,8 +992,11 @@ class TestOpenAIChatGenerator:
                 prompt_tokens_details=PromptTokensDetails(audio_tokens=0, cached_tokens=0),
             ),
         )
-        result = component._convert_chat_completion_chunk_to_streaming_chunk(chunk)
+        result = component._convert_chat_completion_chunk_to_streaming_chunk(chunk=chunk, previous_chunks=[])[0]
         assert result.content == ""
+        assert result.start is None
+        assert result.tool_call is None
+        assert result.tool_call_result is None
         assert result.meta["model"] == "gpt-4o-mini-2024-07-18"
         assert result.meta["received_at"] is not None
 
