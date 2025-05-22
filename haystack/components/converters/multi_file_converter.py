@@ -118,5 +118,5 @@ class MultiFileConverter:
 
     if TYPE_CHECKING:
         # fake method, never executed, but static analyzers will not complain about missing method
-        def run(self, sources: list[str]) -> dict[str, list[Document]]:  # noqa: D102
+        def run(self, sources: List[Union[str, Path, ByteStream]], meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,) -> Dict[str, list[Document]]:  # noqa: D102
             ...
