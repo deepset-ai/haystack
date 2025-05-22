@@ -196,8 +196,7 @@ class TestAnswerBuilder:
         assert answers[0].data == "Answer: AnswerString"
 
         # Check metadata excluding all_messages
-        expected_meta = message_meta.copy()
-        _check_metadata_excluding_all_messages(answers[0].meta, expected_meta)
+        _check_metadata_excluding_all_messages(answers[0].meta, message_meta)
         assert "all_messages" in answers[0].meta
 
         assert answers[0].query == "test query"
@@ -220,9 +219,7 @@ class TestAnswerBuilder:
         assert len(answers) == 1
         assert answers[0].data == "AnswerString"
 
-        # Check metadata excluding all_messages
-        expected_meta = message_meta.copy()
-        _check_metadata_excluding_all_messages(answers[0].meta, expected_meta)
+        _check_metadata_excluding_all_messages(answers[0].meta, message_meta)
         assert "all_messages" in answers[0].meta
 
         assert answers[0].query == "test query"
@@ -250,8 +247,7 @@ class TestAnswerBuilder:
         assert answers[0].data == "Answer: AnswerString[2]"
 
         # Check metadata excluding all_messages
-        expected_meta = message_meta.copy()
-        _check_metadata_excluding_all_messages(answers[0].meta, expected_meta)
+        _check_metadata_excluding_all_messages(answers[0].meta, message_meta)
         assert "all_messages" in answers[0].meta
 
         assert answers[0].query == "test query"
@@ -274,8 +270,7 @@ class TestAnswerBuilder:
         assert answers[0].data == "AnswerString"
 
         # Check metadata excluding all_messages
-        expected_meta = message_meta.copy()
-        _check_metadata_excluding_all_messages(answers[0].meta, expected_meta)
+        _check_metadata_excluding_all_messages(answers[0].meta, message_meta)
         assert "all_messages" in answers[0].meta
 
         assert answers[0].query == "test query"
