@@ -7,7 +7,7 @@ from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from haystack import logging
-from haystack.dataclasses import ChatMessage, StreamingChunk
+from haystack.dataclasses import ChatMessage, ComponentInfo, StreamingChunk
 from haystack.lazy_imports import LazyImport
 from haystack.utils.auth import Secret
 from haystack.utils.device import ComponentDevice
@@ -359,13 +359,15 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
             tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
             stream_handler: Callable[[StreamingChunk], None],
             stop_words: Optional[List[str]] = None,
+            component_info: Optional[ComponentInfo] = None,
         ):
             super().__init__(tokenizer=tokenizer, skip_prompt=True)  # type: ignore
             self.token_handler = stream_handler
             self.stop_words = stop_words or []
+            self.component_info = component_info
 
         def on_finalized_text(self, word: str, stream_end: bool = False):
             """Callback function for handling the generated text."""
             word_to_send = word + "\n" if stream_end else word
             if word_to_send.strip() not in self.stop_words:
-                self.token_handler(StreamingChunk(content=word_to_send))
+                self.token_handler(StreamingChunk(content=word_to_send, component_info=self.component_info))

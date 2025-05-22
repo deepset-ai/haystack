@@ -431,9 +431,10 @@ class HuggingFaceAPIChatGenerator:
 
                 if choice.finish_reason:
                     finish_reason = choice.finish_reason
+                    meta["finish_reason"] = finish_reason
 
+                meta["model"] = self._client.model
                 stream_chunk = StreamingChunk(text, meta, component_info)
-                print("stream_chunk: ", stream_chunk)
                 streaming_callback(stream_chunk)
 
             if chunk.usage:
@@ -532,6 +533,9 @@ class HuggingFaceAPIChatGenerator:
 
                 if choice.finish_reason:
                     finish_reason = choice.finish_reason
+                    meta["finish_reason"] = finish_reason
+
+                meta["model"] = self._async_client.model
 
                 stream_chunk = StreamingChunk(text, meta, component_info)
                 await streaming_callback(stream_chunk)  # type: ignore

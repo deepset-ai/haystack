@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Callable, Dict, List, Literal, Optional, Union, cast
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall, select_streaming_callback
+from haystack.dataclasses import ChatMessage, ComponentInfo, StreamingChunk, ToolCall, select_streaming_callback
 from haystack.lazy_imports import LazyImport
 from haystack.tools import (
     Tool,
@@ -119,6 +119,9 @@ class HuggingFaceLocalChatGenerator:
     }
     ```
     """
+
+    # Type annotation for the component name
+    __component_name__: str
 
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
@@ -381,8 +384,15 @@ class HuggingFaceLocalChatGenerator:
                 )
                 logger.warning(msg, num_responses=num_responses)
                 generation_kwargs["num_return_sequences"] = 1
+
+                # Set up streaming handler
+            component_name = self.__component_name__ if hasattr(self, "__component_name__") else None
+            component_type = self.__class__.__module__ + "." + self.__class__.__name__
+            component_info = ComponentInfo(name=component_name, type=component_type)
             # streamer parameter hooks into HF streaming, HFTokenStreamingHandler is an adapter to our streaming
-            generation_kwargs["streamer"] = HFTokenStreamingHandler(tokenizer, streaming_callback, stop_words)
+            generation_kwargs["streamer"] = HFTokenStreamingHandler(
+                tokenizer, streaming_callback, stop_words, component_info
+            )
 
         # convert messages to HF format
         hf_messages = [convert_message_to_hf_format(message) for message in messages]
@@ -566,7 +576,12 @@ class HuggingFaceLocalChatGenerator:
         )
 
         # Set up streaming handler
-        generation_kwargs["streamer"] = HFTokenStreamingHandler(tokenizer, streaming_callback, stop_words)
+        component_name = self.__component_name__ if hasattr(self, "__component_name__") else None
+        component_type = self.__class__.__module__ + "." + self.__class__.__name__
+        component_info = ComponentInfo(name=component_name, type=component_type)
+        generation_kwargs["streamer"] = HFTokenStreamingHandler(
+            tokenizer, streaming_callback, stop_words, component_info
+        )
 
         # Generate responses asynchronously
         output = await asyncio.get_running_loop().run_in_executor(
