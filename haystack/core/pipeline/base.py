@@ -428,8 +428,7 @@ class PipelineBase:
         :param receiver:
             The component that receives the value. This can be either just a component name or can be
             in the format `component_name.connection_name` if the component has multiple inputs.
-        :param connection_type_validation: Whether the pipeline will validate the types of the connections.
-            Defaults to the value set in the pipeline.
+
         :returns:
             The Pipeline instance.
 
