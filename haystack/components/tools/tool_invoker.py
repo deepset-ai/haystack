@@ -510,6 +510,10 @@ class ToolInvoker:
                         )
                     )
 
+        # We stream one more chunk that contains a finish_reason
+        if streaming_callback is not None:
+            streaming_callback(StreamingChunk(content="", meta={"finish_reason": "tool_call_results"}))
+
         return {"tool_messages": tool_messages, "state": state}
 
     @component.output_types(tool_messages=List[ChatMessage], state=State)
