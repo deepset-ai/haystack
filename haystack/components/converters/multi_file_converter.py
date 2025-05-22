@@ -122,7 +122,7 @@ class MultiFileConverter:
         # fake method, never executed, but static analyzers will not complain about missing method
         def run(  # noqa: D102
             self,
-            sources: list[Union[str, Path, ByteStream]],
+            *sources: list[Union[str, Path, ByteStream]],
             meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
         ) -> dict[str, list[Document]]:  # noqa: D102
             ...

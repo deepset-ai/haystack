@@ -144,7 +144,7 @@ class DocumentPreprocessor:
 
     if TYPE_CHECKING:
         # fake method, never executed, but static analyzers will not complain about missing method
-        def run(self, documents: List[Document]) -> dict[str, list[Document]]:  # noqa: D102
+        def run(self, *, documents: List[Document]) -> dict[str, list[Document]]:  # noqa: D102
             ...
 
     def to_dict(self) -> Dict[str, Any]:
