@@ -171,6 +171,9 @@ class HuggingFaceAPIChatGenerator:
     ```
     """
 
+    # Type annotation for the component name
+    __component_name__: str
+
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         api_type: Union[HFGenerationAPIType, str],
@@ -409,11 +412,12 @@ class HuggingFaceAPIChatGenerator:
         usage = None
         meta: Dict[str, Any] = {}
 
-        # Set up streaming handler
+        # get component name and type
         component_name = self.__component_name__ if hasattr(self, "__component_name__") else None
         component_type = self.__class__.__module__ + "." + self.__class__.__name__
         component_info = ComponentInfo(name=component_name, type=component_type)
 
+        # Set up streaming handler
         for chunk in api_output:
             # The chunk with usage returns an empty array for choices
             if len(chunk.choices) > 0:

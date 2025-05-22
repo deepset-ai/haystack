@@ -80,6 +80,9 @@ class OpenAIChatGenerator:
     ```
     """
 
+    # Type annotation for the component name
+    __component_name__: str
+
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
@@ -591,6 +594,7 @@ class OpenAIChatGenerator:
         choice: ChunkChoice = chunk.choices[0]
         content = choice.delta.content or ""
         chunk_message = StreamingChunk(content, component_info=component_info)
+        print("chunk_message: ", chunk_message)
 
         # but save the tool calls and function call in the meta if they are present
         # and then connect the chunks in the _convert_streaming_chunks_to_chat_message method
