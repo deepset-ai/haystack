@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Add a `ComponentInfo` dataclass to the `haystack.dataclasses` module.
+    This dataclass is used to store information about the component in the `StreamingChunk`.

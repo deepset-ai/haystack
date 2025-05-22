@@ -603,6 +603,7 @@ class OpenAIChatGenerator:
                 "received_at": datetime.now().isoformat(),
             }
         )
+        print(f"chunk_message: {chunk_message}")
         return chunk_message
 
     def _serialize_usage(self, usage):
