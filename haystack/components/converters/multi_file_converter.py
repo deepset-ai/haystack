@@ -3,8 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from enum import Enum
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Optional, Union
 
-from haystack import Pipeline, super_component
+from haystack import Document, Pipeline, super_component
 from haystack.components.converters import (
     CSVToDocument,
     DOCXToDocument,
@@ -17,6 +19,7 @@ from haystack.components.converters import (
 )
 from haystack.components.joiners import DocumentJoiner
 from haystack.components.routers import FileTypeRouter
+from haystack.dataclasses import ByteStream
 
 
 class ConverterMimeType(str, Enum):
@@ -114,3 +117,15 @@ class MultiFileConverter:
         self.pipeline = pp
         self.output_mapping = {"joiner.documents": "documents", "router.unclassified": "unclassified"}
         self.input_mapping = {"sources": ["router.sources"], "meta": ["router.meta"]}
+
+    if TYPE_CHECKING:
+        # fake method, never executed, but static analyzers will not complain about missing method
+        def run(  # noqa: D102
+            self,
+            *,
+            sources: list[Union[str, Path, ByteStream]],
+            meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
+        ) -> dict[str, list[Document]]:  # noqa: D102
+            ...
+        def warm_up(self) -> None:  # noqa: D102
+            ...
