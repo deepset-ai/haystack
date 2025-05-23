@@ -159,15 +159,19 @@ class ComponentTool(Tool):
                 target_type = get_args(param_type)[0] if get_origin(param_type) is list else param_type
                 if hasattr(target_type, "from_dict"):
                     if isinstance(param_value, list):
-                        param_value = [target_type.from_dict(item) for item in param_value if isinstance(item, dict)]
+                        resolved_param_value = [
+                            target_type.from_dict(item) if isinstance(item, dict) else item for item in param_value
+                        ]
                     elif isinstance(param_value, dict):
-                        param_value = target_type.from_dict(param_value)
+                        resolved_param_value = target_type.from_dict(param_value)
+                    else:
+                        resolved_param_value = param_value
                 else:
                     # Let TypeAdapter handle both single values and lists
                     type_adapter = TypeAdapter(param_type)
-                    param_value = type_adapter.validate_python(param_value)
+                    resolved_param_value = type_adapter.validate_python(param_value)
 
-                converted_kwargs[param_name] = param_value
+                converted_kwargs[param_name] = resolved_param_value
             logger.debug(f"Invoking component {type(component)} with kwargs: {converted_kwargs}")
             return component.run(**converted_kwargs)
 
