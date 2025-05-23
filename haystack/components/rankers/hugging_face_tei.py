@@ -56,6 +56,7 @@ class HuggingFaceTEIRanker:
         *,
         url: str,
         top_k: int = 10,
+        raw_scores: bool = False,
         timeout: Optional[int] = 30,
         token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         max_retries: int = 3,
@@ -66,6 +67,7 @@ class HuggingFaceTEIRanker:
 
         :param url: Base URL of the TEI reranking service (e.g., "https://api.example.com").
         :param top_k: Maximum number of top documents to return (default: 10).
+        :param raw_scores: If True, include raw relevance scores in the API payload.
         :param timeout: Request timeout in seconds (default: 30).
         :param token: The Hugging Face token to use as HTTP bearer authorization. Not always required
             depending on your TEI server configuration.
@@ -81,6 +83,7 @@ class HuggingFaceTEIRanker:
         self.token = token
         self.max_retries = max_retries
         self.retry_status_codes = retry_status_codes
+        self.raw_scores = raw_scores
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -147,7 +150,6 @@ class HuggingFaceTEIRanker:
         query: str,
         documents: List[Document],
         top_k: Optional[int] = None,
-        raw_scores: bool = False,
         truncation_direction: Optional[TruncationDirection] = None,
     ) -> Dict[str, List[Document]]:
         """
@@ -156,7 +158,6 @@ class HuggingFaceTEIRanker:
         :param query: The user query string to guide reranking.
         :param documents: List of `Document` objects to rerank.
         :param top_k: Optional override for the maximum number of documents to return.
-        :param raw_scores: If True, include raw relevance scores in the API payload.
         :param truncation_direction: If set, enable text truncation in the specified direction.
 
         :returns: A dict with key `documents` mapping to the reranked top documents.
@@ -173,13 +174,13 @@ class HuggingFaceTEIRanker:
 
         # Prepare the payload
         texts = [doc.content for doc in documents]
-        payload: Dict[str, Any] = {"query": query, "texts": texts, "raw_scores": raw_scores}
+        payload: Dict[str, Any] = {"query": query, "texts": texts, "raw_scores": self.raw_scores}
         if truncation_direction:
             payload.update({"truncate": True, "truncation_direction": truncation_direction.value})
 
         # Call the external service with retry
         headers = {}
-        if self.token.resolve_value():
+        if self.token and self.token.resolve_value():
             headers["Authorization"] = f"Bearer {self.token.resolve_value()}"
 
         response = request_with_retry(
@@ -202,7 +203,6 @@ class HuggingFaceTEIRanker:
         query: str,
         documents: List[Document],
         top_k: Optional[int] = None,
-        raw_scores: bool = False,
         truncation_direction: Optional[TruncationDirection] = None,
     ) -> Dict[str, List[Document]]:
         """
@@ -211,7 +211,6 @@ class HuggingFaceTEIRanker:
         :param query: The user query string to guide reranking.
         :param documents: List of `Document` objects to rerank.
         :param top_k: Optional override for the maximum number of documents to return.
-        :param raw_scores: If True, include raw relevance scores in the API payload.
         :param truncation_direction: If set, enable text truncation in the specified direction.
 
         :returns: A dict with key `documents` mapping to the reranked top documents.
@@ -227,13 +226,13 @@ class HuggingFaceTEIRanker:
 
         # Prepare the payload
         texts = [doc.content for doc in documents]
-        payload: Dict[str, Any] = {"query": query, "texts": texts, "raw_scores": raw_scores}
+        payload: Dict[str, Any] = {"query": query, "texts": texts, "raw_scores": self.raw_scores}
         if truncation_direction:
             payload.update({"truncate": True, "truncation_direction": truncation_direction.value})
 
         # Call the external service with retry
         headers = {}
-        if self.token.resolve_value():
+        if self.token and self.token.resolve_value():
             headers["Authorization"] = f"Bearer {self.token.resolve_value()}"
 
         response = await async_request_with_retry(
