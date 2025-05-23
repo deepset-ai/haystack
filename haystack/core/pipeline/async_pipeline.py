@@ -69,6 +69,8 @@ class AsyncPipeline(PipelineBase):
                     raise PipelineRuntimeError.from_exception(component_name, instance.__class__, error) from error
             else:
                 loop = asyncio.get_running_loop()
+                # Important: contextvars (e.g. active tracing Span) don’t propagate to running loop's ThreadPoolExecutor
+                # We use ctx.run(...) to preserve context like the active tracing span
                 ctx = contextvars.copy_context()
                 outputs = await loop.run_in_executor(None, lambda: ctx.run(lambda: instance.run(**component_inputs)))
 
