@@ -163,3 +163,6 @@ haystack/json-schemas
 
 # Zed configs
 .zed/*
+
+# uv
+uv.lock
