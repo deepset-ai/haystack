@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    To properly preserve the context when AsyncPipeline with components that only have sync run methods we copy the context using contextvars.copy_context() and run the component using `ctx.run(...)` so we can preserve context like the active tracing span.
+    This now means if your component 1) only has a sync run method and 2) it logs something to the tracer then this trace will be properly nested within the parent context.
