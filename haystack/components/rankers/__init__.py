@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from lazy_imports import LazyImporter
 
 _import_structure = {
-    "hugging_face_api": ["HuggingFaceAPIRanker"],
+    "hugging_face_tei": ["HuggingFaceTEIRanker"],
     "lost_in_the_middle": ["LostInTheMiddleRanker"],
     "meta_field": ["MetaFieldRanker"],
     "meta_field_grouping_ranker": ["MetaFieldGroupingRanker"],
@@ -18,7 +18,7 @@ _import_structure = {
 }
 
 if TYPE_CHECKING:
-    from .hugging_face_api import HuggingFaceAPIRanker
+    from .hugging_face_tei import HuggingFaceTEIRanker
     from .lost_in_the_middle import LostInTheMiddleRanker
     from .meta_field import MetaFieldRanker
     from .meta_field_grouping_ranker import MetaFieldGroupingRanker

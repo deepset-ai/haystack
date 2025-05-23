@@ -6,11 +6,9 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 from urllib.parse import urljoin
 
-import httpx
-import requests
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
-
 from haystack import Document, component, default_from_dict, default_to_dict
+from haystack.utils import Secret, deserialize_secrets_inplace
+from haystack.utils.requests_utils import async_request_with_retry, request_with_retry
 
 
 class TruncationDirection(str, Enum):
@@ -27,7 +25,7 @@ class TruncationDirection(str, Enum):
 
 
 @component
-class HuggingFaceAPIRanker:
+class HuggingFaceTEIRanker:
     """
     Ranks a list of documents by their relevance to a given query using an external TEI reranking API.
 
@@ -37,13 +35,14 @@ class HuggingFaceAPIRanker:
     Usage example:
     ```python
     from haystack import Document
-    from haystack.components.rankers import HuggingFaceAPIRanker
+    from haystack.components.rankers import HuggingFaceTEIRanker
+    from haystack.utils import Secret
 
-    reranker = HuggingFaceAPIRanker(
+    reranker = HuggingFaceTEIRanker(
         url="https://api.my-tei-service.com",
         top_k=5,
         timeout=30,
-        token="my_api_token"
+        token=Secret.from_token("my_api_token")
     )
     docs = [Document(content="First doc"), Document(content="Second doc"), ...]
     result = reranker.run(query="example query", documents=docs)
@@ -51,25 +50,34 @@ class HuggingFaceAPIRanker:
     ```
     """
 
-    def __init__(self, url: str, top_k: int = 10, timeout: Optional[int] = 30, token: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        url: str,
+        top_k: int = 10,
+        timeout: Optional[int] = 30,
+        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        max_retries: int = 3,
+        retry_status_codes: Optional[List[int]] = None,
+    ) -> None:
         """
         Initializes the TEI reranker component.
 
         :param url: Base URL of the TEI reranking service (e.g., "https://api.example.com").
         :param top_k: Maximum number of top documents to return (default: 10).
         :param timeout: Request timeout in seconds (default: 30).
-        :param token: Optional bearer token for API authentication (default: None).
+        :param token: The Hugging Face token to use as HTTP bearer authorization.
+            Check your HF token in your [account settings](https://huggingface.co/settings/tokens).
+        :param max_retries: Maximum number of retry attempts for failed requests (default: 3).
+        :param retry_status_codes: List of HTTP status codes that will trigger a retry.
+            When None, HTTP 408, 418, 429 and 503 will be retried (default: None).
         """
         # Construct the full rerank endpoint
         self.url = url
         self.top_k = top_k
         self.timeout = timeout
         self.token = token
-
-        # Initialize a persistent HTTP session for performance
-        self.session = requests.Session()
-        if self.token:
-            self.session.headers.update({"Authorization": f"Bearer {token}"})
+        self.max_retries = max_retries
+        self.retry_status_codes = retry_status_codes
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -77,20 +85,33 @@ class HuggingFaceAPIRanker:
 
         :returns: A dict containing the component's initialization parameters.
         """
-        return default_to_dict(self, url=self.url, top_k=self.top_k, timeout=self.timeout, token=self.token)
+        return default_to_dict(
+            self,
+            url=self.url,
+            top_k=self.top_k,
+            timeout=self.timeout,
+            token=self.token.to_dict() if self.token else None,
+            max_retries=self.max_retries,
+            retry_status_codes=self.retry_status_codes,
+        )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "HuggingFaceAPIRanker":
+    def from_dict(cls, data: Dict[str, Any]) -> "HuggingFaceTEIRanker":
         """
         Deserializes the component from a configuration dictionary.
 
         :param data: Configuration dict produced by `to_dict()`.
-        :returns: An initialized `HuggingFaceAPIRanker` instance.
+
+        :returns: An initialized `HuggingFaceTEIRanker` instance.
         """
+        deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
         return default_from_dict(cls, data)
 
     def _compose_response(
-        self, result: Union[Dict[str, str], List[Dict[str, Any]]], top_k: Optional[int], documents: List[Document]
+        self,
+        result: Union[Dict[str, str], List[Dict[str, Any]]],
+        top_k: Optional[int],
+        documents: List[Document],
     ) -> Dict[str, List[Document]]:
         """
         Processes the API response into a structured format.
@@ -102,11 +123,11 @@ class HuggingFaceAPIRanker:
         if isinstance(result, dict) and "error" in result:
             error_type = result.get("error_type", "UnknownError")
             error_msg = result.get("error", "No additional information.")
-            raise RuntimeError(f"HuggingFaceAPIRanker API call failed ({error_type}): {error_msg}")
+            raise RuntimeError(f"HuggingFaceTEIRanker API call failed ({error_type}): {error_msg}")
 
         # Ensure we have a list of score dicts
         if not isinstance(result, list):
-            raise RuntimeError("Unexpected response format from HuggingFaceAPIRanker API.")
+            raise RuntimeError("Unexpected response format from HuggingFaceTEIRanker API.")
 
         # Determine number of docs to return
         final_k = min(top_k or self.top_k, len(result))
@@ -120,11 +141,6 @@ class HuggingFaceAPIRanker:
         return {"documents": ranked_docs}
 
     @component.output_types(documents=List[Document])
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, max=10),
-        retry=retry_if_exception_type(requests.exceptions.RequestException),
-    )
     def run(
         self,
         query: str,
@@ -160,19 +176,26 @@ class HuggingFaceAPIRanker:
         if truncation_direction:
             payload.update({"truncate": True, "truncation_direction": truncation_direction.value})
 
-        # Call the external service
-        response = self.session.post(urljoin(self.url, "/rerank"), json=payload, timeout=self.timeout)
-        response.raise_for_status()
+        # Call the external service with retry
+        headers = {}
+        if self.token:
+            headers["Authorization"] = f"Bearer {self.token.resolve_value()}"
+
+        response = request_with_retry(
+            method="POST",
+            url=urljoin(self.url, "/rerank"),
+            json=payload,
+            timeout=self.timeout,
+            headers=headers,
+            attempts=self.max_retries,
+            status_codes_to_retry=self.retry_status_codes,
+        )
+
         result: Union[Dict[str, str], List[Dict[str, Any]]] = response.json()
 
         return self._compose_response(result, top_k, documents)
 
     @component.output_types(documents=List[Document])
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, max=10),
-        retry=retry_if_exception_type(httpx.RequestError),
-    )
     async def run_async(
         self,
         query: str,
@@ -207,12 +230,21 @@ class HuggingFaceAPIRanker:
         if truncation_direction:
             payload.update({"truncate": True, "truncation_direction": truncation_direction.value})
 
-        # Call the external service
-        async with httpx.AsyncClient() as client:
-            if self.token:
-                client.headers.update({"Authorization": f"Bearer {self.token}"})
-            response = await client.post(urljoin(self.url, "/rerank"), json=payload, timeout=self.timeout)
-            response.raise_for_status()
-            result: Union[Dict[str, str], List[Dict[str, Any]]] = response.json()
+        # Call the external service with retry
+        headers = {}
+        if self.token:
+            headers["Authorization"] = f"Bearer {self.token.resolve_value()}"
+
+        response = await async_request_with_retry(
+            method="POST",
+            url=urljoin(self.url, "/rerank"),
+            json=payload,
+            timeout=self.timeout,
+            headers=headers,
+            attempts=self.max_retries,
+            status_codes_to_retry=self.retry_status_codes,
+        )
+
+        result: Union[Dict[str, str], List[Dict[str, Any]]] = response.json()
 
         return self._compose_response(result, top_k, documents)
