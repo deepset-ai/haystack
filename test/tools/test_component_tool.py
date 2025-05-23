@@ -23,11 +23,27 @@ from haystack.core.pipeline.utils import _deepcopy_with_exceptions
 from haystack.dataclasses import ChatMessage, ChatRole, Document
 from haystack.tools import ComponentTool
 from haystack.utils.auth import Secret
+from my_tests.mistral_chat_template import messages
 
 from test.tools.test_parameters_schema_utils import BYTE_STREAM_SCHEMA, DOCUMENT_SCHEMA, SPARSE_EMBEDDING_SCHEMA
 
 
 # Component and Model Definitions
+
+
+@component
+class SimpleComponentUsingChatMessages:
+    """A simple component that generates text."""
+
+    @component.output_types(reply=str)
+    def run(self, messages: List[ChatMessage]) -> Dict[str, str]:
+        """
+        A simple component that generates text.
+
+        :param messages: Users messages
+        :return: A dictionary with the generated text.
+        """
+        return {"reply": f"Hello, {messages[0].text}!"}
 
 
 @component
@@ -305,6 +321,13 @@ class TestComponentTool:
 
         with pytest.raises(ValueError):
             ComponentTool(component=not_a_component, name="invalid_tool", description="This should fail")
+
+    def test_component_invoker_with_chat_message_input(self):
+        tool = ComponentTool(
+            component=SimpleComponentUsingChatMessages(), name="simple_tool", description="A simple tool"
+        )
+        result = tool.invoke(messages=[ChatMessage.from_user(text="world")])
+        assert result == {"reply": "Hello, world!"}
 
 
 # Integration tests
