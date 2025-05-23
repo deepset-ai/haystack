@@ -25,7 +25,7 @@ class TestMultiFileConverter:
         assert converter.json_content_key == "content"
         assert isinstance(converter, Component)
 
-    def test_init_custom_params(self, converter):
+    def test_init_custom_params(self):
         """Test initialization with custom parameters"""
         converter = MultiFileConverter(encoding="latin-1", json_content_key="text")
         assert converter.encoding == "latin-1"
@@ -92,7 +92,7 @@ class TestMultiFileConverter:
         assert docs[0].meta["language"] == "en"
         assert docs[0].meta["author"] == "test"
 
-    def test_run_with_bytestream(self, test_files_path, converter):
+    def test_run_with_bytestream(self, converter):
         """Test converting ByteStream input"""
         bytestream = ByteStream(data=b"test content", mime_type="text/plain", meta={"file_path": "test.txt"})
         output = converter.run(sources=[bytestream])
