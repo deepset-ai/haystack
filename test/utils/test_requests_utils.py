@@ -46,9 +46,7 @@ class TestRequestWithRetry:
     def test_request_with_retry_custom_status_codes(self, mock_requests_response):
         """Test that request_with_retry respects custom status_codes_to_retry parameter"""
         with patch("requests.request", return_value=mock_requests_response) as mock_request:
-            response = request_with_retry(
-                method="GET", url="https://example.com", status_codes_to_retry=[500, 502]
-            )
+            response = request_with_retry(method="GET", url="https://example.com", status_codes_to_retry=[500, 502])
 
             assert response == mock_requests_response
             mock_request.assert_called_once_with(method="GET", url="https://example.com", timeout=10)
@@ -68,9 +66,7 @@ class TestRequestWithRetry:
             response = request_with_retry(method="GET", url="https://example.com", headers=headers)
 
             assert response == mock_requests_response
-            mock_request.assert_called_once_with(
-                method="GET", url="https://example.com", headers=headers, timeout=10
-            )
+            mock_request.assert_called_once_with(method="GET", url="https://example.com", headers=headers, timeout=10)
 
     def test_request_with_retry_with_json(self, mock_requests_response):
         """Test that request_with_retry passes JSON data correctly"""
@@ -79,9 +75,7 @@ class TestRequestWithRetry:
             response = request_with_retry(method="POST", url="https://example.com", json=json_data)
 
             assert response == mock_requests_response
-            mock_request.assert_called_once_with(
-                method="POST", url="https://example.com", json=json_data, timeout=10
-            )
+            mock_request.assert_called_once_with(method="POST", url="https://example.com", json=json_data, timeout=10)
 
     def test_request_with_retry_retries_on_error(self):
         """Test that request_with_retry retries on HTTP errors"""
@@ -93,10 +87,7 @@ class TestRequestWithRetry:
 
         with patch("requests.request") as mock_request:
             # First call raises an error, second call succeeds
-            mock_request.side_effect = [
-                requests.exceptions.HTTPError("Server error"),
-                success_response,
-            ]
+            mock_request.side_effect = [requests.exceptions.HTTPError("Server error"), success_response]
 
             response = request_with_retry(method="GET", url="https://example.com", attempts=2)
 
@@ -174,38 +165,26 @@ class TestAsyncRequestWithRetry:
         """Test that async_request_with_retry passes headers correctly"""
         headers = {"Authorization": "Bearer token123"}
         with patch("httpx.AsyncClient.request", return_value=mock_httpx_response) as mock_request:
-            response = await async_request_with_retry(
-                method="GET", url="https://example.com", headers=headers
-            )
+            response = await async_request_with_retry(method="GET", url="https://example.com", headers=headers)
 
             assert response == mock_httpx_response
-            mock_request.assert_called_once_with(
-                method="GET", url="https://example.com", headers=headers, timeout=10
-            )
+            mock_request.assert_called_once_with(method="GET", url="https://example.com", headers=headers, timeout=10)
 
     @pytest.mark.asyncio
     async def test_async_request_with_retry_with_json(self, mock_httpx_response):
         """Test that async_request_with_retry passes JSON data correctly"""
         json_data = {"key": "value"}
         with patch("httpx.AsyncClient.request", return_value=mock_httpx_response) as mock_request:
-            response = await async_request_with_retry(
-                method="POST", url="https://example.com", json=json_data
-            )
+            response = await async_request_with_retry(method="POST", url="https://example.com", json=json_data)
 
             assert response == mock_httpx_response
-            mock_request.assert_called_once_with(
-                method="POST", url="https://example.com", json=json_data, timeout=10
-            )
+            mock_request.assert_called_once_with(method="POST", url="https://example.com", json=json_data, timeout=10)
 
     @pytest.mark.asyncio
     async def test_async_request_with_retry_retries_on_error(self):
         """Test that async_request_with_retry retries on HTTP errors"""
-        error_response = httpx.Response(
-            status_code=503, request=httpx.Request("GET", "https://example.com")
-        )
-        success_response = httpx.Response(
-            status_code=200, request=httpx.Request("GET", "https://example.com")
-        )
+        error_response = httpx.Response(status_code=503, request=httpx.Request("GET", "https://example.com"))
+        success_response = httpx.Response(status_code=200, request=httpx.Request("GET", "https://example.com"))
 
         with patch("httpx.AsyncClient.request") as mock_request:
             # First call raises an error, second call succeeds
@@ -222,9 +201,7 @@ class TestAsyncRequestWithRetry:
     @pytest.mark.asyncio
     async def test_async_request_with_retry_retries_on_status_code(self):
         """Test that async_request_with_retry retries on specified status codes"""
-        error_response = httpx.Response(
-            status_code=503, request=httpx.Request("GET", "https://example.com")
-        )
+        error_response = httpx.Response(status_code=503, request=httpx.Request("GET", "https://example.com"))
 
         def raise_for_status():
             if error_response.status_code in [503]:
@@ -234,9 +211,7 @@ class TestAsyncRequestWithRetry:
 
         error_response.raise_for_status = raise_for_status
 
-        success_response = httpx.Response(
-            status_code=200, request=httpx.Request("GET", "https://example.com")
-        )
+        success_response = httpx.Response(status_code=200, request=httpx.Request("GET", "https://example.com"))
         success_response.raise_for_status = lambda: None
 
         with patch("httpx.AsyncClient.request") as mock_request:

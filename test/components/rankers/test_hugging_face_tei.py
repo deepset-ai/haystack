@@ -45,11 +45,7 @@ class TestHuggingFaceTEIRanker:
         """Test serialization to dict with Secret token"""
         token = Secret.from_token("fake_token")
         component = HuggingFaceTEIRanker(
-            url="https://api.my-tei-service.com",
-            top_k=5,
-            timeout=30,
-            max_retries=4,
-            retry_status_codes=[500, 502],
+            url="https://api.my-tei-service.com", top_k=5, timeout=30, max_retries=4, retry_status_codes=[500, 502]
         )
         data = component.to_dict()
 
@@ -116,11 +112,7 @@ class TestHuggingFaceTEIRanker:
             retry_status_codes=[500, 502],
         )
 
-        docs = [
-            Document(content="Document A"),
-            Document(content="Document B"),
-            Document(content="Document C"),
-        ]
+        docs = [Document(content="Document A"), Document(content="Document B"), Document(content="Document C")]
 
         # Run the ranker
         result = ranker.run(query="test query", documents=docs)
@@ -129,11 +121,7 @@ class TestHuggingFaceTEIRanker:
         mock_request.assert_called_once_with(
             method="POST",
             url="https://api.my-tei-service.com/rerank",
-            json={
-                "query": "test query",
-                "texts": ["Document A", "Document B", "Document C"],
-                "raw_scores": False,
-            },
+            json={"query": "test query", "texts": ["Document A", "Document B", "Document C"], "raw_scores": False},
             timeout=30,
             headers={"Authorization": f"Bearer test_token"},
             attempts=4,
@@ -163,9 +151,7 @@ class TestHuggingFaceTEIRanker:
         docs = [Document(content="Document A")]
 
         # Run the ranker with truncation direction
-        result = ranker.run(
-            query="test query", documents=docs, truncation_direction=TruncationDirection.LEFT
-        )
+        result = ranker.run(query="test query", documents=docs, truncation_direction=TruncationDirection.LEFT)
 
         # Check that request includes truncation parameters
         mock_request.assert_called_once_with(
@@ -241,9 +227,7 @@ class TestHuggingFaceTEIRanker:
 
         # Test unexpected response format
         mock_response.json.return_value = {"unexpected": "format"}
-        with pytest.raises(
-            RuntimeError, match="Unexpected response format from HuggingFaceTEIRanker API"
-        ):
+        with pytest.raises(RuntimeError, match="Unexpected response format from HuggingFaceTEIRanker API"):
             ranker.run(query="test query", documents=docs)
 
     @pytest.mark.asyncio
@@ -270,11 +254,7 @@ class TestHuggingFaceTEIRanker:
             retry_status_codes=[500, 502],
         )
 
-        docs = [
-            Document(content="Document A"),
-            Document(content="Document B"),
-            Document(content="Document C"),
-        ]
+        docs = [Document(content="Document A"), Document(content="Document B"), Document(content="Document C")]
 
         # Run the ranker asynchronously
         result = await ranker.run_async(query="test query", documents=docs)
@@ -283,11 +263,7 @@ class TestHuggingFaceTEIRanker:
         mock_request.assert_called_once_with(
             method="POST",
             url="https://api.my-tei-service.com/rerank",
-            json={
-                "query": "test query",
-                "texts": ["Document A", "Document B", "Document C"],
-                "raw_scores": False,
-            },
+            json={"query": "test query", "texts": ["Document A", "Document B", "Document C"], "raw_scores": False},
             timeout=30,
             headers={"Authorization": f"Bearer test_token"},
             attempts=4,

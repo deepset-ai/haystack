@@ -108,10 +108,7 @@ class HuggingFaceTEIRanker:
         return default_from_dict(cls, data)
 
     def _compose_response(
-        self,
-        result: Union[Dict[str, str], List[Dict[str, Any]]],
-        top_k: Optional[int],
-        documents: List[Document],
+        self, result: Union[Dict[str, str], List[Dict[str, Any]]], top_k: Optional[int], documents: List[Document]
     ) -> Dict[str, List[Document]]:
         """
         Processes the API response into a structured format.
