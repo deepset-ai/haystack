@@ -25,21 +25,32 @@ def print_streaming_chunk(chunk: StreamingChunk) -> None:
     # Print tool call metadata if available (from ChatGenerator)
     if chunk.meta.get("tool_calls"):
         for tool_call in chunk.meta["tool_calls"]:
-            if isinstance(tool_call, ChoiceDeltaToolCall) and tool_call.function:
+            # Convert to dict if tool_call is a ChoiceDeltaToolCall
+            if isinstance(tool_call, ChoiceDeltaToolCall):
+                tool_call_dict = tool_call.to_dict()
+            else:
+                tool_call_dict = tool_call
+
+            if tool_call_dict.get("function"):
                 # print the tool name
-                if tool_call.function.name and not tool_call.function.arguments:
-                    print("[TOOL CALL]\n", flush=True, end="")
-                    print(f"Tool: {tool_call.function.name} ", flush=True, end="")
+                if tool_call_dict["function"].get("name"):
+                    print("\n\n[TOOL CALL]\n", flush=True, end="")
+                    print(f"Tool: {tool_call_dict['function']['name']} ", flush=True, end="")
                     print("\nArguments: ", flush=True, end="")
 
                 # print the tool arguments
-                if tool_call.function.arguments:
-                    print(tool_call.function.arguments, flush=True, end="")
+                if tool_call_dict["function"].get("arguments"):
+                    print(tool_call_dict["function"]["arguments"], flush=True, end="")
 
     # Print tool call results if available (from ToolInvoker)
     if chunk.meta.get("tool_result"):
-        print(f"\n\n[TOOL RESULT]\n{chunk.meta['tool_result']}\n\n", flush=True, end="")
+        print(f"\n\n[TOOL RESULT]\n{chunk.meta['tool_result']}", flush=True, end="")
 
     # Print the main content of the chunk (from ChatGenerator)
     if chunk.content:
         print(chunk.content, flush=True, end="")
+
+    # End of LLM assistant message so we add two new lines
+    # This ensures spacing between multiple LLM messages (e.g. Agent)
+    if chunk.meta.get("finish_reason") is not None:
+        print("\n\n", flush=True, end="")
