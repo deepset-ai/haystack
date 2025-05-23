@@ -13,7 +13,7 @@ class ComponentInfo:
     """
     The ComponentInfo class encapsulates information about a component.
 
-    :param name: The name of the component assigned in the pipeline.
+    :param name: The name of the component assigned while adding it to the pipeline.
     :param type: The type of the component.
     """
 
@@ -30,13 +30,13 @@ class StreamingChunk:
 
     :param content: The content of the message chunk as a string.
     :param meta: A dictionary containing metadata related to the message chunk.
-    :param component_info: A dictionary containing information about the component that generated the chunk,
+    :param component_info: Information about the component that generated the chunk,
         such as the component name and type.
     """
 
     content: str
     meta: Dict[str, Any] = field(default_factory=dict, hash=False)
-    component_info: ComponentInfo = field(default_factory=ComponentInfo)
+    component_info: ComponentInfo = field(default_factory=ComponentInfo, hash=False)
 
 
 SyncStreamingCallbackT = Callable[[StreamingChunk], None]

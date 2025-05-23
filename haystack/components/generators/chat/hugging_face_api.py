@@ -429,6 +429,9 @@ class HuggingFaceAPIChatGenerator:
                 text = choice.delta.content or ""
                 generated_text += text
 
+                if choice.finish_reason:
+                    finish_reason = choice.finish_reason
+
                 stream_chunk = StreamingChunk(text, meta, component_info)
                 streaming_callback(stream_chunk)
 
