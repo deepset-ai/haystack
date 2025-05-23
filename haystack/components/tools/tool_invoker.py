@@ -10,8 +10,9 @@ from functools import partial
 from typing import Any, Dict, List, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
+from haystack.components.agents import State
 from haystack.core.component.sockets import Sockets
-from haystack.dataclasses import ChatMessage, State, ToolCall
+from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT, StreamingChunk, select_streaming_callback
 from haystack.tools import (
     ComponentTool,
@@ -507,6 +508,10 @@ class ToolInvoker:
                         )
                     )
 
+        # We stream one more chunk that contains a finish_reason if tool_messages were generated
+        if len(tool_messages) > 0 and streaming_callback is not None:
+            streaming_callback(StreamingChunk(content="", meta={"finish_reason": "tool_call_results"}))
+
         return {"tool_messages": tool_messages, "state": state}
 
     @component.output_types(tool_messages=List[ChatMessage], state=State)
@@ -607,6 +612,10 @@ class ToolInvoker:
                             meta={"tool_result": tool_messages[-1].tool_call_results[0].result, "tool_call": tool_call},
                         )
                     )  # type: ignore[misc] # we have checked that streaming_callback is not None and async
+
+        # We stream one more chunk that contains a finish_reason if tool_messages were generated
+        if len(tool_messages) > 0 and streaming_callback is not None:
+            await streaming_callback(StreamingChunk(content="", meta={"finish_reason": "tool_call_results"}))  # type: ignore[misc] # we have checked that streaming_callback is not None and async
 
         return {"tool_messages": tool_messages, "state": state}
 
