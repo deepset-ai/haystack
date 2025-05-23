@@ -13,14 +13,18 @@ from haystack.utils import Secret
 
 
 class TestHuggingFaceTEIRanker:
-    def test_init(self):
+    def test_init(self, monkeypatch):
         """Test initialization with default and custom parameters"""
+        # Ensure we're not using system environment variables
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)
+        monkeypatch.delenv("HF_TOKEN", raising=False)
+
         # Default parameters
         ranker = HuggingFaceTEIRanker(url="https://api.my-tei-service.com")
         assert ranker.url == "https://api.my-tei-service.com"
         assert ranker.top_k == 10
         assert ranker.timeout == 30
-        assert ranker.token.resolve_value() is None
+        assert not ranker.token.resolve_value()
         assert ranker.max_retries == 3
         assert ranker.retry_status_codes is None
 
@@ -41,9 +45,12 @@ class TestHuggingFaceTEIRanker:
         assert ranker.max_retries == 5
         assert ranker.retry_status_codes == [500, 502, 503]
 
-    def test_to_dict(self):
+    def test_to_dict(self, monkeypatch):
         """Test serialization to dict with Secret token"""
-        token = Secret.from_token("fake_token")
+        # Ensure we're not using system environment variables
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)
+        monkeypatch.delenv("HF_TOKEN", raising=False)
+
         component = HuggingFaceTEIRanker(
             url="https://api.my-tei-service.com", top_k=5, timeout=30, max_retries=4, retry_status_codes=[500, 502]
         )
@@ -61,8 +68,12 @@ class TestHuggingFaceTEIRanker:
         assert data["init_parameters"]["max_retries"] == 4
         assert data["init_parameters"]["retry_status_codes"] == [500, 502]
 
-    def test_from_dict(self):
+    def test_from_dict(self, monkeypatch):
         """Test deserialization from dict with environment variable token"""
+        # Ensure we're not using system environment variables
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)
+        monkeypatch.delenv("HF_TOKEN", raising=False)
+
         data = {
             "type": "haystack.components.rankers.hugging_face_tei.HuggingFaceTEIRanker",
             "init_parameters": {
@@ -83,15 +94,23 @@ class TestHuggingFaceTEIRanker:
         assert component.max_retries == 4
         assert component.retry_status_codes == [500, 502]
 
-    def test_empty_documents(self):
+    def test_empty_documents(self, monkeypatch):
         """Test that empty documents list returns empty result"""
+        # Ensure we're not using system environment variables
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)
+        monkeypatch.delenv("HF_TOKEN", raising=False)
+
         ranker = HuggingFaceTEIRanker(url="https://api.my-tei-service.com")
         result = ranker.run(query="test query", documents=[])
         assert result == {"documents": []}
 
     @patch("haystack.components.rankers.hugging_face_tei.request_with_retry")
-    def test_run_with_mock(self, mock_request):
+    def test_run_with_mock(self, mock_request, monkeypatch):
         """Test run method with mocked API response"""
+        # Ensure we're not using system environment variables
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)
+        monkeypatch.delenv("HF_TOKEN", raising=False)
+
         # Setup mock response
         mock_response = MagicMock(spec=requests.Response)
         mock_response.json.return_value = [
@@ -138,8 +157,12 @@ class TestHuggingFaceTEIRanker:
         assert result["documents"][2].score == 0.75
 
     @patch("haystack.components.rankers.hugging_face_tei.request_with_retry")
-    def test_run_with_truncation_direction(self, mock_request):
+    def test_run_with_truncation_direction(self, mock_request, monkeypatch):
         """Test run method with truncation direction parameter"""
+        # Ensure we're not using system environment variables
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)
+        monkeypatch.delenv("HF_TOKEN", raising=False)
+
         # Setup mock response
         mock_response = MagicMock(spec=requests.Response)
         mock_response.json.return_value = [{"index": 0, "score": 0.95}]
@@ -154,6 +177,7 @@ class TestHuggingFaceTEIRanker:
         result = ranker.run(query="test query", documents=docs, truncation_direction=TruncationDirection.LEFT)
 
         # Check that request includes truncation parameters
+        print(result, "====")
         mock_request.assert_called_once_with(
             method="POST",
             url="https://api.my-tei-service.com/rerank",
@@ -171,8 +195,12 @@ class TestHuggingFaceTEIRanker:
         )
 
     @patch("haystack.components.rankers.hugging_face_tei.request_with_retry")
-    def test_run_with_custom_top_k(self, mock_request):
+    def test_run_with_custom_top_k(self, mock_request, monkeypatch):
         """Test run method with custom top_k parameter"""
+        # Ensure we're not using system environment variables
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)
+        monkeypatch.delenv("HF_TOKEN", raising=False)
+
         # Setup mock response with 5 documents
         mock_response = MagicMock(spec=requests.Response)
         mock_response.json.return_value = [
@@ -208,8 +236,12 @@ class TestHuggingFaceTEIRanker:
         assert result["documents"][1].content == "Document 3"
 
     @patch("haystack.components.rankers.hugging_face_tei.request_with_retry")
-    def test_error_handling(self, mock_request):
+    def test_error_handling(self, mock_request, monkeypatch):
         """Test error handling in the ranker"""
+        # Ensure we're not using system environment variables
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)
+        monkeypatch.delenv("HF_TOKEN", raising=False)
+
         # Setup mock response with error
         mock_response = MagicMock(spec=requests.Response)
         mock_response.json.return_value = {"error": "Some error occurred", "error_type": "TestError"}
@@ -232,8 +264,12 @@ class TestHuggingFaceTEIRanker:
 
     @pytest.mark.asyncio
     @patch("haystack.components.rankers.hugging_face_tei.async_request_with_retry")
-    async def test_run_async_with_mock(self, mock_request):
+    async def test_run_async_with_mock(self, mock_request, monkeypatch):
         """Test run_async method with mocked API response"""
+        # Ensure we're not using system environment variables
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)
+        monkeypatch.delenv("HF_TOKEN", raising=False)
+
         # Setup mock response
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.json.return_value = [
@@ -281,8 +317,12 @@ class TestHuggingFaceTEIRanker:
 
     @pytest.mark.asyncio
     @patch("haystack.components.rankers.hugging_face_tei.async_request_with_retry")
-    async def test_run_async_empty_documents(self, mock_request):
+    async def test_run_async_empty_documents(self, mock_request, monkeypatch):
         """Test run_async with empty documents list"""
+        # Ensure we're not using system environment variables
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)
+        monkeypatch.delenv("HF_TOKEN", raising=False)
+
         ranker = HuggingFaceTEIRanker(url="https://api.my-tei-service.com")
         result = await ranker.run_async(query="test query", documents=[])
 

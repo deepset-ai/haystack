@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import copy
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 from urllib.parse import urljoin
@@ -52,6 +53,7 @@ class HuggingFaceTEIRanker:
 
     def __init__(
         self,
+        *,
         url: str,
         top_k: int = 10,
         timeout: Optional[int] = 30,
@@ -65,7 +67,8 @@ class HuggingFaceTEIRanker:
         :param url: Base URL of the TEI reranking service (e.g., "https://api.example.com").
         :param top_k: Maximum number of top documents to return (default: 10).
         :param timeout: Request timeout in seconds (default: 30).
-        :param token: The Hugging Face token to use as HTTP bearer authorization.
+        :param token: The Hugging Face token to use as HTTP bearer authorization. Not always required
+            depending on your TEI server configuration.
             Check your HF token in your [account settings](https://huggingface.co/settings/tokens).
         :param max_retries: Maximum number of retry attempts for failed requests (default: 3).
         :param retry_status_codes: List of HTTP status codes that will trigger a retry.
@@ -133,8 +136,9 @@ class HuggingFaceTEIRanker:
         ranked_docs = []
         for item in result[:final_k]:
             index: int = item["index"]
-            documents[index].score = item["score"]
-            ranked_docs.append(documents[index])
+            doc_copy = copy.copy(documents[index])
+            doc_copy.score = item["score"]
+            ranked_docs.append(doc_copy)
         return {"documents": ranked_docs}
 
     @component.output_types(documents=List[Document])
