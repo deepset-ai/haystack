@@ -19,6 +19,7 @@ _import_structure = {
         "AsyncStreamingCallbackT",
         "StreamingCallbackT",
         "SyncStreamingCallbackT",
+        "ToolCallDelta",
         "select_streaming_callback",
     ],
 }
@@ -35,6 +36,7 @@ if TYPE_CHECKING:
         StreamingCallbackT,
         StreamingChunk,
         SyncStreamingCallbackT,
+        ToolCallDelta,
         select_streaming_callback,
     )
 else:

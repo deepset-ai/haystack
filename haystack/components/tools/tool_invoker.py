@@ -504,9 +504,16 @@ class ToolInvoker:
                     streaming_callback(
                         StreamingChunk(
                             content="",
+                            index=len(tool_messages) - 1,
+                            tool_call_result=tool_messages[-1].tool_call_results[0],
+                            start=True,
                             meta={"tool_result": tool_messages[-1].tool_call_results[0].result, "tool_call": tool_call},
                         )
                     )
+
+        # We stream one more chunk that contains a finish_reason
+        if streaming_callback is not None:
+            streaming_callback(StreamingChunk(content="", meta={"finish_reason": "tool_call_results"}))
 
         return {"tool_messages": tool_messages, "state": state}
 
@@ -605,6 +612,8 @@ class ToolInvoker:
                     await streaming_callback(
                         StreamingChunk(
                             content="",
+                            tool_call_result=tool_messages[-1].tool_call_results[0],
+                            start=True,
                             meta={"tool_result": tool_messages[-1].tool_call_results[0].result, "tool_call": tool_call},
                         )
                     )  # type: ignore[misc] # we have checked that streaming_callback is not None and async

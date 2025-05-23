@@ -407,7 +407,6 @@ class HuggingFaceAPIChatGenerator:
         first_chunk_time = None
         finish_reason = None
         usage = None
-        meta: Dict[str, Any] = {}
 
         for chunk in api_output:
             # The chunk with usage returns an empty array for choices
@@ -423,7 +422,13 @@ class HuggingFaceAPIChatGenerator:
                 if choice.finish_reason:
                     finish_reason = choice.finish_reason
 
-                stream_chunk = StreamingChunk(text, meta)
+                stream_chunk = StreamingChunk(
+                    content=text,
+                    index=choice.index,
+                    # TODO Correctly evaluate start
+                    start=None,
+                    meta={"model": chunk.model, "finish_reason": choice.finish_reason},
+                )
                 streaming_callback(stream_chunk)
 
             if chunk.usage:
@@ -437,17 +442,16 @@ class HuggingFaceAPIChatGenerator:
         else:
             usage_dict = {"prompt_tokens": 0, "completion_tokens": 0}
 
-        meta.update(
-            {
+        message = ChatMessage.from_assistant(
+            text=generated_text,
+            meta={
                 "model": self._client.model,
                 "index": 0,
                 "finish_reason": finish_reason,
                 "usage": usage_dict,
                 "completion_start_time": first_chunk_time,
-            }
+            },
         )
-
-        message = ChatMessage.from_assistant(text=generated_text, meta=meta)
         return {"replies": [message]}
 
     def _run_non_streaming(
@@ -503,7 +507,6 @@ class HuggingFaceAPIChatGenerator:
         first_chunk_time = None
         finish_reason = None
         usage = None
-        meta: Dict[str, Any] = {}
 
         async for chunk in api_output:
             # The chunk with usage returns an empty array for choices
@@ -519,7 +522,13 @@ class HuggingFaceAPIChatGenerator:
                 if choice.finish_reason:
                     finish_reason = choice.finish_reason
 
-                stream_chunk = StreamingChunk(text, meta)
+                stream_chunk = StreamingChunk(
+                    content=text,
+                    index=choice.index,
+                    # TODO Correctly evaluate start
+                    start=None,
+                    meta={"model": chunk.model, "finish_reason": choice.finish_reason},
+                )
                 await streaming_callback(stream_chunk)  # type: ignore
 
             if chunk.usage:
@@ -533,17 +542,16 @@ class HuggingFaceAPIChatGenerator:
         else:
             usage_dict = {"prompt_tokens": 0, "completion_tokens": 0}
 
-        meta.update(
-            {
+        message = ChatMessage.from_assistant(
+            text=generated_text,
+            meta={
                 "model": self._async_client.model,
                 "index": 0,
                 "finish_reason": finish_reason,
                 "usage": usage_dict,
                 "completion_start_time": first_chunk_time,
-            }
+            },
         )
-
-        message = ChatMessage.from_assistant(text=generated_text, meta=meta)
         return {"replies": [message]}
 
     async def _run_non_streaming_async(

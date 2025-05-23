@@ -5,7 +5,29 @@
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable, Dict, Optional, Union
 
+from haystack.dataclasses.chat_message import ToolCallResult
 from haystack.utils.asynchronous import is_callable_async_compatible
+
+
+@dataclass
+class ToolCallDelta:
+    """
+    Represents a Tool call prepared by the model, usually contained in an assistant message.
+
+    :param id: The ID of the Tool call.
+    :param tool_name: The name of the Tool to call.
+    :param arguments: Either the full arguments in JSON format or a delta of the arguments.
+    """
+
+    id: Optional[str] = None  # noqa: A003
+    tool_name: Optional[str] = None
+    arguments: Optional[str] = None
+
+    def __post_init__(self):
+        if self.tool_name is None and self.arguments is None:
+            raise ValueError("At least one of tool_name or arguments must be provided.")
+        # NOTE: We allow for name and arguments to both be present because some providers like Mistral provide the
+        # name and full arguments in one chunk
 
 
 @dataclass
@@ -17,10 +39,27 @@ class StreamingChunk:
 
     :param content: The content of the message chunk as a string.
     :param meta: A dictionary containing metadata related to the message chunk.
+    :param index: An optional integer index representing which content block this chunk belongs to.
+    :param tool_call: An optional ToolCallDelta object representing a tool call associated with the message chunk.
+    :param tool_call_result: An optional ToolCallResult object representing the result of a tool call.
+    :param start: A boolean indicating whether this chunk marks the start of a content block.
     """
 
     content: str
     meta: Dict[str, Any] = field(default_factory=dict, hash=False)
+    index: Optional[int] = None
+    tool_call: Optional[ToolCallDelta] = None
+    tool_call_result: Optional[ToolCallResult] = None
+    start: Optional[bool] = None
+
+    def __post_init__(self):
+        fields_set = sum(bool(x) for x in (self.content, self.tool_call, self.tool_call_result))
+        if fields_set > 1:
+            raise ValueError(
+                "Only one of `content`, `tool_call`, or `tool_call_result` may be set in a StreamingChunk. "
+                f"Got content: '{self.content}', tool_call: '{self.tool_call}', "
+                f"tool_call_result: '{self.tool_call_result}'"
+            )
 
 
 SyncStreamingCallbackT = Callable[[StreamingChunk], None]

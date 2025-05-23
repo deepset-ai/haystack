@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Updated StreamingChunk to add the fields `tool_call`, `tool_call_result`, `index`, and `start` to make it easier to format the stream in a streaming callback.
+    - Added new dataclass ToolCallDelta for the `StreamingChunk.tool_call` field to reflect that the arguments can be a string delta.
+    - Updated `print_streaming_chunk` utility method to use these new fields. This especially improves the formatting when using this with Agent.
+    - Updated `OpenAIChatGenerator` and `HuggingFaceAPIChatGenerator` to follow the new dataclass.
+    - Updated `ToolInvoker` to follow the new format and also it now returns a final StreamingChunk that contains `finish_reason="tool_call_result"` in its metadata.
