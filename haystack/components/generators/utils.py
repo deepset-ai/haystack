@@ -25,33 +25,29 @@ def print_streaming_chunk(chunk: StreamingChunk) -> None:
         tool results.
     """
     # Print tool call metadata if available (from ChatGenerator)
-    if chunk.meta.get("tool_calls"):
-        for tool_call in chunk.meta["tool_calls"]:
+    if tool_calls := chunk.meta.get("tool_calls"):
+        for tool_call in tool_calls:
             # Convert to dict if tool_call is a ChoiceDeltaToolCall
-            tool_call_dict: Dict[str, Any]
-            if isinstance(tool_call, ChoiceDeltaToolCall):
-                tool_call_dict = tool_call.to_dict()
-            else:
-                tool_call_dict = tool_call
+            tool_call_dict: Dict[str, Any] = (
+                tool_call.to_dict() if isinstance(tool_call, ChoiceDeltaToolCall) else tool_call
+            )
 
-            if tool_call_dict.get("function"):
-                # print the tool name
-                if tool_call_dict["function"].get("name"):
+            if function := tool_call_dict.get("function"):
+                if name := function.get("name"):
                     print("\n\n[TOOL CALL]\n", flush=True, end="")
-                    print(f"Tool: {tool_call_dict['function']['name']} ", flush=True, end="")
+                    print(f"Tool: {name} ", flush=True, end="")
                     print("\nArguments: ", flush=True, end="")
 
-                # print the tool arguments
-                if tool_call_dict["function"].get("arguments"):
-                    print(tool_call_dict["function"]["arguments"], flush=True, end="")
+                if arguments := function.get("arguments"):
+                    print(arguments, flush=True, end="")
 
     # Print tool call results if available (from ToolInvoker)
-    if chunk.meta.get("tool_result"):
-        print(f"\n\n[TOOL RESULT]\n{chunk.meta['tool_result']}", flush=True, end="")
+    if tool_result := chunk.meta.get("tool_result"):
+        print(f"\n\n[TOOL RESULT]\n{tool_result}", flush=True, end="")
 
     # Print the main content of the chunk (from ChatGenerator)
-    if chunk.content:
-        print(chunk.content, flush=True, end="")
+    if content := chunk.content:
+        print(content, flush=True, end="")
 
     # End of LLM assistant message so we add two new lines
     # This ensures spacing between multiple LLM messages (e.g. Agent)
