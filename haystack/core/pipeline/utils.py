@@ -4,6 +4,7 @@
 
 import heapq
 from copy import deepcopy
+from functools import wraps
 from itertools import count
 from typing import Any, List, Optional, Tuple
 
@@ -163,3 +164,41 @@ class FIFOPriorityQueue:
             True if the queue contains items, False otherwise.
         """
         return bool(self._queue)
+
+
+def args_deprecated(func):
+    """
+    Decorator to warn about the use of positional arguments in a function.
+
+    Adapted from https://stackoverflow.com/questions/68432070/
+    :param func:
+    """
+
+    def _positional_arg_warning() -> None:
+        """
+        Triggers a warning message if positional arguments are used in a function
+        """
+        import warnings
+
+        msg = (
+            "Warning: In an upcoming release, this method will require keyword arguments for all parameters. "
+            "Please update your code to use keyword arguments to ensure future compatibility. "
+            "Example: pipeline.draw(path='output.png', server_url='https://custom-server.com')"
+        )
+        warnings.warn(msg, DeprecationWarning, stacklevel=2)
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        # call the function first, to make sure the signature matches
+        ret_value = func(*args, **kwargs)
+
+        # A Pipeline instance is always the first argument - remove it from the args to check for positional arguments
+        # We check the class name as strings to avoid circular imports
+        if args and isinstance(args, tuple) and args[0].__class__.__name__ in ["Pipeline", "PipelineBase"]:
+            args = args[1:]
+
+        if args:
+            _positional_arg_warning()
+        return ret_value
+
+    return wrapper
