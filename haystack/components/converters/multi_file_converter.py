@@ -128,5 +128,9 @@ class MultiFileConverter:
             ...
         def warm_up(self) -> None:  # noqa: D102
             ...
-        async def run_async(self, **kwargs: Any) -> dict[str, Any]:  # noqa: D102
+        async def run_async(  # noqa: D102
+            self,
+            *sources: list[Union[str, Path, ByteStream]],
+            meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
+        ) -> dict[str, list[Document]]:  # noqa: D102
             ...
