@@ -6,7 +6,7 @@ from copy import deepcopy
 from typing import Any, Callable, Dict, List, Optional
 
 from haystack.dataclasses import ChatMessage
-from haystack.utils import deserialize_value_with_schema, serialize_value_with_schema
+from haystack.utils import _deserialize_value_with_schema, _serialize_value_with_schema
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 from haystack.utils.type_serialization import deserialize_type, serialize_type
 
@@ -166,7 +166,7 @@ class State:
         """
         serialized = {}
         serialized["schema"] = _schema_to_dict(self.schema)
-        serialized["data"] = serialize_value_with_schema(self._data)
+        serialized["data"] = _serialize_value_with_schema(self._data)
         return serialized
 
     @classmethod
@@ -175,5 +175,5 @@ class State:
         Convert a dictionary back to a State object.
         """
         schema = _schema_from_dict(data.get("schema", {}))
-        deserialized_data = deserialize_value_with_schema(data.get("data", {}))
+        deserialized_data = _deserialize_value_with_schema(data.get("data", {}))
         return State(schema, deserialized_data)

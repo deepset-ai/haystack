@@ -54,7 +54,8 @@ def deserialize_class_instance(data: Dict[str, Any]) -> Any:
     return obj_class.from_dict(data["data"])
 
 
-def serialize_value_with_schema(payload: Dict[str, Any]) -> Dict[str, Any]:
+# TODO: Make this function public once its implementation is finalized and tested
+def _serialize_value_with_schema(payload: Dict[str, Any]) -> Dict[str, Any]:
     """
     Serializes a dictionary into a schema-aware format suitable for storage or transmission.
 
@@ -178,7 +179,8 @@ def _convert_to_basic_types(value: Any) -> Any:
     return value
 
 
-def deserialize_value_with_schema(serialized: Dict[str, Any]) -> Dict[str, Any]:
+# TODO: Make this function public once its implementation is finalized and tested
+def _deserialize_value_with_schema(serialized: Dict[str, Any]) -> Dict[str, Any]:
     """
     Deserializes a dictionary with schema information and data to original values.
 

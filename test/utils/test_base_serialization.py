@@ -7,8 +7,8 @@ import pytest
 from haystack.utils.base_serialization import (
     serialize_class_instance,
     deserialize_class_instance,
-    serialize_value_with_schema,
-    deserialize_value_with_schema,
+    _serialize_value_with_schema,
+    _deserialize_value_with_schema,
 )
 from haystack.dataclasses import ChatMessage, Document, GeneratedAnswer
 
@@ -90,7 +90,7 @@ def test_serialize_value_with_schema():
             )
         ],
     }
-    result = serialize_value_with_schema(data)
+    result = _serialize_value_with_schema(data)
     assert result == {
         "serialization_schema": {
             "numbers": {"type": "integer"},
@@ -193,7 +193,7 @@ def test_deserialize_value_with_schema():
         },
     }
 
-    result = deserialize_value_with_schema(serialized__data)
+    result = _deserialize_value_with_schema(serialized__data)
     assert result["numbers"] == 1
     assert isinstance(result["messages"][0], ChatMessage)
     assert result["messages"][0].text == "Hello, world!"
@@ -207,7 +207,7 @@ def test_deserialize_value_with_schema():
 def test_serialize_value_with_custom_class_type():
     custom_type = CustomClass()
     data = {"numbers": 1, "custom_type": custom_type}
-    result = serialize_value_with_schema(data)
+    result = _serialize_value_with_schema(data)
     assert result == {
         "serialization_schema": {
             "numbers": {"type": "integer"},
@@ -225,6 +225,6 @@ def test_deserialize_value_with_custom_class_type():
         },
         "serialized_data": {"numbers": 1, "custom_type": {"key": "value", "more": False}},
     }
-    result = deserialize_value_with_schema(serialized_data)
+    result = _deserialize_value_with_schema(serialized_data)
     assert result["numbers"] == 1
     assert isinstance(result["custom_type"], CustomClass)
