@@ -178,7 +178,7 @@ class HuggingFaceTEIRanker:
 
         # Call the external service with retry
         headers = {}
-        if self.token:
+        if self.token.resolve_value():
             headers["Authorization"] = f"Bearer {self.token.resolve_value()}"
 
         response = request_with_retry(
@@ -232,7 +232,7 @@ class HuggingFaceTEIRanker:
 
         # Call the external service with retry
         headers = {}
-        if self.token:
+        if self.token.resolve_value():
             headers["Authorization"] = f"Bearer {self.token.resolve_value()}"
 
         response = await async_request_with_retry(
