@@ -614,7 +614,7 @@ class ToolInvoker:
 
         # We stream one more chunk that contains a finish_reason if tool_messages were generated
         if len(tool_messages) > 0 and streaming_callback is not None:
-            await streaming_callback(StreamingChunk(content="", meta={"finish_reason": "tool_call_results"}))
+            await streaming_callback(StreamingChunk(content="", meta={"finish_reason": "tool_call_results"}))  # type: ignore[misc] # we have checked that streaming_callback is not None and async
 
         return {"tool_messages": tool_messages, "state": state}
 

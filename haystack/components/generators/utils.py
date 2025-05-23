@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from typing import Any, Dict
+
 from openai.types.chat.chat_completion_chunk import ChoiceDeltaToolCall
 
 from haystack.dataclasses import StreamingChunk
@@ -26,6 +28,7 @@ def print_streaming_chunk(chunk: StreamingChunk) -> None:
     if chunk.meta.get("tool_calls"):
         for tool_call in chunk.meta["tool_calls"]:
             # Convert to dict if tool_call is a ChoiceDeltaToolCall
+            tool_call_dict: Dict[str, Any]
             if isinstance(tool_call, ChoiceDeltaToolCall):
                 tool_call_dict = tool_call.to_dict()
             else:
