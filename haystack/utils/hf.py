@@ -395,4 +395,4 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
             """Synchronous callback that schedules the async handler."""
             word_to_send = word + "\n" if stream_end else word
             if word_to_send.strip() not in self.stop_words:
-                asyncio.create_task(self.token_handler(StreamingChunk(content=word_to_send)))
+                asyncio.create_task(self.token_handler(StreamingChunk(content=word_to_send)))  # type: ignore  # token_handler returns Awaitable[None] which is compatible with create_task at runtime
