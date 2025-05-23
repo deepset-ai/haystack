@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 import copy
 from enum import Enum
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Union
@@ -391,11 +392,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
             self.stop_words = stop_words or []
 
         def on_finalized_text(self, word: str, stream_end: bool = False):
-            """Synchronous callback that returns the async handler coroutine."""
-            return self.on_finalized_text_async(word, stream_end)
-
-        async def on_finalized_text_async(self, word: str, stream_end: bool = False):
-            """Async callback function for handling the generated text."""
+            """Synchronous callback that schedules the async handler."""
             word_to_send = word + "\n" if stream_end else word
             if word_to_send.strip() not in self.stop_words:
-                await self.token_handler(StreamingChunk(content=word_to_send))
+                asyncio.create_task(self.token_handler(StreamingChunk(content=word_to_send)))

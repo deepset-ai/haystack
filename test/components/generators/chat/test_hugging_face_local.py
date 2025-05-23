@@ -641,12 +641,8 @@ class TestHuggingFaceLocalChatGeneratorAsync:
             streamer = kwargs.get("streamer")
             if streamer:
                 # Schedule the streaming callbacks in the main event loop
-                loop.call_soon_threadsafe(
-                    lambda: asyncio.create_task(streamer.on_finalized_text("Hello", stream_end=False))
-                )
-                loop.call_soon_threadsafe(
-                    lambda: asyncio.create_task(streamer.on_finalized_text(" world", stream_end=True))
-                )
+                loop.call_soon_threadsafe(lambda: streamer.on_finalized_text("Hello", stream_end=False))
+                loop.call_soon_threadsafe(lambda: streamer.on_finalized_text(" world", stream_end=True))
             return [{"generated_text": "Hello world"}]
 
         mock_pipeline.side_effect = mock_generate
