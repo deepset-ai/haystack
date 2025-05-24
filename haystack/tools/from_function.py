@@ -203,7 +203,7 @@ def tool(
     return decorator(function)
 
 
-def _remove_title_from_schema(schema: Dict[str, Any]):
+def _remove_title_from_schema(schema: Dict[str, Any]) -> None:
     """
     Remove the 'title' keyword from JSON schema and contained property schemas.
 

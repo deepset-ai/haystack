@@ -89,7 +89,7 @@ class Tool:
         """
         return {"name": self.name, "description": self.description, "parameters": self.parameters}
 
-    def invoke(self, **kwargs) -> Any:
+    def invoke(self, **kwargs: Any) -> Any:
         """
         Invoke the Tool with the provided keyword arguments.
         """
