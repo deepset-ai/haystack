@@ -65,7 +65,7 @@ class HuggingFaceTEIRanker:
         """
         Initializes the TEI reranker component.
 
-        :param url: Base URL of the TEI reranking service (e.g., "https://api.example.com").
+        :param url: Base URL of the TEI reranking service (for example, "https://api.example.com").
         :param top_k: Maximum number of top documents to return (default: 10).
         :param raw_scores: If True, include raw relevance scores in the API payload.
         :param timeout: Request timeout in seconds (default: 30).
@@ -121,7 +121,14 @@ class HuggingFaceTEIRanker:
 
         :param result: The raw response from the API.
 
-        :returns: A dict with key `documents` mapping to the reranked top documents.
+        :returns: A dictionary with the following keys:
+            - `documents`: A list of reranked documents.
+
+        :raises requests.exceptions.RequestException:
+            - If the API request fails.
+
+        :raises RuntimeError:
+            - If the API returns an error response.
         """
         if isinstance(result, dict) and "error" in result:
             error_type = result.get("error_type", "UnknownError")
@@ -130,7 +137,10 @@ class HuggingFaceTEIRanker:
 
         # Ensure we have a list of score dicts
         if not isinstance(result, list):
-            raise RuntimeError("Unexpected response format from HuggingFaceTEIRanker API.")
+            # Expected list or dict, but encountered an unknown response format.
+            error_msg = f"Expected a list of score dictionaries, but got `{type(result).__name__}`. "
+            error_msg += f"Response content: {result}"
+            raise RuntimeError(f"Unexpected response format from text-embeddings-inference rerank API: {error_msg}")
 
         # Determine number of docs to return
         final_k = min(top_k or self.top_k, len(result))
@@ -153,14 +163,15 @@ class HuggingFaceTEIRanker:
         truncation_direction: Optional[TruncationDirection] = None,
     ) -> Dict[str, List[Document]]:
         """
-        Reranks the provided documents by relevance to the query via the TEI API.
+        Reranks the provided documents by relevance to the query using the TEI API.
 
         :param query: The user query string to guide reranking.
         :param documents: List of `Document` objects to rerank.
         :param top_k: Optional override for the maximum number of documents to return.
-        :param truncation_direction: If set, enable text truncation in the specified direction.
+        :param truncation_direction: If set, enables text truncation in the specified direction.
 
-        :returns: A dict with key `documents` mapping to the reranked top documents.
+        :returns: A dictionary with the following keys:
+            - `documents`: A list of reranked documents.
 
         :raises requests.exceptions.RequestException:
             - If the API request fails.
@@ -178,11 +189,11 @@ class HuggingFaceTEIRanker:
         if truncation_direction:
             payload.update({"truncate": True, "truncation_direction": truncation_direction.value})
 
-        # Call the external service with retry
         headers = {}
         if self.token and self.token.resolve_value():
             headers["Authorization"] = f"Bearer {self.token.resolve_value()}"
 
+        # Call the external service with retry
         response = request_with_retry(
             method="POST",
             url=urljoin(self.url, "/rerank"),
@@ -206,14 +217,15 @@ class HuggingFaceTEIRanker:
         truncation_direction: Optional[TruncationDirection] = None,
     ) -> Dict[str, List[Document]]:
         """
-        Asynchronously reranks the provided documents by relevance to the query via the TEI API.
+        Asynchronously reranks the provided documents by relevance to the query using the TEI API.
 
         :param query: The user query string to guide reranking.
         :param documents: List of `Document` objects to rerank.
         :param top_k: Optional override for the maximum number of documents to return.
-        :param truncation_direction: If set, enable text truncation in the specified direction.
+        :param truncation_direction: If set, enables text truncation in the specified direction.
 
-        :returns: A dict with key `documents` mapping to the reranked top documents.
+        :returns: A dictionary with the following keys:
+            - `documents`: A list of reranked documents.
 
         :raises httpx.RequestError:
             - If the API request fails.
@@ -230,11 +242,11 @@ class HuggingFaceTEIRanker:
         if truncation_direction:
             payload.update({"truncate": True, "truncation_direction": truncation_direction.value})
 
-        # Call the external service with retry
         headers = {}
         if self.token and self.token.resolve_value():
             headers["Authorization"] = f"Bearer {self.token.resolve_value()}"
 
+        # Call the external service with retry
         response = await async_request_with_retry(
             method="POST",
             url=urljoin(self.url, "/rerank"),
