@@ -1,7 +1,8 @@
 # SPDX-FileCopyrightText: 2024-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from typing import Any, List, Optional, Union
+
+from typing import Any, List, Union
 
 import pytest
 from haystack import Document, SuperComponent, Pipeline, AsyncPipeline, component, super_component
