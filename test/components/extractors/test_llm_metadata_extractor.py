@@ -219,6 +219,40 @@ class TestLLMMetadataExtractor:
         assert result["documents"] == []
         assert result["failed_documents"] == []
 
+    def test_run_with_document_content_none(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        # Mock the chat generator to prevent actual LLM calls
+        mock_chat_generator = Mock(spec=OpenAIChatGenerator)
+
+        extractor = LLMMetadataExtractor(
+            prompt="prompt {{document.content}}", chat_generator=mock_chat_generator, expected_keys=["some_key"]
+        )
+
+        # Document with None content
+        doc_with_none_content = Document(content=None)
+        # also test with empty string content
+        doc_with_empty_content = Document(content="")
+        docs = [doc_with_none_content, doc_with_empty_content]
+
+        result = extractor.run(documents=docs)
+
+        # Assert that the documents are in failed_documents
+        assert len(result["documents"]) == 0
+        assert len(result["failed_documents"]) == 2
+
+        failed_doc_none = result["failed_documents"][0]
+        assert failed_doc_none.id == doc_with_none_content.id
+        assert "metadata_extraction_error" in failed_doc_none.meta
+        assert failed_doc_none.meta["metadata_extraction_error"] == "Document has no content, skipping LLM call."
+
+        failed_doc_empty = result["failed_documents"][1]
+        assert failed_doc_empty.id == doc_with_empty_content.id
+        assert "metadata_extraction_error" in failed_doc_empty.meta
+        assert failed_doc_empty.meta["metadata_extraction_error"] == "Document has no content, skipping LLM call."
+
+        # Ensure no attempt was made to call the LLM
+        mock_chat_generator.run.assert_not_called()
+
     @pytest.mark.integration
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),

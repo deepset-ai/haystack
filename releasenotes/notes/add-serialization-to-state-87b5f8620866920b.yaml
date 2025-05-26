@@ -1,0 +1,10 @@
+---
+features:
+  - |
+    - Introduced `serialize_value` and `deserialize_value` utility methods for consistent value (de)serialization across modules.
+
+    - Moved the `State` class to the `agents.state` module and added serialization and deserialization capabilities.
+
+deprecations:
+  - |
+    Deprecated the `State` class in the `dataclasses` module. Users are encouraged to transition to the new version of `State` now located in the `agents.state` module. A deprecation warning has been added to guide this migration.

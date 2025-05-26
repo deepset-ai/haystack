@@ -2,9 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import List, Union
+from typing import Any, List, Union, overload
 
-from numpy import exp
+from numpy import exp, ndarray
 
 
 def expand_page_range(page_range: List[Union[str, int]]) -> List[int]:
@@ -45,7 +45,11 @@ def expand_page_range(page_range: List[Union[str, int]]) -> List[int]:
     return expanded_page_range
 
 
-def expit(x) -> float:
+@overload
+def expit(x: float) -> float: ...
+@overload
+def expit(x: ndarray[Any, Any]) -> ndarray[Any, Any]: ...
+def expit(x: Union[float, ndarray[Any, Any]]) -> Union[float, ndarray[Any, Any]]:
     """
     Compute logistic sigmoid function. Maps input values to a range between 0 and 1
 

@@ -3,12 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import collections.abc
-from typing import Any, TypeVar, Union, get_args, get_origin
+from typing import Any, Type, TypeVar, Union, get_args, get_origin
 
 T = TypeVar("T")
 
 
-def _types_are_compatible(sender, receiver, type_validation: bool = True) -> bool:
+def _types_are_compatible(sender: Type, receiver: Type, type_validation: bool = True) -> bool:
     """
     Determines if two types are compatible based on the specified validation mode.
 
