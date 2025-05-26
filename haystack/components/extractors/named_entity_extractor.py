@@ -377,7 +377,7 @@ class _HfBackend(_NerBackend):
         self.model: Optional[AutoModelForTokenClassification] = None
         self.pipeline: Optional[HfPipeline] = None
 
-    def initialize(self):
+    def initialize(self) -> None:
         token = self._pipeline_kwargs.get("token", None)
         self.tokenizer = AutoTokenizer.from_pretrained(self._model_name_or_path, token=token)
         self.model = AutoModelForTokenClassification.from_pretrained(self._model_name_or_path, token=token)

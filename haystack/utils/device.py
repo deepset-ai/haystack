@@ -156,7 +156,7 @@ class DeviceMap:
     def __getitem__(self, key: str) -> Device:
         return self.mapping[key]
 
-    def __setitem__(self, key: str, value: Device):
+    def __setitem__(self, key: str, value: Device) -> None:
         self.mapping[key] = value
 
     def __contains__(self, key: str) -> bool:

@@ -20,7 +20,7 @@ from haystack.core.type_utils import _type_name
 logger = logging.getLogger(__name__)
 
 
-def generate_color_variations(n: int, base_color: Optional[str] = "#3498DB", variation_range=0.4) -> List[str]:
+def generate_color_variations(n: int, base_color: Optional[str] = "#3498DB", variation_range: float = 0.4) -> List[str]:
     """
     Generate n different variations of a base color.
 

@@ -4,10 +4,10 @@
 
 import copy
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from haystack import logging
-from haystack.dataclasses import ChatMessage, StreamingChunk
+from haystack.dataclasses import ChatMessage, StreamingCallbackT, StreamingChunk
 from haystack.lazy_imports import LazyImport
 from haystack.utils.auth import Secret
 from haystack.utils.device import ComponentDevice
@@ -94,7 +94,7 @@ class HFModelType(Enum):
     GENERATION = 2
 
 
-def serialize_hf_model_kwargs(kwargs: Dict[str, Any]):
+def serialize_hf_model_kwargs(kwargs: Dict[str, Any]) -> None:
     """
     Recursively serialize HuggingFace specific model keyword arguments in-place to make them JSON serializable.
 
@@ -111,7 +111,7 @@ def serialize_hf_model_kwargs(kwargs: Dict[str, Any]):
             serialize_hf_model_kwargs(v)
 
 
-def deserialize_hf_model_kwargs(kwargs: Dict[str, Any]):
+def deserialize_hf_model_kwargs(kwargs: Dict[str, Any]) -> None:
     """
     Recursively deserialize HuggingFace specific model keyword arguments in-place to make them JSON serializable.
 
@@ -323,7 +323,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
             encoded_stop_words = tokenizer(stop_words, add_special_tokens=False, padding=True, return_tensors="pt")
             self.stop_ids = encoded_stop_words.input_ids.to(device)
 
-        def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
+        def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs: Any) -> bool:
             """Check if any of the stop words are generated in the current text generation step."""
             for stop_id in self.stop_ids:
                 found_stop_word = self.is_stop_word_found(input_ids, stop_id)
@@ -349,7 +349,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
         Streaming handler for HuggingFaceLocalGenerator and HuggingFaceLocalChatGenerator.
 
         Note: This is a helper class for HuggingFaceLocalGenerator & HuggingFaceLocalChatGenerator enabling streaming
-        of generated text via Haystack Callable[StreamingChunk, None] callbacks.
+        of generated text via Haystack StreamingCallbackT callbacks.
 
         Do not use this class directly.
         """
@@ -357,14 +357,14 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
         def __init__(
             self,
             tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
-            stream_handler: Callable[[StreamingChunk], None],
+            stream_handler: StreamingCallbackT,
             stop_words: Optional[List[str]] = None,
         ):
             super().__init__(tokenizer=tokenizer, skip_prompt=True)  # type: ignore
             self.token_handler = stream_handler
             self.stop_words = stop_words or []
 
-        def on_finalized_text(self, word: str, stream_end: bool = False):
+        def on_finalized_text(self, word: str, stream_end: bool = False) -> None:
             """Callback function for handling the generated text."""
             word_to_send = word + "\n" if stream_end else word
             if word_to_send.strip() not in self.stop_words:
