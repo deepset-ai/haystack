@@ -285,13 +285,12 @@ class OpenAIChatGenerator:
         else:
             assert isinstance(chat_completion, ChatCompletion), "Unexpected response type for non-streaming request."
             completions = [
-                self._convert_chat_completion_to_chat_message(chat_completion, choice)
-                for choice in chat_completion.choices
+                _convert_chat_completion_to_chat_message(chat_completion, choice) for choice in chat_completion.choices
             ]
 
         # before returning, do post-processing of the completions
         for message in completions:
-            self._check_finish_reason(message.meta)
+            _check_finish_reason(message.meta)
 
         return {"replies": completions}
 
@@ -362,13 +361,12 @@ class OpenAIChatGenerator:
         else:
             assert isinstance(chat_completion, ChatCompletion), "Unexpected response type for non-streaming request."
             completions = [
-                self._convert_chat_completion_to_chat_message(chat_completion, choice)
-                for choice in chat_completion.choices
+                _convert_chat_completion_to_chat_message(chat_completion, choice) for choice in chat_completion.choices
             ]
 
         # before returning, do post-processing of the completions
         for message in completions:
-            self._check_finish_reason(message.meta)
+            _check_finish_reason(message.meta)
 
         return {"replies": completions}
 
@@ -422,11 +420,11 @@ class OpenAIChatGenerator:
         chunks: List[StreamingChunk] = []
         for chunk in chat_completion:  # pylint: disable=not-an-iterable
             assert len(chunk.choices) <= 1, "Streaming responses should have at most one choice."
-            chunk_deltas = self._convert_chat_completion_chunk_to_streaming_chunk(chunk=chunk, previous_chunks=chunks)
+            chunk_deltas = _convert_chat_completion_chunk_to_streaming_chunk(chunk=chunk, previous_chunks=chunks)
             for chunk_delta in chunk_deltas:
                 chunks.append(chunk_delta)
                 callback(chunk_delta)
-        return [self._convert_streaming_chunks_to_chat_message(chunks=chunks)]
+        return [_convert_streaming_chunks_to_chat_message(chunks=chunks)]
 
     async def _handle_async_stream_response(
         self, chat_completion: AsyncStream, callback: AsyncStreamingCallbackT
@@ -434,215 +432,220 @@ class OpenAIChatGenerator:
         chunks: List[StreamingChunk] = []
         async for chunk in chat_completion:  # pylint: disable=not-an-iterable
             assert len(chunk.choices) <= 1, "Streaming responses should have at most one choice."
-            chunk_deltas = self._convert_chat_completion_chunk_to_streaming_chunk(chunk=chunk, previous_chunks=chunks)
+            chunk_deltas = _convert_chat_completion_chunk_to_streaming_chunk(chunk=chunk, previous_chunks=chunks)
             for chunk_delta in chunk_deltas:
                 chunks.append(chunk_delta)
                 await callback(chunk_delta)
-        return [self._convert_streaming_chunks_to_chat_message(chunks=chunks)]
+        return [_convert_streaming_chunks_to_chat_message(chunks=chunks)]
 
-    def _check_finish_reason(self, meta: Dict[str, Any]) -> None:
-        if meta["finish_reason"] == "length":
-            logger.warning(
-                "The completion for index {index} has been truncated before reaching a natural stopping point. "
-                "Increase the max_tokens parameter to allow for longer completions.",
-                index=meta["index"],
-                finish_reason=meta["finish_reason"],
+
+def _convert_chat_completion_chunk_to_streaming_chunk(
+    chunk: ChatCompletionChunk, previous_chunks: List[StreamingChunk]
+) -> List[StreamingChunk]:
+    """
+    Converts the streaming response chunk from the OpenAI API to a StreamingChunk.
+
+    :param chunk: The chunk returned by the OpenAI API.
+    :param previous_chunks: The previous chunks processed from the OpenAI API.
+
+    :returns:
+        The StreamingChunk.
+    """
+    # Choices is empty on the very first chunk which provides role information (e.g. "assistant").
+    # It is also empty if include_usage is set to True where the usage information is returned.
+    if len(chunk.choices) == 0:
+        return [
+            StreamingChunk(
+                content="",
+                # Index is None since it's only set to an int when a content block is present
+                index=None,
+                meta={
+                    "model": chunk.model,
+                    "received_at": datetime.now().isoformat(),
+                    "usage": _serialize_usage(chunk.usage),
+                },
             )
-        if meta["finish_reason"] == "content_filter":
+        ]
+
+    choice: ChunkChoice = chunk.choices[0]
+    content = choice.delta.content or ""
+
+    # create a list of ToolCallDelta objects from the tool calls
+    if choice.delta.tool_calls:
+        chunk_messages = []
+        for tool_call in choice.delta.tool_calls:
+            function = tool_call.function
+            chunk_message = StreamingChunk(
+                content=content,
+                # We adopt the tool_call.index as the index of the chunk
+                index=tool_call.index,
+                tool_call=ToolCallDelta(
+                    id=tool_call.id,
+                    tool_name=function.name if function else None,
+                    arguments=function.arguments if function and function.arguments else None,
+                ),
+                start=function.name is not None if function else None,
+                meta={
+                    "model": chunk.model,
+                    "index": choice.index,
+                    "tool_calls": choice.delta.tool_calls,
+                    "finish_reason": choice.finish_reason,
+                    "received_at": datetime.now().isoformat(),
+                    "usage": _serialize_usage(chunk.usage),
+                },
+            )
+            chunk_messages.append(chunk_message)
+        return chunk_messages
+
+    chunk_message = StreamingChunk(
+        content=content,
+        # We set the index to be 0 since if text content is being streamed then no tool calls are being streamed
+        # NOTE: We may need to revisit this if OpenAI allows planning/thinking content before tool calls like
+        #       Anthropic Claude
+        index=0,
+        # The first chunk is always a start message chunk, so if we reach here and previous_chunks is length 1
+        # then this is the start of text content. Previous length should be 1 since first chunk always contains
+        # role information.
+        start=len(previous_chunks) == 1 or None,
+        meta={
+            "model": chunk.model,
+            "index": choice.index,
+            "tool_calls": choice.delta.tool_calls,
+            "finish_reason": choice.finish_reason,
+            "received_at": datetime.now().isoformat(),
+            "usage": _serialize_usage(chunk.usage),
+        },
+    )
+    return [chunk_message]
+
+
+def _check_finish_reason(meta: Dict[str, Any]) -> None:
+    if meta["finish_reason"] == "length":
+        logger.warning(
+            "The completion for index {index} has been truncated before reaching a natural stopping point. "
+            "Increase the max_tokens parameter to allow for longer completions.",
+            index=meta["index"],
+            finish_reason=meta["finish_reason"],
+        )
+    if meta["finish_reason"] == "content_filter":
+        logger.warning(
+            "The completion for index {index} has been truncated due to the content filter.",
+            index=meta["index"],
+            finish_reason=meta["finish_reason"],
+        )
+
+
+def _convert_streaming_chunks_to_chat_message(chunks: List[StreamingChunk]) -> ChatMessage:
+    """
+    Connects the streaming chunks into a single ChatMessage.
+
+    :param chunks: The list of all `StreamingChunk` objects.
+
+    :returns: The ChatMessage.
+    """
+    text = "".join([chunk.content for chunk in chunks])
+    tool_calls = []
+
+    # Process tool calls if present in any chunk
+    tool_call_data: Dict[str, Dict[str, str]] = {}  # Track tool calls by index
+    for chunk_payload in chunks:
+        tool_calls_meta = chunk_payload.meta.get("tool_calls")
+        if tool_calls_meta is not None:
+            for delta in tool_calls_meta:
+                # We use the index of the tool call to track it across chunks since the ID is not always provided
+                if delta.index not in tool_call_data:
+                    tool_call_data[delta.index] = {"id": "", "name": "", "arguments": ""}
+
+                # Save the ID if present
+                if delta.id is not None:
+                    tool_call_data[delta.index]["id"] = delta.id
+
+                if delta.function is not None:
+                    if delta.function.name is not None:
+                        tool_call_data[delta.index]["name"] += delta.function.name
+                    if delta.function.arguments is not None:
+                        tool_call_data[delta.index]["arguments"] += delta.function.arguments
+
+    # Convert accumulated tool call data into ToolCall objects
+    for call_data in tool_call_data.values():
+        try:
+            arguments = json.loads(call_data["arguments"])
+            tool_calls.append(ToolCall(id=call_data["id"], tool_name=call_data["name"], arguments=arguments))
+        except json.JSONDecodeError:
             logger.warning(
-                "The completion for index {index} has been truncated due to the content filter.",
-                index=meta["index"],
-                finish_reason=meta["finish_reason"],
+                "OpenAI returned a malformed JSON string for tool call arguments. This tool call "
+                "will be skipped. To always generate a valid JSON, set `tools_strict` to `True`. "
+                "Tool call ID: {_id}, Tool name: {_name}, Arguments: {_arguments}",
+                _id=call_data["id"],
+                _name=call_data["name"],
+                _arguments=call_data["arguments"],
             )
 
-    def _convert_streaming_chunks_to_chat_message(self, chunks: List[StreamingChunk]) -> ChatMessage:
-        """
-        Connects the streaming chunks into a single ChatMessage.
+    # finish_reason can appear in different places so we look for the last one
+    finish_reasons = [
+        chunk.meta.get("finish_reason") for chunk in chunks if chunk.meta.get("finish_reason") is not None
+    ]
+    finish_reason = finish_reasons[-1] if finish_reasons else None
 
-        :param chunks: The list of all `StreamingChunk` objects.
+    meta = {
+        "model": chunks[-1].meta.get("model"),
+        "index": 0,
+        "finish_reason": finish_reason,
+        "completion_start_time": chunks[0].meta.get("received_at"),  # first chunk received
+        "usage": chunks[-1].meta.get("usage"),  # last chunk has the final usage data if available
+    }
 
-        :returns: The ChatMessage.
-        """
-        text = "".join([chunk.content for chunk in chunks])
-        tool_calls = []
+    return ChatMessage.from_assistant(text=text or None, tool_calls=tool_calls, meta=meta)
 
-        # Process tool calls if present in any chunk
-        tool_call_data: Dict[str, Dict[str, str]] = {}  # Track tool calls by index
-        for chunk_payload in chunks:
-            tool_calls_meta = chunk_payload.meta.get("tool_calls")
-            if tool_calls_meta is not None:
-                for delta in tool_calls_meta:
-                    # We use the index of the tool call to track it across chunks since the ID is not always provided
-                    if delta.index not in tool_call_data:
-                        tool_call_data[delta.index] = {"id": "", "name": "", "arguments": ""}
 
-                    # Save the ID if present
-                    if delta.id is not None:
-                        tool_call_data[delta.index]["id"] = delta.id
+def _serialize_usage(usage):
+    """Convert OpenAI usage object to serializable dict recursively"""
+    if hasattr(usage, "model_dump"):
+        return usage.model_dump()
+    elif hasattr(usage, "__dict__"):
+        return {k: _serialize_usage(v) for k, v in usage.__dict__.items() if not k.startswith("_")}
+    elif isinstance(usage, dict):
+        return {k: _serialize_usage(v) for k, v in usage.items()}
+    elif isinstance(usage, list):
+        return [_serialize_usage(item) for item in usage]
+    else:
+        return usage
 
-                    if delta.function is not None:
-                        if delta.function.name is not None:
-                            tool_call_data[delta.index]["name"] += delta.function.name
-                        if delta.function.arguments is not None:
-                            tool_call_data[delta.index]["arguments"] += delta.function.arguments
 
-        # Convert accumulated tool call data into ToolCall objects
-        for call_data in tool_call_data.values():
+def _convert_chat_completion_to_chat_message(completion: ChatCompletion, choice: Choice) -> ChatMessage:
+    """
+    Converts the non-streaming response from the OpenAI API to a ChatMessage.
+
+    :param completion: The completion returned by the OpenAI API.
+    :param choice: The choice returned by the OpenAI API.
+    :return: The ChatMessage.
+    """
+    message: ChatCompletionMessage = choice.message
+    text = message.content
+    tool_calls = []
+    if openai_tool_calls := message.tool_calls:
+        for openai_tc in openai_tool_calls:
+            arguments_str = openai_tc.function.arguments
             try:
-                arguments = json.loads(call_data["arguments"])
-                tool_calls.append(ToolCall(id=call_data["id"], tool_name=call_data["name"], arguments=arguments))
+                arguments = json.loads(arguments_str)
+                tool_calls.append(ToolCall(id=openai_tc.id, tool_name=openai_tc.function.name, arguments=arguments))
             except json.JSONDecodeError:
                 logger.warning(
                     "OpenAI returned a malformed JSON string for tool call arguments. This tool call "
                     "will be skipped. To always generate a valid JSON, set `tools_strict` to `True`. "
                     "Tool call ID: {_id}, Tool name: {_name}, Arguments: {_arguments}",
-                    _id=call_data["id"],
-                    _name=call_data["name"],
-                    _arguments=call_data["arguments"],
+                    _id=openai_tc.id,
+                    _name=openai_tc.function.name,
+                    _arguments=arguments_str,
                 )
 
-        # finish_reason can appear in different places so we look for the last one
-        finish_reasons = [
-            chunk.meta.get("finish_reason") for chunk in chunks if chunk.meta.get("finish_reason") is not None
-        ]
-        finish_reason = finish_reasons[-1] if finish_reasons else None
-
-        meta = {
-            "model": chunks[-1].meta.get("model"),
-            "index": 0,
-            "finish_reason": finish_reason,
-            "completion_start_time": chunks[0].meta.get("received_at"),  # first chunk received
-            "usage": chunks[-1].meta.get("usage"),  # last chunk has the final usage data if available
+    chat_message = ChatMessage.from_assistant(text=text, tool_calls=tool_calls)
+    chat_message._meta.update(
+        {
+            "model": completion.model,
+            "index": choice.index,
+            "finish_reason": choice.finish_reason,
+            "usage": _serialize_usage(completion.usage),
         }
-
-        return ChatMessage.from_assistant(text=text or None, tool_calls=tool_calls, meta=meta)
-
-    def _convert_chat_completion_to_chat_message(self, completion: ChatCompletion, choice: Choice) -> ChatMessage:
-        """
-        Converts the non-streaming response from the OpenAI API to a ChatMessage.
-
-        :param completion: The completion returned by the OpenAI API.
-        :param choice: The choice returned by the OpenAI API.
-        :return: The ChatMessage.
-        """
-        message: ChatCompletionMessage = choice.message
-        text = message.content
-        tool_calls = []
-        if openai_tool_calls := message.tool_calls:
-            for openai_tc in openai_tool_calls:
-                arguments_str = openai_tc.function.arguments
-                try:
-                    arguments = json.loads(arguments_str)
-                    tool_calls.append(ToolCall(id=openai_tc.id, tool_name=openai_tc.function.name, arguments=arguments))
-                except json.JSONDecodeError:
-                    logger.warning(
-                        "OpenAI returned a malformed JSON string for tool call arguments. This tool call "
-                        "will be skipped. To always generate a valid JSON, set `tools_strict` to `True`. "
-                        "Tool call ID: {_id}, Tool name: {_name}, Arguments: {_arguments}",
-                        _id=openai_tc.id,
-                        _name=openai_tc.function.name,
-                        _arguments=arguments_str,
-                    )
-
-        chat_message = ChatMessage.from_assistant(text=text, tool_calls=tool_calls)
-        chat_message._meta.update(
-            {
-                "model": completion.model,
-                "index": choice.index,
-                "finish_reason": choice.finish_reason,
-                "usage": self._serialize_usage(completion.usage),
-            }
-        )
-        return chat_message
-
-    def _convert_chat_completion_chunk_to_streaming_chunk(
-        self, chunk: ChatCompletionChunk, previous_chunks: List[StreamingChunk]
-    ) -> List[StreamingChunk]:
-        """
-        Converts the streaming response chunk from the OpenAI API to a StreamingChunk.
-
-        :param chunk: The chunk returned by the OpenAI API.
-        :param previous_chunks: The previous chunks processed from the OpenAI API.
-
-        :returns:
-            The StreamingChunk.
-        """
-        # Choices is empty on the very first chunk which provides role information (e.g. "assistant").
-        # It is also empty if include_usage is set to True where the usage information is returned.
-        if len(chunk.choices) == 0:
-            return [
-                StreamingChunk(
-                    content="",
-                    # Index is None since it's only set to an int when a content block is present
-                    index=None,
-                    meta={
-                        "model": chunk.model,
-                        "received_at": datetime.now().isoformat(),
-                        "usage": self._serialize_usage(chunk.usage),
-                    },
-                )
-            ]
-
-        choice: ChunkChoice = chunk.choices[0]
-        content = choice.delta.content or ""
-
-        # create a list of ToolCallDelta objects from the tool calls
-        if choice.delta.tool_calls:
-            chunk_messages = []
-            for tool_call in choice.delta.tool_calls:
-                function = tool_call.function
-                chunk_message = StreamingChunk(
-                    content=content,
-                    # We adopt the tool_call.index as the index of the chunk
-                    index=tool_call.index,
-                    tool_call=ToolCallDelta(
-                        id=tool_call.id,
-                        tool_name=function.name if function else None,
-                        arguments=function.arguments if function and function.arguments else None,
-                    ),
-                    start=function.name is not None if function else None,
-                    meta={
-                        "model": chunk.model,
-                        "index": choice.index,
-                        "tool_calls": choice.delta.tool_calls,
-                        "finish_reason": choice.finish_reason,
-                        "received_at": datetime.now().isoformat(),
-                        "usage": self._serialize_usage(chunk.usage),
-                    },
-                )
-                chunk_messages.append(chunk_message)
-            return chunk_messages
-
-        chunk_message = StreamingChunk(
-            content=content,
-            # We set the index to be 0 since if text content is being streamed then no tool calls are being streamed
-            # NOTE: We may need to revisit this if OpenAI allows planning/thinking content before tool calls like
-            #       Anthropic Claude
-            index=0,
-            # The first chunk is always a start message chunk, so if we reach here and previous_chunks is length 1
-            # then this is the start of text content. Previous length should be 1 since first chunk always contains
-            # role information.
-            start=len(previous_chunks) == 1 or None,
-            meta={
-                "model": chunk.model,
-                "index": choice.index,
-                "tool_calls": choice.delta.tool_calls,
-                "finish_reason": choice.finish_reason,
-                "received_at": datetime.now().isoformat(),
-                "usage": self._serialize_usage(chunk.usage),
-            },
-        )
-        return [chunk_message]
-
-    def _serialize_usage(self, usage):
-        """Convert OpenAI usage object to serializable dict recursively"""
-        if hasattr(usage, "model_dump"):
-            return usage.model_dump()
-        elif hasattr(usage, "__dict__"):
-            return {k: self._serialize_usage(v) for k, v in usage.__dict__.items() if not k.startswith("_")}
-        elif isinstance(usage, dict):
-            return {k: self._serialize_usage(v) for k, v in usage.items()}
-        elif isinstance(usage, list):
-            return [self._serialize_usage(item) for item in usage]
-        else:
-            return usage
+    )
+    return chat_message

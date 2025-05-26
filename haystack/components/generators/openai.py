@@ -3,13 +3,18 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from openai import OpenAI, Stream
 from openai.types.chat import ChatCompletion, ChatCompletionChunk
 
 from haystack import component, default_from_dict, default_to_dict, logging
+from haystack.components.generators.chat.openai import (
+    _check_finish_reason,
+    _convert_chat_completion_chunk_to_streaming_chunk,
+    _convert_chat_completion_to_chat_message,
+    _convert_streaming_chunks_to_chat_message,
+)
 from haystack.dataclasses import ChatMessage, StreamingChunk
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 from haystack.utils.http_client import init_http_client
@@ -228,130 +233,24 @@ class OpenAIGenerator:
             num_responses = generation_kwargs.pop("n", 1)
             if num_responses > 1:
                 raise ValueError("Cannot stream multiple responses, please set n=1.")
+
             chunks: List[StreamingChunk] = []
-            last_chunk: Optional[ChatCompletionChunk] = None
-
             for chunk in completion:
-                if isinstance(chunk, ChatCompletionChunk):
-                    last_chunk = chunk
+                chunk_delta: StreamingChunk = _convert_chat_completion_chunk_to_streaming_chunk(
+                    chunk=chunk, previous_chunks=chunks
+                )[0]
+                chunks.append(chunk_delta)
+                streaming_callback(chunk_delta)
 
-                    if chunk.choices:
-                        chunk_delta: StreamingChunk = self._build_chunk(chunk)
-                        chunks.append(chunk_delta)
-                        streaming_callback(chunk_delta)
-
-            assert last_chunk is not None
-
-            completions = [self._create_message_from_chunks(last_chunk, chunks)]
+            completions = [_convert_streaming_chunks_to_chat_message(chunks=chunks)]
         elif isinstance(completion, ChatCompletion):
-            completions = [self._build_message(completion, choice) for choice in completion.choices]
+            completions = [
+                _convert_chat_completion_to_chat_message(completion=completion, choice=choice)
+                for choice in completion.choices
+            ]
 
         # before returning, do post-processing of the completions
         for response in completions:
-            self._check_finish_reason(response)
+            _check_finish_reason(response.meta)
 
         return {"replies": [message.text for message in completions], "meta": [message.meta for message in completions]}
-
-    def _serialize_usage(self, usage):
-        """Convert OpenAI usage object to serializable dict recursively"""
-        if hasattr(usage, "model_dump"):
-            return usage.model_dump()
-        elif hasattr(usage, "__dict__"):
-            return {k: self._serialize_usage(v) for k, v in usage.__dict__.items() if not k.startswith("_")}
-        elif isinstance(usage, dict):
-            return {k: self._serialize_usage(v) for k, v in usage.items()}
-        elif isinstance(usage, list):
-            return [self._serialize_usage(item) for item in usage]
-        else:
-            return usage
-
-    def _create_message_from_chunks(
-        self, completion_chunk: ChatCompletionChunk, streamed_chunks: List[StreamingChunk]
-    ) -> ChatMessage:
-        """
-        Creates a single ChatMessage from the streamed chunks. Some data is retrieved from the completion chunk.
-        """
-        complete_response = ChatMessage.from_assistant("".join([chunk.content for chunk in streamed_chunks]))
-        finish_reason = streamed_chunks[-1].meta["finish_reason"]
-        complete_response.meta.update(
-            {
-                "model": completion_chunk.model,
-                "index": 0,
-                "finish_reason": finish_reason,
-                "completion_start_time": streamed_chunks[0].meta.get("received_at"),  # first chunk received
-                "usage": self._serialize_usage(completion_chunk.usage),
-            }
-        )
-        return complete_response
-
-    def _build_message(self, completion: Any, choice: Any) -> ChatMessage:
-        """
-        Converts the response from the OpenAI API to a ChatMessage.
-
-        :param completion:
-            The completion returned by the OpenAI API.
-        :param choice:
-            The choice returned by the OpenAI API.
-        :returns:
-            The ChatMessage.
-        """
-        # function or tools calls are not going to happen in non-chat generation
-        # as users can not send ChatMessage with function or tools calls
-        chat_message = ChatMessage.from_assistant(choice.message.content or "")
-        chat_message.meta.update(
-            {
-                "model": completion.model,
-                "index": choice.index,
-                "finish_reason": choice.finish_reason,
-                "usage": self._serialize_usage(completion.usage),
-            }
-        )
-        return chat_message
-
-    @staticmethod
-    def _build_chunk(chunk: Any) -> StreamingChunk:
-        """
-        Converts the response from the OpenAI API to a StreamingChunk.
-
-        :param chunk:
-            The chunk returned by the OpenAI API.
-        :returns:
-            The StreamingChunk.
-        """
-        choice = chunk.choices[0]
-        content = choice.delta.content or ""
-        # TODO Consider adding start
-        chunk_message = StreamingChunk(
-            content=content,
-            meta={
-                "model": chunk.model,
-                "index": choice.index,
-                "finish_reason": choice.finish_reason,
-                "received_at": datetime.now().isoformat(),
-            },
-        )
-        return chunk_message
-
-    @staticmethod
-    def _check_finish_reason(message: ChatMessage) -> None:
-        """
-        Check the `finish_reason` returned with the OpenAI completions.
-
-        If the `finish_reason` is `length`, log a warning to the user.
-
-        :param message:
-            The message returned by the LLM.
-        """
-        if message.meta["finish_reason"] == "length":
-            logger.warning(
-                "The completion for index {index} has been truncated before reaching a natural stopping point. "
-                "Increase the max_tokens parameter to allow for longer completions.",
-                index=message.meta["index"],
-                finish_reason=message.meta["finish_reason"],
-            )
-        if message.meta["finish_reason"] == "content_filter":
-            logger.warning(
-                "The completion for index {index} has been truncated due to the content filter.",
-                index=message.meta["index"],
-                finish_reason=message.meta["finish_reason"],
-            )
