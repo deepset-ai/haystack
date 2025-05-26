@@ -238,7 +238,7 @@ class OpenAIGenerator:
 
             chunks: List[StreamingChunk] = []
             for chunk in completion:
-                chunk_delta: StreamingChunk = _convert_chat_completion_chunk_to_streaming_chunk(chunk=chunk)
+                chunk_delta: StreamingChunk = _convert_chat_completion_chunk_to_streaming_chunk(chunk=chunk)  # type: ignore
                 chunks.append(chunk_delta)
                 streaming_callback(chunk_delta)
 
