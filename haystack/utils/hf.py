@@ -94,7 +94,7 @@ class HFModelType(Enum):
     GENERATION = 2
 
 
-def serialize_hf_model_kwargs(kwargs: Dict[str, Any]):
+def serialize_hf_model_kwargs(kwargs: Dict[str, Any]) -> None:
     """
     Recursively serialize HuggingFace specific model keyword arguments in-place to make them JSON serializable.
 
@@ -111,7 +111,7 @@ def serialize_hf_model_kwargs(kwargs: Dict[str, Any]):
             serialize_hf_model_kwargs(v)
 
 
-def deserialize_hf_model_kwargs(kwargs: Dict[str, Any]):
+def deserialize_hf_model_kwargs(kwargs: Dict[str, Any]) -> None:
     """
     Recursively deserialize HuggingFace specific model keyword arguments in-place to make them JSON serializable.
 
@@ -323,7 +323,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
             encoded_stop_words = tokenizer(stop_words, add_special_tokens=False, padding=True, return_tensors="pt")
             self.stop_ids = encoded_stop_words.input_ids.to(device)
 
-        def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
+        def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs: Any) -> bool:
             """Check if any of the stop words are generated in the current text generation step."""
             for stop_id in self.stop_ids:
                 found_stop_word = self.is_stop_word_found(input_ids, stop_id)
@@ -364,7 +364,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
             self.token_handler = stream_handler
             self.stop_words = stop_words or []
 
-        def on_finalized_text(self, word: str, stream_end: bool = False):
+        def on_finalized_text(self, word: str, stream_end: bool = False) -> None:
             """Callback function for handling the generated text."""
             word_to_send = word + "\n" if stream_end else word
             if word_to_send.strip() not in self.stop_words:

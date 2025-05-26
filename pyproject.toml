@@ -285,9 +285,20 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "class"
 
 [tool.mypy]
+python_version = "3.9"
+disallow_incomplete_defs = true
 warn_return_any = false
 warn_unused_configs = true
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# TODO: Fix component typings
+module = "haystack.components.*"
+disallow_incomplete_defs = false
+
+[[tool.mypy.overrides]]
+module = "haystack.testing.*"
+disallow_incomplete_defs = false
 
 [tool.ruff]
 line-length = 120

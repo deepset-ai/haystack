@@ -138,8 +138,8 @@ def patch_log_method_to_kwargs_only(func: typing.Callable) -> typing.Callable:
 
     @functools.wraps(func)
     def _log_only_with_kwargs(
-        msg, *, _: Any = None, exc_info: Any = None, stack_info: Any = False, stacklevel: int = 1, **kwargs: Any
-    ) -> Any:  # we need the `_` to avoid a syntax error
+        msg: str, *, _: Any = None, exc_info: Any = None, stack_info: Any = False, stacklevel: int = 1, **kwargs: Any
+    ) -> typing.Callable:  # we need the `_` to avoid a syntax error
         existing_extra = kwargs.pop("extra", {})
         return func(
             # we need to increase the stacklevel by 1 to point to the correct caller
@@ -159,15 +159,15 @@ def patch_log_with_level_method_to_kwargs_only(func: typing.Callable) -> typing.
 
     @functools.wraps(func)
     def _log_only_with_kwargs(
-        level,
-        msg,
+        level: typing.Union[int, str],
+        msg: str,
         *,
         _: Any = None,
         exc_info: Any = None,
         stack_info: Any = False,
         stacklevel: int = 1,
         **kwargs: Any,  # we need the `_` to avoid a syntax error
-    ) -> Any:
+    ) -> typing.Callable:
         existing_extra = kwargs.pop("extra", {})
 
         return func(
@@ -188,7 +188,18 @@ def patch_make_records_to_use_kwarg_string_interpolation(original_make_records: 
     """A decorator to ensure string interpolation is used."""
 
     @functools.wraps(original_make_records)
-    def _wrapper(name, level, fn, lno, msg, args, exc_info, func=None, extra=None, sinfo=None) -> Any:  # pylint: disable=too-many-positional-arguments
+    def _wrapper(  # pylint: disable=too-many-positional-arguments
+        name: str,
+        level: typing.Union[int, str],
+        fn: str,
+        lno: int,
+        msg: str,
+        args: Any,
+        exc_info: Any,
+        func: Any = None,
+        extra: Any = None,
+        sinfo: Any = None,
+    ) -> typing.Callable:
         safe_extra = extra or {}
         try:
             interpolated_msg = msg.format(**safe_extra)

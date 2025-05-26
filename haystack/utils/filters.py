@@ -4,7 +4,7 @@
 
 from dataclasses import fields
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import dateutil.parser
 
@@ -12,7 +12,7 @@ from haystack.dataclasses import Document
 from haystack.errors import FilterError
 
 
-def raise_on_invalid_filter_syntax(filters: Optional[Dict[str, Any]] = None):
+def raise_on_invalid_filter_syntax(filters: Optional[Dict[str, Any]] = None) -> None:
     """
     Raise an error if the filter syntax is invalid.
     """
@@ -89,7 +89,7 @@ def _parse_date(value):
             raise FilterError(msg) from exc
 
 
-def _ensure_both_dates_naive_or_aware(date1: datetime, date2: datetime):
+def _ensure_both_dates_naive_or_aware(date1: datetime, date2: datetime) -> Tuple[datetime, datetime]:
     """Ensure that both dates are either naive or aware."""
     # Both naive
     if date1.tzinfo is None and date2.tzinfo is None:

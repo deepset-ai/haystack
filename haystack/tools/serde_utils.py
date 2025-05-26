@@ -26,7 +26,7 @@ def serialize_tools_or_toolset(
     return [tool.to_dict() for tool in tools]
 
 
-def deserialize_tools_or_toolset_inplace(data: Dict[str, Any], key: str = "tools"):
+def deserialize_tools_or_toolset_inplace(data: Dict[str, Any], key: str = "tools") -> None:
     """
     Deserialize a list of Tools or a Toolset in a dictionary inplace.
 

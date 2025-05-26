@@ -5,7 +5,7 @@
 import functools
 from pathlib import Path
 from types import new_class
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar, Union
 
 from haystack import logging
 from haystack.core.component.component import component
@@ -16,6 +16,8 @@ from haystack.core.serialization import default_from_dict, default_to_dict, gene
 from haystack.core.super_component.utils import _delegate_default, _is_compatible
 
 logger = logging.getLogger(__name__)
+
+T = TypeVar("T")
 
 
 class InvalidMappingTypeError(Exception):
@@ -535,7 +537,7 @@ class SuperComponent(_SuperComponent):
         self.pipeline.draw(path=path, server_url=server_url, params=params, timeout=timeout)
 
 
-def super_component(cls: Any):
+def super_component(cls: Type[T]) -> Type[T]:
     """
     Decorator that converts a class into a SuperComponent.
 

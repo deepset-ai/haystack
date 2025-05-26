@@ -87,7 +87,7 @@ class Sockets:
             and self._sockets_dict == value._sockets_dict
         )
 
-    def __setitem__(self, key: str, socket: Union[InputSocket, OutputSocket]):
+    def __setitem__(self, key: str, socket: Union[InputSocket, OutputSocket]) -> None:
         """
         Adds a new socket to this Sockets object.
 
