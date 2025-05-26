@@ -1,12 +1,13 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+
 import logging
 from unittest.mock import patch, Mock
 
 import pytest
 
-from haystack import Document, default_from_dict, default_to_dict
+from haystack import Document
 from haystack.components.converters.pypdf import PyPDFToDocument, PyPDFExtractionMode
 from haystack.components.preprocessors import DocumentSplitter
 from haystack.dataclasses import ByteStream
