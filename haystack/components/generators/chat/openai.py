@@ -80,9 +80,6 @@ class OpenAIChatGenerator:
     ```
     """
 
-    # Type annotation for the component name
-    __component_name__: str
-
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
@@ -576,11 +573,10 @@ class OpenAIChatGenerator:
         """
 
         # get the component name and type
-        component_info = ComponentInfo()
-        component_info.name = (
-            str(self.__component_name__) if getattr(self, "__component_name__", None) is not None else None
+        component_info = ComponentInfo(
+            type=f"{self.__class__.__module__}.{self.__class__.__name__}",
+            name=str(getattr(self, "__component_name__", None)),
         )
-        component_info.type = f"{self.__class__.__module__}.{self.__class__.__name__}"
 
         # we stream the content of the chunk if it's not a tool or function call
         # if there are no choices, return an empty chunk

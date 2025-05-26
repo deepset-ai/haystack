@@ -120,9 +120,6 @@ class HuggingFaceLocalChatGenerator:
     ```
     """
 
-    # Type annotation for the component name
-    __component_name__: str
-
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         model: str = "HuggingFaceH4/zephyr-7b-beta",

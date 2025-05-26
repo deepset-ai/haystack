@@ -360,7 +360,7 @@ class PipelineBase:
             raise PipelineError(msg)
 
         setattr(instance, "__haystack_added_to_pipeline__", self)
-        setattr(instance, "__component_name__", name)
+        setattr(instance, "__component_name__", name)  # type: ignore[attr-defined]
 
         # Add component to the graph, disconnected
         logger.debug("Adding component '{component_name}' ({component})", component_name=name, component=instance)

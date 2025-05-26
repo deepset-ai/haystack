@@ -171,9 +171,6 @@ class HuggingFaceAPIChatGenerator:
     ```
     """
 
-    # Type annotation for the component name
-    __component_name__: str
-
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         api_type: Union[HFGenerationAPIType, str],
@@ -432,7 +429,7 @@ class HuggingFaceAPIChatGenerator:
                 if choice.finish_reason:
                     finish_reason = choice.finish_reason
 
-                stream_chunk = StreamingChunk(text, meta, component_info)
+                stream_chunk = StreamingChunk(content=text, meta=meta, component_info=component_info)
                 streaming_callback(stream_chunk)
 
             if chunk.usage:
@@ -529,7 +526,7 @@ class HuggingFaceAPIChatGenerator:
                 text = choice.delta.content or ""
                 generated_text += text
 
-                stream_chunk = StreamingChunk(text, meta, component_info)
+                stream_chunk = StreamingChunk(content=text, meta=meta, component_info=component_info)
                 await streaming_callback(stream_chunk)  # type: ignore
 
             if chunk.usage:
