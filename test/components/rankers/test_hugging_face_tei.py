@@ -177,7 +177,6 @@ class TestHuggingFaceTEIRanker:
         result = ranker.run(query="test query", documents=docs, truncation_direction=TruncationDirection.LEFT)
 
         # Check that request includes truncation parameters
-        print(result, "====")
         mock_request.assert_called_once_with(
             method="POST",
             url="https://api.my-tei-service.com/rerank",
@@ -253,13 +252,13 @@ class TestHuggingFaceTEIRanker:
 
         # Test that RuntimeError is raised with the correct message
         with pytest.raises(
-            RuntimeError, match="HuggingFaceTEIRanker API call failed \(TestError\): Some error occurred"
+            RuntimeError, match=r"HuggingFaceTEIRanker API call failed \(TestError\): Some error occurred"
         ):
             ranker.run(query="test query", documents=docs)
 
         # Test unexpected response format
         mock_response.json.return_value = {"unexpected": "format"}
-        with pytest.raises(RuntimeError, match="Unexpected response format from HuggingFaceTEIRanker API"):
+        with pytest.raises(RuntimeError, match="Unexpected response format from text-embeddings-inference rerank API"):
             ranker.run(query="test query", documents=docs)
 
     @pytest.mark.asyncio
