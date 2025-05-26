@@ -409,10 +409,11 @@ class HuggingFaceAPIChatGenerator:
         usage = None
         meta: Dict[str, Any] = {}
 
-        # get component name and type
-        component_name = self.__component_name__ if hasattr(self, "__component_name__") else None
-        component_type = self.__class__.__module__ + "." + self.__class__.__name__
-        component_info = ComponentInfo(name=component_name, type=component_type)
+        # get the component name and type
+        component_info = ComponentInfo(
+            type=f"{self.__class__.__module__}.{self.__class__.__name__}",
+            name=str(getattr(self, "__component_name__", None)),
+        )
 
         # Set up streaming handler
         for chunk in api_output:
@@ -511,9 +512,11 @@ class HuggingFaceAPIChatGenerator:
         usage = None
         meta: Dict[str, Any] = {}
 
-        component_name = self.__component_name__ if hasattr(self, "__component_name__") else None
-        component_type = self.__class__.__module__ + "." + self.__class__.__name__
-        component_info = ComponentInfo(name=component_name, type=component_type)
+        # get the component name and type
+        component_info = ComponentInfo(
+            type=f"{self.__class__.__module__}.{self.__class__.__name__}",
+            name=str(getattr(self, "__component_name__", None)),
+        )
 
         async for chunk in api_output:
             # The chunk with usage returns an empty array for choices

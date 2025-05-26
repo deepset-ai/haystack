@@ -383,9 +383,10 @@ class HuggingFaceLocalChatGenerator:
                 generation_kwargs["num_return_sequences"] = 1
 
             # Get component name and type
-            component_name = self.__component_name__ if hasattr(self, "__component_name__") else None
-            component_type = self.__class__.__module__ + "." + self.__class__.__name__
-            component_info = ComponentInfo(name=component_name, type=component_type)
+            component_info = ComponentInfo(
+                type=f"{self.__class__.__module__}.{self.__class__.__name__}",
+                name=str(getattr(self, "__component_name__", None)),
+            )
             # streamer parameter hooks into HF streaming, HFTokenStreamingHandler is an adapter to our streaming
             generation_kwargs["streamer"] = HFTokenStreamingHandler(
                 tokenizer, streaming_callback, stop_words, component_info
@@ -572,10 +573,11 @@ class HuggingFaceLocalChatGenerator:
             generation_kwargs.get("pad_token_id", tokenizer.pad_token_id) or tokenizer.eos_token_id
         )
 
-        # Get component name and type
-        component_name = self.__component_name__ if hasattr(self, "__component_name__") else None
-        component_type = self.__class__.__module__ + "." + self.__class__.__name__
-        component_info = ComponentInfo(name=component_name, type=component_type)
+        # get the component name and type
+        component_info = ComponentInfo(
+            type=f"{self.__class__.__module__}.{self.__class__.__name__}",
+            name=str(getattr(self, "__component_name__", None)),
+        )
         generation_kwargs["streamer"] = HFTokenStreamingHandler(
             tokenizer, streaming_callback, stop_words, component_info
         )
