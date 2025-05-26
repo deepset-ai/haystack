@@ -4,13 +4,13 @@
 
 import os
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from openai import OpenAI, Stream
 from openai.types.chat import ChatCompletion, ChatCompletionChunk
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.dataclasses import ChatMessage, StreamingChunk
+from haystack.dataclasses import ChatMessage, StreamingCallbackT, StreamingChunk, select_streaming_callback
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 from haystack.utils.http_client import init_http_client
 
@@ -54,7 +54,7 @@ class OpenAIGenerator:
         self,
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
         model: str = "gpt-4o-mini",
-        streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
+        streaming_callback: Optional[StreamingCallbackT] = None,
         api_base_url: Optional[str] = None,
         organization: Optional[str] = None,
         system_prompt: Optional[str] = None,
@@ -178,7 +178,7 @@ class OpenAIGenerator:
         self,
         prompt: str,
         system_prompt: Optional[str] = None,
-        streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
+        streaming_callback: Optional[StreamingCallbackT] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
@@ -211,7 +211,9 @@ class OpenAIGenerator:
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
 
         # check if streaming_callback is passed
-        streaming_callback = streaming_callback or self.streaming_callback
+        streaming_callback = select_streaming_callback(
+            init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=False
+        )
 
         # adapt ChatMessage(s) to the format expected by the OpenAI API
         openai_formatted_messages = [message.to_openai_dict_format() for message in messages]
