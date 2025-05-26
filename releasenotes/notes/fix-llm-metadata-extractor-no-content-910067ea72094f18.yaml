@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed a bug in the `LLMMetadataExtractor` that occurred when
+    processing `Document` objects with `None` or empty string content. The
+    component now gracefully handles these cases by marking such documents as
+    failed and providing an appropriate error message in their metadata, without
+    attempting an LLM call.

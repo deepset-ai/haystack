@@ -2,9 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Callable, Dict, List, Literal, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Literal, Optional
 
-from haystack import Pipeline, default_from_dict, default_to_dict, super_component
+from haystack import Document, Pipeline, default_from_dict, default_to_dict, super_component
 from haystack.components.preprocessors.document_cleaner import DocumentCleaner
 from haystack.components.preprocessors.document_splitter import DocumentSplitter, Language
 from haystack.utils import deserialize_callable, serialize_callable
@@ -141,6 +141,13 @@ class DocumentPreprocessor:
         }
         # The pipeline output "documents" comes from "cleaner.documents"
         self.output_mapping = {"cleaner.documents": "documents"}
+
+    if TYPE_CHECKING:
+        # fake method, never executed, but static analyzers will not complain about missing method
+        def run(self, *, documents: List[Document]) -> dict[str, list[Document]]:  # noqa: D102
+            ...
+        def warm_up(self) -> None:  # noqa: D102
+            ...
 
     def to_dict(self) -> Dict[str, Any]:
         """
