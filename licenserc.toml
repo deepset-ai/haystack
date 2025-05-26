@@ -18,7 +18,9 @@ excludes = [
     "*.csv",
     "*.mp3",
     "*.msg",
-    "*.typed"
+    "*.typed",
+    "*.yml",
+    "*.html",
 ]
 
 [properties]
