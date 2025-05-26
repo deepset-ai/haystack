@@ -188,7 +188,7 @@ def patch_make_records_to_use_kwarg_string_interpolation(original_make_records: 
     """A decorator to ensure string interpolation is used."""
 
     @functools.wraps(original_make_records)
-    def _wrapper(
+    def _wrapper(  # pylint: disable=too-many-positional-arguments
         name: str,
         level: typing.Union[int, str],
         fn: str,
@@ -199,7 +199,7 @@ def patch_make_records_to_use_kwarg_string_interpolation(original_make_records: 
         func: Any = None,
         extra: Any = None,
         sinfo: Any = None,
-    ) -> typing.Callable:  # pylint: disable=too-many-positional-arguments
+    ) -> typing.Callable:
         safe_extra = extra or {}
         try:
             interpolated_msg = msg.format(**safe_extra)
