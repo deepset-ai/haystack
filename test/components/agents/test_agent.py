@@ -28,7 +28,7 @@ from haystack.dataclasses.streaming_chunk import StreamingChunk
 from haystack.tools import Tool, ComponentTool
 from haystack.tools.toolset import Toolset
 from haystack.utils import serialize_callable, Secret
-from haystack.dataclasses.state_utils import merge_lists
+from haystack.components.agents.state import merge_lists
 
 
 def streaming_callback_for_serde(chunk: StreamingChunk):
@@ -162,7 +162,8 @@ class TestAgent:
         chat_generator = OpenAIChatGenerator()
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool, component_tool])
         assert agent.__haystack_output__._sockets_dict == {
-            "messages": OutputSocket(name="messages", type=List[ChatMessage], receivers=[])
+            "messages": OutputSocket(name="messages", type=List[ChatMessage], receivers=[]),
+            "last_message": OutputSocket(name="last_message", type=ChatMessage, receivers=[]),
         }
 
     def test_to_dict(self, weather_tool, component_tool, monkeypatch):
@@ -532,6 +533,8 @@ class TestAgent:
         assert len(response["messages"]) == 2
         assert [isinstance(reply, ChatMessage) for reply in response["messages"]]
         assert "Hello" in response["messages"][1].text  # see openai_mock_chat_completion_chunk
+        assert "last_message" in response
+        assert isinstance(response["last_message"], ChatMessage)
 
     def test_run_with_run_streaming(self, openai_mock_chat_completion_chunk, weather_tool):
         chat_generator = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
@@ -556,6 +559,8 @@ class TestAgent:
         assert len(response["messages"]) == 2
         assert [isinstance(reply, ChatMessage) for reply in response["messages"]]
         assert "Hello" in response["messages"][1].text  # see openai_mock_chat_completion_chunk
+        assert "last_message" in response
+        assert isinstance(response["last_message"], ChatMessage)
 
     def test_keep_generator_streaming(self, openai_mock_chat_completion_chunk, weather_tool):
         streaming_callback_called = False
@@ -582,6 +587,8 @@ class TestAgent:
         assert len(response["messages"]) == 2
         assert [isinstance(reply, ChatMessage) for reply in response["messages"]]
         assert "Hello" in response["messages"][1].text  # see openai_mock_chat_completion_chunk
+        assert "last_message" in response
+        assert isinstance(response["last_message"], ChatMessage)
 
     def test_chat_generator_must_support_tools(self, weather_tool):
         chat_generator = MockChatGeneratorWithoutTools()
@@ -614,6 +621,9 @@ class TestAgent:
             result["messages"][-1].tool_call_result.result
             == "{'weather': 'mostly sunny', 'temperature': 7, 'unit': 'celsius'}"
         )
+        assert "last_message" in result
+        assert isinstance(result["last_message"], ChatMessage)
+        assert result["messages"][-1] == result["last_message"]
 
     def test_exceed_max_steps(self, monkeypatch, weather_tool, caplog):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
@@ -663,6 +673,9 @@ class TestAgent:
             result["messages"][-1].tool_call_result.result
             == "{'weather': 'mostly sunny', 'temperature': 7, 'unit': 'celsius'}"
         )
+        assert "last_message" in result
+        assert isinstance(result["last_message"], ChatMessage)
+        assert result["messages"][-1] == result["last_message"]
 
     def test_agent_with_no_tools(self, monkeypatch, caplog):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
@@ -688,6 +701,9 @@ class TestAgent:
         assert [isinstance(reply, ChatMessage) for reply in response["messages"]]
         assert response["messages"][0].text == "What is the capital of Germany?"
         assert response["messages"][1].text == "Berlin"
+        assert "last_message" in response
+        assert isinstance(response["last_message"], ChatMessage)
+        assert response["messages"][-1] == response["last_message"]
 
     def test_run_with_system_prompt(self, weather_tool):
         chat_generator = MockChatGeneratorWithoutRunAsync()
@@ -731,6 +747,9 @@ class TestAgent:
         assert response["messages"][1].tool_calls[0].arguments is not None
         assert response["messages"][2].tool_call_results[0].result is not None
         assert response["messages"][2].tool_call_results[0].origin is not None
+        assert "last_message" in response
+        assert isinstance(response["last_message"], ChatMessage)
+        assert response["messages"][-1] == response["last_message"]
 
     @pytest.mark.asyncio
     async def test_run_async_falls_back_to_run_when_chat_generator_has_no_run_async(self, weather_tool):
@@ -754,6 +773,9 @@ class TestAgent:
         assert len(result["messages"]) == 2
         assert [isinstance(reply, ChatMessage) for reply in result["messages"]]
         assert "Hello" in result["messages"][1].text
+        assert "last_message" in result
+        assert isinstance(result["last_message"], ChatMessage)
+        assert result["messages"][-1] == result["last_message"]
 
     @pytest.mark.asyncio
     async def test_run_async_uses_chat_generator_run_async_when_available(self, weather_tool):
@@ -778,6 +800,9 @@ class TestAgent:
         assert len(result["messages"]) == 2
         assert [isinstance(reply, ChatMessage) for reply in result["messages"]]
         assert "Hello from run_async" in result["messages"][1].text
+        assert "last_message" in result
+        assert isinstance(result["last_message"], ChatMessage)
+        assert result["messages"][-1] == result["last_message"]
 
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     def test_agent_streaming_with_tool_call(self, monkeypatch, weather_tool):
@@ -796,6 +821,7 @@ class TestAgent:
 
         assert result is not None
         assert result["messages"] is not None
+        assert result["last_message"] is not None
         assert streaming_callback_called
 
 
@@ -846,7 +872,7 @@ class TestAgentTracing:
             100,
             '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]',
             '["text"]',
-            '{"messages": {"type": "typing.List[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.dataclasses.state_utils.merge_lists"}}',
+            '{"messages": {"type": "typing.List[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}}',
             '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null}',
             '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}, {"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello"}]}]}',
             1,
@@ -906,7 +932,7 @@ class TestAgentTracing:
             100,
             '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]',
             '["text"]',
-            '{"messages": {"type": "typing.List[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.dataclasses.state_utils.merge_lists"}}',
+            '{"messages": {"type": "typing.List[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}}',
             '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null}',
             '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}, {"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello from run_async"}]}]}',
             1,

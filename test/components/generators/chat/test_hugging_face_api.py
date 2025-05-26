@@ -22,6 +22,7 @@ from huggingface_hub import (
     ChatCompletionStreamOutput,
     ChatCompletionStreamOutputChoice,
     ChatCompletionStreamOutputDelta,
+    ChatCompletionInputStreamOptions,
 )
 from huggingface_hub.errors import RepositoryNotFoundError
 
@@ -441,7 +442,12 @@ class TestHuggingFaceAPIChatGenerator:
 
         # check kwargs passed to text_generation
         _, kwargs = mock_chat_completion.call_args
-        assert kwargs == {"stop": [], "stream": True, "max_tokens": 512}
+        assert kwargs == {
+            "stop": [],
+            "stream": True,
+            "max_tokens": 512,
+            "stream_options": ChatCompletionInputStreamOptions(include_usage=True),
+        }
 
         # Assert that the streaming callback was called twice
         assert streaming_call_count == 2
@@ -505,7 +511,12 @@ class TestHuggingFaceAPIChatGenerator:
 
         # check kwargs passed to text_generation
         _, kwargs = mock_chat_completion.call_args
-        assert kwargs == {"stop": [], "stream": True, "max_tokens": 512}
+        assert kwargs == {
+            "stop": [],
+            "stream": True,
+            "max_tokens": 512,
+            "stream_options": ChatCompletionInputStreamOptions(include_usage=True),
+        }
 
         # Assert that the streaming callback was called twice
         assert streaming_call_count == 2
@@ -717,9 +728,9 @@ class TestHuggingFaceAPIChatGenerator:
         assert datetime.fromisoformat(response_meta["completion_start_time"]) <= datetime.now()
         assert "usage" in response_meta
         assert "prompt_tokens" in response_meta["usage"]
-        assert response_meta["usage"]["prompt_tokens"] == 0
+        assert response_meta["usage"]["prompt_tokens"] > 0
         assert "completion_tokens" in response_meta["usage"]
-        assert response_meta["usage"]["completion_tokens"] == 0
+        assert response_meta["usage"]["completion_tokens"] > 0
         assert response_meta["model"] == "microsoft/Phi-3.5-mini-instruct"
         assert response_meta["finish_reason"] is not None
 
@@ -848,7 +859,12 @@ class TestHuggingFaceAPIChatGenerator:
 
         # check kwargs passed to chat_completion
         _, kwargs = mock_chat_completion_async.call_args
-        assert kwargs == {"stop": [], "stream": True, "max_tokens": 512}
+        assert kwargs == {
+            "stop": [],
+            "stream": True,
+            "max_tokens": 512,
+            "stream_options": ChatCompletionInputStreamOptions(include_usage=True),
+        }
 
         # Assert that the streaming callback was called twice
         assert streaming_call_count == 2

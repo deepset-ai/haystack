@@ -2,55 +2,18 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import inspect
-from typing import Any, List, TypeVar, Union, get_origin
+import warnings
+from typing import Any, List, TypeVar, Union
 
 T = TypeVar("T")
-
-
-def _is_valid_type(obj: Any) -> bool:
-    """
-    Check if an object is a valid type annotation.
-
-    Valid types include:
-    - Normal classes (str, dict, CustomClass)
-    - Generic types (List[str], Dict[str, int])
-    - Union types (Union[str, int], Optional[str])
-
-    :param obj: The object to check
-    :return: True if the object is a valid type annotation, False otherwise
-
-    Example usage:
-        >>> _is_valid_type(str)
-        True
-        >>> _is_valid_type(List[int])
-        True
-        >>> _is_valid_type(Union[str, int])
-        True
-        >>> _is_valid_type(42)
-        False
-    """
-    # Handle Union types (including Optional)
-    if hasattr(obj, "__origin__") and obj.__origin__ is Union:
-        return True
-
-    # Handle normal classes and generic types
-    return inspect.isclass(obj) or type(obj).__name__ in {"_GenericAlias", "GenericAlias"}
-
-
-def _is_list_type(type_hint: Any) -> bool:
-    """
-    Check if a type hint represents a list type.
-
-    :param type_hint: The type hint to check
-    :return: True if the type hint represents a list, False otherwise
-    """
-    return type_hint is list or (hasattr(type_hint, "__origin__") and get_origin(type_hint) is list)
 
 
 def merge_lists(current: Union[List[T], T, None], new: Union[List[T], T]) -> List[T]:
     """
     Merges two values into a single list.
+
+    Deprecated in favor of `haystack.components.agents.state.merge_lists`. It will be removed in Haystack 2.16.0.
+
 
     If either `current` or `new` is not already a list, it is converted into one.
     The function ensures that both inputs are treated as lists and concatenates them.
@@ -61,6 +24,12 @@ def merge_lists(current: Union[List[T], T, None], new: Union[List[T], T]) -> Lis
     :param new: The new value(s) to merge, either a single item or a list.
     :return: A list containing elements from both `current` and `new`.
     """
+
+    warnings.warn(
+        "`haystack.dataclasses.state_utils.merge_lists` is deprecated and will be removed in Haystack 2.16.0. "
+        "Use `haystack.components.agents.state.merge_lists` instead.",
+        DeprecationWarning,
+    )
     current_list = [] if current is None else current if isinstance(current, list) else [current]
     new_list = new if isinstance(new, list) else [new]
     return current_list + new_list
@@ -74,4 +43,10 @@ def replace_values(current: Any, new: Any) -> Any:
     :param new: The new value to replace
     :return: The new value
     """
+
+    warnings.warn(
+        "`haystack.dataclasses.state_utils.replace_values` is deprecated and will be removed in Haystack 2.16.0. "
+        "Use `haystack.components.agents.state.replace_values` instead.",
+        DeprecationWarning,
+    )
     return new

@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from typing import Any, Dict
+
 from openai.types.chat.chat_completion_chunk import ChoiceDeltaToolCall
 
 from haystack.dataclasses import StreamingChunk
@@ -23,26 +25,31 @@ def print_streaming_chunk(chunk: StreamingChunk) -> None:
         tool results.
     """
     # Print tool call metadata if available (from ChatGenerator)
-    if chunk.meta.get("tool_calls"):
-        for tool_call in chunk.meta["tool_calls"]:
-            if isinstance(tool_call, ChoiceDeltaToolCall) and tool_call.function:
-                # print the tool name
-                if tool_call.function.name and not tool_call.function.arguments:
-                    print("[TOOL CALL]\n", flush=True, end="")
-                    print(f"Tool: {tool_call.function.name} ", flush=True, end="")
+    if tool_calls := chunk.meta.get("tool_calls"):
+        for tool_call in tool_calls:
+            # Convert to dict if tool_call is a ChoiceDeltaToolCall
+            tool_call_dict: Dict[str, Any] = (
+                tool_call.to_dict() if isinstance(tool_call, ChoiceDeltaToolCall) else tool_call
+            )
 
-                # print the tool arguments
-                if tool_call.function.arguments:
-                    if tool_call.function.arguments.startswith("{"):
-                        print("\nArguments: ", flush=True, end="")
-                    print(tool_call.function.arguments, flush=True, end="")
-                    if tool_call.function.arguments.endswith("}"):
-                        print("\n\n", flush=True, end="")
+            if function := tool_call_dict.get("function"):
+                if name := function.get("name"):
+                    print("\n\n[TOOL CALL]\n", flush=True, end="")
+                    print(f"Tool: {name} ", flush=True, end="")
+                    print("\nArguments: ", flush=True, end="")
+
+                if arguments := function.get("arguments"):
+                    print(arguments, flush=True, end="")
 
     # Print tool call results if available (from ToolInvoker)
-    if chunk.meta.get("tool_result"):
-        print(f"[TOOL RESULT]\n{chunk.meta['tool_result']}\n\n", flush=True, end="")
+    if tool_result := chunk.meta.get("tool_result"):
+        print(f"\n\n[TOOL RESULT]\n{tool_result}", flush=True, end="")
 
     # Print the main content of the chunk (from ChatGenerator)
-    if chunk.content:
-        print(chunk.content, flush=True, end="")
+    if content := chunk.content:
+        print(content, flush=True, end="")
+
+    # End of LLM assistant message so we add two new lines
+    # This ensures spacing between multiple LLM messages (e.g. Agent)
+    if chunk.meta.get("finish_reason") is not None:
+        print("\n\n", flush=True, end="")

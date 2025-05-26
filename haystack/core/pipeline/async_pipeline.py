@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
+import contextvars
 from typing import Any, AsyncIterator, Dict, List, Optional, Set
 
 from haystack import logging, tracing
@@ -68,7 +69,10 @@ class AsyncPipeline(PipelineBase):
                     raise PipelineRuntimeError.from_exception(component_name, instance.__class__, error) from error
             else:
                 loop = asyncio.get_running_loop()
-                outputs = await loop.run_in_executor(None, lambda: instance.run(**component_inputs))
+                # Important: contextvars (e.g. active tracing Span) don’t propagate to running loop's ThreadPoolExecutor
+                # We use ctx.run(...) to preserve context like the active tracing span
+                ctx = contextvars.copy_context()
+                outputs = await loop.run_in_executor(None, lambda: ctx.run(lambda: instance.run(**component_inputs)))
 
             component_visits[component_name] += 1
 
