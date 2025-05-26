@@ -5,7 +5,7 @@
 from typing import Any, Dict, List, Literal, Optional, cast
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.dataclasses import StreamingCallbackT
+from haystack.dataclasses import StreamingCallbackT, select_streaming_callback
 from haystack.lazy_imports import LazyImport
 from haystack.utils import (
     ComponentDevice,
@@ -239,7 +239,9 @@ class HuggingFaceLocalGenerator:
         updated_generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
 
         # check if streaming_callback is passed
-        streaming_callback = streaming_callback or self.streaming_callback
+        streaming_callback = select_streaming_callback(
+            init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=False
+        )
 
         if streaming_callback:
             num_responses = updated_generation_kwargs.get("num_return_sequences", 1)
