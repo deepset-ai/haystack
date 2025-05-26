@@ -14,6 +14,7 @@ from haystack.components.agents import State
 from haystack.core.component.sockets import Sockets
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.dataclasses.streaming_chunk import (
+    AsyncStreamingCallbackT,
     StreamingCallbackT,
     StreamingChunk,
     SyncStreamingCallbackT,
@@ -524,7 +525,7 @@ class ToolInvoker:
         self,
         messages: List[ChatMessage],
         state: Optional[State] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None,
+        streaming_callback: Optional[AsyncStreamingCallbackT] = None,
     ) -> Dict[str, Any]:
         """
         Asynchronously processes ChatMessage objects containing tool calls and invokes the corresponding tools.
