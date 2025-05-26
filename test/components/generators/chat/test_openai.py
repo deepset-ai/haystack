@@ -23,7 +23,7 @@ from haystack.dataclasses import StreamingChunk
 from haystack.utils.auth import Secret
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.tools import ComponentTool, Tool
-from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.components.generators.chat.openai import OpenAIChatGenerator, _check_finish_reason
 from haystack.tools.toolset import Toolset
 
 
@@ -428,7 +428,6 @@ class TestOpenAIChatGenerator:
 
     def test_check_abnormal_completions(self, caplog):
         caplog.set_level(logging.INFO)
-        component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
         messages = [
             ChatMessage.from_assistant(
                 "", meta={"finish_reason": "content_filter" if i % 2 == 0 else "length", "index": i}
@@ -437,7 +436,7 @@ class TestOpenAIChatGenerator:
         ]
 
         for m in messages:
-            component._check_finish_reason(m.meta)
+            _check_finish_reason(m.meta)
 
         # check truncation warning
         message_template = (
