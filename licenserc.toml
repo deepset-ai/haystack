@@ -7,7 +7,6 @@ excludes = [
     "examples",
     "proposals",
     "releasenotes",
-    "test",
     "CITATION.cff",
     "*.ini",
     "*.jinja2",
