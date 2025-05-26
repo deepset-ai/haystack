@@ -221,10 +221,7 @@ class Agent:
         )
 
     def run(
-        self,
-        messages: List[ChatMessage],
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        **kwargs: Dict[str, Any],
+        self, messages: List[ChatMessage], streaming_callback: Optional[StreamingCallbackT] = None, **kwargs: Any
     ) -> Dict[str, Any]:
         """
         Process messages and execute tools until an exit condition is met.
@@ -315,10 +312,7 @@ class Agent:
         return result
 
     async def run_async(
-        self,
-        messages: List[ChatMessage],
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        **kwargs: Dict[str, Any],
+        self, messages: List[ChatMessage], streaming_callback: Optional[StreamingCallbackT] = None, **kwargs: Any
     ) -> Dict[str, Any]:
         """
         Asynchronously process messages and execute tools until the exit condition is met.

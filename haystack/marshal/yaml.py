@@ -9,13 +9,13 @@ import yaml
 
 # Custom YAML safe loader that supports loading Python tuples
 class YamlLoader(yaml.SafeLoader):  # pylint: disable=too-many-ancestors
-    def construct_python_tuple(self, node: yaml.SequenceNode):
+    def construct_python_tuple(self, node: yaml.SequenceNode) -> tuple:
         """Construct a Python tuple from the sequence."""
         return tuple(self.construct_sequence(node))
 
 
 class YamlDumper(yaml.SafeDumper):  # pylint: disable=too-many-ancestors
-    def represent_tuple(self, data: tuple):
+    def represent_tuple(self, data: tuple) -> yaml.SequenceNode:
         """Represent a Python tuple."""
         return self.represent_sequence("tag:yaml.org,2002:python/tuple", data)
 

@@ -211,7 +211,7 @@ class EnvVarSecret(Secret):
         return self._type
 
 
-def deserialize_secrets_inplace(data: Dict[str, Any], keys: Iterable[str], *, recursive: bool = False):
+def deserialize_secrets_inplace(data: Dict[str, Any], keys: Iterable[str], *, recursive: bool = False) -> None:
     """
     Deserialize secrets in a dictionary inplace.
 

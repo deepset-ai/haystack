@@ -16,7 +16,7 @@ class PipelineRuntimeError(Exception):
         super().__init__(message)
 
     @classmethod
-    def from_exception(cls, component_name: str, component_type: Type, error: Exception):
+    def from_exception(cls, component_name: str, component_type: Type, error: Exception) -> "PipelineRuntimeError":
         """
         Create a PipelineRuntimeError from an exception.
         """
@@ -29,7 +29,7 @@ class PipelineRuntimeError(Exception):
         return cls(component_name, component_type, message)
 
     @classmethod
-    def from_invalid_output(cls, component_name: str, component_type: Type, output: Any):
+    def from_invalid_output(cls, component_name: str, component_type: Type, output: Any) -> "PipelineRuntimeError":
         """
         Create a PipelineRuntimeError from an invalid output.
         """

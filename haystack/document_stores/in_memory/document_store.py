@@ -149,7 +149,7 @@ class InMemoryDocumentStore:
         return _AVERAGE_DOC_LEN_STORAGES.get(self.index, 0.0)
 
     @_avg_doc_len.setter
-    def _avg_doc_len(self, value: float):
+    def _avg_doc_len(self, value: float) -> None:
         _AVERAGE_DOC_LEN_STORAGES[self.index] = value
 
     @property
