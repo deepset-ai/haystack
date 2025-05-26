@@ -87,7 +87,7 @@ def _validate_component_to_dict_output(component: Any, name: str, data: Dict[str
     def is_allowed_type(obj: Any) -> bool:
         return isinstance(obj, (str, int, float, bool, list, dict, set, tuple, type(None)))
 
-    def check_iterable(l: Iterable[Any]):
+    def check_iterable(l: Iterable[Any]) -> None:
         for v in l:
             if not is_allowed_type(v):
                 raise SerializationError(
@@ -99,7 +99,7 @@ def _validate_component_to_dict_output(component: Any, name: str, data: Dict[str
             elif isinstance(v, dict):
                 check_dict(v)
 
-    def check_dict(d: Dict[str, Any]):
+    def check_dict(d: Dict[str, Any]) -> None:
         if any(not isinstance(k, str) for k in data.keys()):
             raise SerializationError(
                 f"Component '{name}' of type '{type(component).__name__}' has a non-string key in the serialized data."
@@ -169,7 +169,7 @@ def component_from_dict(
         return do_from_dict()
 
 
-def default_to_dict(obj: Any, **init_parameters) -> Dict[str, Any]:
+def default_to_dict(obj: Any, **init_parameters: Any) -> Dict[str, Any]:
     """
     Utility function to serialize an object to a dictionary.
 
