@@ -196,7 +196,7 @@ class Component(Protocol):
 
 class ComponentMeta(type):
     @staticmethod
-    def _positional_to_kwargs(cls_type: Type, args: List) -> Dict[str, Any]:
+    def _positional_to_kwargs(cls_type: Type, args: tuple[Any, ...]) -> dict[str, Any]:
         """
         Convert positional arguments to keyword arguments based on the signature of the `__init__` method.
         """
