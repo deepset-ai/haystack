@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+
 import opentelemetry.trace
 import pytest
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
