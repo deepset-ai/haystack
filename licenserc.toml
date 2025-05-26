@@ -15,6 +15,10 @@ excludes = [
     "*.txt",
     "*.yaml",
     "*.wav",
+    "*.csv",
+    "*.mp3",
+    "*.msg",
+    "*.typed"
 ]
 
 [properties]

@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 # ruff: noqa: E501
+
 import json
 import os
 import os.path
