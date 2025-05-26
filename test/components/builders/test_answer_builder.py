@@ -7,7 +7,7 @@ import pytest
 
 from haystack import Document, GeneratedAnswer
 from haystack.components.builders.answer_builder import AnswerBuilder
-from haystack.dataclasses.chat_message import ChatMessage, ChatRole
+from haystack.dataclasses.chat_message import ChatMessage
 
 
 def _check_metadata_excluding_all_messages(actual_meta, expected_meta):
