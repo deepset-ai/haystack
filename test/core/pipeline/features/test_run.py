@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import json
 from copy import deepcopy
 from typing import List, Optional, Dict, Any
@@ -942,7 +946,7 @@ def pipeline_that_has_a_component_with_only_default_inputs(pipeline_class):
                                         score=1.2536639934227616,
                                     ),
                                 ],
-                                meta={},
+                                meta={"all_messages": ["Paris"]},
                             )
                         ]
                     }
@@ -2711,13 +2715,13 @@ def that_has_an_answer_joiner_variadic_component(pipeline_class):
                                 data="This is a test answer",
                                 query="What's Natural Language Processing?",
                                 documents=[],
-                                meta={},
+                                meta={"all_messages": ["This is a test answer"]},
                             ),
                             GeneratedAnswer(
                                 data="This is a second test answer",
                                 query="What's Natural Language Processing?",
                                 documents=[],
-                                meta={},
+                                meta={"all_messages": ["This is a second test answer"]},
                             ),
                         ]
                     }
@@ -2746,7 +2750,7 @@ def that_has_an_answer_joiner_variadic_component(pipeline_class):
                                     data="This is a test answer",
                                     query="What's Natural Language Processing?",
                                     documents=[],
-                                    meta={},
+                                    meta={"all_messages": ["This is a test answer"]},
                                 )
                             ],
                             [
@@ -2754,7 +2758,7 @@ def that_has_an_answer_joiner_variadic_component(pipeline_class):
                                     data="This is a second test answer",
                                     query="What's Natural Language Processing?",
                                     documents=[],
-                                    meta={},
+                                    meta={"all_messages": ["This is a second test answer"]},
                                 )
                             ],
                         ],
@@ -2999,7 +3003,11 @@ def that_has_a_loop_in_the_middle(pipeline_class):
                     "answer_builder": {"query": question},
                 },
                 expected_outputs={
-                    "answer_builder": {"answers": [GeneratedAnswer(data="42", query=question, documents=[])]}
+                    "answer_builder": {
+                        "answers": [
+                            GeneratedAnswer(data="42", query=question, documents=[], meta={"all_messages": ["42"]})
+                        ]
+                    }
                 },
                 expected_component_calls={
                     ("answer_builder", 1): {
@@ -3454,7 +3462,14 @@ Documents:
                 },
                 expected_outputs={
                     "answer_builder": {
-                        "answers": [GeneratedAnswer(data="answer: here is my answer", query=query, documents=[])]
+                        "answers": [
+                            GeneratedAnswer(
+                                data="answer: here is my answer",
+                                query=query,
+                                documents=[],
+                                meta={"all_messages": ["answer: here is my answer"]},
+                            )
+                        ]
                     }
                 },
                 expected_component_calls={
@@ -3676,7 +3691,13 @@ Provide additional feedback on why it fails.
             PipelineRunData(
                 inputs={"code_prompt": {"task": task}, "answer_builder": {"query": task}},
                 expected_outputs={
-                    "answer_builder": {"answers": [GeneratedAnswer(data="valid code", query=task, documents=[])]}
+                    "answer_builder": {
+                        "answers": [
+                            GeneratedAnswer(
+                                data="valid code", query=task, documents=[], meta={"all_messages": ["valid code"]}
+                            )
+                        ]
+                    }
                 },
                 expected_component_calls={
                     ("answer_builder", 1): {
@@ -3841,7 +3862,13 @@ Provide additional feedback on why it fails.
             PipelineRunData(
                 inputs={"code_prompt": {"task": task}, "answer_builder": {"query": task}},
                 expected_outputs={
-                    "answer_builder": {"answers": [GeneratedAnswer(data="valid code", query=task, documents=[])]}
+                    "answer_builder": {
+                        "answers": [
+                            GeneratedAnswer(
+                                data="valid code", query=task, documents=[], meta={"all_messages": ["valid code"]}
+                            )
+                        ]
+                    }
                 },
                 expected_component_calls={
                     ("answer_builder", 1): {
@@ -4673,7 +4700,7 @@ def passes_outputs_outside_cycle(pipeline_class):
     class AnswerBuilderWithPrompt:
         @component.output_types(answers=List[GeneratedAnswer])
         def run(self, replies: List[str], query: str, prompt: Optional[str] = None) -> Dict[str, Any]:
-            answer = GeneratedAnswer(data=replies[0], query=query, documents=[])
+            answer = GeneratedAnswer(data=replies[0], query=query, documents=[], meta={"all_messages": replies})
 
             if prompt is not None:
                 answer.meta["prompt"] = prompt
@@ -4767,7 +4794,10 @@ FAIL, come on, try again."""
                     "answer_builder": {
                         "answers": [
                             GeneratedAnswer(
-                                data=valid_response, query=task, documents=[], meta={"prompt": expected_prompt}
+                                data=valid_response,
+                                query=task,
+                                documents=[],
+                                meta={"prompt": expected_prompt, "all_messages": [valid_response]},
                             )
                         ]
                     }

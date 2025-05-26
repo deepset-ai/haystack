@@ -5,7 +5,7 @@
 import functools
 from pathlib import Path
 from types import new_class
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar, Union
 
 from haystack import logging
 from haystack.core.component.component import component
@@ -16,6 +16,8 @@ from haystack.core.serialization import default_from_dict, default_to_dict, gene
 from haystack.core.super_component.utils import _delegate_default, _is_compatible
 
 logger = logging.getLogger(__name__)
+
+T = TypeVar("T")
 
 
 class InvalidMappingTypeError(Exception):
@@ -211,16 +213,20 @@ class _SuperComponent:
                         aggregated_inputs[wrapper_input_name]["default"] = _delegate_default
                     continue
 
-                if not _is_compatible(existing_socket_info["type"], socket_info["type"]):
+                is_compatible, common_type = _is_compatible(existing_socket_info["type"], socket_info["type"])
+
+                if not is_compatible:
                     raise InvalidMappingTypeError(
                         f"Type conflict for input '{socket_name}' from component '{comp_name}'. "
                         f"Existing type: {existing_socket_info['type']}, new type: {socket_info['type']}."
                     )
 
+                # Use the common type for the aggregated input
+                aggregated_inputs[wrapper_input_name]["type"] = common_type
+
                 # If any socket requires mandatory inputs then the aggregated input is also considered mandatory.
                 # So we use the type of the mandatory input and remove the default value if it exists.
                 if socket_info["is_mandatory"]:
-                    aggregated_inputs[wrapper_input_name]["type"] = socket_info["type"]
                     aggregated_inputs[wrapper_input_name].pop("default", None)
 
         return aggregated_inputs
@@ -531,7 +537,7 @@ class SuperComponent(_SuperComponent):
         self.pipeline.draw(path=path, server_url=server_url, params=params, timeout=timeout)
 
 
-def super_component(cls: Any):
+def super_component(cls: Type[T]) -> Type[T]:
     """
     Decorator that converts a class into a SuperComponent.
 

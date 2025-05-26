@@ -91,14 +91,6 @@ def deserialize_type(type_str: str) -> Any:  # pylint: disable=too-many-return-s
         If the type cannot be deserialized due to missing module or type.
     """
 
-    type_mapping = {
-        list: typing.List,
-        dict: typing.Dict,
-        set: typing.Set,
-        tuple: typing.Tuple,
-        frozenset: typing.FrozenSet,
-    }
-
     # Handle generics
     if "[" in type_str and type_str.endswith("]"):
         main_type_str, generics_str = type_str.split("[", 1)
@@ -109,10 +101,7 @@ def deserialize_type(type_str: str) -> Any:  # pylint: disable=too-many-return-s
 
         # Reconstruct
         try:
-            if sys.version_info >= (3, 9) or repr(main_type).startswith("typing."):
-                return main_type[tuple(generic_args) if len(generic_args) > 1 else generic_args[0]]
-            else:
-                return type_mapping[main_type][tuple(generic_args) if len(generic_args) > 1 else generic_args[0]]
+            return main_type[tuple(generic_args) if len(generic_args) > 1 else generic_args[0]]
         except (TypeError, AttributeError) as e:
             raise DeserializationError(f"Could not apply arguments {generic_args} to type {main_type}") from e
 

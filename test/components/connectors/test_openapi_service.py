@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+
 import json
 import os
 from typing import Any, Dict, List
@@ -18,7 +19,6 @@ from haystack.dataclasses.byte_stream import ByteStream
 from openapi3 import OpenAPI
 
 from haystack.components.connectors import OpenAPIServiceConnector
-from haystack.components.connectors.openapi_service import patch_request
 from haystack.dataclasses import ChatMessage, ToolCall
 
 

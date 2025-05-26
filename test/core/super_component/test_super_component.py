@@ -1,7 +1,8 @@
-# SPDX-FileCopyrightText: 2024-present deepset GmbH <info@deepset.ai>
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from typing import List
+
+from typing import Any, List, Union
 
 import pytest
 from haystack import Document, SuperComponent, Pipeline, AsyncPipeline, component, super_component
@@ -366,3 +367,70 @@ class TestSuperComponent:
 
         sample_super_component.draw(path=path)
         mock_draw.assert_called_once_with(path=path, server_url="https://mermaid.ink", params=None, timeout=30)
+
+    def test_input_types_reconciliation(self):
+        """Test that input types are properly reconciled when they are compatible but not identical."""
+
+        @component
+        class TypeTestComponent:
+            @component.output_types(result_int=int, result_any=Any)
+            def run(self, input_int: int, input_any: Any):
+                return {"result_int": input_int, "result_any": input_any}
+
+        pipeline = Pipeline()
+        pipeline.add_component("test1", TypeTestComponent())
+        pipeline.add_component("test2", TypeTestComponent())
+
+        input_mapping = {"number": ["test1.input_int", "test2.input_any"]}
+        output_mapping = {"test2.result_int": "result_int"}
+        wrapper = SuperComponent(pipeline=pipeline, input_mapping=input_mapping, output_mapping=output_mapping)
+
+        input_sockets = wrapper.__haystack_input__._sockets_dict
+        assert "number" in input_sockets
+        assert input_sockets["number"].type == int
+
+    def test_union_type_reconciliation(self):
+        """Test that Union types are properly reconciled when creating a SuperComponent."""
+
+        @component
+        class UnionTypeComponent1:
+            @component.output_types(result=Union[int, str])
+            def run(self, input: Union[int, str]):
+                return {"result": input}
+
+        @component
+        class UnionTypeComponent2:
+            @component.output_types(result=Union[float, str])
+            def run(self, input: Union[float, str]):
+                return {"result": input}
+
+        pipeline = Pipeline()
+        pipeline.add_component("test1", UnionTypeComponent1())
+        pipeline.add_component("test2", UnionTypeComponent2())
+
+        input_mapping = {"data": ["test1.input", "test2.input"]}
+        output_mapping = {"test2.result": "result"}
+        wrapper = SuperComponent(pipeline=pipeline, input_mapping=input_mapping, output_mapping=output_mapping)
+
+        input_sockets = wrapper.__haystack_input__._sockets_dict
+        assert "data" in input_sockets
+        assert input_sockets["data"].type == Union[str]
+
+    def test_input_types_with_any(self):
+        """Test that Any type is properly handled when reconciling types."""
+
+        @component
+        class AnyTypeComponent:
+            @component.output_types(result=str)
+            def run(self, specific: str, generic: Any):
+                return {"result": specific}
+
+        pipeline = Pipeline()
+        pipeline.add_component("test", AnyTypeComponent())
+
+        input_mapping = {"text": ["test.specific", "test.generic"]}
+        wrapper = SuperComponent(pipeline=pipeline, input_mapping=input_mapping)
+
+        input_sockets = wrapper.__haystack_input__._sockets_dict
+        assert "text" in input_sockets
+        assert input_sockets["text"].type == str

@@ -117,7 +117,7 @@ class Document(metaclass=_BackwardCompatible):
         data = f"{text}{dataframe}{blob!r}{mime_type}{meta}{embedding}{sparse_embedding}"
         return hashlib.sha256(data.encode("utf-8")).hexdigest()
 
-    def to_dict(self, flatten=True) -> Dict[str, Any]:
+    def to_dict(self, flatten: bool = True) -> Dict[str, Any]:
         """
         Converts Document into a dictionary.
 

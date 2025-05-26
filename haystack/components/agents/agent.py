@@ -13,12 +13,13 @@ from haystack.core.pipeline.pipeline import Pipeline
 from haystack.core.pipeline.utils import _deepcopy_with_exceptions
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ChatMessage
-from haystack.dataclasses.state import State, _schema_from_dict, _schema_to_dict, _validate_schema
-from haystack.dataclasses.state_utils import merge_lists
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT, select_streaming_callback
 from haystack.tools import Tool, Toolset, deserialize_tools_or_toolset_inplace, serialize_tools_or_toolset
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 from haystack.utils.deserialization import deserialize_chatgenerator_inplace
+
+from .state.state import State, _schema_from_dict, _schema_to_dict, _validate_schema
+from .state.state_utils import merge_lists
 
 logger = logging.getLogger(__name__)
 
@@ -220,10 +221,7 @@ class Agent:
         )
 
     def run(
-        self,
-        messages: List[ChatMessage],
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        **kwargs: Dict[str, Any],
+        self, messages: List[ChatMessage], streaming_callback: Optional[StreamingCallbackT] = None, **kwargs: Any
     ) -> Dict[str, Any]:
         """
         Process messages and execute tools until an exit condition is met.
@@ -314,10 +312,7 @@ class Agent:
         return result
 
     async def run_async(
-        self,
-        messages: List[ChatMessage],
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        **kwargs: Dict[str, Any],
+        self, messages: List[ChatMessage], streaming_callback: Optional[StreamingCallbackT] = None, **kwargs: Any
     ) -> Dict[str, Any]:
         """
         Asynchronously process messages and execute tools until the exit condition is met.

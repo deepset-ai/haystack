@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import dataclass, field
-from typing import Annotated, Any, Iterable, List, Type, TypeVar, get_args
+from typing import Annotated, Any, Iterable, List, Type, TypedDict, TypeVar, get_args
 
 from typing_extensions import TypeAlias  # Python 3.9 compatibility
 
@@ -91,6 +91,15 @@ class InputSocket:
             # first time to get `List[int]` out of `Variadic`, the second time
             # to get `int` out of `List[int]`.
             self.type = get_args(get_args(self.type)[0])[0]
+
+
+class InputSocketTypeDescriptor(TypedDict):
+    """
+    Describes the type of an `InputSocket`.
+    """
+
+    type: Type
+    is_mandatory: bool
 
 
 @dataclass
