@@ -297,7 +297,7 @@ class TestAgent:
             },
         }
 
-    def test_from_dict(self, weather_tool, component_tool, monkeypatch):
+    def test_from_dict(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
         data = {
             "type": "haystack.components.agents.agent.Agent",
