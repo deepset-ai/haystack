@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Any, AsyncIterable, Dict, Iterable, List, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
+from haystack.components.generators.chat.openai import _convert_streaming_chunks_to_chat_message
 from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall, select_streaming_callback
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT
 from haystack.lazy_imports import LazyImport
@@ -404,11 +405,14 @@ class HuggingFaceAPIChatGenerator:
         # Choices is empty on the very first chunk which provides role information (e.g. "assistant").
         # It is also empty if include_usage is set to True where the usage information is returned.
         if len(chunk.choices) == 0:
+            usage = None
+            if chunk.usage:
+                usage = {"prompt_tokens": chunk.usage.prompt_tokens, "completion_tokens": chunk.usage.completion_tokens}
             return StreamingChunk(
                 content="",
                 # Index is None since it's only set to an int when a content block is present
                 index=None,
-                meta={"model": chunk.model, "received_at": datetime.now().isoformat(), "usage": chunk.usage},
+                meta={"model": chunk.model, "received_at": datetime.now().isoformat(), "usage": usage},
             )
 
         # n is unused, so the API always returns only one choice
@@ -440,9 +444,6 @@ class HuggingFaceAPIChatGenerator:
         )
 
         streaming_chunks = []
-        generated_text = ""
-        finish_reason = None
-
         for chunk in api_output:
             streaming_chunk = self._convert_chat_completion_stream_output_to_streaming_chunk(
                 chunk=chunk, previous_chunks=[]
@@ -450,22 +451,10 @@ class HuggingFaceAPIChatGenerator:
             streaming_chunks.append(streaming_chunk)
             streaming_callback(streaming_chunk)
 
-        usage = streaming_chunks[-1].meta.get("usage") if streaming_chunks else None
-        if usage:
-            usage_dict = {"prompt_tokens": usage.prompt_tokens, "completion_tokens": usage.completion_tokens}
-        else:
-            usage_dict = {"prompt_tokens": 0, "completion_tokens": 0}
+        message = _convert_streaming_chunks_to_chat_message(chunks=streaming_chunks)
+        if message["meta"].get("usage") is None:
+            message["meta"]["usage"] = {"prompt_tokens": 0, "completion_tokens": 0}
 
-        message = ChatMessage.from_assistant(
-            text=generated_text,
-            meta={
-                "model": self._client.model,
-                "index": 0,
-                "finish_reason": finish_reason,
-                "usage": usage_dict,
-                "completion_start_time": streaming_chunks[0].meta.get("received_at"),
-            },
-        )
         return {"replies": [message]}
 
     def _run_non_streaming(
@@ -517,55 +506,18 @@ class HuggingFaceAPIChatGenerator:
             **generation_kwargs,
         )
 
-        generated_text = ""
-        first_chunk_time = None
-        finish_reason = None
-        usage = None
-
+        streaming_chunks = []
         async for chunk in api_output:
-            # The chunk with usage returns an empty array for choices
-            if len(chunk.choices) > 0:
-                # n is unused, so the API always returns only one choice
-                # the argument is probably allowed for compatibility with OpenAI
-                # see https://huggingface.co/docs/huggingface_hub/package_reference/inference_client#huggingface_hub.InferenceClient.chat_completion.n
-                choice = chunk.choices[0]
+            stream_chunk = self._convert_chat_completion_stream_output_to_streaming_chunk(
+                chunk=chunk, previous_chunks=[]
+            )
+            streaming_chunks.append(stream_chunk)
+            await streaming_callback(stream_chunk)  # type: ignore
 
-                text = choice.delta.content or ""
-                generated_text += text
+        message = _convert_streaming_chunks_to_chat_message(chunks=streaming_chunks)
+        if message["meta"].get("usage") is None:
+            message["meta"]["usage"] = {"prompt_tokens": 0, "completion_tokens": 0}
 
-                if choice.finish_reason:
-                    finish_reason = choice.finish_reason
-
-                stream_chunk = StreamingChunk(
-                    content=text,
-                    index=choice.index,
-                    # TODO Correctly evaluate start
-                    start=None,
-                    meta={"model": chunk.model, "finish_reason": choice.finish_reason},
-                )
-                await streaming_callback(stream_chunk)  # type: ignore
-
-            if chunk.usage:
-                usage = chunk.usage
-
-            if first_chunk_time is None:
-                first_chunk_time = datetime.now().isoformat()
-
-        if usage:
-            usage_dict = {"prompt_tokens": usage.prompt_tokens, "completion_tokens": usage.completion_tokens}
-        else:
-            usage_dict = {"prompt_tokens": 0, "completion_tokens": 0}
-
-        message = ChatMessage.from_assistant(
-            text=generated_text,
-            meta={
-                "model": self._async_client.model,
-                "index": 0,
-                "finish_reason": finish_reason,
-                "usage": usage_dict,
-                "completion_start_time": first_chunk_time,
-            },
-        )
         return {"replies": [message]}
 
     async def _run_non_streaming_async(
