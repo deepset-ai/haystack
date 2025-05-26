@@ -289,7 +289,7 @@ class OpenAIChatGenerator:
 
         # before returning, do post-processing of the completions
         for message in completions:
-            self._check_finish_reason(message.meta)
+            _check_finish_reason(message.meta)
 
         return {"replies": completions}
 
@@ -365,7 +365,7 @@ class OpenAIChatGenerator:
 
         # before returning, do post-processing of the completions
         for message in completions:
-            self._check_finish_reason(message.meta)
+            _check_finish_reason(message.meta)
 
         return {"replies": completions}
 
@@ -417,29 +417,23 @@ class OpenAIChatGenerator:
 
     def _handle_stream_response(self, chat_completion: Stream, callback: SyncStreamingCallbackT) -> List[ChatMessage]:
         chunks: List[StreamingChunk] = []
-        chunk = None
-        chunk_delta: StreamingChunk
-
         for chunk in chat_completion:  # pylint: disable=not-an-iterable
             assert len(chunk.choices) <= 1, "Streaming responses should have at most one choice."
-            chunk_delta = _convert_chat_completion_chunk_to_streaming_chunk(chunk)
+            chunk_delta = _convert_chat_completion_chunk_to_streaming_chunk(chunk=chunk)
             chunks.append(chunk_delta)
             callback(chunk_delta)
-        return [_convert_streaming_chunks_to_chat_message(chunk, chunks)]
+        return [_convert_streaming_chunks_to_chat_message(chunks=chunks)]
 
     async def _handle_async_stream_response(
         self, chat_completion: AsyncStream, callback: AsyncStreamingCallbackT
     ) -> List[ChatMessage]:
         chunks: List[StreamingChunk] = []
-        chunk = None
-        chunk_delta: StreamingChunk
-
         async for chunk in chat_completion:  # pylint: disable=not-an-iterable
             assert len(chunk.choices) <= 1, "Streaming responses should have at most one choice."
-            chunk_delta = _convert_chat_completion_chunk_to_streaming_chunk(chunk)
+            chunk_delta = _convert_chat_completion_chunk_to_streaming_chunk(chunk=chunk)
             chunks.append(chunk_delta)
             await callback(chunk_delta)
-        return [_convert_streaming_chunks_to_chat_message(chunk, chunks)]
+        return [_convert_streaming_chunks_to_chat_message(chunks=chunks)]
 
 
 def _check_finish_reason(meta: Dict[str, Any]) -> None:
@@ -458,13 +452,10 @@ def _check_finish_reason(meta: Dict[str, Any]) -> None:
         )
 
 
-def _convert_streaming_chunks_to_chat_message(
-    last_chunk: ChatCompletionChunk, chunks: List[StreamingChunk]
-) -> ChatMessage:
+def _convert_streaming_chunks_to_chat_message(chunks: List[StreamingChunk]) -> ChatMessage:
     """
     Connects the streaming chunks into a single ChatMessage.
 
-    :param last_chunk: The last chunk returned by the OpenAI API.
     :param chunks: The list of all `StreamingChunk` objects.
 
     :returns: The ChatMessage.
@@ -514,11 +505,11 @@ def _convert_streaming_chunks_to_chat_message(
     finish_reason = finish_reasons[-1] if finish_reasons else None
 
     meta = {
-        "model": last_chunk.model,
+        "model": chunks[-1].meta.get("model"),
         "index": 0,
         "finish_reason": finish_reason,
         "completion_start_time": chunks[0].meta.get("received_at"),  # first chunk received
-        "usage": _serialize_usage(last_chunk.usage),  # last chunk has the final usage data if available
+        "usage": chunks[-1].meta.get("usage"),  # last chunk has the final usage data if available
     }
 
     return ChatMessage.from_assistant(text=text or None, tool_calls=tool_calls, meta=meta)
@@ -573,24 +564,31 @@ def _convert_chat_completion_chunk_to_streaming_chunk(chunk: ChatCompletionChunk
     :returns:
         The StreamingChunk.
     """
-    # if there are no choices, return an empty chunk
+    # Choices is empty on the very first chunk which provides role information (e.g. "assistant").
+    # It is also empty if include_usage is set to True where the usage information is returned.
     if len(chunk.choices) == 0:
-        return StreamingChunk(content="", meta={"model": chunk.model, "received_at": datetime.now().isoformat()})
+        return StreamingChunk(
+            content="",
+            meta={
+                "model": chunk.model,
+                "received_at": datetime.now().isoformat(),
+                "usage": _serialize_usage(chunk.usage),
+            },
+        )
 
-    # we stream the content of the chunk if it's not a tool or function call
     choice: ChunkChoice = chunk.choices[0]
     content = choice.delta.content or ""
-    chunk_message = StreamingChunk(content)
-    # but save the tool calls and function call in the meta if they are present
-    # and then connect the chunks in the _convert_streaming_chunks_to_chat_message method
-    chunk_message.meta.update(
-        {
+
+    chunk_message = StreamingChunk(
+        content=content,
+        meta={
             "model": chunk.model,
             "index": choice.index,
             "tool_calls": choice.delta.tool_calls,
             "finish_reason": choice.finish_reason,
             "received_at": datetime.now().isoformat(),
-        }
+            "usage": _serialize_usage(chunk.usage),
+        },
     )
     return chunk_message
 
