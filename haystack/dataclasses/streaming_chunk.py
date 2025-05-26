@@ -5,6 +5,7 @@
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable, Dict, Optional, Union
 
+from haystack.core.component import Component
 from haystack.utils.asynchronous import is_callable_async_compatible
 
 
@@ -20,6 +21,20 @@ class ComponentInfo:
 
     type: str
     name: Optional[str] = field(default=None)
+
+    @classmethod
+    def from_component(cls, component: Component) -> "ComponentInfo":
+        """
+        Create a `ComponentInfo` object from a `Component` instance.
+
+        :param component:
+            The `Component` instance.
+        :returns:
+            The `ComponentInfo` object with the type and name of the given component.
+        """
+        component_type = f"{component.__class__.__module__}.{component.__class__.__name__}"
+        component_name = getattr(component, "__component_name__", None)
+        return cls(type=component_type, name=component_name)
 
 
 @dataclass
