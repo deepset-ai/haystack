@@ -363,9 +363,13 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
             super().__init__(tokenizer=tokenizer, skip_prompt=True)  # type: ignore
             self.token_handler = stream_handler
             self.stop_words = stop_words or []
+            self._call_counter = 0
 
         def on_finalized_text(self, word: str, stream_end: bool = False) -> None:
             """Callback function for handling the generated text."""
+            self._call_counter += 1
             word_to_send = word + "\n" if stream_end else word
             if word_to_send.strip() not in self.stop_words:
-                self.token_handler(StreamingChunk(content=word_to_send))
+                self.token_handler(
+                    StreamingChunk(content=word_to_send, index=0, start=True if self._call_counter == 1 else None)
+                )

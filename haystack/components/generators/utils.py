@@ -21,13 +21,13 @@ def print_streaming_chunk(chunk: StreamingChunk) -> None:
         tool results.
     """
     if chunk.start and chunk.index and chunk.index > 0:
-        # If this is not the first content block of the message, add two new lines
+        # If this is the start of a new content block but not the first content block, print two new lines
         print("\n\n", flush=True, end="")
 
     ## Tool Call streaming
     if chunk.tool_call:
-        # Presence of tool_name indicates beginning of a tool call
-        # or chunk.tool_call.name: would be equivalent here
+        # If chunk.start is True indicates beginning of a tool call
+        # Also presence of chunk.tool_call.name indicates the start of a tool call too
         if chunk.start:
             print("[TOOL CALL]\n", flush=True, end="")
             print(f"Tool: {chunk.tool_call.tool_name} ", flush=True, end="")
@@ -51,6 +51,6 @@ def print_streaming_chunk(chunk: StreamingChunk) -> None:
         print(chunk.content, flush=True, end="")
 
     # End of LLM assistant message so we add two new lines
-    # This ensures spacing between multiple LLM messages (e.g. Agent) or Tool Call Result
+    # This ensures spacing between multiple LLM messages (e.g. Agent) or multiple Tool Call Results
     if chunk.meta.get("finish_reason") is not None:
         print("\n\n", flush=True, end="")

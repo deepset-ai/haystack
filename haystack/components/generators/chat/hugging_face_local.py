@@ -382,7 +382,9 @@ class HuggingFaceLocalChatGenerator:
                 logger.warning(msg, num_responses=num_responses)
                 generation_kwargs["num_return_sequences"] = 1
             # streamer parameter hooks into HF streaming, HFTokenStreamingHandler is an adapter to our streaming
-            generation_kwargs["streamer"] = HFTokenStreamingHandler(tokenizer, streaming_callback, stop_words)
+            generation_kwargs["streamer"] = HFTokenStreamingHandler(
+                tokenizer=tokenizer, stream_handler=streaming_callback, stop_words=stop_words
+            )
 
         # convert messages to HF format
         hf_messages = [convert_message_to_hf_format(message) for message in messages]

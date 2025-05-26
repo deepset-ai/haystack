@@ -393,6 +393,42 @@ class HuggingFaceAPIChatGenerator:
 
         return await self._run_non_streaming_async(formatted_messages, generation_kwargs, hf_tools)
 
+    def _convert_chat_completion_stream_output_to_streaming_chunk(
+        self, chunk: ChatCompletionStreamOutput, previous_chunks: List[StreamingChunk]
+    ):
+        """
+        Converts the Hugging Face API ChatCompletionStreamOutput to a StreamingChunk.
+
+        This method is not used in the current implementation but can be useful for future enhancements.
+        """
+        # Choices is empty on the very first chunk which provides role information (e.g. "assistant").
+        # It is also empty if include_usage is set to True where the usage information is returned.
+        if len(chunk.choices) == 0:
+            return StreamingChunk(
+                content="",
+                # Index is None since it's only set to an int when a content block is present
+                index=None,
+                meta={"model": chunk.model, "received_at": datetime.now().isoformat(), "usage": chunk.usage},
+            )
+
+        # n is unused, so the API always returns only one choice
+        # the argument is probably allowed for compatibility with OpenAI
+        # see https://huggingface.co/docs/huggingface_hub/package_reference/inference_client#huggingface_hub.InferenceClient.chat_completion.n
+        choice = chunk.choices[0]
+        stream_chunk = StreamingChunk(
+            content=choice.delta.content or "",
+            # We set the index to be 0 since the Hugging Face API does not support multiple choices in streaming
+            index=0,
+            # TODO Correctly evaluate start
+            start=None,
+            meta={
+                "model": chunk.model,
+                "received_at": datetime.now().isoformat(),
+                "finish_reason": choice.finish_reason,
+            },
+        )
+        return stream_chunk
+
     def _run_streaming(
         self, messages: List[Dict[str, str]], generation_kwargs: Dict[str, Any], streaming_callback: StreamingCallbackT
     ):
@@ -403,40 +439,18 @@ class HuggingFaceAPIChatGenerator:
             **generation_kwargs,
         )
 
+        streaming_chunks = []
         generated_text = ""
-        first_chunk_time = None
         finish_reason = None
-        usage = None
 
         for chunk in api_output:
-            # The chunk with usage returns an empty array for choices
-            if len(chunk.choices) > 0:
-                # n is unused, so the API always returns only one choice
-                # the argument is probably allowed for compatibility with OpenAI
-                # see https://huggingface.co/docs/huggingface_hub/package_reference/inference_client#huggingface_hub.InferenceClient.chat_completion.n
-                choice = chunk.choices[0]
+            streaming_chunk = self._convert_chat_completion_stream_output_to_streaming_chunk(
+                chunk=chunk, previous_chunks=[]
+            )
+            streaming_chunks.append(streaming_chunk)
+            streaming_callback(streaming_chunk)
 
-                text = choice.delta.content or ""
-                generated_text += text
-
-                if choice.finish_reason:
-                    finish_reason = choice.finish_reason
-
-                stream_chunk = StreamingChunk(
-                    content=text,
-                    index=choice.index,
-                    # TODO Correctly evaluate start
-                    start=None,
-                    meta={"model": chunk.model, "finish_reason": choice.finish_reason},
-                )
-                streaming_callback(stream_chunk)
-
-            if chunk.usage:
-                usage = chunk.usage
-
-            if first_chunk_time is None:
-                first_chunk_time = datetime.now().isoformat()
-
+        usage = streaming_chunks[-1].meta.get("usage") if streaming_chunks else None
         if usage:
             usage_dict = {"prompt_tokens": usage.prompt_tokens, "completion_tokens": usage.completion_tokens}
         else:
@@ -449,7 +463,7 @@ class HuggingFaceAPIChatGenerator:
                 "index": 0,
                 "finish_reason": finish_reason,
                 "usage": usage_dict,
-                "completion_start_time": first_chunk_time,
+                "completion_start_time": streaming_chunks[0].meta.get("received_at"),
             },
         )
         return {"replies": [message]}

@@ -419,39 +419,25 @@ class OpenAIChatGenerator:
         }
 
     def _handle_stream_response(self, chat_completion: Stream, callback: SyncStreamingCallbackT) -> List[ChatMessage]:
-        openai_chunks: List[ChatCompletionChunk] = []
         chunks: List[StreamingChunk] = []
-        chunk_deltas: List[StreamingChunk]
-        chunk_delta: StreamingChunk
-
         for chunk in chat_completion:  # pylint: disable=not-an-iterable
             assert len(chunk.choices) <= 1, "Streaming responses should have at most one choice."
-            chunk_deltas = self._convert_chat_completion_chunk_to_streaming_chunk(
-                chunk=chunk, previous_chunks=openai_chunks
-            )
+            chunk_deltas = self._convert_chat_completion_chunk_to_streaming_chunk(chunk=chunk, previous_chunks=chunks)
             for chunk_delta in chunk_deltas:
                 chunks.append(chunk_delta)
                 callback(chunk_delta)
-            openai_chunks.append(chunk)
         return [self._convert_streaming_chunks_to_chat_message(chunks=chunks)]
 
     async def _handle_async_stream_response(
         self, chat_completion: AsyncStream, callback: AsyncStreamingCallbackT
     ) -> List[ChatMessage]:
-        openai_chunks: List[ChatCompletionChunk] = []
         chunks: List[StreamingChunk] = []
-        chunk_deltas: List[StreamingChunk]
-        chunk_delta: StreamingChunk
-
         async for chunk in chat_completion:  # pylint: disable=not-an-iterable
             assert len(chunk.choices) <= 1, "Streaming responses should have at most one choice."
-            chunk_deltas = self._convert_chat_completion_chunk_to_streaming_chunk(
-                chunk=chunk, previous_chunks=openai_chunks
-            )
+            chunk_deltas = self._convert_chat_completion_chunk_to_streaming_chunk(chunk=chunk, previous_chunks=chunks)
             for chunk_delta in chunk_deltas:
                 chunks.append(chunk_delta)
                 await callback(chunk_delta)
-            openai_chunks.append(chunk)
         return [self._convert_streaming_chunks_to_chat_message(chunks=chunks)]
 
     def _check_finish_reason(self, meta: Dict[str, Any]) -> None:
@@ -570,13 +556,13 @@ class OpenAIChatGenerator:
         return chat_message
 
     def _convert_chat_completion_chunk_to_streaming_chunk(
-        self, chunk: ChatCompletionChunk, previous_chunks: List[ChatCompletionChunk]
+        self, chunk: ChatCompletionChunk, previous_chunks: List[StreamingChunk]
     ) -> List[StreamingChunk]:
         """
         Converts the streaming response chunk from the OpenAI API to a StreamingChunk.
 
         :param chunk: The chunk returned by the OpenAI API.
-        :param previous_chunks: The previous chunks received from the OpenAI API.
+        :param previous_chunks: The previous chunks processed from the OpenAI API.
 
         :returns:
             The StreamingChunk.
@@ -587,7 +573,7 @@ class OpenAIChatGenerator:
             return [
                 StreamingChunk(
                     content="",
-                    # Index is None since it's only used when a content block is present
+                    # Index is None since it's only set to an int when a content block is present
                     index=None,
                     meta={
                         "model": chunk.model,
@@ -597,7 +583,6 @@ class OpenAIChatGenerator:
                 )
             ]
 
-        # we stream the content of the chunk if it's not a tool or function call
         choice: ChunkChoice = chunk.choices[0]
         content = choice.delta.content or ""
 
@@ -628,15 +613,15 @@ class OpenAIChatGenerator:
                 chunk_messages.append(chunk_message)
             return chunk_messages
 
-        # If we reach here content should not be empty
         chunk_message = StreamingChunk(
             content=content,
             # We set the index to be 0 since if text content is being streamed then no tool calls are being streamed
             # NOTE: We may need to revisit this if OpenAI allows planning/thinking content before tool calls like
-            #       Anthropic/Bedrock
+            #       Anthropic Claude
             index=0,
             # The first chunk is always a start message chunk, so if we reach here and previous_chunks is length 1
-            # then this is the start of text content
+            # then this is the start of text content. Previous length should be 1 since first chunk always contains
+            # role information.
             start=len(previous_chunks) == 1 or None,
             meta={
                 "model": chunk.model,
