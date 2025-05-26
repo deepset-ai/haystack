@@ -1,7 +1,11 @@
-from typing import Any, List, Optional, Tuple, Union, cast
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
+from typing import Any, List, Optional, Union
 
 from haystack.core.component.types import GreedyVariadic, Variadic
-from haystack.core.super_component.utils import _is_compatible, get_args
+from haystack.core.super_component.utils import _is_compatible
 
 
 class TestTypeCompatibility:

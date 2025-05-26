@@ -1,9 +1,12 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import os
 
 import pytest
 from unittest.mock import Mock
 from haystack import Document, Pipeline
-from haystack.components.builders import PromptBuilder
 from haystack.components.writers import DocumentWriter
 from haystack.dataclasses import ChatMessage
 from haystack.document_stores.in_memory import InMemoryDocumentStore
