@@ -8,7 +8,6 @@ from typing import Any, Dict, List, Optional, Union
 
 from haystack import logging
 from haystack.dataclasses import ChatMessage, ComponentInfo, StreamingCallbackT, StreamingChunk
-
 from haystack.lazy_imports import LazyImport
 from haystack.utils.auth import Secret
 from haystack.utils.device import ComponentDevice
