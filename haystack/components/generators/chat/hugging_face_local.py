@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Callable, Dict, List, Literal, Optional, Union, cast
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.dataclasses import ChatMessage, StreamingCallbackT, ToolCall, select_streaming_callback
+from haystack.dataclasses import ChatMessage, ComponentInfo, StreamingCallbackT, ToolCall, select_streaming_callback
 from haystack.lazy_imports import LazyImport
 from haystack.tools import (
     Tool,
@@ -384,8 +384,13 @@ class HuggingFaceLocalChatGenerator:
                 )
                 logger.warning(msg, num_responses=num_responses)
                 generation_kwargs["num_return_sequences"] = 1
+
+            # Get component name and type
+            component_info = ComponentInfo.from_component(self)
             # streamer parameter hooks into HF streaming, HFTokenStreamingHandler is an adapter to our streaming
-            generation_kwargs["streamer"] = HFTokenStreamingHandler(tokenizer, streaming_callback, stop_words)
+            generation_kwargs["streamer"] = HFTokenStreamingHandler(
+                tokenizer, streaming_callback, stop_words, component_info
+            )
 
         # convert messages to HF format
         hf_messages = [convert_message_to_hf_format(message) for message in messages]
@@ -573,8 +578,11 @@ class HuggingFaceLocalChatGenerator:
             generation_kwargs.get("pad_token_id", tokenizer.pad_token_id) or tokenizer.eos_token_id
         )
 
-        # Set up streaming handler
-        generation_kwargs["streamer"] = HFTokenStreamingHandler(tokenizer, streaming_callback, stop_words)
+        # get the component name and type
+        component_info = ComponentInfo.from_component(self)
+        generation_kwargs["streamer"] = HFTokenStreamingHandler(
+            tokenizer, streaming_callback, stop_words, component_info
+        )
 
         # Generate responses asynchronously
         output = await asyncio.get_running_loop().run_in_executor(
