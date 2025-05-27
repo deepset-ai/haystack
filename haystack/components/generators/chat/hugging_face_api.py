@@ -103,7 +103,7 @@ def _convert_tools_to_hfapi_tools(
 
 
 def _convert_chat_completion_stream_output_to_streaming_chunk(
-    chunk: ChatCompletionStreamOutput, component_info: Optional[ComponentInfo] = None
+    chunk: "ChatCompletionStreamOutput", component_info: Optional[ComponentInfo] = None
 ) -> StreamingChunk:
     """
     Converts the Hugging Face API ChatCompletionStreamOutput to a StreamingChunk.
