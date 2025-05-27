@@ -31,7 +31,8 @@ logger = logging.getLogger(__name__)
 
 with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as torch_and_transformers_import:
     from huggingface_hub import model_info
-    from transformers import Pipeline, StoppingCriteriaList, pipeline
+    from transformers import Pipeline as HfPipeline
+    from transformers import StoppingCriteriaList, pipeline
     from transformers.tokenization_utils import PreTrainedTokenizer
     from transformers.tokenization_utils_fast import PreTrainedTokenizerFast
 
@@ -235,7 +236,7 @@ class HuggingFaceLocalChatGenerator:
         self.generation_kwargs = generation_kwargs
         self.chat_template = chat_template
         self.streaming_callback = streaming_callback
-        self.pipeline: Optional[Pipeline] = None
+        self.pipeline: Optional[HfPipeline] = None
         self.tools = tools
 
         self._owns_executor = async_executor is None

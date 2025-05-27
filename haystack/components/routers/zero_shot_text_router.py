@@ -9,7 +9,8 @@ from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
 
 with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
-    from transformers import Pipeline, pipeline
+    from transformers import Pipeline as HfPipeline
+    from transformers import pipeline
 
     from haystack.utils.hf import (  # pylint: disable=ungrouped-imports
         deserialize_hf_model_kwargs,
@@ -136,7 +137,7 @@ class TransformersZeroShotTextRouter:
             token=token,
         )
         self.huggingface_pipeline_kwargs = huggingface_pipeline_kwargs
-        self.pipeline: Optional["Pipeline"] = None
+        self.pipeline: Optional[HfPipeline] = None
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
