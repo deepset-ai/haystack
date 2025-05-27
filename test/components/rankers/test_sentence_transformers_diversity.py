@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+
 from unittest.mock import MagicMock, call, patch
 
 import pytest
@@ -8,10 +9,7 @@ import torch
 
 from haystack import Document, Pipeline
 from haystack.components.rankers import SentenceTransformersDiversityRanker
-from haystack.components.rankers.sentence_transformers_diversity import (
-    DiversityRankingSimilarity,
-    DiversityRankingStrategy,
-)
+from haystack.components.rankers.sentence_transformers_diversity import DiversityRankingSimilarity
 from haystack.utils import ComponentDevice
 from haystack.utils.auth import Secret
 
