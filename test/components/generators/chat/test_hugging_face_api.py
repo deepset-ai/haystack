@@ -24,6 +24,7 @@ from huggingface_hub import (
     ChatCompletionStreamOutputChoice,
     ChatCompletionStreamOutputDelta,
     ChatCompletionInputStreamOptions,
+    ChatCompletionStreamOutputUsage,
 )
 from huggingface_hub.errors import RepositoryNotFoundError
 
@@ -31,6 +32,7 @@ from haystack.components.generators.chat.hugging_face_api import (
     HuggingFaceAPIChatGenerator,
     _convert_hfapi_tool_calls,
     _convert_tools_to_hfapi_tools,
+    _convert_chat_completion_stream_output_to_streaming_chunk,
 )
 
 from haystack.tools import Tool
@@ -660,6 +662,80 @@ class TestHuggingFaceAPIChatGenerator:
         ]
         tool_calls = _convert_hfapi_tool_calls(hfapi_tool_calls)
         assert len(tool_calls) == 0
+
+    @pytest.mark.parametrize(
+        "hf_stream_output, expected_stream_chunk",
+        [
+            (
+                ChatCompletionStreamOutput(
+                    choices=[
+                        ChatCompletionStreamOutputChoice(
+                            delta=ChatCompletionStreamOutputDelta(role="assistant", content=" Paris"), index=0
+                        )
+                    ],
+                    created=1748339326,
+                    id="",
+                    model="microsoft/Phi-3.5-mini-instruct",
+                    system_fingerprint="3.2.1-sha-4d28897",
+                ),
+                StreamingChunk(
+                    content=" Paris",
+                    meta={
+                        "received_at": "2025-05-27T12:14:28.228852",
+                        "model": "microsoft/Phi-3.5-mini-instruct",
+                        "finish_reason": None,
+                    },
+                ),
+            ),
+            (
+                ChatCompletionStreamOutput(
+                    choices=[
+                        ChatCompletionStreamOutputChoice(
+                            delta=ChatCompletionStreamOutputDelta(role="assistant", content=""),
+                            index=0,
+                            finish_reason="stop",
+                        )
+                    ],
+                    created=1748339326,
+                    id="",
+                    model="microsoft/Phi-3.5-mini-instruct",
+                    system_fingerprint="3.2.1-sha-4d28897",
+                ),
+                StreamingChunk(
+                    content="",
+                    meta={
+                        "received_at": "2025-05-27T12:14:28.228852",
+                        "model": "microsoft/Phi-3.5-mini-instruct",
+                        "finish_reason": "stop",
+                    },
+                ),
+            ),
+            (
+                ChatCompletionStreamOutput(
+                    choices=[],
+                    created=1748339326,
+                    id="",
+                    model="microsoft/Phi-3.5-mini-instruct",
+                    system_fingerprint="3.2.1-sha-4d28897",
+                    usage=ChatCompletionStreamOutputUsage(completion_tokens=2, prompt_tokens=21, total_tokens=23),
+                ),
+                StreamingChunk(
+                    content="",
+                    meta={
+                        "received_at": "2025-05-27T12:14:28.228852",
+                        "model": "microsoft/Phi-3.5-mini-instruct",
+                        "usage": {"completion_tokens": 2, "prompt_tokens": 21},
+                    },
+                ),
+            ),
+        ],
+    )
+    def test_convert_chat_completion_stream_output_to_streaming_chunk(self, hf_stream_output, expected_stream_chunk):
+        converted_stream_chunk = _convert_chat_completion_stream_output_to_streaming_chunk(chunk=hf_stream_output)
+        # Remove timestamp from comparison since it's always the current time
+        converted_stream_chunk.meta.pop("received_at", None)
+        expected_stream_chunk.meta.pop("received_at", None)
+        assert converted_stream_chunk == expected_stream_chunk
 
     @pytest.mark.integration
     @pytest.mark.slow
