@@ -126,7 +126,5 @@ class DocumentWriter:
         if not hasattr(self.document_store, "write_documents_async"):
             raise TypeError(f"Document store {type(self.document_store).__name__} does not provide async support.")
 
-        documents_written = await self.document_store.write_documents_async(  # type: ignore
-            documents=documents, policy=policy
-        )
+        documents_written = await self.document_store.write_documents_async(documents=documents, policy=policy)
         return {"documents_written": documents_written}
