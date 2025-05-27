@@ -573,10 +573,7 @@ class OpenAIChatGenerator:
         """
 
         # get the component name and type
-        component_info = ComponentInfo(
-            type=f"{self.__class__.__module__}.{self.__class__.__name__}",
-            name=str(getattr(self, "__component_name__", None)),
-        )
+        component_info = ComponentInfo.from_component(self)
 
         # we stream the content of the chunk if it's not a tool or function call
         # if there are no choices, return an empty chunk
