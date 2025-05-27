@@ -28,10 +28,11 @@ class TruncationDirection(str, Enum):
 @component
 class HuggingFaceTEIRanker:
     """
-    Ranks a list of documents by their relevance to a given query using an external TEI reranking API.
+    Ranks documents based on their semantic similarity to the query.
 
-    This component sends the query and document texts to a configured TEI API endpoint
-    and retrieves a relevance-based ordering of the documents.
+    It can be used with a Text Embeddings Inference (TEI) API endpoint:
+    - [Self-hosted Text Embeddings Inference](https://github.com/huggingface/text-embeddings-inference)
+    - [Hugging Face Inference Endpoints](https://huggingface.co/inference-endpoints)
 
     Usage example:
     ```python
@@ -40,14 +41,20 @@ class HuggingFaceTEIRanker:
     from haystack.utils import Secret
 
     reranker = HuggingFaceTEIRanker(
-        url="https://api.my-tei-service.com",
+        url="http://localhost:8080",
         top_k=5,
         timeout=30,
         token=Secret.from_token("my_api_token")
     )
-    docs = [Document(content="First doc"), Document(content="Second doc"), ...]
-    result = reranker.run(query="example query", documents=docs)
+
+    docs = [Document(content="The capital of France is Paris"), Document(content="The capital of Germany is Berlin")]
+
+    result = reranker.run(query="What is the capital of France?", documents=docs)
+
     ranked_docs = result["documents"]
+    print(ranked_docs)
+    >> {'documents': [Document(id=..., content: 'the capital of France is Paris', score: 0.9979767),
+    >>                Document(id=..., content: 'the capital of Germany is Berlin', score: 0.13982213)]}
     ```
     """
 
@@ -58,25 +65,24 @@ class HuggingFaceTEIRanker:
         top_k: int = 10,
         raw_scores: bool = False,
         timeout: Optional[int] = 30,
-        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         max_retries: int = 3,
         retry_status_codes: Optional[List[int]] = None,
+        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
     ) -> None:
         """
         Initializes the TEI reranker component.
 
         :param url: Base URL of the TEI reranking service (for example, "https://api.example.com").
-        :param top_k: Maximum number of top documents to return (default: 10).
+        :param top_k: Maximum number of top documents to return.
         :param raw_scores: If True, include raw relevance scores in the API payload.
-        :param timeout: Request timeout in seconds (default: 30).
+        :param timeout: Request timeout in seconds.
+        :param max_retries: Maximum number of retry attempts for failed requests.
+        :param retry_status_codes: List of HTTP status codes that will trigger a retry.
+            When None, HTTP 408, 418, 429 and 503 will be retried (default: None).
         :param token: The Hugging Face token to use as HTTP bearer authorization. Not always required
             depending on your TEI server configuration.
             Check your HF token in your [account settings](https://huggingface.co/settings/tokens).
-        :param max_retries: Maximum number of retry attempts for failed requests (default: 3).
-        :param retry_status_codes: List of HTTP status codes that will trigger a retry.
-            When None, HTTP 408, 418, 429 and 503 will be retried (default: None).
         """
-        # Construct the full rerank endpoint
         self.url = url
         self.top_k = top_k
         self.timeout = timeout
@@ -87,9 +93,10 @@ class HuggingFaceTEIRanker:
 
     def to_dict(self) -> Dict[str, Any]:
         """
-        Serializes the component configuration to a dictionary for saving or logging.
+        Serializes the component to a dictionary.
 
-        :returns: A dict containing the component's initialization parameters.
+        :returns:
+            Dictionary with serialized data.
         """
         return default_to_dict(
             self,
@@ -104,11 +111,12 @@ class HuggingFaceTEIRanker:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "HuggingFaceTEIRanker":
         """
-        Deserializes the component from a configuration dictionary.
+        Deserializes the component from a dictionary.
 
-        :param data: Configuration dict produced by `to_dict()`.
-
-        :returns: An initialized `HuggingFaceTEIRanker` instance.
+        :param data:
+            Dictionary to deserialize from.
+        :returns:
+            Deserialized component.
         """
         deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
         return default_from_dict(cls, data)

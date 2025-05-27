@@ -143,7 +143,7 @@ class TestHuggingFaceTEIRanker:
             url="https://api.my-tei-service.com/rerank",
             json={"query": "test query", "texts": ["Document A", "Document B", "Document C"], "raw_scores": False},
             timeout=30,
-            headers={"Authorization": f"Bearer test_token"},
+            headers={"Authorization": "Bearer test_token"},
             attempts=4,
             status_codes_to_retry=[500, 502],
         )
@@ -175,7 +175,7 @@ class TestHuggingFaceTEIRanker:
         docs = [Document(content="Document A")]
 
         # Run the ranker with truncation direction
-        result = ranker.run(query="test query", documents=docs, truncation_direction=TruncationDirection.LEFT)
+        ranker.run(query="test query", documents=docs, truncation_direction=TruncationDirection.LEFT)
 
         # Check that request includes truncation parameters
         mock_request.assert_called_once_with(
@@ -189,7 +189,7 @@ class TestHuggingFaceTEIRanker:
                 "truncation_direction": "Left",
             },
             timeout=30,
-            headers={"Authorization": f"Bearer {token.resolve_value()}"},
+            headers={"Authorization": "Bearer test_token"},
             attempts=3,
             status_codes_to_retry=None,
         )
@@ -301,7 +301,7 @@ class TestHuggingFaceTEIRanker:
             url="https://api.my-tei-service.com/rerank",
             json={"query": "test query", "texts": ["Document A", "Document B", "Document C"], "raw_scores": False},
             timeout=30,
-            headers={"Authorization": f"Bearer test_token"},
+            headers={"Authorization": "Bearer test_token"},
             attempts=4,
             status_codes_to_retry=[500, 502],
         )
