@@ -1,6 +1,6 @@
 ---
 features:
   - |
-    Added new `HuggingFaceTEIRanker` component to support text-embeddings-inference service
-     for rerank models. This implementation allows integration with models like BAAI/bge-reranker-v2-m3
-     through HuggingFace Inference API. with both synchronous (`run`) and asynchronous (`run_async`) execution modes.
+    Added new `HuggingFaceTEIRanker` component to enable reranking with Text Embeddings Inference (TEI) API.
+    This component supports both both self-hosted Text Embeddings Inference services and Hugging Face Inference
+    Endpoints.
