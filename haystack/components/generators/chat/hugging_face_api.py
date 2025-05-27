@@ -444,8 +444,8 @@ class HuggingFaceAPIChatGenerator:
             streaming_callback(streaming_chunk)
 
         message = _convert_streaming_chunks_to_chat_message(chunks=streaming_chunks)
-        if message["meta"].get("usage") is None:
-            message["meta"]["usage"] = {"prompt_tokens": 0, "completion_tokens": 0}
+        if message.meta.get("usage") is None:
+            message.meta["usage"] = {"prompt_tokens": 0, "completion_tokens": 0}
 
         return {"replies": [message]}
 
@@ -508,8 +508,8 @@ class HuggingFaceAPIChatGenerator:
             await streaming_callback(stream_chunk)  # type: ignore
 
         message = _convert_streaming_chunks_to_chat_message(chunks=streaming_chunks)
-        if message["meta"].get("usage") is None:
-            message["meta"]["usage"] = {"prompt_tokens": 0, "completion_tokens": 0}
+        if message.meta.get("usage") is None:
+            message.meta["usage"] = {"prompt_tokens": 0, "completion_tokens": 0}
 
         return {"replies": [message]}
 
