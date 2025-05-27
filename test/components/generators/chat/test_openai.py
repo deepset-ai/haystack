@@ -24,7 +24,12 @@ from haystack.dataclasses import StreamingChunk, ComponentInfo
 from haystack.utils.auth import Secret
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.tools import ComponentTool, Tool
-from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.components.generators.chat.openai import (
+    OpenAIChatGenerator,
+    _check_finish_reason,
+    _convert_streaming_chunks_to_chat_message,
+    _convert_chat_completion_chunk_to_streaming_chunk,
+)
 from haystack.tools.toolset import Toolset
 
 
@@ -429,7 +434,6 @@ class TestOpenAIChatGenerator:
 
     def test_check_abnormal_completions(self, caplog):
         caplog.set_level(logging.INFO)
-        component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
         messages = [
             ChatMessage.from_assistant(
                 "", meta={"finish_reason": "content_filter" if i % 2 == 0 else "length", "index": i}
@@ -438,7 +442,7 @@ class TestOpenAIChatGenerator:
         ]
 
         for m in messages:
-            component._check_finish_reason(m.meta)
+            _check_finish_reason(m.meta)
 
         # check truncation warning
         message_template = (
@@ -595,7 +599,6 @@ class TestOpenAIChatGenerator:
         assert message.meta["usage"]["completion_tokens"] == 47
 
     def test_convert_streaming_chunks_to_chat_message_tool_calls_in_any_chunk(self):
-        component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
         chunk = chat_completion_chunk.ChatCompletionChunk(
             id="chatcmpl-B2g1XYv1WzALulC5c8uLtJgvEB48I",
             choices=[
@@ -878,7 +881,7 @@ class TestOpenAIChatGenerator:
         ]
 
         # Convert chunks to a chat message
-        result = component._convert_streaming_chunks_to_chat_message(chunk, chunks)
+        result = _convert_streaming_chunks_to_chat_message(chunks=chunks)
 
         assert not result.texts
         assert not result.text
@@ -899,7 +902,6 @@ class TestOpenAIChatGenerator:
         assert result.meta["completion_start_time"] == "2025-02-19T16:02:55.910076"
 
     def test_convert_usage_chunk_to_streaming_chunk(self):
-        component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
         chunk = ChatCompletionChunk(
             id="chatcmpl-BC1y4wqIhe17R8sv3lgLcWlB4tXCw",
             choices=[],
@@ -918,7 +920,7 @@ class TestOpenAIChatGenerator:
                 prompt_tokens_details=PromptTokensDetails(audio_tokens=0, cached_tokens=0),
             ),
         )
-        result = component._convert_chat_completion_chunk_to_streaming_chunk(chunk)
+        result = _convert_chat_completion_chunk_to_streaming_chunk(chunk)
         assert result.content == ""
         assert result.meta["model"] == "gpt-4o-mini-2024-07-18"
         assert result.meta["received_at"] is not None
