@@ -4,10 +4,10 @@
 
 import copy
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from haystack import logging
-from haystack.dataclasses import ChatMessage, StreamingChunk
+from haystack.dataclasses import ChatMessage, ComponentInfo, StreamingCallbackT, StreamingChunk
 from haystack.lazy_imports import LazyImport
 from haystack.utils.auth import Secret
 from haystack.utils.device import ComponentDevice
@@ -349,7 +349,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
         Streaming handler for HuggingFaceLocalGenerator and HuggingFaceLocalChatGenerator.
 
         Note: This is a helper class for HuggingFaceLocalGenerator & HuggingFaceLocalChatGenerator enabling streaming
-        of generated text via Haystack Callable[StreamingChunk, None] callbacks.
+        of generated text via Haystack StreamingCallbackT callbacks.
 
         Do not use this class directly.
         """
@@ -357,12 +357,14 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
         def __init__(
             self,
             tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
-            stream_handler: Callable[[StreamingChunk], None],
+            stream_handler: StreamingCallbackT,
             stop_words: Optional[List[str]] = None,
+            component_info: Optional[ComponentInfo] = None,
         ):
             super().__init__(tokenizer=tokenizer, skip_prompt=True)  # type: ignore
             self.token_handler = stream_handler
             self.stop_words = stop_words or []
+            self.component_info = component_info
             self._call_counter = 0
 
         def on_finalized_text(self, word: str, stream_end: bool = False) -> None:
@@ -371,5 +373,10 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
             word_to_send = word + "\n" if stream_end else word
             if word_to_send.strip() not in self.stop_words:
                 self.token_handler(
-                    StreamingChunk(content=word_to_send, index=0, start=True if self._call_counter == 1 else None)
+                    StreamingChunk(
+                        content=word_to_send,
+                        index=0,
+                        start=True if self._call_counter == 1 else None,
+                        component_info=self.component_info,
+                    )
                 )

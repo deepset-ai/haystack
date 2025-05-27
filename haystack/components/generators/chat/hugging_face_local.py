@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Callable, Dict, List, Literal, Optional, Union, cast
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall, select_streaming_callback
+from haystack.dataclasses import ChatMessage, ComponentInfo, StreamingCallbackT, ToolCall, select_streaming_callback
 from haystack.lazy_imports import LazyImport
 from haystack.tools import (
     Tool,
@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as torch_and_transformers_import:
     from huggingface_hub import model_info
+    from transformers import Pipeline as HfPipeline
     from transformers import StoppingCriteriaList, pipeline
     from transformers.tokenization_utils import PreTrainedTokenizer
     from transformers.tokenization_utils_fast import PreTrainedTokenizerFast
@@ -130,7 +131,7 @@ class HuggingFaceLocalChatGenerator:
         generation_kwargs: Optional[Dict[str, Any]] = None,
         huggingface_pipeline_kwargs: Optional[Dict[str, Any]] = None,
         stop_words: Optional[List[str]] = None,
-        streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
+        streaming_callback: Optional[StreamingCallbackT] = None,
         tools: Optional[Union[List[Tool], Toolset]] = None,
         tool_parsing_function: Optional[Callable[[str], Optional[List[ToolCall]]]] = None,
         async_executor: Optional[ThreadPoolExecutor] = None,
@@ -235,7 +236,7 @@ class HuggingFaceLocalChatGenerator:
         self.generation_kwargs = generation_kwargs
         self.chat_template = chat_template
         self.streaming_callback = streaming_callback
-        self.pipeline = None
+        self.pipeline: Optional[HfPipeline] = None
         self.tools = tools
 
         self._owns_executor = async_executor is None
@@ -330,7 +331,7 @@ class HuggingFaceLocalChatGenerator:
         self,
         messages: List[ChatMessage],
         generation_kwargs: Optional[Dict[str, Any]] = None,
-        streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
+        streaming_callback: Optional[StreamingCallbackT] = None,
         tools: Optional[Union[List[Tool], Toolset]] = None,
     ):
         """
@@ -352,9 +353,11 @@ class HuggingFaceLocalChatGenerator:
         tools = tools or self.tools
         if tools and streaming_callback is not None:
             raise ValueError("Using tools and streaming at the same time is not supported. Please choose one.")
-        _check_duplicate_tool_names(tools)
+        _check_duplicate_tool_names(list(tools or []))
 
         tokenizer = self.pipeline.tokenizer
+        # initialized text-generation/text2text-generation pipelines always have a non-None tokenizer
+        assert tokenizer is not None
 
         # Check and update generation parameters
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
@@ -381,9 +384,15 @@ class HuggingFaceLocalChatGenerator:
                 )
                 logger.warning(msg, num_responses=num_responses)
                 generation_kwargs["num_return_sequences"] = 1
+
+            # Get component name and type
+            component_info = ComponentInfo.from_component(self)
             # streamer parameter hooks into HF streaming, HFTokenStreamingHandler is an adapter to our streaming
             generation_kwargs["streamer"] = HFTokenStreamingHandler(
-                tokenizer=tokenizer, stream_handler=streaming_callback, stop_words=stop_words
+                tokenizer=tokenizer,
+                stream_handler=streaming_callback,
+                stop_words=stop_words,
+                component_info=component_info,
             )
 
         # convert messages to HF format
@@ -399,6 +408,9 @@ class HuggingFaceLocalChatGenerator:
             add_generation_prompt=True,
             tools=[tc.tool_spec for tc in tools] if tools else None,
         )
+
+        # prepared_prompt is a string since we set tokenize=False https://hf.co/docs/transformers/main/chat_templating
+        assert isinstance(prepared_prompt, str)
 
         # Avoid some unnecessary warnings in the generation pipeline call
         generation_kwargs["pad_token_id"] = (
@@ -494,7 +506,7 @@ class HuggingFaceLocalChatGenerator:
         self,
         messages: List[ChatMessage],
         generation_kwargs: Optional[Dict[str, Any]] = None,
-        streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
+        streaming_callback: Optional[StreamingCallbackT] = None,
         tools: Optional[Union[List[Tool], Toolset]] = None,
     ):
         """
@@ -517,9 +529,11 @@ class HuggingFaceLocalChatGenerator:
         tools = tools or self.tools
         if tools and streaming_callback is not None:
             raise ValueError("Using tools and streaming at the same time is not supported. Please choose one.")
-        _check_duplicate_tool_names(tools)
+        _check_duplicate_tool_names(list(tools or []))
 
         tokenizer = self.pipeline.tokenizer
+        # initialized text-generation/text2text-generation pipelines always have a non-None tokenizer
+        assert tokenizer is not None
 
         # Check and update generation parameters
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
@@ -548,7 +562,7 @@ class HuggingFaceLocalChatGenerator:
         tokenizer: Union["PreTrainedTokenizer", "PreTrainedTokenizerFast"],
         generation_kwargs: Dict[str, Any],
         stop_words: Optional[List[str]],
-        streaming_callback: Callable[[StreamingChunk], None],
+        streaming_callback: StreamingCallbackT,
     ):
         """
         Handles async streaming generation of responses.
@@ -559,16 +573,19 @@ class HuggingFaceLocalChatGenerator:
             hf_messages, tokenize=False, chat_template=self.chat_template, add_generation_prompt=True
         )
 
-        # prepared_prompt is a string, but transformers has some type issues
-        prepared_prompt = cast(str, prepared_prompt)
+        # prepared_prompt is a string since we set tokenize=False https://hf.co/docs/transformers/main/chat_templating
+        assert isinstance(prepared_prompt, str)
 
         # Avoid some unnecessary warnings in the generation pipeline call
         generation_kwargs["pad_token_id"] = (
             generation_kwargs.get("pad_token_id", tokenizer.pad_token_id) or tokenizer.eos_token_id
         )
 
-        # Set up streaming handler
-        generation_kwargs["streamer"] = HFTokenStreamingHandler(tokenizer, streaming_callback, stop_words)
+        # get the component name and type
+        component_info = ComponentInfo.from_component(self)
+        generation_kwargs["streamer"] = HFTokenStreamingHandler(
+            tokenizer, streaming_callback, stop_words, component_info
+        )
 
         # Generate responses asynchronously
         output = await asyncio.get_running_loop().run_in_executor(

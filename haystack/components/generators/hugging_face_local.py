@@ -2,10 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Callable, Dict, List, Literal, Optional, cast
+from typing import Any, Dict, List, Literal, Optional, cast
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.dataclasses import StreamingChunk
+from haystack.dataclasses import StreamingCallbackT, select_streaming_callback
 from haystack.lazy_imports import LazyImport
 from haystack.utils import (
     ComponentDevice,
@@ -21,7 +21,8 @@ logger = logging.getLogger(__name__)
 SUPPORTED_TASKS = ["text-generation", "text2text-generation"]
 
 with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transformers_import:
-    from transformers import Pipeline, StoppingCriteriaList, pipeline
+    from transformers import Pipeline as HfPipeline
+    from transformers import StoppingCriteriaList, pipeline
 
     from haystack.utils.hf import (  # pylint: disable=ungrouped-imports
         HFTokenStreamingHandler,
@@ -63,7 +64,7 @@ class HuggingFaceLocalGenerator:
         generation_kwargs: Optional[Dict[str, Any]] = None,
         huggingface_pipeline_kwargs: Optional[Dict[str, Any]] = None,
         stop_words: Optional[List[str]] = None,
-        streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
+        streaming_callback: Optional[StreamingCallbackT] = None,
     ):
         """
         Creates an instance of a HuggingFaceLocalGenerator.
@@ -126,7 +127,7 @@ class HuggingFaceLocalGenerator:
         self.huggingface_pipeline_kwargs = huggingface_pipeline_kwargs
         self.generation_kwargs = generation_kwargs
         self.stop_words = stop_words
-        self.pipeline: Optional[Pipeline] = None
+        self.pipeline: Optional[HfPipeline] = None
         self.stopping_criteria_list: Optional[StoppingCriteriaList] = None
         self.streaming_callback = streaming_callback
 
@@ -152,7 +153,7 @@ class HuggingFaceLocalGenerator:
             return
 
         if self.pipeline is None:
-            self.pipeline = cast(Pipeline, pipeline(**self.huggingface_pipeline_kwargs))
+            self.pipeline = cast(HfPipeline, pipeline(**self.huggingface_pipeline_kwargs))
 
         if self.stop_words:
             # text-generation and text2text-generation pipelines always have a non-None tokenizer
@@ -210,7 +211,7 @@ class HuggingFaceLocalGenerator:
     def run(
         self,
         prompt: str,
-        streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
+        streaming_callback: Optional[StreamingCallbackT] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
@@ -239,7 +240,9 @@ class HuggingFaceLocalGenerator:
         updated_generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
 
         # check if streaming_callback is passed
-        streaming_callback = streaming_callback or self.streaming_callback
+        streaming_callback = select_streaming_callback(
+            init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=False
+        )
 
         if streaming_callback:
             num_responses = updated_generation_kwargs.get("num_return_sequences", 1)

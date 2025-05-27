@@ -8,7 +8,7 @@ from typing import Any, AsyncIterable, Dict, Iterable, List, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.generators.chat.openai import _convert_streaming_chunks_to_chat_message
-from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall, select_streaming_callback
+from haystack.dataclasses import ChatMessage, ComponentInfo, StreamingChunk, ToolCall, select_streaming_callback
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT
 from haystack.lazy_imports import LazyImport
 from haystack.tools import (
@@ -452,8 +452,8 @@ class HuggingFaceAPIChatGenerator:
             streaming_callback(streaming_chunk)
 
         message = _convert_streaming_chunks_to_chat_message(chunks=streaming_chunks)
-        if message["meta"].get("usage") is None:
-            message["meta"]["usage"] = {"prompt_tokens": 0, "completion_tokens": 0}
+        if message.meta.get("usage") is None:
+            message.meta["usage"] = {"prompt_tokens": 0, "completion_tokens": 0}
 
         return {"replies": [message]}
 
@@ -515,8 +515,8 @@ class HuggingFaceAPIChatGenerator:
             await streaming_callback(stream_chunk)  # type: ignore
 
         message = _convert_streaming_chunks_to_chat_message(chunks=streaming_chunks)
-        if message["meta"].get("usage") is None:
-            message["meta"]["usage"] = {"prompt_tokens": 0, "completion_tokens": 0}
+        if message.meta.get("usage") is None:
+            message.meta["usage"] = {"prompt_tokens": 0, "completion_tokens": 0}
 
         return {"replies": [message]}
 

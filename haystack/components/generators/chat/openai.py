@@ -16,6 +16,7 @@ from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import (
     AsyncStreamingCallbackT,
     ChatMessage,
+    ComponentInfo,
     StreamingCallbackT,
     StreamingChunk,
     SyncStreamingCallbackT,
@@ -417,10 +418,13 @@ class OpenAIChatGenerator:
         }
 
     def _handle_stream_response(self, chat_completion: Stream, callback: SyncStreamingCallbackT) -> List[ChatMessage]:
+        component_info = ComponentInfo.from_component(self)
         chunks: List[StreamingChunk] = []
         for chunk in chat_completion:  # pylint: disable=not-an-iterable
             assert len(chunk.choices) <= 1, "Streaming responses should have at most one choice."
-            chunk_deltas = _convert_chat_completion_chunk_to_streaming_chunk(chunk=chunk, previous_chunks=chunks)
+            chunk_deltas = _convert_chat_completion_chunk_to_streaming_chunk(
+                chunk=chunk, previous_chunks=chunks, component_info=component_info
+            )
             for chunk_delta in chunk_deltas:
                 chunks.append(chunk_delta)
                 callback(chunk_delta)
@@ -429,10 +433,13 @@ class OpenAIChatGenerator:
     async def _handle_async_stream_response(
         self, chat_completion: AsyncStream, callback: AsyncStreamingCallbackT
     ) -> List[ChatMessage]:
+        component_info = ComponentInfo.from_component(self)
         chunks: List[StreamingChunk] = []
         async for chunk in chat_completion:  # pylint: disable=not-an-iterable
             assert len(chunk.choices) <= 1, "Streaming responses should have at most one choice."
-            chunk_deltas = _convert_chat_completion_chunk_to_streaming_chunk(chunk=chunk, previous_chunks=chunks)
+            chunk_deltas = _convert_chat_completion_chunk_to_streaming_chunk(
+                chunk=chunk, previous_chunks=chunks, component_info=component_info
+            )
             for chunk_delta in chunk_deltas:
                 chunks.append(chunk_delta)
                 await callback(chunk_delta)
@@ -559,7 +566,7 @@ def _convert_chat_completion_to_chat_message(completion: ChatCompletion, choice:
 
 
 def _convert_chat_completion_chunk_to_streaming_chunk(
-    chunk: ChatCompletionChunk, previous_chunks: List[StreamingChunk]
+    chunk: ChatCompletionChunk, previous_chunks: List[StreamingChunk], component_info: Optional[ComponentInfo] = None
 ) -> List[StreamingChunk]:
     """
     Converts the streaming response chunk from the OpenAI API to a StreamingChunk.
@@ -576,6 +583,7 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
         return [
             StreamingChunk(
                 content="",
+                component_info=component_info,
                 # Index is None since it's only set to an int when a content block is present
                 index=None,
                 meta={
@@ -597,6 +605,7 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
             chunk_message = StreamingChunk(
                 content=content,
                 # We adopt the tool_call.index as the index of the chunk
+                component_info=component_info,
                 index=tool_call.index,
                 tool_call=ToolCallDelta(
                     id=tool_call.id,
@@ -618,6 +627,7 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
 
     chunk_message = StreamingChunk(
         content=content,
+        component_info=component_info,
         # We set the index to be 0 since if text content is being streamed then no tool calls are being streamed
         # NOTE: We may need to revisit this if OpenAI allows planning/thinking content before tool calls like
         #       Anthropic Claude

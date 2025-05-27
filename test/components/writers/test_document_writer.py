@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+
 import pytest
 
 from haystack import Document, DeserializationError
@@ -8,6 +9,19 @@ from haystack.testing.factory import document_store_class
 from haystack.components.writers.document_writer import DocumentWriter
 from haystack.document_stores.types import DuplicatePolicy
 from haystack.document_stores.in_memory import InMemoryDocumentStore
+
+
+@pytest.fixture
+def document_store():
+    """
+    Create a fresh InMemoryDocumentStore for each test with proper cleanup.
+
+    Using a fixture ensures the ThreadPoolExecutor is shut down immediately after test completion rather than
+    during (unpredictable) garbage collection, which can make the CI hang.
+    """
+    store = InMemoryDocumentStore()
+    yield store
+    store.shutdown()
 
 
 class TestDocumentWriter:
@@ -68,8 +82,7 @@ class TestDocumentWriter:
         with pytest.raises(DeserializationError):
             DocumentWriter.from_dict(data)
 
-    def test_run(self):
-        document_store = InMemoryDocumentStore()
+    def test_run(self, document_store):
         writer = DocumentWriter(document_store)
         documents = [
             Document(content="This is the text of a document."),
@@ -79,8 +92,7 @@ class TestDocumentWriter:
         result = writer.run(documents=documents)
         assert result["documents_written"] == 2
 
-    def test_run_skip_policy(self):
-        document_store = InMemoryDocumentStore()
+    def test_run_skip_policy(self, document_store):
         writer = DocumentWriter(document_store, policy=DuplicatePolicy.SKIP)
         documents = [
             Document(content="This is the text of a document."),
@@ -107,8 +119,7 @@ class TestDocumentWriter:
             await writer.run_async(documents=documents)
 
     @pytest.mark.asyncio
-    async def test_run_async(self):
-        document_store = InMemoryDocumentStore()
+    async def test_run_async(self, document_store):
         writer = DocumentWriter(document_store)
         documents = [
             Document(content="This is the text of a document."),
@@ -119,8 +130,7 @@ class TestDocumentWriter:
         assert result["documents_written"] == 2
 
     @pytest.mark.asyncio
-    async def test_run_async_skip_policy(self):
-        document_store = InMemoryDocumentStore()
+    async def test_run_async_skip_policy(self, document_store):
         writer = DocumentWriter(document_store, policy=DuplicatePolicy.SKIP)
         documents = [
             Document(content="This is the text of a document."),

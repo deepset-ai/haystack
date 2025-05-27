@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+
 from unittest.mock import patch, MagicMock
 import pytest
 
@@ -20,11 +21,16 @@ from openai.types.chat import chat_completion_chunk
 
 from haystack import component
 from haystack.components.generators.utils import print_streaming_chunk
-from haystack.dataclasses import StreamingChunk
+from haystack.dataclasses import StreamingChunk, ComponentInfo
 from haystack.utils.auth import Secret
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.tools import ComponentTool, Tool
-from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.components.generators.chat.openai import (
+    OpenAIChatGenerator,
+    _check_finish_reason,
+    _convert_streaming_chunks_to_chat_message,
+    _convert_chat_completion_chunk_to_streaming_chunk,
+)
 from haystack.tools.toolset import Toolset
 
 
@@ -429,7 +435,6 @@ class TestOpenAIChatGenerator:
 
     def test_check_abnormal_completions(self, caplog):
         caplog.set_level(logging.INFO)
-        component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
         messages = [
             ChatMessage.from_assistant(
                 "", meta={"finish_reason": "content_filter" if i % 2 == 0 else "length", "index": i}
@@ -438,7 +443,7 @@ class TestOpenAIChatGenerator:
         ]
 
         for m in messages:
-            component._check_finish_reason(m.meta)
+            _check_finish_reason(m.meta)
 
         # check truncation warning
         message_template = (
@@ -973,7 +978,6 @@ class TestOpenAIChatGenerator:
         assert result.meta["completion_start_time"] is not None
 
     def test_convert_usage_chunk_to_streaming_chunk(self):
-        component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
         chunk = ChatCompletionChunk(
             id="chatcmpl-BC1y4wqIhe17R8sv3lgLcWlB4tXCw",
             choices=[],
@@ -992,7 +996,7 @@ class TestOpenAIChatGenerator:
                 prompt_tokens_details=PromptTokensDetails(audio_tokens=0, cached_tokens=0),
             ),
         )
-        result = component._convert_chat_completion_chunk_to_streaming_chunk(chunk=chunk, previous_chunks=[])[0]
+        result = _convert_chat_completion_chunk_to_streaming_chunk(chunk=chunk, previous_chunks=[])[0]
         assert result.content == ""
         assert result.start is None
         assert result.tool_call is None

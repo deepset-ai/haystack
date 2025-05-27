@@ -6,7 +6,7 @@ import pytest
 import logging
 from pandas import read_csv
 from io import StringIO
-from haystack import Document, Pipeline
+from haystack import Document
 from haystack.core.serialization import component_from_dict, component_to_dict
 from haystack.components.preprocessors.csv_document_splitter import CSVDocumentSplitter
 
