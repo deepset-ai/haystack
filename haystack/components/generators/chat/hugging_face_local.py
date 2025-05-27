@@ -389,7 +389,10 @@ class HuggingFaceLocalChatGenerator:
             component_info = ComponentInfo.from_component(self)
             # streamer parameter hooks into HF streaming, HFTokenStreamingHandler is an adapter to our streaming
             generation_kwargs["streamer"] = HFTokenStreamingHandler(
-                tokenizer, streaming_callback, stop_words, component_info
+                tokenizer=tokenizer,
+                stream_handler=streaming_callback,
+                stop_words=stop_words,
+                component_info=component_info,
             )
 
         # convert messages to HF format
