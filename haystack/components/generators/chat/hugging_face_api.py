@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any, AsyncIterable, Dict, Iterable, List, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.components.generators.chat.openai import _convert_streaming_chunks_to_chat_message
+from haystack.components.generators.utils import _convert_streaming_chunks_to_chat_message
 from haystack.dataclasses import ChatMessage, ComponentInfo, StreamingChunk, ToolCall, select_streaming_callback
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT
 from haystack.lazy_imports import LazyImport
