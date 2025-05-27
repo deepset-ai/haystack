@@ -20,6 +20,7 @@ _import_structure = {
         "StreamingCallbackT",
         "SyncStreamingCallbackT",
         "select_streaming_callback",
+        "ComponentInfo",
     ],
 }
 
@@ -32,6 +33,7 @@ if TYPE_CHECKING:
     from .state import State
     from .streaming_chunk import (
         AsyncStreamingCallbackT,
+        ComponentInfo,
         StreamingCallbackT,
         StreamingChunk,
         SyncStreamingCallbackT,

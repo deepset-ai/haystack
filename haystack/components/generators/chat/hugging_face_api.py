@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any, AsyncIterable, Dict, Iterable, List, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall, select_streaming_callback
+from haystack.dataclasses import ChatMessage, ComponentInfo, StreamingChunk, ToolCall, select_streaming_callback
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT
 from haystack.lazy_imports import LazyImport
 from haystack.tools import (
@@ -409,6 +409,10 @@ class HuggingFaceAPIChatGenerator:
         usage = None
         meta: Dict[str, Any] = {}
 
+        # get the component name and type
+        component_info = ComponentInfo.from_component(self)
+
+        # Set up streaming handler
         for chunk in api_output:
             # The chunk with usage returns an empty array for choices
             if len(chunk.choices) > 0:
@@ -423,7 +427,7 @@ class HuggingFaceAPIChatGenerator:
                 if choice.finish_reason:
                     finish_reason = choice.finish_reason
 
-                stream_chunk = StreamingChunk(text, meta)
+                stream_chunk = StreamingChunk(content=text, meta=meta, component_info=component_info)
                 streaming_callback(stream_chunk)
 
             if chunk.usage:
@@ -505,6 +509,9 @@ class HuggingFaceAPIChatGenerator:
         usage = None
         meta: Dict[str, Any] = {}
 
+        # get the component name and type
+        component_info = ComponentInfo.from_component(self)
+
         async for chunk in api_output:
             # The chunk with usage returns an empty array for choices
             if len(chunk.choices) > 0:
@@ -516,10 +523,7 @@ class HuggingFaceAPIChatGenerator:
                 text = choice.delta.content or ""
                 generated_text += text
 
-                if choice.finish_reason:
-                    finish_reason = choice.finish_reason
-
-                stream_chunk = StreamingChunk(text, meta)
+                stream_chunk = StreamingChunk(content=text, meta=meta, component_info=component_info)
                 await streaming_callback(stream_chunk)  # type: ignore
 
             if chunk.usage:
