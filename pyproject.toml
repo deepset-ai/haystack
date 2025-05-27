@@ -290,14 +290,11 @@ disallow_incomplete_defs = true
 warn_return_any = false
 warn_unused_configs = true
 ignore_missing_imports = true
+check_untyped_defs = true
 
 [[tool.mypy.overrides]]
 # TODO: Fix component typings
-module = "haystack.components.*"
-disallow_incomplete_defs = false
-
-[[tool.mypy.overrides]]
-module = "haystack.testing.*"
+module = ["haystack.components.*", "haystack.testing.*"]
 disallow_incomplete_defs = false
 
 [tool.ruff]

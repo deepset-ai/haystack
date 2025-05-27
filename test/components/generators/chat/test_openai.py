@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+
 from unittest.mock import patch, MagicMock
 import pytest
 
@@ -19,7 +20,7 @@ from openai.types.chat import chat_completion_chunk
 
 from haystack import component
 from haystack.components.generators.utils import print_streaming_chunk
-from haystack.dataclasses import StreamingChunk
+from haystack.dataclasses import StreamingChunk, ComponentInfo
 from haystack.utils.auth import Secret
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.tools import ComponentTool, Tool
@@ -627,6 +628,7 @@ class TestOpenAIChatGenerator:
                     "finish_reason": None,
                     "received_at": "2025-02-19T16:02:55.910076",
                 },
+                component_info=ComponentInfo(name="test", type="test"),
             ),
             StreamingChunk(
                 content="",
@@ -646,6 +648,7 @@ class TestOpenAIChatGenerator:
                     "finish_reason": None,
                     "received_at": "2025-02-19T16:02:55.913919",
                 },
+                component_info=ComponentInfo(name="test", type="test"),
             ),
             StreamingChunk(
                 content="",
@@ -663,6 +666,7 @@ class TestOpenAIChatGenerator:
                     "finish_reason": None,
                     "received_at": "2025-02-19T16:02:55.914439",
                 },
+                component_info=ComponentInfo(name="test", type="test"),
             ),
             StreamingChunk(
                 content="",
@@ -680,6 +684,7 @@ class TestOpenAIChatGenerator:
                     "finish_reason": None,
                     "received_at": "2025-02-19T16:02:55.924146",
                 },
+                component_info=ComponentInfo(name="test", type="test"),
             ),
             StreamingChunk(
                 content="",
@@ -697,6 +702,7 @@ class TestOpenAIChatGenerator:
                     "finish_reason": None,
                     "received_at": "2025-02-19T16:02:55.924420",
                 },
+                component_info=ComponentInfo(name="test", type="test"),
             ),
             StreamingChunk(
                 content="",
@@ -714,6 +720,7 @@ class TestOpenAIChatGenerator:
                     "finish_reason": None,
                     "received_at": "2025-02-19T16:02:55.944398",
                 },
+                component_info=ComponentInfo(name="test", type="test"),
             ),
             StreamingChunk(
                 content="",
@@ -731,6 +738,7 @@ class TestOpenAIChatGenerator:
                     "finish_reason": None,
                     "received_at": "2025-02-19T16:02:55.944958",
                 },
+                component_info=ComponentInfo(name="test", type="test"),
             ),
             StreamingChunk(
                 content="",
@@ -765,6 +773,7 @@ class TestOpenAIChatGenerator:
                     "finish_reason": None,
                     "received_at": "2025-02-19T16:02:55.946018",
                 },
+                component_info=ComponentInfo(name="test", type="test"),
             ),
             StreamingChunk(
                 content="",
@@ -784,6 +793,7 @@ class TestOpenAIChatGenerator:
                     "finish_reason": None,
                     "received_at": "2025-02-19T16:02:55.946578",
                 },
+                component_info=ComponentInfo(name="test", type="test"),
             ),
             StreamingChunk(
                 content="",
@@ -801,6 +811,7 @@ class TestOpenAIChatGenerator:
                     "finish_reason": None,
                     "received_at": "2025-02-19T16:02:55.946981",
                 },
+                component_info=ComponentInfo(name="test", type="test"),
             ),
             StreamingChunk(
                 content="",
@@ -818,6 +829,7 @@ class TestOpenAIChatGenerator:
                     "finish_reason": None,
                     "received_at": "2025-02-19T16:02:55.947411",
                 },
+                component_info=ComponentInfo(name="test", type="test"),
             ),
             StreamingChunk(
                 content="",
@@ -835,6 +847,7 @@ class TestOpenAIChatGenerator:
                     "finish_reason": None,
                     "received_at": "2025-02-19T16:02:55.947643",
                 },
+                component_info=ComponentInfo(name="test", type="test"),
             ),
             StreamingChunk(
                 content="",
@@ -852,6 +865,7 @@ class TestOpenAIChatGenerator:
                     "finish_reason": None,
                     "received_at": "2025-02-19T16:02:55.947939",
                 },
+                component_info=ComponentInfo(name="test", type="test"),
             ),
             StreamingChunk(
                 content="",
@@ -862,6 +876,7 @@ class TestOpenAIChatGenerator:
                     "finish_reason": "tool_calls",
                     "received_at": "2025-02-19T16:02:55.948772",
                 },
+                component_info=ComponentInfo(name="test", type="test"),
             ),
         ]
 

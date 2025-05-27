@@ -16,6 +16,7 @@ from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import (
     AsyncStreamingCallbackT,
     ChatMessage,
+    ComponentInfo,
     StreamingCallbackT,
     StreamingChunk,
     SyncStreamingCallbackT,
@@ -416,10 +417,11 @@ class OpenAIChatGenerator:
         }
 
     def _handle_stream_response(self, chat_completion: Stream, callback: SyncStreamingCallbackT) -> List[ChatMessage]:
+        component_info = ComponentInfo.from_component(self)
         chunks: List[StreamingChunk] = []
         for chunk in chat_completion:  # pylint: disable=not-an-iterable
             assert len(chunk.choices) <= 1, "Streaming responses should have at most one choice."
-            chunk_delta = _convert_chat_completion_chunk_to_streaming_chunk(chunk=chunk)
+            chunk_delta = _convert_chat_completion_chunk_to_streaming_chunk(chunk=chunk, component_info=component_info)
             chunks.append(chunk_delta)
             callback(chunk_delta)
         return [_convert_streaming_chunks_to_chat_message(chunks=chunks)]
@@ -427,10 +429,11 @@ class OpenAIChatGenerator:
     async def _handle_async_stream_response(
         self, chat_completion: AsyncStream, callback: AsyncStreamingCallbackT
     ) -> List[ChatMessage]:
+        component_info = ComponentInfo.from_component(self)
         chunks: List[StreamingChunk] = []
         async for chunk in chat_completion:  # pylint: disable=not-an-iterable
             assert len(chunk.choices) <= 1, "Streaming responses should have at most one choice."
-            chunk_delta = _convert_chat_completion_chunk_to_streaming_chunk(chunk=chunk)
+            chunk_delta = _convert_chat_completion_chunk_to_streaming_chunk(chunk=chunk, component_info=component_info)
             chunks.append(chunk_delta)
             await callback(chunk_delta)
         return [_convert_streaming_chunks_to_chat_message(chunks=chunks)]
@@ -555,7 +558,9 @@ def _convert_chat_completion_to_chat_message(completion: ChatCompletion, choice:
     return chat_message
 
 
-def _convert_chat_completion_chunk_to_streaming_chunk(chunk: ChatCompletionChunk) -> StreamingChunk:
+def _convert_chat_completion_chunk_to_streaming_chunk(
+    chunk: ChatCompletionChunk, component_info: Optional[ComponentInfo] = None
+) -> StreamingChunk:
     """
     Converts the streaming response chunk from the OpenAI API to a StreamingChunk.
 
@@ -574,6 +579,7 @@ def _convert_chat_completion_chunk_to_streaming_chunk(chunk: ChatCompletionChunk
                 "received_at": datetime.now().isoformat(),
                 "usage": _serialize_usage(chunk.usage),
             },
+            component_info=component_info,
         )
 
     choice: ChunkChoice = chunk.choices[0]
@@ -589,6 +595,7 @@ def _convert_chat_completion_chunk_to_streaming_chunk(chunk: ChatCompletionChunk
             "received_at": datetime.now().isoformat(),
             "usage": _serialize_usage(chunk.usage),
         },
+        component_info=component_info,
     )
     return chunk_message
 

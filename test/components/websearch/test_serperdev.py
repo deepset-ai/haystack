@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import json
 import os
 from unittest.mock import Mock, patch
 from haystack.utils.auth import Secret

@@ -1,5 +1,8 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
-from typing import List, Dict
 from dataclasses import dataclass
 
 from haystack.dataclasses import ChatMessage

@@ -15,7 +15,13 @@ from haystack.components.generators.chat.openai import (
     _convert_chat_completion_to_chat_message,
     _convert_streaming_chunks_to_chat_message,
 )
-from haystack.dataclasses import ChatMessage, StreamingCallbackT, StreamingChunk, select_streaming_callback
+from haystack.dataclasses import (
+    ChatMessage,
+    ComponentInfo,
+    StreamingCallbackT,
+    StreamingChunk,
+    select_streaming_callback,
+)
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 from haystack.utils.http_client import init_http_client
 
@@ -236,9 +242,12 @@ class OpenAIGenerator:
             if num_responses > 1:
                 raise ValueError("Cannot stream multiple responses, please set n=1.")
 
+            component_info = ComponentInfo.from_component(self)
             chunks: List[StreamingChunk] = []
             for chunk in completion:
-                chunk_delta: StreamingChunk = _convert_chat_completion_chunk_to_streaming_chunk(chunk=chunk)  # type: ignore
+                chunk_delta: StreamingChunk = _convert_chat_completion_chunk_to_streaming_chunk(
+                    chunk=chunk, component_info=component_info
+                )
                 chunks.append(chunk_delta)
                 streaming_callback(chunk_delta)
 
