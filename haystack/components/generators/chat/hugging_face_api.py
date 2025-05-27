@@ -108,8 +108,7 @@ def _convert_chat_completion_stream_output_to_streaming_chunk(
     """
     Converts the Hugging Face API ChatCompletionStreamOutput to a StreamingChunk.
     """
-    # Choices is empty on the very first chunk which provides role information (e.g. "assistant").
-    # It is also empty if include_usage is set to True where the usage information is returned.
+    # Choices is empty if include_usage is set to True where the usage information is returned.
     if len(chunk.choices) == 0:
         usage = None
         if chunk.usage:
