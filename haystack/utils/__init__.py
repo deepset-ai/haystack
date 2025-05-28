@@ -13,7 +13,7 @@ _import_structure = {
     "base_serialization": ["_deserialize_value_with_schema", "_serialize_value_with_schema"],
     "callable_serialization": ["deserialize_callable", "serialize_callable"],
     "device": ["ComponentDevice", "Device", "DeviceMap", "DeviceType"],
-    "deserialization": ["deserialize_document_store_in_init_params_inplace", "deserialize_chatgenerator_inplace"],
+    "deserialization": ["deserialize_document_store_in_init_params_inplace", "deserialize_component_inplace"],
     "filters": ["document_matches_filter", "raise_on_invalid_filter_syntax"],
     "jinja2_extensions": ["Jinja2TimeExtension"],
     "jupyter": ["is_in_jupyter"],
@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from .azure import default_azure_ad_token_provider
     from .base_serialization import _deserialize_value_with_schema, _serialize_value_with_schema
     from .callable_serialization import deserialize_callable, serialize_callable
-    from .deserialization import deserialize_chatgenerator_inplace, deserialize_document_store_in_init_params_inplace
+    from .deserialization import deserialize_component_inplace, deserialize_document_store_in_init_params_inplace
     from .device import ComponentDevice, Device, DeviceMap, DeviceType
     from .filters import document_matches_filter, raise_on_invalid_filter_syntax
     from .jinja2_extensions import Jinja2TimeExtension

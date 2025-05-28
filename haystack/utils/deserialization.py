@@ -39,7 +39,7 @@ def deserialize_document_store_in_init_params_inplace(data: Dict[str, Any], key:
         data["init_parameters"][key] = default_from_dict(doc_store_class, doc_store_data)
 
 
-def deserialize_chatgenerator_inplace(data: Dict[str, Any], key: str = "chat_generator") -> None:
+def deserialize_component_inplace(data: Dict[str, Any], key: str = "chat_generator") -> None:
     """
     Deserialize a ChatGenerator in a dictionary inplace.
 
@@ -69,35 +69,3 @@ def deserialize_chatgenerator_inplace(data: Dict[str, Any], key: str = "chat_gen
         raise DeserializationError(f"Class '{serialized_chat_generator['type']}' not correctly imported") from e
 
     data[key] = component_from_dict(cls=chat_generator_class, data=serialized_chat_generator, name="chat_generator")
-
-
-def deserialize_text_embedder_inplace(data: Dict[str, Any], key: str = "embedder") -> None:
-    """
-    Deserialize a TextEmbedder in a dictionary inplace.
-
-    :param data:
-        The dictionary with the serialized data.
-    :param key:
-        The key in the dictionary where the TextEmbedder is stored.
-
-    :raises DeserializationError:
-        If the key is missing in the serialized data, the value is not a dictionary,
-        the type key is missing, the class cannot be imported, or the class lacks a 'from_dict' method.
-    """
-    if key not in data:
-        raise DeserializationError(f"Missing '{key}' in serialization data")
-
-    serialized_embedder = data[key]
-
-    if not isinstance(serialized_embedder, dict):
-        raise DeserializationError(f"The value of '{key}' is not a dictionary")
-
-    if "type" not in serialized_embedder:
-        raise DeserializationError(f"Missing 'type' in {key} serialization data")
-
-    try:
-        embedder_class = import_class_by_name(serialized_embedder["type"])
-    except ImportError as e:
-        raise DeserializationError(f"Class '{serialized_embedder['type']}' not correctly imported") from e
-
-    data[key] = component_from_dict(cls=embedder_class, data=serialized_embedder, name="embedder")

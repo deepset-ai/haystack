@@ -16,7 +16,7 @@ from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT, select_streaming_callback
 from haystack.tools import Tool, Toolset, deserialize_tools_or_toolset_inplace, serialize_tools_or_toolset
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
-from haystack.utils.deserialization import deserialize_chatgenerator_inplace
+from haystack.utils.deserialization import deserialize_component_inplace
 
 from .state.state import State, _schema_from_dict, _schema_to_dict, _validate_schema
 from .state.state_utils import merge_lists
@@ -189,7 +189,7 @@ class Agent:
         """
         init_params = data.get("init_parameters", {})
 
-        deserialize_chatgenerator_inplace(init_params, key="chat_generator")
+        deserialize_component_inplace(init_params, key="chat_generator")
 
         if "state_schema" in init_params:
             init_params["state_schema"] = _schema_from_dict(init_params["state_schema"])
