@@ -299,7 +299,13 @@ class TestLinkContentFetcherAsync:
     @pytest.mark.asyncio
     async def test_run_async_user_agent_rotation(self):
         """Test user agent rotation in async fetching"""
-        with patch("haystack.components.fetchers.link_content.httpx.AsyncClient.get") as mock_get:
+        with (
+            patch("haystack.components.fetchers.link_content.httpx.AsyncClient.get") as mock_get,
+            patch("asyncio.sleep") as mock_sleep,
+        ):
+            # Mock asyncio.sleep used by tenacity to keep this test fast
+            mock_sleep.return_value = None
+
             # First call raises an error to trigger user agent rotation
             first_response = Mock(status_code=403)
             first_response.raise_for_status.side_effect = httpx.HTTPStatusError(
@@ -319,6 +325,9 @@ class TestLinkContentFetcherAsync:
             streams = (await fetcher.run_async(urls=["https://www.example.com"]))["streams"]
             assert len(streams) == 1
             assert streams[0].data == b"Success"
+
+            # Verify that sleep was called (indicating retry logic was triggered)
+            mock_sleep.assert_called_once()
 
     @pytest.mark.asyncio
     @pytest.mark.integration
